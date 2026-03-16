@@ -199,7 +199,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         # Initialize Web3 for approval checking
         rpc_url = self.configuration.config.get("polygon_ledger_rpc")
-        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
     # TODO:

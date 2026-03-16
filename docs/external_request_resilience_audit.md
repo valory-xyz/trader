@@ -788,32 +788,32 @@ This uses the standard `ApiSpecs`/`get_http_response` framework path. Failure ->
 
 | # | Severity | Location | Bug | Status |
 |---|----------|----------|-----|--------|
-| 9 | **MEDIUM** | py_builder_relayer_client (RelayClient) | `requests.request` has no timeout -- can block worker thread on half-open connections | Open |
+| 9 | **MEDIUM** | py_builder_relayer_client (RelayClient) | `requests.request` has no timeout -- can block worker thread on half-open connections | Accepted |
 | 8 | **LOW** | py_clob_client (ClobClient) | httpx Client has no explicit timeout, but httpx 0.28.1 defaults to 5s -- adequate | N/A |
 | 1 | **HIGH** | `market_manager_abci/models.py:67` | `Subgraph.process_response` crashes with `TypeError` when error message is `None` (`in` on `NoneType`) | **Fixed** |
-| 2 | **HIGH** | `market_manager_abci/graph_tooling/requests.py:298-313` | `fetch_claim_params` uses direct dict indexing -- `KeyError` crashes generator | Open |
+| 2 | **HIGH** | `market_manager_abci/graph_tooling/requests.py:298-313` | `fetch_claim_params` uses direct dict indexing -- `KeyError` crashes generator | **Fixed** |
 | 5 | **HIGH** | `connections/polymarket_client/connection.py:443` | `JSONDecodeError` bypasses retry logic in `_request_with_retries` and `_fetch_market_by_slug` (BP1) | **Fixed** |
-| 6 | **HIGH** | `connections/polymarket_client/connection.py` | `_fetch_markets` can block worker thread for 11+ minutes (BP8) | Open |
+| 6 | **HIGH** | `connections/polymarket_client/connection.py` | `_fetch_markets` can block worker thread for 11+ minutes (BP8) | Accepted |
 | 16 | **HIGH** | `decision_maker_abci/handlers.py:253` | No global try-catch in handler dispatch | **Fixed** |
 | 17 | **HIGH** | `trader_abci/handlers.py:279` | `_handle_get_agent_info` has no error handling, crashes pre-FSM | **Fixed** |
 | 25 | **HIGH** | `predictions_helper.py:526` | Wrong bet returned: `next(..., bets[0])` falls back to first bet instead of `None` | **Fixed** |
-| 3 | **MEDIUM** | `market_manager_abci/graph_tooling/requests.py:244,363` | Batched trade fetching crashes on missing dict keys | Open |
-| 4 | **MEDIUM** | `market_manager_abci/graph_tooling/requests.py` | Retry backoff (31s) exceeds round timeout (30s) | Open |
+| 3 | **MEDIUM** | `market_manager_abci/graph_tooling/requests.py:244,363` | Batched trade fetching crashes on missing dict keys | **Fixed** |
+| 4 | **MEDIUM** | `market_manager_abci/graph_tooling/requests.py` | Retry backoff (31s) exceeds round timeout (30s) | Accepted |
 | 10 | **MEDIUM** | `trader_abci/handlers.py:117` | Stale hardcoded `FALLBACK_POL_TO_USD_RATE` (30 days old) | Open |
-| 12 | **MEDIUM** | `trader_abci/handlers.py:502` | Synchronous `requests.get` in handler blocks event loop up to 10s | Open |
-| 14 | **MEDIUM** | `trader_abci/handlers.py:669` | Web3 HTTPProvider has no timeout configured | Open |
+| 12 | **MEDIUM** | `trader_abci/handlers.py:502` | Synchronous `requests.get` in handler blocks event loop up to 10s | Accepted |
+| 14 | **MEDIUM** | `trader_abci/handlers.py:669` | Web3 HTTPProvider has no timeout configured | **Fixed** |
 | 15 | **MEDIUM** | `trader_abci/handlers.py:855` | `_estimate_gas` returns `False` instead of `None` (type bug) | **Fixed** |
 | 18 | **MEDIUM** | `chatui_abci/handlers.py:202` | `json.loads` without try-except crashes on malformed POST | **Fixed** |
 | 19 | **MEDIUM** | `trader_abci/handlers.py:593` | `_handle_get_funds_status` has no try-except | **Fixed** |
-| 21 | **MEDIUM** | `trader_abci/handlers.py:599` | No deduplication of x402 swap tasks -- duplicate transactions possible | Open |
-| 7 | **MEDIUM** | `connections/polymarket_client/connection.py` | No retries on `_fetch_market_by_slug`, `_get_positions`, `_get_trades` | Open |
+| 21 | **MEDIUM** | `trader_abci/handlers.py:599` | No deduplication of x402 swap tasks -- duplicate transactions possible | **Fixed** |
+| 7 | **MEDIUM** | `connections/polymarket_client/connection.py` | No retries on `_fetch_market_by_slug`, `_get_positions`, `_get_trades` | Accepted |
 | 23 | **MEDIUM** | `agent_performance_summary_abci/graph_tooling/requests.py:434` | `UnicodeDecodeError` not caught in OLAS price fetch | **Fixed** |
 | 24 | **MEDIUM** | `predictions_helper.py:152` | `{"data": null}` -> `AttributeError` -- missing `or {}` guard | **Fixed** |
 | 26 | **MEDIUM** | `polymarket_predictions_helper.py:136` | `{"data": null}` -> `AttributeError` -- missing `or {}` guard | **Fixed** |
 | 27 | **MEDIUM** | `agent_performance_summary_abci/behaviours.py:1341` | Uncaught `KeyError` on missing `"date"` in daily profit statistics | **Fixed** |
 | 11 | **LOW** | `trader_abci/handlers.py:516` | `if not price_usd` treats zero as missing (BP4) | **Fixed** |
-| 13 | **LOW** | `decision_maker_abci/behaviours/storage_manager.py` | `_fetch_accuracy_info` has no max retry bound | Open |
-| 20 | **LOW** | `trader_abci/handlers.py:328` | `_handle_get_static_file` only catches `FileNotFoundError` | Open |
+| 13 | **LOW** | `decision_maker_abci/behaviours/storage_manager.py` | `_fetch_accuracy_info` has no max retry bound | Accepted |
+| 20 | **LOW** | `trader_abci/handlers.py:328` | `_handle_get_static_file` only catches `FileNotFoundError` | Accepted |
 | 22 | **LOW** | `connections/polymarket_client/connection.py:253` | `json.loads` outside try-except in `on_send` | **Fixed** |
 
 ---
@@ -982,31 +982,31 @@ Multiple methods use `.get("data", {})` expecting a dict default, but when the A
 | **P0** | BUG 16: No global try-catch in handler dispatch | Crash | Low | Wrap `handler(http_msg, http_dialogue, **kwargs)` at `decision_maker_abci/handlers.py:253` in `try/except Exception` that sends HTTP 500. | **Fixed** |
 | **P0** | BUG 5: JSONDecodeError bypasses retries and crashes connection | Crash | Low | Change `except requests.exceptions.RequestException` to `except (requests.exceptions.RequestException, ValueError)` in `_request_with_retries` and `_fetch_market_by_slug`. | **Fixed** |
 | **P1** | BUG 1: Subgraph.process_response TypeError on None error message | Crash | Low | Add `if error_message is not None:` guard before the `in` check at `models.py:67`. | **Fixed** |
-| **P1** | BUG 21: No deduplication of x402 swap tasks | Side-effect | Low | Add a `self._swap_in_progress` flag checked before `executor.submit()`. Use `threading.Lock` or check `Future.running()`. | Open |
+| **P1** | BUG 21: No deduplication of x402 swap tasks | Side-effect | Low | Add a `self._swap_in_progress` flag checked before `executor.submit()`. Use `threading.Lock` or check `Future.running()`. | **Fixed** |
 | **P1** | BUG 10: Stale fallback exchange rate | Side-effect | Medium | Add timestamp tracking; refuse to use fallback older than N hours; log critical alert. | Open |
 | **P1** | BUG 25: Wrong bet returned in position details | Side-effect | Low | Change `next(..., bets[0])` to `next(..., None)` at `predictions_helper.py:526`. | **Fixed** |
-| **P2** | BUG 2: fetch_claim_params KeyError risk | Crash | Medium | Wrap the list comprehension at `requests.py:298-313` in try/except KeyError, or use `.get()` with validation. | Open |
+| **P2** | BUG 2: fetch_claim_params KeyError risk | Crash | Medium | Wrap the list comprehension at `requests.py:298-313` in try/except KeyError, or use `.get()` with validation. | **Fixed** |
 | **P2** | BUG 17: _handle_get_agent_info no error handling | Crash | Low | Wrap body in try/except Exception that sends HTTP 500. | **Fixed** |
 | **P2** | BUG 15: _estimate_gas returns False | Side-effect | Low | Change `return False` to `return None` at `handlers.py:855`. | **Fixed** |
 | **P2** | BUG 18: _handle_chatui_prompt json.loads crash | Crash | Low | Wrap `json.loads` in try/except JSONDecodeError that sends 400 Bad Request. | **Fixed** |
-| **P2** | BUG 9: RelayClient requests has no timeout (half-open risk) | Stuck | Medium | `py-builder-relayer-client==0.0.1` is a third-party dep. Wrap RelayClient calls with `future.result(timeout=60)` to enforce a deadline at the connection layer. | Open |
-| **P2** | BUG 12: Synchronous requests.get blocks event loop | Stuck | Medium | Move CoinGecko fetch into the ThreadPoolExecutor, or use the framework's async HTTP path. Increase `max_workers` to 2 if sharing executor. | Open |
-| **P2** | BUG 14: Web3 HTTPProvider no timeout | Stuck | Low | Add `request_kwargs={"timeout": 30}` to `Web3.HTTPProvider()` calls. | Open |
+| **P2** | BUG 9: RelayClient requests has no timeout (half-open risk) | Stuck | Medium | `py-builder-relayer-client==0.0.1` is a third-party dep. Wrap RelayClient calls with `future.result(timeout=60)` to enforce a deadline at the connection layer. | Accepted |
+| **P2** | BUG 12: Synchronous requests.get blocks event loop | Stuck | Medium | Move CoinGecko fetch into the ThreadPoolExecutor, or use the framework's async HTTP path. Increase `max_workers` to 2 if sharing executor. | Accepted |
+| **P2** | BUG 14: Web3 HTTPProvider no timeout | Stuck | Low | Add `request_kwargs={"timeout": 30}` to `Web3.HTTPProvider()` calls. | **Fixed** |
 | **P2** | BUG 24/26: `{"data": null}` AttributeError guards | Crash (potential) | Low | Add `or {}` after `.get("data", {})` in `predictions_helper.py:152` and `polymarket_predictions_helper.py:136`. | **Fixed** |
 | **P2** | BUG 27: KeyError on missing "date" in profit stats | Crash | Low | `stat.get("date")` with fallback, or wrap loop body in try-except. | **Fixed** |
 | **P3** | BUG 23: UnicodeDecodeError in OLAS price fetch | Crash | Low | Wrap `response.body.decode()` in try-except at `requests.py:434`. | **Fixed** |
-| **P3** | BUG 6: _fetch_markets blocks thread 11+ min | Stuck | Medium | Cap total retry time per `_fetch_markets` call. Add a deadline parameter. Consider parallelizing category fetches. | Open |
-| **P3** | BUG 4: Retry backoff exceeds round timeout | Stuck | Low | Cap cumulative sleep to 80% of round timeout, or make retry logic aware of remaining time. | Open |
+| **P3** | BUG 6: _fetch_markets blocks thread 11+ min | Stuck | Medium | Cap total retry time per `_fetch_markets` call. Add a deadline parameter. Consider parallelizing category fetches. | Accepted |
+| **P3** | BUG 4: Retry backoff exceeds round timeout | Stuck | Low | Cap cumulative sleep to 80% of round timeout, or make retry logic aware of remaining time. | Accepted |
 | **P3** | BUG 19: _handle_get_funds_status no try-except | Crash | Low | Wrap body in try/except Exception. | **Fixed** |
-| **P3** | BUG 3: Batched trade fetching KeyError | Crash | Low | Use `.get()` with validation for `fpmm` and `creationTimestamp` keys. | Open |
+| **P3** | BUG 3: Batched trade fetching KeyError | Crash | Low | Use `.get()` with validation for `fpmm` and `creationTimestamp` keys. | **Fixed** |
 | **P3** | C3: Category concentration risk | Side-effect | High | Add minimum-category-count check before proceeding with trading. | Open |
 | **P3** | CC1: Inconsistent retry strategies | All | High | Standardize retry configuration. Create a shared retry utility with configurable max retries, backoff type, and timeout awareness. | Open |
 | **P3** | CC2: No circuit breaker | All | High | Implement circuit breaker pattern for repeated failures to the same service. Track consecutive failures; skip retries for N seconds after M failures. | Open |
 | **P3** | B9: Reset loop under sustained outage | Stuck | Medium | Add exponential backoff between periods during repeated failures. | Open |
-| **P4** | BUG 7: Inconsistent retries in connection | Various | Medium | Add retry logic to `_fetch_market_by_slug`, `_get_positions`, `_get_trades`. | Open |
+| **P4** | BUG 7: Inconsistent retries in connection | Various | Medium | Add retry logic to `_fetch_market_by_slug`, `_get_positions`, `_get_trades`. | Accepted |
 | **P4** | BUG 11: `if not price_usd` treats zero as missing | Side-effect | Low | Change to `if price_usd is None:`. | **Fixed** |
-| **P4** | BUG 13: No max retry for accuracy fetch | Stuck | Low | Add max_retries parameter to `wait_for_condition_with_sleep` call. | Open |
-| **P4** | BUG 20: Static file handler incomplete exception handling | Crash | Low | Broaden except clause to catch `OSError`. | Open |
+| **P4** | BUG 13: No max retry for accuracy fetch | Stuck | Low | Add max_retries parameter to `wait_for_condition_with_sleep` call. | Accepted |
+| **P4** | BUG 20: Static file handler incomplete exception handling | Crash | Low | Broaden except clause to catch `OSError`. | Accepted |
 | **P4** | BUG 8: ClobClient httpx timeout | N/A | None | httpx 0.28.1 defaults to `Timeout(timeout=5.0)`. No fix needed — default timeout is adequate. | N/A |
 | **P4** | BUG 22: json.loads outside try-except in on_send | Stuck | Low | Move `json.loads(srr_message.payload)` inside `_route_request` or add try/except in `on_send`. | **Fixed** |
 | **P4** | C9: x402 USDC depletion | Side-effect | Low | Add monitoring/alerting for x402 balance. | Open |

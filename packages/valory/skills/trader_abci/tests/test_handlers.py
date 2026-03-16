@@ -2244,6 +2244,49 @@ class TestHandleGetFundsStatusNoTryExcept:
 
 
 # ---------------------------------------------------------------------------
+# Resilience audit: BUG 21 -- No deduplication of x402 swap tasks
+# ---------------------------------------------------------------------------
+class TestX402SwapDeduplication:
+    """BUG 21: duplicate x402 swap tasks could cause duplicate transactions."""
+
+    def test_second_submit_skipped_while_first_running(self) -> None:
+        """A second swap submission is skipped while the first is still running."""
+        handler = _make_handler(use_x402=True)
+        handler.executor = MagicMock()
+
+        running_future = MagicMock()
+        running_future.done.return_value = False
+        handler._x402_swap_future = running_future
+
+        handler._submit_x402_swap_if_idle()
+
+        handler.executor.submit.assert_not_called()
+
+    def test_submit_allowed_when_no_prior_future(self) -> None:
+        """Swap is submitted when no prior future exists."""
+        handler = _make_handler(use_x402=True)
+        handler.executor = MagicMock()
+        handler._x402_swap_future = None
+
+        handler._submit_x402_swap_if_idle()
+
+        handler.executor.submit.assert_called_once()
+
+    def test_submit_allowed_when_prior_future_done(self) -> None:
+        """Swap is submitted when the prior future has completed."""
+        handler = _make_handler(use_x402=True)
+        handler.executor = MagicMock()
+
+        done_future = MagicMock()
+        done_future.done.return_value = True
+        handler._x402_swap_future = done_future
+
+        handler._submit_x402_swap_if_idle()
+
+        handler.executor.submit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
 # Resilience audit: BUG 16 -- No global try-catch in handler dispatch
 # ---------------------------------------------------------------------------
 class TestHandlerDispatchNoGlobalTryCatch:

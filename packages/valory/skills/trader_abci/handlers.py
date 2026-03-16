@@ -135,6 +135,9 @@ class HttpHandler(BaseHttpHandler):
         self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
         self._pol_usdc_rate_timestamp: float = 0.0
 
+        # Guard against duplicate x402 swap submissions
+        self._x402_swap_future: Optional[concurrent.futures.Future] = None
+
     @property
     def staking_synchronized_data(self) -> SynchronizedData:
         """Return the synchronized data."""
@@ -183,7 +186,7 @@ class HttpHandler(BaseHttpHandler):
 
         # Only check funds if using X402
         if self.params.use_x402:
-            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
+            self._submit_x402_swap_if_idle()
 
         config_uri_base_hostname = urlparse(
             self.context.params.service_endpoint
@@ -603,7 +606,7 @@ class HttpHandler(BaseHttpHandler):
         try:
             # Only check funds if using X402
             if self.params.use_x402:
-                self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
+                self._submit_x402_swap_if_idle()
 
             self._send_ok_response(
                 http_msg,
@@ -678,7 +681,7 @@ class HttpHandler(BaseHttpHandler):
             # Note that you should create only one HTTPProvider with the same provider URL per python process,
             # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
             # Multiple HTTPProviders with different URLs will work as expected.
-            return Web3(Web3.HTTPProvider(rpc_url))
+            return Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
         except Exception as e:
             self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
             return None
@@ -891,6 +894,20 @@ class HttpHandler(BaseHttpHandler):
         except Exception as e:
             self.context.logger.error(f"Error in gas estimation: {str(e)}")
             return None
+
+    def _submit_x402_swap_if_idle(self) -> None:
+        """Submit x402 swap task only if no swap is currently in progress."""
+        if (
+            self._x402_swap_future is not None
+            and not self._x402_swap_future.done()
+        ):
+            self.context.logger.debug(
+                "x402 swap task already in progress, skipping"
+            )
+            return
+        self._x402_swap_future = self.executor.submit(
+            self._ensure_sufficient_funds_for_x402_payments
+        )
 
     def _ensure_sufficient_funds_for_x402_payments(self) -> bool:
         """Ensure agent EOA has at sufficient funds for x402 requests payments"""
