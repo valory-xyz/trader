@@ -4,6 +4,9 @@ on:
   release:
     types: [prereleased, released]
 
+permissions:
+  contents: read
+
 jobs:
   publish-packages:
     name: Push Packages
@@ -356,6 +359,8 @@ jobs:
   upload-assets:
     needs: build-agent-runner
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       # MAC OS
       - name: Download artifacts
