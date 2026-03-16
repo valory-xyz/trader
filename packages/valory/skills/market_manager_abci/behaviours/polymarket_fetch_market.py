@@ -41,7 +41,6 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
     PolymarketFetchMarketRound,
 )
 
-
 USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # USDC has 6 decimals on Polymarket

@@ -28,7 +28,6 @@ from typing import List
 
 from pydantic import BaseModel
 
-
 CHATUI_PROMPT = """You are an expert assistant tasked with helping users update an agent's trading configuration.
 
 Configuration details:

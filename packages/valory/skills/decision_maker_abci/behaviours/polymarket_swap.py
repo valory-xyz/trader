@@ -37,7 +37,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
 
-
 SAFE_TX_GAS = 0
 ETHER_VALUE = 0
 

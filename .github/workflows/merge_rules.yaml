@@ -1,11 +1,11 @@
-name: 'Check Branch'
+name: "Check Branch"
 
 on:
   pull_request:
 
 jobs:
   check_branch:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check branch
         # Only allow merges to main from either 'develop' or version tags (e.g., v0.26.2 or v0.27.1-rc)

@@ -19,7 +19,6 @@
 
 """Achievement checker for bets with payouts ROI above a threshold"""
 
-
 from datetime import datetime
 from typing import Any
 

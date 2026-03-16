@@ -110,7 +110,7 @@ class RealitioContract(Contract):
             try:
                 # Wait for the result with a timeout
                 data = future.result(timeout=timeout)
-            except TimeoutError:
+            except (TimeoutError, concurrent.futures.TimeoutError):
                 # Handle the case where the execution times out
                 err = f"The RPC didn't respond in {timeout}."
                 return None, err

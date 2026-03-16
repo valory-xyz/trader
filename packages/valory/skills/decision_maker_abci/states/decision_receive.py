@@ -33,7 +33,6 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 )
 from packages.valory.skills.market_manager_abci.rounds import UpdateBetsRound
 
-
 IGNORED = "ignored"
 
 

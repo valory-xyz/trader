@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,11 +17,14 @@
 #
 # ------------------------------------------------------------------------------
 """This module contains the tests for the handlers for the decision maker abci."""
+
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, Union
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from aea.configurations.data_types import PublicId
@@ -110,7 +113,7 @@ def test_handler(handler: Handler, base_handler: Handler) -> None:
 class TestIpfsHandler:
     """Class for testing the IPFS Handler."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up the tests."""
         self.context = MagicMock()
         self.handler = IpfsHandler(name="", skill_context=self.context)
@@ -141,7 +144,7 @@ class TestIpfsHandler:
 class TestHttpHandler:
     """Class for testing the Http Handler."""
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         """Set up the tests."""
         self.context = MagicMock()
         self.context.logger = MagicMock()
@@ -389,3 +392,226 @@ class TestHttpHandler:
         self.handler.context.outbox.put_message.assert_called_once_with(
             message=mock_response
         )
+
+    def test_round_sequence_property(self) -> None:
+        """Test the round_sequence property returns context.state.round_sequence."""
+        mock_round_seq = MagicMock()
+        self.handler.context.state.round_sequence = mock_round_seq
+        result = self.handler.round_sequence
+        assert result is mock_round_seq
+
+    def test_synchronized_data_property(self) -> None:
+        """Test the synchronized_data property returns a SynchronizedData instance."""
+        mock_db = MagicMock()
+        self.handler.context.state.round_sequence.latest_synchronized_data.db = mock_db
+        result = self.handler.synchronized_data
+        assert result.db is mock_db
+
+    def test_has_transitioned_true(self) -> None:
+        """Test _has_transitioned returns True when there is a transition height."""
+        self.handler.context.state.round_sequence.last_round_transition_height = 10
+        result = self.handler._has_transitioned()
+        assert result is True
+
+    def test_has_transitioned_false_zero(self) -> None:
+        """Test _has_transitioned returns False when transition height is 0."""
+        self.handler.context.state.round_sequence.last_round_transition_height = 0
+        result = self.handler._has_transitioned()
+        assert result is False
+
+    def test_has_transitioned_value_error(self) -> None:
+        """Test _has_transitioned returns False when ValueError is raised."""
+        type(self.handler.context.state.round_sequence).last_round_transition_height = (
+            PropertyMock(side_effect=ValueError("no height"))
+        )
+        result = self.handler._has_transitioned()
+        assert result is False
+
+    def test_handle_too_early(self) -> None:
+        """Test _handle_too_early sends a 425 response."""
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        mock_response = MagicMock()
+        http_dialogue.reply.return_value = mock_response
+
+        self.handler._handle_too_early(http_msg, http_dialogue)
+
+        http_dialogue.reply.assert_called_once_with(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=http_msg,
+            version=http_msg.version,
+            status_code=425,
+            status_text="The state machine has not started yet! Please try again later...",
+            headers=http_msg.headers,
+            body=b"",
+        )
+        self.handler.context.logger.info.assert_called_once_with(
+            "Responding with: {}".format(mock_response)
+        )
+        self.handler.context.outbox.put_message.assert_called_once_with(
+            message=mock_response
+        )
+
+    def test_waiting_for_a_mech_response_true(self) -> None:
+        """Test waiting_for_a_mech_response returns True when in relevant round."""
+        from packages.valory.skills.decision_maker_abci.states.decision_receive import (
+            DecisionReceiveRound,
+        )
+
+        self.handler.context.state.round_sequence.current_round_id = (
+            DecisionReceiveRound.auto_round_id()
+        )
+        result = self.handler.waiting_for_a_mech_response
+        assert result is True
+
+    def test_waiting_for_a_mech_response_false(self) -> None:
+        """Test waiting_for_a_mech_response returns False when not in relevant round."""
+        self.handler.context.state.round_sequence.current_round_id = (
+            "some_other_round_id"
+        )
+        result = self.handler.waiting_for_a_mech_response
+        assert result is False
+
+    def test_check_required_funds_true(self) -> None:
+        """Test _check_required_funds returns True when balance exceeds threshold."""
+        mock_db = MagicMock()
+        self.handler.context.state.round_sequence.latest_synchronized_data.db = mock_db
+        self.handler.context.params.agent_balance_threshold = 100
+        # Mock synchronized_data.wallet_balance
+        with patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+        ) as mock_sync:
+            mock_sync_data = MagicMock()
+            mock_sync_data.wallet_balance = 200
+            mock_sync.return_value = mock_sync_data
+            result = self.handler._check_required_funds()
+            assert result is True
+
+    def test_check_required_funds_false(self) -> None:
+        """Test _check_required_funds returns False when balance is below threshold."""
+        self.handler.context.params.agent_balance_threshold = 500
+        with patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+        ) as mock_sync:
+            mock_sync_data = MagicMock()
+            mock_sync_data.wallet_balance = 100
+            mock_sync.return_value = mock_sync_data
+            result = self.handler._check_required_funds()
+            assert result is False
+
+    def test_is_mech_reliable(self) -> None:
+        """Test _is_mech_reliable returns True when timestamp is old enough."""
+        old_timestamp = 0  # Very old timestamp
+        self.handler.context.params.expected_mech_response_time = 60
+        with patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+        ) as mock_sync:
+            mock_sync_data = MagicMock()
+            mock_sync_data.decision_receive_timestamp = old_timestamp
+            mock_sync.return_value = mock_sync_data
+            result = self.handler._is_mech_reliable()
+            assert result is True
+
+    def test_is_mech_reliable_false(self) -> None:
+        """Test _is_mech_reliable returns False when timestamp is recent."""
+        future_timestamp = int(datetime.now(timezone.utc).timestamp()) + 10000
+        self.handler.context.params.expected_mech_response_time = 60
+        with patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+        ) as mock_sync:
+            mock_sync_data = MagicMock()
+            mock_sync_data.decision_receive_timestamp = future_timestamp
+            mock_sync.return_value = mock_sync_data
+            result = self.handler._is_mech_reliable()
+            assert result is False
+
+    def test_handle_get_health_not_transitioned(self) -> None:
+        """Test _handle_get_health calls _handle_too_early when not transitioned."""
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        http_dialogue.reply.return_value = MagicMock()
+
+        with patch.object(
+            self.handler, "_has_transitioned", return_value=False
+        ), patch.object(self.handler, "_handle_too_early") as mock_too_early:
+            self.handler._handle_get_health(http_msg, http_dialogue)
+            mock_too_early.assert_called_once_with(http_msg, http_dialogue)
+
+    def test_handle_get_health_success(self) -> None:
+        """Test _handle_get_health returns a full health response."""
+
+        class MockStakingState(Enum):
+            """Mock staking state."""
+
+            STAKED = 1
+
+        http_msg = MagicMock()
+        http_msg.headers = ""
+        http_dialogue = MagicMock()
+        http_dialogue.reply.return_value = MagicMock()
+
+        # Mock _has_transitioned
+        with patch.object(
+            self.handler, "_has_transitioned", return_value=True
+        ), patch.object(
+            self.handler, "_check_required_funds", return_value=True
+        ), patch.object(
+            self.handler, "_is_mech_reliable", return_value=True
+        ), patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+        ) as mock_sync, patch.object(
+            type(self.handler),
+            "round_sequence",
+            new_callable=PropertyMock,
+        ) as mock_rs, patch.object(
+            type(self.handler),
+            "waiting_for_a_mech_response",
+            new_callable=PropertyMock,
+            return_value=False,
+        ):
+            # Configure synchronized_data mock
+            mock_sync_data = MagicMock()
+            mock_sync_data.is_staking_kpi_met = True
+            mock_sync_data.service_staking_state = MockStakingState.STAKED
+            mock_sync_data.period_count = 5
+            mock_sync.return_value = mock_sync_data
+
+            # Configure round_sequence mock
+            mock_round_seq = MagicMock()
+            mock_round_seq.block_stall_deadline_expired = False
+            mock_round_seq.last_round_transition_timestamp = datetime.now()
+            mock_round_seq.current_round_id = "some_round"
+
+            # Configure abci_app mock
+            mock_prev_round = MagicMock()
+            mock_prev_round.round_id = "prev_round"
+            mock_prev_round_cls = type(mock_prev_round)
+            mock_round_seq.abci_app._previous_rounds = [mock_prev_round]
+
+            mock_event = MagicMock()
+            mock_round_seq.abci_app.transition_function = {
+                mock_prev_round_cls: {mock_event: MagicMock()}
+            }
+            mock_round_seq.abci_app.event_to_timeout = {mock_event: 30}
+
+            mock_rs.return_value = mock_round_seq
+
+            # Set up params
+            self.handler.context.params.reset_pause_duration = 10
+
+            self.handler._handle_get_health(http_msg, http_dialogue)
+
+            # Verify reply was called
+            http_dialogue.reply.assert_called_once()
+            call_kwargs = http_dialogue.reply.call_args[1]
+            assert call_kwargs["status_code"] == 200

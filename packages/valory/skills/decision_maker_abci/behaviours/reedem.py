@@ -69,7 +69,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     get_condition_id_to_balances,
 )
 
-
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_NUMBER_KEY = "number"

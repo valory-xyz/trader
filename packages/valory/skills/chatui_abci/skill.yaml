@@ -6,27 +6,32 @@ type: skill
 license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
-  __init__.py: bafybeiezyii5oqibm26ogl3tqx7m34d7znj443jfbcl26rp2oz5g2mjnzy
+  __init__.py: bafybeihcto4ekkxngcw3me4v42b4aikluhivgf6lnxenho545mq3jz27gi
   behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau
-  dialogues.py: bafybeieam4ev344ksylzvbihjeh4foub6h4hfkz6puf3b7p6pipmfkam2m
-  handlers.py: bafybeigagwsfoyxxknqmnyxnznnereijtngtc2z3bctkacinggrsxl4gfe
-  models.py: bafybeids2juk6xallrx2264r576agooe4fqlk3qnlbcawy7udb2g7ugpsi
+  dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
+  handlers.py: bafybeicpcl5i3zklvqwux2ohjt6ah7mlpdbq2bq24dcnzfmogwb5b7bdhq
+  models.py: bafybeie5l3hs3zmt4mtuvzrln67h3ps7p665mnljedoyy5vx7vb5jcudli
   payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
-  prompts.py: bafybeibkzr3ql2mi2z7jmpnpxd4ft5wlgyyiy4kf5ceokth2jmrriua3tm
-  rounds.py: bafybeiadqnbddcjxjouo4wn3mzeduesuosog6cx4aypygpkk747njgetzy
+  prompts.py: bafybeig73nvhfx3d52l7ntypc7gr7ef46vv3hsfqk7tuitr2nbcbcuwr7a
+  rounds.py: bafybeic564lnoueb2gozgdepojffugfuv23umvk3gd47d3iqbixppqeafm
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
-  tests/test_handlers.py: bafybeiaahfnehk6tcntacfjpkqwrq7n5dqbc4melriyzqim6eamm33lotu
-  tests/test_models.py: bafybeifriheh4s5tcpdwl2hpgx4wedb4avzgs37fcfsfrmy3p3nbuzfbt4
+  tests/test_behaviours.py: bafybeiblft4ue6iqrp2jeuwmqb3yurw4v73u2qomcjjfhfpvv346zcqynq
+  tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
+  tests/test_handlers.py: bafybeiecn7ziyhmjyq4tolfnsb2i64g7gnmfn2otyzgv4sccydi757xaim
+  tests/test_models.py: bafybeigw2o2l5td5tttvh3usjtsa7guwbw7jvpizzbfufmo2mwd4c3uksi
+  tests/test_payloads.py: bafybeib4lcoijon5xjtfrhs2lshf2dbhb3q4qucuhaqysvsibbx7jchpje
+  tests/test_prompts.py: bafybeiapfehghw765v4xg7qs2xmohnkzgn7sj52wsxyznyevcpzogvyfca
+  tests/test_rounds.py: bafybeigj6j2nrhdtw4tjkxzqwodqwdmzo2slczveajwwj3ifjmuwy2kk7e
 fingerprint_ignore_patterns: []
 connections:
-- dvilela/genai:0.1.0:bafybeibopgvwqvqvyru7n2o2ddryujl6jhknjg5na4675of2eui5i3xube
+- dvilela/genai:0.1.0:bafybeieuwwoww4scfzs7ljzlmotldu5jp24o4h235qy54ovliwxf6zjxai
 protocols:
-- valory/http:1.0.0:bafybeia4tq7ycivm3dnekelrnlzdwb4qnrjdykk6gf5tizq6djr66adotm
+- valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/agent_performance_summary_abci:0.1.0:bafybeidvkbfdbx5fup6d25jkunh6vdvf6rl7cznrvawl73nspkw5kyqts4
+- valory/abstract_round_abci:0.1.0:bafybeiaalla55aprhvoumv4u7qt4v6l53fjmgln6wgyjr5e5tw7u4kscja
+- valory/agent_performance_summary_abci:0.1.0:bafybeihjtj2f7wscxhl2qkqhh7xp2v5g2vwskw6xbi2f5eqg3kehsjwa4u
 handlers:
   abci:
     args: {}
@@ -56,7 +61,7 @@ behaviours: {}
 models:
   params:
     args:
-      service_endpoint: trader.staging.autonolas.tech/
+      service_endpoint: trader.autonolas.tech/
     class_name: ChatUIParams
   srr_dialogues:
     args: {}
@@ -66,5 +71,5 @@ models:
     class_name: SharedState
 dependencies:
   pydantic:
-    version: ==2.11.9
+    version: <3,>=2.11.9
 is_abstract: true

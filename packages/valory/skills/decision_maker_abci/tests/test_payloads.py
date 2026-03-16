@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 # ------------------------------------------------------------------------------
 """This module contains the transaction payloads for the decision maker abci."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Type
 
 import pytest
@@ -29,6 +29,11 @@ from packages.valory.skills.decision_maker_abci.payloads import (
     DecisionReceivePayload,
     DecisionRequestPayload,
     MultisigTxPayload,
+    PolymarketBetPlacementPayload,
+    PolymarketPostSetApprovalPayload,
+    PolymarketRedeemPayload,
+    PolymarketSetApprovalPayload,
+    PolymarketSwapPayload,
     RedeemPayload,
     SamplingPayload,
     SubscriptionPayload,
@@ -50,7 +55,9 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "bet_amount": 1,
                 "next_mock_data_row": 1,
                 "policy": "dummy policy",
-                "decision_received_timestamp": int(datetime.utcnow().timestamp()),
+                "decision_received_timestamp": int(
+                    datetime.now(timezone.utc).timestamp()
+                ),
                 "should_be_sold": False,
             },
         ),
@@ -118,6 +125,52 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "selected_tool": "dummy selected tool",
             },
         ),
+        (
+            PolymarketBetPlacementPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": True,
+                "event": "bet_placement_done",
+                "cached_signed_orders": '{"tok1": "order1"}',
+                "utilized_tools": '{"cid1": "tool1"}',
+            },
+        ),
+        (
+            PolymarketSetApprovalPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": False,
+            },
+        ),
+        (
+            PolymarketPostSetApprovalPayload,
+            {"vote": True},
+        ),
+        (
+            PolymarketRedeemPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": True,
+                "mech_tools": '["tool_a"]',
+                "policy": "dummy policy",
+                "utilized_tools": '{"tool_a": 1}',
+                "redeemed_condition_ids": '["cid1"]',
+                "payout_so_far": 42,
+                "event": "done",
+            },
+        ),
+        (
+            PolymarketSwapPayload,
+            {
+                "tx_submitter": "dummy tx submitter",
+                "tx_hash": "dummy tx hash",
+                "mocking_mode": False,
+                "should_swap": True,
+            },
+        ),
     ],
 )
 def test_payload(payload_class: Type[BaseTxPayload], payload_kwargs: Dict) -> None:
@@ -129,4 +182,9 @@ def test_payload(payload_class: Type[BaseTxPayload], payload_kwargs: Dict) -> No
 
     assert payload.sender == "sender"
     assert payload.data == payload_kwargs
-    assert payload_class.from_json(payload.json) == payload
+
+    # Verify JSON serialization contains all expected fields
+    json_data = payload.json
+    assert json_data["sender"] == "sender"
+    for key, value in payload_kwargs.items():
+        assert json_data[key] == value

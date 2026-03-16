@@ -41,7 +41,6 @@ from packages.valory.skills.staking_abci.behaviours import (
 )
 from packages.valory.skills.staking_abci.rounds import StakingState
 
-
 # Liveness ratio from the staking contract is expressed in calls per 10**18 seconds.
 LIVENESS_RATIO_SCALE_FACTOR = 10**18
 

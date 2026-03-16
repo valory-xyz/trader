@@ -64,7 +64,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 )
 from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 
-
 ABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler

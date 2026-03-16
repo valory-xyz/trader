@@ -19,9 +19,10 @@
 # ------------------------------------------------------------------------------
 
 """Shared helper for fetching and formatting predictions data."""
+
 import enum
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -35,7 +36,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_PREDICTION_HISTORY_QUERY,
     GET_SPECIFIC_MARKET_BETS_QUERY,
 )
-
 
 # Constants
 WEI_TO_NATIVE = 10**18
@@ -344,7 +344,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             total_payout = bet.get("total_payout", 0)
             status = bet.get("status", 0)
             closing_timestamp = market_info.get("openingTimestamp", 0)
-            current_timestamp = int(datetime.utcnow().timestamp())
+            current_timestamp = int(datetime.now(timezone.utc).timestamp())
 
             remaining_seconds = (
                 (closing_timestamp - current_timestamp)
@@ -776,7 +776,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         try:
             unix_timestamp = int(timestamp)
-            dt = datetime.utcfromtimestamp(unix_timestamp)
+            dt = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
             return dt.strftime(ISO_TIMESTAMP_FORMAT)
         except Exception as e:
             self.logger.error(f"Error formatting timestamp {timestamp}: {str(e)}")

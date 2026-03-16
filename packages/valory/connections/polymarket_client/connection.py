@@ -19,6 +19,7 @@
 # ------------------------------------------------------------------------------
 
 """Genai connection."""
+
 import json
 import time
 from datetime import datetime, timedelta, timezone
@@ -48,7 +49,6 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 from packages.valory.protocols.srr.dialogues import SrrDialogue
 from packages.valory.protocols.srr.dialogues import SrrDialogues as BaseSrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
-
 
 PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
@@ -913,8 +913,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 offset += limit
 
             pages_fetched = (len(all_trades) + limit - 1) // limit if all_trades else 0
-            if pages_fetched == 0 and len(all_trades) > 0:
-                pages_fetched = 1  # At least one page was fetched
 
             self.logger.info(
                 f"Fetched total of {len(all_trades)} trades for {self.safe_address} "

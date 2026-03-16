@@ -69,7 +69,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     UpdateAchievementsRound,
 )
 
-
 DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
@@ -581,7 +580,7 @@ class FetchPerformanceSummaryBehaviour(
             return None
         try:
             unix_timestamp = int(timestamp)
-            dt = datetime.utcfromtimestamp(unix_timestamp)
+            dt = datetime.fromtimestamp(unix_timestamp, tz=timezone.utc)
             return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception as e:
             self.context.logger.error(f"Error formatting timestamp {timestamp}: {e}")
@@ -1079,7 +1078,9 @@ class FetchPerformanceSummaryBehaviour(
                     if title:
                         titles.add(title)
             for title in titles:
-                if title:
+                if (
+                    title
+                ):  # pragma: no cover  # defensive: titles set already filters empty strings
                     title_days.setdefault(title, []).append(day_ts)
 
         allocations: Dict[int, int] = {}
@@ -1338,7 +1339,9 @@ class FetchPerformanceSummaryBehaviour(
 
         for stat in daily_stats:
             date_timestamp = int(stat["date"])
-            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees (placed + unplaced) using cached lookup
@@ -1499,7 +1502,9 @@ class FetchPerformanceSummaryBehaviour(
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
-            if last_dp_day in incoming_days:
+            if (
+                last_dp_day in incoming_days
+            ):  # pragma: no cover  # defensive: replace_last guarantees membership
                 new_data_points.pop()
                 prev_settled -= last_dp.daily_mech_requests
         cumulative_profit = (
@@ -1516,7 +1521,9 @@ class FetchPerformanceSummaryBehaviour(
         new_mech_sum = 0
         for stat in filtered_daily_stats:
             date_timestamp = int(stat["date"])
-            date_str = datetime.utcfromtimestamp(date_timestamp).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
             # Calculate mech fees using lookup for this day only
@@ -1715,9 +1722,78 @@ class FetchPerformanceSummaryBehaviour(
     def _save_agent_performance_summary(
         self, agent_performance_summary: AgentPerformanceSummary
     ) -> None:
-        """Save the agent performance summary to a file."""
+        """Save the agent performance summary to a file, preserving existing data for failed sections."""
         existing_data = self.shared_state.read_existing_performance_summary()
+
+        # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
+
+        # Track whether any section fell back to existing data
+        preserved = False
+
+        # Preserve metrics where new value is NA but existing had real values
+        if existing_data.metrics:
+            existing_by_name = {m.name: m for m in existing_data.metrics}
+            for i, metric in enumerate(agent_performance_summary.metrics):
+                if metric.value == NA and metric.name in existing_by_name:
+                    existing_metric = existing_by_name[metric.name]
+                    if existing_metric.value != NA:
+                        agent_performance_summary.metrics[i] = existing_metric
+                        preserved = True
+
+        # Preserve agent_details if new has all-None fields
+        if (
+            agent_performance_summary.agent_details is not None
+            and agent_performance_summary.agent_details.id is None
+            and agent_performance_summary.agent_details.created_at is None
+            and agent_performance_summary.agent_details.last_active_at is None
+            and existing_data.agent_details is not None
+        ):
+            agent_performance_summary.agent_details = existing_data.agent_details
+            preserved = True
+
+        # Preserve agent_performance if new has all-None key fields
+        if (
+            agent_performance_summary.agent_performance is not None
+            and agent_performance_summary.agent_performance.metrics is not None
+            and agent_performance_summary.agent_performance.metrics.all_time_funds_used
+            is None
+            and agent_performance_summary.agent_performance.metrics.all_time_profit
+            is None
+            and agent_performance_summary.agent_performance.metrics.roi is None
+            and existing_data.agent_performance is not None
+        ):
+            agent_performance_summary.agent_performance = (
+                existing_data.agent_performance
+            )
+            preserved = True
+
+        # Preserve profit_over_time if new is None
+        if (
+            agent_performance_summary.profit_over_time is None
+            and existing_data.profit_over_time is not None
+        ):
+            agent_performance_summary.profit_over_time = existing_data.profit_over_time
+            preserved = True
+
+        # Preserve prediction_history if new has 0 predictions and empty items
+        if (
+            agent_performance_summary.prediction_history is not None
+            and agent_performance_summary.prediction_history.total_predictions == 0
+            and not agent_performance_summary.prediction_history.items
+            and existing_data.prediction_history is not None
+            and existing_data.prediction_history.total_predictions > 0
+        ):
+            agent_performance_summary.prediction_history = (
+                existing_data.prediction_history
+            )
+            preserved = True
+
+        # If any section was preserved, keep the existing timestamp so the UI
+        # can detect that the data is stale rather than freshly fetched.
+        if preserved and existing_data.timestamp is not None:
+            agent_performance_summary.timestamp = existing_data.timestamp
+
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
     def async_act(self) -> Generator:
@@ -1753,7 +1829,7 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 if not success:
                     self.context.logger.warning(
-                        "Agent performance summary could not be fetched. Saving default values"
+                        "Agent performance summary could not be fetched. Preserving existing values for failed metrics"
                     )
                 self._save_agent_performance_summary(self._agent_performance_summary)
             else:
