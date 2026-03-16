@@ -75,7 +75,13 @@ jobs:
       - name: Check dependencies
         run: tox -e check-dependencies
       - name: Check doc links
-        run: tomte check-doc-links
+        run: |
+          tomte check-doc-links \
+            --url-skips "https://li.quest/v1/quote" \
+            --url-skips "https://li.quest/v1/quote/toAmount" \
+            --url-skips "https://gateway.autonolas.tech/ipfs/" \
+            --url-skips "https://rpc.gnosischain.com/" \
+            --url-skips "https://1rpc.io/matic"
       - name: Check doc IPFS hashes
         run: tox -e check-doc-hashes
 
