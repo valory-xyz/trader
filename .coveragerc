@@ -1,31 +1,17 @@
 [run]
 branch = True
 source =
-    packages/valory/skills/market_manager_abci
-    packages/valory/skills/decision_maker_abci
-    packages/valory/skills/trader_abci
-    packages/valory/skills/tx_settlement_multiplexer_abci
-    packages/valory/skills/staking_abci
-    packages/valory/skills/agent_performance_summary_abci
-    packages/valory/skills/check_stop_trading_abci
-    packages/valory/skills/chatui_abci
-    packages/valory/connections/polymarket_client
-    packages/valory/customs/bet_amount_per_threshold
-    packages/valory/customs/kelly_criterion_no_conf
-    packages/valory/customs/mike_strat
-    packages/valory/contracts/mech_activity
-    packages/valory/contracts/relayer
-    packages/valory/contracts/realitio_proxy
-    packages/valory/contracts/realitio
-    packages/valory/contracts/conditional_tokens
-    packages/valory/contracts/market_maker
-    packages/valory/contracts/service_staking_token
-    packages/w1kke/customs/always_blue
-    packages/jhehemann/customs/kelly_criterion
+    packages/valory
+    packages/w1kke
+    packages/jhehemann
 omit =
     */tests/*
     */__init__.py
+    */__pycache__/*
     */*_pb2.py
+    */*_pb2_grpc.py
+    # Pure re-exports of upstream framework classes — no logic to test
+    packages/valory/skills/agent_performance_summary_abci/dialogues.py
 
 [report]
 fail_under = 100
@@ -34,6 +20,8 @@ exclude_lines =
     pragma: no cover
     raise NotImplementedError
     if TYPE_CHECKING:
+    @abstractmethod
     pass
-partial_branches =
-    pragma: no branch
+
+[html]
+directory = htmlcov

@@ -1531,13 +1531,7 @@ class FetchPerformanceSummaryBehaviour(
 
         new_mech_sum = 0
         for stat in filtered_daily_stats:
-            date_value = stat.get("date")
-            if date_value is None:
-                self.context.logger.warning(
-                    "Skipping daily stat with missing 'date' key"
-                )
-                continue
-            date_timestamp = int(date_value)
+            date_timestamp = int(stat["date"])
             date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )

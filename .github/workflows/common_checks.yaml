@@ -228,12 +228,31 @@ jobs:
         run: |
           tox -e py${{ matrix.python-version }}-win
 
-      - if: matrix.os == 'ubuntu-24.04'
-        name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+  coverage:
+    continue-on-error: False
+    needs:
+      - test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          submodules: recursive
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get autoremove
+          sudo apt-get autoclean
+          pip install tomte[tox]==0.6.2
+          pip install --user --upgrade setuptools
+      - name: Check coverage
+        run: tox -e coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
           fail_ci_if_error: false
