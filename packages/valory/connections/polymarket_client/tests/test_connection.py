@@ -1960,7 +1960,7 @@ class TestRequestWithRetriesJsonDecodeError:
     """
 
     def test_json_decode_error_caught_and_retried(self) -> None:
-        """JSONDecodeError from response.json() is caught alongside RequestException.
+        """Verify JSONDecodeError from response.json() is caught alongside RequestException.
 
         A 200 response with non-JSON body (e.g. HTML from CDN) triggers retries
         and returns (None, error_msg) after exhausting attempts.
@@ -1991,7 +1991,7 @@ class TestFetchMarketBySlugJsonDecodeError:
     """
 
     def test_json_decode_error_caught_by_broad_except(self) -> None:
-        """JSONDecodeError is caught by the broad except, returns (None, error_msg)."""
+        """Verify JSONDecodeError is caught by the broad except, returns (None, error_msg)."""
         conn = _make_connection()
         mock_response = MagicMock()
         mock_response.status_code = 200

@@ -336,7 +336,11 @@ class Subgraph(ApiSpecs):
         if isinstance(error_data, expected_error_type):
             error_message_key = self.context.params.the_graph_error_message_key
             error_message = error_data.get(error_message_key, None)
-            if error_message is not None and self.context.params.the_graph_payment_required_error in error_message:
+            if (
+                error_message is not None
+                and self.context.params.the_graph_payment_required_error
+                in error_message
+            ):
                 err = "Payment required for subsequent requests for the current 'The Graph' API key!"
                 self.context.logger.error(err)
         return None

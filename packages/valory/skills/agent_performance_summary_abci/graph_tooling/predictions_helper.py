@@ -149,7 +149,9 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 return None
 
             response_data = response.json()
-            participants = (response_data.get("data") or {}).get("marketParticipants") or []
+            participants = (response_data.get("data") or {}).get(
+                "marketParticipants"
+            ) or []
             if not participants:
                 return None
 

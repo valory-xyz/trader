@@ -1439,7 +1439,8 @@ class FetchPerformanceSummaryBehaviour(
 
         # Keep stats on/after the last stored timestamp; same-day is allowed so we can detect changes
         filtered_daily_stats = [
-            stat for stat in new_daily_stats
+            stat
+            for stat in new_daily_stats
             if "date" in stat and int(stat["date"]) >= last_data_timestamp
         ]
         if not filtered_daily_stats:

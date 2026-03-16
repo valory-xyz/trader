@@ -307,7 +307,9 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 {
                     "args": {
                         "answer": bytes.fromhex(answer["answer"][2:]),
-                        "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
+                        "question_id": bytes.fromhex(
+                            answer["question"]["questionId"][2:]
+                        ),
                         "history_hash": bytes.fromhex(
                             answer["question"]["historyHash"][2:]
                         ),

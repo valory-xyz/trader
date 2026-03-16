@@ -24,8 +24,6 @@ from abc import ABC
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
     DECIMAL_SCALING_FACTOR,

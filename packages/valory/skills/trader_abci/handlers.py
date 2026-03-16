@@ -897,13 +897,8 @@ class HttpHandler(BaseHttpHandler):
 
     def _submit_x402_swap_if_idle(self) -> None:
         """Submit x402 swap task only if no swap is currently in progress."""
-        if (
-            self._x402_swap_future is not None
-            and not self._x402_swap_future.done()
-        ):
-            self.context.logger.debug(
-                "x402 swap task already in progress, skipping"
-            )
+        if self._x402_swap_future is not None and not self._x402_swap_future.done():
+            self.context.logger.debug("x402 swap task already in progress, skipping")
             return
         self._x402_swap_future = self.executor.submit(
             self._ensure_sufficient_funds_for_x402_payments

@@ -23,8 +23,6 @@ import json
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from packages.valory.skills.chatui_abci.handlers import (
     ALLOWED_TOOLS_FIELD,
     AVAILABLE_TRADING_STRATEGIES,

@@ -24,8 +24,6 @@ from datetime import datetime, timezone
 from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
-import pytest
-
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
