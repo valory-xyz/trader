@@ -23,6 +23,8 @@ import json
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from packages.valory.skills.chatui_abci.handlers import (
     ALLOWED_TOOLS_FIELD,
     AVAILABLE_TRADING_STRATEGIES,
@@ -1210,3 +1212,31 @@ class TestSrrHandler:
             SrrMessage.Performative.RESPONSE
             in SrrHandler.allowed_response_performatives
         )
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 18 -- _handle_chatui_prompt json.loads crash
+# ---------------------------------------------------------------------------
+
+
+class TestHandleChatuiPromptMalformedJson:
+    """BUG 18: _handle_chatui_prompt calls json.loads without try-except.
+
+    A POST with non-JSON body raises json.JSONDecodeError that escapes
+    to the framework. Combined with BUG 16, the HTTP client gets no response.
+    """
+
+    def test_malformed_json_body_sends_400(self) -> None:
+        """Malformed POST body sends HTTP 400 Bad Request."""
+        handler = _make_handler()
+        handler._send_bad_request_response = MagicMock()  # type: ignore[method-assign]
+
+        http_msg = MagicMock()
+        http_msg.body = b"not valid json{{"
+        http_dialogue = MagicMock()
+
+        handler._handle_chatui_prompt(http_msg, http_dialogue)
+
+        handler._send_bad_request_response.assert_called_once()
+        call_args = handler._send_bad_request_response.call_args
+        assert "Invalid JSON" in str(call_args)

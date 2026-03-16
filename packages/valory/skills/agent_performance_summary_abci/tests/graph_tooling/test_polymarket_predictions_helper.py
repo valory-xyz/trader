@@ -2482,3 +2482,40 @@ class TestStubAbstractMethods:
 
         with pytest.raises(NotImplementedError):
             fetcher._calculate_bet_net_profit()
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 26 -- {"data": null} AttributeError
+# ---------------------------------------------------------------------------
+
+
+class TestFetchMarketParticipantsDataNull:
+    """BUG 26: _fetch_market_participants crashes on {"data": null}.
+
+    `response_data.get("data", {}).get("marketParticipants", [])` fails when
+    `.get("data", {})` returns None (not {}) because the value is explicitly
+    null. The `.get("marketParticipants", [])` call raises AttributeError.
+    Caught by broad except, so no crash, but the `or {}` guard is missing.
+    """
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_data_null_returns_none_without_attribute_error(  # type: ignore[no-untyped-def]
+        self, mock_post: MagicMock
+    ) -> None:
+        """{"data": null} should return None cleanly, not via AttributeError.
+
+        Currently caught by broad except -- returns None but logs error.
+        After fix: .get("data", {}) or {} prevents the AttributeError entirely.
+        """
+        fetcher = _make_fetcher()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": None}
+        mock_post.return_value = mock_response
+
+        # Returns empty list (no AttributeError -- the `or {}` guard handles null data)
+        result = fetcher._fetch_market_participants("0xsafe", 10, 0)
+        assert result == []

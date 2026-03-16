@@ -1061,7 +1061,10 @@ class FetchPerformanceSummaryBehaviour(
         """
         title_days: Dict[str, list] = {}
         for stat in daily_stats:
-            day_ts = int(stat["date"])
+            date_value = stat.get("date")
+            if date_value is None:
+                continue
+            day_ts = int(date_value)
 
             # Extract titles based on platform
             titles: Set[str] = set()
@@ -1130,7 +1133,7 @@ class FetchPerformanceSummaryBehaviour(
         extra_fees_by_day: Dict[int, int] = {}
         unplaced_buckets: Dict[int, int] = {}
         if daily_stats and remaining_unplaced > 0:
-            days = [int(stat["date"]) for stat in daily_stats]
+            days = [int(stat["date"]) for stat in daily_stats if "date" in stat]
             unplaced_buckets = self._evenly_distribute_requests(
                 remaining_unplaced, days
             )
@@ -1338,7 +1341,13 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         for stat in daily_stats:
-            date_timestamp = int(stat["date"])
+            date_value = stat.get("date")
+            if date_value is None:
+                self.context.logger.warning(
+                    "Skipping daily stat with missing 'date' key"
+                )
+                continue
+            date_timestamp = int(date_value)
             date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )
@@ -1430,7 +1439,8 @@ class FetchPerformanceSummaryBehaviour(
 
         # Keep stats on/after the last stored timestamp; same-day is allowed so we can detect changes
         filtered_daily_stats = [
-            stat for stat in new_daily_stats if int(stat["date"]) >= last_data_timestamp
+            stat for stat in new_daily_stats
+            if "date" in stat and int(stat["date"]) >= last_data_timestamp
         ]
         if not filtered_daily_stats:
             self.context.logger.info(
@@ -1520,7 +1530,13 @@ class FetchPerformanceSummaryBehaviour(
 
         new_mech_sum = 0
         for stat in filtered_daily_stats:
-            date_timestamp = int(stat["date"])
+            date_value = stat.get("date")
+            if date_value is None:
+                self.context.logger.warning(
+                    "Skipping daily stat with missing 'date' key"
+                )
+                continue
+            date_timestamp = int(date_value)
             date_str = datetime.fromtimestamp(date_timestamp, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )

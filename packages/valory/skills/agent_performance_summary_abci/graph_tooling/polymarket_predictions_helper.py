@@ -133,7 +133,7 @@ class PolymarketPredictionsFetcher(
                 return None
 
             response_data = response.json()
-            return response_data.get("data", {}).get("marketParticipants", [])
+            return (response_data.get("data") or {}).get("marketParticipants", [])
 
         except Exception as e:
             self.logger.error(f"Error fetching market participants: {str(e)}")

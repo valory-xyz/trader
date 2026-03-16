@@ -149,7 +149,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 return None
 
             response_data = response.json()
-            participants = response_data.get("data", {}).get("marketParticipants") or []
+            participants = (response_data.get("data") or {}).get("marketParticipants") or []
             if not participants:
                 return None
 
@@ -522,8 +522,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
             if not bets:
                 return None
 
-            # Pick the requested bet (fallback to first if not found)
-            bet = next((b for b in bets if b.get("id") == bet_id), bets[0])
+            # Pick the requested bet
+            bet = next((b for b in bets if b.get("id") == bet_id), None)
+            if bet is None:
+                self.logger.warning(f"Bet {bet_id} not found in subgraph response")
+                return None
             fpmm = bet.get("fixedProductMarketMaker") or {}
 
             # Build per-market context from the returned bets (one item per bet)

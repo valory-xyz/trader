@@ -1717,9 +1717,7 @@ class TestFetchBetFromSubgraph:
 
         result = fetcher._fetch_bet_from_subgraph("nonexistent_bet", "0xsafe")
 
-        assert result is not None
-        assert result["id"] == "other_bet"
-        assert result["status"] == "pending"
+        assert result is None
 
     @patch(
         "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
@@ -2318,3 +2316,99 @@ class TestFormatSingleBet:
         # With no market_ctx, net_profit is 0.0 and payout_amount is None
         assert result["net_profit"] == 0.0
         assert result["total_payout"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 24 -- {"data": null} AttributeError
+# ---------------------------------------------------------------------------
+
+
+class TestFetchTraderAgentBetsDataNull:
+    """BUG 24: _fetch_trader_agent_bets crashes on {"data": null}.
+
+    `response_data.get("data", {})` returns None (not {}) when value is
+    explicitly null. Then `.get("marketParticipants")` raises AttributeError.
+    Caught by broad except, so no crash, but the `or {}` guard is missing.
+    """
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_data_null_returns_none_without_attribute_error(  # type: ignore[no-untyped-def]
+        self, mock_post: MagicMock
+    ) -> None:
+        """{"data": null} should return None cleanly, not via AttributeError.
+
+        Currently caught by broad except -- not a crash, but indicates missing guard.
+        After fix: .get("data", {}) or {} prevents the AttributeError entirely.
+        """
+        fetcher = _make_fetcher()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": None}
+        mock_post.return_value = mock_response
+
+        # This works (returns None) but triggers AttributeError internally
+        result = fetcher._fetch_trader_agent_bets("0xsafe", 10, 0)
+        assert result is None
+        # After fix: logger should NOT have an error about AttributeError
+        # Currently it does log the AttributeError from the broad except
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 25 -- Wrong bet returned in _fetch_bet_from_subgraph
+# ---------------------------------------------------------------------------
+
+
+class TestFetchBetFromSubgraphWrongBetReturned:
+    """BUG 25: _fetch_bet_from_subgraph returns wrong bet when ID not found.
+
+    `next((b for b in bets if b.get("id") == bet_id), bets[0])` falls back
+    to the first bet instead of None. This returns WRONG data to the UI.
+    """
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_nonexistent_bet_returns_first_bet_not_none(  # type: ignore[no-untyped-def]
+        self, mock_post: MagicMock
+    ) -> None:
+        """Requesting a nonexistent bet_id returns the first bet (wrong data).
+
+        After fix: should return None when the requested bet_id is not found.
+        """
+        fetcher = _make_fetcher()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "traderAgent": {
+                    "bets": [
+                        {
+                            "id": "other_bet",
+                            "amount": str(1 * WEI_TO_NATIVE),
+                            "outcomeIndex": 0,
+                            "timestamp": "1700000000",
+                            "fixedProductMarketMaker": {
+                                "id": "m1",
+                                "question": "Q?",
+                                "currentAnswer": None,
+                                "currentAnswerTimestamp": None,
+                                "outcomes": ["Yes", "No"],
+                                "participants": [
+                                    {"totalPayout": "0", "totalTraded": "0"}
+                                ],
+                            },
+                        }
+                    ]
+                }
+            }
+        }
+        mock_post.return_value = mock_response
+
+        result = fetcher._fetch_bet_from_subgraph("nonexistent_bet", "0xsafe")
+
+        # Returns None when requested bet_id not found
+        assert result is None

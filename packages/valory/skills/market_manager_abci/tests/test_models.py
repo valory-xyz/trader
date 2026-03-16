@@ -142,11 +142,11 @@ class TestSubgraphProcessResponse:
 
         with patch.object(ApiSpecs, "process_response", return_value=None):
             # error_data.get(error_message_key, None) returns None
-            # "payment required" in None will raise TypeError
-            # The code does not guard against this; it will raise
-            # We test the actual behavior
-            with pytest.raises(TypeError):
-                subgraph.process_response(mock_response)
+            # The None guard skips the `in` check safely
+            result = subgraph.process_response(mock_response)
+
+        assert result is None
+        subgraph.context.logger.error.assert_not_called()  # type: ignore[attr-defined]
 
 
 # Default kwargs for MarketManagerParams init

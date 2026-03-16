@@ -1743,22 +1743,15 @@ class TestEstimateGas:
             # 200000 * 1.2 = 240000
             assert result == 240000
 
-    def test_no_web3_returns_false(self) -> None:
-        """Test when web3 is None.
-
-        NOTE: This is a bug in the source code -- _estimate_gas returns False
-        (a bool) instead of None when web3 instance is unavailable. The return
-        type annotation says Optional[int] but the actual return is `return False`.
-        See handlers.py line 856.
-        """
+    def test_no_web3_returns_none(self) -> None:
+        """Test when web3 is None returns None."""
         with patch.object(self.handler, "_get_web3_instance", return_value=None):
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 0},
                 "0xEOA",
                 "polygon",
             )
-            # Bug: returns False instead of None
-            assert result is False
+            assert result is None
 
     def test_exception(self) -> None:
         """Test exception handling."""
@@ -2116,6 +2109,189 @@ class TestTeardownAndShutdown:
 # ---------------------------------------------------------------------------
 # __init__ tests
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 15 -- _estimate_gas returns False instead of None
+# ---------------------------------------------------------------------------
+class TestEstimateGasReturnType:
+    """BUG 15: _estimate_gas returns False when Web3 instance creation fails.
+
+    The declared return type is Optional[int], but the code returns False.
+    Callers check ``if tx_gas is None`` which doesn't match False, so False
+    gets used as the gas value, causing a Web3 serialization error.
+    """
+
+    def setup_method(self) -> None:
+        """Set up."""
+        self.handler = _make_handler()
+
+    def test_estimate_gas_returns_none_on_web3_failure(self) -> None:
+        """_estimate_gas returns None when _get_web3_instance returns falsy."""
+        with patch.object(self.handler, "_get_web3_instance", return_value=None):
+            result = self.handler._estimate_gas(
+                {"to": "0x1", "data": "0x", "value": 0},
+                "0xEOA",
+                "polygon",
+            )
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 11 -- `if not price_usd` treats zero as missing
+# ---------------------------------------------------------------------------
+class TestGetPolToUsdcRateZeroPrice:
+    """BUG 11: `if not price_usd` at line 516 treats 0 as missing.
+
+    If CoinGecko returns ``{"usd": 0}``, the code treats it as a missing
+    value and falls back to the stale cache or hardcoded rate.
+    """
+
+    def setup_method(self) -> None:
+        """Set up."""
+        self.handler = _make_handler(is_polymarket=True)
+        self.handler._pol_usdc_rate = None
+        self.handler._pol_usdc_rate_timestamp = 0.0
+
+    def test_zero_price_returns_zero(self) -> None:
+        """A zero USD price from CoinGecko is accepted as valid (not treated as missing)."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {POLYGON_POL_ADDRESS: {"usd": 0}}
+
+        mock_shared_state = MagicMock()
+        mock_shared_state.synced_timestamp = None
+
+        chain_config = self.handler._get_chain_config()
+
+        with patch(
+            "packages.valory.skills.trader_abci.handlers.requests.get",
+            return_value=mock_response,
+        ), patch.object(
+            type(self.handler),
+            "shared_state",
+            new_callable=PropertyMock,
+            return_value=mock_shared_state,
+        ):
+            result = self.handler._get_pol_to_usdc_rate(chain_config)
+
+        assert result == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 17 -- _handle_get_agent_info crashes pre-FSM
+# ---------------------------------------------------------------------------
+class TestHandleGetAgentInfoPreFSM:
+    """BUG 17: _handle_get_agent_info has no try-except.
+
+    Before the FSM has started, accessing synchronized_data properties
+    raises AttributeError. Combined with BUG 16 (no global try-catch in
+    handler dispatch), the HTTP client gets no response.
+    """
+
+    def setup_method(self) -> None:
+        """Set up."""
+        self.handler = _make_handler()
+
+    def test_sends_error_when_synchronized_data_unavailable(self) -> None:
+        """_handle_get_agent_info sends HTTP 500 when synchronized_data is not ready."""
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+
+        with patch.object(
+            type(self.handler),
+            "synchronized_data",
+            new_callable=PropertyMock,
+            side_effect=AttributeError("not available yet"),
+        ), patch.object(
+            self.handler, "_send_internal_server_error_response"
+        ) as mock_send_error:
+            self.handler._handle_get_agent_info(http_msg, http_dialogue)
+
+        mock_send_error.assert_called_once()
+        self.handler.context.logger.error.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 19 -- _handle_get_funds_status no try-except
+# ---------------------------------------------------------------------------
+class TestHandleGetFundsStatusNoTryExcept:
+    """BUG 19: _handle_get_funds_status has no try-except wrapper.
+
+    If _get_adjusted_funds_status raises any exception other than KeyError,
+    no HTTP response is sent.
+    """
+
+    def setup_method(self) -> None:
+        """Set up."""
+        self.handler = _make_handler()
+        self.handler.context.params.use_x402 = False
+
+    def test_attribute_error_sends_500(self) -> None:
+        """An AttributeError from _get_adjusted_funds_status sends HTTP 500."""
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+
+        with patch.object(
+            self.handler,
+            "_get_adjusted_funds_status",
+            side_effect=AttributeError("funds_status not populated"),
+        ), patch.object(
+            self.handler, "_send_internal_server_error_response"
+        ) as mock_send_error:
+            self.handler._handle_get_funds_status(http_msg, http_dialogue)
+
+        mock_send_error.assert_called_once()
+        self.handler.context.logger.error.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 16 -- No global try-catch in handler dispatch
+# ---------------------------------------------------------------------------
+class TestHandlerDispatchNoGlobalTryCatch:
+    """BUG 16: handler dispatch at decision_maker_abci/handlers.py:253 has no try-except.
+
+    If any handler raises an unhandled exception, the HTTP client never
+    receives a response.
+    """
+
+    def setup_method(self) -> None:
+        """Set up."""
+        self.handler = _make_handler()
+
+    def test_handler_exception_caught_and_500_sent(self) -> None:
+        """An exception in a handler is caught and HTTP 500 response is sent."""
+        from packages.valory.connections.http_server.connection import (
+            PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
+        )
+
+        message = MagicMock(performative=HttpMessage.Performative.REQUEST)
+        message.sender = str(HTTP_SERVER_PUBLIC_ID.without_hash())
+        message.url = "http://localhost:8080/agent-info"
+        message.method = "GET"
+        message.body = b""
+
+        http_dialogues_mock = MagicMock()
+        mock_dialogue = MagicMock()
+        self.handler.context.http_dialogues = http_dialogues_mock
+        http_dialogues_mock.update.return_value = mock_dialogue
+
+        def raising_handler(*args: Any, **kwargs: Any) -> None:
+            raise RuntimeError("handler crash")
+
+        with patch.object(
+            self.handler,
+            "_get_handler",
+            return_value=(raising_handler, {}),
+        ):
+            # No exception -- global try-catch handles it
+            self.handler.handle(message)
+
+        self.handler.context.logger.error.assert_called()
+        # Verify a 500 response was sent
+        mock_dialogue.reply.assert_called_once()
+        reply_kwargs = mock_dialogue.reply.call_args[1]
+        assert reply_kwargs["status_code"] == 500
+
+
 class TestHttpHandlerInit:
     """Test HttpHandler __init__."""
 

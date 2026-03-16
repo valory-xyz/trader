@@ -1946,6 +1946,116 @@ class TestCheckApproval:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 5 -- JSONDecodeError bypasses retry logic
+# ---------------------------------------------------------------------------
+
+
+class TestRequestWithRetriesJsonDecodeError:
+    """BUG 5: _request_with_retries catches RequestException but not JSONDecodeError.
+
+    When Gamma API returns HTTP 200 with non-JSON body (e.g. HTML from CDN),
+    response.json() raises json.JSONDecodeError (a ValueError subclass).
+    This escapes the except clause and bypasses all retries.
+    """
+
+    def test_json_decode_error_caught_and_retried(self) -> None:
+        """JSONDecodeError from response.json() is caught alongside RequestException.
+
+        A 200 response with non-JSON body (e.g. HTML from CDN) triggers retries
+        and returns (None, error_msg) after exhausting attempts.
+        """
+        conn = _make_connection()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+
+        with patch(
+            "packages.valory.connections.polymarket_client.connection.requests.get",
+            return_value=mock_response,
+        ), patch(
+            "packages.valory.connections.polymarket_client.connection.time.sleep",
+        ):
+            result, error = conn._request_with_retries("https://example.com/api")
+
+        assert result is None
+        assert error is not None
+
+
+class TestFetchMarketBySlugJsonDecodeError:
+    """BUG 5b: _fetch_market_by_slug has same JSONDecodeError gap.
+
+    Unlike _request_with_retries, this method has a broad ``except Exception``
+    fallback, so it won't crash -- but it still doesn't retry.
+    """
+
+    def test_json_decode_error_caught_by_broad_except(self) -> None:
+        """JSONDecodeError is caught by the broad except, returns (None, error_msg)."""
+        conn = _make_connection()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+
+        with patch(
+            "packages.valory.connections.polymarket_client.connection.requests.get",
+            return_value=mock_response,
+        ):
+            result, error = conn._fetch_market_by_slug("some-slug")
+
+        assert result is None
+        assert error is not None
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 22 -- json.loads outside try-except in on_send
+# ---------------------------------------------------------------------------
+
+
+class TestOnSendMalformedPayload:
+    """BUG 22: json.loads(srr_message.payload) at line 253 is outside try-except.
+
+    A malformed SRR payload raises JSONDecodeError in on_send(). No error
+    response is sent. The agent behaviour waits forever for a response.
+    """
+
+    def test_malformed_payload_sends_error_response(self) -> None:
+        """Malformed SRR payload is caught and an error response is sent."""
+        from packages.valory.protocols.srr.message import SrrMessage
+
+        conn = _make_connection()
+        envelope = MagicMock()
+        envelope.sender = "sender_address"
+        envelope.to = "receiver_address"
+        message = MagicMock(spec=SrrMessage)
+        message.performative = SrrMessage.Performative.REQUEST
+        message.payload = "not valid json{{"
+        envelope.message = message
+
+        dialogue_mock = MagicMock()
+        response_msg = MagicMock(spec=SrrMessage)
+        response_msg.to = "sender_address"
+        response_msg.sender = "receiver_address"
+        dialogue_mock.reply.return_value = response_msg
+        conn.dialogues.update.return_value = dialogue_mock
+        conn.put_envelope = MagicMock()
+
+        # No exception -- error is handled gracefully
+        conn.on_send(envelope)
+
+        conn.logger.error.assert_called_once()
+        conn.put_envelope.assert_called_once()
+        # Verify error flag is set in the response
+        reply_kwargs = dialogue_mock.reply.call_args
+        assert reply_kwargs[1]["error"] is True
+
+
+# ---------------------------------------------------------------------------
+# Module-level constants
+# ---------------------------------------------------------------------------
+
+
 class TestModuleConstants:
     """Tests for module-level constants."""
 

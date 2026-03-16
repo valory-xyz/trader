@@ -24,6 +24,8 @@ from abc import ABC
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
     DECIMAL_SCALING_FACTOR,
@@ -1225,6 +1227,21 @@ class TestFetchOlasInUsdPrice:
         gen = b._fetch_olas_in_usd_price()
         next(gen)
         assert b._fetch_status == FetchStatus.IN_PROGRESS
+
+    def test_binary_garbage_body_returns_none(self) -> None:
+        """Binary garbage body is caught and returns None."""
+        b = _make_behaviour()
+
+        mock_response = MagicMock()
+        # Binary garbage that fails UTF-8 decode
+        mock_response.body = b"\x80\x81\x82\xff\xfe"
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
+
+        gen = b._fetch_olas_in_usd_price()
+        result = _exhaust(gen)  # type: ignore[arg-type]
+
+        assert result is None
+        b.context.logger.error.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

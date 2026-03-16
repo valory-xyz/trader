@@ -280,19 +280,25 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a Http request of verb GET."""
-        data = {
-            "address": self.context.agent_address,
-            "safe_address": self.synchronized_data.safe_contract_address,
-            "agent_ids": self.agent_ids,
-            "service_id": self.staking_synchronized_data.service_id,
-            "trading_type": (
-                self._get_ui_trading_strategy(
-                    self.shared_state.chatui_config.trading_strategy
-                )
-            ).value,  # note the value call to not return the enum object
-        }
-        self.context.logger.info(f"Sending agent info: {data=}")
-        self._send_ok_response(http_msg, http_dialogue, data)
+        try:
+            data = {
+                "address": self.context.agent_address,
+                "safe_address": self.synchronized_data.safe_contract_address,
+                "agent_ids": self.agent_ids,
+                "service_id": self.staking_synchronized_data.service_id,
+                "trading_type": (
+                    self._get_ui_trading_strategy(
+                        self.shared_state.chatui_config.trading_strategy
+                    )
+                ).value,  # note the value call to not return the enum object
+            }
+            self.context.logger.info(f"Sending agent info: {data=}")
+            self._send_ok_response(http_msg, http_dialogue, data)
+        except Exception as e:
+            self.context.logger.error(f"Error handling agent info request: {e}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": "Failed to fetch agent info"}
+            )
 
     def _handle_get_trading_details(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -513,7 +519,7 @@ class HttpHandler(BaseHttpHandler):
 
             price_usd = data.get(POLYGON_POL_ADDRESS, {}).get("usd", None)
 
-            if not price_usd:
+            if price_usd is None:
                 self.context.logger.error(f"No USD price in CoinGecko response: {data}")
                 return (
                     self._pol_usdc_rate or FALLBACK_POL_TO_USD_RATE
@@ -594,15 +600,21 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle a fund status request."""
-        # Only check funds if using X402
-        if self.params.use_x402:
-            self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
+        try:
+            # Only check funds if using X402
+            if self.params.use_x402:
+                self.executor.submit(self._ensure_sufficient_funds_for_x402_payments)
 
-        self._send_ok_response(
-            http_msg,
-            http_dialogue,
-            self._get_adjusted_funds_status().get_response_body(),
-        )
+            self._send_ok_response(
+                http_msg,
+                http_dialogue,
+                self._get_adjusted_funds_status().get_response_body(),
+            )
+        except Exception as e:
+            self.context.logger.error(f"Error handling funds status request: {e}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": "Failed to fetch funds status"}
+            )
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""
@@ -852,7 +864,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error(
                     "Failed to get Web3 instance for gas estimation"
                 )
-                return False
+                return None
 
             tx_value = (
                 int(tx_request["value"], 16)
