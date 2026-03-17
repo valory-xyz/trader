@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -41,7 +41,6 @@ import toml
 from aea.configurations.data_types import Dependency
 from aea.package_manager.base import load_configuration
 from aea.package_manager.v1 import PackageManagerV1
-
 
 ANY_SPECIFIER = "*"
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the rounds for the check stop trading ABCI application."""
+"""This module contains the rounds for the chat UI ABCI application."""
 
 import json
 from abc import ABC
@@ -72,7 +72,7 @@ class ChatuiLoadRound(VotingRound):
 
 
 class FinishedChatuiLoadRound(DegenerateRound, ABC):
-    """A round that represents check stop trading has finished."""
+    """A round that represents chat UI loading has finished."""
 
 
 class ChatuiAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods

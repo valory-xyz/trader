@@ -53,6 +53,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
     FinishedMarketManagerRound,
     FinishedPolymarketFetchMarketRound,
     MarketManagerAbciApp,
+    MarketManagerAbstractRound,
     PolymarketFetchMarketRound,
     SynchronizedData,
     UpdateBetsRound,
@@ -345,3 +346,351 @@ def test_synchronized_data_initialization() -> None:
     synchronized_data = SynchronizedData(db=AbciAppDB(setup_data=setup_data))
 
     assert synchronized_data.db._data == {0: {"test": ["test"]}}
+
+
+class TestSynchronizedDataProperties:
+    """Tests for SynchronizedData property coverage in rounds.py."""
+
+    def test_is_checkpoint_reached_default(self) -> None:
+        """Test is_checkpoint_reached returns False when not set."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = False
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.is_checkpoint_reached is False
+        mock_db.get.assert_called_with("is_checkpoint_reached", False)
+
+    def test_is_checkpoint_reached_true(self) -> None:
+        """Test is_checkpoint_reached returns True when set."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = True
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.is_checkpoint_reached is True
+
+    def test_review_bets_for_selling_none(self) -> None:
+        """Test review_bets_for_selling returns False when db value is None."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = None
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_true(self) -> None:
+        """Test review_bets_for_selling returns True when db value is True."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = True
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.review_bets_for_selling is True
+
+    def test_review_bets_for_selling_non_bool(self) -> None:
+        """Test review_bets_for_selling returns False when db value is not bool."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = "some_string"
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_false(self) -> None:
+        """Test review_bets_for_selling returns False when db value is False."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = False
+        synchronized_data = SynchronizedData(db=mock_db)
+        assert synchronized_data.review_bets_for_selling is False
+
+    @patch(
+        "packages.valory.skills.market_manager_abci.rounds.CollectionRound.deserialize_collection"
+    )
+    def test_participant_to_selection(self, mock_deserialize: MagicMock) -> None:
+        """Test participant_to_selection property calls _get_deserialized."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = '{"agent_0": "selection_0"}'
+        expected = {"agent_0": "selection_0"}
+        mock_deserialize.return_value = expected
+        synchronized_data = SynchronizedData(db=mock_db)
+        result = synchronized_data.participant_to_selection
+        mock_db.get_strict.assert_called_once_with("participant_to_selection")
+        mock_deserialize.assert_called_once_with('{"agent_0": "selection_0"}')
+        assert result == expected
+
+
+class _ConcreteMarketManagerRound(MarketManagerAbstractRound):
+    """Concrete subclass of MarketManagerAbstractRound from rounds.py for testing."""
+
+    payload_class = UpdateBetsPayload
+    synchronized_data_class = SynchronizedData
+
+    def end_block(self):  # type: ignore
+        """End block stub."""
+        return None
+
+    def check_payload(self, payload):  # type: ignore
+        """Check payload stub."""
+        return None
+
+    def process_payload(self, payload):  # type: ignore
+        """Process payload stub."""
+        return None
+
+
+class TestMarketManagerAbstractRound:
+    """Tests for MarketManagerAbstractRound in rounds.py."""
+
+    def test_synchronized_data_property(self) -> None:
+        """Test that the synchronized_data property returns a SynchronizedData instance."""
+        mock_sync_data = MagicMock(spec=SynchronizedData)
+        round_instance = _ConcreteMarketManagerRound(
+            synchronized_data=mock_sync_data, context=MagicMock()
+        )
+        result = round_instance.synchronized_data
+        assert result is mock_sync_data
+
+    def test_return_no_majority_event(self) -> None:
+        """Test the _return_no_majority_event method."""
+        mock_sync_data = MagicMock(spec=SynchronizedData)
+        round_instance = _ConcreteMarketManagerRound(
+            synchronized_data=mock_sync_data, context=MagicMock()
+        )
+        result = round_instance._return_no_majority_event()
+        assert result == (mock_sync_data, Event.NO_MAJORITY)
+
+
+# ============================================================================
+# Tests for states/base.py SynchronizedData (covers lines 53-54, 64, 69, 74-77, 82)
+# ============================================================================
+from packages.valory.skills.market_manager_abci.states.base import (  # noqa: E402
+    SynchronizedData as BaseSynchronizedData_States,
+)
+
+
+class TestStatesBaseSynchronizedData:
+    """Tests for SynchronizedData from states/base.py."""
+
+    @patch(
+        "packages.valory.skills.market_manager_abci.states.base.CollectionRound.deserialize_collection"
+    )
+    def test_get_deserialized(self, mock_deserialize: MagicMock) -> None:
+        """Test _get_deserialized calls db.get_strict and deserialize_collection."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = '{"key": "value"}'
+        expected = {"key": "value"}
+        mock_deserialize.return_value = expected
+        sd = BaseSynchronizedData_States(db=mock_db)
+        result = sd._get_deserialized("some_key")
+        mock_db.get_strict.assert_called_once_with("some_key")
+        mock_deserialize.assert_called_once_with('{"key": "value"}')
+        assert result == expected
+
+    def test_bets_hash(self) -> None:
+        """Test bets_hash property."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = "test_hash"
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.bets_hash == "test_hash"
+        mock_db.get_strict.assert_called_once_with("bets_hash")
+
+    @patch(
+        "packages.valory.skills.market_manager_abci.states.base.CollectionRound.deserialize_collection"
+    )
+    def test_participant_to_bets_hash(self, mock_deserialize: MagicMock) -> None:
+        """Test participant_to_bets_hash property."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = '{"a": "b"}'
+        expected = {"a": "b"}
+        mock_deserialize.return_value = expected
+        sd = BaseSynchronizedData_States(db=mock_db)
+        result = sd.participant_to_bets_hash
+        mock_db.get_strict.assert_called_once_with("participant_to_bets_hash")
+        assert result == expected
+
+    def test_is_checkpoint_reached_default(self) -> None:
+        """Test is_checkpoint_reached returns False by default."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = False
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.is_checkpoint_reached is False
+
+    def test_is_checkpoint_reached_true(self) -> None:
+        """Test is_checkpoint_reached returns True when set."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = True
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.is_checkpoint_reached is True
+
+    def test_review_bets_for_selling_none(self) -> None:
+        """Test review_bets_for_selling returns False when None."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = None
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_true(self) -> None:
+        """Test review_bets_for_selling returns True when True."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = True
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.review_bets_for_selling is True
+
+    def test_review_bets_for_selling_non_bool(self) -> None:
+        """Test review_bets_for_selling returns False for non-bool value."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = 42
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.review_bets_for_selling is False
+
+    def test_review_bets_for_selling_false(self) -> None:
+        """Test review_bets_for_selling returns False when False."""
+        mock_db = MagicMock()
+        mock_db.get.return_value = False
+        sd = BaseSynchronizedData_States(db=mock_db)
+        assert sd.review_bets_for_selling is False
+
+    @patch(
+        "packages.valory.skills.market_manager_abci.states.base.CollectionRound.deserialize_collection"
+    )
+    def test_participant_to_selection(self, mock_deserialize: MagicMock) -> None:
+        """Test participant_to_selection property."""
+        mock_db = MagicMock()
+        mock_db.get_strict.return_value = '{"agent_0": "sel"}'
+        expected = {"agent_0": "sel"}
+        mock_deserialize.return_value = expected
+        sd = BaseSynchronizedData_States(db=mock_db)
+        result = sd.participant_to_selection
+        mock_db.get_strict.assert_called_once_with("participant_to_selection")
+        assert result == expected
+
+
+class TestStatesBaseMarketManagerAbstractRound:
+    """Tests for MarketManagerAbstractRound from states/base.py."""
+
+    def test_synchronized_data_property(self) -> None:
+        """Test the synchronized_data property returns cast SynchronizedData."""
+        mock_sync_data = MagicMock(spec=BaseSynchronizedData_States)
+        # UpdateBetsRound inherits from MarketManagerAbstractRound
+        round_instance = UpdateBetsRound(
+            synchronized_data=mock_sync_data, context=MagicMock()
+        )
+        result = round_instance.synchronized_data
+        assert result is mock_sync_data
+
+    def test_return_no_majority_event(self) -> None:
+        """Test _return_no_majority_event returns data and NO_MAJORITY."""
+        mock_sync_data = MagicMock(spec=BaseSynchronizedData_States)
+        round_instance = UpdateBetsRound(
+            synchronized_data=mock_sync_data, context=MagicMock()
+        )
+        data, event = round_instance._return_no_majority_event()
+        assert data is mock_sync_data
+        assert event == Event.NO_MAJORITY
+
+
+# ============================================================================
+# Tests for states/fetch_markets_router.py FetchMarketsRouterRound.end_block
+# ============================================================================
+
+
+class TestFetchMarketsRouterRoundEndBlock:
+    """Tests for FetchMarketsRouterRound.end_block."""
+
+    def test_end_block_super_returns_none(self) -> None:
+        """Test end_block returns None when super().end_block() returns None."""
+        mock_sync_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        round_instance = FetchMarketsRouterRound(
+            synchronized_data=mock_sync_data, context=mock_context
+        )
+        with patch(
+            "packages.valory.skills.abstract_round_abci.base.VotingRound.end_block",
+            return_value=None,
+        ):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_polymarket(self) -> None:
+        """Test end_block returns POLYMARKET_FETCH_MARKETS when is_running_on_polymarket is True."""
+        mock_sync_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        mock_context.params.is_running_on_polymarket = True
+        round_instance = FetchMarketsRouterRound(
+            synchronized_data=mock_sync_data, context=mock_context
+        )
+        super_result = (MagicMock(spec=SynchronizedData), Event.DONE)
+        with patch(
+            "packages.valory.skills.abstract_round_abci.base.VotingRound.end_block",
+            return_value=super_result,
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        returned_data, returned_event = result
+        assert returned_event == Event.POLYMARKET_FETCH_MARKETS
+
+    def test_end_block_not_polymarket(self) -> None:
+        """Test end_block returns DONE when is_running_on_polymarket is False."""
+        mock_sync_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        mock_context.params.is_running_on_polymarket = False
+        round_instance = FetchMarketsRouterRound(
+            synchronized_data=mock_sync_data, context=mock_context
+        )
+        super_result = (MagicMock(spec=SynchronizedData), Event.DONE)
+        with patch(
+            "packages.valory.skills.abstract_round_abci.base.VotingRound.end_block",
+            return_value=super_result,
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        returned_data, returned_event = result
+        assert returned_event == Event.DONE
+
+
+# ============================================================================
+# Tests for states/final_states.py
+# ============================================================================
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
+    FailedMarketManagerRound as FinalFailedMarketManagerRound,
+)
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
+    FinishedMarketManagerRound as FinalFinishedMarketManagerRound,
+)
+from packages.valory.skills.market_manager_abci.states.final_states import (  # noqa: E402
+    FinishedPolymarketFetchMarketRound as FinalFinishedPolymarketFetchMarketRound,
+)
+
+
+class TestFinalStates:
+    """Tests for states/final_states.py classes."""
+
+    def test_finished_market_manager_round_exists(self) -> None:
+        """Test that FinishedMarketManagerRound exists and is a DegenerateRound subclass."""
+        from packages.valory.skills.abstract_round_abci.base import DegenerateRound
+
+        assert issubclass(FinalFinishedMarketManagerRound, DegenerateRound)
+
+    def test_failed_market_manager_round_exists(self) -> None:
+        """Test that FailedMarketManagerRound exists and is a DegenerateRound subclass."""
+        from packages.valory.skills.abstract_round_abci.base import DegenerateRound
+
+        assert issubclass(FinalFailedMarketManagerRound, DegenerateRound)
+
+    def test_finished_polymarket_fetch_market_round_exists(self) -> None:
+        """Test that FinishedPolymarketFetchMarketRound exists and is a DegenerateRound subclass."""
+        from packages.valory.skills.abstract_round_abci.base import DegenerateRound
+
+        assert issubclass(FinalFinishedPolymarketFetchMarketRound, DegenerateRound)
+
+    def test_finished_market_manager_round_initialization(self) -> None:
+        """Test FinishedMarketManagerRound can be instantiated."""
+        round_ = FinalFinishedMarketManagerRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinalFinishedMarketManagerRound)
+
+    def test_failed_market_manager_round_initialization(self) -> None:
+        """Test FailedMarketManagerRound can be instantiated."""
+        round_ = FinalFailedMarketManagerRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinalFailedMarketManagerRound)
+
+    def test_finished_polymarket_fetch_market_round_initialization(self) -> None:
+        """Test FinishedPolymarketFetchMarketRound can be instantiated."""
+        round_ = FinalFinishedPolymarketFetchMarketRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinalFinishedPolymarketFetchMarketRound)

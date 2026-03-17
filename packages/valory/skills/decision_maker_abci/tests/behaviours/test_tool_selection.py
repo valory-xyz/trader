@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2026 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,19 +17,20 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Tests for ToolSelectionBehaviour._select_tool (allowed_tools restriction logic)."""
+"""Tests for ToolSelectionBehaviour._select_tool and async_act."""
 
+import json
 from typing import Callable, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -99,26 +100,26 @@ def _make_behaviour(
 
     # context
     context = MagicMock()
-    behaviour.context = context
+    behaviour.context = context  # type: ignore[assignment]
 
     # benchmarking_mode disabled so we use synchronized_data.most_voted_randomness
     benchmarking_mode = MagicMock()
     benchmarking_mode.enabled = False
-    behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[misc]
+    behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[assignment]
 
     # synchronized_data
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
-    behaviour.synchronized_data = sync_data  # type: ignore[misc]
+    behaviour.synchronized_data = sync_data  # type: ignore[assignment]
 
     # shared_state / chatui_config
     shared_state = MagicMock()
     shared_state.chatui_config.allowed_tools = allowed_tools
-    behaviour.shared_state = shared_state  # type: ignore[misc]
+    behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy and mech_tools
-    behaviour.policy = policy  # type: ignore[misc]
-    behaviour.mech_tools = mech_tools
+    behaviour.policy = policy  # type: ignore[assignment]
+    behaviour.mech_tools = mech_tools  # type: ignore[assignment]
 
     return behaviour
 
@@ -296,3 +297,182 @@ class TestSelectToolEmptyIntersection:
             _run_select_tool(behaviour)
 
         assert set(policy.accuracy_store.keys()) == original_keys
+
+
+def _run_async_act(behaviour: "ToolSelectionBehaviour") -> None:
+    """Drive async_act() to completion."""
+    gen = behaviour.async_act()
+    try:
+        while True:
+            next(gen)
+    except StopIteration:
+        pass
+
+
+class TestAsyncActSelectedToolNone:
+    """Tests for async_act when _select_tool returns None."""
+
+    def test_payload_has_none_fields(self) -> None:
+        """All optional fields should be None when no tool selected."""
+        policy = _make_policy("tool-a")
+        behaviour = _make_behaviour(policy, {"tool-a"})
+
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(False)
+        ):
+            with patch.object(
+                behaviour,
+                "finish_behaviour",
+                side_effect=lambda p: iter([None]),
+            ) as mock_finish:
+                _run_async_act(behaviour)
+
+        mock_finish.assert_called_once()
+        payload = mock_finish.call_args[0][0]
+        assert isinstance(payload, ToolSelectionPayload)
+        assert payload.mech_tools is None
+        assert payload.policy is None
+        assert payload.utilized_tools is None
+        assert payload.selected_tool is None
+
+
+class TestAsyncActSelectedToolNotNone:
+    """Tests for async_act when _select_tool returns a valid tool."""
+
+    def test_payload_has_serialized_fields(self) -> None:
+        """When a tool is selected, payload should contain serialized data."""
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(policy, {"tool-a", "tool-b"})
+        behaviour._utilized_tools = {"cond1": "tool-a"}
+
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+
+        # benchmarking disabled
+        behaviour.benchmarking_mode.enabled = False  # type: ignore[attr-defined]
+
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(
+                    behaviour,
+                    "finish_behaviour",
+                    side_effect=lambda p: iter([None]),
+                ) as mock_finish:
+                    _run_async_act(behaviour)
+
+        mock_finish.assert_called_once()
+        payload = mock_finish.call_args[0][0]
+        assert isinstance(payload, ToolSelectionPayload)
+        assert payload.selected_tool == "tool-a"
+        assert payload.mech_tools is not None
+        mech_tools_parsed = json.loads(payload.mech_tools)
+        assert set(mech_tools_parsed) == {"tool-a", "tool-b"}
+        assert payload.policy is not None
+        assert payload.utilized_tools is not None
+        behaviour._store_all.assert_called_once()
+
+    def test_benchmarking_calls_tool_used(self) -> None:
+        """Should call policy.tool_used during benchmarking mode."""
+        policy = _make_policy("tool-a")
+        behaviour = _make_behaviour(policy, {"tool-a"})
+        behaviour._utilized_tools = {}
+
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+
+        # benchmarking enabled, period_count=0, last_benchmarking_has_run=False
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
+        behaviour.shared_state.last_benchmarking_has_run = False  # type: ignore[attr-defined]
+
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
+                    with patch.object(
+                        behaviour,
+                        "finish_behaviour",
+                        side_effect=lambda p: iter([None]),
+                    ):
+                        _run_async_act(behaviour)
+
+        mock_tool_used.assert_called_once_with("tool-a")
+
+    def test_benchmarking_not_running_skips_tool_used(self) -> None:
+        """Should not call policy.tool_used when period_count is not 0."""
+        policy = _make_policy("tool-a")
+        behaviour = _make_behaviour(policy, {"tool-a"})
+        behaviour._utilized_tools = {}
+
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+
+        # benchmarking enabled but period_count != 0
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 1  # type: ignore[attr-defined]
+
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
+                    with patch.object(
+                        behaviour,
+                        "finish_behaviour",
+                        side_effect=lambda p: iter([None]),
+                    ):
+                        _run_async_act(behaviour)
+
+        mock_tool_used.assert_not_called()
+
+    def test_benchmarking_last_run_skips_tool_used(self) -> None:
+        """Should not call policy.tool_used when last_benchmarking_has_run is True."""
+        policy = _make_policy("tool-a")
+        behaviour = _make_behaviour(policy, {"tool-a"})
+        behaviour._utilized_tools = {}
+
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+
+        # benchmarking enabled, period_count=0, but last_benchmarking_has_run=True
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
+        behaviour.shared_state.last_benchmarking_has_run = True  # type: ignore[attr-defined]
+
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(policy, "tool_used") as mock_tool_used:
+                    with patch.object(
+                        behaviour,
+                        "finish_behaviour",
+                        side_effect=lambda p: iter([None]),
+                    ):
+                        _run_async_act(behaviour)
+
+        mock_tool_used.assert_not_called()

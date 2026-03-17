@@ -9,6 +9,8 @@ fingerprint:
   __init__.py: bafybeibi3ij5t2qq2isuq4rtomvlmrcvreggzpzbzn3u7s6ndbo3tiv5c4
   build/Relayer.json: bafybeiao22dbtjh6nvtwzxkis6hgmi3yphwc6ghzmgbvqrl3dxsvhroike
   contract.py: bafybeibkbng5evcj5m6jbszf4xhseigk6jaw647itke2xgum6ddm75c4py
+  tests/__init__.py: bafybeihla7j3bpftvgvjq2prc2u33oeivkxzsiaqxpqwhz4atdeyu35o6i
+  tests/test_contract.py: bafybeibxmwfh36bl4fazx67nkc5gkrsknubhgat6y2hkrsl5nc5v3ro75e
 fingerprint_ignore_patterns: []
 contracts: []
 class_name: RelayerContract
@@ -16,6 +18,6 @@ contract_interface_paths:
   ethereum: build/Relayer.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==2.0.8
+    version: ==2.1.0
   web3:
     version: <8,>=7.0.0

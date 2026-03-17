@@ -53,7 +53,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
 
-
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
@@ -432,7 +431,13 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             url=self.params.coingecko_olas_in_usd_price_url,
         )
 
-        decoded_response = res_raw.body.decode()
+        try:
+            decoded_response = res_raw.body.decode()
+        except UnicodeDecodeError:
+            self.context.logger.error(
+                "Could not decode response body (binary/corrupt data)"
+            )
+            return None
 
         try:
             response_data = json.loads(decoded_response)

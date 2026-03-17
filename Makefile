@@ -73,23 +73,23 @@ security:
 # generate latest hashes for updated packages
 .PHONY: generators
 generators: clean-cache fix-abci-app-specs
-	tox -e abci-docstrings
+	tox -qq -e abci-docstrings
 	tomte format-copyright --author valory --exclude-part abci --exclude-part http_client --exclude-part http_server --exclude-part ipfs --exclude-part ledger --exclude-part p2p_libp2p_client --exclude-part erc20 --exclude-part gnosis_safe --exclude-part gnosis_safe_proxy_factory --exclude-part mech --exclude-part mech_marketplace --exclude-part multisend --exclude-part service_registry --exclude-part protocols --exclude-part abstract_abci --exclude-part abstract_round_abci --exclude-part mech_interact_abci --exclude-part registration_abci --exclude-part reset_pause_abci --exclude-part termination_abci --exclude-part transaction_settlement_abci --exclude-part websocket_client --exclude-part contract_subscription --exclude-part agent_registry
 	autonomy packages lock
-	tox -e fix-doc-hashes
+	tox -qq -e fix-doc-hashes
 
 .PHONY: common-checks-1
 common-checks-1:
-	tox -e copyright-check
+	tox -qq -e copyright-check
 	tomte check-doc-links
-	tox -p -e check-hash -e check-packages -e check-doc-hashes -e analyse-service
+	tox -qq -p -e check-hash -e check-packages -e check-doc-hashes -e analyse-service
 
 .PHONY: common-checks-2
 common-checks-2:
-	tox -e check-abci-docstrings
-	tox -e check-abciapp-specs
-	tox -e check-dependencies
-	tox -e check-handlers
+	tox -qq -e check-abci-docstrings
+	tox -qq -e check-abciapp-specs
+	tox -qq -e check-dependencies
+	tox -qq -e check-handlers
 
 .PHONY: all-checks
 all-checks: format code-checks security generators common-checks-1 common-checks-2
@@ -217,19 +217,19 @@ check-agent-runner:
 .PHONY: ci-linter-checks
 ci-linter-checks:
 	gitleaks detect --report-format json --report-path leak_report --log-opts="HEAD"
-	tox -e copyright-check
-	tox -e liccheck
-	tox -e check-dependencies
+	tox -qq -e copyright-check
+	tox -qq -e liccheck
+	tox -qq -e check-dependencies
 	tomte check-doc-links
-	tox -e check-doc-hashes
+	tox -qq -e check-doc-hashes
 	tomte check-security
-	tox -e check-packages
-	tox -e check-hash
+	tox -qq -e check-packages
+	tox -qq -e check-hash
 	tomte check-code
 	tomte check-spelling
-	tox -e check-abci-docstrings
-	tox -e check-abciapp-specs
-	tox -e check-handlers
+	tox -qq -e check-abci-docstrings
+	tox -qq -e check-abciapp-specs
+	tox -qq -e check-handlers
 
 .PHONY: run-agent
 run-agent:

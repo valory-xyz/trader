@@ -9,6 +9,8 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeidog73nvs6bfta5pmaxufwly6pc52knbnxqlwcwka4cpnyneeykqi
   kelly_criterion_no_conf.py: bafybeidqrbc74zvr5stmuffbpihtibwwrppx4eimnycghyy66wiu4qibgu
+  tests/__init__.py: bafybeiaw6pecvgsodjc6gteyihizpujajx7dt4htiyeopsh2fr4pmoayx4
+  tests/test_kelly_criterion_no_conf.py: bafybeihb6xhawqlsuwh2gpdqznomikt4cgqrkbmziqht3n7av3rjcykef4
 fingerprint_ignore_patterns: []
 entry_point: kelly_criterion_no_conf.py
 callable: run

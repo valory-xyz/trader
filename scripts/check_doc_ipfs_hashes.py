@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2022-2024 Valory AG
+#   Copyright 2022-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ import yaml
 from aea.cli.packages import get_package_manager
 from aea.configurations.data_types import PackageId
 from aea.helpers.base import IPFS_HASH_REGEX, SIMPLE_ID_REGEX
-
 
 CLI_REGEX = r"(?P<cli>aea|autonomy)"
 # CMD_REGEX should be r"(?P<cmd>(\S+\s(\s--\S+)*)+)",

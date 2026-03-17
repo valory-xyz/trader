@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 # ------------------------------------------------------------------------------
 
 """This package contains the tests for Decision Maker"""
+
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -116,3 +118,99 @@ class TestSamplingRound:
         # Simulate event handling through method calls or appropriate property checks
         assert sampling_round.done_event == Event.DONE
         assert sampling_round.no_majority_event == Event.NO_MAJORITY
+
+
+class TestSamplingRoundEndBlock:
+    """Direct unit tests for SamplingRound.end_block covering all branches."""
+
+    def _make_round(self, benchmarking_mode_enabled: bool = False) -> SamplingRound:
+        """Create a SamplingRound with mocked dependencies."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_context = MagicMock()
+        mock_context.benchmarking_mode.enabled = benchmarking_mode_enabled
+        return SamplingRound(synchronized_data=mock_synced_data, context=mock_context)
+
+    def test_end_block_returns_none_when_super_returns_none(self) -> None:
+        """Test end_block returns None when parent returns None."""
+        round_instance = self._make_round()
+        with patch.object(UpdateBetsRound, "end_block", return_value=None):
+            result = round_instance.end_block()
+        assert result is None
+
+    def test_end_block_non_done_event_passes_through(self) -> None:
+        """Test end_block passes through non-DONE events."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        with patch.object(
+            UpdateBetsRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.NO_MAJORITY),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY
+
+    def test_end_block_done_benchmarking_finished(self) -> None:
+        """Test end_block returns BENCHMARKING_FINISHED when benchmarking is done."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.benchmarking_finished = True
+        mock_synced_data.simulated_day = False
+        round_instance = self._make_round()
+        with patch.object(
+            UpdateBetsRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.BENCHMARKING_FINISHED
+
+    def test_end_block_done_simulated_day(self) -> None:
+        """Test end_block returns NEW_SIMULATED_RESAMPLE when simulated_day is True."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.benchmarking_finished = False
+        mock_synced_data.simulated_day = True
+        round_instance = self._make_round()
+        with patch.object(
+            UpdateBetsRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.NEW_SIMULATED_RESAMPLE
+
+    def test_end_block_done_benchmarking_enabled(self) -> None:
+        """Test end_block returns BENCHMARKING_ENABLED when benchmarking mode is enabled."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.benchmarking_finished = False
+        mock_synced_data.simulated_day = False
+        round_instance = self._make_round(benchmarking_mode_enabled=True)
+        with patch.object(
+            UpdateBetsRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.BENCHMARKING_ENABLED
+
+    def test_end_block_done_no_special_conditions(self) -> None:
+        """Test end_block returns original DONE event when no special conditions are met."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        mock_synced_data.benchmarking_finished = False
+        mock_synced_data.simulated_day = False
+        round_instance = self._make_round(benchmarking_mode_enabled=False)
+        with patch.object(
+            UpdateBetsRound,
+            "end_block",
+            return_value=(mock_synced_data, Event.DONE),
+        ):
+            result = round_instance.end_block()
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE

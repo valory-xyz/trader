@@ -7,31 +7,33 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
-  __init__.py: bafybeiageyes36ujnvvodqd5vlnihgz44rupysrk2ebbhskjkueetj6dai
-  behaviours.py: bafybeif3jfvpv5ah4sn4wg2zbqtb26xzll5gpi47xtabo3pmmigwitg6dq
-  dialogues.py: bafybeiebofyykseqp3fmif36cqmmyf3k7d2zbocpl6t6wnlpv4szghrxbm
+  __init__.py: bafybeieklhap7bydof2ugmbyzjrjcrikehbmbqhjyovp7sp4tbdlfa2sgi
+  behaviours.py: bafybeihpghqnh74gfkkci4zriy6a2n6ppr2aifh4qeas2ayeplbppd2gza
+  dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
-  handlers.py: bafybeichsi2y5zvzffupj2vhgagocwvnm7cbzr6jmavp656mfrzsdvkfnu
-  models.py: bafybeihphis32wfnecirtukgzo5pwm73pwhjikesjckvdefzfbjjnn5gvq
+  handlers.py: bafybeihspev6kdjwo6i3577c3lgk4pv6mzyfdsyvkg6bn3rz5diafmrko4
+  models.py: bafybeib6zkxiw6ni4vmfed6p7jbu2lgm2tgvavmycqki2l2ku3jgwlf7tq
   payloads.py: bafybeigncopqpz3a2nd6hgpsbqjqff2hsoa73abjck4ic5tnxpkzmfmkwu
   rounds.py: bafybeih2we7exxrb67aoyhmvsuntwstmeoq2qibrctyf6jed4mde6qo6wu
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
+  tests/test_behaviours.py: bafybeiaga5xh3hjrwh5sddm4vrcdkqml6twlfhfhrgbjbl7k2xbmwutuji
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
-  tests/test_handers.py: bafybeibnxlwznx3tsdpjpzh62bnp6lq7zdpolyjxfvxeumzz52ljxfzpme
-  tests/test_payloads.py: bafybeihckpp57y4uhsm5jro6eax3bc7uqlly2deym6gzx3z2zc7jxj3b2i
-  tests/test_rounds.py: bafybeie3ow2si7bztvgnqvqnzpjo5qkkmg44ig74z4ehwqdk6jtrcqtmou
+  tests/test_handlers.py: bafybeigoz6bdshjxsam6t7kzad273lwkucpvgrkmfak73qlssluopjfbzi
+  tests/test_models.py: bafybeicxywbnbxlebb7bhglieooujfibmni2ui6hqnw3tvxka65suaj42y
+  tests/test_payloads.py: bafybeif6oourkbrvtxszekfdcwmnjgwaaobpbf3sglyrsbcy422jy2f2ge
+  tests/test_rounds.py: bafybeifbam24yodcmtgr6262festb4x3id5k3nthrvxvjeqg4whh37adfe
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeia3ictpeosrza3tkxa7ad2io5txutcs44jgrqoqgdxhrjdu2fy4qy
-- valory/service_staking_token:0.1.0:bafybeidbq4kuajhygalrx2uuo73dfg4etffccm6a7jurvlb7mjwycofz3q
-- valory/staking_token:0.1.0:bafybeicmpo7ycspixqofh6uesxsrzi6hla77vgjpxp2v2nxysr5hnm4x7q
-- valory/mech_activity:0.1.0:bafybeiemnfhxt47ey5bzqztwaayfc2epwiup5btbnltmjuzgqirzi6ieb4
+- valory/gnosis_safe:0.1.0:bafybeico3uzjdwumf2jg2e627ut4rwzwmedjavenw6e2hshi2m6yw642bq
+- valory/service_staking_token:0.1.0:bafybeiehjvxdb6mur7ujcftff3xoxtnnr3cvxlgnfxqn7ejdy3cxzng4ea
+- valory/staking_token:0.1.0:bafybeiat655krp6joe7rvt4ycuxpynzl5oraib7jkeo6tennevugxf7x7m
+- valory/mech_activity:0.1.0:bafybeieez74xaxsgjj3ssdej3rpm52acmxvb3p4jmlbxc7fxijwiwicqzu
 protocols:
-- valory/contract_api:1.0.0:bafybeigl7mxuyxngk4gztgygeccbgdfrllx73kwbvvkjvtkfw6ionyd56q
+- valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeihhadgaitdltynzaq4w7jhgwbdnizsobbaa2riqtqwbml3li2tieq
-- valory/transaction_settlement_abci:0.1.0:bafybeifbumqyemwzffxtn3kwucxx55ja57mhmfalo7fqlkq2hnjwqhfp74
+- valory/abstract_round_abci:0.1.0:bafybeiaalla55aprhvoumv4u7qt4v6l53fjmgln6wgyjr5e5tw7u4kscja
+- valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
 behaviours:
   main:
     args: {}

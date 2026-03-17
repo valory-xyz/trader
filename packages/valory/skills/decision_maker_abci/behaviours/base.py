@@ -76,7 +76,6 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 )
 from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LENGTH
 
-
 WaitableConditionType = Generator[None, None, bool]
 
 # setting the safe gas to 0 means that all available gas will be used
@@ -485,7 +484,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if len(self.shared_state.strategy_to_filehash) == 0:
             # no strategies pending to be fetched
             return
-        for strategy, file_hash in self.shared_state.strategy_to_filehash.items():
+        for (
+            strategy,
+            file_hash,
+        ) in self.shared_state.strategy_to_filehash.items():  # pragma: no branch
             self.context.logger.info(f"Fetching {strategy} strategy...")
             ipfs_msg, message = self._build_ipfs_get_file_req(file_hash)
             self._inflight_strategy_req = strategy

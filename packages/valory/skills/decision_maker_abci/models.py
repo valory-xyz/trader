@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-
 import re
 import time
 from dataclasses import dataclass, field
@@ -59,7 +58,6 @@ from packages.valory.skills.mech_interact_abci.models import (
 from packages.valory.skills.mech_interact_abci.models import (
     SharedState as MechInteractSharedState,
 )
-
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
 ClaimParamsType = Tuple[List[bytes], List[str], List[int], List[bytes]]
@@ -569,11 +567,8 @@ class BenchmarkingMockData:
     @property
     def is_winning(self) -> bool:
         """Whether the current position is winning."""
-        return (
-            self.answer == YES
-            and self.p_yes > 0.5
-            or self.answer == NO
-            and self.p_yes < 0.5
+        return (self.answer == YES and self.p_yes > 0.5) or (
+            self.answer == NO and self.p_yes < 0.5
         )
 
 

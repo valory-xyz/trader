@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 # ------------------------------------------------------------------------------
 
 """Utils for graph interactions."""
+
 import time
 from collections import defaultdict
 from enum import Enum
 from typing import Any, Dict, List, Tuple
-
 
 INVALID_MARKET_ANSWER = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -71,7 +71,7 @@ def get_position_balance(
         outcome_index = int(indexSets[0]) - 1
 
         balance = int(position["balance"])
-        if condition_id.lower() in position_condition_ids:
+        if condition_id.lower() in position_condition_ids:  # pragma: no branch
             positions[outcomes[outcome_index]] += balance
 
     return positions

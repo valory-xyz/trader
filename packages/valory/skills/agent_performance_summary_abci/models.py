@@ -37,7 +37,6 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     AgentPerformanceSummaryAbciApp,
 )
 
-
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 
@@ -207,6 +206,13 @@ class AgentPerformanceSummary:
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
+        if self.metrics and isinstance(self.metrics[0], dict):
+            self.metrics = [
+                AgentPerformanceMetrics(**m)
+                for m in self.metrics
+                if isinstance(m, dict)
+            ]
+
         if isinstance(self.agent_details, dict):
             self.agent_details = AgentDetails(**self.agent_details)
 
@@ -330,7 +336,11 @@ class Subgraph(ApiSpecs):
         if isinstance(error_data, expected_error_type):
             error_message_key = self.context.params.the_graph_error_message_key
             error_message = error_data.get(error_message_key, None)
-            if self.context.params.the_graph_payment_required_error in error_message:
+            if (
+                error_message is not None
+                and self.context.params.the_graph_payment_required_error
+                in error_message
+            ):
                 err = "Payment required for subsequent requests for the current 'The Graph' API key!"
                 self.context.logger.error(err)
         return None

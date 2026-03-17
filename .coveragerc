@@ -1,0 +1,27 @@
+[run]
+branch = True
+source =
+    packages/valory
+    packages/w1kke
+    packages/jhehemann
+omit =
+    */tests/*
+    */__init__.py
+    */__pycache__/*
+    */*_pb2.py
+    */*_pb2_grpc.py
+    # Pure re-exports of upstream framework classes — no logic to test
+    packages/valory/skills/agent_performance_summary_abci/dialogues.py
+
+[report]
+fail_under = 100
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    @abstractmethod
+    pass
+
+[html]
+directory = htmlcov
