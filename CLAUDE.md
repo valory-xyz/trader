@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The **Trader** is an autonomous agent service built on the [Open Autonomy](https://docs.autonolas.network/) framework. It places bets on prediction markets (Omen, Polymarket) by querying an AI Mech for probability estimates, evaluating profitability, and executing on-chain transactions via a Safe multisig wallet. Runs on Gnosis chain with Tendermint-based consensus for multi-agent operation.
+The **Trader** is an autonomous agent service built on the [Open Autonomy](https://stack.olas.network/) framework. It places bets on prediction markets (Omen, Polymarket) by querying an AI Mech for probability estimates, evaluating profitability, and executing on-chain transactions via a Safe multisig wallet. Runs on Gnosis chain with Tendermint-based consensus for multi-agent operation.
 
 ## Tech Stack
 
