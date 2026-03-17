@@ -21,7 +21,7 @@
 
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Generator, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
@@ -666,7 +666,7 @@ class FetchPerformanceSummaryBehaviour(
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = sum(
-            (self._mech_request_lookup or {}).get(title, 0)
+            len((self._mech_request_lookup or {}).get(title, []))
             for title in self._placed_titles
         )
         unplaced_mech_requests = max(
@@ -976,204 +976,102 @@ class FetchPerformanceSummaryBehaviour(
         """Extract the question title from an Omen question string (split by separator)."""
         return question.split(QUESTION_DATA_SEPARATOR)[0] if question else ""
 
-    def _calculate_mech_fees_for_day(
-        self, profit_participants: list, mech_request_lookup: dict
-    ) -> tuple[float, int]:
+    def _extract_title(self, participant: dict) -> str:
+        """Extract question title from a profit participant, platform-aware.
+
+        :param participant: A profit participant dict from daily stats
+        :return: The extracted title string
         """
-        Calculate mech fees for a specific day based on profit participants using cached lookup.
+        if self.params.is_running_on_polymarket:
+            metadata = participant.get("metadata", {})
+            return metadata.get("title", "") if metadata else ""
+        question = participant.get("question", "")
+        return self._extract_omen_question_title(question)
 
-        :param profit_participants: List of profit participants for the day
-        :param mech_request_lookup: Cached lookup map of question_title -> count
-        :return: Tuple of (total_mech_fees, mech_request_count)
+    def _match_mech_requests_to_days(
+        self,
+        daily_stats: list,
+        mech_request_lookup: Dict[str, List[int]],
+    ) -> Tuple[Dict[int, int], int, int]:
+        """Match mech requests to bet days using timestamps (1:1 greedy chronological).
+
+        For each bet (profit participant), consumes the earliest mech request timestamp
+        for that title. Remaining unconsumed requests are unplaced and assigned to their
+        own mech-request day.
+
+        :param daily_stats: List of daily profit statistics
+        :param mech_request_lookup: Dictionary mapping question titles to sorted timestamp lists
+        :return: Tuple of (fees_by_day, placed_count, unplaced_count)
         """
-        if not profit_participants:
-            return 0.0, 0
+        # Deep-copy timestamps so we can pop without mutating the original lookup
+        remaining: Dict[str, List[int]] = {
+            title: list(timestamps) for title, timestamps in mech_request_lookup.items()
+        }
 
-        # Extract question titles from profit participants and count mech requests
-        mech_fee_count = 0
-        for participant in profit_participants:
-            # Handle both Omen and Polymarket structures
-            if self.params.is_running_on_polymarket:
-                # Polymarket: { id, questionId, metadata { title } }
-                metadata = participant.get("metadata", {})
-                title = metadata.get("title", "") if metadata else ""
-            else:
-                # Omen: { id, question } where question contains separator
-                question = participant.get("question", "")
-                title = self._extract_omen_question_title(question)
+        fees_by_day: Dict[int, int] = {}
+        placed_count = 0
 
-            if title:
-                # Use cached lookup instead of querying
-                mech_fee_count += mech_request_lookup.get(title, 0)
+        # Build (title, day_ts) pairs sorted by day_ts ascending
+        bet_pairs: List[Tuple[str, int]] = []
+        for stat in daily_stats:
+            date_value = stat.get("date")
+            if date_value is None:
+                continue
+            day_ts = int(date_value)
+            for participant in stat.get("profitParticipants", []):
+                title = self._extract_title(participant)
+                if title:
+                    bet_pairs.append((title, day_ts))
 
-        # Calculate fees: 0.01 per request (DEFAULT_MECH_FEE / WEI_IN_ETH)
-        total_mech_fees = mech_fee_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+        bet_pairs.sort(key=lambda x: x[1])
 
-        return total_mech_fees, mech_fee_count
+        # Greedy chronological match: consume earliest mech request per bet
+        for title, day_ts in bet_pairs:
+            ts_list = remaining.get(title)
+            if ts_list:
+                ts_list.pop(0)  # consume earliest
+                fees_by_day[day_ts] = fees_by_day.get(day_ts, 0) + 1
+                placed_count += 1
+
+        # Remaining unconsumed requests are unplaced — assign to mech request's own day
+        unplaced_count = 0
+        for ts_list in remaining.values():
+            for mech_ts in ts_list:
+                mech_day = (mech_ts // SECONDS_PER_DAY) * SECONDS_PER_DAY
+                fees_by_day[mech_day] = fees_by_day.get(mech_day, 0) + 1
+                unplaced_count += 1
+
+        return fees_by_day, placed_count, unplaced_count
 
     def _collect_placed_titles(self, daily_stats: list) -> Set[str]:
         """Collect all question titles that have bets (profit participants) in given stats."""
         placed_titles: Set[str] = set()
         for stat in daily_stats:
             for participant in stat.get("profitParticipants", []):
-                # Handle both Omen and Polymarket structures
-                if self.params.is_running_on_polymarket:
-                    # Polymarket: { id, questionId, metadata { title } }
-                    metadata = participant.get("metadata", {})
-                    title = metadata.get("title", "") if metadata else ""
-                else:
-                    # Omen: { id, question } where question contains separator
-                    question = participant.get("question", "")
-                    title = self._extract_omen_question_title(question)
-
+                title = self._extract_title(participant)
                 if title:
                     placed_titles.add(title)
         return placed_titles
 
     def _apply_mech_fees(
-        self,
-        profit_participants: list,
-        mech_request_lookup: Dict[str, int],
-        extra_fees_by_day: Dict[int, int],
-        date_timestamp: int,
+        self, fees_by_day: Dict[int, int], date_timestamp: int
     ) -> Tuple[float, int]:
-        """Calculate mech fees for a day: lookup-based fees plus any precomputed extra buckets."""
-        mech_fees, mech_count = self._calculate_mech_fees_for_day(
-            profit_participants, mech_request_lookup
-        )
+        """Look up pre-computed mech fee count for a day.
 
-        extra_count = extra_fees_by_day.get(date_timestamp, 0)
-        if extra_count:
-            mech_fees += extra_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
-            mech_count += extra_count
-        return mech_fees, mech_count
-
-    def _evenly_distribute_requests(
-        self, total_requests: int, days: list[int]
-    ) -> Dict[int, int]:
-        """Evenly distribute request count across given day timestamps."""
-        if total_requests <= 0 or not days:
-            return {}
-        per_day = total_requests // len(days)
-        remainder = total_requests % len(days)
-        buckets: Dict[int, int] = {}
-        for idx, day_ts in enumerate(sorted(days)):
-            alloc = per_day + (1 if idx < remainder else 0)
-            if alloc:
-                buckets[day_ts] = alloc
-        return buckets
-
-    def _build_multi_bet_allocations(
-        self, daily_stats: list, mech_request_lookup: Dict[str, int]
-    ) -> Tuple[Dict[int, int], Set[str]]:
-        """For markets appearing on multiple days, split mech requests evenly across those days.
-
-        :param daily_stats: List of daily statistics
-        :param mech_request_lookup: Dictionary mapping question titles to request counts
-        :return: Tuple of (allocations_by_day, titles_allocated)
+        :param fees_by_day: Pre-computed mapping of day timestamp to mech request count
+        :param date_timestamp: The day timestamp to look up
+        :return: Tuple of (mech_fees_in_eth, mech_request_count)
         """
-        title_days: Dict[str, list] = {}
-        for stat in daily_stats:
-            date_value = stat.get("date")
-            if date_value is None:
-                continue
-            day_ts = int(date_value)
-
-            # Extract titles based on platform
-            titles: Set[str] = set()
-            if self.params.is_running_on_polymarket:
-                titles = {
-                    participant.get("metadata", {}).get("title", "")
-                    for participant in stat.get("profitParticipants", [])
-                    if participant.get("metadata", {}).get("title", "")
-                }
-            else:
-                for participant in stat.get("profitParticipants", []):
-                    question = participant.get("question", "")
-                    title = self._extract_omen_question_title(question)
-                    if title:
-                        titles.add(title)
-            for title in titles:
-                if (
-                    title
-                ):  # pragma: no cover  # defensive: titles set already filters empty strings
-                    title_days.setdefault(title, []).append(day_ts)
-
-        allocations: Dict[int, int] = {}
-        titles_allocated: Set[str] = set()
-
-        for title, days in title_days.items():
-            if len(days) <= 1:
-                continue
-            total_requests = mech_request_lookup.get(title, 0)
-            if total_requests <= 0:
-                continue
-            titles_allocated.add(title)
-            allocations_for_title = self._evenly_distribute_requests(
-                total_requests, days
-            )
-            for day_ts, count in allocations_for_title.items():
-                allocations[day_ts] = allocations.get(day_ts, 0) + count
-
-        return allocations, titles_allocated
-
-    def _compute_mech_fee_buckets(
-        self,
-        daily_stats: list,
-        mech_request_lookup: Dict[str, int],
-        placed_titles: Set[str],
-        existing_unplaced_count: int,
-        existing_placed_count: int = 0,
-    ) -> Tuple[Dict[int, int], Dict[str, int], int]:
-        """Build per-day mech fee buckets for:"""
-        # Unplaced requests (no bets)
-        total_mech_requests = self._total_mech_requests or sum(
-            (mech_request_lookup or {}).values()
-        )
-        open_requests = self._open_market_requests or 0
-        placed_requests_count = sum(
-            (mech_request_lookup or {}).get(t, 0) for t in placed_titles
-        )
-        remaining_unplaced = max(
-            total_mech_requests
-            - open_requests
-            - placed_requests_count
-            - existing_placed_count
-            - existing_unplaced_count,
-            0,
-        )
-
-        extra_fees_by_day: Dict[int, int] = {}
-        unplaced_buckets: Dict[int, int] = {}
-        if daily_stats and remaining_unplaced > 0:
-            days = [int(stat["date"]) for stat in daily_stats if "date" in stat]
-            unplaced_buckets = self._evenly_distribute_requests(
-                remaining_unplaced, days
-            )
-            extra_fees_by_day.update(unplaced_buckets)
-
-        # Multi-bet allocations (split across days) and exclude from lookup to avoid double count
-        multi_allocations, allocated_titles = self._build_multi_bet_allocations(
-            daily_stats, mech_request_lookup
-        )
-        for day_ts, count in multi_allocations.items():
-            extra_fees_by_day[day_ts] = extra_fees_by_day.get(day_ts, 0) + count
-
-        filtered_lookup = {
-            k: v
-            for k, v in (mech_request_lookup or {}).items()
-            if k not in allocated_titles
-        }
-        unplaced_allocated = sum(unplaced_buckets.values())
-        return extra_fees_by_day, filtered_lookup, unplaced_allocated
+        count = fees_by_day.get(date_timestamp, 0)
+        return count * (DEFAULT_MECH_FEE / WEI_IN_ETH), count
 
     def _build_mech_request_lookup(
         self, agent_safe_address: str
-    ) -> Generator[None, None, dict]:
-        """Build a lookup map of question titles to mech request counts.
+    ) -> Generator[None, None, Dict[str, List[int]]]:
+        """Build a lookup map of question titles to sorted mech request timestamps.
 
         :param agent_safe_address: The agent's safe address
-        :return: Dictionary mapping question titles to request counts
+        :return: Dictionary mapping question titles to sorted timestamp lists
         :yield: None
         """
         # Fetch all mech requests for this agent
@@ -1189,15 +1087,20 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.warning("No mech requests found for agent")
             return {}
 
-        # Build lookup map: question_title -> count
-        lookup: Dict[str, int] = {}
+        # Build lookup map: question_title -> sorted timestamps
+        lookup: Dict[str, List[int]] = {}
         for request in all_mech_requests:
             title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
-            if title:
-                lookup[title] = lookup.get(title, 0) + 1
+            ts = int(request.get("blockTimestamp", 0))
+            if title and ts:
+                lookup.setdefault(title, []).append(ts)
 
+        for title in lookup:
+            lookup[title].sort()
+
+        total_requests = sum(len(v) for v in lookup.values())
         self.context.logger.info(
-            f"Built mech request lookup with {len(lookup)} unique questions, {len(all_mech_requests)} total requests"
+            f"Built mech request lookup with {len(lookup)} unique questions, {total_requests} total requests"
         )
         self._mech_request_lookup = lookup
         return lookup
@@ -1326,21 +1229,15 @@ class FetchPerformanceSummaryBehaviour(
                 includes_unplaced_mech_fees=True,
             )
 
-        # Build mech fee buckets (unplaced + multi-bet) and filtered lookup
+        # Collect placed titles for _calculate_performance_metrics
         placed_titles = self._collect_placed_titles(daily_stats)
         self._placed_titles = set(placed_titles)
-        placed_requests_total = sum(
-            mech_request_lookup.get(title, 0) for title in placed_titles
+
+        # Timestamp-based mech-to-bet attribution
+        fees_by_day, placed_count, unplaced_count = self._match_mech_requests_to_days(
+            daily_stats, mech_request_lookup
         )
-        merged_extra_fees_by_day, filtered_lookup, unplaced_count = (
-            self._compute_mech_fee_buckets(
-                daily_stats,
-                mech_request_lookup,
-                placed_titles,
-                existing_unplaced_count=0,
-            )
-        )
-        self._placed_mech_requests_count = placed_requests_total
+        self._placed_mech_requests_count = placed_count
 
         # Process all daily statistics
         data_points = []
@@ -1366,13 +1263,9 @@ class FetchPerformanceSummaryBehaviour(
             )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
-            # Calculate mech fees (placed + unplaced) using cached lookup
-            profit_participants = stat.get("profitParticipants", [])
+            # Look up pre-computed mech fees for this day
             mech_fees, daily_mech_count = self._apply_mech_fees(
-                profit_participants,
-                filtered_lookup,
-                merged_extra_fees_by_day,
-                date_timestamp,
+                fees_by_day, date_timestamp
             )
 
             daily_profit_net = daily_profit_raw - mech_fees
@@ -1475,19 +1368,14 @@ class FetchPerformanceSummaryBehaviour(
             replace_last = False
 
         # Build lookup ONLY for questions present in the new stats
-        new_question_titles = set()
+        new_question_titles: Set[str] = set()
         for stat in filtered_daily_stats:
             for participant in stat.get("profitParticipants", []):
-                if self.params.is_running_on_polymarket:
-                    metadata = participant.get("metadata", {})
-                    title = metadata.get("title", "") if metadata else ""
-                else:
-                    question = participant.get("question", "")
-                    title = self._extract_omen_question_title(question)
+                title = self._extract_title(participant)
                 if title:
                     new_question_titles.add(title)
 
-        mech_request_lookup: Dict[str, int] = {}
+        mech_request_lookup: Dict[str, List[int]] = {}
         if new_question_titles:
             self.context.logger.info(
                 f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats"
@@ -1499,28 +1387,23 @@ class FetchPerformanceSummaryBehaviour(
             for request in new_mech_requests:
                 parsed = request.get("parsedRequest", {}) or {}
                 title = parsed.get("questionTitle", "")
-                if title:
-                    mech_request_lookup[title] = mech_request_lookup.get(title, 0) + 1
-        total_requests_in_lookup = sum(mech_request_lookup.values())
+                ts = int(request.get("blockTimestamp", 0))
+                if title and ts:
+                    mech_request_lookup.setdefault(title, []).append(ts)
+            for title in mech_request_lookup:
+                mech_request_lookup[title].sort()
+        total_requests_in_lookup = sum(len(v) for v in mech_request_lookup.values())
         self.context.logger.info(
             f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
         )
 
-        placed_titles = self._collect_placed_titles(filtered_daily_stats)
+        # Timestamp-based mech-to-bet attribution for new stats
+        fees_by_day, placed_delta, unplaced_delta = self._match_mech_requests_to_days(
+            filtered_daily_stats, mech_request_lookup
+        )
+
         # Use persisted placed count as base (self._placed_titles may be empty after restart)
         prev_placed = getattr(existing_data, "placed_mech_requests_count", 0)
-        placed_delta = sum(mech_request_lookup.get(title, 0) for title in placed_titles)
-
-        already_counted = getattr(existing_data, "unplaced_mech_requests_count", 0)
-        combined_extra_fees_by_day, filtered_lookup, unplaced_allocated = (
-            self._compute_mech_fee_buckets(
-                filtered_daily_stats,
-                mech_request_lookup,
-                placed_titles,
-                existing_unplaced_count=already_counted,
-                existing_placed_count=prev_placed,
-            )
-        )
 
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
@@ -1554,13 +1437,9 @@ class FetchPerformanceSummaryBehaviour(
             )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
-            # Calculate mech fees using lookup for this day only
-            profit_participants = stat.get("profitParticipants", [])
+            # Look up pre-computed mech fees for this day
             mech_fees, daily_mech_count = self._apply_mech_fees(
-                profit_participants,
-                filtered_lookup,
-                combined_extra_fees_by_day,
-                date_timestamp,
+                fees_by_day, date_timestamp
             )
 
             daily_profit_net = daily_profit_raw - mech_fees
@@ -1601,8 +1480,7 @@ class FetchPerformanceSummaryBehaviour(
         # Recompute placed/unplaced totals using persisted counts + deltas
         placed_total = prev_placed + placed_delta
         prev_unplaced = getattr(existing_data, "unplaced_mech_requests_count", 0)
-        # Add newly allocated unplaced (compute_mech_fee_buckets subtracts already_counted)
-        unplaced_mech_requests_count = prev_unplaced + unplaced_allocated
+        unplaced_mech_requests_count = prev_unplaced + unplaced_delta
         # Safety clamp to settled - placed if somehow over
         unplaced_mech_requests_count = min(
             unplaced_mech_requests_count,
@@ -1620,10 +1498,9 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         # If we only reprocessed the last day and nothing changed (profits AND mech counts), skip writing.
-        # But if there is any mech delta/unplaced delta, always persist.
         if (
             new_mech_sum == 0
-            and unplaced_allocated == 0
+            and unplaced_delta == 0
             and placed_delta == 0
             and replace_last
             and prev_last_point

@@ -38,6 +38,7 @@ query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
     totalMarketplaceRequests
     requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
@@ -223,6 +224,7 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
     ) {
       id
       requestId
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
@@ -240,6 +242,7 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
       }
     ) {
       id
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
