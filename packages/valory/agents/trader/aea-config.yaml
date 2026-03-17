@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeibsdhil35py7zjhielonaycxo7gp34jfufe2ynprjv2etwxnzcxqy
 - valory/termination_abci:0.1.0:bafybeic3jppoya7jkmylbl5evcssl5qhppl6hadxebfxcxmi5o7qysce6a
 - valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif74rdi56mrftoacedmdxlblukf52c5fewxcpsrtgfsel4eh5m564
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifi2kwxxyjotiv4mgfot4pslv2pcrie3423gq5zusuay4rhxzv4aa
 - valory/market_manager_abci:0.1.0:bafybeibloyaypehftg77jbrp7xcpbaickwk2ntj3aidnh34hkey4mdr5hm
-- valory/decision_maker_abci:0.1.0:bafybeigyx6ufcqwqwgfwtyfnergsqn65o4seyb7nciooxxaburs56rugju
-- valory/trader_abci:0.1.0:bafybeig6xfbmxgefcmllmhrth56wxqkihn5tuysryts3jikmjfhi4xjkci
+- valory/decision_maker_abci:0.1.0:bafybeigy52pwb44btnngi3jmowexx6i77xcew5vivemdkwzhxyrmjjop44
+- valory/trader_abci:0.1.0:bafybeiflv6fsjcc7imkdx5ddmdznhptxotyuydbcmm6x2gmtol3txvolgi
 - valory/staking_abci:0.1.0:bafybeigczs4zcpor3x5kk2jeolxiok7irvtoz3ep76nhx63sjbwv4wcpe4
 - valory/check_stop_trading_abci:0.1.0:bafybeihrsvh3esxrjeysnzb7gxstsmloivijwn3yhu6fijq6ilv7qxqixm
 - valory/mech_interact_abci:0.1.0:bafybeiduf3h73xhv4q5vbdn6ek2tyal3haym5of4mq2ucm2zhqbclr35le
-- valory/chatui_abci:0.1.0:bafybeiaypdhmfnkflcjlzisylhchxmblylk6y7zvr5trcrdeeu5hp7trom
-- valory/agent_performance_summary_abci:0.1.0:bafybeid36h5keonopdb4oxgmevgfnm27urantnfs5nanpbi6wxrbtrhsbe
+- valory/chatui_abci:0.1.0:bafybeidblgor4yifun3vxyhfkwdvxtk3gmu7hiy3u7ixnpxrhitxiu7bvi
+- valory/agent_performance_summary_abci:0.1.0:bafybeib3ooeonm3hyzcud6dyyd3hrcstnlhltmwoicdzokgu66psd4pdqe
 - valory/funds_manager:0.1.0:bafybeibid2nm7qoysj44foptkisf5ajguvacxsuoaix4og4ehotal47mcy
 customs:
 - valory/mike_strat:0.1.0:bafybeibeifst5le4y34irpxpcgmxhur3i2ynkgeynpaj5w7o2tjlr4er54

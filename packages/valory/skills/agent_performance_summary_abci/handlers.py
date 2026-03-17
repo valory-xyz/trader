@@ -424,6 +424,9 @@ class HttpHandler(BaseHttpHandler):
 
         Returns lifetime aggregate metrics. Query parameters are not supported;
         the response always reflects the full trading history.
+
+        :param http_msg: the incoming HTTP message
+        :param http_dialogue: the HTTP dialogue
         """
         try:
             safe_address = self.synchronized_data.safe_contract_address.lower()
