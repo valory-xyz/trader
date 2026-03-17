@@ -648,7 +648,7 @@ class HttpHandler(BaseHttpHandler):
                         "timestamp": datetime.fromtimestamp(
                             point.timestamp, tz=timezone.utc
                         ).strftime(ISO_TIMESTAMP_FORMAT),
-                        "delta_profit": point.cumulative_profit,
+                        "cumulative_profit": point.cumulative_profit,
                     }
                 )
 

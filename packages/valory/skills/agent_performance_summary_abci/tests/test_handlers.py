@@ -1551,7 +1551,7 @@ class TestHandleGetProfitOverTime:
             assert response["points"] == []
 
     def test_response_format_with_data_points(self) -> None:
-        """Test response format includes timestamp and delta_profit."""
+        """Test response format includes timestamp and cumulative_profit."""
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
@@ -1566,8 +1566,8 @@ class TestHandleGetProfitOverTime:
             assert len(response["points"]) == 2
             point = response["points"][0]
             assert "timestamp" in point
-            assert "delta_profit" in point
-            assert point["delta_profit"] == 10.0
+            assert "cumulative_profit" in point
+            assert point["cumulative_profit"] == 10.0
 
     def test_response_includes_agent_id(self) -> None:
         """Test response includes agent_id."""
@@ -2094,8 +2094,8 @@ class TestProfitOverTimeTimestampFormatting:
             response = mock_ok.call_args[0][2]
             assert response["points"][0]["timestamp"] == "2024-01-01T00:00:00Z"
 
-    def test_delta_profit_is_cumulative_profit(self) -> None:
-        """Test that delta_profit field uses cumulative_profit value."""
+    def test_cumulative_profit_is_cumulative_profit(self) -> None:
+        """Test that cumulative_profit field uses cumulative_profit value."""
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
@@ -2118,7 +2118,7 @@ class TestProfitOverTimeTimestampFormatting:
         with patch.object(self.handler, "_send_ok_response") as mock_ok:
             self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
             response = mock_ok.call_args[0][2]
-            assert response["points"][0]["delta_profit"] == 42.5
+            assert response["points"][0]["cumulative_profit"] == 42.5
 
 
 # ---------------------------------------------------------------------------

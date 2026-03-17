@@ -131,7 +131,7 @@ The implementation uses two different notions of "settled mech requests":
    The endpoint resets cumulative profit to zero at the start of the selected window, which is valid if the intended contract is window-relative cumulative PnL. However, it returns that series under the field name delta\_profit while sourcing from lifetime cumulative data, so consumers may still misinterpret what the plotted values represent.
    Code: [handlers.py\#L645-L653](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/handlers.py#L645-L653) and [handlers.py\#L714-L746](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/handlers.py#L714-L746).
 
-   **Status: DEFERRED (Phase 3)** — needs product input on naming/contract.
+   **Status: FIXED** — renamed `delta_profit` to `cumulative_profit` in the API response. **Breaking change**: consumers must update to read `cumulative_profit` instead of `delta_profit`.
 
 **Low Severity**
 
@@ -168,7 +168,7 @@ Future improvement (not in scope): `feeUSD` / `finalFeeUSD` fields exist on both
 | Issue | Severity | Status |
 |-------|----------|--------|
 | H-8: Window/currency ignored | High | DEFERRED |
-| M-6: Chart field naming | Medium | DEFERRED |
+| M-6: Chart field naming | Medium | FIXED |
 
 **Not fixing**
 
