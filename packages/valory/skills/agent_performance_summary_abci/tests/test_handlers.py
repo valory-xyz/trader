@@ -822,8 +822,8 @@ class TestHandleGetAgentPerformance:
         )
         return AgentPerformanceSummary(agent_performance=perf)
 
-    def test_default_window_and_currency(self) -> None:
-        """Test default window is 'lifetime' and currency is 'USD'."""
+    def test_always_returns_lifetime_window_and_usd(self) -> None:
+        """Test response always has window='lifetime' and currency='USD'."""
         http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
         summary = self._make_performance_summary()
         self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
@@ -836,10 +836,10 @@ class TestHandleGetAgentPerformance:
             assert response["window"] == "lifetime"
             assert response["currency"] == "USD"
 
-    def test_custom_window_7d(self) -> None:
-        """Test window=7d query parameter."""
+    def test_query_params_ignored(self) -> None:
+        """Test that query parameters are ignored — always returns lifetime/USD."""
         http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?window=7d"
+            url="http://localhost:8080/api/v1/agent/performance?window=7d&currency=EUR"
         )
         summary = self._make_performance_summary()
         self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
@@ -849,80 +849,8 @@ class TestHandleGetAgentPerformance:
         with patch.object(self.handler, "_send_ok_response") as mock_ok:
             self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
             response = mock_ok.call_args[0][2]
-            assert response["window"] == "7d"
-
-    def test_custom_window_30d(self) -> None:
-        """Test window=30d query parameter."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?window=30d"
-        )
-        summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            summary
-        )
-
-        with patch.object(self.handler, "_send_ok_response") as mock_ok:
-            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
-            response = mock_ok.call_args[0][2]
-            assert response["window"] == "30d"
-
-    def test_custom_window_90d(self) -> None:
-        """Test window=90d query parameter."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?window=90d"
-        )
-        summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            summary
-        )
-
-        with patch.object(self.handler, "_send_ok_response") as mock_ok:
-            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
-            response = mock_ok.call_args[0][2]
-            assert response["window"] == "90d"
-
-    def test_custom_currency(self) -> None:
-        """Test custom currency query parameter."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?currency=EUR"
-        )
-        summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            summary
-        )
-
-        with patch.object(self.handler, "_send_ok_response") as mock_ok:
-            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
-            response = mock_ok.call_args[0][2]
-            assert response["currency"] == "EUR"
-
-    def test_multiple_query_params(self) -> None:
-        """Test both window and currency query parameters."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?window=30d&currency=ETH"
-        )
-        summary = self._make_performance_summary()
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            summary
-        )
-
-        with patch.object(self.handler, "_send_ok_response") as mock_ok:
-            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
-            response = mock_ok.call_args[0][2]
-            assert response["window"] == "30d"
-            assert response["currency"] == "ETH"
-
-    def test_invalid_window_returns_bad_request(self) -> None:
-        """Test invalid window parameter returns 400."""
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/performance?window=invalid"
-        )
-
-        with patch.object(self.handler, "_send_bad_request_response") as mock_bad:
-            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
-            mock_bad.assert_called_once()
-            error_data = mock_bad.call_args[0][2]
-            assert "Invalid window parameter" in error_data["error"]
+            assert response["window"] == "lifetime"
+            assert response["currency"] == "USD"
 
     def test_no_performance_data_returns_error(self) -> None:
         """Test returns 500 when performance data is unavailable."""

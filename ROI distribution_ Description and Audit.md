@@ -80,7 +80,7 @@ discuss better with team
 
 Code: [handlers.py\#L424-L476](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/handlers.py#L424-L476)
 
-   **Status: DEFERRED (Phase 3)** — needs product input on intended behavior.
+   **Status: FIXED** — removed unused `window` and `currency` query parameters from the performance endpoint. The response now always returns `"window": "lifetime"` and `"currency": "USD"`, matching the actual data. No consumer was passing these parameters.
 
 **Medium Severity**
 
@@ -167,7 +167,7 @@ Future improvement (not in scope): `feeUSD` / `finalFeeUSD` fields exist on both
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| H-8: Window/currency ignored | High | DEFERRED |
+| H-8: Window/currency ignored | High | FIXED |
 | M-6: Chart field naming | Medium | FIXED |
 
 **Not fixing**

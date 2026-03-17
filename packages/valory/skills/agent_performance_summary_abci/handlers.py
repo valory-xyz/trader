@@ -420,33 +420,12 @@ class HttpHandler(BaseHttpHandler):
     def _handle_get_agent_performance(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Handle GET /api/v1/agent/performance request."""
+        """Handle GET /api/v1/agent/performance request.
+
+        Returns lifetime aggregate metrics. Query parameters are not supported;
+        the response always reflects the full trading history.
+        """
         try:
-            # Parse query parameters
-            url_parts = http_msg.url.split("?")
-            window = "lifetime"  # Default
-            currency = "USD"  # Default
-
-            if len(url_parts) > 1:
-                params = {}
-                for param in url_parts[1].split("&"):
-                    if "=" in param:
-                        key, value = param.split("=", 1)
-                        params[key] = value
-                window = params.get("window", "lifetime")
-                currency = params.get("currency", "USD")
-
-            # Validate window parameter
-            if window not in ["lifetime", "7d", "30d", "90d"]:
-                self._send_bad_request_response(
-                    http_msg,
-                    http_dialogue,
-                    {
-                        "error": f"Invalid window parameter: {window}. Must be one of: lifetime, 7d, 30d, 90d"
-                    },
-                )
-                return
-
             safe_address = self.synchronized_data.safe_contract_address.lower()
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
@@ -463,8 +442,8 @@ class HttpHandler(BaseHttpHandler):
 
             formatted_response = {
                 "agent_id": safe_address,
-                "window": window,
-                "currency": currency,
+                "window": "lifetime",
+                "currency": "USD",
                 "metrics": asdict(performance.metrics) if performance.metrics else {},
                 "stats": asdict(performance.stats) if performance.stats else {},
             }
