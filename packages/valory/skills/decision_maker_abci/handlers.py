@@ -250,7 +250,21 @@ class HttpHandler(BaseHttpHandler):
                 http_msg.body,
             )
         )
-        handler(http_msg, http_dialogue, **kwargs)
+        try:
+            handler(http_msg, http_dialogue, **kwargs)
+        except Exception as e:  # pylint: disable=broad-except
+            self.context.logger.error(f"Unhandled exception in handler: {e}")
+            http_response = http_dialogue.reply(
+                performative=HttpMessage.Performative.RESPONSE,
+                target_message=http_msg,
+                version=http_msg.version,
+                status_code=500,
+                status_text="Internal Server Error",
+                headers=http_msg.headers,
+                body=b"",
+            )
+            self.context.logger.info("Responding with: {}".format(http_response))
+            self.context.outbox.put_message(message=http_response)
 
     def _handle_bad_request(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

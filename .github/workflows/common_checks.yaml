@@ -3,9 +3,12 @@ name: main_workflow
 on:
   push:
     branches:
-      - develop
       - main
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -72,7 +75,13 @@ jobs:
       - name: Check dependencies
         run: tox -e check-dependencies
       - name: Check doc links
-        run: tomte check-doc-links
+        run: |
+          tomte check-doc-links \
+            --url-skips "https://li.quest/v1/quote" \
+            --url-skips "https://li.quest/v1/quote/toAmount" \
+            --url-skips "https://gateway.autonolas.tech/ipfs/" \
+            --url-skips "https://rpc.gnosischain.com/" \
+            --url-skips "https://1rpc.io/matic"
       - name: Check doc IPFS hashes
         run: tox -e check-doc-hashes
 
@@ -219,12 +228,31 @@ jobs:
         run: |
           tox -e py${{ matrix.python-version }}-win
 
-      - if: matrix.os == 'ubuntu-24.04'
-        name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+  coverage:
+    continue-on-error: False
+    needs:
+      - test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          submodules: recursive
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update --fix-missing
+          sudo apt-get autoremove
+          sudo apt-get autoclean
+          pip install tomte[tox]==0.6.2
+          pip install --user --upgrade setuptools
+      - name: Check coverage
+        run: tox -e coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
           fail_ci_if_error: false

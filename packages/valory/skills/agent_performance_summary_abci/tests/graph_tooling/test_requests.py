@@ -1226,6 +1226,21 @@ class TestFetchOlasInUsdPrice:
         next(gen)
         assert b._fetch_status == FetchStatus.IN_PROGRESS
 
+    def test_binary_garbage_body_returns_none(self) -> None:
+        """Binary garbage body is caught and returns None."""
+        b = _make_behaviour()
+
+        mock_response = MagicMock()
+        # Binary garbage that fails UTF-8 decode
+        mock_response.body = b"\x80\x81\x82\xff\xfe"
+        b.get_http_response = _return_gen(mock_response)  # type: ignore[method-assign]
+
+        gen = b._fetch_olas_in_usd_price()
+        result = _exhaust(gen)  # type: ignore[arg-type]
+
+        assert result is None
+        b.context.logger.error.assert_called_once()
+
 
 # ---------------------------------------------------------------------------
 # _fetch_daily_profit_statistics tests  # type: ignore[no-untyped-def]

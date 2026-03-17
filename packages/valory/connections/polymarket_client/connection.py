@@ -199,7 +199,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         # Initialize Web3 for approval checking
         rpc_url = self.configuration.config.get("polygon_ledger_rpc")
-        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
     # TODO:
@@ -249,9 +249,17 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
             return
 
-        payload, error_message = self._route_request(
-            payload=json.loads(srr_message.payload),
-        )
+        try:
+            decoded_payload = json.loads(srr_message.payload)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Failed to decode SRR payload: {e}")
+            decoded_payload = {}
+            payload = None
+            error_message = f"Invalid JSON payload: {e}"
+        else:
+            payload, error_message = self._route_request(
+                payload=decoded_payload,
+            )
 
         response_message = cast(
             SrrMessage,
@@ -441,7 +449,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
                 response.raise_for_status()
                 return response.json(), None
-            except requests.exceptions.RequestException as e:
+            except (requests.exceptions.RequestException, ValueError) as e:
                 last_error = str(e)
                 if attempt < max_retries - 1:
                     self.logger.warning(
@@ -708,7 +716,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.info(f"Fetched market with slug: {slug}")
             return market, None
 
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, ValueError) as e:
             error_msg = f"Error fetching market by slug '{slug}': {str(e)}"
             self.logger.error(error_msg)
             return None, error_msg

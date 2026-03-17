@@ -199,7 +199,17 @@ class HttpHandler(BaseHttpHandler):
         """
         self.context.logger.info("Handling chatui prompt")
         # Parse incoming data
-        data = json.loads(http_msg.body.decode("utf-8"))
+        try:
+            data = json.loads(http_msg.body.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            self.context.logger.error(f"Invalid request body: {e}")
+            self._send_bad_request_response(
+                http_msg,
+                http_dialogue,
+                {"error": "Invalid JSON in request body."},
+                content_type=HttpContentType.JSON.header,
+            )
+            return
         user_prompt = data.get(PROMPT_FIELD, "")
 
         if not user_prompt:

@@ -938,3 +938,116 @@ class TestCleanUp:
         mock_net.reset_retries.assert_called_once()
         mock_realitio.reset_retries.assert_called_once()
         mock_trades.reset_retries.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# BUG 2: fetch_claim_params malformed answer data
+# ---------------------------------------------------------------------------
+
+
+class TestFetchClaimParamsMalformedData:
+    """Test that malformed answer data returns None instead of crashing."""
+
+    def test_missing_answer_key_returns_none(self) -> None:
+        """Answer missing required keys returns None."""
+        b = _make_behaviour()
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.realitio_subgraph = mock_sg
+
+        # Answer missing "answer" key
+        raw_answers = [{"question": {}, "bondAggregate": "1000", "timestamp": "100"}]
+        mock_sg.process_response.return_value = raw_answers
+
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+
+        gen = b.fetch_claim_params(question_id="0xquestion123")
+        result = _exhaust(gen)
+
+        assert result is None
+        b.context.logger.error.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# BUG 3: Batched trade fetching malformed pagination keys
+# ---------------------------------------------------------------------------
+
+
+class TestFetchRedeemInfoMalformedPagination:
+    """Test that malformed trade data returns partial results."""
+
+    def _setup_behaviour(self) -> Any:
+        """Create a behaviour wired for redeem-info tests.
+
+        :return: behaviour and mock subgraph tuple
+        """
+        b = _make_behaviour()
+        b._current_market = "omen_subgraph"
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.trades_subgraph = mock_sg
+
+        b.context.state.round_sequence.latest_synchronized_data.safe_contract_address = (
+            "0xSAFE"
+        )
+
+        return b, mock_sg
+
+    def test_missing_fpmm_key_returns_partial(self) -> None:
+        """Trade missing 'fpmm' key returns collected trades."""
+        b, mock_sg = self._setup_behaviour()
+        # Trade without "fpmm" key — will fail pagination extraction
+        batch = [{"id": "t1"}]
+
+        process_returns = iter([batch])
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        mock_sg.process_response.side_effect = lambda _: next(process_returns)
+
+        gen = b._fetch_redeem_info()
+        result = _exhaust(gen)
+
+        assert result == batch
+        b.context.logger.error.assert_called()
+
+
+class TestFetchTradesMalformedPagination:
+    """Test that malformed trade data returns partial results."""
+
+    def _setup_behaviour(self) -> Any:
+        """Create a behaviour wired for trades tests.
+
+        :return: behaviour and mock subgraph tuple
+        """
+        b = _make_behaviour()
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.trades_subgraph = mock_sg
+
+        return b, mock_sg
+
+    def test_missing_creation_timestamp_returns_partial(self) -> None:
+        """Trade missing 'creationTimestamp' returns collected trades."""
+        b, mock_sg = self._setup_behaviour()
+        # Trade without "creationTimestamp" key
+        batch = [{"id": "t1"}]
+
+        process_returns = iter([batch])
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        mock_sg.process_response.side_effect = lambda _: next(process_returns)
+
+        gen = b.fetch_trades(
+            creator="0xCreator", from_timestamp=0.0, to_timestamp=9999999.0
+        )
+        result = _exhaust(gen)
+
+        assert result == batch
+        b.context.logger.error.assert_called()

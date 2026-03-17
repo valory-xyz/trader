@@ -241,7 +241,14 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             # this is the last trade's creation timestamp
             # they are sorted by creation timestamp in ascending order
             # so we can use this to fetch the next batch
-            creation_timestamp_gt = trades_chunk[-1]["fpmm"]["creationTimestamp"]
+            try:
+                creation_timestamp_gt = trades_chunk[-1]["fpmm"]["creationTimestamp"]
+            except (KeyError, TypeError) as e:
+                self.context.logger.error(
+                    f"Malformed trade data, missing pagination key: {e}"
+                )
+                all_trades.extend(trades_chunk)
+                return all_trades
             all_trades.extend(trades_chunk)
 
     def _fetch_block_number(
@@ -295,22 +302,30 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 f"Failing to get answers for question {question_id} from {current_subgraph.api_id}"
             )
             return None
-        answers = [
-            {
-                "args": {
-                    "answer": bytes.fromhex(answer["answer"][2:]),
-                    "question_id": bytes.fromhex(answer["question"]["questionId"][2:]),
-                    "history_hash": bytes.fromhex(
-                        answer["question"]["historyHash"][2:]
-                    ),
-                    "user": Web3.to_checksum_address(answer["question"]["user"]),
-                    "bond": int(answer["bondAggregate"]),
-                    "timestamp": int(answer["timestamp"]),
-                    "is_commitment": False,
+        try:
+            answers = [
+                {
+                    "args": {
+                        "answer": bytes.fromhex(answer["answer"][2:]),
+                        "question_id": bytes.fromhex(
+                            answer["question"]["questionId"][2:]
+                        ),
+                        "history_hash": bytes.fromhex(
+                            answer["question"]["historyHash"][2:]
+                        ),
+                        "user": Web3.to_checksum_address(answer["question"]["user"]),
+                        "bond": int(answer["bondAggregate"]),
+                        "timestamp": int(answer["timestamp"]),
+                        "is_commitment": False,
+                    }
                 }
-            }
-            for answer in raw_answers
-        ]
+                for answer in raw_answers
+            ]
+        except (KeyError, TypeError, ValueError) as e:
+            self.context.logger.error(
+                f"Malformed answer data from subgraph for question {question_id}: {e}"
+            )
+            return None
         return answers
 
     def fetch_trades(
@@ -360,7 +375,14 @@ class QueryingBehaviour(BaseBehaviour, ABC):
             # this is the last trade's creation timestamp
             # they are sorted by creation timestamp in ascending order
             # so we can use this to fetch the next batch
-            creation_timestamp_gt = trades_chunk[-1]["creationTimestamp"]
+            try:
+                creation_timestamp_gt = trades_chunk[-1]["creationTimestamp"]
+            except (KeyError, TypeError) as e:
+                self.context.logger.error(
+                    f"Malformed trade data, missing pagination key: {e}"
+                )
+                all_trades.extend(trades_chunk)
+                return all_trades
             all_trades.extend(trades_chunk)
 
     def fetch_user_positions(

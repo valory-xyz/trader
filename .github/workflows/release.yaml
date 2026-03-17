@@ -4,10 +4,13 @@ on:
   release:
     types: [prereleased, released]
 
+permissions:
+  contents: read
+
 jobs:
   publish-packages:
     name: Push Packages
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         os: [ubuntu-24.04]
@@ -17,10 +20,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-versions }}
-      - uses: maus007/docker-run-action-fork@v1
+      - uses: addnab/docker-run-action@v3
         with:
           image: valory/open-autonomy-user:0.21.13
           options: -v ${{ github.workspace }}:/work
+          shell: bash
           run: |
             echo "Pushing Packages"
             cd /work
@@ -28,34 +32,36 @@ jobs:
             autonomy init --reset --author $AUTHOR --ipfs --remote
             autonomy push-all
   publish-images:
-    name: Publish Docker Images
-    runs-on: ${{ matrix.os }}
+    name: Publish Docker Images (amd64)
+    runs-on: ubuntu-24.04
     needs:
       - "publish-packages"
-    strategy:
-      matrix:
-        os: [ubuntu-24.04]
-        python-version: ["3.10"]
     env:
       DOCKER_USER: ${{secrets.DOCKER_USER}}
       DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
       - uses: actions/checkout@v6
-      - uses: docker/setup-qemu-action@v3
+        with:
+          fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - name: Set up tag and vars
-        uses: maus007/docker-run-action-fork@v1
+        uses: addnab/docker-run-action@v3
         with:
           image: valory/open-autonomy-user:0.21.13
           options: -v ${{ github.workspace }}:/work
+          shell: bash
           run: |
             echo "Setting Tag Images"
             cd /work
             apt-get update && apt-get install git -y || exit 1
             git config --global --add safe.directory /work
-            head=$(git rev-parse HEAD)
-            TAG=$(git describe --exact-match --tags "$head")
-            export TAG=$(echo "$TAG" | sed 's/^v//')
+            export TAG=$(git describe --exact-match --tags $(git rev-parse HEAD)) || exit 1
+            if [ $? -eq 0 ]; then
+                export TAG=`echo $TAG | sed 's/^v//'`
+            else
+                echo "You are not on a tagged branch"
+                exit 1
+            fi
             echo VERSION=$TAG > env.sh
             echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
             echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
@@ -63,84 +69,125 @@ jobs:
             echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
             cat env.sh
 
-      - uses: maus007/docker-run-action-fork@v1
+      - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
           image: valory/open-autonomy-user:0.21.13
           options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
           shell: bash
           run: |
-            echo "Building and Pushing Docker Images"
+            echo "Building Docker Images"
             cd /work
             source env.sh || exit 1
-            echo "Pinning click temporarily as a workaround to address a breaking change in its defaults, \
-            which is introduced due to a too wide range of click used in open-autonomy"
-            pip install click==8.2.0
             echo "Building images for $AUTHOR for service $SERVICE"
             autonomy init --reset --author $AUTHOR --ipfs --remote
             autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
             cd $SERVICE || exit 1
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
             docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-            autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.13 --push || exit 1
-            autonomy build-image --builder multiarch-builder --platform linux/amd64,linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.13 --version $VERSION --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/amd64 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.13 --version $VERSION-amd64 --push || exit 1
 
-  deploy-service-on-propel:
-    name: Deploy service on propel
-    environment: ${{ github.event.action == 'released' && 'production' || 'staging' }}
+  publish-images-arm:
+    name: Publish Docker Images (arm64 + arm/v7)
+    runs-on: ubuntu-24.04-arm
     needs:
       - "publish-packages"
-      - "publish-images"
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-24.04]
-        python-version: ["3.10"]
     env:
-      CMD: "propel -U ${{ vars.PROPEL_BASE_URL }}"
+      DOCKER_USER: ${{secrets.DOCKER_USER}}
+      DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-versions }}
-      - name: Install dependencies
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - name: Set up tag and vars
+        uses: addnab/docker-run-action@v3
+        with:
+          image: valory/open-autonomy-user:0.21.13
+          options: -v ${{ github.workspace }}:/work
+          shell: bash
+          run: |
+            echo "Setting Tag Images"
+            cd /work
+            apt-get update && apt-get install git -y || exit 1
+            git config --global --add safe.directory /work
+            export TAG=$(git describe --exact-match --tags $(git rev-parse HEAD)) || exit 1
+            if [ $? -eq 0 ]; then
+                export TAG=`echo $TAG | sed 's/^v//'`
+            else
+                echo "You are not on a tagged branch"
+                exit 1
+            fi
+            echo VERSION=$TAG > env.sh
+            echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
+            echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo AGENT=$(grep 'agent/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
+            cat env.sh
+
+      - uses: addnab/docker-run-action@v3
+        name: Build Images
+        with:
+          image: valory/open-autonomy-user:0.21.13
+          options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
+          shell: bash
+          run: |
+            echo "Building Docker Images"
+            cd /work
+            source env.sh || exit 1
+            echo "Building images for $AUTHOR for service $SERVICE"
+            autonomy init --reset --author $AUTHOR --ipfs --remote
+            autonomy fetch $AUTHOR/$SERVICE --service --local || exit 1
+            cd $SERVICE || exit 1
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
+            docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
+            autonomy build-image --builder multiarch-builder --platform linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt install -y libffi-dev libssl-dev && pip config set global.extra-index-url https://www.piwheels.org/simple" -e open-autonomy==0.21.13 --version $VERSION-arm --push || exit 1
+
+  merge-image-manifests:
+    name: Merge Multi-arch Image Manifests
+    runs-on: ubuntu-24.04
+    needs:
+      - "publish-images"
+      - "publish-images-arm"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up tag and vars
+        uses: addnab/docker-run-action@v3
+        with:
+          image: valory/open-autonomy-user:0.21.13
+          options: -v ${{ github.workspace }}:/work
+          shell: bash
+          run: |
+            echo "Setting Tag Images"
+            cd /work
+            apt-get update && apt-get install git -y || exit 1
+            git config --global --add safe.directory /work
+            export TAG=$(git describe --exact-match --tags $(git rev-parse HEAD)) || exit 1
+            if [ $? -eq 0 ]; then
+                export TAG=`echo $TAG | sed 's/^v//'`
+            else
+                echo "You are not on a tagged branch"
+                exit 1
+            fi
+            echo VERSION=$TAG > env.sh
+            echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
+            echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
+            cat env.sh
+
+      - name: Merge manifests
         run: |
-          sudo apt-get update --fix-missing
-          sudo apt-get autoremove
-          sudo apt-get autoclean
-          python -m pip install --upgrade pip
-          pip install propel-client open-autonomy
-
-      - name: Make use proxy instead of actual nlb by dns override
-        run: |
-          # for staging
-          export IP_ADDR=$(dig +short balancer.tcp.propel.staging.autonolas.tech)
-          echo -e "\n$IP_ADDR\tapp.propel.staging.valory.xyz\n"  | sudo tee -a /etc/hosts
-
-          # for prod
-          export IP_ADDR=$(dig +short balancer.tcp.propel.autonolas.tech)
-          echo -e "\n$IP_ADDR\tapp.propel.valory.xyz\n"  | sudo tee -a /etc/hosts
-
-      - name: Login to propel
-        run: |
-          $CMD login -u  '${{ vars.PROPEL_USERNAME }}' -p  '${{ secrets.PROPEL_PASSWORD }}'
-
-      - name: Do a deployment
-        run: |
-          # determine ipfs hash id
-          export IPFS_HASH=$(jq '.dev | to_entries[] | select(.key | startswith("service"))| .value' -r  ./packages/packages.json | head -n1)
-          export SERVICE_PATH=service_for_propel
-
-          # fetch service file and check it published
-          autonomy init --reset --author ci --ipfs --remote
-          autonomy fetch $IPFS_HASH --service --alias $SERVICE_PATH
-
-          # get env vars from github actions
-          echo '${{ toJSON(secrets) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' > github.vars
-          echo >> github.vars
-          echo '${{ toJSON(vars) }}' | jq -r 'to_entries|map("export \(.key)=\(.value|tojson)")|.[]' >> github.vars
-          source github.vars
-          $CMD service deploy --name  '${{ vars.SERVICE_NAME }}'  --service-dir $SERVICE_PATH --service-ipfs-hash $IPFS_HASH  --ingress-enabled true --keys '${{ vars.SERVICE_KEYS }}' --timeout 600
+          source env.sh || exit 1
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin || exit 1
+          docker buildx imagetools create \
+            $AUTHOR/oar-$SERVICE:$VERSION-amd64 \
+            $AUTHOR/oar-$SERVICE:$VERSION-arm \
+            --tag $AUTHOR/oar-$SERVICE:$VERSION || exit 1
+          docker buildx imagetools create \
+            $AUTHOR/oar-$SERVICE:$VERSION \
+            --tag $AUTHOR/oar-$SERVICE:$DEFAULT_IMAGE_TAG || exit 1
 
   build-agent-runner:
     needs:
@@ -316,6 +363,8 @@ jobs:
   upload-assets:
     needs: build-agent-runner
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       # MAC OS
       - name: Download artifacts

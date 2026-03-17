@@ -4344,3 +4344,62 @@ class TestIncrementalUpdateEdgeCases:
             )
         # The result should skip (unchanged)
         assert result is existing
+
+
+# ---------------------------------------------------------------------------
+# Resilience audit: BUG 27 -- KeyError on missing "date" in daily profit stats
+# ---------------------------------------------------------------------------
+
+
+class TestPerformInitialBackfillMissingDateKey:
+    """BUG 27: int(stat["date"]) crashes with KeyError when "date" is missing.
+
+    If the subgraph returns a stat object without a "date" key, KeyError
+    crashes the behaviour generator. No try-except catches it.
+    """
+
+    def _run_gen(self, gen: Generator) -> Any:
+        """Drive generator."""
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def test_missing_date_key_skipped_gracefully(self) -> None:
+        """A stat dict without "date" key is skipped gracefully."""
+        b = _make_fetch_behaviour(
+            _total_mech_requests=1,
+            _open_market_requests=0,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+
+        # Stat missing the "date" key
+        daily_stats = [
+            {
+                "dailyProfit": "1000000000000000000",
+                "profitParticipants": [],
+                # "date" key intentionally omitted
+            }
+        ]
+        mech_lookup = {"some_question": MagicMock(timestamp=1700000000, tx_hash="0x1")}
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
+            patch.object(
+                b, "_build_mech_request_lookup", side_effect=_return_gen(mech_lookup)
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(1)),
+        ):
+            # No crash -- the stat is skipped
+            result = self._run_gen(
+                b._perform_initial_backfill("0xaddr", 1700000000)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        assert result.data_points == []  # the bad stat was skipped
