@@ -664,8 +664,8 @@ class TestCalculateOmenAccuracy:
         result = b._calculate_omen_accuracy({"bets": bets})
         assert result == 0.0
 
-    def test_invalid_answer_hex_skipped(self) -> None:
-        """Bets with INVALID_ANSWER_HEX are skipped (not counted as wins)."""
+    def test_invalid_answer_hex_excluded_from_denominator(self) -> None:
+        """Bets with INVALID_ANSWER_HEX are excluded from both numerator and denominator."""
         b = self._make()
         bets = [
             {
@@ -678,11 +678,11 @@ class TestCalculateOmenAccuracy:
             },
         ]
         result = b._calculate_omen_accuracy({"bets": bets})
-        # 1 correct out of 2 total resolved bets = 50%
-        assert result == 50.0
+        # Invalid bet excluded: 1 correct out of 1 valid = 100%
+        assert result == 100.0
 
-    def test_bet_answer_none_skipped(self) -> None:
-        """Bets with None outcomeIndex are skipped."""
+    def test_bet_answer_none_excluded_from_denominator(self) -> None:
+        """Bets with None outcomeIndex are excluded from both numerator and denominator."""
         b = self._make()
         bets = [
             {
@@ -691,7 +691,53 @@ class TestCalculateOmenAccuracy:
             },
         ]
         result = b._calculate_omen_accuracy({"bets": bets})
-        assert result == 0.0
+        # No valid bets remain after filtering
+        assert result is None
+
+    def test_all_invalid_returns_none(self) -> None:
+        """Returns None when all resolved bets are invalid."""
+        b = self._make()
+        bets = [
+            {
+                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "outcomeIndex": "0",
+            },
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "outcomeIndex": None,
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result is None
+
+    def test_mixed_invalid_and_valid(self) -> None:
+        """Invalid bets don't dilute accuracy of valid bets."""
+        b = self._make()
+        bets = [
+            # Invalid market
+            {
+                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "outcomeIndex": "0",
+            },
+            # Missing outcomeIndex
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "outcomeIndex": None,
+            },
+            # Valid correct bet
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "outcomeIndex": "1",
+            },
+            # Valid wrong bet
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # 2 invalid excluded, 1 correct + 1 wrong = 50%
+        assert result == 50.0
 
     def test_mixed_results(self) -> None:
         """Returns correct percentage for mixed results."""
@@ -2424,6 +2470,45 @@ class TestCalculatePerformanceMetrics:
         assert result.roi is None
         assert result.available_funds is None
 
+    def test_zero_values_preserved_not_null(self) -> None:
+        """Zero profit/funds values must be 0.0, not None."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=0,
+            _open_market_requests=0,
+            _total_mech_requests=0,
+            _partial_roi=0.0,
+            _mech_request_lookup={},
+            _placed_titles=set(),
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        trader_agent = {
+            "totalTraded": "0",
+            "totalFees": "0",
+            "totalTradedSettled": "0",
+            "totalFeesSettled": "0",
+            "totalPayout": "0",
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
+            patch.object(b, "_fetch_available_funds", side_effect=_return_gen(0.0)),
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        # Zero is a valid value — must NOT become None
+        assert (
+            result.all_time_funds_used == 0.0
+        ), f"Expected 0.0, got {result.all_time_funds_used}"
+        assert (
+            result.all_time_profit == 0.0
+        ), f"Expected 0.0, got {result.all_time_profit}"
+        assert (
+            result.funds_locked_in_markets == 0.0
+        ), f"Expected 0.0, got {result.funds_locked_in_markets}"
+        assert (
+            result.available_funds == 0.0
+        ), f"Expected 0.0, got {result.available_funds}"
+
 
 # ---------------------------------------------------------------------------
 # Tests for _build_profit_over_time_data - routing logic
@@ -3694,6 +3779,88 @@ class TestBuildMultiBetAllocationsOmenBranch:
         # Q1 appears on 2 days => allocated. Q2 appears on only 1 day => not allocated.
         assert "Q1" in titles
         assert "Q2" not in titles
+
+
+class TestPolymarketIncrementalTitleExtraction:
+    """Tests for Polymarket title extraction in incremental updates."""  # type: ignore[no-untyped-def]
+
+    def _run_gen(self, gen: Generator) -> Any:
+        """Drive generator."""
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def _existing_data(self, ts: int = 1700000000) -> ProfitOverTimeData:
+        """Create existing profit data for tests."""
+        return ProfitOverTimeData(
+            last_updated=ts,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=2,
+                    daily_profit_raw=1.5,
+                )
+            ],
+            settled_mech_requests_count=2,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=2,
+            includes_unplaced_mech_fees=True,
+        )
+
+    def test_polymarket_titles_extracted_in_incremental_update(self) -> None:
+        """Polymarket incremental update must extract titles from metadata.title, not question."""
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        existing = self._existing_data(ts=1700000000)
+        new_ts = 1700000000 + SECONDS_PER_DAY
+        # Polymarket-shaped data: title is in metadata.title, not question
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(10**6),  # 1 USDC
+                "profitParticipants": [
+                    {"questionId": "0xabc", "metadata": {"title": "PM Question 1"}}
+                ],
+            }
+        ]
+        mech_requests = [{"parsedRequest": {"questionTitle": "PM Question 1"}}]
+        fetch_mech_called = False
+        original_fetch = _return_gen(mech_requests)
+
+        def track_fetch_mech(*args: Any, **kwargs: Any) -> Generator:
+            """Track whether _fetch_mech_requests_by_titles was called."""
+            nonlocal fetch_mech_called
+            fetch_mech_called = True
+            return original_fetch(*args, **kwargs)
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=track_fetch_mech,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        # If titles were correctly extracted, mech lookup should have been populated
+        assert (
+            fetch_mech_called
+        ), "Polymarket titles not extracted — _fetch_mech_requests_by_titles was never called"
+        assert result is not None
+        assert result.total_days == 2
 
 
 class TestPerformIncrementalUpdateCoverageBranches:

@@ -69,7 +69,7 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     UpdateAchievementsRound,
 )
 
-DEFAULT_MECH_FEE = 1e16  # 0.01 ETH
+DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
@@ -421,7 +421,7 @@ class FetchPerformanceSummaryBehaviour(
         )
 
         # Convert mech costs from wei to native token, then treat as USD
-        # (For Gnosis: xDAI ≈ USD, for Polygon: POL ≈ USD approximation)
+        # Fixed 0.01 fee per request (DEFAULT_MECH_FEE is scaled to 18 decimals)
         settled_mech_costs_raw = settled_mech_requests * DEFAULT_MECH_FEE
         settled_mech_costs_usd = settled_mech_costs_raw / WEI_IN_ETH
 
@@ -519,19 +519,24 @@ class FetchPerformanceSummaryBehaviour(
             for bet in bets
             if bet.get("fixedProductMarketMaker", {}).get("currentAnswer") is not None
         ]
-        total_bets = len(bets_on_resolved_markets)
-        won_bets = 0
 
-        if total_bets == 0:
+        if not bets_on_resolved_markets:
             return None
+
+        won_bets = 0
+        total_bets = 0
 
         for bet in bets_on_resolved_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
             if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
                 continue
+            total_bets += 1
             if int(market_answer, 0) == int(bet_answer):
                 won_bets += 1
+
+        if total_bets == 0:
+            return None
 
         win_rate = (won_bets / total_bets) * PERCENTAGE_FACTOR
         return win_rate
@@ -704,13 +709,21 @@ class FetchPerformanceSummaryBehaviour(
 
         return PerformanceMetricsData(
             all_time_funds_used=(
-                round(all_time_funds_used, 2) if all_time_funds_used else None
+                round(all_time_funds_used, 2)
+                if all_time_funds_used is not None
+                else None
             ),
-            all_time_profit=round(all_time_profit, 2) if all_time_profit else None,
+            all_time_profit=(
+                round(all_time_profit, 2) if all_time_profit is not None else None
+            ),
             funds_locked_in_markets=(
-                round(funds_locked_in_markets, 2) if funds_locked_in_markets else None
+                round(funds_locked_in_markets, 2)
+                if funds_locked_in_markets is not None
+                else None
             ),
-            available_funds=round(available_funds, 2) if available_funds else None,
+            available_funds=(
+                round(available_funds, 2) if available_funds is not None else None
+            ),
             roi=roi_decimal,
             # Settled mech requests cover placed + unplaced, excluding open markets.
             settled_mech_request_count=self._settled_mech_requests_count,
@@ -993,7 +1006,7 @@ class FetchPerformanceSummaryBehaviour(
                 # Use cached lookup instead of querying
                 mech_fee_count += mech_request_lookup.get(title, 0)
 
-        # Calculate fees: 0.01 xDAI per request
+        # Calculate fees: 0.01 per request (DEFAULT_MECH_FEE / WEI_IN_ETH)
         total_mech_fees = mech_fee_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
 
         return total_mech_fees, mech_fee_count
@@ -1465,8 +1478,12 @@ class FetchPerformanceSummaryBehaviour(
         new_question_titles = set()
         for stat in filtered_daily_stats:
             for participant in stat.get("profitParticipants", []):
-                question = participant.get("question", "")
-                title = self._extract_omen_question_title(question)
+                if self.params.is_running_on_polymarket:
+                    metadata = participant.get("metadata", {})
+                    title = metadata.get("title", "") if metadata else ""
+                else:
+                    question = participant.get("question", "")
+                    title = self._extract_omen_question_title(question)
                 if title:
                     new_question_titles.add(title)
 

@@ -69,7 +69,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 
 # Constants
-DEFAULT_MECH_FEE = 10000000000000000  # 0.01 xDAI in wei (1e16)
+DEFAULT_MECH_FEE = 10000000000000000  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
 WEI_TO_NATIVE = 10**18
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
