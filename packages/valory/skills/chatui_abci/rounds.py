@@ -51,7 +51,7 @@ class SynchronizedData(BaseSynchronizedData):
 
 
 class Event(Enum):
-    """Event enumeration for the check stop trading skill."""
+    """Event enumeration for the chat UI skill."""
 
     DONE = "done"
     NONE = "none"
