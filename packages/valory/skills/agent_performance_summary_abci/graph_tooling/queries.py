@@ -385,6 +385,11 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
                   totalTraded
                   totalPayout
                   totalFees
+                  bets(first: 1000) {
+                    id
+                    amount
+                    outcomeIndex
+                  }
                 }
               }
             }

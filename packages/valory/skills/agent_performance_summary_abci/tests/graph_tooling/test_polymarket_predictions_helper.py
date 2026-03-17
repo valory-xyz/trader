@@ -83,6 +83,7 @@ def _make_fetcher() -> PolymarketPredictionsFetcher:  # type: ignore[no-untyped-
 def _make_polymarket_bet(  # type: ignore[no-untyped-def]
     bet_id: str = "bet_1",
     amount: str = str(1 * USDC_DECIMALS_DIVISOR),  # noqa: B008
+    shares: str = "0",
     outcome_index: int = 0,
     block_timestamp: int = 1700000000,
     question_id: str = "q_1",
@@ -100,6 +101,7 @@ def _make_polymarket_bet(  # type: ignore[no-untyped-def]
     bet = {
         "id": bet_id,
         "amount": amount,
+        "shares": shares,
         "outcomeIndex": outcome_index,
         "blockTimestamp": block_timestamp,
         "transactionHash": transaction_hash,
@@ -492,12 +494,13 @@ class TestCalculateBetProfit:
             resolution={"winningIndex": 0, "blockTimestamp": 1700001000},  # type: ignore[arg-type]
             outcome_index=0,
             amount=str(USDC_DECIMALS_DIVISOR),
+            shares=str(2 * USDC_DECIMALS_DIVISOR),
             total_payout=str(2 * USDC_DECIMALS_DIVISOR),  # type: ignore[arg-type]
         )
 
         result = fetcher._calculate_bet_profit(bet)
 
-        # profit = 2.0 - 1.0 = 1.0
+        # profit = shares(2.0) - amount(1.0) = 1.0
         assert result == 1.0
 
     def test_winning_bet_not_redeemed(self) -> None:
@@ -540,17 +543,18 @@ class TestCalculateBetProfit:
         assert result == -0.5
 
     def test_fallback_with_payout(self) -> None:
-        """Test fallback logic when outcomeIndex is None."""
+        """Test fallback logic when outcomeIndex is None but shares > 0."""
         fetcher = _make_fetcher()
         bet = _make_polymarket_bet(
             resolution={"winningIndex": None, "blockTimestamp": 1700001000},  # type: ignore[arg-type]
+            shares=str(2 * USDC_DECIMALS_DIVISOR),
             total_payout=str(2 * USDC_DECIMALS_DIVISOR),  # type: ignore[arg-type]
         )
         bet["outcomeIndex"] = None
 
         result = fetcher._calculate_bet_profit(bet)
 
-        # Fallback: total_payout > 0 -> profit = 2.0 - 1.0 = 1.0
+        # Fallback: shares > 0 -> profit = shares(2.0) - amount(1.0) = 1.0
         assert result == 1.0
 
     def test_fallback_without_payout(self) -> None:
@@ -1473,6 +1477,7 @@ class TestFetchBetFromSubgraph:
                 "marketParticipants": [
                     {
                         "totalPayout": str(int(0.5 * USDC_DECIMALS_DIVISOR)),
+                        "totalTraded": str(USDC_DECIMALS_DIVISOR),
                         "bets": [
                             _make_polymarket_bet(
                                 bet_id="bet_1",
@@ -1491,7 +1496,7 @@ class TestFetchBetFromSubgraph:
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is not None
-        # net_profit = 0.5 - 1.0 = -0.5
+        # pro-rated: bet_payout = 0.5 * (1.0 / 1.0) = 0.5, net = 0.5 - 1.0 = -0.5
         assert result["net_profit"] == -0.5
 
     @patch(
@@ -1512,8 +1517,9 @@ class TestFetchBetFromSubgraph:
                             _make_polymarket_bet(
                                 bet_id="bet_1",
                                 outcome_index=0,
+                                shares=str(2 * USDC_DECIMALS_DIVISOR),
                                 resolution={  # type: ignore[arg-type]
-                                    "winningIndex": 0,
+                                    "winningIndex": "0",
                                     "blockTimestamp": 1700001000,
                                 },
                             ),
@@ -1527,7 +1533,7 @@ class TestFetchBetFromSubgraph:
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is not None
-        # net_profit = 2.0 - 1.0 = 1.0
+        # net_profit = shares(2.0) - amount(1.0) = 1.0
         assert result["net_profit"] == 1.0
 
     @patch(

@@ -531,8 +531,18 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 return None
             fpmm = bet.get("fixedProductMarketMaker") or {}
 
-            # Build per-market context from the returned bets (one item per bet)
-            market_ctx_dict = self._build_market_context(bets)
+            # Build per-market context from ALL bets on this market (via participant.bets)
+            # so that winning_total_amount is computed correctly for proportional payout
+            participant_data = (fpmm.get("participants") or [{}])[0]
+            all_market_bets = participant_data.get("bets", [])
+            if all_market_bets:
+                all_bets_with_fpmm = [
+                    {**b, "fixedProductMarketMaker": fpmm} for b in all_market_bets
+                ]
+            else:
+                # Fallback: use just the single bet (old behavior)
+                all_bets_with_fpmm = bets
+            market_ctx_dict = self._build_market_context(all_bets_with_fpmm)
             fpmm_id = fpmm.get("id")
             market_ctx = (
                 market_ctx_dict.get(str(fpmm_id), {}) if fpmm_id is not None else {}

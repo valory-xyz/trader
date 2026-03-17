@@ -194,7 +194,9 @@ class PolymarketPredictionsFetcher(
         # Get timestamps
         bet_timestamp = bet.get("blockTimestamp")
         resolution_timestamp = resolution.get("blockTimestamp") if resolution else None
-        total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
+        # Per-bet payout: shares for winning bets, 0 otherwise
+        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
+        total_payout = bet_shares if prediction_status == BetStatus.WON.value else 0.0
         return {
             "id": bet_id,
             "market": {
@@ -221,7 +223,15 @@ class PolymarketPredictionsFetcher(
         }
 
     def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
-        """Calculate profit for a single Polymarket bet."""
+        """Calculate profit for a single Polymarket bet.
+
+        Uses per-bet shares (not participant-level totalPayout) for accurate
+        multi-bet payout attribution. On Polymarket, a winning bet's payout
+        equals its shares value.
+
+        :param bet: The bet dict (must include shares, amount, question with resolution)
+        :return: Net profit or None
+        """
         question = bet.get("question") or {}
         resolution = question.get("resolution")
 
@@ -229,40 +239,32 @@ class PolymarketPredictionsFetcher(
         if not resolution:
             return 0.0
 
-        # Get bet amount
         bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-
-        # Get total payout for this bet
-        total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
+        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
 
         winning_index = resolution.get("winningIndex")
-        # Invalid market: winningIndex < 0 (e.g. cancelled). Net profit = totalPayout - bet amount.
+        # Invalid market: winningIndex < 0 (e.g. cancelled).
+        # Use participant-level totalPayout pro-rated by bet amount.
         if winning_index is not None and int(winning_index) < 0:
+            total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
             return total_payout - bet_amount
 
-        # Check if bet won by comparing outcomeIndex with winningIndex
         outcome_index = bet.get("outcomeIndex")
 
-        # If we can determine win/loss from indices
         if outcome_index is not None and winning_index is not None:
             if int(outcome_index) == int(winning_index):
-                # Winning bet
-                if total_payout > 0:
-                    # Redeemed - calculate actual profit
-                    return total_payout - bet_amount
+                # Winning bet — payout = shares
+                if bet_shares > 0:
+                    return bet_shares - bet_amount
                 else:
-                    # Won but not redeemed yet - return 0 (pending)
+                    # Won but not redeemed yet
                     return 0.0
             else:
-                # Losing bet
                 return -bet_amount
         else:
-            # Fallback: use totalPayout to determine
-            # If totalPayout > 0, the bet was won and redeemed
-            # If totalPayout == 0, could be lost OR won but not redeemed
-            # In this case, we can't distinguish, so treat as loss
-            if total_payout > 0:
-                return total_payout - bet_amount
+            # Fallback: use shares to determine
+            if bet_shares > 0:
+                return bet_shares - bet_amount
             else:
                 return -bet_amount
 
@@ -528,28 +530,42 @@ class PolymarketPredictionsFetcher(
                         metadata = question.get("metadata", {})
                         resolution = question.get("resolution")
 
-                        # Calculate profit
                         bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-                        total_payout = (
-                            float(participant.get("totalPayout", 0))
-                            / USDC_DECIMALS_DIVISOR
-                        )
+                        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
 
-                        # Determine status and profit
+                        # Determine status (needs participant-level totalPayout for redemption check)
                         status = self._get_prediction_status(
                             {**bet, "totalPayout": participant.get("totalPayout", 0)}
                         )
 
-                        # Calculate net profit
+                        # Calculate per-bet payout and net profit using shares
                         if not resolution:
+                            bet_payout = 0.0
                             net_profit = 0.0
                         else:
                             winning_index = resolution.get("winningIndex")
                             if winning_index is not None and int(winning_index) < 0:
-                                net_profit = total_payout - bet_amount
-                            elif bet.get("outcomeIndex") == winning_index:
-                                net_profit = total_payout - bet_amount
+                                # Invalid market — pro-rate refund
+                                total_traded_p = (
+                                    float(participant.get("totalTraded", 0))
+                                    / USDC_DECIMALS_DIVISOR
+                                )
+                                total_payout_p = (
+                                    float(participant.get("totalPayout", 0))
+                                    / USDC_DECIMALS_DIVISOR
+                                )
+                                bet_payout = (
+                                    total_payout_p * (bet_amount / total_traded_p)
+                                    if total_traded_p
+                                    else 0.0
+                                )
+                                net_profit = bet_payout - bet_amount
+                            elif str(bet.get("outcomeIndex")) == str(winning_index):
+                                # Winning bet — payout = shares
+                                bet_payout = bet_shares
+                                net_profit = bet_payout - bet_amount
                             else:
+                                bet_payout = 0.0
                                 net_profit = -bet_amount
 
                         # Get prediction side
@@ -570,7 +586,7 @@ class PolymarketPredictionsFetcher(
                             "bet_amount": round(bet_amount, 3),
                             "status": status,
                             "net_profit": round(net_profit, 3),
-                            "total_payout": round(total_payout, 3),
+                            "total_payout": round(bet_payout, 3),
                             "created_at": (
                                 self._format_timestamp(str(bet.get("blockTimestamp")))
                                 if bet.get("blockTimestamp")

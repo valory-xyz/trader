@@ -48,7 +48,7 @@ NOT FIX
 4. Prediction accuracy is materially distorted by known multi-bet behavior because it is computed per bet, not per market. Both Omen and Polymarket calculate accuracy as a simple win rate over individual bets, so markets with multiple bets are counted multiple times. Since agents are known to place multiple bets on the same market, the displayed "Prediction accuracy" can overweight a small number of repeatedly traded markets and diverge substantially from true market-level forecasting accuracy. This makes the metric misleading as an indicator of predictive quality.
    Code: [behaviours.py\#L493-L576](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/behaviours.py#L493-L576)
 
-   **Status: DEFERRED (Phase 2)** — multi-bet structural fix, deduplicate bets by market ID.
+   **Status: WON'T FIX** — all bets, even on the same market, are independent decisions. Per-bet accuracy is the correct metric since each bet represents a separate prediction the agent chose to make. Deduplicating by market would discard real signal.
 
 5. It is worth mentioning that gas fees are never accounted for in roi calculations.
 
@@ -94,7 +94,11 @@ Code: [handlers.py\#L424-L476](https://github.com/valory-xyz/trader/blob/a223e0e
 Omen: [predictions\_helper.py\#L373-L390](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/graph_tooling/predictions_helper.py#L373-L390)
 Polymarket: [polymarket\_predictions\_helper.py\#L474-L483](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/graph_tooling/polymarket_predictions_helper.py#L474-L483), [polymarket\_predictions\_helper.py\#L522-L588](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/graph_tooling/polymarket_predictions_helper.py#L522-L588), [polymarket\_predictions\_helper.py\#L675-L738](https://github.com/valory-xyz/trader/blob/a223e0e5/packages/valory/skills/agent_performance_summary_abci/graph_tooling/polymarket_predictions_helper.py#L675-L738)
 
-   **Status: DEFERRED (Phase 3)** — needs product input.
+   **Status: BUG (both platforms)** — The endpoint is designed to show details for a specific bet, but `total_payout` and `net_profit` are overstated in multi-bet scenarios on both platforms.
+
+   **Polymarket:** Uses `participant.totalPayout` (aggregating ALL bets on the market) directly as the single bet's payout. Confirmed with real data: a 9-bet participant ($20.72 traded, $25.97 total payout) reports net_profit=$23.47 for a single $2.50 bet instead of the correct ~$0.63 (37x overstatement).
+
+   **Omen:** The proportional formula `payout_share = total_payout * (bet_amount / winning_total)` is correct in the **prediction history** path (where `_build_market_context` sees all bets). But in `fetch_position_details`, `GET_SPECIFIC_MARKET_BETS_QUERY` filters to 1 bet via `where: { id: $betId }`, so `winning_total = bet_amount` and the proportion collapses to 1.0, returning the full participant-level payout. Confirmed with real data: a 143-bet agent (0.025 xDAI each, 1.225 xDAI total payout) would report net_profit=1.20 for a single 0.025 bet instead of the correct -0.016.
 
 3. Multi-bet mech reconciliation uses heuristic equal distribution across days.
    For repeated titles across multiple days, mech requests are evenly split across those days. For known multi-bet markets, this is only a heuristic and may materially misstate day-level fee attribution when requests cluster around specific bet placements. This weakens the reliability of profit-over-time and any day-based performance analysis.
@@ -147,21 +151,23 @@ The implementation uses two different notions of "settled mech requests":
 | H-7: Polymarket incremental titles | High | FIXED |
 | L-1: Misleading mech-fee comments | Low | FIXED |
 
-**Remaining (Phase 2 — multi-bet structural)**
+**Phase 2 (FIXED — timestamp-based mech-to-bet attribution)**
 
 | Issue | Severity | Status |
 |-------|----------|--------|
-| H-3: Mech attribution by title | High | DEFERRED |
-| H-4: Per-bet accuracy | High | DEFERRED |
-| M-3: Heuristic day distribution | Medium | DEFERRED |
-| M-5: Settled mech mismatch rebuilds | Medium | DEFERRED |
+| H-3: Mech attribution by title | High | FIXED |
+| M-3: Heuristic day distribution | Medium | FIXED |
+| M-5: Settled mech mismatch rebuilds | Medium | FIXED |
+
+Replaced heuristic even-distribution with deterministic 1:1 timestamp matching. Each mech request is assigned to its actual bet day via greedy chronological consumption of `blockTimestamp`. Unplaced requests land on the day the mech call was made. The settled count is now deterministic, eliminating spurious mismatch rebuilds.
+
+Future improvement (not in scope): `feeUSD` / `finalFeeUSD` fields exist on both subgraphs and could replace the hardcoded fee constant with actual per-request fees. However, these fields are **null for historical requests** (pre-2024 on Gnosis), so a fallback to `DEFAULT_MECH_FEE` would still be needed. Consider adopting once historical data is no longer relevant or if the subgraph backfills old records.
 
 **Remaining (Phase 3 — API/UX, needs product input)**
 
 | Issue | Severity | Status |
 |-------|----------|--------|
 | H-8: Window/currency ignored | High | DEFERRED |
-| M-2: Single-bet position details | Medium | DEFERRED |
 | M-6: Chart field naming | Medium | DEFERRED |
 
 **Not fixing**
@@ -170,5 +176,7 @@ The implementation uses two different notions of "settled mech requests":
 |-------|----------|--------|
 | H-1: Staging subgraph | High | Blocked on subgraph audit |
 | H-2: ROI excludes staked principal | High | Design choice |
+| H-4: Per-bet accuracy | High | By design — bets are independent decisions |
 | H-5: Gas fees not in ROI | High | Design choice |
 | H-6: Backfill aborts on empty mech | High | Needs team discussion |
+| M-2: Single-bet position details | Medium | Bug on both platforms — participant-level totalPayout attributed to single bet |
