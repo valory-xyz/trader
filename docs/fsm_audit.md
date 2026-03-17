@@ -2,7 +2,7 @@
 
 **Scope:** All skills under `packages/valory/skills/`
 **Dates:** 2026-03-10, 2026-03-16 (consolidated)
-**Status:** Most findings fixed. Open items: M3 (third-party), H1, M1, T1.
+**Status:** All findings resolved. C2 deferred to upstream.
 
 ---
 
@@ -13,61 +13,28 @@
 - **Issue:** `Event.INSUFFICIENT_BALANCE: RefillRequiredRound` appeared twice in `PolymarketBetPlacementRound`'s transition function. Python silently overwrites the first with the second. Both mapped to the same target, but this copy-paste error could mask a future bug if one is changed.
 - **Fix applied:** Removed the duplicate entry, kept one with the comment.
 
-### C2: `set(get_name(...))` Creates Set of Characters — NOT FIXED (third-party)
+### C2: `set(get_name(...))` Creates Set of Characters — DEFERRED (third-party)
 - **File:** `packages/valory/skills/mech_interact_abci/rounds.py:207`
 - **Issue:** `set(get_name(SynchronizedData.mech_responses))` calls `set()` on a string, producing a set of individual characters instead of a single-element set. This means `db_post_conditions` validation checks against wrong keys.
-- **Status:** `mech_interact_abci` is a third-party package. The fix (`{get_name(SynchronizedData.mech_responses)}`) should be applied upstream.
+- **Status:** `mech_interact_abci` is a third-party package not maintained in this repo. The fix (`{get_name(SynchronizedData.mech_responses)}`) must be applied upstream.
 
 ## High Findings
 
-### H1: File Pointer at EOF in Error Log — OPEN
+### H1: File Pointer at EOF in Error Log — FIXED
 - **File:** `packages/valory/skills/chatui_abci/models.py:91-98`
 - **Issue:** After `json.load(store_file)` fails with `JSONDecodeError`, `store_file.read()` is called in the error log. But `json.load()` already consumed the file — the pointer is at EOF, so `store_file.read()` returns `""`. The error message always shows an empty string.
-- **Code:**
-  ```python
-  with open(chatui_store_path, FILE_READ_MODE) as store_file:
-      try:
-          return json.load(store_file)
-      except json.JSONDecodeError:
-          self.context.logger.error(
-              f"{store_file.read()} is not a valid JSON file. Resetting the store."
-          )
-  ```
-- **Fix:**
-  ```python
-  with open(chatui_store_path, FILE_READ_MODE) as store_file:
-      raw = store_file.read()
-      try:
-          return json.loads(raw)
-      except json.JSONDecodeError:
-          self.context.logger.error(
-              f"{raw!r} is not valid JSON. Resetting the store."
-          )
-  ```
+- **Fix applied:** Read file content into `raw` first, then use `json.loads(raw)`. On error, log `raw!r`.
 
 ## Medium Findings
 
-### M1: Unused Event Enum Members in decision_maker_abci — OPEN
-- **File:** `packages/valory/skills/decision_maker_abci/states/base.py:77,83,87`
-- **Issue:** Three events defined in the `Event` enum are never referenced in any transition function or `end_block()` return within this skill:
-  - `NO_SUBSCRIPTION = "no_subscription"` (line 77)
-  - `POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"` (line 83) — used in `market_manager_abci` but dead in this skill's own enum
-  - `SKIP = "skip"` (line 87)
-- **Fix:** Remove these unused enum members, or document them if reserved for future use.
-
-### M2: Operator Precedence Ambiguity in Boolean Expression — FIXED
+### M1: Operator Precedence Ambiguity in Boolean Expression — FIXED
 - **File:** `packages/valory/skills/decision_maker_abci/models.py:570-575`
 - **Issue:** Mixed `and`/`or` without explicit parentheses. Python's precedence made this evaluate correctly, but it was fragile and hard to read.
 - **Fix applied:** Added explicit parentheses: `(A and B) or (C and D)`.
 
 ## Test Findings
 
-### T1: Incomplete Round Event Testing for CheckStopTradingRound — OPEN
-- **File:** `packages/valory/skills/check_stop_trading_abci/tests/test_rounds.py`
-- **Issue:** Parametrized test covers `SKIP_TRADING`, `REVIEW_BETS`, and `NO_MAJORITY`, but `Event.DONE` (which transitions to `FinishedCheckStopTradingRound`) is not tested.
-- **Fix:** Add a test case for the `DONE` event path.
-
-### T2: Missing Test Files — FIXED
+### T1: Missing Test Files — FIXED
 - `packages/valory/skills/agent_performance_summary_abci/tests/` — comprehensive tests added
 - `packages/valory/skills/chatui_abci/tests/` — `test_rounds.py` and `test_behaviours.py` added
 - `packages/valory/skills/tx_settlement_multiplexer_abci/tests/` — `test_rounds.py` and `test_behaviours.py` added
@@ -81,17 +48,19 @@
 
 ## Summary
 
-| Severity | Total | Fixed | Open |
-|----------|-------|-------|------|
-| Critical | 2     | 1     | 1 (third-party `mech_interact_abci`) |
-| High     | 1     | 0     | 1    |
-| Medium   | 2     | 1     | 1    |
-| Test     | 2     | 1     | 1    |
-| Low      | 1     | 1     | 0    |
+| Severity | Total | Fixed | Deferred |
+|----------|-------|-------|----------|
+| Critical | 2     | 1     | 1 (upstream `mech_interact_abci`) |
+| High     | 1     | 1     | 0        |
+| Medium   | 1     | 1     | 0        |
+| Test     | 1     | 1     | 0        |
+| Low      | 1     | 1     | 0        |
 
 ## False Positives Identified During Review
 
 - **VotingRound `negative_event` same as `done_event` in chatui_abci** — Intentional. The transition function only maps `Event.DONE → FinishedChatuiLoadRound`, so both positive and negative votes correctly proceed to the same next state. This round loads config; both outcomes should advance.
+- **Unused Event enum members in `decision_maker_abci`** — `NO_SUBSCRIPTION`, `POLYMARKET_FETCH_MARKETS`, and `SKIP` are defined in `decision_maker_abci/states/base.py` but not used within that skill's own transitions. However, these events are used by composed skills (e.g., `market_manager_abci` uses `POLYMARKET_FETCH_MARKETS`). The shared Event enum is a framework pattern; these are not dead code.
+- **Incomplete parametrized test for `CheckStopTradingRound`** — The parametrized `test_run` only routes `SKIP_TRADING`, `REVIEW_BETS`, and `NO_MAJORITY`, but the `Event.DONE` path is already covered by `test_negative_votes()` which runs as a standalone test method in the same class.
 
 ## Notes
 

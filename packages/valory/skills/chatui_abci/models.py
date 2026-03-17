@@ -89,11 +89,12 @@ class SharedState(BaseSharedState):
             )
             return {}
         with open(chatui_store_path, FILE_READ_MODE) as store_file:
+            raw = store_file.read()
             try:
-                return json.load(store_file)
+                return json.loads(raw)
             except json.JSONDecodeError:
                 self.context.logger.error(
-                    f"{store_file.read()} is not a valid JSON file. Resetting the store."
+                    f"{raw!r} is not valid JSON. Resetting the store."
                 )
             return {}
 
