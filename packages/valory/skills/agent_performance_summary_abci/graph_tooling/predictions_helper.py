@@ -184,20 +184,23 @@ class PredictionsFetcher(BasePredictionsFetcher):
             return None
 
     def fetch_mech_tool_for_question(
-        self, question_title: str, sender_address: str
+        self, question_title: str, sender_address: str, bet_timestamp: int = 0
     ) -> Optional[str]:
         """
         Fetch the prediction tool used for a specific question from the mech subgraph.
 
         :param question_title: The question title to search for
         :param sender_address: The sender address
+        :param bet_timestamp: Unix timestamp of the bet (0 = use current time)
         :return: The tool name or None if not found
         """
+        ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
         query_payload = {
             "query": GET_MECH_TOOL_FOR_QUESTION_QUERY,
             "variables": {
                 "sender": sender_address.lower(),
                 "questionTitle": question_title,
+                "blockTimestamp_lte": str(ts),
             },
         }
 
@@ -232,17 +235,25 @@ class PredictionsFetcher(BasePredictionsFetcher):
             return None
 
     def _fetch_prediction_response_from_mech(
-        self, question_title: str, sender_address: str
+        self, question_title: str, sender_address: str, bet_timestamp: int = 0
     ) -> Optional[Dict[str, Any]]:
-        """Fetch prediction response (p_yes, p_no, etc.) from mech subgraph"""
+        """Fetch prediction response (p_yes, p_no, etc.) from mech subgraph.
+
+        :param question_title: The question title to search for
+        :param sender_address: The sender address
+        :param bet_timestamp: Unix timestamp of the bet (0 = use current time)
+        :return: Parsed prediction response dict or None
+        """
         if not question_title:
             return None
 
+        ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
         query_payload = {
             "query": GET_MECH_RESPONSE_QUERY,
             "variables": {
                 "sender": sender_address.lower(),
                 "questionTitle": question_title,
+                "blockTimestamp_lte": str(ts),
             },
         }
 
@@ -326,6 +337,16 @@ class PredictionsFetcher(BasePredictionsFetcher):
             bet_market_url = bet.get("market", {}).get("external_url")
             market_info["external_url"] = bet_market_url
 
+            # Parse bet timestamp for mech query filtering
+            bet_timestamp = 0
+            created_at = bet.get("created_at", "")
+            if created_at:
+                try:
+                    dt = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ")
+                    bet_timestamp = int(dt.replace(tzinfo=timezone.utc).timestamp())
+                except ValueError:
+                    bet_timestamp = 0
+
             # Ensure prediction_response exists
             prediction_response = market_info.get("prediction_response")
             if not prediction_response:
@@ -335,6 +356,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 fetched_prediction_response = self._fetch_prediction_response_from_mech(
                     question_title,
                     safe_address,
+                    bet_timestamp=bet_timestamp,
                 )
                 if fetched_prediction_response:
                     prediction_response = fetched_prediction_response
@@ -369,7 +391,9 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
             # Get prediction tool from mech subgraph
             prediction_tool = self.fetch_mech_tool_for_question(
-                market_info.get("title", ""), safe_address
+                market_info.get("title", ""),
+                safe_address,
+                bet_timestamp=bet_timestamp,
             )
 
             # when creating prediction history, the agent assumes only one bet per market

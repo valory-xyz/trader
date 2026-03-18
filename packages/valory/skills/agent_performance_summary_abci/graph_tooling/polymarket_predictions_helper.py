@@ -328,20 +328,23 @@ class PolymarketPredictionsFetcher(
             return None
 
     def fetch_mech_tool_for_question(
-        self, question_title: str, sender_address: str
+        self, question_title: str, sender_address: str, bet_timestamp: int = 0
     ) -> Optional[str]:
         """
         Fetch the prediction tool used for a specific question from the polygon mech subgraph.
 
         :param question_title: The question title to search for
         :param sender_address: The sender address
+        :param bet_timestamp: Unix timestamp of the bet (0 = use current time)
         :return: The tool name or None if not found
         """
+        ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
         query_payload = {
             "query": GET_MECH_TOOL_FOR_QUESTION_QUERY,
             "variables": {
                 "sender": sender_address.lower(),
                 "questionTitle": question_title,
+                "blockTimestamp_lte": str(ts),
             },
         }
 
@@ -377,17 +380,25 @@ class PolymarketPredictionsFetcher(
             return None
 
     def _fetch_prediction_response_from_mech(
-        self, question_title: str, sender_address: str
+        self, question_title: str, sender_address: str, bet_timestamp: int = 0
     ) -> Optional[Dict[str, Any]]:
-        """Fetch prediction response (p_yes, p_no, etc.) from polygon mech subgraph"""
+        """Fetch prediction response (p_yes, p_no, etc.) from polygon mech subgraph.
+
+        :param question_title: The question title to search for
+        :param sender_address: The sender address
+        :param bet_timestamp: Unix timestamp of the bet (0 = use current time)
+        :return: Parsed prediction response dict or None
+        """
         if not question_title:
             return None
 
+        ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
         query_payload = {
             "query": GET_MECH_RESPONSE_QUERY,
             "variables": {
                 "sender": sender_address.lower(),
                 "questionTitle": question_title,
+                "blockTimestamp_lte": str(ts),
             },
         }
 
@@ -663,6 +674,16 @@ class PolymarketPredictionsFetcher(
             if not bet:
                 return None
 
+            # Parse bet timestamp for mech query filtering
+            bet_timestamp = 0
+            created_at = bet.get("created_at", "")
+            if created_at:
+                try:
+                    dt = datetime.strptime(created_at, ISO_TIMESTAMP_FORMAT)
+                    bet_timestamp = int(dt.replace(tzinfo=timezone.utc).timestamp())
+                except ValueError:
+                    bet_timestamp = 0
+
             # Load market metadata from multi_bets.json
             multi_bets_data = self._load_multi_bets_data(store_path)
             market_id = bet.get("market", {}).get("id", "")
@@ -682,7 +703,9 @@ class PolymarketPredictionsFetcher(
                 )
                 if question_title:
                     prediction_response = self._fetch_prediction_response_from_mech(
-                        question_title, safe_address
+                        question_title,
+                        safe_address,
+                        bet_timestamp=bet_timestamp,
                     )
                     if prediction_response:
                         market_info["prediction_response"] = prediction_response
@@ -726,7 +749,9 @@ class PolymarketPredictionsFetcher(
                 question_title = market_info.get("title", "")
                 if question_title:
                     prediction_tool = self.fetch_mech_tool_for_question(
-                        question_title, safe_address
+                        question_title,
+                        safe_address,
+                        bet_timestamp=bet_timestamp,
                     )
 
             # Format bet details

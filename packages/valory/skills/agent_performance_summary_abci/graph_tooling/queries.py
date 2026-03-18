@@ -263,11 +263,15 @@ query GetPolymarketTraderAgentDetails($id: ID!) {
 """
 
 GET_MECH_TOOL_FOR_QUESTION_QUERY = """
-query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
+query GetMechToolForQuestion($sender: String!, $questionTitle: String!, $blockTimestamp_lte: BigInt!) {
   sender(id: $sender) {
     requests(
-      where: { parsedRequest_: { questionTitle: $questionTitle } }
+      where: {
+        parsedRequest_: { questionTitle: $questionTitle },
+        blockTimestamp_lte: $blockTimestamp_lte
+      }
       first: 1
+      orderBy: blockTimestamp
       orderDirection: desc
     ) {
       parsedRequest {
@@ -347,17 +351,21 @@ query GetPolymarketTraderAgentBets($id: ID!) {
 """
 
 GET_MECH_RESPONSE_QUERY = """
-query GetMechResponse($sender: String!, $questionTitle: String!) {
+query GetMechResponse($sender: String!, $questionTitle: String!, $blockTimestamp_lte: BigInt!) {
   requests(
-    where: { sender: $sender, parsedRequest_: { questionTitle: $questionTitle } }
+    where: {
+      sender: $sender,
+      parsedRequest_: { questionTitle: $questionTitle },
+      blockTimestamp_lte: $blockTimestamp_lte
+    }
     first: 1
-    orderBy: requestId
+    orderBy: blockTimestamp
     orderDirection: desc
   ) {
     parsedRequest {
       questionTitle
     }
-    deliveries(first: 1, orderBy: deliveryId, orderDirection: desc) {
+    deliveries(first: 1) {
       toolResponse
       model
     }

@@ -944,6 +944,28 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_bet_timestamp_passed_in_query(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Test that blockTimestamp_lte is passed in query variables."""
+        fetcher = _make_fetcher()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "sender": {
+                    "requests": [{"parsedRequest": {"tool": "prediction-online"}}]
+                }
+            }
+        }
+        mock_post.return_value = mock_response
+
+        fetcher.fetch_mech_tool_for_question("Q?", "0xsender", bet_timestamp=1700000000)
+
+        call_payload = mock_post.call_args[1]["json"]
+        assert call_payload["variables"]["blockTimestamp_lte"] == "1700000000"
+
 
 # ---------------------------------------------------------------------------
 # _fetch_prediction_response_from_mech tests
@@ -1126,6 +1148,31 @@ class TestFetchPredictionResponseFromMech:
         result = fetcher._fetch_prediction_response_from_mech("Q?", "0xsender")
 
         assert result is None
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_bet_timestamp_passed_in_query(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Test that blockTimestamp_lte is passed in query variables."""
+        fetcher = _make_fetcher()
+        prediction_data = {"p_yes": 0.7, "p_no": 0.3, "confidence": 0.8}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "requests": [
+                    {"deliveries": [{"toolResponse": json.dumps(prediction_data)}]}
+                ]
+            }
+        }
+        mock_post.return_value = mock_response
+
+        fetcher._fetch_prediction_response_from_mech(
+            "Q?", "0xsender", bet_timestamp=1700000000
+        )
+
+        call_payload = mock_post.call_args[1]["json"]
+        assert call_payload["variables"]["blockTimestamp_lte"] == "1700000000"
 
 
 # ---------------------------------------------------------------------------
@@ -2458,6 +2505,57 @@ class TestFetchPositionDetails:
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
             assert result is not None
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.get"
+    )
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_invalid_created_at_falls_back(self, mock_post: MagicMock, mock_get: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Invalid created_at format does not crash, falls back to current time."""
+        fetcher = _make_fetcher()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "multi_bets.json"), "w") as f:
+                json.dump([], f)
+            perf_data = {
+                "prediction_history": {
+                    "items": [
+                        {
+                            "id": "bet_1",
+                            "market": {"id": "q_1", "title": "Q?"},
+                            "prediction_side": "yes",
+                            "bet_amount": 1.0,
+                            "net_profit": 0,
+                            "total_payout": 0,
+                            "status": "pending",
+                            "created_at": "not-a-valid-timestamp",
+                        }
+                    ]
+                }
+            }
+            with open(os.path.join(tmpdir, "agent_performance.json"), "w") as f:
+                json.dump(perf_data, f)
+
+            mock_response_post = MagicMock()
+            mock_response_post.status_code = 200
+            mock_response_post.json.return_value = {
+                "data": {
+                    "sender": {"requests": [{"parsedRequest": {"tool": "tool_1"}}]}
+                }
+            }
+            mock_post.return_value = mock_response_post
+
+            mock_response_get = MagicMock()
+            mock_response_get.json.return_value = {}
+            mock_response_get.raise_for_status.return_value = None
+            mock_get.return_value = mock_response_get
+
+            result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
+
+            assert result is not None
+            assert result["id"] == "bet_1"
 
 
 # ---------------------------------------------------------------------------
