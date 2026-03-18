@@ -609,7 +609,7 @@ def test_random_tool_falls_back_when_all_quarantined() -> None:
 
 
 def test_update_accuracy_store_pending_floor_at_zero() -> None:
-    """pending must never go below zero during update_accuracy_store."""
+    """Pending must never go below zero during update_accuracy_store."""
     policy = EGreedyPolicy(
         eps=0.1,
         consecutive_failures_threshold=2,
