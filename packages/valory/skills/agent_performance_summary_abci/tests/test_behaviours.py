@@ -1116,6 +1116,27 @@ class TestMatchMechRequestsToDays:
         assert placed == 0
         assert unplaced == 2
 
+    def test_bet_title_not_in_lookup(self) -> None:
+        """Bet with title missing from lookup is skipped (no match)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        day1 = SECONDS_PER_DAY * 100
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {"question": f"Unknown{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
+        ]
+        lookup = {"Q1": [day1 - 100]}  # different title
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 0
+        assert unplaced == 1  # Q1 request is unplaced
+
     def test_empty_inputs(self) -> None:
         """Empty stats and lookup returns zeros."""
         b = _make_fetch_behaviour()
@@ -2689,8 +2710,8 @@ class TestPerformInitialBackfill:
         assert result.total_days == 0
         assert result.data_points == []
 
-    def test_no_mech_requests(self) -> None:
-        """Returns empty ProfitOverTimeData when no mech requests."""
+    def test_no_mech_requests_returns_none(self) -> None:
+        """Returns None when mech lookup is empty so existing data is preserved."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
         daily_stats = [
@@ -2711,8 +2732,7 @@ class TestPerformInitialBackfill:
             patch.object(b, "_build_mech_request_lookup", side_effect=_return_gen({})),
         ):
             result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
-        assert result is not None
-        assert result.total_days == 0
+        assert result is None
 
     def test_successful_backfill_gnosis(self) -> None:
         """Builds data points correctly on Gnosis."""
@@ -3016,6 +3036,69 @@ class TestPerformIncrementalUpdate:
                 b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
             )
         # Result may or may not be the same object depending on whether values match
+        assert result is not None
+
+    def test_empty_mech_lookup_with_new_titles_returns_none(self) -> None:
+        """Returns None when new bets exist but mech data is unavailable."""
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=1700000000)
+        new_ts = 1700000000 + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen([]),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        assert result is None
+
+    def test_empty_mech_lookup_no_new_titles_proceeds(self) -> None:
+        """Proceeds normally when no new bet titles exist (no mech data needed)."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        current_ts = ts + 100  # same day
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        existing = self._existing_data(ts=ts)
+        # Same-day stat with no profitParticipants (no new question titles)
+        new_stats = [
+            {
+                "date": str(ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [],
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
 
 
@@ -4013,8 +4096,8 @@ class TestPerformIncrementalUpdateCoverageBranches:
         # Should still produce result (no question titles => no mech lookup)
         assert result is not None
 
-    def test_mech_lookup_with_empty_requests(self) -> None:
-        """Covers branch 1471->1468: empty new_mech_requests => empty loop."""
+    def test_mech_lookup_with_empty_requests_returns_none(self) -> None:
+        """Empty mech requests with new bet titles returns None to preserve existing data."""
         ts = 1700000000
         new_ts = ts + SECONDS_PER_DAY
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
@@ -4044,7 +4127,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
-        assert result is not None
+        assert result is None
 
     def test_replace_last_but_day_not_in_incoming(self) -> None:
         """Covers branch 1502->1505: replace_last True but last_dp_day not in incoming_days.

@@ -1220,14 +1220,10 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address
         )
         if not mech_request_lookup:
-            self.context.logger.warning("No mech requests found")
-            return ProfitOverTimeData(
-                last_updated=current_timestamp,
-                total_days=0,
-                data_points=[],
-                settled_mech_requests_count=0,
-                includes_unplaced_mech_fees=True,
+            self.context.logger.warning(
+                "No mech requests found — preserving existing profit data"
             )
+            return None
 
         # Collect placed titles for _calculate_performance_metrics
         placed_titles = self._collect_placed_titles(daily_stats)
@@ -1396,6 +1392,12 @@ class FetchPerformanceSummaryBehaviour(
         self.context.logger.info(
             f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
         )
+
+        if new_question_titles and not mech_request_lookup:
+            self.context.logger.warning(
+                "Mech data unavailable for new bets — preserving existing profit data"
+            )
+            return None
 
         # Timestamp-based mech-to-bet attribution for new stats
         fees_by_day, placed_delta, unplaced_delta = self._match_mech_requests_to_days(
