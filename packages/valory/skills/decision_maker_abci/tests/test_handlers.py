@@ -322,9 +322,7 @@ class TestHttpHandler:
             self.handler,
             "_get_handler",
             return_value=(handler_that_raises, {}),
-        ), patch.object(
-            BaseHttpHandler, "handle", return_value=None
-        ):
+        ), patch.object(BaseHttpHandler, "handle", return_value=None):
             self.handler.handle(self.message)
 
         # Verify error was logged

@@ -463,12 +463,8 @@ class TestBetPlacementBehaviour:
                             "params",
                             new_callable=PropertyMock,
                         ) as mock_params:
-                            mock_params.return_value = MagicMock(
-                                store_path=store_path
-                            )
-                            with patch(
-                                "builtins.open", mock_open()
-                            ) as mocked_file:
+                            mock_params.return_value = MagicMock(store_path=store_path)
+                            with patch("builtins.open", mock_open()) as mocked_file:
                                 gen = behaviour.async_act()
                                 try:
                                     while True:

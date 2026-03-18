@@ -69,7 +69,7 @@ fingerprint:
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
   tests/behaviours/test_base.py: bafybeifbxh5dh6whnyurlpf6tel7cmz6d2frnijdkey734fu7ilawqbh2i
-  tests/behaviours/test_bet_placement.py: bafybeifaee5bbg6mr4ae3kn7d2zm5keucujx2rowesc3xwvxx23kqw5wda
+  tests/behaviours/test_bet_placement.py: bafybeigntbxn6fjgkwo5nsi2pdem7hyrhvk4uscdoqiqutxvexzjfcmgva
   tests/behaviours/test_blacklisting.py: bafybeic2jcfxujhto6khwrobnfxx43wh42hx2fmn4xo2hxzlynmavqvbqa
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
   tests/behaviours/test_decision_receive.py: bafybeidovx2qnzzxxadw4mnwv7sprkkpfs6wnn7ylkrvwu4nxplg5phgly
@@ -106,7 +106,7 @@ fingerprint:
   tests/states/test_sell_tokens.py: bafybeicgtuqe5vpdw3yyujeumglpmmjinfc3lh2phzdfqu7ifvyku3vwpy
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
-  tests/test_handlers.py: bafybeiazyiaquzldflnw3o7ht3mvpkllrp2nvuq3mfkreqikynenoj2x5i
+  tests/test_handlers.py: bafybeihjeicfomjaugqrvtbanc5l2impicnk7en2lojuhnkl3lh4mmb3ay
   tests/test_models.py: bafybeiaipjpn3d2xl77hzal264hmgy2zj63kdj6ig2kozsxqpy6repmvdm
   tests/test_payloads.py: bafybeibazknxgyyqoh3f3iszr2qqdafgge4uasb3fyvngs3nos5u7ts6ca
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
