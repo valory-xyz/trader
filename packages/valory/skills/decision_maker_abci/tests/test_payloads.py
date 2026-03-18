@@ -134,6 +134,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "event": "bet_placement_done",
                 "cached_signed_orders": '{"tok1": "order1"}',
                 "utilized_tools": '{"cid1": "tool1"}',
+                "policy": None,
             },
         ),
         (

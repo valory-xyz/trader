@@ -230,6 +230,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            is_policy_set=False,
                         )
                         with patch.object(
                             type(behaviour),
@@ -365,6 +366,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            is_policy_set=False,
                         )
                         with patch.object(
                             type(behaviour),
@@ -656,6 +658,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            is_policy_set=False,
                         )
                         with patch.object(
                             type(behaviour),
@@ -745,6 +748,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders=cached_orders,
                             mech_tool="tool1",
+                            is_policy_set=False,
                         )
                         with patch.object(
                             type(behaviour),

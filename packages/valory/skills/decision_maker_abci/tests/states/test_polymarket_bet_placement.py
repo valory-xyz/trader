@@ -153,15 +153,16 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
         synced_data_mock.update.return_value = synced_data_mock
 
         # Payload tuple order matches dataclass field order (excluding sender).
-        # Post-fix fields: tx_submitter, tx_hash, mocking_mode, event, cached_signed_orders, utilized_tools
-        # The round must read event from [-3], cached_orders from [-2], utilized_tools from [-1].
+        # Fields: tx_submitter, tx_hash, mocking_mode, event, cached_signed_orders, utilized_tools, policy
+        # The round reads event from [-4], cached_orders from [-3], utilized_tools from [-2], policy from [-1].
         payload_values = (
             None,  # tx_submitter
             None,  # tx_hash
             False,  # mocking_mode
             Event.BET_PLACEMENT_DONE.value,  # event
             "{}",  # cached_signed_orders
-            UTILIZED_TOOLS_JSON,  # utilized_tools  ← new field
+            UTILIZED_TOOLS_JSON,  # utilized_tools
+            None,  # policy
         )
 
         with patch.object(
@@ -203,7 +204,7 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
         synced_data_mock = MagicMock(spec=SynchronizedData)
         synced_data_mock.update.return_value = synced_data_mock
 
-        # Post-fix 6-element tuple; utilized_tools is None for a failed placement.
+        # 7-element tuple; utilized_tools and policy are None for a failed placement.
         payload_values = (
             None,
             None,
@@ -211,6 +212,7 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
             Event.BET_PLACEMENT_FAILED.value,
             None,  # cached_signed_orders
             None,  # utilized_tools – None for failed placement
+            None,  # policy – None for failed placement
         )
 
         with patch.object(

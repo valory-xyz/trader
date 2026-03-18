@@ -85,7 +85,7 @@ def test_end_block_done_with_tx_hash() -> None:
             BetPlacementRound,
             "most_voted_payload_values",
             new_callable=PropertyMock,
-            return_value=(None, None, None, 1000),
+            return_value=(None, None, None, 1000, None),
         ):
             result = round_instance.end_block()
     assert result is not None
@@ -108,7 +108,7 @@ def test_end_block_done_without_tx_hash() -> None:
             BetPlacementRound,
             "most_voted_payload_values",
             new_callable=PropertyMock,
-            return_value=(None, None, None, 500),
+            return_value=(None, None, None, 500, None),
         ):
             result = round_instance.end_block()
     assert result is not None

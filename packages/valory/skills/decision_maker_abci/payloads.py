@@ -114,6 +114,7 @@ class BetPlacementPayload(MultisigTxPayload):
     """Represents a transaction payload for placing a bet."""
 
     wallet_balance: Optional[int] = None
+    policy: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,7 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
     event: Optional[str] = None
     cached_signed_orders: Optional[str] = None
     utilized_tools: Optional[str] = None
+    policy: Optional[str] = None
 
 
 @dataclass(frozen=True)

@@ -385,13 +385,19 @@ class TestBetPlacementBehaviour:
                     type(behaviour), "is_wxdai", new_callable=PropertyMock
                 ) as mock_wxdai:
                     mock_wxdai.return_value = False
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd:
+                        mock_sd.return_value = MagicMock(is_policy_set=False)
 
-                    gen = behaviour.async_act()
-                    try:
-                        while True:
-                            next(gen)
-                    except StopIteration:
-                        pass
+                        gen = behaviour.async_act()
+                        try:
+                            while True:
+                                next(gen)
+                        except StopIteration:
+                            pass
 
         assert len(payloads_sent) >= 1
         payload = payloads_sent[-1]
@@ -445,13 +451,19 @@ class TestBetPlacementBehaviour:
                         type(behaviour), "w_xdai_deficit", new_callable=PropertyMock
                     ) as mock_deficit:
                         mock_deficit.return_value = 50
+                        with patch.object(
+                            type(behaviour),
+                            "synchronized_data",
+                            new_callable=PropertyMock,
+                        ) as mock_sd:
+                            mock_sd.return_value = MagicMock(is_policy_set=False)
 
-                        gen = behaviour.async_act()
-                        try:
-                            while True:
-                                next(gen)
-                        except StopIteration:
-                            pass
+                            gen = behaviour.async_act()
+                            try:
+                                while True:
+                                    next(gen)
+                            except StopIteration:
+                                pass
 
         assert len(payloads_sent) >= 1
 
