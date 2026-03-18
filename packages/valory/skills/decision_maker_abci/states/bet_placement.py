@@ -47,8 +47,18 @@ class BetPlacementRound(TxPreparationRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        wallet_balance = self.most_voted_payload_values[-1]
+        wallet_balance = self.most_voted_payload_values[-2]
+        policy_update = self.most_voted_payload_values[-1]
         synced_data.update(wallet_balance=wallet_balance)
+
+        if policy_update is not None:
+            synced_data = cast(
+                SynchronizedData,
+                synced_data.update(
+                    synchronized_data_class=self.synchronized_data_class,
+                    **{"policy": policy_update},
+                ),
+            )
 
         if event == Event.DONE and not synced_data.most_voted_tx_hash:
             event = Event.CALC_BUY_AMOUNT_FAILED

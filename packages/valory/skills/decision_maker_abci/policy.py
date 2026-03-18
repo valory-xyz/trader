@@ -163,7 +163,8 @@ class EGreedyPolicy:
     @property
     def random_tool(self) -> str:
         """Get the name of a tool randomly."""
-        return random.choice(list(self.accuracy_store.keys()))  # nosec
+        candidates = self.valid_tools or list(self.accuracy_store.keys())
+        return random.choice(candidates)  # nosec
 
     def is_quarantined(self, tool: str) -> bool:
         """Check if the policy is valid."""
@@ -264,7 +265,7 @@ class EGreedyPolicy:
             total_correct_answers += 1
 
         acc_info.requests += 1
-        acc_info.pending -= 1
+        acc_info.pending = max(0, acc_info.pending - 1)
         acc_info.accuracy = total_correct_answers / acc_info.requests
         self.update_weighted_accuracy()
 

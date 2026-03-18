@@ -30,6 +30,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     WXDAI,
     WaitableConditionType,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
+    POLICY_STORE,
+)
 from packages.valory.skills.decision_maker_abci.models import MultisendBatch
 from packages.valory.skills.decision_maker_abci.payloads import BetPlacementPayload
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
@@ -144,12 +147,23 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
                 betting_tx_hex = yield from self._prepare_safe_tx()
                 wallet_balance = self.wallet_balance
 
+            # Increment pending for the tool that was used on successful bet
+            policy_str = None
+            if betting_tx_hex is not None and self.synchronized_data.is_policy_set:
+                self._policy = self.synchronized_data.policy
+                self.policy.tool_used(self.synchronized_data.mech_tool)
+                policy_str = self.policy.serialize()
+                policy_path = self.params.store_path / POLICY_STORE
+                with open(policy_path, "w") as f:
+                    f.write(policy_str)
+
             payload = BetPlacementPayload(
                 agent,
                 tx_submitter,
                 betting_tx_hex,
                 mocking_mode,
                 wallet_balance,
+                policy=policy_str,
             )
 
         yield from self.finish_behaviour(payload)

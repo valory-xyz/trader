@@ -90,6 +90,7 @@ PATH_TO_VAR = {
     "models/params/args/outcome_side_threshold_filter_threshold": "OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD",
     "models/params/args/disable_trading": "DISABLE_TRADING",
     "models/params/args/enable_position_review": "ENABLE_POSITION_REVIEW",
+    "models/params/args/tools_accuracy_hash": "TOOLS_ACCURACY_HASH",
 }
 
 CONFIG_REGEX = r"\${.*?:(.*)}"

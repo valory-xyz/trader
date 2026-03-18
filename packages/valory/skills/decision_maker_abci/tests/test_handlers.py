@@ -297,6 +297,54 @@ class TestHttpHandler:
                         )
                     )
 
+    def test_handle_exception_in_handler(self) -> None:
+        """Test handle() recovers gracefully when handler raises an exception."""
+        self.message = MagicMock(
+            performative=HttpMessage.Performative.REQUEST,
+        )
+        self.message.sender = str(HTTP_SERVER_PUBLIC_ID.without_hash())
+        self.message.url = "http://localhost:8080/healthcheck"
+        self.message.method = "GET"
+        self.message.version = "1.1"
+        self.message.headers = "Content-Type: text/plain"
+        self.message.body = b""
+
+        handler_that_raises = MagicMock(side_effect=ValueError("boom"))
+
+        http_dialogues_mock = MagicMock()
+        http_dialogue_mock = MagicMock()
+        http_response_mock = MagicMock()
+        http_dialogues_mock.update.return_value = http_dialogue_mock
+        http_dialogue_mock.reply.return_value = http_response_mock
+        self.context.http_dialogues = http_dialogues_mock
+
+        with patch.object(
+            self.handler,
+            "_get_handler",
+            return_value=(handler_that_raises, {}),
+        ), patch.object(BaseHttpHandler, "handle", return_value=None):
+            self.handler.handle(self.message)
+
+        # Verify error was logged
+        self.context.logger.error.assert_called_once()
+        assert "boom" in self.context.logger.error.call_args[0][0]
+
+        # Verify 500 response was sent
+        http_dialogue_mock.reply.assert_called_once_with(
+            performative=HttpMessage.Performative.RESPONSE,
+            target_message=self.message,
+            version=self.message.version,
+            status_code=500,
+            status_text="Internal Server Error",
+            headers=self.message.headers,
+            body=b"",
+        )
+
+        # Verify response was queued
+        self.context.outbox.put_message.assert_called_once_with(
+            message=http_response_mock
+        )
+
     def test_handle_bad_request(self) -> None:
         """Test handle with a bad request."""
         http_msg = MagicMock()
