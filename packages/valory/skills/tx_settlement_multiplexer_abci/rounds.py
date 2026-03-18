@@ -129,13 +129,6 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
         synced_data = SynchronizedData(self.synchronized_data.db)
         event = submitter_to_event.get(synced_data.tx_submitter, Event.UNRECOGNIZED)
 
-        # if a mech request was just performed, increase the utilized tool's counter
-        if event == Event.MECH_REQUESTING_DONE:
-            policy = synced_data.policy
-            policy.tool_used(synced_data.mech_tool)
-            policy_update = policy.serialize()
-            self.synchronized_data.update(policy=policy_update)
-
         # if a bet was just placed, edit the utilized tools mapping
         if event in (Event.BET_PLACEMENT_DONE, Event.SELL_OUTCOME_TOKENS_DONE):
             utilized_tools = synced_data.utilized_tools
