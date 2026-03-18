@@ -109,7 +109,7 @@ fingerprint:
   tests/test_handlers.py: bafybeihhkzdql3bcgqi6tnaswyz7lyb7ilurur7dedcg5afafd2nxecq3u
   tests/test_models.py: bafybeiaipjpn3d2xl77hzal264hmgy2zj63kdj6ig2kozsxqpy6repmvdm
   tests/test_payloads.py: bafybeibazknxgyyqoh3f3iszr2qqdafgge4uasb3fyvngs3nos5u7ts6ca
-  tests/test_policy.py: bafybeifdaf3urgztuctqeazg26lfw24gvzwl7zfa7psor6shmquddt2m2e
+  tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
   tests/test_polymarket_states.py: bafybeiaasjeqgybaomq66fq2jotjuexw2uhe5l6u7qpe3popn3rkiw2pua
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeieqfaax5gpy63xa557vvxexobdtorcmnq2bxorzxo3g3nousdwkoy
