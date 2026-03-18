@@ -603,6 +603,94 @@ class TestPolymarketBetPlacementBehaviour:
         # No signed order should be cached
         assert len(cached) == 0
 
+    def test_async_act_success_with_policy_increment(self) -> None:
+        """When bet succeeds and is_policy_set, policy should be incremented."""
+        behaviour = _make_behaviour()
+        behaviour.token_balance = 1000
+
+        payloads_sent = []
+
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock wait for condition."""
+            yield  # type: ignore[no-untyped-def]
+
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_policy = MagicMock()  # type: ignore[method-assign]
+
+        mock_bet = MagicMock()
+        mock_bet.get_outcome.return_value = "Yes"
+        mock_bet.outcome_token_ids = {"Yes": "token123"}
+        mock_bet.condition_id = "0xcond123"
+
+        response = {
+            "success": True,
+            "orderID": "order1",
+            "transactionsHashes": ["0xhash"],
+            "signed_order_json": None,
+            "error": None,
+            "status": "matched",
+        }
+
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            response
+        )
+
+        mock_policy = MagicMock()
+        mock_policy.serialize.return_value = '{"serialized": "policy"}'
+
+        with patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ) as mock_sb:
+            mock_sb.return_value = mock_bet
+            with patch.object(
+                type(behaviour), "outcome_index", new_callable=PropertyMock
+            ) as mock_oi:
+                mock_oi.return_value = 0
+                with patch.object(
+                    type(behaviour), "investment_amount", new_callable=PropertyMock
+                ) as mock_inv:
+                    mock_inv.return_value = 100
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd:
+                        mock_sd.return_value = MagicMock(
+                            period_count=1,
+                            cached_signed_orders={},
+                            mech_tool="tool1",
+                            is_policy_set=True,
+                            policy=mock_policy,
+                        )
+                        with patch.object(
+                            type(behaviour),
+                            "get_active_sampled_bet",
+                        ) as mock_gasb:
+                            mock_gasb.return_value = mock_bet
+
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+                                payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
+                            )
+                            # type: ignore[func-returns-value]
+                            gen = behaviour.async_act()
+                            try:
+                                while True:
+                                    next(gen)
+                            except StopIteration:
+                                pass
+
+        assert len(payloads_sent) == 1
+        assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
+        # Verify policy was incremented
+        mock_policy.tool_used.assert_called_once_with("tool1")
+        mock_policy.serialize.assert_called_once()
+        behaviour._store_policy.assert_called_once()
+        assert payloads_sent[0].policy == '{"serialized": "policy"}'
+
     def test_async_act_success_with_no_condition_id(self) -> None:
         """When bet succeeds but no condition_id, utilized_tools not updated."""
         behaviour = _make_behaviour()

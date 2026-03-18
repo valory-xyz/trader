@@ -93,6 +93,36 @@ def test_end_block_done_with_tx_hash() -> None:
     assert event == Event.DONE
 
 
+def test_end_block_with_policy_update() -> None:
+    """Test end_block persists policy when policy_update is not None."""
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+    mock_synced_data.most_voted_tx_hash = "0xvalidhash"
+    mock_synced_data.update.return_value = mock_synced_data
+    mock_context = MagicMock()
+    round_instance = BetPlacementRound(
+        synchronized_data=mock_synced_data, context=mock_context
+    )
+    with patch.object(
+        TxPreparationRound, "end_block", return_value=(mock_synced_data, Event.DONE)
+    ):
+        with patch.object(
+            BetPlacementRound,
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=(None, None, None, 1000, '{"serialized": "policy"}'),
+        ):
+            result = round_instance.end_block()
+    assert result is not None
+    _, event = result
+    assert event == Event.DONE
+    # Verify policy was persisted via update
+    all_kwargs: Dict[str, Any] = {}
+    for call in mock_synced_data.update.call_args_list:
+        all_kwargs.update(call.kwargs)
+    assert "policy" in all_kwargs
+    assert all_kwargs["policy"] == '{"serialized": "policy"}'
+
+
 def test_end_block_done_without_tx_hash() -> None:
     """Test end_block with DONE event but no tx hash triggers CALC_BUY_AMOUNT_FAILED."""
     mock_synced_data = MagicMock(spec=SynchronizedData)

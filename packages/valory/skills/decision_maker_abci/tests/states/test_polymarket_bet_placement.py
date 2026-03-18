@@ -196,6 +196,46 @@ class TestPolymarketBetPlacementRoundPersistsUtilizedTools(
         )
         assert all_update_kwargs["utilized_tools"] == UTILIZED_TOOLS_JSON
 
+    def test_policy_written_to_synced_data_on_success(self) -> None:
+        """When policy_update is not None, end_block must persist it."""
+        round_ = self._make_round()
+
+        synced_data_mock = MagicMock(spec=SynchronizedData)
+        synced_data_mock.update.return_value = synced_data_mock
+
+        payload_values = (
+            None,  # tx_submitter
+            None,  # tx_hash
+            False,  # mocking_mode
+            Event.BET_PLACEMENT_DONE.value,  # event
+            "{}",  # cached_signed_orders
+            UTILIZED_TOOLS_JSON,  # utilized_tools
+            '{"serialized": "policy"}',  # policy - NOT None
+        )
+
+        with patch.object(
+            PolymarketBetPlacementRound,
+            "most_voted_payload_values",
+            new_callable=PropertyMock,
+            return_value=payload_values,
+        ):
+            with patch(
+                "packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement.TxPreparationRound.end_block",
+                return_value=(synced_data_mock, Event.BET_PLACEMENT_DONE),
+            ):
+                result = round_.end_block()
+
+        assert result is not None
+        all_update_kwargs: Dict[str, Any] = {}
+        for call in synced_data_mock.update.call_args_list:
+            all_update_kwargs.update(call.kwargs)
+
+        assert "policy" in all_update_kwargs, (
+            "PolymarketBetPlacementRound.end_block never called "
+            "synchronized_data.update(policy=...). "
+        )
+        assert all_update_kwargs["policy"] == '{"serialized": "policy"}'
+
     def test_utilized_tools_not_written_when_none(self) -> None:
         """When utilized_tools is None (e.g. a failed placement) end_block must NOT overwrite the existing utilized_tools in synchronized data."""
         round_ = self._make_round()

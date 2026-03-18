@@ -19,7 +19,8 @@
 
 """Tests for BetPlacementBehaviour."""
 
-from unittest.mock import MagicMock, PropertyMock, patch
+from pathlib import Path
+from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import WXDAI
 from packages.valory.skills.decision_maker_abci.behaviours.bet_placement import (
@@ -403,6 +404,89 @@ class TestBetPlacementBehaviour:
         payload = payloads_sent[-1]
         assert isinstance(payload, BetPlacementPayload)
         assert payload.tx_hash == "0xsafetxhash"
+
+    def test_async_act_policy_increment_on_success(self) -> None:
+        """When betting_tx_hex is not None and is_policy_set, policy should be incremented and written to disk."""
+        behaviour, bm = _make_behaviour()
+
+        payloads_sent = []
+
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
+        )
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+        behaviour.wallet_balance = 2000
+        behaviour.token_balance = 500
+        behaviour.check_balance = MagicMock()  # type: ignore[method-assign]
+
+        behaviour.wait_for_condition_with_sleep = lambda cond: _noop_gen()  # type: ignore[method-assign]
+
+        def mock_prepare() -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock prepare safe tx."""
+            yield  # type: ignore[no-untyped-def]
+            return "0xsafetxhash"
+
+        behaviour._prepare_safe_tx = mock_prepare  # type: ignore[method-assign]
+
+        mock_policy = MagicMock()
+        mock_policy.serialize.return_value = '{"serialized": "policy"}'
+
+        mock_sd = MagicMock(
+            is_policy_set=True,
+            policy=mock_policy,
+            mech_tool="tool1",
+        )
+
+        store_path = Path("/tmp/test_store")  # noqa: S108
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "investment_amount", new_callable=PropertyMock
+            ) as mock_inv:
+                mock_inv.return_value = 100
+                with patch.object(
+                    type(behaviour), "is_wxdai", new_callable=PropertyMock
+                ) as mock_wxdai:
+                    mock_wxdai.return_value = False
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd_prop:
+                        mock_sd_prop.return_value = mock_sd
+                        with patch.object(
+                            type(behaviour),
+                            "params",
+                            new_callable=PropertyMock,
+                        ) as mock_params:
+                            mock_params.return_value = MagicMock(
+                                store_path=store_path
+                            )
+                            with patch(
+                                "builtins.open", mock_open()
+                            ) as mocked_file:
+                                gen = behaviour.async_act()
+                                try:
+                                    while True:
+                                        next(gen)
+                                except StopIteration:
+                                    pass
+
+        assert len(payloads_sent) >= 1
+        payload = payloads_sent[-1]
+        assert isinstance(payload, BetPlacementPayload)
+        assert payload.tx_hash == "0xsafetxhash"
+        # Verify policy was incremented and serialized
+        mock_policy.tool_used.assert_called_once_with("tool1")
+        mock_policy.serialize.assert_called_once()
+        assert payload.policy == '{"serialized": "policy"}'
+        # Verify file was written
+        mocked_file.assert_called_once()
+        mocked_file().write.assert_called_once_with('{"serialized": "policy"}')
 
     def test_async_act_insufficient_balance_can_exchange(self) -> None:
         """When token_balance < investment but can exchange, should build exchange tx."""
