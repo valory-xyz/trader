@@ -172,6 +172,7 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
         # On success, record conditionId → mech_tool so the redeem behaviour can
         # later update the e-greedy policy's accuracy store for this position.
         utilized_tools_json = None
+        policy_str = None
         if event == Event.BET_PLACEMENT_DONE:
             condition_id = self.get_active_sampled_bet().condition_id
             if condition_id is not None:
@@ -187,6 +188,13 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
                     "utilized_tools will not be updated for this placement."
                 )
 
+            # Increment pending for the tool that was used
+            if self.synchronized_data.is_policy_set:
+                self._policy = self.synchronized_data.policy
+                self.policy.tool_used(self.synchronized_data.mech_tool)
+                policy_str = self.policy.serialize()
+                self._store_policy()
+
         payload = PolymarketBetPlacementPayload(
             self.context.agent_address,
             None,
@@ -195,6 +203,7 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
             event=event.value,
             cached_signed_orders=json.dumps(updated_cache),
             utilized_tools=utilized_tools_json,
+            policy=policy_str,
         )
 
         yield from self.finish_behaviour(payload)

@@ -50,11 +50,12 @@ class PolymarketBetPlacementRound(TxPreparationRound):
         # For static checking
         # Event.BET_PLACEMENT_DONE, Event.BET_PLACEMENT_FAILED, Event.INSUFFICIENT_BALANCE, Event.BET_PLACEMENT_IMPOSSIBLE
 
-        # Extract event, cached_signed_orders, and utilized_tools from payload
-        # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5), utilized_tools(6)
-        event = Event(self.most_voted_payload_values[-3])
-        cached_orders = self.most_voted_payload_values[-2]
-        utilized_tools_update = self.most_voted_payload_values[-1]
+        # Extract event, cached_signed_orders, utilized_tools, and policy from payload
+        # Payload: sender(0), tx_submitter(1), tx_hash(2), mocking_mode(3), event(4), cached_signed_orders(5), utilized_tools(6), policy(7)
+        event = Event(self.most_voted_payload_values[-4])
+        cached_orders = self.most_voted_payload_values[-3]
+        utilized_tools_update = self.most_voted_payload_values[-2]
+        policy_update = self.most_voted_payload_values[-1]
 
         # Persist cached orders to synchronized data
         if cached_orders is not None:
@@ -74,6 +75,16 @@ class PolymarketBetPlacementRound(TxPreparationRound):
                 synced_data.update(
                     synchronized_data_class=self.synchronized_data_class,
                     **{"utilized_tools": utilized_tools_update}
+                ),
+            )
+
+        # Persist the updated policy (with incremented pending) from bet placement.
+        if policy_update is not None:
+            synced_data = cast(
+                SynchronizedData,
+                synced_data.update(
+                    synchronized_data_class=self.synchronized_data_class,
+                    **{"policy": policy_update}
                 ),
             )
 

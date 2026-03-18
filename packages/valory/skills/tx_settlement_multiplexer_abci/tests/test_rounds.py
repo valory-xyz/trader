@@ -164,18 +164,14 @@ class TestPostTxSettlementRoundEndBlock:
         return round_
 
     def test_mech_requesting_done(self) -> None:
-        """Test end_block with MechRequestRound submitter returns MECH_REQUESTING_DONE and updates policy."""
+        """Test end_block with MechRequestRound submitter returns MECH_REQUESTING_DONE without updating policy."""
         round_ = self._create_round()
-        mock_policy = MagicMock()
-        mock_policy.serialize.return_value = "serialized_policy"
 
         with patch(
             "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
         ) as MockSyncData:
             mock_synced = MagicMock()
             mock_synced.tx_submitter = MechRequestRound.auto_round_id()
-            mock_synced.policy = mock_policy
-            mock_synced.mech_tool = "prediction-online"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -184,11 +180,6 @@ class TestPostTxSettlementRoundEndBlock:
         synced_data, event = result
         assert event == Event.MECH_REQUESTING_DONE
         assert synced_data is mock_synced
-        mock_policy.tool_used.assert_called_once_with("prediction-online")
-        mock_policy.serialize.assert_called_once()
-        round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
-            policy="serialized_policy"  # type: ignore[attr-defined]
-        )
 
     def test_bet_placement_done_with_valid_tx_hash(self) -> None:
         """Test end_block with BetPlacementRound submitter and valid tx hash updates utilized_tools."""
@@ -427,12 +418,10 @@ class TestPostTxSettlementRoundEndBlock:
         round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
     # type: ignore[attr-defined]
-    def test_mech_requesting_done_policy_serialize_value(self) -> None:
-        """Test that the serialized policy value is passed correctly to update."""
+    def test_mech_requesting_done_does_not_update_policy(self) -> None:
+        """Test that mech requesting done does not call tool_used or update policy."""
         round_ = self._create_round()
         mock_policy = MagicMock()
-        serialized = '{"tool_counts": {"prediction-online": 5}}'
-        mock_policy.serialize.return_value = serialized
 
         with patch(
             "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
@@ -445,7 +434,8 @@ class TestPostTxSettlementRoundEndBlock:
 
             round_.end_block()
 
-        round_.synchronized_data.update.assert_called_once_with(policy=serialized)  # type: ignore[attr-defined]
+        mock_policy.tool_used.assert_not_called()
+        mock_policy.serialize.assert_not_called()
 
     # type: ignore[attr-defined]
     def test_bet_placement_done_utilized_tools_merges_with_existing(self) -> None:

@@ -75,6 +75,7 @@ class BlacklistingBehaviour(  # type: ignore
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, None, policy)
             yield from self.finish_behaviour(payload)
+            return
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             self.read_bets()
