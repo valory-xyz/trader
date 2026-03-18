@@ -568,3 +568,54 @@ def test_e_greedy_policy_select_tool_no_randomness_arg() -> None:
     # randomness is None (default), has_updated is True, random.random() >= 0.0 always
     tool = policy.select_tool()
     assert tool == "tool2"
+
+
+def test_random_tool_excludes_quarantined() -> None:
+    """Quarantined tools should never be returned by random_tool."""
+    current_time = int(time())
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=0,
+        quarantine_duration=100000,
+        accuracy_store={
+            "good": AccuracyInfo(requests=10, accuracy=0.8),
+            "bad": AccuracyInfo(requests=10, accuracy=0.5),
+        },
+        consecutive_failures={
+            "bad": ConsecutiveFailures(n_failures=5, timestamp=current_time),
+        },
+    )
+    for _ in range(100):
+        assert policy.random_tool != "bad"
+
+
+def test_random_tool_falls_back_when_all_quarantined() -> None:
+    """When all tools are quarantined, fall back to full set."""
+    current_time = int(time())
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=0,
+        quarantine_duration=100000,
+        accuracy_store={
+            "t1": AccuracyInfo(requests=10),
+            "t2": AccuracyInfo(requests=10),
+        },
+        consecutive_failures={
+            "t1": ConsecutiveFailures(n_failures=5, timestamp=current_time),
+            "t2": ConsecutiveFailures(n_failures=5, timestamp=current_time),
+        },
+    )
+    assert policy.random_tool in ("t1", "t2")
+
+
+def test_update_accuracy_store_pending_floor_at_zero() -> None:
+    """pending must never go below zero during update_accuracy_store."""
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={"tool1": AccuracyInfo(requests=5, pending=0, accuracy=0.5)},
+    )
+    policy.update_accuracy_store("tool1", winning=True)
+    assert policy.accuracy_store["tool1"].pending >= 0
+    assert policy.accuracy_store["tool1"].requests == 6

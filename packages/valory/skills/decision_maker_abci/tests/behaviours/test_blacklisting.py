@@ -163,7 +163,7 @@ class TestBlacklistingAsyncAct:
             behaviour.__dict__["_context"].logger.info.assert_called()
 
     def test_no_tool_selection_run_sends_payload_early(self) -> None:
-        """When has_tool_selection_run is False, payload should be sent without blacklisting."""
+        """When has_tool_selection_run is False, payload should be sent with bets_hash=None and return."""
         behaviour = _make_behaviour()
 
         mock_policy = MagicMock()
@@ -178,12 +178,57 @@ class TestBlacklistingAsyncAct:
         behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
         behaviour.set_done = MagicMock()  # type: ignore[method-assign]
 
-        # After the first finish_behaviour returns, the code falls through
-        # to read_bets/store_bets/hash_stored_bets, so mock those too.
+        with patch.object(
+            type(behaviour), "shared_state", new_callable=PropertyMock
+        ) as mock_ss:
+            ss = MagicMock()
+            ss.mech_timed_out = False
+            mock_ss.return_value = ss
+
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                sd = MagicMock()
+                sd.has_tool_selection_run = False
+                mock_sd.return_value = sd
+
+                behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+                with patch.object(
+                    type(behaviour), "policy", new_callable=PropertyMock
+                ) as mock_pol:
+                    mock_pol.return_value = mock_policy
+
+                    gen = behaviour.async_act()
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration:
+                        pass
+
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], BlacklistingPayload)
+        assert payloads_sent[0].bets_hash is None
+
+    def test_no_tool_selection_does_not_blacklist_or_call_tool_responded(self) -> None:
+        """When has_tool_selection_run is False, _blacklist and tool_responded must NOT be called."""
+        behaviour = _make_behaviour()
+
+        mock_policy = MagicMock()
+        mock_policy.serialize.return_value = '{"test": true}'
+        behaviour.__dict__["_policy"] = mock_policy
+
+        payloads_sent = []
+
+        behaviour.send_a2a_transaction = lambda payload: (  # type: ignore[method-assign]
+            payloads_sent.append(payload) or (yield)  # type: ignore[func-returns-value]
+        )
+        behaviour.wait_until_round_end = lambda: _noop_gen()  # type: ignore[func-returns-value, method-assign]
+        behaviour.set_done = MagicMock()  # type: ignore[method-assign]
+
+        # Spy on methods that should NOT be called
         behaviour.read_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour._blacklist = MagicMock()  # type: ignore[method-assign]
         behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
-        behaviour.hash_stored_bets = MagicMock(return_value="hash123")  # type: ignore[method-assign]
-        behaviour.bets = [MagicMock()]
 
         with patch.object(
             type(behaviour), "shared_state", new_callable=PropertyMock
@@ -197,9 +242,6 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = False
-                sd.sampled_bet_index = 0
-                sd.tx_submitter = "other_submitter"
-                sd.mech_tool = "tool1"
                 mock_sd.return_value = sd
 
                 behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
@@ -207,27 +249,20 @@ class TestBlacklistingAsyncAct:
                     type(behaviour), "policy", new_callable=PropertyMock
                 ) as mock_pol:
                     mock_pol.return_value = mock_policy
-                    with patch.object(
-                        type(behaviour), "synced_timestamp", new_callable=PropertyMock
-                    ) as mock_ts:
-                        mock_ts.return_value = 12345.0
-                        with patch.object(
-                            type(behaviour),
-                            "benchmarking_mode",
-                            new_callable=PropertyMock,
-                        ) as mock_bm_prop:
-                            mock_bm_prop.return_value = MagicMock(enabled=False)
 
-                            gen = behaviour.async_act()
-                            try:
-                                while True:
-                                    next(gen)
-                            except StopIteration:
-                                pass
+                    gen = behaviour.async_act()
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration:
+                        pass
 
-        # First payload (when has_tool_selection_run is False) should have bets_hash=None
-        assert len(payloads_sent) >= 1
-        assert isinstance(payloads_sent[0], BlacklistingPayload)
+        # _blacklist, read_bets, tool_responded must not be called
+        behaviour.read_bets.assert_not_called()
+        behaviour._blacklist.assert_not_called()
+        mock_policy.tool_responded.assert_not_called()
+        # Only one payload sent (the early exit)
+        assert len(payloads_sent) == 1
         assert payloads_sent[0].bets_hash is None
 
     def test_full_blacklisting_flow_with_tool_responded(self) -> None:
