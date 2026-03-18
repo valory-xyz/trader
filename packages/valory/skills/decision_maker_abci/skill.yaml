@@ -69,7 +69,7 @@ fingerprint:
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
   tests/behaviours/test_base.py: bafybeifbxh5dh6whnyurlpf6tel7cmz6d2frnijdkey734fu7ilawqbh2i
-  tests/behaviours/test_bet_placement.py: bafybeigntbxn6fjgkwo5nsi2pdem7hyrhvk4uscdoqiqutxvexzjfcmgva
+  tests/behaviours/test_bet_placement.py: bafybeifum6ilmcohsdci2z447kr7jnlw2hhicjdpxg5y2pr7gwul4rogy4
   tests/behaviours/test_blacklisting.py: bafybeic2jcfxujhto6khwrobnfxx43wh42hx2fmn4xo2hxzlynmavqvbqa
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
   tests/behaviours/test_decision_receive.py: bafybeidovx2qnzzxxadw4mnwv7sprkkpfs6wnn7ylkrvwu4nxplg5phgly

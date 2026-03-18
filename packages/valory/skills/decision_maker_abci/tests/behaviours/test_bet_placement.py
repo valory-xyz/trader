@@ -438,7 +438,7 @@ class TestBetPlacementBehaviour:
             mech_tool="tool1",
         )
 
-        store_path = Path("/tmp/test_store")  # noqa: S108
+        store_path = Path("/tmp/test_store")  # nosec
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
