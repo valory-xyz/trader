@@ -83,6 +83,7 @@ def _make_fetcher() -> PolymarketPredictionsFetcher:  # type: ignore[no-untyped-
 def _make_polymarket_bet(  # type: ignore[no-untyped-def]
     bet_id: str = "bet_1",
     amount: str = str(1 * USDC_DECIMALS_DIVISOR),  # noqa: B008
+    shares: str = "0",
     outcome_index: int = 0,
     block_timestamp: int = 1700000000,
     question_id: str = "q_1",
@@ -100,6 +101,7 @@ def _make_polymarket_bet(  # type: ignore[no-untyped-def]
     bet = {
         "id": bet_id,
         "amount": amount,
+        "shares": shares,
         "outcomeIndex": outcome_index,
         "blockTimestamp": block_timestamp,
         "transactionHash": transaction_hash,
@@ -492,12 +494,13 @@ class TestCalculateBetProfit:
             resolution={"winningIndex": 0, "blockTimestamp": 1700001000},  # type: ignore[arg-type]
             outcome_index=0,
             amount=str(USDC_DECIMALS_DIVISOR),
+            shares=str(2 * USDC_DECIMALS_DIVISOR),
             total_payout=str(2 * USDC_DECIMALS_DIVISOR),  # type: ignore[arg-type]
         )
 
         result = fetcher._calculate_bet_profit(bet)
 
-        # profit = 2.0 - 1.0 = 1.0
+        # profit = shares(2.0) - amount(1.0) = 1.0
         assert result == 1.0
 
     def test_winning_bet_not_redeemed(self) -> None:
@@ -540,17 +543,18 @@ class TestCalculateBetProfit:
         assert result == -0.5
 
     def test_fallback_with_payout(self) -> None:
-        """Test fallback logic when outcomeIndex is None."""
+        """Test fallback logic when outcomeIndex is None but shares > 0."""
         fetcher = _make_fetcher()
         bet = _make_polymarket_bet(
             resolution={"winningIndex": None, "blockTimestamp": 1700001000},  # type: ignore[arg-type]
+            shares=str(2 * USDC_DECIMALS_DIVISOR),
             total_payout=str(2 * USDC_DECIMALS_DIVISOR),  # type: ignore[arg-type]
         )
         bet["outcomeIndex"] = None
 
         result = fetcher._calculate_bet_profit(bet)
 
-        # Fallback: total_payout > 0 -> profit = 2.0 - 1.0 = 1.0
+        # Fallback: shares > 0 -> profit = shares(2.0) - amount(1.0) = 1.0
         assert result == 1.0
 
     def test_fallback_without_payout(self) -> None:
@@ -940,6 +944,28 @@ class TestFetchMechToolForQuestion:
 
         assert result is None
 
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_bet_timestamp_passed_in_query(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Test that blockTimestamp_lte is passed in query variables."""
+        fetcher = _make_fetcher()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "sender": {
+                    "requests": [{"parsedRequest": {"tool": "prediction-online"}}]
+                }
+            }
+        }
+        mock_post.return_value = mock_response
+
+        fetcher.fetch_mech_tool_for_question("Q?", "0xsender", bet_timestamp=1700000000)
+
+        call_payload = mock_post.call_args[1]["json"]
+        assert call_payload["variables"]["blockTimestamp_lte"] == "1700000000"
+
 
 # ---------------------------------------------------------------------------
 # _fetch_prediction_response_from_mech tests
@@ -1122,6 +1148,31 @@ class TestFetchPredictionResponseFromMech:
         result = fetcher._fetch_prediction_response_from_mech("Q?", "0xsender")
 
         assert result is None
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_bet_timestamp_passed_in_query(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Test that blockTimestamp_lte is passed in query variables."""
+        fetcher = _make_fetcher()
+        prediction_data = {"p_yes": 0.7, "p_no": 0.3, "confidence": 0.8}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "requests": [
+                    {"deliveries": [{"toolResponse": json.dumps(prediction_data)}]}
+                ]
+            }
+        }
+        mock_post.return_value = mock_response
+
+        fetcher._fetch_prediction_response_from_mech(
+            "Q?", "0xsender", bet_timestamp=1700000000
+        )
+
+        call_payload = mock_post.call_args[1]["json"]
+        assert call_payload["variables"]["blockTimestamp_lte"] == "1700000000"
 
 
 # ---------------------------------------------------------------------------
@@ -1473,6 +1524,7 @@ class TestFetchBetFromSubgraph:
                 "marketParticipants": [
                     {
                         "totalPayout": str(int(0.5 * USDC_DECIMALS_DIVISOR)),
+                        "totalTraded": str(USDC_DECIMALS_DIVISOR),
                         "bets": [
                             _make_polymarket_bet(
                                 bet_id="bet_1",
@@ -1491,7 +1543,7 @@ class TestFetchBetFromSubgraph:
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is not None
-        # net_profit = 0.5 - 1.0 = -0.5
+        # pro-rated: bet_payout = 0.5 * (1.0 / 1.0) = 0.5, net = 0.5 - 1.0 = -0.5
         assert result["net_profit"] == -0.5
 
     @patch(
@@ -1512,8 +1564,9 @@ class TestFetchBetFromSubgraph:
                             _make_polymarket_bet(
                                 bet_id="bet_1",
                                 outcome_index=0,
+                                shares=str(2 * USDC_DECIMALS_DIVISOR),
                                 resolution={  # type: ignore[arg-type]
-                                    "winningIndex": 0,
+                                    "winningIndex": "0",
                                     "blockTimestamp": 1700001000,
                                 },
                             ),
@@ -1527,7 +1580,7 @@ class TestFetchBetFromSubgraph:
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is not None
-        # net_profit = 2.0 - 1.0 = 1.0
+        # net_profit = shares(2.0) - amount(1.0) = 1.0
         assert result["net_profit"] == 1.0
 
     @patch(
@@ -2452,6 +2505,57 @@ class TestFetchPositionDetails:
             result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
 
             assert result is not None
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.get"
+    )
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_invalid_created_at_falls_back(self, mock_post: MagicMock, mock_get: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """Invalid created_at format does not crash, falls back to current time."""
+        fetcher = _make_fetcher()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "multi_bets.json"), "w") as f:
+                json.dump([], f)
+            perf_data = {
+                "prediction_history": {
+                    "items": [
+                        {
+                            "id": "bet_1",
+                            "market": {"id": "q_1", "title": "Q?"},
+                            "prediction_side": "yes",
+                            "bet_amount": 1.0,
+                            "net_profit": 0,
+                            "total_payout": 0,
+                            "status": "pending",
+                            "created_at": "not-a-valid-timestamp",
+                        }
+                    ]
+                }
+            }
+            with open(os.path.join(tmpdir, "agent_performance.json"), "w") as f:
+                json.dump(perf_data, f)
+
+            mock_response_post = MagicMock()
+            mock_response_post.status_code = 200
+            mock_response_post.json.return_value = {
+                "data": {
+                    "sender": {"requests": [{"parsedRequest": {"tool": "tool_1"}}]}
+                }
+            }
+            mock_post.return_value = mock_response_post
+
+            mock_response_get = MagicMock()
+            mock_response_get.json.return_value = {}
+            mock_response_get.raise_for_status.return_value = None
+            mock_get.return_value = mock_response_get
+
+            result = fetcher.fetch_position_details("bet_1", "0xsafe", tmpdir)
+
+            assert result is not None
+            assert result["id"] == "bet_1"
 
 
 # ---------------------------------------------------------------------------

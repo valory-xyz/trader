@@ -22,7 +22,7 @@ fingerprint:
   tests/test_models.py: bafybeic4buelge2gbl3mongwoaempxhfrhq2hp7uvoevkz42v2uidyr2rm
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/omenstrat/assets/index-BIK2xSTL.js: bafybeifm4xccxdkj5x3b7xlnzdphd272q7g2va3mhyshl4pkzya4yhsuea
+  ui-build/omenstrat/assets/index-B-dBrp1a.js: bafybeibxpzd4bdfy2drteylk5vftq67mayohufevwht53wtzqhbzqdkuge
   ui-build/omenstrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/omenstrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/omenstrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -30,10 +30,10 @@ fingerprint:
   ui-build/omenstrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/omenstrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/omenstrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/omenstrat/index.html: bafybeielklywwuy57cln5bok3ql5tae5bucgpb6ws2lvnnza6mcaeq4jta
+  ui-build/omenstrat/index.html: bafybeigqgoyxsrbtjb7q4atrsbmca7evsg4wdffsndpbhuncw65uwhnr3q
   ui-build/polystrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/polystrat/assets/index-DSDo9OmM.js: bafybeibyygmenkb22zsd5pyt2tv3nkhkzmhjq2uundbpzty4tvpzj5yqnq
+  ui-build/polystrat/assets/index-th4N8cfd.js: bafybeicrvjx6dugb3tnbftrgkfjdca65buhm33iacdhqpj3atsmgxkb34y
   ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -41,7 +41,7 @@ fingerprint:
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeicowpvthn3fp7t36igh7gk5w7i76fn3nlybz5jhsn4hypkaupdedm
+  ui-build/polystrat/index.html: bafybeicu5bsun2slz37jc44tmby273ijmuhyxqywljjb7xaiiammo3zsbq
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeid4oqsfkqo36lryoecymjnq4whme3tgupqfq6m4l7lbr5r4yxtswu
@@ -56,13 +56,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigspkourznaiagdkedyxjbjl6svhuhdwbvejr3jv3e3dil2hslose
 - valory/termination_abci:0.1.0:bafybeic3jppoya7jkmylbl5evcssl5qhppl6hadxebfxcxmi5o7qysce6a
 - valory/market_manager_abci:0.1.0:bafybeibloyaypehftg77jbrp7xcpbaickwk2ntj3aidnh34hkey4mdr5hm
-- valory/decision_maker_abci:0.1.0:bafybeiaw2owbf47hi46a54yiuq2nfdpe7lbjjzq4tlps2wcrbhcgxh4g6i
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihq6vbjjtudwk7yslsxjigshkwaeexs3afez5wrp5ol7o2ueurr5m
+- valory/decision_maker_abci:0.1.0:bafybeievo6rxxnowhv3snwzfpu5jujzobrx6yfz2ikznvtf5i72sf5dw6i
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibgffimkrhxflmya5gj4djziivg3sc3h276ncy4x5s3gnlorfy4t4
 - valory/staking_abci:0.1.0:bafybeigczs4zcpor3x5kk2jeolxiok7irvtoz3ep76nhx63sjbwv4wcpe4
 - valory/check_stop_trading_abci:0.1.0:bafybeihrsvh3esxrjeysnzb7gxstsmloivijwn3yhu6fijq6ilv7qxqixm
 - valory/mech_interact_abci:0.1.0:bafybeiduf3h73xhv4q5vbdn6ek2tyal3haym5of4mq2ucm2zhqbclr35le
-- valory/chatui_abci:0.1.0:bafybeiaypdhmfnkflcjlzisylhchxmblylk6y7zvr5trcrdeeu5hp7trom
-- valory/agent_performance_summary_abci:0.1.0:bafybeid36h5keonopdb4oxgmevgfnm27urantnfs5nanpbi6wxrbtrhsbe
+- valory/chatui_abci:0.1.0:bafybeicapzhz3qtrh5mcsy2eznfx64u3ke4yiuar56xxgusxrlrn2nmoxi
+- valory/agent_performance_summary_abci:0.1.0:bafybeicbrot6mcwvegy6s54hrt3d74ecrwoxkjss4ygod4yfmhmqgllghy
 - valory/funds_manager:0.1.0:bafybeibid2nm7qoysj44foptkisf5ajguvacxsuoaix4og4ehotal47mcy
 behaviours:
   main:

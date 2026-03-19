@@ -69,7 +69,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 
 # Constants
-DEFAULT_MECH_FEE = 10000000000000000  # 0.01 xDAI in wei (1e16)
+DEFAULT_MECH_FEE = 10000000000000000  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
 WEI_TO_NATIVE = 10**18
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GRAPHQL_BATCH_SIZE = 1000  # Max items per GraphQL query
@@ -420,33 +420,15 @@ class HttpHandler(BaseHttpHandler):
     def _handle_get_agent_performance(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Handle GET /api/v1/agent/performance request."""
+        """Handle GET /api/v1/agent/performance request.
+
+        Returns lifetime aggregate metrics. Query parameters are not supported;
+        the response always reflects the full trading history.
+
+        :param http_msg: the incoming HTTP message
+        :param http_dialogue: the HTTP dialogue
+        """
         try:
-            # Parse query parameters
-            url_parts = http_msg.url.split("?")
-            window = "lifetime"  # Default
-            currency = "USD"  # Default
-
-            if len(url_parts) > 1:
-                params = {}
-                for param in url_parts[1].split("&"):
-                    if "=" in param:
-                        key, value = param.split("=", 1)
-                        params[key] = value
-                window = params.get("window", "lifetime")
-                currency = params.get("currency", "USD")
-
-            # Validate window parameter
-            if window not in ["lifetime", "7d", "30d", "90d"]:
-                self._send_bad_request_response(
-                    http_msg,
-                    http_dialogue,
-                    {
-                        "error": f"Invalid window parameter: {window}. Must be one of: lifetime, 7d, 30d, 90d"
-                    },
-                )
-                return
-
             safe_address = self.synchronized_data.safe_contract_address.lower()
             summary = self.shared_state.read_existing_performance_summary()
             performance = summary.agent_performance
@@ -463,8 +445,8 @@ class HttpHandler(BaseHttpHandler):
 
             formatted_response = {
                 "agent_id": safe_address,
-                "window": window,
-                "currency": currency,
+                "window": "lifetime",
+                "currency": "USD",
                 "metrics": asdict(performance.metrics) if performance.metrics else {},
                 "stats": asdict(performance.stats) if performance.stats else {},
             }
@@ -648,7 +630,7 @@ class HttpHandler(BaseHttpHandler):
                         "timestamp": datetime.fromtimestamp(
                             point.timestamp, tz=timezone.utc
                         ).strftime(ISO_TIMESTAMP_FORMAT),
-                        "delta_profit": point.cumulative_profit,
+                        "cumulative_profit": point.cumulative_profit,
                     }
                 )
 

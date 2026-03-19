@@ -139,6 +139,9 @@ class ProfitOverTimeData:
     includes_unplaced_mech_fees: bool = (
         False  # Whether unplaced mech fees logic was applied
     )
+    last_mech_timestamp: int = (
+        0  # Watermark: max blockTimestamp of processed mech requests
+    )
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""

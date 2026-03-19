@@ -38,6 +38,7 @@ query MechSender($id: ID!, $timestamp_gt: Int!, $skip: Int, $first: Int) {
   sender(id: $id) {
     totalMarketplaceRequests
     requests(first: $first, skip: $skip, where: { blockTimestamp_gt: $timestamp_gt }) {
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
@@ -206,6 +207,12 @@ query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: 
       profitParticipants {
         id
         question
+        bets {
+          timestamp
+          fixedProductMarketMaker {
+            question
+          }
+        }
       }
     }
   }
@@ -223,6 +230,7 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
     ) {
       id
       requestId
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
@@ -232,14 +240,18 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
 """
 
 GET_MECH_REQUESTS_BY_TITLES_QUERY = """
-query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!, $blockTimestamp_gt: BigInt!) {
   sender(id: $sender) {
     requests(
       where: {
         parsedRequest_: { questionTitle_in: $questionTitles }
+        blockTimestamp_gt: $blockTimestamp_gt
       }
+      orderBy: blockTimestamp
+      orderDirection: asc
     ) {
       id
+      blockTimestamp
       parsedRequest {
         questionTitle
       }
@@ -260,11 +272,15 @@ query GetPolymarketTraderAgentDetails($id: ID!) {
 """
 
 GET_MECH_TOOL_FOR_QUESTION_QUERY = """
-query GetMechToolForQuestion($sender: String!, $questionTitle: String!) {
+query GetMechToolForQuestion($sender: String!, $questionTitle: String!, $blockTimestamp_lte: BigInt!) {
   sender(id: $sender) {
     requests(
-      where: { parsedRequest_: { questionTitle: $questionTitle } }
+      where: {
+        parsedRequest_: { questionTitle: $questionTitle },
+        blockTimestamp_lte: $blockTimestamp_lte
+      }
       first: 1
+      orderBy: blockTimestamp
       orderDirection: desc
     ) {
       parsedRequest {
@@ -344,17 +360,21 @@ query GetPolymarketTraderAgentBets($id: ID!) {
 """
 
 GET_MECH_RESPONSE_QUERY = """
-query GetMechResponse($sender: String!, $questionTitle: String!) {
+query GetMechResponse($sender: String!, $questionTitle: String!, $blockTimestamp_lte: BigInt!) {
   requests(
-    where: { sender: $sender, parsedRequest_: { questionTitle: $questionTitle } }
+    where: {
+      sender: $sender,
+      parsedRequest_: { questionTitle: $questionTitle },
+      blockTimestamp_lte: $blockTimestamp_lte
+    }
     first: 1
-    orderBy: requestId
+    orderBy: blockTimestamp
     orderDirection: desc
   ) {
     parsedRequest {
       questionTitle
     }
-    deliveries(first: 1, orderBy: deliveryId, orderDirection: desc) {
+    deliveries(first: 1) {
       toolResponse
       model
     }
@@ -382,6 +402,11 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
                   totalTraded
                   totalPayout
                   totalFees
+                  bets(first: 1000) {
+                    id
+                    amount
+                    outcomeIndex
+                  }
                 }
               }
             }
@@ -412,6 +437,14 @@ query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!
         questionId
         metadata {
           title
+        }
+        bets {
+          blockTimestamp
+          question {
+            metadata {
+              title
+            }
+          }
         }
       }
     }

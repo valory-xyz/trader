@@ -563,9 +563,19 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return all_requests
 
     def _fetch_mech_requests_by_titles(
-        self, agent_safe_address: str, question_titles: List[str]
+        self,
+        agent_safe_address: str,
+        question_titles: List[str],
+        block_timestamp_gt: int = 0,
     ) -> Generator[None, None, Optional[List]]:
-        """Fetch mech requests by question titles"""
+        """Fetch mech requests by question titles.
+
+        :param agent_safe_address: the agent's safe address
+        :param question_titles: list of question titles to filter by
+        :param block_timestamp_gt: only return requests after this timestamp (watermark)
+        :return: list of mech request dicts, or None on failure
+        :yield: None
+        """
         if not question_titles:
             return []
 
@@ -582,6 +592,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             variables={
                 "sender": agent_safe_address.lower(),
                 "questionTitles": question_titles,
+                "blockTimestamp_gt": str(block_timestamp_gt),
             },
             subgraph=subgraph,
             res_context=res_context,

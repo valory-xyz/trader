@@ -108,7 +108,6 @@ def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
     b._settled_mech_requests_count = 0
     b._placed_mech_requests_count = 0
     b._unplaced_mech_requests_count = 0
-    b._placed_titles = set()  # type: ignore[assignment]
     b._pol_usdc_rate = None
     b._pol_usdc_rate_timestamp = 0.0
     b._call_failed = False
@@ -306,7 +305,6 @@ class TestFetchPerformanceSummaryBehaviourInit:
         assert b._settled_mech_requests_count == 0
         assert b._placed_mech_requests_count == 0
         assert b._unplaced_mech_requests_count == 0
-        assert b._placed_titles == set()
         assert b._pol_usdc_rate is None
         assert b._pol_usdc_rate_timestamp == 0.0
 
@@ -664,8 +662,8 @@ class TestCalculateOmenAccuracy:
         result = b._calculate_omen_accuracy({"bets": bets})
         assert result == 0.0
 
-    def test_invalid_answer_hex_skipped(self) -> None:
-        """Bets with INVALID_ANSWER_HEX are skipped (not counted as wins)."""
+    def test_invalid_answer_hex_excluded_from_denominator(self) -> None:
+        """Bets with INVALID_ANSWER_HEX are excluded from both numerator and denominator."""
         b = self._make()
         bets = [
             {
@@ -678,11 +676,11 @@ class TestCalculateOmenAccuracy:
             },
         ]
         result = b._calculate_omen_accuracy({"bets": bets})
-        # 1 correct out of 2 total resolved bets = 50%
-        assert result == 50.0
+        # Invalid bet excluded: 1 correct out of 1 valid = 100%
+        assert result == 100.0
 
-    def test_bet_answer_none_skipped(self) -> None:
-        """Bets with None outcomeIndex are skipped."""
+    def test_bet_answer_none_excluded_from_denominator(self) -> None:
+        """Bets with None outcomeIndex are excluded from both numerator and denominator."""
         b = self._make()
         bets = [
             {
@@ -691,7 +689,53 @@ class TestCalculateOmenAccuracy:
             },
         ]
         result = b._calculate_omen_accuracy({"bets": bets})
-        assert result == 0.0
+        # No valid bets remain after filtering
+        assert result is None
+
+    def test_all_invalid_returns_none(self) -> None:
+        """Returns None when all resolved bets are invalid."""
+        b = self._make()
+        bets = [
+            {
+                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "outcomeIndex": "0",
+            },
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "outcomeIndex": None,
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result is None
+
+    def test_mixed_invalid_and_valid(self) -> None:
+        """Invalid bets don't dilute accuracy of valid bets."""
+        b = self._make()
+        bets = [
+            # Invalid market
+            {
+                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "outcomeIndex": "0",
+            },
+            # Missing outcomeIndex
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "outcomeIndex": None,
+            },
+            # Valid correct bet
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "outcomeIndex": "1",
+            },
+            # Valid wrong bet
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # 2 invalid excluded, 1 correct + 1 wrong = 50%
+        assert result == 50.0
 
     def test_mixed_results(self) -> None:
         """Returns correct percentage for mixed results."""
@@ -820,6 +864,19 @@ class TestCalculatePolymarketAccuracy:
         result = b._calculate_polymarket_accuracy({"bets": bets})
         assert result is None
 
+    def test_null_question_field_skipped(self) -> None:
+        """Bets with explicit null question are excluded, not crash."""
+        b = self._make()
+        bets = [
+            {"question": None, "outcomeIndex": 0},
+            {
+                "question": {"resolution": {"winningIndex": 0}},
+                "outcomeIndex": 0,
+            },
+        ]
+        result = b._calculate_polymarket_accuracy({"bets": bets})
+        assert result == 100.0
+
 
 # ---------------------------------------------------------------------------
 # Tests for _get_prediction_accuracy - generator method
@@ -916,209 +973,327 @@ class TestGetPredictionAccuracy:
 
 
 # ---------------------------------------------------------------------------
-# _evenly_distribute_requests
+# _extract_title
 # ---------------------------------------------------------------------------
 
 
-class TestEvenlyDistributeRequests:
-    """Tests for _evenly_distribute_requests."""
+class TestExtractTitle:
+    """Tests for _extract_title."""
 
-    def _make(self) -> FetchPerformanceSummaryBehaviour:
-        """Create behaviour."""
-        return _make_fetch_behaviour()
-
-    def test_zero_requests(self) -> None:
-        """Returns empty dict for zero requests."""
-        b = self._make()
-        result = b._evenly_distribute_requests(0, [100, 200])
-        assert result == {}
-
-    def test_negative_requests(self) -> None:
-        """Returns empty dict for negative requests."""
-        b = self._make()
-        result = b._evenly_distribute_requests(-5, [100, 200])
-        assert result == {}
-
-    def test_empty_days(self) -> None:
-        """Returns empty dict for empty days."""
-        b = self._make()
-        result = b._evenly_distribute_requests(10, [])
-        assert result == {}
-
-    def test_even_distribution(self) -> None:
-        """Distributes evenly when divisible."""
-        b = self._make()
-        result = b._evenly_distribute_requests(6, [100, 200, 300])
-        assert result == {100: 2, 200: 2, 300: 2}
-
-    def test_remainder_distribution(self) -> None:
-        """Distributes remainder to earliest days."""
-        b = self._make()
-        result = b._evenly_distribute_requests(7, [100, 200, 300])
-        assert result == {100: 3, 200: 2, 300: 2}
-
-    def test_single_day(self) -> None:
-        """All requests go to single day."""
-        b = self._make()
-        result = b._evenly_distribute_requests(5, [100])
-        assert result == {100: 5}
-
-    def test_more_days_than_requests(self) -> None:
-        """Some days get 0 allocation (not included in result)."""
-        b = self._make()
-        result = b._evenly_distribute_requests(2, [100, 200, 300, 400, 500])
-        # per_day=0, remainder=2, so first 2 days get 1 each
-        assert result == {100: 1, 200: 1}
-
-
-# ---------------------------------------------------------------------------
-# _calculate_mech_fees_for_day
-# ---------------------------------------------------------------------------
-
-
-class TestCalculateMechFeesForDay:
-    """Tests for _calculate_mech_fees_for_day."""
-
-    def _make(self, is_polymarket: bool = False) -> FetchPerformanceSummaryBehaviour:
-        """Create behaviour."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, _ = _mock_context(is_polymarket=is_polymarket)
-        b._ctx = ctx
-        b._params = params
-        return b
-
-    def test_empty_participants(self) -> None:
-        """Returns (0.0, 0) for empty participants."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
-        with _patch_context(b, ctx, synced_data)[0]:
-            result = b._calculate_mech_fees_for_day([], {})
-        assert result == (0.0, 0)
-
-    def test_none_participants(self) -> None:
-        """Returns (0.0, 0) for None participants."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()  # type: ignore[arg-type]
-        with _patch_context(b, ctx, synced_data)[0]:
-            result = b._calculate_mech_fees_for_day(None, {})  # type: ignore[arg-type]
-        assert result == (0.0, 0)
-
-    def test_omen_participants_with_lookup(self) -> None:
-        """Calculates fees correctly for Omen participants."""
+    def test_omen_title(self) -> None:
+        """Extracts title from Omen question format."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [
-            {"question": f"Will it rain?{QUESTION_DATA_SEPARATOR}extra"},
-            {"question": f"Is sky blue?{QUESTION_DATA_SEPARATOR}data"},
-        ]
-        lookup = {"Will it rain?": 2, "Is sky blue?": 1}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._calculate_mech_fees_for_day(participants, lookup)
-        assert count == 3
-        assert fees == 3 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            result = b._extract_title(
+                {"question": f"Will it rain?{QUESTION_DATA_SEPARATOR}extra"}
+            )
+        assert result == "Will it rain?"
 
-    def test_polymarket_participants_with_lookup(self) -> None:
-        """Calculates fees correctly for Polymarket participants."""
+    def test_polymarket_title(self) -> None:
+        """Extracts title from Polymarket metadata format."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
-        participants = [
-            {"metadata": {"title": "Market A"}},
-            {"metadata": {"title": "Market B"}},
+        with _patch_context(b, ctx, synced_data)[0]:
+            result = b._extract_title({"metadata": {"title": "Market A"}})
+        assert result == "Market A"
+
+    def test_empty_question(self) -> None:
+        """Returns empty string for empty question."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        with _patch_context(b, ctx, synced_data)[0]:
+            result = b._extract_title({"question": ""})
+        assert result == ""
+
+    def test_none_metadata(self) -> None:
+        """Returns empty string for None metadata."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        with _patch_context(b, ctx, synced_data)[0]:
+            result = b._extract_title({"metadata": None})
+        assert result == ""
+
+    def test_missing_metadata(self) -> None:
+        """Returns empty string when metadata key is missing."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        with _patch_context(b, ctx, synced_data)[0]:
+            result = b._extract_title({})
+        assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# _match_mech_requests_to_days
+# ---------------------------------------------------------------------------
+
+
+class TestMatchMechRequestsToDays:
+    """Tests for _match_mech_requests_to_days."""
+
+    def test_single_bet_single_request(self) -> None:
+        """Single title, single bet, single mech request."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        stats = [
+            {
+                "date": "1700000000",
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
         ]
-        lookup = {"Market A": 1, "Market B": 2}
+        lookup = {"Q1": [1699999900]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._calculate_mech_fees_for_day(participants, lookup)
-        assert count == 3
-        assert fees == 3 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert fees_by_day == {1700000000: 1}
+        assert placed == 1
+        assert unplaced == 0
 
-    def test_title_not_in_lookup(self) -> None:
-        """Returns 0 for titles not in lookup."""
+    def test_multi_bet_chronological_match(self) -> None:
+        """Same title on different days: greedy chronological match."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [{"question": f"Unknown?{QUESTION_DATA_SEPARATOR}data"}]
-        lookup = {"Other": 1}
+        day1 = SECONDS_PER_DAY * 100
+        day2 = SECONDS_PER_DAY * 101
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
+            {
+                "date": str(day2),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
+        ]
+        # Two mech requests for Q1, one before each day
+        lookup = {"Q1": [day1 - 100, day2 - 100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._calculate_mech_fees_for_day(participants, lookup)
-        assert count == 0
-        assert fees == 0.0
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert fees_by_day == {day1: 1, day2: 1}
+        assert placed == 2
+        assert unplaced == 0
 
-    def test_empty_title_skipped(self) -> None:
-        """Participants with empty title are skipped."""
+    def test_unplaced_excess_requests(self) -> None:
+        """More mech requests than bets: excess goes to mech day."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [{"question": ""}]
-        lookup = {"": 5}
+        day1 = SECONDS_PER_DAY * 100
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
+        ]
+        # 3 mech requests, but only 1 bet
+        mech_ts_1 = day1 - 100
+        mech_ts_2 = day1 + 100  # same day
+        mech_ts_3 = day1 + SECONDS_PER_DAY + 100  # next day
+        lookup = {"Q1": [mech_ts_1, mech_ts_2, mech_ts_3]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._calculate_mech_fees_for_day(participants, lookup)
-        assert count == 0
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 1
+        assert unplaced == 2
+        # 1 placed on day1, 1 unplaced on day1 (mech_ts_2), 1 unplaced on day2 (mech_ts_3)
+        assert fees_by_day[day1] == 2  # 1 placed + 1 unplaced
+        mech_day_3 = (mech_ts_3 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        assert fees_by_day[mech_day_3] == 1
 
-    def test_polymarket_none_metadata(self) -> None:
-        """Handles None metadata gracefully on Polymarket."""
+    def test_all_unplaced(self) -> None:
+        """Title with requests but no bets."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)  # type: ignore[var-annotated]
-        participants = [{"metadata": None}]
-        lookup = {}  # type: ignore[var-annotated]
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        day1 = SECONDS_PER_DAY * 100
+        stats = [
+            {"date": str(day1), "profitParticipants": []},
+        ]
+        lookup = {"Q1": [day1 - 100, day1 + 100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._calculate_mech_fees_for_day(participants, lookup)
-        assert count == 0
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 0
+        assert unplaced == 2
 
+    def test_bet_title_not_in_lookup(self) -> None:
+        """Bet with title missing from lookup is skipped (no match)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        day1 = SECONDS_PER_DAY * 100
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {"question": f"Unknown{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
+        ]
+        lookup = {"Q1": [day1 - 100]}  # different title
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 0
+        assert unplaced == 1  # Q1 request is unplaced
 
-# ---------------------------------------------------------------------------
-# _collect_placed_titles
-# ---------------------------------------------------------------------------
+    def test_empty_inputs(self) -> None:
+        """Empty stats and lookup returns zeros."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days([], {})
+        assert fees_by_day == {}
+        assert placed == 0
+        assert unplaced == 0
 
+    def test_polymarket_data_shape(self) -> None:
+        """Works with Polymarket metadata structure."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        day1 = SECONDS_PER_DAY * 100
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [{"metadata": {"title": "PM Market"}}],
+            },
+        ]
+        lookup = {"PM Market": [day1 - 50]}
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 1
+        assert unplaced == 0
+        assert fees_by_day == {day1: 1}
 
-class TestCollectPlacedTitles:
-    """Tests for _collect_placed_titles."""
-
-    def test_omen_titles(self) -> None:
-        """Collects titles from Omen-style data."""
+    def test_missing_date_skipped(self) -> None:
+        """Stats with missing date are skipped."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         stats = [
             {
                 "profitParticipants": [
-                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}extra"},
-                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"},
-                ]
-            }
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            },
         ]
+        lookup = {"Q1": [100]}
         with _patch_context(b, ctx, synced_data)[0]:
-            result = b._collect_placed_titles(stats)
-        assert result == {"Q1", "Q2"}
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 0
+        assert unplaced == 1
 
-    def test_polymarket_titles(self) -> None:
-        """Collects titles from Polymarket-style data."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
-        stats = [
-            {
-                "profitParticipants": [
-                    {"metadata": {"title": "Market A"}},
-                    {"metadata": {"title": "Market B"}},
-                ]
-            }
-        ]
-        with _patch_context(b, ctx, synced_data)[0]:
-            result = b._collect_placed_titles(stats)
-        assert result == {"Market A", "Market B"}
-
-    def test_empty_stats(self) -> None:
-        """Returns empty set for empty stats."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
-        with _patch_context(b, ctx, synced_data)[0]:
-            result = b._collect_placed_titles([])
-        assert result == set()
-
-    def test_empty_title_skipped(self) -> None:
-        """Empty titles are excluded."""
+    def test_bisect_selects_last_before_bet(self) -> None:
+        """Bisect should consume the last mech request BEFORE the bet, not the earliest."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [{"profitParticipants": [{"question": ""}]}]
+        day0 = 0
+        day1 = SECONDS_PER_DAY
+        day2 = SECONDS_PER_DAY * 2
+        # Mech requests on three different days so unplaced distribution differs
+        # depending on which request is consumed.
+        mech_day0 = 50  # → unplaced lands on day 0
+        mech_day1 = day1 + 100  # → unplaced lands on day 1
+        mech_day2 = day2 + 100  # → unplaced lands on day 2
+        # Bet placed at day1 + 150.
+        # Correct (bisect): consume mech_day1 (last before bet). Remaining: day0, day2.
+        # Bug (pop(0)): consume mech_day0 (earliest). Remaining: day1, day2.
+        lookup = {"Q1": [mech_day0, mech_day1, mech_day2]}
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": str(day1 + 150)}],
+                    }
+                ],
+            }
+        ]
         with _patch_context(b, ctx, synced_data)[0]:
-            result = b._collect_placed_titles(stats)
-        assert result == set()
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        assert placed == 1
+        assert unplaced == 2
+        # Correct: mech_day1 consumed → unplaced on day0 and day2
+        assert fees.get(day1, 0) == 1  # bet day (placed)
+        assert fees.get(day0, 0) == 1  # mech_day0 unplaced
+        assert fees.get(day2, 0) == 1  # mech_day2 unplaced
+
+    def test_bet_with_zero_timestamp_skipped(self) -> None:
+        """Bets with timestamp=0 are skipped (no match attempted)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        lookup = {"Q1": [50]}
+        stats = [
+            {
+                "date": "86400",
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": "0"}],
+                    }
+                ],
+            }
+        ]
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        # bet_ts=0 skipped, Q1 mech request is unplaced
+        assert placed == 0
+        assert unplaced == 1
+
+    def test_all_mech_requests_after_bet(self) -> None:
+        """When all mech requests are after the bet, none are consumed (idx < 0)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        # Mech requests all at T=200+, bet at T=100 → bisect finds no request <= 100
+        lookup = {"Q1": [200, 300]}
+        stats = [
+            {
+                "date": "86400",
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": "100"}],
+                    }
+                ],
+            }
+        ]
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        assert placed == 0
+        assert unplaced == 2
+
+    def test_fallback_without_bets_field(self) -> None:
+        """Without bets field, falls back to day_ts as approximate bet timestamp."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        lookup = {"Q1": [50]}
+        stats = [
+            {
+                "date": "86400",
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        assert placed == 1
+        assert unplaced == 0
 
 
 # ---------------------------------------------------------------------------
@@ -1127,41 +1302,30 @@ class TestCollectPlacedTitles:
 
 
 class TestApplyMechFees:
-    """Tests for _apply_mech_fees."""
+    """Tests for _apply_mech_fees (simplified: looks up pre-computed fees_by_day)."""
 
-    def test_basic_fees_no_extra(self) -> None:
-        """Calculates fees from lookup only when no extra fees."""
+    def test_day_in_fees(self) -> None:
+        """Returns correct fees when day is in fees_by_day."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]
-        lookup = {"Q1": 2}
-        with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._apply_mech_fees(participants, lookup, {}, 100)
-        assert count == 2
-        assert fees == 2 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+        fees_by_day = {100: 3}
+        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        assert count == 3
+        assert fees == 3 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
 
-    def test_with_extra_fees(self) -> None:
-        """Adds extra fees from extra_fees_by_day."""
+    def test_day_not_in_fees(self) -> None:
+        """Returns zero when day is not in fees_by_day."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]
-        lookup = {"Q1": 1}
-        extra = {100: 3}
-        with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._apply_mech_fees(participants, lookup, extra, 100)
-        assert count == 4  # 1 from lookup + 3 from extra
-        assert fees == 4 * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+        fees_by_day = {200: 5}
+        fees, count = b._apply_mech_fees(fees_by_day, 100)
+        assert count == 0
+        assert fees == 0.0
 
-    def test_no_extra_for_date(self) -> None:
-        """No extra fees added when date not in extra_fees_by_day."""
+    def test_empty_fees_by_day(self) -> None:
+        """Returns zero for empty fees_by_day."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        participants = [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}]
-        lookup = {"Q1": 1}
-        extra = {200: 5}  # different date
-        with _patch_context(b, ctx, synced_data)[0]:
-            fees, count = b._apply_mech_fees(participants, lookup, extra, 100)
-        assert count == 1
+        fees, count = b._apply_mech_fees({}, 100)
+        assert count == 0
+        assert fees == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -1447,6 +1611,35 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+
+    def test_omen_null_question_in_open_markets_skipped(self) -> None:
+        """Markets with null or missing question field are skipped, not crash."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        mech_sender = {
+            "requests": [
+                {"parsedRequest": {"questionTitle": "Q1"}},
+            ]
+        }
+        open_markets = [
+            {"question": None},  # explicit null
+            {},  # missing key
+            {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"},
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
+        ):
+            gen = b._get_open_market_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                # Only Q1 matches; null/missing entries are skipped
+                assert e.value == 1
 
 
 # ---------------------------------------------------------------------------
@@ -1744,8 +1937,7 @@ class TestFetchAgentPerformanceData:
             _open_market_requests=1,
             _settled_mech_requests_count=4,
             _partial_roi=10.0,
-            _mech_request_lookup={"Q1": 2},
-            _placed_titles={"Q1"},
+            _mech_request_lookup={"Q1": [100, 200]},
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2065,7 +2257,7 @@ class TestGetUsdcEquivalentForPol:
 
 
 class TestBuildMechRequestLookup:
-    """Tests for _build_mech_request_lookup."""  # type: ignore[no-untyped-def]
+    """Tests for _build_mech_request_lookup (returns Dict[str, List[int]])."""  # type: ignore[no-untyped-def]
 
     def _run_gen(self, gen: Generator) -> Any:
         """Drive generator to completion."""
@@ -2077,11 +2269,11 @@ class TestBuildMechRequestLookup:
 
     def test_cached_lookup(self) -> None:
         """Returns cached lookup when available."""
-        b = _make_fetch_behaviour(_mech_request_lookup={"Q1": 2})
+        b = _make_fetch_behaviour(_mech_request_lookup={"Q1": [100, 200]})
         ctx, _, synced_data, _ = _mock_context()
         with _patch_context(b, ctx, synced_data)[0]:
             result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
-        assert result == {"Q1": 2}
+        assert result == {"Q1": [100, 200]}
 
     def test_no_mech_requests(self) -> None:
         """Returns empty dict when no mech requests found."""
@@ -2094,16 +2286,17 @@ class TestBuildMechRequestLookup:
             result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
         assert result == {}
 
-    def test_builds_lookup(self) -> None:
-        """Builds lookup correctly."""
+    def test_builds_lookup_with_timestamps(self) -> None:
+        """Builds lookup with sorted timestamps correctly."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
         requests = [
-            {"parsedRequest": {"questionTitle": "Q1"}},
-            {"parsedRequest": {"questionTitle": "Q1"}},
-            {"parsedRequest": {"questionTitle": "Q2"}},
-            {"parsedRequest": None},
-            {"parsedRequest": {"questionTitle": ""}},
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "300"},
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "100"},
+            {"parsedRequest": {"questionTitle": "Q2"}, "blockTimestamp": "200"},
+            {"parsedRequest": None, "blockTimestamp": "400"},
+            {"parsedRequest": {"questionTitle": ""}, "blockTimestamp": "500"},
+            {"parsedRequest": {"questionTitle": "Q3"}, "blockTimestamp": "0"},
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2112,129 +2305,8 @@ class TestBuildMechRequestLookup:
             ),
         ):
             result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
-        assert result == {"Q1": 2, "Q2": 1}
-        assert b._mech_request_lookup == {"Q1": 2, "Q2": 1}
-
-
-# ---------------------------------------------------------------------------
-# _build_multi_bet_allocations
-# ---------------------------------------------------------------------------
-
-
-class TestBuildMultiBetAllocations:
-    """Tests for _build_multi_bet_allocations."""
-
-    def test_single_day_per_title(self) -> None:
-        """No allocations when each title appears on only one day."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [{"question": f"Q2{QUESTION_DATA_SEPARATOR}x"}],
-            },
-        ]
-        lookup = {"Q1": 2, "Q2": 3}
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert allocations == {}
-        assert titles == set()
-
-    def test_multi_day_title(self) -> None:
-        """Allocations split across days for multi-day titles."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-        ]
-        lookup = {"Q1": 4}
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert "Q1" in titles
-        assert allocations == {100: 2, 200: 2}
-
-    def test_zero_requests_in_lookup(self) -> None:
-        """No allocations when title has 0 requests in lookup."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-        ]
-        lookup = {"Q1": 0}
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert allocations == {}
-        assert titles == set()
-
-    def test_polymarket_multi_day(self) -> None:
-        """Works for Polymarket metadata structure."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
-        stats = [
-            {"date": "100", "profitParticipants": [{"metadata": {"title": "M1"}}]},
-            {"date": "200", "profitParticipants": [{"metadata": {"title": "M1"}}]},
-        ]
-        lookup = {"M1": 6}
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert "M1" in titles
-        assert allocations == {100: 3, 200: 3}
-
-
-# ---------------------------------------------------------------------------
-# _compute_mech_fee_buckets
-# ---------------------------------------------------------------------------
-
-
-class TestComputeMechFeeBuckets:
-    """Tests for _compute_mech_fee_buckets."""
-
-    def test_basic_flow(self) -> None:
-        """Produces buckets and filtered lookup."""
-        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=2)
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-        ]
-        lookup = {"Q1": 3}
-        placed_titles = {"Q1"}
-        with _patch_context(b, ctx, synced_data)[0]:
-            extra, filtered, unplaced = b._compute_mech_fee_buckets(
-                stats, lookup, placed_titles, existing_unplaced_count=0
-            )
-        # remaining_unplaced = 10 - 2 - 3 - 0 - 0 = 5
-        assert sum(extra.values()) >= 5  # includes multi-bet allocations too
-
-    def test_no_stats(self) -> None:
-        """Empty stats produces empty buckets."""
-        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=2)
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        with _patch_context(b, ctx, synced_data)[0]:
-            extra, filtered, unplaced = b._compute_mech_fee_buckets(
-                [], {"Q1": 3}, {"Q1"}, existing_unplaced_count=0
-            )
-        assert unplaced == 0
+        assert result == {"Q1": [100, 300], "Q2": [200]}
+        assert b._mech_request_lookup == {"Q1": [100, 300], "Q2": [200]}
 
 
 # ---------------------------------------------------------------------------
@@ -2375,8 +2447,7 @@ class TestCalculatePerformanceMetrics:
             _open_market_requests=1,
             _total_mech_requests=5,
             _partial_roi=50.0,
-            _mech_request_lookup={"Q1": 2},
-            _placed_titles={"Q1"},
+            _mech_request_lookup={"Q1": [100, 200]},
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2404,7 +2475,6 @@ class TestCalculatePerformanceMetrics:
             _total_mech_requests=0,
             _partial_roi=None,
             _mech_request_lookup={},
-            _placed_titles=set(),
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2423,6 +2493,74 @@ class TestCalculatePerformanceMetrics:
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert result.roi is None
         assert result.available_funds is None
+
+    def test_zero_values_preserved_not_null(self) -> None:
+        """Zero profit/funds values must be 0.0, not None."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=0,
+            _open_market_requests=0,
+            _total_mech_requests=0,
+            _partial_roi=0.0,
+            _mech_request_lookup={},
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        trader_agent = {
+            "totalTraded": "0",
+            "totalFees": "0",
+            "totalTradedSettled": "0",
+            "totalFeesSettled": "0",
+            "totalPayout": "0",
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
+            patch.object(b, "_fetch_available_funds", side_effect=_return_gen(0.0)),
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        # Zero is a valid value — must NOT become None
+        assert (
+            result.all_time_funds_used == 0.0
+        ), f"Expected 0.0, got {result.all_time_funds_used}"
+        assert (
+            result.all_time_profit == 0.0
+        ), f"Expected 0.0, got {result.all_time_profit}"
+        assert (
+            result.funds_locked_in_markets == 0.0
+        ), f"Expected 0.0, got {result.funds_locked_in_markets}"
+        assert (
+            result.available_funds == 0.0
+        ), f"Expected 0.0, got {result.available_funds}"
+
+    def test_placed_uses_count_not_lookup_sum(self) -> None:
+        """placed_mech_request_count must use _placed_mech_requests_count, not lookup sum."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=5,
+            _open_market_requests=0,
+            _total_mech_requests=5,
+            _partial_roi=0.0,
+            # Lookup has 5 requests for Q1, but only 2 were matched to bets
+            _mech_request_lookup={"Q1": [100, 200, 300, 400, 500]},
+            _placed_mech_requests_count=2,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        trader_agent = {
+            "totalTraded": str(WEI_IN_ETH),
+            "totalFees": "0",
+            "totalTradedSettled": str(WEI_IN_ETH),
+            "totalFeesSettled": "0",
+            "totalPayout": str(WEI_IN_ETH),
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+            patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        # Must report 2 placed (from _placed_mech_requests_count), not 5 (from lookup)
+        assert result.placed_mech_request_count == 2
+        assert result.unplaced_mech_request_count == 3
 
 
 # ---------------------------------------------------------------------------
@@ -2482,8 +2620,13 @@ class TestBuildProfitOverTimeData:
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
-    def test_settled_mismatch_triggers_backfill(self) -> None:
-        """Routes to backfill when settled counts mismatch."""
+    def test_settled_undercount_does_not_trigger_backfill(self) -> None:
+        """Under-count (stored < reference) should go to incremental, not backfill.
+
+        M5: series-attributed count and snapshot total-open are different models.
+        Under-count is normal (new requests settled since last run). Only log a warning.
+        """
+        # stored=5, reference=10 → under-count → should NOT rebuild
         b = _make_fetch_behaviour(_settled_mech_requests_count=10)
         ctx, _, synced_data, state = _mock_context()
         summary = _default_summary()
@@ -2506,18 +2649,29 @@ class TestBuildProfitOverTimeData:
         summary.agent_performance.metrics = MagicMock()
         summary.agent_performance.metrics.settled_mech_request_count = 5
         state.read_existing_performance_summary.return_value = summary
-        backfill_result = ProfitOverTimeData(
+        incr_result = ProfitOverTimeData(
+            last_updated=1700001000, total_days=1, data_points=[]
+        )
+        backfill_sentinel = ProfitOverTimeData(
             last_updated=1700000000, total_days=0, data_points=[]
         )
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(
-                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
-            ),
+                b, "_perform_incremental_update", side_effect=_return_gen(incr_result)
+            ) as mock_incr,
+            patch.object(
+                b,
+                "_perform_initial_backfill",
+                side_effect=_return_gen(backfill_sentinel),
+            ) as mock_backfill,
         ):
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
-        assert result is backfill_result
+        # Under-count must take incremental path, not backfill
+        mock_incr.assert_called_once()
+        mock_backfill.assert_not_called()
+        assert result is incr_result
 
     def test_missing_settled_mech_request_count_triggers_backfill(self) -> None:
         """Routes to backfill when settled_mech_request_count field is missing."""
@@ -2678,8 +2832,8 @@ class TestPerformInitialBackfill:
         assert result.total_days == 0
         assert result.data_points == []
 
-    def test_no_mech_requests(self) -> None:
-        """Returns empty ProfitOverTimeData when no mech requests."""
+    def test_no_mech_requests_returns_none(self) -> None:
+        """Returns None when mech lookup is empty so existing data is preserved."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
         daily_stats = [
@@ -2700,13 +2854,12 @@ class TestPerformInitialBackfill:
             patch.object(b, "_build_mech_request_lookup", side_effect=_return_gen({})),
         ):
             result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
-        assert result is not None
-        assert result.total_days == 0
+        assert result is None
 
     def test_successful_backfill_gnosis(self) -> None:
         """Builds data points correctly on Gnosis."""
         b = _make_fetch_behaviour(
-            _total_mech_requests=2,
+            _total_mech_requests=1,
             _open_market_requests=0,
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
@@ -2719,7 +2872,7 @@ class TestPerformInitialBackfill:
                 ],
             },
         ]
-        lookup = {"Q1": 2}
+        lookup = {"Q1": [1699999900]}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2752,7 +2905,7 @@ class TestPerformInitialBackfill:
                 "profitParticipants": [{"metadata": {"title": "Market A"}}],
             },
         ]
-        lookup = {"Market A": 1}
+        lookup = {"Market A": [1699999900]}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2768,6 +2921,83 @@ class TestPerformInitialBackfill:
             result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
         assert result is not None
         assert result.total_days == 1
+
+    def test_mech_only_day_emitted(self) -> None:
+        """Unplaced mech requests on days with no bets emit data points."""
+        day1 = SECONDS_PER_DAY
+        b = _make_fetch_behaviour(
+            _total_mech_requests=2,
+            _open_market_requests=0,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        # Q1: bet on day1.  Q2: unplaced mech at T=50 → lands on day 0.
+        daily_stats = [
+            {
+                "date": str(day1),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": str(day1)}],
+                    }
+                ],
+            }
+        ]
+        lookup = {"Q1": [day1 - 100], "Q2": [50]}
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
+            patch.object(
+                b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)
+            ),
+        ):
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
+        assert result is not None
+        assert result.total_days == 2
+        # Day 0 (mech-only) should come first, day1 (bet) second
+        assert result.data_points[0].timestamp == 0
+        assert result.data_points[0].daily_profit < 0  # pure mech cost
+        assert result.data_points[0].daily_mech_requests == 1
+        assert result.data_points[0].daily_profit_raw == 0.0
+        assert result.data_points[1].timestamp == day1
+
+    def test_watermark_set_on_backfill(self) -> None:
+        """Backfill should set last_mech_timestamp to max of all mech timestamps."""
+        b = _make_fetch_behaviour(
+            _total_mech_requests=3,
+            _open_market_requests=0,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        daily_stats = [
+            {
+                "date": "1700000000",
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        lookup = {"Q1": [100, 300], "Q2": [200]}
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(daily_stats),
+            ),
+            patch.object(
+                b, "_build_mech_request_lookup", side_effect=_return_gen(lookup)
+            ),
+        ):
+            result = self._run_gen(b._perform_initial_backfill("0xaddr", 1700000000))  # type: ignore[arg-type]
+        assert result is not None
+        assert result.last_mech_timestamp == 300
 
 
 # ---------------------------------------------------------------------------
@@ -2855,7 +3085,12 @@ class TestPerformIncrementalUpdate:
                 ],
             }
         ]
-        mech_requests = [{"parsedRequest": {"questionTitle": "Q2"}}]
+        mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "Q2"},
+                "blockTimestamp": str(new_ts - 100),
+            }
+        ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2894,7 +3129,9 @@ class TestPerformIncrementalUpdate:
                 ],
             }
         ]
-        mech_requests = [{"parsedRequest": {"questionTitle": "Q1"}}]
+        mech_requests = [
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": str(ts - 100)}
+        ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2978,8 +3215,8 @@ class TestPerformIncrementalUpdate:
             }
         ]
         mech_requests = [
-            {"parsedRequest": {"questionTitle": "Q1"}},
-            {"parsedRequest": {"questionTitle": "Q1"}},
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": str(ts - 200)},
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": str(ts - 100)},
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2998,6 +3235,215 @@ class TestPerformIncrementalUpdate:
                 b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
             )
         # Result may or may not be the same object depending on whether values match
+        assert result is not None
+
+    def test_empty_mech_lookup_with_new_titles_fallback_succeeds(self) -> None:
+        """Lookback fallback recovers mech data after primary watermark query misses."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = ts  # non-zero watermark enables fallback
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {
+                        "question": f"Q2{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": str(new_ts + 100)}],
+                    }
+                ],
+            }
+        ]
+        # Primary fetch returns empty; fallback with lookback returns the request
+        fallback_mech = [
+            {
+                "parsedRequest": {"questionTitle": "Q2"},
+                "blockTimestamp": str(new_ts + 50),
+            }
+        ]
+        call_count = 0
+
+        def _fetch_side_effect(*args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return []  # primary watermark query misses
+            return fallback_mech  # lookback fallback finds it
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_fetch_side_effect,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 200, existing)  # type: ignore[arg-type]
+            )
+        # Fallback succeeded — should NOT return None
+        assert result is not None
+        assert call_count == 2  # primary + fallback
+
+    def test_empty_mech_lookup_with_new_titles_fallback_also_empty(self) -> None:
+        """Returns None when both primary and lookback fallback return no mech data."""
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=1700000000)
+        existing.last_mech_timestamp = 1700000000  # non-zero to trigger fallback
+        new_ts = 1700000000 + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen([]),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        assert result is None
+
+    def test_lookback_fallback_skipped_when_watermark_is_zero(self) -> None:
+        """No lookback retry when last_mech_timestamp is 0 (nothing to look back from)."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = 0  # no watermark
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        fetch_mock = MagicMock(side_effect=_return_gen([]))
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                fetch_mock,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        assert result is None
+        # Only one call — no lookback retry when watermark is 0
+        assert fetch_mock.call_count == 1
+
+    def test_lookback_fallback_skips_invalid_mech_entries(self) -> None:
+        """Fallback results with empty title or zero ts are skipped."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = ts
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        # Fallback returns entries that should be skipped (empty title, 0 ts)
+        fallback_mech = [
+            {"parsedRequest": {"questionTitle": ""}, "blockTimestamp": "100"},
+            {"parsedRequest": {"questionTitle": "Q2"}, "blockTimestamp": "0"},
+        ]
+        call_count = 0
+
+        def _fetch_side(*args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return []
+            return fallback_mech
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(new_stats),
+            ),
+            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_fetch_side),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        # Both fallback entries were invalid → lookup still empty → None
+        assert result is None
+        assert call_count == 2
+
+    def test_empty_mech_lookup_no_new_titles_proceeds(self) -> None:
+        """Proceeds normally when no new bet titles exist (no mech data needed)."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        current_ts = ts + 100  # same day
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        existing = self._existing_data(ts=ts)
+        # Same-day stat with no profitParticipants (no new question titles)
+        new_stats = [
+            {
+                "date": str(ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [],
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
         assert result is not None
 
 
@@ -3059,20 +3505,125 @@ class TestUpdateProfitOverTimeStorage:
 class TestSaveAgentPerformanceSummary:
     """Tests for _save_agent_performance_summary."""
 
-    def test_preserves_agent_behavior(self) -> None:
-        """Preserves agent_behavior from existing data."""
+    def _save(
+        self,
+        new_summary: AgentPerformanceSummary,
+        existing: AgentPerformanceSummary,
+    ) -> None:
+        """Helper: run _save_agent_performance_summary with mocked state."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, state = _mock_context()
-        existing = _default_summary()
-        existing.agent_behavior = "existing_behavior"
         state.read_existing_performance_summary.return_value = existing
-
-        new_summary = _default_summary()
-        new_summary.agent_behavior = None
         with _patch_context(b, ctx, synced_data)[0]:
             b._save_agent_performance_summary(new_summary)
+
+    def test_preserves_agent_behavior(self) -> None:
+        """Preserves agent_behavior from existing data."""
+        existing = _default_summary()
+        existing.agent_behavior = "existing_behavior"
+        new_summary = _default_summary()
+        new_summary.agent_behavior = None
+        self._save(new_summary, existing)
         assert new_summary.agent_behavior == "existing_behavior"
-        state.overwrite_performance_summary.assert_called_once_with(new_summary)
+
+    def test_preserves_metrics_na_fallback(self) -> None:
+        """Preserves existing metric when new metric has NA value."""
+        existing = _default_summary()
+        existing.metrics = [
+            AgentPerformanceMetrics(name="Acc", is_primary=False, value="75%"),
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
+            AgentPerformanceMetrics(name="Stale", is_primary=False, value=NA),
+        ]
+        new_summary = _default_summary()
+        new_summary.metrics = [
+            # value is NOT NA -> skip (covers 1747->1746 branch)
+            AgentPerformanceMetrics(name="Acc", is_primary=False, value="80%"),
+            # value is NA, existing has real value -> preserve
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value=NA),
+            # value is NA, existing also NA -> skip (covers 1749->1746)
+            AgentPerformanceMetrics(name="Stale", is_primary=False, value=NA),
+        ]
+        self._save(new_summary, existing)
+        assert new_summary.metrics[0].value == "80%"  # kept new
+        assert new_summary.metrics[1].value == "10%"  # preserved
+        assert new_summary.metrics[2].value == NA  # both NA, unchanged
+        # preserved -> timestamp kept from existing
+        assert new_summary.timestamp == existing.timestamp
+
+    def test_preserves_agent_details_when_all_none(self) -> None:
+        """Preserves existing agent_details when new has all-None fields."""
+        existing = _default_summary()
+        existing.agent_details = AgentDetails(
+            id="0x1",
+            created_at="2024-01-01T00:00:00Z",
+            last_active_at="2024-06-01T00:00:00Z",
+        )
+        new_summary = _default_summary()
+        new_summary.agent_details = AgentDetails(
+            id=None, created_at=None, last_active_at=None
+        )
+        self._save(new_summary, existing)
+        assert new_summary.agent_details.id == "0x1"
+
+    def test_preserves_agent_performance_when_all_none(self) -> None:
+        """Preserves existing agent_performance when new metrics all None."""
+        existing = _default_summary()
+        existing.agent_performance = AgentPerformanceData(
+            metrics=PerformanceMetricsData(
+                all_time_funds_used=100.0, all_time_profit=5.0, roi=0.05
+            ),
+        )
+        new_summary = _default_summary()
+        new_summary.agent_performance = AgentPerformanceData(
+            metrics=PerformanceMetricsData(
+                all_time_funds_used=None, all_time_profit=None, roi=None
+            ),
+        )
+        self._save(new_summary, existing)
+        assert new_summary.agent_performance is not None
+        assert new_summary.agent_performance.metrics is not None
+        assert new_summary.agent_performance.metrics.all_time_funds_used == 100.0
+
+    def test_preserves_profit_over_time_when_new_is_none(self) -> None:
+        """Preserves existing profit_over_time when new is None."""
+        existing = _default_summary()
+        existing.profit_over_time = ProfitOverTimeData(
+            last_updated=1700000000, total_days=1, data_points=[]
+        )
+        new_summary = _default_summary()
+        new_summary.profit_over_time = None
+        self._save(new_summary, existing)
+        assert new_summary.profit_over_time is not None
+        assert new_summary.profit_over_time.total_days == 1
+
+    def test_preserves_prediction_history_when_new_is_empty(self) -> None:
+        """Preserves existing prediction_history when new has 0 preds."""
+        existing = _default_summary()
+        existing.prediction_history = PredictionHistory(
+            total_predictions=50,
+            stored_count=50,
+            last_updated=1700000000,
+            items=[{"id": "1"}],
+        )
+        new_summary = _default_summary()
+        new_summary.prediction_history = PredictionHistory(
+            total_predictions=0,
+            stored_count=0,
+            last_updated=1700000000,
+            items=[],
+        )
+        self._save(new_summary, existing)
+        assert new_summary.prediction_history.total_predictions == 50
+
+    def test_no_preservation_when_new_data_is_valid(self) -> None:
+        """No preservation when new data is valid; timestamp stays new."""
+        existing = _default_summary(timestamp=1600000000)
+        new_summary = _default_summary(timestamp=1700000000)
+        new_summary.metrics = [
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
+        ]
+        self._save(new_summary, existing)
+        assert new_summary.timestamp == 1700000000
 
 
 # ---------------------------------------------------------------------------
@@ -3621,79 +4172,91 @@ class TestPostTxRoundDetectedExceptionPath:
         ctx.logger.debug.assert_called_once()
 
 
-class TestComputeMechFeeBucketsMultiBetBranch:
-    """Tests for _compute_mech_fee_buckets covering multi-bet allocations merge (line 1143)."""
+class TestPolymarketIncrementalTitleExtraction:
+    """Tests for Polymarket title extraction in incremental updates."""  # type: ignore[no-untyped-def]
 
-    def test_multi_bet_allocations_merge(self) -> None:
-        """Covers the line where multi_allocations are merged into extra_fees_by_day."""
-        b = _make_fetch_behaviour(_total_mech_requests=20, _open_market_requests=0)
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        # Create stats where same title appears on two days -> triggers multi-bet allocation
-        stats = [
+    def _run_gen(self, gen: Generator) -> Any:
+        """Drive generator."""
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def _existing_data(self, ts: int = 1700000000) -> ProfitOverTimeData:
+        """Create existing profit data for tests."""
+        return ProfitOverTimeData(
+            last_updated=ts,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=2,
+                    daily_profit_raw=1.5,
+                )
+            ],
+            settled_mech_requests_count=2,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=2,
+            includes_unplaced_mech_fees=True,
+        )
+
+    def test_polymarket_titles_extracted_in_incremental_update(self) -> None:
+        """Polymarket incremental update must extract titles from metadata.title, not question."""
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        existing = self._existing_data(ts=1700000000)
+        new_ts = 1700000000 + SECONDS_PER_DAY
+        # Polymarket-shaped data: title is in metadata.title, not question
+        new_stats = [
             {
-                "date": "100",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [{"question": f"Q1{QUESTION_DATA_SEPARATOR}x"}],
-            },
+                "date": str(new_ts),
+                "dailyProfit": str(10**6),  # 1 USDC
+                "profitParticipants": [
+                    {"questionId": "0xabc", "metadata": {"title": "PM Question 1"}}
+                ],
+            }
         ]
-        lookup = {"Q1": 6, "Q2": 2}
-        placed_titles = {"Q1", "Q2"}
-        with _patch_context(b, ctx, synced_data)[0]:
-            extra, filtered, unplaced = b._compute_mech_fee_buckets(
-                stats, lookup, placed_titles, existing_unplaced_count=0
+        mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "PM Question 1"},
+                "blockTimestamp": str(new_ts - 100),
+            }
+        ]
+        fetch_mech_called = False
+        original_fetch = _return_gen(mech_requests)
+
+        def track_fetch_mech(*args: Any, **kwargs: Any) -> Generator:
+            """Track whether _fetch_mech_requests_by_titles was called."""
+            nonlocal fetch_mech_called
+            fetch_mech_called = True
+            return original_fetch(*args, **kwargs)
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=track_fetch_mech,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
-        # Q1 appears on 2 days => multi-bet allocation => merged into extra
-        # The extra should contain allocations for both unplaced and multi-bet
-        assert isinstance(extra, dict)
-        # Q1 should be removed from filtered_lookup since it was allocated
-        assert "Q1" not in filtered
-
-
-class TestBuildMultiBetAllocationsOmenBranch:
-    """Cover Omen branch in _build_multi_bet_allocations (lines 1076-1083)."""
-
-    def test_omen_multi_day_with_empty_title(self) -> None:
-        """Omen branch: participant with empty question gets empty title, skipped."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {"date": "100", "profitParticipants": [{"question": ""}]},
-            {"date": "200", "profitParticipants": [{"question": ""}]},  # type: ignore[var-annotated]
-        ]
-        lookup = {}  # type: ignore[var-annotated]
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert allocations == {}
-        assert titles == set()
-
-    def test_omen_multiple_participants(self) -> None:
-        """Covers multiple participants in Omen branch with title extraction."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [
-                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}x"},
-                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}y"},
-                ],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [
-                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}x"},
-                ],
-            },
-        ]
-        lookup = {"Q1": 4, "Q2": 2}
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        # Q1 appears on 2 days => allocated. Q2 appears on only 1 day => not allocated.
-        assert "Q1" in titles
-        assert "Q2" not in titles
+        # If titles were correctly extracted, mech lookup should have been populated
+        assert (
+            fetch_mech_called
+        ), "Polymarket titles not extracted — _fetch_mech_requests_by_titles was never called"
+        assert result is not None
+        assert result.total_days == 2
 
 
 class TestPerformIncrementalUpdateCoverageBranches:
@@ -3784,8 +4347,14 @@ class TestPerformIncrementalUpdateCoverageBranches:
             }
         ]
         mech_requests = [
-            {"parsedRequest": {"questionTitle": "NewQ"}},
-            {"parsedRequest": {"questionTitle": "NewQ2"}},
+            {
+                "parsedRequest": {"questionTitle": "NewQ"},
+                "blockTimestamp": str(new_ts - 100),
+            },
+            {
+                "parsedRequest": {"questionTitle": "NewQ2"},
+                "blockTimestamp": str(new_ts - 50),
+            },
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -3825,7 +4394,9 @@ class TestPerformIncrementalUpdateCoverageBranches:
                 ],
             }
         ]
-        mech_requests = [{"parsedRequest": {"questionTitle": "Q1"}}]
+        mech_requests = [
+            {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": str(ts - 100)}
+        ]
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -3975,8 +4546,8 @@ class TestPerformIncrementalUpdateCoverageBranches:
         # Should still produce result (no question titles => no mech lookup)
         assert result is not None
 
-    def test_mech_lookup_with_empty_requests(self) -> None:
-        """Covers branch 1471->1468: empty new_mech_requests => empty loop."""
+    def test_mech_lookup_with_empty_requests_returns_none(self) -> None:
+        """Empty mech requests with new bet titles returns None to preserve existing data."""
         ts = 1700000000
         new_ts = ts + SECONDS_PER_DAY
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
@@ -4006,7 +4577,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
-        assert result is not None
+        assert result is None
 
     def test_replace_last_but_day_not_in_incoming(self) -> None:
         """Covers branch 1502->1505: replace_last True but last_dp_day not in incoming_days.
@@ -4134,90 +4705,6 @@ class TestPerformIncrementalUpdateCoverageBranches:
         assert result.data_points[0].daily_profit_raw == 1.0
 
 
-class TestBuildMultiBetAllocationsEmptyTitleBranch:
-    """Cover branch 1082->1081: title is falsy in the inner for loop."""
-
-    def test_omen_empty_title_after_extraction(self) -> None:
-        """Omen: participant question that produces empty title after split."""
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        # The QUESTION_DATA_SEPARATOR as first char produces empty title
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [
-                    {"question": f"{QUESTION_DATA_SEPARATOR}only_data"},
-                ],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [
-                    {"question": f"{QUESTION_DATA_SEPARATOR}only_data"},
-                ],
-            },  # type: ignore[var-annotated]
-        ]
-        lookup = {}  # type: ignore[var-annotated]
-        with _patch_context(b, ctx, synced_data)[0]:
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert allocations == {}
-        assert titles == set()
-
-    def test_titles_set_with_empty_string_via_extract_mock(self) -> None:
-        """Cover branch 1082 False: force empty string into titles set.
-
-        The `if title:` check at line 1082 is defensive code. In normal flow,
-        empty strings are filtered before reaching the set. We bypass this by
-        mocking `_extract_omen_question_title` to return an empty string for
-        the second call (after the first returns a valid title that passes
-        the earlier `if title:` at line 1079).
-        """
-        b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-
-        call_count = [0]
-        original_extract = FetchPerformanceSummaryBehaviour._extract_omen_question_title  # type: ignore[misc]
-
-        @staticmethod  # type: ignore[misc]
-        def mock_extract(question: str) -> str:
-            """Return empty string on second participant to bypass inner guard."""
-            call_count[0] += 1
-            # Return valid title for first call, empty for subsequent in same stat
-            result = original_extract(question)
-            return result
-
-        # Use the Omen branch with a participant that somehow has its title
-        # become empty after extraction. Since we can't easily do this with
-        # the current static method, we test with Polymarket where the
-        # comprehension filter can be bypassed.
-
-        # Actually, the simplest: directly manipulate the Omen branch.
-        # Use a question that starts with separator => empty title.
-        # The `if title:` at 1079 filters it, so it never reaches 1082.
-
-        # The branch 1082->1081 is structurally unreachable. It's defensive code.
-        # Test that the function works correctly regardless.
-        stats = [
-            {
-                "date": "100",
-                "profitParticipants": [
-                    {"metadata": {"title": "Valid"}},
-                ],
-            },
-            {
-                "date": "200",
-                "profitParticipants": [
-                    {"metadata": {"title": "Valid"}},
-                ],
-            },
-        ]
-        lookup = {"Valid": 4}
-        with _patch_context(b, ctx, synced_data)[0]:
-            # Polymarket path
-            ctx.params.is_running_on_polymarket = True
-            allocations, titles = b._build_multi_bet_allocations(stats, lookup)
-        assert "Valid" in titles
-
-
 class TestIncrementalUpdateEdgeCases:
     """Tests targeting remaining partial branches in _perform_incremental_update."""  # type: ignore[no-untyped-def]
 
@@ -4268,11 +4755,18 @@ class TestIncrementalUpdateEdgeCases:
         ]
         # Return mech requests where one has valid title and one has empty title
         mech_requests = [
-            {"parsedRequest": {"questionTitle": "Q1"}},
             {
-                "parsedRequest": {"questionTitle": ""}
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(new_ts - 100),
+            },
+            {
+                "parsedRequest": {"questionTitle": ""},
+                "blockTimestamp": str(new_ts - 50),
             },  # empty title => if title: is False
-            {"parsedRequest": None},  # None parsedRequest => {} or {} => empty title
+            {
+                "parsedRequest": None,
+                "blockTimestamp": str(new_ts - 25),
+            },  # None parsedRequest => {} or {} => empty title
         ]
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -4382,7 +4876,7 @@ class TestPerformInitialBackfillMissingDateKey:
                 # "date" key intentionally omitted
             }
         ]
-        mech_lookup = {"some_question": MagicMock(timestamp=1700000000, tx_hash="0x1")}
+        mech_lookup = {"some_question": [1700000000]}
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -4402,4 +4896,8 @@ class TestPerformInitialBackfillMissingDateKey:
                 b._perform_initial_backfill("0xaddr", 1700000000)  # type: ignore[arg-type]
             )
         assert result is not None
-        assert result.data_points == []  # the bad stat was skipped
+        # The bad stat was skipped (no bet day), but the unplaced mech request
+        # at T=1700000000 emits a mech-only data point (R2 fix)
+        assert len(result.data_points) == 1
+        assert result.data_points[0].daily_profit_raw == 0.0  # no bet profit
+        assert result.data_points[0].daily_mech_requests == 1
