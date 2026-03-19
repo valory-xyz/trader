@@ -864,6 +864,19 @@ class TestCalculatePolymarketAccuracy:
         result = b._calculate_polymarket_accuracy({"bets": bets})
         assert result is None
 
+    def test_null_question_field_skipped(self) -> None:
+        """Bets with explicit null question are excluded, not crash."""
+        b = self._make()
+        bets = [
+            {"question": None, "outcomeIndex": 0},
+            {
+                "question": {"resolution": {"winningIndex": 0}},
+                "outcomeIndex": 0,
+            },
+        ]
+        result = b._calculate_polymarket_accuracy({"bets": bets})
+        assert result == 100.0
+
 
 # ---------------------------------------------------------------------------
 # Tests for _get_prediction_accuracy - generator method
@@ -1598,6 +1611,35 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+
+    def test_omen_null_question_in_open_markets_skipped(self) -> None:
+        """Markets with null or missing question field are skipped, not crash."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        mech_sender = {
+            "requests": [
+                {"parsedRequest": {"questionTitle": "Q1"}},
+            ]
+        }
+        open_markets = [
+            {"question": None},  # explicit null
+            {},  # missing key
+            {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"},
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
+        ):
+            gen = b._get_open_market_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                # Only Q1 matches; null/missing entries are skipped
+                assert e.value == 1
 
 
 # ---------------------------------------------------------------------------
@@ -3324,6 +3366,56 @@ class TestPerformIncrementalUpdate:
         # Only one call — no lookback retry when watermark is 0
         assert fetch_mock.call_count == 1
 
+    def test_lookback_fallback_skips_invalid_mech_entries(self) -> None:
+        """Fallback results with empty title or zero ts are skipped."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = ts
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        # Fallback returns entries that should be skipped (empty title, 0 ts)
+        fallback_mech = [
+            {"parsedRequest": {"questionTitle": ""}, "blockTimestamp": "100"},
+            {"parsedRequest": {"questionTitle": "Q2"}, "blockTimestamp": "0"},
+        ]
+        call_count = 0
+
+        def _fetch_side(*args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return []
+            return fallback_mech
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen(new_stats),
+            ),
+            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_fetch_side),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        # Both fallback entries were invalid → lookup still empty → None
+        assert result is None
+        assert call_count == 2
+
     def test_empty_mech_lookup_no_new_titles_proceeds(self) -> None:
         """Proceeds normally when no new bet titles exist (no mech data needed)."""
         ts = 1700000000
@@ -3413,20 +3505,125 @@ class TestUpdateProfitOverTimeStorage:
 class TestSaveAgentPerformanceSummary:
     """Tests for _save_agent_performance_summary."""
 
-    def test_preserves_agent_behavior(self) -> None:
-        """Preserves agent_behavior from existing data."""
+    def _save(
+        self,
+        new_summary: AgentPerformanceSummary,
+        existing: AgentPerformanceSummary,
+    ) -> None:
+        """Helper: run _save_agent_performance_summary with mocked state."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, state = _mock_context()
-        existing = _default_summary()
-        existing.agent_behavior = "existing_behavior"
         state.read_existing_performance_summary.return_value = existing
-
-        new_summary = _default_summary()
-        new_summary.agent_behavior = None
         with _patch_context(b, ctx, synced_data)[0]:
             b._save_agent_performance_summary(new_summary)
+
+    def test_preserves_agent_behavior(self) -> None:
+        """Preserves agent_behavior from existing data."""
+        existing = _default_summary()
+        existing.agent_behavior = "existing_behavior"
+        new_summary = _default_summary()
+        new_summary.agent_behavior = None
+        self._save(new_summary, existing)
         assert new_summary.agent_behavior == "existing_behavior"
-        state.overwrite_performance_summary.assert_called_once_with(new_summary)
+
+    def test_preserves_metrics_na_fallback(self) -> None:
+        """Preserves existing metric when new metric has NA value."""
+        existing = _default_summary()
+        existing.metrics = [
+            AgentPerformanceMetrics(name="Acc", is_primary=False, value="75%"),
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
+            AgentPerformanceMetrics(name="Stale", is_primary=False, value=NA),
+        ]
+        new_summary = _default_summary()
+        new_summary.metrics = [
+            # value is NOT NA -> skip (covers 1747->1746 branch)
+            AgentPerformanceMetrics(name="Acc", is_primary=False, value="80%"),
+            # value is NA, existing has real value -> preserve
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value=NA),
+            # value is NA, existing also NA -> skip (covers 1749->1746)
+            AgentPerformanceMetrics(name="Stale", is_primary=False, value=NA),
+        ]
+        self._save(new_summary, existing)
+        assert new_summary.metrics[0].value == "80%"  # kept new
+        assert new_summary.metrics[1].value == "10%"  # preserved
+        assert new_summary.metrics[2].value == NA  # both NA, unchanged
+        # preserved -> timestamp kept from existing
+        assert new_summary.timestamp == existing.timestamp
+
+    def test_preserves_agent_details_when_all_none(self) -> None:
+        """Preserves existing agent_details when new has all-None fields."""
+        existing = _default_summary()
+        existing.agent_details = AgentDetails(
+            id="0x1",
+            created_at="2024-01-01T00:00:00Z",
+            last_active_at="2024-06-01T00:00:00Z",
+        )
+        new_summary = _default_summary()
+        new_summary.agent_details = AgentDetails(
+            id=None, created_at=None, last_active_at=None
+        )
+        self._save(new_summary, existing)
+        assert new_summary.agent_details.id == "0x1"
+
+    def test_preserves_agent_performance_when_all_none(self) -> None:
+        """Preserves existing agent_performance when new metrics all None."""
+        existing = _default_summary()
+        existing.agent_performance = AgentPerformanceData(
+            metrics=PerformanceMetricsData(
+                all_time_funds_used=100.0, all_time_profit=5.0, roi=0.05
+            ),
+        )
+        new_summary = _default_summary()
+        new_summary.agent_performance = AgentPerformanceData(
+            metrics=PerformanceMetricsData(
+                all_time_funds_used=None, all_time_profit=None, roi=None
+            ),
+        )
+        self._save(new_summary, existing)
+        assert new_summary.agent_performance is not None
+        assert new_summary.agent_performance.metrics is not None
+        assert new_summary.agent_performance.metrics.all_time_funds_used == 100.0
+
+    def test_preserves_profit_over_time_when_new_is_none(self) -> None:
+        """Preserves existing profit_over_time when new is None."""
+        existing = _default_summary()
+        existing.profit_over_time = ProfitOverTimeData(
+            last_updated=1700000000, total_days=1, data_points=[]
+        )
+        new_summary = _default_summary()
+        new_summary.profit_over_time = None
+        self._save(new_summary, existing)
+        assert new_summary.profit_over_time is not None
+        assert new_summary.profit_over_time.total_days == 1
+
+    def test_preserves_prediction_history_when_new_is_empty(self) -> None:
+        """Preserves existing prediction_history when new has 0 preds."""
+        existing = _default_summary()
+        existing.prediction_history = PredictionHistory(
+            total_predictions=50,
+            stored_count=50,
+            last_updated=1700000000,
+            items=[{"id": "1"}],
+        )
+        new_summary = _default_summary()
+        new_summary.prediction_history = PredictionHistory(
+            total_predictions=0,
+            stored_count=0,
+            last_updated=1700000000,
+            items=[],
+        )
+        self._save(new_summary, existing)
+        assert new_summary.prediction_history.total_predictions == 50
+
+    def test_no_preservation_when_new_data_is_valid(self) -> None:
+        """No preservation when new data is valid; timestamp stays new."""
+        existing = _default_summary(timestamp=1600000000)
+        new_summary = _default_summary(timestamp=1700000000)
+        new_summary.metrics = [
+            AgentPerformanceMetrics(name="ROI", is_primary=True, value="10%"),
+        ]
+        self._save(new_summary, existing)
+        assert new_summary.timestamp == 1700000000
 
 
 # ---------------------------------------------------------------------------

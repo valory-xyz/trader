@@ -308,7 +308,9 @@ class FetchPerformanceSummaryBehaviour(
 
             # Get titles of open markets
             open_market_titles = {
-                q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0] for q in open_markets
+                q["question"].split(QUESTION_DATA_SEPARATOR, 4)[0]
+                for q in open_markets
+                if q.get("question")
             }
 
         # Count requests for still-open markets
@@ -546,7 +548,9 @@ class FetchPerformanceSummaryBehaviour(
         bets = agent_bets_data.get("bets", [])
         # Filter for resolved markets only
         bets_on_resolved_markets = [
-            bet for bet in bets if bet.get("question", {}).get("resolution") is not None
+            bet
+            for bet in bets
+            if (bet.get("question") or {}).get("resolution") is not None
         ]
 
         if len(bets_on_resolved_markets) == 0:
@@ -556,7 +560,7 @@ class FetchPerformanceSummaryBehaviour(
         total_bets = 0
 
         for bet in bets_on_resolved_markets:
-            resolution = bet.get("question", {}).get("resolution", {})
+            resolution = (bet.get("question") or {}).get("resolution", {})
             winning_index = resolution.get("winningIndex")
             outcome_index = bet.get("outcomeIndex")
 
