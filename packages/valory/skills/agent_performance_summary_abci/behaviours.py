@@ -94,6 +94,7 @@ INVALID_ANSWER_HEX = (
 PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 SECONDS_PER_DAY = 86400
+MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
@@ -1427,13 +1428,39 @@ class FetchPerformanceSummaryBehaviour(
             f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
         )
 
-        # Fail-closed (H6): same invariant as backfill — new bets without mech
-        # data means the subgraph is unavailable; preserve existing data.
+        # Fail-closed (H6): new bets without mech data may indicate subgraph
+        # indexing lag rather than true unavailability.  Retry with a lookback
+        # window before giving up so that a slow mech subgraph does not
+        # freeze the profit-over-time series.
         if new_question_titles and not mech_request_lookup:
-            self.context.logger.warning(
-                "Mech data unavailable for new bets — preserving existing profit data"
-            )
-            return None
+            if existing_data.last_mech_timestamp > 0:
+                lookback_ts = max(
+                    existing_data.last_mech_timestamp - MECH_LOOKBACK_SECONDS, 0
+                )
+                self.context.logger.info(
+                    f"Primary mech query returned no results; retrying with "
+                    f"lookback window (watermark {existing_data.last_mech_timestamp} "
+                    f"→ {lookback_ts})"
+                )
+                fallback_requests = yield from self._fetch_mech_requests_by_titles(
+                    agent_safe_address,
+                    list(new_question_titles),
+                    block_timestamp_gt=lookback_ts,
+                )
+                for request in fallback_requests or []:
+                    parsed = request.get("parsedRequest", {}) or {}
+                    title = parsed.get("questionTitle", "")
+                    ts = int(request.get("blockTimestamp", 0))
+                    if title and ts:
+                        mech_request_lookup.setdefault(title, []).append(ts)
+                for title in mech_request_lookup:
+                    mech_request_lookup[title].sort()
+
+            if not mech_request_lookup:
+                self.context.logger.warning(
+                    "Mech data unavailable for new bets — preserving existing profit data"
+                )
+                return None
 
         # Timestamp-based mech-to-bet attribution for new stats
         fees_by_day, placed_delta, unplaced_delta = self._match_mech_requests_to_days(

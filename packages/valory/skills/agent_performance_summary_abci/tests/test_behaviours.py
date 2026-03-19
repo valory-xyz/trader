@@ -3195,11 +3195,69 @@ class TestPerformIncrementalUpdate:
         # Result may or may not be the same object depending on whether values match
         assert result is not None
 
-    def test_empty_mech_lookup_with_new_titles_returns_none(self) -> None:
-        """Returns None when new bets exist but mech data is unavailable."""
+    def test_empty_mech_lookup_with_new_titles_fallback_succeeds(self) -> None:
+        """Lookback fallback recovers mech data after primary watermark query misses."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = ts  # non-zero watermark enables fallback
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {
+                        "question": f"Q2{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": str(new_ts + 100)}],
+                    }
+                ],
+            }
+        ]
+        # Primary fetch returns empty; fallback with lookback returns the request
+        fallback_mech = [
+            {
+                "parsedRequest": {"questionTitle": "Q2"},
+                "blockTimestamp": str(new_ts + 50),
+            }
+        ]
+        call_count = 0
+
+        def _fetch_side_effect(*args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return []  # primary watermark query misses
+            return fallback_mech  # lookback fallback finds it
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_fetch_side_effect,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 200, existing)  # type: ignore[arg-type]
+            )
+        # Fallback succeeded — should NOT return None
+        assert result is not None
+        assert call_count == 2  # primary + fallback
+
+    def test_empty_mech_lookup_with_new_titles_fallback_also_empty(self) -> None:
+        """Returns None when both primary and lookback fallback return no mech data."""
         b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         existing = self._existing_data(ts=1700000000)
+        existing.last_mech_timestamp = 1700000000  # non-zero to trigger fallback
         new_ts = 1700000000 + SECONDS_PER_DAY
         new_stats = [
             {
@@ -3227,6 +3285,44 @@ class TestPerformIncrementalUpdate:
                 b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
         assert result is None
+
+    def test_lookback_fallback_skipped_when_watermark_is_zero(self) -> None:
+        """No lookback retry when last_mech_timestamp is 0 (nothing to look back from)."""
+        ts = 1700000000
+        b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        existing = self._existing_data(ts=ts)
+        existing.last_mech_timestamp = 0  # no watermark
+        new_ts = ts + SECONDS_PER_DAY
+        new_stats = [
+            {
+                "date": str(new_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q2{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        fetch_mock = MagicMock(side_effect=_return_gen([]))
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                fetch_mock,
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
+            )
+        assert result is None
+        # Only one call — no lookback retry when watermark is 0
+        assert fetch_mock.call_count == 1
 
     def test_empty_mech_lookup_no_new_titles_proceeds(self) -> None:
         """Proceeds normally when no new bet titles exist (no mech data needed)."""
