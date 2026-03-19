@@ -1121,28 +1121,11 @@ class FetchPerformanceSummaryBehaviour(
         existing_summary = self.shared_state.read_existing_performance_summary()
         existing_profit_data = existing_summary.profit_over_time
 
-        settled_reference = self._settled_mech_requests_count
-
         # Determine if this is initial backfill or incremental update
         # Rebuild if missing data, or when new fields (settled mech count / unplaced mech fees) are absent
         if not existing_profit_data or not existing_profit_data.data_points:
             # INITIAL BACKFILL - First time or no existing data
             self.context.logger.info("Performing initial profit over time backfill...")
-            return (
-                yield from self._perform_initial_backfill(
-                    agent_safe_address, current_timestamp
-                )
-            )
-        elif (
-            settled_reference is not None
-            and existing_profit_data.settled_mech_requests_count
-            and existing_profit_data.settled_mech_requests_count != settled_reference
-        ):
-            # Mech subgraph corrected; rebuild to realign counts with total-open.
-            self.context.logger.warning(
-                f"Settled mech mismatch detected (stored={existing_profit_data.settled_mech_requests_count}, "
-                f"expected={settled_reference}); performing full backfill."
-            )
             return (
                 yield from self._perform_initial_backfill(
                     agent_safe_address, current_timestamp
@@ -1178,6 +1161,20 @@ class FetchPerformanceSummaryBehaviour(
             )
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
+            # M5: Log mismatch between series-attributed and snapshot counts as
+            # diagnostic only.  These are produced by different models and benign
+            # drift is expected; only rebuild on missing fields or storage migration.
+            settled_reference = self._settled_mech_requests_count
+            stored_settled = existing_profit_data.settled_mech_requests_count
+            if (
+                settled_reference is not None
+                and stored_settled
+                and stored_settled != settled_reference
+            ):
+                self.context.logger.warning(
+                    f"Settled mech count drift (series={stored_settled}, "
+                    f"snapshot={settled_reference}); diagnostic only, no rebuild."
+                )
             self.context.logger.info(
                 "Checking for incremental profit over time updates..."
             )
@@ -1283,11 +1280,9 @@ class FetchPerformanceSummaryBehaviour(
         visited_days = {int(stat["date"]) for stat in daily_stats if "date" in stat}
         for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
             count = fees_by_day[mech_day_ts]
-            if count == 0:
-                continue
-            date_str = datetime.fromtimestamp(
-                mech_day_ts, tz=timezone.utc
-            ).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             data_points.append(
                 ProfitDataPoint(
@@ -1501,16 +1496,12 @@ class FetchPerformanceSummaryBehaviour(
             )
 
         # R2: Emit data points for mech-only days in the incremental window
-        visited_days = {
-            int(s["date"]) for s in filtered_daily_stats if "date" in s
-        }
+        visited_days = {int(s["date"]) for s in filtered_daily_stats if "date" in s}
         for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
             count = fees_by_day[mech_day_ts]
-            if count == 0:
-                continue
-            date_str = datetime.fromtimestamp(
-                mech_day_ts, tz=timezone.utc
-            ).strftime("%Y-%m-%d")
+            date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
+                "%Y-%m-%d"
+            )
             mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             new_mech_sum += count
             new_data_points.append(

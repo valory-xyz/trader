@@ -1220,6 +1220,50 @@ class TestMatchMechRequestsToDays:
         assert fees.get(day0, 0) == 1  # mech_day0 unplaced
         assert fees.get(day2, 0) == 1  # mech_day2 unplaced
 
+    def test_bet_with_zero_timestamp_skipped(self) -> None:
+        """Bets with timestamp=0 are skipped (no match attempted)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        lookup = {"Q1": [50]}
+        stats = [
+            {
+                "date": "86400",
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": "0"}],
+                    }
+                ],
+            }
+        ]
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        # bet_ts=0 skipped, Q1 mech request is unplaced
+        assert placed == 0
+        assert unplaced == 1
+
+    def test_all_mech_requests_after_bet(self) -> None:
+        """When all mech requests are after the bet, none are consumed (idx < 0)."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        # Mech requests all at T=200+, bet at T=100 → bisect finds no request <= 100
+        lookup = {"Q1": [200, 300]}
+        stats = [
+            {
+                "date": "86400",
+                "profitParticipants": [
+                    {
+                        "question": f"Q1{QUESTION_DATA_SEPARATOR}data",
+                        "bets": [{"timestamp": "100"}],
+                    }
+                ],
+            }
+        ]
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees, placed, unplaced = b._match_mech_requests_to_days(stats, lookup)
+        assert placed == 0
+        assert unplaced == 2
+
     def test_fallback_without_bets_field(self) -> None:
         """Without bets field, falls back to day_ts as approximate bet timestamp."""
         b = _make_fetch_behaviour()
@@ -1852,7 +1896,6 @@ class TestFetchAgentPerformanceData:
             _settled_mech_requests_count=4,
             _partial_roi=10.0,
             _mech_request_lookup={"Q1": [100, 200]},
-
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2363,7 +2406,6 @@ class TestCalculatePerformanceMetrics:
             _total_mech_requests=5,
             _partial_roi=50.0,
             _mech_request_lookup={"Q1": [100, 200]},
-
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2391,7 +2433,6 @@ class TestCalculatePerformanceMetrics:
             _total_mech_requests=0,
             _partial_roi=None,
             _mech_request_lookup={},
-
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2419,7 +2460,6 @@ class TestCalculatePerformanceMetrics:
             _total_mech_requests=0,
             _partial_roi=0.0,
             _mech_request_lookup={},
-
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         trader_agent = {
@@ -2459,7 +2499,6 @@ class TestCalculatePerformanceMetrics:
             _partial_roi=0.0,
             # Lookup has 5 requests for Q1, but only 2 were matched to bets
             _mech_request_lookup={"Q1": [100, 200, 300, 400, 500]},
-
             _placed_mech_requests_count=2,
         )
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
@@ -2539,8 +2578,13 @@ class TestBuildProfitOverTimeData:
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
-    def test_settled_mismatch_triggers_backfill(self) -> None:
-        """Routes to backfill when settled counts mismatch."""
+    def test_settled_undercount_does_not_trigger_backfill(self) -> None:
+        """Under-count (stored < reference) should go to incremental, not backfill.
+
+        M5: series-attributed count and snapshot total-open are different models.
+        Under-count is normal (new requests settled since last run). Only log a warning.
+        """
+        # stored=5, reference=10 → under-count → should NOT rebuild
         b = _make_fetch_behaviour(_settled_mech_requests_count=10)
         ctx, _, synced_data, state = _mock_context()
         summary = _default_summary()
@@ -2563,18 +2607,29 @@ class TestBuildProfitOverTimeData:
         summary.agent_performance.metrics = MagicMock()
         summary.agent_performance.metrics.settled_mech_request_count = 5
         state.read_existing_performance_summary.return_value = summary
-        backfill_result = ProfitOverTimeData(
+        incr_result = ProfitOverTimeData(
+            last_updated=1700001000, total_days=1, data_points=[]
+        )
+        backfill_sentinel = ProfitOverTimeData(
             last_updated=1700000000, total_days=0, data_points=[]
         )
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(
-                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
-            ),
+                b, "_perform_incremental_update", side_effect=_return_gen(incr_result)
+            ) as mock_incr,
+            patch.object(
+                b,
+                "_perform_initial_backfill",
+                side_effect=_return_gen(backfill_sentinel),
+            ) as mock_backfill,
         ):
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
-        assert result is backfill_result
+        # Under-count must take incremental path, not backfill
+        mock_incr.assert_called_once()
+        mock_backfill.assert_not_called()
+        assert result is incr_result
 
     def test_missing_settled_mech_request_count_triggers_backfill(self) -> None:
         """Routes to backfill when settled_mech_request_count field is missing."""
