@@ -19,6 +19,7 @@
 
 """This module contains the behaviour of the skill which is responsible for agent performance summary file updation."""
 
+import bisect
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
@@ -128,8 +129,6 @@ class FetchPerformanceSummaryBehaviour(
         self._settled_mech_requests_count: int = 0
         self._placed_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
-        self._placed_titles: Set[str] = set()
-
         # Cache for POL to USDC conversion rate
         self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
         self._pol_usdc_rate_timestamp: float = 0.0
@@ -665,10 +664,7 @@ class FetchPerformanceSummaryBehaviour(
         # Get mech request counts (uses caches populated earlier)
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)
         open_mech_requests = self._open_market_requests or 0
-        placed_mech_requests = sum(
-            len((self._mech_request_lookup or {}).get(title, []))
-            for title in self._placed_titles
-        )
+        placed_mech_requests = self._placed_mech_requests_count
         unplaced_mech_requests = max(
             (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
             0,
@@ -993,11 +989,13 @@ class FetchPerformanceSummaryBehaviour(
         daily_stats: list,
         mech_request_lookup: Dict[str, List[int]],
     ) -> Tuple[Dict[int, int], int, int]:
-        """Match mech requests to bet days using timestamps (1:1 greedy chronological).
+        """Match mech requests to bet days using timestamps (last-before-bet via bisect).
 
-        For each bet (profit participant), consumes the earliest mech request timestamp
-        for that title. Remaining unconsumed requests are unplaced and assigned to their
-        own mech-request day.
+        For each bet, consumes the last mech request with timestamp <= bet timestamp.
+        When bet-level timestamps are available (via profitParticipants[].bets[]),
+        matching is precise.  Falls back to day_ts when bets field is absent.
+        Remaining unconsumed requests are unplaced and assigned to their own
+        mech-request day.
 
         :param daily_stats: List of daily profit statistics
         :param mech_request_lookup: Dictionary mapping question titles to sorted timestamp lists
@@ -1011,8 +1009,8 @@ class FetchPerformanceSummaryBehaviour(
         fees_by_day: Dict[int, int] = {}
         placed_count = 0
 
-        # Build (title, day_ts) pairs sorted by day_ts ascending
-        bet_pairs: List[Tuple[str, int]] = []
+        # Build (title, bet_ts, day_ts) triples from bet-level data when available
+        bet_pairs: List[Tuple[str, int, int]] = []
         for stat in daily_stats:
             date_value = stat.get("date")
             if date_value is None:
@@ -1020,18 +1018,31 @@ class FetchPerformanceSummaryBehaviour(
             day_ts = int(date_value)
             for participant in stat.get("profitParticipants", []):
                 title = self._extract_title(participant)
-                if title:
-                    bet_pairs.append((title, day_ts))
+                if not title:
+                    continue
+                bets = participant.get("bets", [])
+                if bets:
+                    for bet in bets:
+                        bet_ts = int(
+                            bet.get("timestamp") or bet.get("blockTimestamp") or 0
+                        )
+                        if bet_ts:
+                            bet_pairs.append((title, bet_ts, day_ts))
+                else:
+                    # Fallback: no bet-level data, use day_ts as approximate
+                    bet_pairs.append((title, day_ts, day_ts))
 
         bet_pairs.sort(key=lambda x: x[1])
 
-        # Greedy chronological match: consume earliest mech request per bet
-        for title, day_ts in bet_pairs:
+        # Last-before-bet match via bisect
+        for title, bet_ts, day_ts in bet_pairs:
             ts_list = remaining.get(title)
             if ts_list:
-                ts_list.pop(0)  # consume earliest
-                fees_by_day[day_ts] = fees_by_day.get(day_ts, 0) + 1
-                placed_count += 1
+                idx = bisect.bisect_right(ts_list, bet_ts) - 1
+                if idx >= 0:
+                    ts_list.pop(idx)
+                    fees_by_day[day_ts] = fees_by_day.get(day_ts, 0) + 1
+                    placed_count += 1
 
         # Remaining unconsumed requests are unplaced — assign to mech request's own day
         unplaced_count = 0
@@ -1042,16 +1053,6 @@ class FetchPerformanceSummaryBehaviour(
                 unplaced_count += 1
 
         return fees_by_day, placed_count, unplaced_count
-
-    def _collect_placed_titles(self, daily_stats: list) -> Set[str]:
-        """Collect all question titles that have bets (profit participants) in given stats."""
-        placed_titles: Set[str] = set()
-        for stat in daily_stats:
-            for participant in stat.get("profitParticipants", []):
-                title = self._extract_title(participant)
-                if title:
-                    placed_titles.add(title)
-        return placed_titles
 
     def _apply_mech_fees(
         self, fees_by_day: Dict[int, int], date_timestamp: int
@@ -1215,7 +1216,10 @@ class FetchPerformanceSummaryBehaviour(
             f"Initial backfill: Found {len(daily_stats)} daily profit statistics"
         )
 
-        # Build mech request lookup ONCE for all historical data
+        # Build mech request lookup ONCE for all historical data.
+        # Fail-closed (H6): every bet must have a mech request. Non-empty trading
+        # stats with an empty mech lookup = unavailable subgraph data — suppress the
+        # series (return None preserves stored data) rather than emit zero mech fees.
         mech_request_lookup = yield from self._build_mech_request_lookup(
             agent_safe_address
         )
@@ -1224,10 +1228,6 @@ class FetchPerformanceSummaryBehaviour(
                 "No mech requests found — preserving existing profit data"
             )
             return None
-
-        # Collect placed titles for _calculate_performance_metrics
-        placed_titles = self._collect_placed_titles(daily_stats)
-        self._placed_titles = set(placed_titles)
 
         # Timestamp-based mech-to-bet attribution
         fees_by_day, placed_count, unplaced_count = self._match_mech_requests_to_days(
@@ -1278,11 +1278,47 @@ class FetchPerformanceSummaryBehaviour(
                 )
             )
 
+        # R2: Emit data points for mech-only days (unplaced requests on days
+        # with no bets).  These costs would otherwise be silently lost.
+        visited_days = {int(stat["date"]) for stat in daily_stats if "date" in stat}
+        for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
+            count = fees_by_day[mech_day_ts]
+            if count == 0:
+                continue
+            date_str = datetime.fromtimestamp(
+                mech_day_ts, tz=timezone.utc
+            ).strftime("%Y-%m-%d")
+            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            data_points.append(
+                ProfitDataPoint(
+                    date=date_str,
+                    timestamp=mech_day_ts,
+                    daily_profit_raw=0.0,
+                    daily_profit=round(-mech_fees, 3),
+                    cumulative_profit=0.0,  # recomputed below
+                    daily_mech_requests=count,
+                )
+            )
+
+        # Re-sort and recompute cumulative profit since mech-only days
+        # may interleave with bet days
+        data_points.sort(key=lambda dp: dp.timestamp)
+        cumulative_profit = 0.0
+        for dp in data_points:
+            cumulative_profit += dp.daily_profit
+            dp.cumulative_profit = round(cumulative_profit, 3)
+
         # Calculate total settled mech requests from all data points
         settled_mech_requests_count = sum(
             point.daily_mech_requests for point in data_points
         )
         self._unplaced_mech_requests_count = unplaced_count
+
+        # Watermark: max mech request timestamp across all processed requests
+        last_mech_timestamp = max(
+            (ts for ts_list in mech_request_lookup.values() for ts in ts_list),
+            default=0,
+        )
 
         return ProfitOverTimeData(
             last_updated=current_timestamp,
@@ -1292,6 +1328,7 @@ class FetchPerformanceSummaryBehaviour(
             unplaced_mech_requests_count=self._unplaced_mech_requests_count,
             placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
+            last_mech_timestamp=last_mech_timestamp,
         )
 
     def _perform_incremental_update(
@@ -1377,7 +1414,9 @@ class FetchPerformanceSummaryBehaviour(
                 f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats"
             )
             new_mech_requests = yield from self._fetch_mech_requests_by_titles(
-                agent_safe_address, list(new_question_titles)
+                agent_safe_address,
+                list(new_question_titles),
+                block_timestamp_gt=existing_data.last_mech_timestamp,
             )
             new_mech_requests = new_mech_requests if new_mech_requests else []
             for request in new_mech_requests:
@@ -1393,6 +1432,8 @@ class FetchPerformanceSummaryBehaviour(
             f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
         )
 
+        # Fail-closed (H6): same invariant as backfill — new bets without mech
+        # data means the subgraph is unavailable; preserve existing data.
         if new_question_titles and not mech_request_lookup:
             self.context.logger.warning(
                 "Mech data unavailable for new bets — preserving existing profit data"
@@ -1404,7 +1445,7 @@ class FetchPerformanceSummaryBehaviour(
             filtered_daily_stats, mech_request_lookup
         )
 
-        # Use persisted placed count as base (self._placed_titles may be empty after restart)
+        # Use persisted placed count as base (may be zero after restart)
         prev_placed = getattr(existing_data, "placed_mech_requests_count", 0)
 
         # Process new daily statistics
@@ -1458,6 +1499,37 @@ class FetchPerformanceSummaryBehaviour(
                     daily_mech_requests=daily_mech_count,
                 )
             )
+
+        # R2: Emit data points for mech-only days in the incremental window
+        visited_days = {
+            int(s["date"]) for s in filtered_daily_stats if "date" in s
+        }
+        for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
+            count = fees_by_day[mech_day_ts]
+            if count == 0:
+                continue
+            date_str = datetime.fromtimestamp(
+                mech_day_ts, tz=timezone.utc
+            ).strftime("%Y-%m-%d")
+            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+            new_mech_sum += count
+            new_data_points.append(
+                ProfitDataPoint(
+                    date=date_str,
+                    timestamp=mech_day_ts,
+                    daily_profit_raw=0.0,
+                    daily_profit=round(-mech_fees, 3),
+                    cumulative_profit=0.0,  # recomputed below
+                    daily_mech_requests=count,
+                )
+            )
+
+        # Re-sort and recompute cumulative profit for the full series
+        new_data_points.sort(key=lambda dp: dp.timestamp)
+        cumulative_profit = 0.0
+        for dp in new_data_points:
+            cumulative_profit += dp.daily_profit
+            dp.cumulative_profit = round(cumulative_profit, 3)
 
         # Calculate updated settled mech requests count incrementally (monotonic, bounded by total-open)
         settled_mech_requests_count = prev_settled + new_mech_sum
@@ -1523,6 +1595,13 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return existing_data
 
+        # Update watermark
+        new_max_ts = max(
+            (ts for ts_list in mech_request_lookup.values() for ts in ts_list),
+            default=0,
+        )
+        last_mech_timestamp = max(existing_data.last_mech_timestamp, new_max_ts)
+
         return ProfitOverTimeData(
             last_updated=current_timestamp,
             total_days=len(new_data_points),
@@ -1531,6 +1610,7 @@ class FetchPerformanceSummaryBehaviour(
             unplaced_mech_requests_count=unplaced_mech_requests_count,
             placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
+            last_mech_timestamp=last_mech_timestamp,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:

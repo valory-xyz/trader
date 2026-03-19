@@ -207,6 +207,12 @@ query GetDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: 
       profitParticipants {
         id
         question
+        bets {
+          timestamp
+          fixedProductMarketMaker {
+            question
+          }
+        }
       }
     }
   }
@@ -234,12 +240,15 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
 """
 
 GET_MECH_REQUESTS_BY_TITLES_QUERY = """
-query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!) {
+query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!, $blockTimestamp_gt: BigInt!) {
   sender(id: $sender) {
     requests(
       where: {
         parsedRequest_: { questionTitle_in: $questionTitles }
+        blockTimestamp_gt: $blockTimestamp_gt
       }
+      orderBy: blockTimestamp
+      orderDirection: asc
     ) {
       id
       blockTimestamp
@@ -428,6 +437,14 @@ query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!
         questionId
         metadata {
           title
+        }
+        bets {
+          blockTimestamp
+          question {
+            metadata {
+              title
+            }
+          }
         }
       }
     }
