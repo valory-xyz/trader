@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeicinegfwaayhvh2km4alolybovn6oy7q2gtfxukzryongxeim2iyq
-  behaviours.py: bafybeialz2y2mi4ro3cmj4rrxj5otzitx747ds2vvjn4gq3tn6yglskeba
+  behaviours.py: bafybeigugmfb5fl5enzhzcuemcnrjiq4ostieg35uyvf4llssjvjid7ch4
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu

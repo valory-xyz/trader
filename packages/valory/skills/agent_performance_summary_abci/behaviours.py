@@ -1016,11 +1016,11 @@ class FetchPerformanceSummaryBehaviour(
             if date_value is None:
                 continue
             day_ts = int(date_value)
-            for participant in stat.get("profitParticipants", []):
+            for participant in stat.get("profitParticipants") or []:
                 title = self._extract_title(participant)
                 if not title:
                     continue
-                bets = participant.get("bets", [])
+                bets = participant.get("bets") or []
                 if bets:
                     for bet in bets:
                         bet_ts = int(
@@ -1398,7 +1398,7 @@ class FetchPerformanceSummaryBehaviour(
         # Build lookup ONLY for questions present in the new stats
         new_question_titles: Set[str] = set()
         for stat in filtered_daily_stats:
-            for participant in stat.get("profitParticipants", []):
+            for participant in stat.get("profitParticipants") or []:
                 title = self._extract_title(participant)
                 if title:
                     new_question_titles.add(title)
