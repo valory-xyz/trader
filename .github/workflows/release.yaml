@@ -244,6 +244,9 @@ jobs:
 
       - name: prepare agent
         run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            export SDKROOT=$(xcrun --show-sdk-path)
+          fi
           make poetry-install
           poetry run autonomy init --reset --author "dummy_author_git_ci" --ipfs --remote
           make hash_id
