@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeia4mjdejupnhujzkqpeptkg6kyosrocsl4wbbae6yhczd2iobjn7e
+  connection.py: bafybeiekux75gkr75einjotoz42gjncoa3amawx2rthw6ju6dzprjckdnq
   request_types.py: bafybeifgkpwhllc7lihwssbah5ilvghqshzlqnaiaapsvdd5cnptyteerq
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
   tests/test_connection.py: bafybeigsoegpt4ajngw4jrvyavnfbmr6ao2j3bqb3inqj2oqrljqwdq2e4
@@ -34,6 +34,8 @@ config:
 excluded_protocols: []
 restricted_to_protocols: []
 dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.1.0
   web3:
     version: <8,>=7.0.0
   eth-abi:

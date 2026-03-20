@@ -669,6 +669,7 @@ class HttpHandler(BaseHttpHandler):
                 self._ethereum_apis[chain] = EthereumApi(
                     address=rpc_url,
                     chain_id=chain_id,
+                    poa_chain=chain in (POLYGON_CHAIN_NAME, GNOSIS_CHAIN_NAME),
                 )
             return self._ethereum_apis[chain].api
         except Exception as e:
