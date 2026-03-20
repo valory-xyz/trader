@@ -1342,19 +1342,40 @@ class TestGetWeb3Instance:
 
     def test_polygon_chain(self) -> None:
         """Test getting Web3 instance for polygon."""
-        with patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
-            mock_instance = MagicMock()
-            MockWeb3.return_value = mock_instance
+        mock_api = MagicMock()
+        mock_web3 = MagicMock()
+        mock_api.api = mock_web3
+        with patch(
+            "packages.valory.skills.trader_abci.handlers.EthereumApi",
+            return_value=mock_api,
+        ):
             result = self.handler._get_web3_instance("polygon")
-            assert result == mock_instance
+            assert result == mock_web3
 
     def test_gnosis_chain(self) -> None:
         """Test getting Web3 instance for gnosis."""
-        with patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
-            mock_instance = MagicMock()
-            MockWeb3.return_value = mock_instance
+        mock_api = MagicMock()
+        mock_web3 = MagicMock()
+        mock_api.api = mock_web3
+        with patch(
+            "packages.valory.skills.trader_abci.handlers.EthereumApi",
+            return_value=mock_api,
+        ):
             result = self.handler._get_web3_instance("gnosis")
-            assert result == mock_instance
+            assert result == mock_web3
+
+    def test_cached_instance(self) -> None:
+        """Test that EthereumApi is cached per chain."""
+        mock_api = MagicMock()
+        mock_web3 = MagicMock()
+        mock_api.api = mock_web3
+        with patch(
+            "packages.valory.skills.trader_abci.handlers.EthereumApi",
+            return_value=mock_api,
+        ) as MockEthApi:
+            self.handler._get_web3_instance("polygon")
+            self.handler._get_web3_instance("polygon")
+            assert MockEthApi.call_count == 1
 
     def test_unknown_chain(self) -> None:
         """Test unknown chain returns None."""
@@ -1372,7 +1393,7 @@ class TestGetWeb3Instance:
     def test_exception(self) -> None:
         """Test exception handling."""
         with patch(
-            "packages.valory.skills.trader_abci.handlers.Web3",
+            "packages.valory.skills.trader_abci.handlers.EthereumApi",
             side_effect=Exception("connection error"),
         ):
             result = self.handler._get_web3_instance("polygon")

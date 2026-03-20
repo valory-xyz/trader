@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
-from aea_ledger_ethereum.ethereum import EthereumCrypto
+from aea_ledger_ethereum.ethereum import EthereumApi, EthereumCrypto
 from eth_account import Account
 from web3 import Web3
 
@@ -127,6 +127,8 @@ class HttpHandler(BaseHttpHandler):
         super().__init__(**kwargs)
         self.handler_url_regex: str = ""
         self.routes: Dict[tuple, list] = {}
+
+        self._ethereum_apis: Dict[str, EthereumApi] = {}
 
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         atexit.register(self._executor_shutdown)
@@ -647,13 +649,14 @@ class HttpHandler(BaseHttpHandler):
         return None
 
     def _get_web3_instance(self, chain: str) -> Optional[Web3]:
-        """Get Web3 instance for the specified chain."""
+        """Get a cached Web3 instance with multi-RPC rotation for the specified chain."""
         try:
-            # Select RPC URL based on chain
             if chain == POLYGON_CHAIN_NAME:
                 rpc_url = self.params.polygon_ledger_rpc
+                chain_id = POLYGON_CHAIN_ID
             elif chain == GNOSIS_CHAIN_NAME:
                 rpc_url = self.params.gnosis_ledger_rpc
+                chain_id = GNOSIS_CHAIN_ID
             else:
                 self.context.logger.error(f"Unknown chain: {chain}")
                 return None
@@ -662,11 +665,13 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.warning(f"No RPC URL for {chain}")
                 return None
 
-            # Commented for future debugging purposes:
-            # Note that you should create only one HTTPProvider with the same provider URL per python process,
-            # as the HTTPProvider recycles underlying TCP/IP network connections, for better performance.
-            # Multiple HTTPProviders with different URLs will work as expected.
-            return Web3(Web3.HTTPProvider(rpc_url))
+            if chain not in self._ethereum_apis:
+                self._ethereum_apis[chain] = EthereumApi(
+                    address=rpc_url,
+                    chain_id=chain_id,
+                    poa_chain=chain in (POLYGON_CHAIN_NAME, GNOSIS_CHAIN_NAME),
+                )
+            return self._ethereum_apis[chain].api
         except Exception as e:
             self.context.logger.error(f"Error creating Web3 instance: {str(e)}")
             return None

@@ -32,6 +32,7 @@ from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
+from aea_ledger_ethereum import EthereumApi
 from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
@@ -42,8 +43,6 @@ from py_clob_client.clob_types import MarketOrderArgs, OrderType
 from py_clob_client.exceptions import PolyApiException
 from py_clob_client.order_builder.constants import BUY
 from py_order_utils.model import SignedOrder as UtilsSignedOrder
-from web3 import Web3
-from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue
@@ -197,10 +196,14 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.configuration.config.get("neg_risk_adapter")
         )
 
-        # Initialize Web3 for approval checking
+        # Initialize Web3 for approval checking via ledger plugin (multi-RPC rotation)
         rpc_url = self.configuration.config.get("polygon_ledger_rpc")
-        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
-        self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+        self._ethereum_api = EthereumApi(
+            address=rpc_url,
+            chain_id=CHAIN_ID,
+            poa_chain=True,
+        )
+        self.w3 = self._ethereum_api.api
 
     # TODO:
     @property
