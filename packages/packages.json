@@ -12,7 +12,6 @@
         "contract/valory/mech_activity/0.1.0": "bafybeieez74xaxsgjj3ssdej3rpm52acmxvb3p4jmlbxc7fxijwiwicqzu",
         "contract/valory/relayer/0.1.0": "bafybeigbooygl4v6pjcri6rl4l6keorhlw7h4jjacbgxhposmd2tle5fne",
         "contract/valory/market_maker/0.1.0": "bafybeidbmq65ruvix6iwkyumcnh3hxy4qebc2ndgnknlkhu6zwckthpp3y",
-        "contract/valory/mech_marketplace/0.1.0": "bafybeibbxutph6qbaldnq3o5kiaqgubc6jhgxappf33u2t7udnwajhmbf4",
         "connection/valory/polymarket_client/0.1.0": "bafybeievoazw2czsftdemm42qs56ozw27r244enbstxwjrdbvx5uriacce",
         "skill/valory/market_manager_abci/0.1.0": "bafybeielsjcopbx2x3gnx6o6wedsxpxul2dkfcechwfq4bqu6qtrmrelxm",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeihirspryeezbvpq37qpejujaiypvgxe7qupbjziuymygs7arfckf4",
