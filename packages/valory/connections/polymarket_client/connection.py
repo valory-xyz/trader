@@ -328,6 +328,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.REDEEM_POSITIONS: self._redeem_positions,
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
+            RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -403,6 +404,22 @@ class PolymarketClientConnection(BaseSyncConnection):
             # Return error with signed order for retry
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
+
+    def _fetch_order_book(self, token_id: str) -> Tuple[Any, Any]:
+        """Fetch the CLOB order book for a token.
+
+        :param token_id: the CLOB token identifier.
+        :return: tuple of (response_dict, error_string).
+        """
+        try:
+            book = self.client.get_order_book(token_id)
+            asks = [{"price": a.price, "size": a.size} for a in (book.asks or [])]
+            bids = [{"price": b.price, "size": b.size} for b in (book.bids or [])]
+            return {"asks": asks, "bids": bids}, None
+        except Exception as e:
+            error_msg = f"Error fetching order book: {e}"
+            self.logger.error(error_msg)
+            return None, error_msg
 
     def _load_cache_file(self, cache_file_path: str) -> Dict:
         """Load the cache file from disk.

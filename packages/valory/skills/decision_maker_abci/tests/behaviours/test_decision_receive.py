@@ -25,10 +25,13 @@ from pathlib import Path
 from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.models import LiquidityInfo
+from packages.valory.skills.decision_maker_abci.utils.vwap import VWAPResult
 from packages.valory.skills.market_manager_abci.bets import (
     PredictionResponse,
     QueueStatus,
@@ -1132,7 +1135,7 @@ class TestIsProfitable:
         assert is_profitable is False
 
     def test_polymarket_profitable(self) -> None:
-        """Should return (True, bet_amount) for profitable Polymarket bet."""
+        """Should return (True, bet_amount) for profitable Polymarket bet (mid-price fallback)."""
         behaviour = _make_behaviour()
         # Use prices where market prob < predicted prob so expected profit > 0
         # With convert_unit_to_wei scale=10**6:
@@ -1154,6 +1157,11 @@ class TestIsProfitable:
             """Mock the get_bet_amount generator."""
             yield
             return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap_none(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price returning None (mid-price fallback)."""
+            yield
+            return None  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1199,16 +1207,21 @@ class TestIsProfitable:
                                             "rebet_allowed",
                                             return_value=True,
                                         ):
-                                            result = self._run_is_profitable(
-                                                behaviour, pred
-                                            )
+                                            with patch.object(
+                                                behaviour,
+                                                "_fetch_vwap_price",
+                                                side_effect=mock_fetch_vwap_none,
+                                            ):
+                                                result = self._run_is_profitable(
+                                                    behaviour, pred
+                                                )
 
         is_profitable, bet_amount = result
         assert is_profitable is True
         assert bet_amount == 10**7
 
     def test_polymarket_not_profitable(self) -> None:
-        """Should return (False, bet_amount) for non-profitable Polymarket bet."""
+        """Should return (False, bet_amount) for non-profitable Polymarket bet (mid-price fallback)."""
         behaviour = _make_behaviour()
         bet = _make_bet(
             outcomeTokenAmounts=[10000, 10000],
@@ -1221,6 +1234,11 @@ class TestIsProfitable:
             """Mock the get_bet_amount generator."""
             yield
             return 5000  # type: ignore[return-value]
+
+        def mock_fetch_vwap_none(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price returning None (mid-price fallback)."""
+            yield
+            return None  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1261,9 +1279,14 @@ class TestIsProfitable:
                                         "get_token_name",
                                         return_value="USDC",
                                     ):
-                                        result = self._run_is_profitable(
-                                            behaviour, pred
-                                        )
+                                        with patch.object(
+                                            behaviour,
+                                            "_fetch_vwap_price",
+                                            side_effect=mock_fetch_vwap_none,
+                                        ):
+                                            result = self._run_is_profitable(
+                                                behaviour, pred
+                                            )
 
         is_profitable, _ = result
         assert is_profitable is False
@@ -1319,7 +1342,7 @@ class TestIsProfitable:
         assert bet_amount == 0
 
     def test_polymarket_rebet_not_allowed(self) -> None:
-        """Should return False when Polymarket rebet is not allowed."""
+        """Should return False when Polymarket rebet is not allowed (mid-price fallback)."""
         behaviour = _make_behaviour()
         bet = _make_bet(
             outcomeTokenAmounts=[10**7, 10**7],
@@ -1332,6 +1355,11 @@ class TestIsProfitable:
             """Mock the get_bet_amount generator."""
             yield
             return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap_none(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price returning None (mid-price fallback)."""
+            yield
+            return None  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1377,15 +1405,20 @@ class TestIsProfitable:
                                             "rebet_allowed",
                                             return_value=False,
                                         ):
-                                            result = self._run_is_profitable(
-                                                behaviour, pred
-                                            )
+                                            with patch.object(
+                                                behaviour,
+                                                "_fetch_vwap_price",
+                                                side_effect=mock_fetch_vwap_none,
+                                            ):
+                                                result = self._run_is_profitable(
+                                                    behaviour, pred
+                                                )
 
         is_profitable, _ = result
         assert is_profitable is False
 
     def test_polymarket_vote_1_p_no(self) -> None:
-        """Should use p_no when predicted vote side is 1."""
+        """Should use p_no when predicted vote side is 1 (mid-price fallback)."""
         behaviour = _make_behaviour()
         # vote=1 because p_no > p_yes, so selected is index 1 (price=0.3)
         bet = _make_bet(
@@ -1400,6 +1433,11 @@ class TestIsProfitable:
             """Mock the get_bet_amount generator."""
             yield
             return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap_none(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price returning None (mid-price fallback)."""
+            yield
+            return None  # type: ignore[return-value]
 
         with patch.object(
             type(behaviour), "benchmarking_mode", new_callable=PropertyMock
@@ -1445,12 +1483,480 @@ class TestIsProfitable:
                                             "rebet_allowed",
                                             return_value=True,
                                         ):
-                                            result = self._run_is_profitable(
-                                                behaviour, pred
-                                            )
+                                            with patch.object(
+                                                behaviour,
+                                                "_fetch_vwap_price",
+                                                side_effect=mock_fetch_vwap_none,
+                                            ):
+                                                result = self._run_is_profitable(
+                                                    behaviour, pred
+                                                )
 
         is_profitable, bet_amount = result
         assert is_profitable is True
+
+    # -------------------------------------------------------------------
+    # _fetch_vwap_price tests
+    # -------------------------------------------------------------------
+
+    def _run_fetch_vwap_price(
+        self,
+        behaviour: DecisionReceiveBehaviour,
+        bet: Any,
+        predicted_vote_side: int,
+        net_bet_amount: int,
+    ) -> Any:
+        """Run the _fetch_vwap_price generator to completion."""
+        gen = behaviour._fetch_vwap_price(bet, predicted_vote_side, net_bet_amount)
+        try:
+            _ = next(gen)
+            while True:
+                _ = gen.send(None)
+        except StopIteration as e:
+            return e.value
+
+    def test_fetch_vwap_price_success(self) -> None:
+        """Should return VWAPResult when order book is available."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+
+        book_response = {
+            "asks": [
+                {"price": "0.40", "size": "100"},
+                {"price": "0.60", "size": "50"},
+            ],
+            "bids": [],
+        }
+
+        def mock_send_request(*args: Any, **kwargs: Any) -> Generator:
+            """Mock send_polymarket_connection_request."""
+            yield
+            return book_response  # type: ignore[return-value]
+
+        with patch.object(
+            behaviour,
+            "send_polymarket_connection_request",
+            side_effect=mock_send_request,
+        ):
+            with patch.object(
+                behaviour,
+                "convert_to_native",
+                return_value=70.0,
+            ):
+                result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+
+        assert isinstance(result, VWAPResult)
+        # Budget=70, asks at 0.40*100=$40 + 0.60*50=$30 = $70 total
+        assert result.fully_filled is True
+        assert result.total_shares == pytest.approx(150.0)
+        assert result.vwap == pytest.approx(70.0 / 150.0)
+
+    def test_fetch_vwap_price_no_outcome_token_ids(self) -> None:
+        """Should return None when outcome_token_ids is None."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        bet.outcome_token_ids = None
+
+        result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+        assert result is None
+
+    def test_fetch_vwap_price_missing_outcome_key(self) -> None:
+        """Should return None when outcome_token_ids exists but key is missing."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        # outcome_token_ids has "Yes"/"No" but get_outcome returns "Yes"
+        # so we make the dict missing that key
+        bet.outcome_token_ids = {"Missing": "tok_missing"}
+
+        result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+        assert result is None
+
+    def test_fetch_vwap_price_error_response(self) -> None:
+        """Should return None when connection returns an error."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+
+        def mock_send_request(*args: Any, **kwargs: Any) -> Generator:
+            """Mock send_polymarket_connection_request."""
+            yield
+            return {"error": "network timeout"}  # type: ignore[return-value]
+
+        with patch.object(
+            behaviour,
+            "send_polymarket_connection_request",
+            side_effect=mock_send_request,
+        ):
+            with patch.object(
+                behaviour,
+                "convert_to_native",
+                return_value=50.0,
+            ):
+                result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+
+        assert result is None
+
+    def test_fetch_vwap_price_none_response(self) -> None:
+        """Should return None when connection returns None."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+
+        def mock_send_request(*args: Any, **kwargs: Any) -> Generator:
+            """Mock send_polymarket_connection_request."""
+            yield
+            return None  # type: ignore[return-value]
+
+        with patch.object(
+            behaviour,
+            "send_polymarket_connection_request",
+            side_effect=mock_send_request,
+        ):
+            with patch.object(
+                behaviour,
+                "convert_to_native",
+                return_value=50.0,
+            ):
+                result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+
+        assert result is None
+
+    def test_fetch_vwap_price_malformed_asks(self) -> None:
+        """Should return None when asks have unexpected format."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(fee=0)
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+
+        book_response = {"asks": [{"bad_key": "value"}], "bids": []}
+
+        def mock_send_request(*args: Any, **kwargs: Any) -> Generator:
+            """Mock send_polymarket_connection_request."""
+            yield
+            return book_response  # type: ignore[return-value]
+
+        with patch.object(
+            behaviour,
+            "send_polymarket_connection_request",
+            side_effect=mock_send_request,
+        ):
+            with patch.object(
+                behaviour,
+                "convert_to_native",
+                return_value=50.0,
+            ):
+                result = self._run_fetch_vwap_price(behaviour, bet, 0, 10**7)
+
+        assert result is None
+
+    # -------------------------------------------------------------------
+    # Polymarket VWAP integration with _is_profitable
+    # -------------------------------------------------------------------
+
+    def test_polymarket_vwap_profitable(self) -> None:
+        """Should use VWAP pricing when order book is available."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(
+            outcomeTokenAmounts=[10**7, 10**7],
+            outcomeTokenMarginalPrices=[0.3, 0.7],
+            fee=0,
+        )
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+        pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
+
+        # VWAP of 0.35 with 28.57 shares from a $10 budget
+        vwap_result = VWAPResult(
+            vwap=0.35, total_shares=28.571, budget_spent=10.0, fully_filled=True
+        )
+
+        def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
+            """Mock the get_bet_amount generator."""
+            yield
+            return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price generator."""
+            yield
+            return vwap_result  # type: ignore[return-value]
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "sampled_bet", new_callable=PropertyMock
+            ) as mock_sb:
+                mock_sb.return_value = bet
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        bet_threshold=0,
+                        is_running_on_polymarket=True,
+                    )
+                    with patch.object(
+                        behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "synchronized_data",
+                            new_callable=PropertyMock,
+                        ) as mock_sd:
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            with patch.object(
+                                behaviour,
+                                "convert_unit_to_wei",
+                                side_effect=lambda x: int(x * 10**6),
+                            ):
+                                with patch.object(
+                                    behaviour,
+                                    "convert_to_native",
+                                    return_value=0.0,
+                                ):
+                                    with patch.object(
+                                        behaviour,
+                                        "get_token_name",
+                                        return_value="USDC",
+                                    ):
+                                        with patch.object(
+                                            behaviour,
+                                            "rebet_allowed",
+                                            return_value=True,
+                                        ):
+                                            with patch.object(
+                                                behaviour,
+                                                "_fetch_vwap_price",
+                                                side_effect=mock_fetch_vwap,
+                                            ):
+                                                result = self._run_is_profitable(
+                                                    behaviour, pred
+                                                )
+
+        is_profitable, bet_amount = result
+        assert is_profitable is True
+        assert bet_amount == 10**7
+
+    def test_polymarket_vwap_empty_book(self) -> None:
+        """Should return (False, 0) when VWAP is 0 (no liquidity)."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(
+            outcomeTokenAmounts=[10**7, 10**7],
+            outcomeTokenMarginalPrices=[0.3, 0.7],
+            fee=0,
+        )
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+        pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
+
+        vwap_result = VWAPResult(
+            vwap=0.0, total_shares=0.0, budget_spent=0.0, fully_filled=False
+        )
+
+        def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
+            """Mock the get_bet_amount generator."""
+            yield
+            return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price generator."""
+            yield
+            return vwap_result  # type: ignore[return-value]
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "sampled_bet", new_callable=PropertyMock
+            ) as mock_sb:
+                mock_sb.return_value = bet
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        bet_threshold=0,
+                        is_running_on_polymarket=True,
+                    )
+                    with patch.object(
+                        behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "synchronized_data",
+                            new_callable=PropertyMock,
+                        ) as mock_sd:
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            with patch.object(
+                                behaviour,
+                                "convert_unit_to_wei",
+                                side_effect=lambda x: int(x * 10**6),
+                            ):
+                                with patch.object(
+                                    behaviour,
+                                    "convert_to_native",
+                                    return_value=0.0,
+                                ):
+                                    with patch.object(
+                                        behaviour,
+                                        "_fetch_vwap_price",
+                                        side_effect=mock_fetch_vwap,
+                                    ):
+                                        result = self._run_is_profitable(
+                                            behaviour, pred
+                                        )
+
+        is_profitable, bet_amount = result
+        assert is_profitable is False
+        assert bet_amount == 0
+
+    def test_polymarket_vwap_thin_book(self) -> None:
+        """Should return (False, 0) when book can't fully fill (FOK would fail)."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(
+            outcomeTokenAmounts=[10**7, 10**7],
+            outcomeTokenMarginalPrices=[0.3, 0.7],
+            fee=0,
+        )
+        bet.outcome_token_ids = {"Yes": "tok_yes", "No": "tok_no"}
+        pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
+
+        vwap_result = VWAPResult(
+            vwap=0.45, total_shares=50.0, budget_spent=22.5, fully_filled=False
+        )
+
+        def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
+            """Mock the get_bet_amount generator."""
+            yield
+            return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price generator."""
+            yield
+            return vwap_result  # type: ignore[return-value]
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "sampled_bet", new_callable=PropertyMock
+            ) as mock_sb:
+                mock_sb.return_value = bet
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        bet_threshold=0,
+                        is_running_on_polymarket=True,
+                    )
+                    with patch.object(
+                        behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "synchronized_data",
+                            new_callable=PropertyMock,
+                        ) as mock_sd:
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            with patch.object(
+                                behaviour,
+                                "convert_unit_to_wei",
+                                side_effect=lambda x: int(x * 10**6),
+                            ):
+                                with patch.object(
+                                    behaviour,
+                                    "convert_to_native",
+                                    return_value=0.0,
+                                ):
+                                    with patch.object(
+                                        behaviour,
+                                        "_fetch_vwap_price",
+                                        side_effect=mock_fetch_vwap,
+                                    ):
+                                        result = self._run_is_profitable(
+                                            behaviour, pred
+                                        )
+
+        is_profitable, bet_amount = result
+        assert is_profitable is False
+        assert bet_amount == 0
+
+    def test_polymarket_vwap_fallback_to_midprice(self) -> None:
+        """Should fall back to mid-price when VWAP fetch returns None."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(
+            outcomeTokenAmounts=[10**7, 10**7],
+            outcomeTokenMarginalPrices=[0.3, 0.7],
+            fee=0,
+        )
+        pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
+
+        def mock_get_bet_amount(*args: Any, **kwargs: Any) -> Generator:
+            """Mock the get_bet_amount generator."""
+            yield
+            return 10**7  # type: ignore[return-value]
+
+        def mock_fetch_vwap(*args: Any, **kwargs: Any) -> Generator:
+            """Mock _fetch_vwap_price returning None (fallback)."""
+            yield
+            return None  # type: ignore[return-value]
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "sampled_bet", new_callable=PropertyMock
+            ) as mock_sb:
+                mock_sb.return_value = bet
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        bet_threshold=0,
+                        is_running_on_polymarket=True,
+                    )
+                    with patch.object(
+                        behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "synchronized_data",
+                            new_callable=PropertyMock,
+                        ) as mock_sd:
+                            mock_sd.return_value = MagicMock(weighted_accuracy=0.9)
+                            with patch.object(
+                                behaviour,
+                                "convert_unit_to_wei",
+                                side_effect=lambda x: int(x * 10**6),
+                            ):
+                                with patch.object(
+                                    behaviour,
+                                    "convert_to_native",
+                                    return_value=0.0,
+                                ):
+                                    with patch.object(
+                                        behaviour,
+                                        "get_token_name",
+                                        return_value="USDC",
+                                    ):
+                                        with patch.object(
+                                            behaviour,
+                                            "rebet_allowed",
+                                            return_value=True,
+                                        ):
+                                            with patch.object(
+                                                behaviour,
+                                                "_fetch_vwap_price",
+                                                side_effect=mock_fetch_vwap,
+                                            ):
+                                                result = self._run_is_profitable(
+                                                    behaviour, pred
+                                                )
+
+        # Falls back to mid-price logic: same as test_polymarket_profitable
+        is_profitable, bet_amount = result
+        assert is_profitable is True
+        assert bet_amount == 10**7
 
     def test_benchmarking_profitable(self) -> None:
         """Should update liquidity and write results in benchmarking mode."""

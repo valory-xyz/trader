@@ -324,6 +324,7 @@ class TestRouteRequest:
             "_redeem_positions",
             "_set_approval",
             "_check_approval",
+            "_fetch_order_book",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -2076,3 +2077,79 @@ class TestModuleConstants:
         """CONDITIONAL_TOKENS_CONTRACT is a non-empty string."""
         assert isinstance(CONDITIONAL_TOKENS_CONTRACT, str)
         assert CONDITIONAL_TOKENS_CONTRACT.startswith("0x")
+
+
+# ---------------------------------------------------------------------------
+# _fetch_order_book
+# ---------------------------------------------------------------------------
+
+
+class TestFetchOrderBook:
+    """Tests for _fetch_order_book."""
+
+    def test_fetch_order_book_success(self) -> None:
+        """Fetches order book and returns asks/bids as dicts."""
+        conn = _make_connection()
+
+        ask1 = MagicMock()
+        ask1.price = "0.45"
+        ask1.size = "100"
+        ask2 = MagicMock()
+        ask2.price = "0.50"
+        ask2.size = "200"
+
+        bid1 = MagicMock()
+        bid1.price = "0.40"
+        bid1.size = "150"
+
+        book_mock = MagicMock()
+        book_mock.asks = [ask1, ask2]
+        book_mock.bids = [bid1]
+        conn.client.get_order_book.return_value = book_mock
+
+        response, error = conn._fetch_order_book(token_id="tok_abc")  # nosec B106
+
+        conn.client.get_order_book.assert_called_once_with("tok_abc")
+        assert error is None
+        assert response["asks"] == [
+            {"price": "0.45", "size": "100"},
+            {"price": "0.50", "size": "200"},
+        ]
+        assert response["bids"] == [{"price": "0.40", "size": "150"}]
+
+    def test_fetch_order_book_empty_book(self) -> None:
+        """Returns empty lists when no asks or bids."""
+        conn = _make_connection()
+
+        book_mock = MagicMock()
+        book_mock.asks = []
+        book_mock.bids = []
+        conn.client.get_order_book.return_value = book_mock
+
+        response, error = conn._fetch_order_book(token_id="tok_empty")  # nosec B106
+        assert error is None
+        assert response["asks"] == []
+        assert response["bids"] == []
+
+    def test_fetch_order_book_none_asks_bids(self) -> None:
+        """Handles None asks/bids gracefully."""
+        conn = _make_connection()
+
+        book_mock = MagicMock()
+        book_mock.asks = None
+        book_mock.bids = None
+        conn.client.get_order_book.return_value = book_mock
+
+        response, error = conn._fetch_order_book(token_id="tok_none")  # nosec B106
+        assert error is None
+        assert response["asks"] == []
+        assert response["bids"] == []
+
+    def test_fetch_order_book_exception(self) -> None:
+        """Exception from client is caught and returned as error."""
+        conn = _make_connection()
+        conn.client.get_order_book.side_effect = Exception("network timeout")
+
+        response, error = conn._fetch_order_book(token_id="tok_fail")  # nosec B106
+        assert response is None
+        assert "network timeout" in error

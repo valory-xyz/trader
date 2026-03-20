@@ -26,6 +26,7 @@ from datetime import datetime
 from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     remove_fraction_wei,
 )
@@ -40,6 +41,10 @@ from packages.valory.skills.decision_maker_abci.models import (
 from packages.valory.skills.decision_maker_abci.payloads import DecisionReceivePayload
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
+)
+from packages.valory.skills.decision_maker_abci.utils.vwap import (
+    VWAPResult,
+    compute_vwap,
 )
 from packages.valory.skills.market_manager_abci.bets import (
     BINARY_N_SLOTS,
@@ -437,6 +442,55 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info("Conditions for rebetting are not met!")
         return rebet_allowed
 
+    def _fetch_vwap_price(
+        self,
+        bet: Bet,
+        predicted_vote_side: int,
+        net_bet_amount: int,
+    ) -> Generator[None, None, Optional[VWAPResult]]:
+        """Fetch the CLOB order book and compute VWAP for the bet.
+
+        :param bet: the sampled bet.
+        :param predicted_vote_side: 0 for yes, 1 for no.
+        :param net_bet_amount: the net bet amount in wei.
+        :yield: None
+        :return: VWAPResult or None if the order book is unavailable.
+        """
+        try:
+            if bet.outcome_token_ids is None:
+                raise ValueError("outcome_token_ids is None")
+            outcome = bet.get_outcome(predicted_vote_side)
+            token_id = bet.outcome_token_ids[outcome]
+        except (KeyError, TypeError, ValueError, IndexError) as e:
+            self.context.logger.warning(
+                f"Cannot resolve token_id for order book: {e}. "
+                "Falling back to mid-price."
+            )
+            return None
+
+        payload = {
+            "request_type": RequestType.FETCH_ORDER_BOOK.value,
+            "params": {"token_id": token_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+
+        if response is None or (isinstance(response, dict) and "error" in response):
+            self.context.logger.warning(
+                f"Order book fetch failed: {response}. " "Falling back to mid-price."
+            )
+            return None
+
+        try:
+            asks = [(float(a["price"]), float(a["size"])) for a in response["asks"]]
+        except (KeyError, TypeError, ValueError) as e:
+            self.context.logger.warning(
+                f"Failed to parse order book asks: {e}. " "Falling back to mid-price."
+            )
+            return None
+
+        budget_native = self.convert_to_native(net_bet_amount)
+        return compute_vwap(asks, budget_native)
+
     def _is_profitable(
         self, prediction_response: PredictionResponse
     ) -> Generator[None, None, Tuple[bool, int]]:
@@ -542,15 +596,52 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 market_price_for_selected_vote + opposing_market_price
             )
 
+            # Attempt VWAP pricing from the CLOB order book.
+            # Note: we use net_bet_amount here which equals bet_amount for
+            # Polymarket (fee=0). If Polymarket fees change, this should use
+            # bet_amount to match the FOK order size in placement.
+            vwap_result = yield from self._fetch_vwap_price(
+                bet, predicted_vote_side, net_bet_amount
+            )
+
+            if vwap_result is not None:
+                if vwap_result.vwap == 0.0:
+                    self.context.logger.warning(
+                        "Order book has no liquidity (VWAP=0). "
+                        "The bet will be deemed not profitable."
+                    )
+                    return False, 0
+                if not vwap_result.fully_filled:
+                    self.context.logger.warning(
+                        f"Order book too thin to fully fill bet. "
+                        f"Only {vwap_result.budget_spent} of "
+                        f"{self.convert_to_native(net_bet_amount)} can be filled. "
+                        f"FOK order would fail."
+                    )
+                    return False, 0
+                # Use VWAP-derived shares
+                num_shares_predicted_vote = self.convert_unit_to_wei(
+                    vwap_result.total_shares
+                )
+                self.context.logger.info(
+                    f"Using VWAP pricing: vwap={vwap_result.vwap:.6f}, "
+                    f"shares={vwap_result.total_shares:.4f}"
+                )
+            else:
+                # Fallback to mid-price
+                self.context.logger.warning(
+                    "Order book unavailable, falling back to mid-price."
+                )
+                num_shares_predicted_vote = int(
+                    net_bet_amount / market_probability_for_selected_vote
+                )
+
             predicted_vote_probability = (
                 prediction_response.p_yes
                 if predicted_vote_side == 0
                 else prediction_response.p_no
             )
             mech_costs = self.convert_unit_to_wei(DEFAULT_MECH_COSTS)
-            num_shares_predicted_vote = (
-                net_bet_amount / market_probability_for_selected_vote
-            )
             expected_net_profit = (
                 predicted_vote_probability * num_shares_predicted_vote
                 - net_bet_amount
@@ -571,7 +662,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(f"{net_bet_amount=}")
             self.context.logger.info(f"{predicted_vote_side=}")
             self.context.logger.info(f"{market_price_for_selected_vote=}")
-            self.context.logger.info(f"{opposing_market_price=}")
             self.context.logger.info(f"{market_probability_for_selected_vote=}")
             self.context.logger.info(f"{predicted_vote_probability=}")
             self.context.logger.info(f"{mech_costs=}")
