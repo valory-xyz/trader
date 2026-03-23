@@ -2808,14 +2808,14 @@ web3 = ">=7.0.0,<8"
 
 [[package]]
 name = "open-aea-test-autonomy"
-version = "0.21.13"
+version = "0.21.14"
 description = "Plugin containing test tools for open-autonomy packages."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "open_aea_test_autonomy-0.21.13-py3-none-any.whl", hash = "sha256:532daf9eb073f97c27ea698fc43559ffe39a6aabc15b7b5c6eae3fee1718d68c"},
-    {file = "open_aea_test_autonomy-0.21.13.tar.gz", hash = "sha256:cd69190dfebdb5ce9935a727328137d669c48848b27924c146edf8b7200040d4"},
+    {file = "open_aea_test_autonomy-0.21.14-py3-none-any.whl", hash = "sha256:532daf9eb073f97c27ea698fc43559ffe39a6aabc15b7b5c6eae3fee1718d68c"},
+    {file = "open_aea_test_autonomy-0.21.14.tar.gz", hash = "sha256:cd69190dfebdb5ce9935a727328137d669c48848b27924c146edf8b7200040d4"},
 ]
 
 [package.dependencies]
@@ -2826,14 +2826,14 @@ pytest = "8.4.2"
 
 [[package]]
 name = "open-autonomy"
-version = "0.21.13"
+version = "0.21.14"
 description = "A framework for the creation of autonomous agent services."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "open_autonomy-0.21.13-py3-none-any.whl", hash = "sha256:bbb495faeb2a88f47a6f31806af41ae173e19ad82633fcb7e87111ae9260c7fa"},
-    {file = "open_autonomy-0.21.13.tar.gz", hash = "sha256:eedc9bf38f8b07368a4259088afd3064ed459b16360c34b2d55f5b94f7ada5c9"},
+    {file = "open_autonomy-0.21.14-py3-none-any.whl", hash = "sha256:bbb495faeb2a88f47a6f31806af41ae173e19ad82633fcb7e87111ae9260c7fa"},
+    {file = "open_autonomy-0.21.14.tar.gz", hash = "sha256:eedc9bf38f8b07368a4259088afd3064ed459b16360c34b2d55f5b94f7ada5c9"},
 ]
 
 [package.dependencies]
