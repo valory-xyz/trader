@@ -879,13 +879,31 @@ def get_bet_amount(
 ) -> Generator[None, None, int]:
 ```
 
-**Normalize legacy strategy names before execution and at startup:**
+**Normalize legacy strategy names — two places:**
+
+Name normalization must happen in both places to prevent startup crashes and
+ensure correct strategy execution.
+
+**1. In `SharedState.setup()` (`models.py` line 316-327) — before startup validation:**
 
 ```python
-# In SharedState.setup() / chatui config loading:
-# normalize "kelly_criterion_no_conf" -> "kelly_criterion" for execution,
-# but preserve the old label as an accepted config value for one migration window.
+selected_strategy = params.trading_strategy
+# Normalize legacy names before validation
+if selected_strategy == STRATEGY_KELLY_CRITERION_NO_CONF:
+    selected_strategy = STRATEGY_KELLY_CRITERION
+if selected_strategy == "bet_amount_per_threshold":
+    selected_strategy = "fixed_bet"
+strategy_exec = self.strategy_to_filehash.keys()
+if selected_strategy not in strategy_exec:
+    raise ValueError(...)
+```
 
+Without this, operators with `TRADING_STRATEGY=kelly_criterion_no_conf` in their env
+would crash at startup because `file_hash_to_strategies` only has the new names.
+
+**2. In `get_bet_amount()` (`base.py`) — before strategy execution:**
+
+```python
 # In the while loop, before executing:
 if next_strategy == STRATEGY_KELLY_CRITERION_NO_CONF:
     next_strategy = STRATEGY_KELLY_CRITERION
@@ -893,17 +911,17 @@ if next_strategy == "bet_amount_per_threshold":
     next_strategy = "fixed_bet"
 ```
 
-Also update `file_hash_to_strategies` migration logic so the new Kelly package hash can
-temporarily advertise **both** names:
+**`file_hash_to_strategies` YAML only needs new names:**
 
 ```yaml
-<new_kelly_hash>:
-  - kelly_criterion
-  - kelly_criterion_no_conf
+file_hash_to_strategies:
+  <kelly_criterion_hash>:
+    - kelly_criterion
+  <fixed_bet_hash>:
+    - fixed_bet
 ```
 
-This avoids startup failures for operators who still have `TRADING_STRATEGY=kelly_criterion_no_conf`
-or stale values persisted in `chatui_param_store.json`.
+No need to list old names here — normalization at startup handles it.
 
 **Add new kwargs before `execute_strategy()` call:**
 
@@ -1209,13 +1227,8 @@ needs a vote to know which side's tokens to sell. For selling, use inline
 `int(prediction_response.p_no > prediction_response.p_yes)` — selling is about
 evaluating existing positions against new mech data, not about new side selection.
 
-Also map both strategy names to the **new** package hash in `file_hash_to_strategies`
-during migration:
-```yaml
-<new_kelly_hash>:
-  - kelly_criterion
-  - kelly_criterion_no_conf
-```
+Legacy name normalization in `SharedState.setup()` and `get_bet_amount()` (see section 3.3.3)
+ensures operators with old names don't crash — no need to list old names in `file_hash_to_strategies`.
 
 ---
 
