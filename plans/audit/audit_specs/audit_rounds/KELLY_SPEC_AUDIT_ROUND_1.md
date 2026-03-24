@@ -12,7 +12,7 @@
 Target reviewed:
 
 - trader PR `#882`
-- commit `40022fb485183623ad7de16316de9658ef4adcdc`
+- commit `b70cedf4dfbe1f370e0eb7ecd48fef2821196920`
 
 This round supersedes the earlier review against the older `a086d344...` draft.
 
@@ -42,82 +42,7 @@ grid-search-based Kelly implementation that:
 
 ## Findings
 
-### 1. `expected_profit` still uses a deleted variable, so the core return contract is internally inconsistent
-
-The latest plan correctly moves from `win_probability` to `p_yes` / `p_no` and
-states that `PredictionResponse.win_probability` is dead code. However, the core
-strategy pseudocode still computes:
-
-```python
-expected_profit = (
-    win_probability * best_result["shares"] - best_result["spend"] - fee_per_trade
-)
-```
-
-That variable no longer exists in the proposed contract. Implemented literally,
-the strategy would either fail or quietly reintroduce the old single-side
-semantics into the downstream profitability field.
-
-Impact:
-
-- the main strategy pseudocode is not self-consistent
-- `expected_profit` is not well defined for the chosen side
-- implementation risk is high because the bug sits in the central return path
-
-Status:
-
-- blocking
-
-### 2. The CLOB minimum-fill helper is referenced but never defined in the algorithm section
-
-The updated plan correctly switches Polymarket minimum spend to a walked-book
-calculation:
-
-```python
-min_fill_cost, _ = walk_book_for_shares(sorted_asks, min_order_shares)
-```
-
-But `walk_book_for_shares()` is never defined anywhere in the strategy design,
-while only `walk_book()` is specified.
-
-Impact:
-
-- the CLOB pricing path is still incomplete at the spec level
-- the most important Polymarket sizing safeguard is underspecified
-- reviewers cannot verify exact behavior for partial depth, insufficient depth,
-  or non-fillable minimum-share scenarios
-
-Status:
-
-- blocking
-
-### 3. The `fixed_bet` migration is inconsistent across strategy-reference sections
-
-The plan introduces `fixed_bet` as the replacement for
-`bet_amount_per_threshold`, and `chatui_abci/prompts.py` includes the new enum
-member. But `agent_performance_summary_abci/graph_tooling/predictions_helper.py`
-still shows:
-
-```python
-class TradingStrategy(enum.Enum):
-    KELLY_CRITERION = "kelly_criterion"
-    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
-```
-
-while the very next section maps `TradingStrategy.FIXED_BET.value`.
-
-Impact:
-
-- the migration spec is not internally consistent
-- if followed literally, downstream graph tooling will be missing the new enum member
-- this creates avoidable regression risk in reporting/UI surfaces
-
-Status:
-
-- blocking
-
-### 4. The config/unit contract is still unresolved for Polymarket max-bet values
+### 1. The config/unit contract is still unresolved for Polymarket max-bet values
 
 The plan now preserves `default_max_bet_size` and `absolute_max_bet_size` for
 ChatUI compatibility, which is good. But it still leaves a core parameter-contract
@@ -138,7 +63,30 @@ Status:
 
 - blocking
 
-### 5. API-call budget and execution-time revalidation remain underspecified
+### 2. The Polymarket minimum-spend gate is explicit now, but it still only uses best ask and can understate the true exchange minimum on thin books
+
+The latest plan removed the undefined helper and now states:
+
+```python
+b_min_side = max(min_bet, min_order_shares * best_ask_price)
+```
+
+This is clearer, and it matches the referenced `final_kelly.py` behavior, but it
+still assumes the full `min_order_shares` can be bought at the top level. If the
+best ask depth is smaller than `min_order_shares`, then the true minimum
+executable spend is higher than this lower bound.
+
+Impact:
+
+- the CLOB path can admit candidate bets below the real exchange minimum
+- the “execution-aware” claim is still slightly overstated at the minimum-size boundary
+- thin books remain a spec-level edge case
+
+Status:
+
+- major
+
+### 3. API-call budget and execution-time revalidation remain underspecified
 
 The latest draft improves the Polymarket path and explicitly notes that CLOB
 adds two orderbook fetches per market. But it still does not fully specify:
@@ -166,11 +114,9 @@ Status:
 
 ## Open Questions
 
-1. Is `expected_profit` explicitly computed with the probability of the selected side (`p_yes` for YES, `p_no = 1 - p_yes` for NO), rather than with a stale shared variable such as `win_probability`?
-2. What is the exact contract of `walk_book_for_shares()` when the orderbook cannot supply `min_order_shares`?
-3. Should `agent_performance_summary_abci` fully migrate to `FIXED_BET`, or intentionally keep both names during the migration window?
-4. Are Polymarket-compatible max-bet values written in native 6-decimal USDC units or normalized to 18 decimals before execution?
-5. What is the accepted per-market request budget after the new Polymarket flow, and do we require execution-time revalidation for both venues?
+1. Are Polymarket-compatible max-bet values written in native 6-decimal USDC units or normalized to 18 decimals before execution?
+2. Is the best-ask-based `b_min_side` intentionally accepted as a lower-bound approximation, or should the minimum executable spend reflect the actual cost of filling `min_order_shares`?
+3. What is the accepted per-market request budget after the new Polymarket flow, and do we require execution-time revalidation for both venues?
 
 ---
 
@@ -186,13 +132,10 @@ plumbing, and startup compatibility for legacy Kelly naming.
 
 The remaining blockers are narrower but still important:
 
-- the central `expected_profit` formula is using a deleted variable
-- the minimum-fill helper for CLOB is not fully specified
-- the `fixed_bet` migration is inconsistent across reference sections
 - the Polymarket decimal/unit contract is still open
+- the Polymarket minimum-spend gate still uses a best-ask approximation
 
-Implementation should wait until those are resolved, and the API-call /
-staleness story should be tightened before coding starts.
+The API-call / staleness story should also be tightened before coding starts.
 
 ---
 
@@ -210,7 +153,7 @@ Legend:
 - [PASS] Kelly objective is implemented as specified
 - [PASS] Omen execution uses FPMM model correctly
 - [PARTIAL] Polymarket execution walks the book correctly
-- [OPEN] `expected_profit` follows the exact optimizer accounting
+- [PASS] `expected_profit` follows the exact optimizer accounting
 - [PASS] Venue fee is not double-counted
 - [PASS] External friction is not omitted
 
@@ -228,7 +171,7 @@ Legend:
 - [PASS] Polymarket path remains functional
 - [PASS] ChatUI still loads and validates settings
 - [PASS] Legacy Kelly naming does not break startup
-- [PARTIAL] Non-Kelly strategy behavior is unchanged where intended
+- [PASS] Non-Kelly strategy behavior is unchanged where intended
 
 ### D. Performance / Request Checks
 
