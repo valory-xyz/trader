@@ -62,6 +62,8 @@ USD_PRICE_FIELD = "usd"
 
 QUESTION_DATA_SEPARATOR = "\u241f"
 
+_MAX_SLEEP_TIME = 300.0  # 5 minutes; prevents OverflowError in timedelta
+
 
 def to_content(query: str, variables: Dict) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
@@ -154,9 +156,10 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
             if subgraph.is_retries_exceeded():
                 self._fetch_status = FetchStatus.FAIL
-
-            if sleep_on_fail:
-                sleep_time = subgraph.retries_info.suggested_sleep_time
+            elif sleep_on_fail:
+                sleep_time = min(
+                    subgraph.retries_info.suggested_sleep_time, _MAX_SLEEP_TIME
+                )
                 yield from self.sleep(sleep_time)
             return None
 
@@ -603,3 +606,20 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 result = result.get("sender") or {}
             return result.get("requests", []) if isinstance(result, dict) else []
         return []
+
+    def clean_up(self) -> None:
+        """Clean up the resources."""
+        subgraph_names = (
+            "polygon_mech_subgraph",
+            "olas_mech_subgraph",
+            "olas_agents_subgraph",
+            "polymarket_agents_subgraph",
+            "open_markets_subgraph",
+            "polymarket_bets_subgraph",
+            "gnosis_staking_subgraph",
+            "polygon_staking_subgraph",
+        )
+        for name in subgraph_names:
+            subgraph_specs = getattr(self.context, name, None)
+            if subgraph_specs is not None:
+                subgraph_specs.reset_retries()
