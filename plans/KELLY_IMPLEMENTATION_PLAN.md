@@ -98,20 +98,44 @@ MechResponse (p_yes, p_no, confidence)
     ▼
 DecisionReceiveBehaviour._is_profitable()
     │
-    ├── [Poly] _fetch_orderbook(yes_token_id, no_token_id) ──► both ask sides
-    ├── [Poly] read min_order_shares from market metadata
+    │   ┌─── Venue-specific data gathering ───────────────────────────┐
+    │   │                                                             │
+    │   │ [Polymarket (CLOB)]:                                        │
+    │   │   market_type = "clob"                                      │
+    │   │   _fetch_orderbook(yes_token_id) ──► orderbook_asks_yes     │
+    │   │   _fetch_orderbook(no_token_id)  ──► orderbook_asks_no      │
+    │   │   price_yes = bet.outcomeTokenMarginalPrices[0]             │
+    │   │   price_no  = bet.outcomeTokenMarginalPrices[1]             │
+    │   │   min_order_shares = bet.min_order_shares                   │
+    │   │                                                             │
+    │   │ [Omen (FPMM)]:                                              │
+    │   │   market_type = "fpmm"                                      │
+    │   │   tokens_yes = bet.outcomeTokenAmounts[0]                   │
+    │   │   tokens_no  = bet.outcomeTokenAmounts[1]                   │
+    │   │   price_yes  = bet.outcomeTokenMarginalPrices[0]            │
+    │   │   price_no   = bet.outcomeTokenMarginalPrices[1]            │
+    │   │   bet_fee    = bet.fee (venue fee → alpha in FPMM model)    │
+    │   │                                                             │
+    │   └─────────────────────────────────────────────────────────────┘
     │
     ├── get_bet_amount() ──► strategy.run()
     │   │                        │
-    │   │   kwargs:              │   Strategy now does EVERYTHING:
+    │   │   Common kwargs:       │   Strategy now does EVERYTHING:
     │   │     p_yes,             │   - evaluates BOTH sides independently
     │   │     market_type,       │   - edge filtering per side
-    │   │     orderbook_asks_yes,│   - grid search over bet sizes
-    │   │     orderbook_asks_no, │   - execution simulation (CLOB or FPMM)
-    │   │     price_yes,         │   - log-growth comparison vs no-trade
-    │   │     price_no,          │   - picks side with highest G_improvement
-    │   │     min_order_shares,  │   - execution-minimum from venue data
-    │   │     n_bets, ...        │
+    │   │     price_yes,         │   - grid search over bet sizes
+    │   │     price_no,          │   - execution simulation (CLOB or FPMM)
+    │   │     n_bets, ...        │   - log-growth comparison vs no-trade
+    │   │                        │   - picks side with highest G_improvement
+    │   │   CLOB-only:           │
+    │   │     orderbook_asks_yes,│
+    │   │     orderbook_asks_no, │
+    │   │     min_order_shares,  │
+    │   │                        │
+    │   │   FPMM-only:           │
+    │   │     tokens_yes,        │
+    │   │     tokens_no,         │
+    │   │     bet_fee,           │
     │   │                        │
     │   ◄── returns: {           │
     │         "bet_amount": int, ◄──────────────────────────────────────┘
