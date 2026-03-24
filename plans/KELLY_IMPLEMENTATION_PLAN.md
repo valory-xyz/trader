@@ -1336,10 +1336,88 @@ Update existing tests that reference `kelly_criterion_no_conf` to use `kelly_cri
 - `agent_performance_summary_abci/tests/graph_tooling/test_polymarket_predictions_helper.py`
 - `decision_maker_abci/tests/test_models.py`
 
-Add compatibility coverage to ensure persisted legacy values remain accepted during the
-migration release:
-- `decision_maker_abci/tests/test_models.py` — legacy `trading_strategy` still treated as Kelly
-- `chatui_abci/tests/test_models.py` — `default_max_bet_size` / `absolute_max_bet_size` remain present
+### 4.7 Migration Tests (exhaustive)
+
+Legacy names can enter the system through 8 surfaces. Each needs a test proving
+the old name doesn't crash and resolves correctly.
+
+**Surface 1: `SharedState.setup()` startup validation**
+(`decision_maker_abci/tests/test_models.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_setup_kelly_criterion_no_conf_normalized` | `params.trading_strategy="kelly_criterion_no_conf"`, `file_hash_to_strategies` only has `kelly_criterion` → setup succeeds, no ValueError |
+| `test_setup_bet_amount_per_threshold_normalized` | `params.trading_strategy="bet_amount_per_threshold"`, `file_hash_to_strategies` only has `fixed_bet` → setup succeeds |
+| `test_setup_new_names_work` | `params.trading_strategy="kelly_criterion"` with matching hash → setup succeeds (sanity) |
+
+**Surface 2: ChatUI config persistence — `trading_strategy`**
+(`chatui_abci/tests/test_models.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_chatui_store_loads_legacy_kelly_name` | `chatui_param_store.json` has `"trading_strategy": "kelly_criterion_no_conf"` → `ChatuiConfig.trading_strategy` loads without error |
+| `test_chatui_store_loads_legacy_threshold_name` | `chatui_param_store.json` has `"trading_strategy": "bet_amount_per_threshold"` → loads without error |
+
+**Surface 3: ChatUI config persistence — `initial_trading_strategy`**
+(`chatui_abci/tests/test_models.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_chatui_initial_strategy_mismatch_resets` | YAML default is `"kelly_criterion"`, stored `initial_trading_strategy` is `"kelly_criterion_no_conf"` → detects mismatch, resets to YAML default |
+
+**Surface 4: ChatUI HTTP handler — `AVAILABLE_TRADING_STRATEGIES` validation**
+(`chatui_abci/tests/test_handlers.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_legacy_kelly_name_in_available_strategies` | `"kelly_criterion_no_conf"` is in `AVAILABLE_TRADING_STRATEGIES` → HTTP request with old name accepted |
+| `test_legacy_threshold_name_in_available_strategies` | `"bet_amount_per_threshold"` is in `AVAILABLE_TRADING_STRATEGIES` → accepted |
+| `test_new_kelly_name_in_available_strategies` | `"kelly_criterion"` accepted |
+| `test_new_fixed_bet_name_in_available_strategies` | `"fixed_bet"` accepted |
+
+**Surface 5: `file_hash_to_strategies` → `strategy_to_filehash` mapping**
+(`decision_maker_abci/tests/test_models.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_legacy_name_resolves_after_normalization` | `file_hash_to_strategies={"hash1": ["kelly_criterion"]}`, `trading_strategy="kelly_criterion_no_conf"` → normalized to `kelly_criterion`, found in map |
+
+**Surface 6: `get_bet_amount()` runtime name mapping**
+(`decision_maker_abci/tests/behaviours/test_base.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_kelly_no_conf_executes_kelly_package` | `next_strategy="kelly_criterion_no_conf"` → mapped to `"kelly_criterion"`, correct strategy executable found and run |
+| `test_bet_amount_per_threshold_executes_fixed_bet` | `next_strategy="bet_amount_per_threshold"` → mapped to `"fixed_bet"`, correct executable run |
+
+**Surface 7: Historical bet records — `_get_ui_trading_strategy()`**
+(`agent_performance_summary_abci/tests/graph_tooling/test_predictions_helper.py`)
+(`agent_performance_summary_abci/tests/graph_tooling/test_polymarket_predictions_helper.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_legacy_kelly_maps_to_risky` | `_get_ui_trading_strategy("kelly_criterion_no_conf")` → `"risky"` |
+| `test_new_kelly_maps_to_risky` | `_get_ui_trading_strategy("kelly_criterion")` → `"risky"` |
+| `test_legacy_threshold_maps_to_balanced` | `_get_ui_trading_strategy("bet_amount_per_threshold")` → `"balanced"` |
+| `test_new_fixed_bet_maps_to_balanced` | `_get_ui_trading_strategy("fixed_bet")` → `"balanced"` |
+
+**Surface 8: UI display — chatui/trader handler `_get_ui_trading_strategy()`**
+(`chatui_abci/tests/test_handlers.py`, `trader_abci/tests/test_handlers.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_ui_kelly_no_conf_returns_risky` | Handler maps `"kelly_criterion_no_conf"` → `RISKY` |
+| `test_ui_kelly_returns_risky` | Handler maps `"kelly_criterion"` → `RISKY` |
+| `test_ui_threshold_returns_balanced` | Handler maps `"bet_amount_per_threshold"` → `BALANCED` |
+| `test_ui_fixed_bet_returns_balanced` | Handler maps `"fixed_bet"` → `BALANCED` |
+
+**ChatUI config key compatibility**
+(`chatui_abci/tests/test_models.py`)
+
+| Test | Description |
+|------|-------------|
+| `test_default_max_bet_size_present` | `strategies_kwargs` still has `default_max_bet_size` key |
+| `test_absolute_max_bet_size_present` | `strategies_kwargs` still has `absolute_max_bet_size` key |
 
 ---
 
