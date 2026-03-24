@@ -213,8 +213,8 @@ REQUIRED_FIELDS = frozenset({
     "p_yes",             # float [0,1] — oracle's probability for YES
     "market_type",       # str — "clob" or "fpmm"
     "floor_balance",     # int (wei) — minimum balance to keep in wallet
-    "price_yes",         # float — current market price for YES
-    "price_no",          # float — current market price for NO
+    "price_yes",         # float — current market price for YES (FPMM edge filter; CLOB uses best_ask instead)
+    "price_no",          # float — current market price for NO (FPMM edge filter; CLOB uses best_ask instead)
 })
 
 OPTIONAL_FIELDS = frozenset({
@@ -532,16 +532,8 @@ def run(**kwargs) -> Dict[str, Any]:
         label = side["label"]
         p = side["p"]
         price = side["price"]
-        edge = p - price
 
-        # Filter: min_edge
-        if edge < min_edge:
-            msg = f"{label}: edge {edge:+.4f} < min_edge {min_edge}"
-            info.append(msg)
-            all_rejections.append(msg)
-            continue
-
-        # Filter: min_oracle_prob
+        # Filter: min_oracle_prob (applied before venue-specific logic)
         if min_oracle_prob > 0 and p < min_oracle_prob:
             msg = f"{label}: oracle prob {p:.3f} < min_oracle_prob {min_oracle_prob}"
             info.append(msg)
@@ -557,19 +549,26 @@ def run(**kwargs) -> Dict[str, Any]:
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
-            # b_min for CLOB: minimum spend to fill min_order_shares at best ask.
-            # Matches the reference implementation (final_kelly.py):
-            #   b_min = min_order_shares * best_ask
+
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
             min_order_shares = float(kwargs.get("min_order_shares", 5.0))
             b_min_side = max(min_bet, min_order_shares * best_ask_price)
             x_native, y_native = 0.0, 0.0
+
+            # CLOB pre-filter: quick edge check against best ask (cheapest level).
+            # The real edge (against VWAP) will be <= this, so if this fails
+            # the real edge would also fail. Matches final_kelly.py.
+            edge_best_ask = p - best_ask_price
+            if edge_best_ask < min_edge:
+                msg = f"{label}: edge vs best_ask {edge_best_ask:+.4f} < min_edge {min_edge}"
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
+
         else:  # fpmm
             asks = None
             b_min_side = min_bet
-            # For YES side: x=tokens_yes (buying YES), y=tokens_no
-            # For NO side:  x=tokens_no (buying NO), y=tokens_yes
             tokens_yes = kwargs.get("tokens_yes", 0) / scale
             tokens_no = kwargs.get("tokens_no", 0) / scale
             if side["vote"] == 0:
@@ -577,12 +576,13 @@ def run(**kwargs) -> Dict[str, Any]:
             else:
                 x_native, y_native = tokens_no, tokens_yes
 
-        # If minimum spend exceeds max bet, side is not admissible
-        if b_min_side > max_bet:
-            msg = f"{label}: b_min ({b_min_side:.4f}) > max_bet ({max_bet:.4f})"
-            info.append(msg)
-            all_rejections.append(msg)
-            continue
+            # FPMM edge filter: use market price (no orderbook)
+            edge = p - price
+            if edge < min_edge:
+                msg = f"{label}: edge {edge:+.4f} < min_edge {min_edge}"
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
 
         # Run grid search
         best_spend, best_shares, best_G, G_baseline = optimize_side(
@@ -592,10 +592,21 @@ def run(**kwargs) -> Dict[str, Any]:
             x=x_native, y=y_native, alpha=alpha,
         )
 
+        # True edge: oracle probability minus actual execution price (VWAP)
+        # For CLOB this replaces the best-ask pre-filter with the real number.
+        # For FPMM this is p - price (same as pre-filter, since no orderbook).
+        if market_type == "clob" and best_shares > 0:
+            vwap = best_spend / best_shares
+            edge = p - vwap
+        else:
+            vwap = price
+            edge = p - price
+
         G_improvement = best_G - G_baseline
         info.append(
             f"{label}: spend={best_spend:.4f}, shares={best_shares:.4f}, "
-            f"G_improvement={G_improvement:.6f}, edge={edge:+.4f}"
+            f"vwap={vwap:.4f}, edge={edge:+.4f}, "
+            f"G_improvement={G_improvement:.6f}"
         )
 
         if best_spend > 0 and G_improvement > 0:
@@ -607,6 +618,7 @@ def run(**kwargs) -> Dict[str, Any]:
                     "vote": side["vote"],
                     "label": label,
                     "edge": edge,
+                    "vwap": vwap,
                     "p": p,
                 }
 
