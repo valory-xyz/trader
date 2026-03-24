@@ -7,7 +7,7 @@ strategy used by trader.
 
 It exists to define:
 
-- the optimization objective
+- the grid-search objective
 - the venue-specific execution models
 - the parameter contract and units
 - the output contract
@@ -83,7 +83,8 @@ The no-trade baseline is:
 G_0 = log(W_bet)
 ```
 
-The optimizer selects the admissible bet with maximum `G(b)`.
+The strategy evaluates admissible candidates on the grid and selects the bet
+with maximum `G(b)`.
 
 The strategy only returns a trade if:
 
@@ -117,7 +118,7 @@ For each side:
 1. apply oracle probability filter
 2. construct venue-specific execution inputs
 3. apply venue-specific edge pre-filter
-4. optimize over candidate bet sizes
+4. search over candidate bet sizes on the grid
 5. compute true edge (VWAP for CLOB, market price for FPMM)
 6. compare best side result against no trade
 
@@ -154,9 +155,9 @@ Two-stage edge check, matching `final_kelly.py`:
    edge_best_ask < min_edge  →  reject side
    ```
    The real edge (against VWAP) will be ≤ this, so if the best-ask edge fails,
-   the real edge would also fail. This avoids running the optimizer unnecessarily.
+   the real edge would also fail. This avoids running the full grid search unnecessarily.
 
-2. **True edge (after optimization):** computed from the actual execution price.
+2. **True edge (after grid search):** computed from the actual execution price.
    ```text
    vwap = cost(b_opt) / shares(b_opt)
    edge = p - vwap
@@ -411,7 +412,7 @@ Bankroll-depth parameter:
 W_bet = min(n_bets * max_bet, W)
 ```
 
-This changes how aggressively the optimizer sizes within the hard cap.
+This changes how aggressively the grid search can select larger sizes within the hard cap.
 
 ### `min_bet`
 
@@ -438,7 +439,7 @@ This is distinct from venue minimum execution constraints.
 | `min_edge` | float | minimum edge threshold (CLOB: vs best_ask; FPMM: vs market_price) | probability units | both |
 | `min_oracle_prob` | float | minimum side probability | probability units | both |
 | `fee_per_trade` | float | external friction only | native token units | both |
-| `grid_points` | int | optimization grid resolution | dimensionless | both |
+| `grid_points` | int | grid-search resolution | dimensionless | both |
 | `token_decimals` | int | token scale metadata | decimals | both |
 
 ### Polymarket-Specific Inputs
@@ -468,7 +469,7 @@ The strategy returns:
 |---|---|---|
 | `bet_amount` | int | selected spend in native units; `0` means no trade |
 | `vote` | int or `None` | `0 = YES`, `1 = NO`, `None = no trade` |
-| `expected_profit` | int | expected profit in native units using optimizer-consistent accounting |
+| `expected_profit` | int | expected profit in native units using grid-search-consistent accounting |
 | `g_improvement` | float | log-growth improvement over no trade |
 | `edge` | float | true edge: `p - vwap` (CLOB) or `p - market_price` (FPMM) |
 | `vwap` | float | execution price: `cost / shares` (CLOB) or `market_price` (FPMM) |

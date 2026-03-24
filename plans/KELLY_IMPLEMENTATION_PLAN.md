@@ -553,30 +553,26 @@ def run(**kwargs) -> Dict[str, Any]:
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
             min_order_shares = float(kwargs.get("min_order_shares", 5.0))
-            best_ask_size = float(sorted_asks[0]["size"])
-            if best_ask_size >= min_order_shares:
-                venue_min_side = min_order_shares * best_ask_price
-            else:
-                remaining_shares = min_order_shares
-                venue_min_side = 0.0
-                for level in sorted_asks:
-                    price = float(level["price"])
-                    size = float(level["size"])
-                    if price <= 0 or size <= 0:
-                        continue
-                    fill = min(size, remaining_shares)
-                    venue_min_side += fill * price
-                    remaining_shares -= fill
-                    if remaining_shares <= 0:
-                        break
-                if remaining_shares > 0:
-                    msg = (
-                        f"{label}: insufficient book depth to fill "
-                        f"min_order_shares={min_order_shares}"
-                    )
-                    info.append(msg)
-                    all_rejections.append(msg)
+            remaining_shares = min_order_shares
+            venue_min_side = 0.0
+            for level in sorted_asks:
+                price = float(level["price"])
+                size = float(level["size"])
+                if price <= 0 or size <= 0:
                     continue
+                fill = min(size, remaining_shares)
+                venue_min_side += fill * price
+                remaining_shares -= fill
+                if remaining_shares <= 0:
+                    break
+            if remaining_shares > 0:
+                msg = (
+                    f"{label}: insufficient book depth to fill "
+                    f"min_order_shares={min_order_shares}"
+                )
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
 
             b_min_side = max(min_bet, venue_min_side)
             x_native, y_native = 0.0, 0.0
@@ -696,7 +692,7 @@ def run(**kwargs) -> Dict[str, Any]:
 | `min_edge` | float | 0.03 | Minimum `p - market_price` to consider betting. Protects against oracle noise. |
 | `min_oracle_prob` | float | 0.5 | Minimum oracle prob for a side. Rejects "edge-only" bets where oracle still thinks side is unlikely. |
 | `fee_per_trade` | float | 0.01 | External friction only in native units: mech costs today, optionally gas later. Deducted in both win/lose states. Do not include venue/market fee here. |
-| `grid_points` | int | 500 | Grid resolution for optimizer. 500 is production-grade. |
+| `grid_points` | int | 500 | Grid-search resolution. 500 is production-grade. |
 | `min_order_shares` | float | 5.0 is the documented Polymarket example/common value, not a guaranteed invariant | Venue-provided minimum order size in shares. Read it from market/orderbook data instead of hardcoding it. |
 
 ### 3.2 Polymarket Connection: Orderbook Fetching
