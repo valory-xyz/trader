@@ -40,7 +40,7 @@ A single, unified Kelly strategy that:
 2. Is **execution-aware**: walks the real CLOB orderbook for Polymarket, uses constant-product AMM formula for Omen
 3. Has **no-trade always admissible**: if no executable bet beats `log(W_bet)`, skip
 4. Controls risk via `n_bets` (bankroll depth) instead of post-hoc `bet_kelly_fraction` multipliers
-5. Supports configurable side evaluation (mech-side-only or independent both-sides)
+5. Keeps rollout compatibility with existing ChatUI/config plumbing while moving CLOB sizing toward the PR #5 reference model
 
 ### 1.3 Sources of Truth
 
@@ -48,6 +48,10 @@ A single, unified Kelly strategy that:
 |--------|-----------------|
 | [`kelly_poly` PR #5](https://github.com/jmoreira-valory/kelly_poly/pull/5) | Reference algorithm (`final_kelly.py`) and spec (`FINAL_KELLY.md`) |
 | [trader PR #879](https://github.com/valory-xyz/trader/pull/879) | VWAP/orderbook fetching pattern for polymarket_client connection |
+
+Note: PR #5 evaluates YES and NO independently for CLOB markets and picks the better
+side. If trader V1 intentionally stays mech-side-only, that deviation must be called out
+explicitly as a scope cut rather than described as exact PR #5 parity.
 
 ---
 
@@ -91,12 +95,14 @@ MechResponse (p_yes, confidence)
 DecisionReceiveBehaviour._is_profitable()
     │
     ├── [Poly only] _fetch_orderbook(token_id) ──► CLOB ask levels  ◄── NEW
+    ├── [Poly only] read min_order_shares from market metadata       ◄── NEW
     │
     ├── get_bet_amount() ──► strategy.run()
     │   │                        │
     │   │   NEW kwargs:          │
     │   │     market_type,       │   Strategy now does EVERYTHING:
     │   │     orderbook_asks,    │   - edge filtering
+    │   │     min_order_shares,  │   - execution-minimum handling from venue data
     │   │     market_price,      │   - grid search over bet sizes
     │   │     n_bets,            │   - execution simulation (CLOB or FPMM)
     │   │     min_edge,          │   - log-growth comparison vs no-trade
@@ -183,11 +189,6 @@ OPTIONAL_FIELDS = frozenset({
     "fee_per_trade",        # float (native units) — gas + mech cost. Default: 0.01
     "grid_points",          # int — grid search resolution. Default: 500
     "token_decimals",       # int — 6 for USDC, 18 for xDAI. Default: 18
-    # DEFERRED: independent side evaluation (evaluate YES and NO independently
-    # and pick the side with highest G_improvement, even if it disagrees with
-    # the mech). Decision pending — not implemented in V1. When implemented,
-    # will require fetching both orderbooks for CLOB markets.
-
     # FPMM-specific (used when market_type="fpmm")
     "selected_type_tokens_in_pool",  # int (wei) — x: selected outcome tokens
     "other_tokens_in_pool",          # int (wei) — y: other outcome tokens
@@ -195,6 +196,7 @@ OPTIONAL_FIELDS = frozenset({
 
     # CLOB-specific (used when market_type="clob")
     "orderbook_asks",       # List[Dict[str, str]] — [{"price": "0.55", "size": "100"}, ...]
+    "min_order_shares",     # float — venue-provided min order size in shares
 
     # Market price (for edge calculation)
     "market_price",         # float — current market price for the predicted side
@@ -434,8 +436,6 @@ def run(**kwargs) -> Dict[str, Any]:
     min_oracle_prob = kwargs.get("min_oracle_prob", DEFAULT_MIN_ORACLE_PROB)
     fee_per_trade = kwargs.get("fee_per_trade", DEFAULT_FEE_PER_TRADE)
     grid_points = kwargs.get("grid_points", DEFAULT_GRID_POINTS)
-    # NOTE: independent side evaluation is deferred (decision pending).
-    # V1 only evaluates the mech's predicted side.
 
     # Convert to native units for calculation
     max_bet = max_bet_wei / scale
@@ -454,8 +454,6 @@ def run(**kwargs) -> Dict[str, Any]:
         info.append(f"Bankroll ({W_total}) <= floor ({floor}). No bet.")
         return {"bet_amount": 0, "expected_shares": 0, "g_improvement": 0.0,
                 "info": info, "error": error}
-
-    W = min(W, max_bet)  # Can't bet more than max_bet from adjusted bankroll
 
     # Per-bet bankroll: W_bet = min(n_bets * max_bet, W_total - floor)
     W_bet = min(n_bets * max_bet, W_total - floor)
@@ -486,8 +484,6 @@ def run(**kwargs) -> Dict[str, Any]:
         "edge": edge_primary,
         "market_price": market_price,
     })
-
-    # DEFERRED: independent side evaluation would add the opposite side here
 
     # --- 7. Evaluate each side ---
     best_result = None
@@ -520,11 +516,17 @@ def run(**kwargs) -> Dict[str, Any]:
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
-            # b_min for CLOB: min_order_shares * best_ask_price
+            # b_min for CLOB: cost to buy the venue minimum number of shares.
+            # This must be computed from the walked ask book, not just best ask,
+            # because top-of-book depth may be smaller than min_order_shares.
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
-            best_ask_price = float(sorted_asks[0]["price"])
-            # Use min_bet if it's larger than the minimum executable
-            b_min_side = max(min_bet, best_ask_price * 5.0)  # 5 shares minimum on Polymarket
+            min_order_shares = float(kwargs.get("min_order_shares", 5.0))
+            min_fill_cost, _ = walk_book_for_shares(sorted_asks, min_order_shares)
+            vwap_min_fill = (
+                min_fill_cost / min_order_shares if min_order_shares > 0 else 0.0
+            )
+            # Use min_bet if it's larger than the minimum executable spend
+            b_min_side = max(min_bet, vwap_min_fill * min_order_shares)
         else:
             asks = None
             b_min_side = min_bet
@@ -603,7 +605,7 @@ def run(**kwargs) -> Dict[str, Any]:
 | `min_oracle_prob` | float | 0.5 | Minimum oracle prob for a side. Rejects "edge-only" bets where oracle still thinks side is unlikely. |
 | `fee_per_trade` | float | 0.01 | Gas + mech cost in native units. Deducted in both win/lose states. |
 | `grid_points` | int | 500 | Grid resolution for optimizer. 500 is production-grade. |
-| *(deferred)* | | | Independent side evaluation — decision pending. Not in V1. |
+| `min_order_shares` | float | 5.0 is the documented Polymarket example/common value, not a guaranteed invariant | Venue-provided minimum order size in shares. Read it from market/orderbook data instead of hardcoding it. |
 
 ### 3.2 Polymarket Connection: Orderbook Fetching
 
@@ -666,6 +668,17 @@ RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
 
 **Connection handler dispatch** — the existing `_route_request` method dispatches based on `request_type` string. The handler receives `params` dict. For `FETCH_ORDER_BOOK`, params must include `{"token_id": "<clob_token_id>"}`.
 
+#### 3.2.3 Market metadata plumbing
+
+To avoid hardcoding venue execution constraints inside the strategy, also extend the
+Polymarket market ingestion path so `Bet` stores:
+
+- `min_order_shares: Optional[float]`
+
+Populate it from Gamma/CLOB market metadata when `Bet` objects are built, alongside
+`outcome_token_ids`. The Kelly strategy should consume this value through
+`get_bet_amount(..., min_order_shares=...)`.
+
 ### 3.3 Decision Receive Integration
 
 #### 3.3.1 New method: `_fetch_orderbook()`
@@ -715,6 +728,7 @@ selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
 market_type = "clob" if self.params.is_running_on_polymarket else "fpmm"
 orderbook_asks = None
 market_price = 0.0
+min_order_shares = 0.0
 
 if market_type == "clob":
     # Get market price for the predicted side
@@ -735,6 +749,9 @@ if market_type == "clob":
                 self.context.logger.warning(
                     "Orderbook fetch failed. Kelly will receive empty orderbook."
                 )
+
+    # This must be populated by polymarket_fetch_market when Bet objects are built.
+    min_order_shares = bet.min_order_shares or 5.0
 else:
     # FPMM: market_price from outcomeTokenMarginalPrices
     prices = bet.outcomeTokenMarginalPrices
@@ -756,6 +773,7 @@ bet_amount = yield from self.get_bet_amount(
     market_type=market_type,
     orderbook_asks=orderbook_asks,
     market_price=market_price,
+    min_order_shares=min_order_shares,
 )
 ```
 
@@ -774,8 +792,10 @@ if self.params.using_kelly:
     g_improvement = getattr(self, '_last_strategy_result', {}).get('g_improvement', 0.0)
     expected_shares = getattr(self, '_last_strategy_result', {}).get('expected_shares', 0)
 
-    net_bet_amount = remove_fraction_wei(bet_amount, self.convert_to_native(bet.fee))
-    potential_net_profit = expected_shares - net_bet_amount
+    # `bet_amount` is the gross spend selected by the Kelly optimizer.
+    # For Omen this matches the PR #5 objective, where `cost(b) = b` and the
+    # fee reduction is already modeled via alpha inside shares.
+    potential_net_profit = expected_shares - bet_amount
 
     token_name = self.get_token_name()
     self.context.logger.info(
@@ -813,16 +833,33 @@ def get_bet_amount(
     market_type: str = "fpmm",
     orderbook_asks: Optional[List[Dict[str, str]]] = None,
     market_price: float = 0.0,
+    min_order_shares: float = 0.0,
 ) -> Generator[None, None, int]:
 ```
 
-**Map old strategy name to new (backward compat):**
+**Normalize legacy strategy names before execution and at startup:**
 
 ```python
+# In SharedState.setup() / chatui config loading:
+# normalize "kelly_criterion_no_conf" -> "kelly_criterion" for execution,
+# but preserve the old label as an accepted config value for one migration window.
+
 # In the while loop, before executing:
 if next_strategy == STRATEGY_KELLY_CRITERION_NO_CONF:
     next_strategy = STRATEGY_KELLY_CRITERION
 ```
+
+Also update `file_hash_to_strategies` migration logic so the new Kelly package hash can
+temporarily advertise **both** names:
+
+```yaml
+<new_kelly_hash>:
+  - kelly_criterion
+  - kelly_criterion_no_conf
+```
+
+This avoids startup failures for operators who still have `TRADING_STRATEGY=kelly_criterion_no_conf`
+or stale values persisted in `chatui_param_store.json`.
 
 **Add new kwargs before `execute_strategy()` call:**
 
@@ -839,6 +876,7 @@ kwargs.update({
     "market_type": market_type,          # NEW
     "orderbook_asks": orderbook_asks,    # NEW
     "market_price": market_price,        # NEW
+    "min_order_shares": min_order_shares,# NEW
 })
 ```
 
@@ -957,6 +995,8 @@ strategies_kwargs:
 ```yaml
 strategies_kwargs:
   floor_balance: 500000000000000000
+  default_max_bet_size: 5000000
+  absolute_max_bet_size: 5000000
   n_bets: 1
   min_edge: 0.03
   min_oracle_prob: 0.5
@@ -970,11 +1010,21 @@ strategies_kwargs:
 
 Remove `bet_kelly_fraction`. Add Kelly hyperparameters.
 
+Keep `default_max_bet_size` and `absolute_max_bet_size` for ChatUI compatibility.
+The current ChatUI code still uses these fields to hydrate and validate `max_bet_size`.
+For Polymarket, set both to `5_000_000` (5 USDC):
+- `absolute_max_bet_size` remains the hard ceiling exposed to ChatUI
+- `default_max_bet_size` should match it so the default Kelly config and the UI default do not diverge
+- To be checked with dev: whether these config values should be written using the native
+  6-decimal USDC representation for Polymarket, or whether trader normalizes them to an
+  18-decimal scale before strategy execution.
+
 #### 3.5.2 Service/Agent YAML Files
 
 Update these files to:
 - Change `trading_strategy` default to `"kelly_criterion"`
-- Update `strategies_kwargs` to match new params
+- Update `strategies_kwargs` to match new params while keeping ChatUI compatibility keys
+- Allow both `kelly_criterion` and `kelly_criterion_no_conf` in config migration paths during backward-compat handling
 - Update dependency hashes after package changes
 
 **Files:**
@@ -984,19 +1034,21 @@ Update these files to:
 - `packages/valory/agents/trader/aea-config.yaml`
 - `packages/valory/skills/trader_abci/skill.yaml`
 
-### 3.6 Delete Old Strategies
+### 3.6 Legacy Strategy Cleanup
 
-**Delete entirely:**
-- `packages/jhehemann/customs/kelly_criterion/` — legacy Kelly WITH confidence
-- `packages/valory/customs/kelly_criterion_no_conf/` — Kelly WITHOUT confidence
+- Add the new `packages/valory/customs/kelly_criterion/`
+- Update defaults to `kelly_criterion`
+- Normalize legacy `kelly_criterion_no_conf` values to the new strategy at runtime
+- Map both strategy names to the **new** package hash in `file_hash_to_strategies`
+- Keep old enums/UI labels readable so persisted config and historical records do not break
 
 **Update `packages/packages.json`:**
-- Remove entries for both deleted packages
 - Add entry for new `valory/customs/kelly_criterion`
+- Remove entries for legacy Kelly packages only once the new package hash is wired for backward compatibility
 
 **Update agent/service YAML files:**
-- Remove dependencies on deleted packages
 - Add dependency on new `valory/customs/kelly_criterion`
+- Remove dependencies on deleted legacy packages in the same change if the alias/mapping above is in place
 
 ---
 
@@ -1055,6 +1107,7 @@ Update these files to:
 | `test_fetch_orderbook_success` | Mock connection returns orderbook → parsed correctly |
 | `test_fetch_orderbook_failure` | Connection returns None → returns None, warning logged |
 | `test_fetch_orderbook_error_response` | Response has error key → returns None |
+| `test_is_profitable_passes_min_order_shares` | Polymarket bet carries `min_order_shares` → Kelly receives it |
 | `test_is_profitable_clob_kelly_positive` | Kelly returns bet_amount > 0, g_improvement > 0 → is_profitable = True |
 | `test_is_profitable_clob_kelly_zero` | Kelly returns bet_amount = 0 → is_profitable = False |
 | `test_is_profitable_clob_rebet_rejected` | rebet_allowed returns False → is_profitable = False despite Kelly positive |
@@ -1071,7 +1124,9 @@ Update these files to:
 | `test_get_bet_amount_passes_market_type` | market_type kwarg reaches strategy |
 | `test_get_bet_amount_passes_orderbook` | orderbook_asks kwarg reaches strategy |
 | `test_get_bet_amount_passes_market_price` | market_price kwarg reaches strategy |
+| `test_get_bet_amount_passes_min_order_shares` | min_order_shares kwarg reaches strategy |
 | `test_last_strategy_result_stored` | After execute_strategy, _last_strategy_result is set |
+| `test_legacy_kelly_name_maps_to_new_strategy` | `kelly_criterion_no_conf` executes new Kelly package |
 | `test_strategies_kwargs_no_bet_kelly_fraction` | STRATEGIES_KWARGS updated without bet_kelly_fraction |
 
 ### 4.5 Enum/Handler Tests
@@ -1084,6 +1139,11 @@ Update existing tests that reference `kelly_criterion_no_conf` to use `kelly_cri
 - `agent_performance_summary_abci/tests/graph_tooling/test_predictions_helper.py`
 - `agent_performance_summary_abci/tests/graph_tooling/test_polymarket_predictions_helper.py`
 - `decision_maker_abci/tests/test_models.py`
+
+Add compatibility coverage to ensure persisted legacy values remain accepted during the
+migration release:
+- `decision_maker_abci/tests/test_models.py` — legacy `trading_strategy` still treated as Kelly
+- `chatui_abci/tests/test_models.py` — `default_max_bet_size` / `absolute_max_bet_size` remain present
 
 ---
 
@@ -1148,6 +1208,8 @@ grep -r "jhehemann.*kelly" packages/
 |------|------------|
 | Strategy `exec()` sandbox doesn't have `math` | Strategy file imports `math` at top — `exec()` runs the full file which creates the import |
 | Orderbook stale by execution time | Acceptable for sizing; actual execution uses fresh order at placement time |
+| ChatUI/config regression from removed max-bet keys | Keep `default_max_bet_size` and `absolute_max_bet_size` in `strategies_kwargs` until ChatUI is refactored |
+| Operators have old `kelly_criterion_no_conf` in config | Use a migration release that accepts both names and maps them to the new package hash |
 | Operators have old `bet_kelly_fraction` in config | Config YAML is updated in this PR. Operators must update their overrides. |
 | FPMM Kelly gives different results than old quadratic | Expected — grid search is more correct. Differences should be small for well-balanced pools. Document in PR. |
-| Independent side evaluation | Deferred — V1 only evaluates mech's predicted side. Decision pending on whether to add this. |
+| Venue minimum order changes or differs across markets | Pipe `min_order_shares` from market metadata instead of hardcoding 5 shares inside the strategy |
