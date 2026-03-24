@@ -842,8 +842,11 @@ self.context.logger.info(
     f"on {side_name}"
 )
 
-is_profitable = self.rebet_allowed(prediction_response, expected_profit)
-return is_profitable, bet_amount, strategy_vote
+# rebet_allowed() is not called — rebetting is not currently supported,
+# and it accesses bet.prediction_response.vote which is being removed.
+# When rebetting is re-enabled, it must be updated to work without .vote.
+
+return True, bet_amount, strategy_vote
 ```
 
 **No per-strategy branching** — the same code handles Kelly, fixed_bet, and any
