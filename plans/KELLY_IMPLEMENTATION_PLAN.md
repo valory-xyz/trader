@@ -40,7 +40,11 @@ A single, unified Kelly strategy that:
 2. Is **execution-aware**: walks the real CLOB orderbook for Polymarket, uses constant-product AMM formula for Omen
 3. Has **no-trade always admissible**: if no executable bet beats `log(W_bet)`, skip
 4. Controls risk via `n_bets` (bankroll depth) instead of post-hoc `bet_kelly_fraction` multipliers
-5. Keeps rollout compatibility with existing ChatUI/config plumbing while moving CLOB sizing toward the PR #5 reference model
+5. **Strategy decides the side**: receives `p_yes` and evaluates both YES and NO independently, returning the optimal side. The current hardcoded side selection (`PredictionResponse.vote = int(p_no > p_yes)`) is removed from the decision path.
+
+Also:
+- Replace `bet_amount_per_threshold` with a simple **fixed bet sizing** strategy
+- Remove dead side-selection code from `PredictionResponse` and all downstream consumers
 
 ### 1.3 Sources of Truth
 
@@ -48,10 +52,6 @@ A single, unified Kelly strategy that:
 |--------|-----------------|
 | [`kelly_poly` PR #5](https://github.com/jmoreira-valory/kelly_poly/pull/5) | Reference algorithm (`final_kelly.py`) and spec (`FINAL_KELLY.md`) |
 | [trader PR #879](https://github.com/valory-xyz/trader/pull/879) | VWAP/orderbook fetching pattern for polymarket_client connection |
-
-Note: PR #5 evaluates YES and NO independently for CLOB markets and picks the better
-side. If trader V1 intentionally stays mech-side-only, that deviation must be called out
-explicitly as a scope cut rather than described as exact PR #5 parity.
 
 ---
 
@@ -89,39 +89,51 @@ DecisionReceiveBehaviour._is_profitable()
 ### 2.2 New Data Flow
 
 ```
-MechResponse (p_yes, confidence)
+MechResponse (p_yes, p_no, confidence)
+    │
+    │   NOTE: p_yes/p_no passed directly to strategy.
+    │   PredictionResponse.vote is NO LONGER used for side selection.
+    │   The strategy decides the side.
     │
     ▼
 DecisionReceiveBehaviour._is_profitable()
     │
-    ├── [Poly only] _fetch_orderbook(token_id) ──► CLOB ask levels  ◄── NEW
-    ├── [Poly only] read min_order_shares from market metadata       ◄── NEW
+    ├── [Poly] _fetch_orderbook(yes_token_id, no_token_id) ──► both ask sides
+    ├── [Poly] read min_order_shares from market metadata
     │
     ├── get_bet_amount() ──► strategy.run()
     │   │                        │
-    │   │   NEW kwargs:          │
-    │   │     market_type,       │   Strategy now does EVERYTHING:
-    │   │     orderbook_asks,    │   - edge filtering
-    │   │     min_order_shares,  │   - execution-minimum handling from venue data
-    │   │     market_price,      │   - grid search over bet sizes
-    │   │     n_bets,            │   - execution simulation (CLOB or FPMM)
-    │   │     min_edge,          │   - log-growth comparison vs no-trade
-    │   │     grid_points, ...   │
+    │   │   kwargs:              │   Strategy now does EVERYTHING:
+    │   │     p_yes,             │   - evaluates BOTH sides independently
+    │   │     market_type,       │   - edge filtering per side
+    │   │     orderbook_asks_yes,│   - grid search over bet sizes
+    │   │     orderbook_asks_no, │   - execution simulation (CLOB or FPMM)
+    │   │     price_yes,         │   - log-growth comparison vs no-trade
+    │   │     price_no,          │   - picks side with highest G_improvement
+    │   │     min_order_shares,  │   - execution-minimum from venue data
+    │   │     n_bets, ...        │
     │   │                        │
     │   ◄── returns: {           │
     │         "bet_amount": int, ◄──────────────────────────────────────┘
+    │         "vote": int,            ◄── 0=YES, 1=NO (strategy decides!)
     │         "expected_profit": int,
     │         "g_improvement": float,
     │       }
     │
-    ├── [Kelly] If bet_amount > 0, trust the strategy  ◄── SIMPLIFIED
-    │           (strategy already validated profitability via log-growth)
-    │           Only apply: rebet check (position management, not sizing)
+    ├── [Kelly] If bet_amount > 0, trust the strategy
+    │           vote from strategy overrides into DecisionReceivePayload
+    │           Only apply: rebet check (position management)
     │
-    ├── [bet_amount_per_threshold] Keep existing logic unchanged
+    ├── [fixed_bet] Returns configured amount + vote (higher-prob side)
     │
     ▼
-(is_profitable, bet_amount) returned
+(is_profitable, bet_amount, vote) returned
+    │
+    ▼
+DecisionReceivePayload(vote=strategy_vote)
+    │
+    ▼
+synchronized_data.vote ──► outcome_index ──► bet placement
 ```
 
 ### 2.3 Inheritance Chain (relevant for orderbook fetching)
@@ -174,9 +186,11 @@ callable: run
 ```python
 REQUIRED_FIELDS = frozenset({
     "bankroll",          # int (wei) — current wallet balance
-    "win_probability",   # float [0,1] — oracle's p for the predicted side
+    "p_yes",             # float [0,1] — oracle's probability for YES
     "market_type",       # str — "clob" or "fpmm"
     "floor_balance",     # int (wei) — minimum balance to keep in wallet
+    "price_yes",         # float — current market price for YES
+    "price_no",          # float — current market price for NO
 })
 
 OPTIONAL_FIELDS = frozenset({
@@ -189,18 +203,19 @@ OPTIONAL_FIELDS = frozenset({
     "fee_per_trade",        # float (native units) — gas + mech cost. Default: 0.01
     "grid_points",          # int — grid search resolution. Default: 500
     "token_decimals",       # int — 6 for USDC, 18 for xDAI. Default: 18
+
     # FPMM-specific (used when market_type="fpmm")
-    "selected_type_tokens_in_pool",  # int (wei) — x: selected outcome tokens
-    "other_tokens_in_pool",          # int (wei) — y: other outcome tokens
-    "bet_fee",                       # int (wei) — FPMM market fee
+    # For FPMM the strategy receives BOTH pool sides so it can evaluate both directions.
+    # outcomeTokenAmounts[0] = YES tokens, outcomeTokenAmounts[1] = NO tokens.
+    "tokens_yes",           # int (wei) — YES outcome tokens in pool
+    "tokens_no",            # int (wei) — NO outcome tokens in pool
+    "bet_fee",              # int (wei) — FPMM market fee
 
     # CLOB-specific (used when market_type="clob")
-    "orderbook_asks",       # List[Dict[str, str]] — [{"price": "0.55", "size": "100"}, ...]
+    # Strategy receives BOTH orderbooks so it can evaluate both sides independently.
+    "orderbook_asks_yes",   # List[Dict[str, str]] — ask levels for YES token
+    "orderbook_asks_no",    # List[Dict[str, str]] — ask levels for NO token
     "min_order_shares",     # float — venue-provided min order size in shares
-
-    # Market price (for edge calculation)
-    "market_price",         # float — current market price for the predicted side
-
 })
 ```
 
@@ -428,14 +443,16 @@ def run(**kwargs) -> Dict[str, Any]:
 
     # --- 2. Extract parameters ---
     bankroll = kwargs["bankroll"]            # int, wei
-    win_probability = kwargs["win_probability"]  # float
+    p_yes = kwargs["p_yes"]                  # float [0,1]
+    p_no = 1.0 - p_yes
     market_type = kwargs["market_type"]      # "clob" or "fpmm"
     floor_balance = kwargs["floor_balance"]  # int, wei
+    price_yes = kwargs["price_yes"]          # float
+    price_no = kwargs["price_no"]            # float
 
     token_decimals = kwargs.get("token_decimals", DEFAULT_TOKEN_DECIMALS)
     scale = 10 ** token_decimals
 
-    # Determine defaults based on token
     default_max_bet = DEFAULT_MAX_BET_USDC if token_decimals == 6 else DEFAULT_MAX_BET_XDAI
 
     max_bet_wei = kwargs.get("max_bet", default_max_bet)
@@ -446,7 +463,7 @@ def run(**kwargs) -> Dict[str, Any]:
     fee_per_trade = kwargs.get("fee_per_trade", DEFAULT_FEE_PER_TRADE)
     grid_points = kwargs.get("grid_points", DEFAULT_GRID_POINTS)
 
-    # Convert to native units for calculation
+    # Convert to native units
     max_bet = max_bet_wei / scale
     min_bet = min_bet_wei / scale
     W_total = bankroll / scale
@@ -455,73 +472,64 @@ def run(**kwargs) -> Dict[str, Any]:
     token_name = "USDC" if token_decimals == 6 else "xDAI"
     info.append(f"Bankroll: {W_total} {token_name}, floor: {floor} {token_name}")
     info.append(f"max_bet: {max_bet}, n_bets: {n_bets}, min_edge: {min_edge}")
-    info.append(f"market_type: {market_type}")
+    info.append(f"market_type: {market_type}, p_yes: {p_yes}")
 
     # --- 3. Compute effective wealth ---
     W = W_total - floor
     if W <= 0:
         info.append(f"Bankroll ({W_total}) <= floor ({floor}). No bet.")
-        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
-                "info": info, "error": error}
+        return {"bet_amount": 0, "vote": None, "expected_profit": 0,
+                "g_improvement": 0.0, "info": info, "error": error}
 
     # Per-bet bankroll: W_bet = min(n_bets * max_bet, W_total - floor)
     W_bet = min(n_bets * max_bet, W_total - floor)
     info.append(f"W_bet (per-bet bankroll): {W_bet} {token_name}")
 
-    # --- 4. Validate probability ---
-    if not (0 < win_probability < 1):
-        error.append(f"Invalid win_probability: {win_probability}")
-        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
-                "info": info, "error": error}
+    # --- 4. Validate inputs ---
+    if not (0 < p_yes < 1):
+        error.append(f"Invalid p_yes: {p_yes}")
+        return {"bet_amount": 0, "vote": None, "expected_profit": 0,
+                "g_improvement": 0.0, "info": info, "error": error}
 
-    # --- 5. Get market price and compute edge ---
-    market_price = kwargs.get("market_price", 0.0)
-    if market_price <= 0 or market_price >= 1:
-        error.append(f"Invalid market_price: {market_price}")
-        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
-                "info": info, "error": error}
+    # --- 5. Evaluate BOTH sides independently ---
+    # The strategy decides the side — not the mech's vote.
+    # vote=0 means YES, vote=1 means NO.
+    sides = [
+        {"label": "yes", "vote": 0, "p": p_yes, "price": price_yes},
+        {"label": "no",  "vote": 1, "p": p_no,  "price": price_no},
+    ]
 
-    # --- 6. Prepare side(s) to evaluate ---
-    sides_to_evaluate = []
-
-    # Primary side (matching mech's prediction)
-    p_primary = win_probability
-    edge_primary = p_primary - market_price
-    sides_to_evaluate.append({
-        "label": "predicted",
-        "p": p_primary,
-        "edge": edge_primary,
-        "market_price": market_price,
-    })
-
-    # --- 7. Evaluate each side ---
     best_result = None
     all_rejections = []
+    bet_fee_wei = kwargs.get("bet_fee", 0)
+    alpha = 1.0 - (bet_fee_wei / scale) if market_type == "fpmm" else 1.0
 
-    for side_info in sides_to_evaluate:
-        side_label = side_info["label"]
-        p = side_info["p"]
-        edge = side_info["edge"]
+    for side in sides:
+        label = side["label"]
+        p = side["p"]
+        price = side["price"]
+        edge = p - price
 
         # Filter: min_edge
         if edge < min_edge:
-            msg = f"{side_label}: edge {edge:+.4f} < min_edge {min_edge}"
+            msg = f"{label}: edge {edge:+.4f} < min_edge {min_edge}"
             info.append(msg)
             all_rejections.append(msg)
             continue
 
         # Filter: min_oracle_prob
         if min_oracle_prob > 0 and p < min_oracle_prob:
-            msg = f"{side_label}: oracle prob {p:.3f} < min_oracle_prob {min_oracle_prob}"
+            msg = f"{label}: oracle prob {p:.3f} < min_oracle_prob {min_oracle_prob}"
             info.append(msg)
             all_rejections.append(msg)
             continue
 
-        # Determine b_min for this side
+        # Determine execution model inputs for this side
         if market_type == "clob":
-            asks = kwargs.get("orderbook_asks")
+            asks_key = "orderbook_asks_yes" if side["vote"] == 0 else "orderbook_asks_no"
+            asks = kwargs.get(asks_key)
             if not asks:
-                msg = f"{side_label}: no orderbook asks available"
+                msg = f"{label}: no orderbook asks available ({asks_key})"
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
@@ -536,35 +544,30 @@ def run(**kwargs) -> Dict[str, Any]:
             )
             # Use min_bet if it's larger than the minimum executable spend
             b_min_side = max(min_bet, vwap_min_fill * min_order_shares)
-        else:
+            x_native, y_native = 0.0, 0.0
+        else:  # fpmm
             asks = None
             b_min_side = min_bet
-
-        # Get FPMM parameters if needed
-        x_native = kwargs.get("selected_type_tokens_in_pool", 0) / scale if market_type == "fpmm" else 0.0
-        y_native = kwargs.get("other_tokens_in_pool", 0) / scale if market_type == "fpmm" else 0.0
-        bet_fee_wei = kwargs.get("bet_fee", 0)
-        alpha = 1.0 - (bet_fee_wei / scale) if market_type == "fpmm" else 1.0
+            # For YES side: x=tokens_yes (buying YES), y=tokens_no
+            # For NO side:  x=tokens_no (buying NO), y=tokens_yes
+            tokens_yes = kwargs.get("tokens_yes", 0) / scale
+            tokens_no = kwargs.get("tokens_no", 0) / scale
+            if side["vote"] == 0:
+                x_native, y_native = tokens_yes, tokens_no
+            else:
+                x_native, y_native = tokens_no, tokens_yes
 
         # Run grid search
         best_spend, best_shares, best_G, G_baseline = optimize_side(
-            p=p,
-            W_bet=W_bet,
-            b_min=b_min_side,
-            b_max=max_bet,
-            fee=fee_per_trade,
-            grid_points=grid_points,
-            market_type=market_type,
-            asks=asks,
-            x=x_native,
-            y=y_native,
-            alpha=alpha,
+            p=p, W_bet=W_bet, b_min=b_min_side, b_max=max_bet,
+            fee=fee_per_trade, grid_points=grid_points,
+            market_type=market_type, asks=asks,
+            x=x_native, y=y_native, alpha=alpha,
         )
 
         G_improvement = best_G - G_baseline
-
         info.append(
-            f"{side_label}: spend={best_spend:.4f}, shares={best_shares:.4f}, "
+            f"{label}: spend={best_spend:.4f}, shares={best_shares:.4f}, "
             f"G_improvement={G_improvement:.6f}, edge={edge:+.4f}"
         )
 
@@ -574,16 +577,17 @@ def run(**kwargs) -> Dict[str, Any]:
                     "spend": best_spend,
                     "shares": best_shares,
                     "g_improvement": G_improvement,
-                    "side_label": side_label,
+                    "vote": side["vote"],
+                    "label": label,
                     "edge": edge,
                 }
 
-    # --- 8. Return result ---
+    # --- 6. Return result ---
     if best_result is None:
         reason = "; ".join(all_rejections) if all_rejections else "no bet improves log-growth"
         info.append(f"No trade: {reason}")
-        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
-                "info": info, "error": error}
+        return {"bet_amount": 0, "vote": None, "expected_profit": 0,
+                "g_improvement": 0.0, "info": info, "error": error}
 
     bet_amount_wei = int(best_result["spend"] * scale)
     # Expected profit must use the same accounting as the Kelly objective:
@@ -601,7 +605,7 @@ def run(**kwargs) -> Dict[str, Any]:
     expected_profit_wei = int(expected_profit * scale)
 
     info.append(
-        f"Selected {best_result['side_label']}: "
+        f"Selected {best_result['label']}: "
         f"bet={best_result['spend']:.4f} {token_name}, "
         f"shares={best_result['shares']:.4f}, "
         f"expected_profit={expected_profit:.6f} {token_name}, "
@@ -610,6 +614,7 @@ def run(**kwargs) -> Dict[str, Any]:
 
     return {
         "bet_amount": bet_amount_wei,
+        "vote": best_result["vote"],       # 0=YES, 1=NO — strategy decides!
         "expected_profit": expected_profit_wei,
         "g_improvement": best_result["g_improvement"],
         "info": info,
@@ -738,110 +743,100 @@ def _fetch_orderbook(
 
 #### 3.3.2 Changes to `_is_profitable()`
 
-**Before `get_bet_amount()` call — fetch orderbook for Polymarket:**
+**Key change**: `_is_profitable()` no longer uses `prediction_response.vote` for side selection.
+The strategy decides the side. `prediction_response.vote` and `prediction_response.win_probability`
+are dead code — see Phase 3.7 for removal.
+
+**Before `get_bet_amount()` call — gather market data for BOTH sides:**
 
 ```python
-# Existing code:
-selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
-    bet, prediction_response.vote
-)
-
-# NEW: Determine market type and fetch orderbook if CLOB
 market_type = "clob" if self.params.is_running_on_polymarket else "fpmm"
-orderbook_asks = None
-market_price = 0.0
+orderbook_asks_yes = None
+orderbook_asks_no = None
 min_order_shares = 0.0
 
-if market_type == "clob":
-    # Get market price for the predicted side
-    predicted_vote_side = prediction_response.vote
-    prices = bet.outcomeTokenMarginalPrices
-    if prices is not None:
-        market_price = prices[predicted_vote_side]
+prices = bet.outcomeTokenMarginalPrices
+price_yes = prices[0] if prices else 0.0
+price_no = prices[1] if prices else 0.0
 
-    # Fetch orderbook for the predicted side's token
+if market_type == "clob":
+    # Fetch orderbooks for BOTH sides
     if bet.outcome_token_ids is not None:
-        side_key = "Yes" if predicted_vote_side == 0 else "No"
-        token_id = bet.outcome_token_ids.get(side_key)
-        if token_id:
-            orderbook_response = yield from self._fetch_orderbook(token_id)
-            if orderbook_response is not None:
-                orderbook_asks = orderbook_response.get("asks", [])
-            else:
-                self.context.logger.warning(
-                    "Orderbook fetch failed. Kelly will receive empty orderbook."
-                )
+        yes_token_id = bet.outcome_token_ids.get("Yes")
+        no_token_id = bet.outcome_token_ids.get("No")
+        if yes_token_id:
+            ob_yes = yield from self._fetch_orderbook(yes_token_id)
+            if ob_yes is not None:
+                orderbook_asks_yes = ob_yes.get("asks", [])
+        if no_token_id:
+            ob_no = yield from self._fetch_orderbook(no_token_id)
+            if ob_no is not None:
+                orderbook_asks_no = ob_no.get("asks", [])
 
     # This must be populated by polymarket_fetch_market when Bet objects are built.
     min_order_shares = bet.min_order_shares or 5.0
-else:
-    # FPMM: market_price from outcomeTokenMarginalPrices
-    prices = bet.outcomeTokenMarginalPrices
-    if prices is not None:
-        market_price = prices[prediction_response.vote]
 ```
 
-**Modify `get_bet_amount()` call:**
+**Modify `get_bet_amount()` call — pass `p_yes` and both sides' data:**
 
 ```python
 bet_amount = yield from self.get_bet_amount(
-    prediction_response.win_probability,
+    prediction_response.p_yes,       # pass p_yes, not win_probability
     prediction_response.confidence,
-    selected_type_tokens_in_pool,
-    other_tokens_in_pool,
+    bet.outcomeTokenAmounts,         # both sides' pool tokens
     bet.fee,
-    self.synchronized_data.weighted_accuracy,
     bet.collateralToken,
     market_type=market_type,
-    orderbook_asks=orderbook_asks,
-    market_price=market_price,
+    price_yes=price_yes,
+    price_no=price_no,
+    orderbook_asks_yes=orderbook_asks_yes,
+    orderbook_asks_no=orderbook_asks_no,
     min_order_shares=min_order_shares,
 )
 ```
 
-**After `get_bet_amount()` — simplified profitability for Kelly:**
+**After `get_bet_amount()` — simplified: strategy owns profitability:**
+
+All profitability logic is now inside the strategy itself. The caller only checks
+whether the strategy approved a bet (`bet_amount > 0, vote != None`) and runs
+position management (`rebet_allowed`).
 
 ```python
-# If using Kelly strategy, the strategy itself determines profitability
-# via log-growth optimization. If bet_amount > 0, the bet improves log-growth.
-# No bet_threshold check — Kelly already handles minimum viable bets via
-# min_bet and fee_per_trade. bet_threshold is redundant here.
-if self.params.using_kelly:
-    if bet_amount <= 0:
-        return False, 0
+strategy_result = getattr(self, '_last_strategy_result', {})
+strategy_vote = strategy_result.get('vote')  # 0=YES, 1=NO
 
-    # Extract extra info from strategy result
-    g_improvement = getattr(self, '_last_strategy_result', {}).get('g_improvement', 0.0)
-    expected_profit = getattr(self, '_last_strategy_result', {}).get('expected_profit', 0)
+strategy_result = getattr(self, '_last_strategy_result', {})
+strategy_vote = strategy_result.get('vote')  # 0=YES, 1=NO
 
-    # `expected_profit` must be computed from the exact same `shares(b_opt)` and
-    # `fee` accounting used inside the Kelly optimizer:
-    #     expected_profit = p * shares(b_opt) - b_opt - fee_per_trade
-    #
-    # Important accounting contract:
-    # - venue/market fee belongs inside the venue execution model
-    #   (for Omen, it is already modeled in `shares(b_opt)` via alpha)
-    # - `fee_per_trade` is only for external friction such as mech cost and,
-    #   in future, gas
-    # - therefore venue fee must not be subtracted again downstream
-    # No alternate downstream approximation should be used here.
+# Strategy returned no bet — it determined the trade is not profitable.
+if bet_amount <= 0 or strategy_vote is None:
+    return False, 0, None
 
-    token_name = self.get_token_name()
-    self.context.logger.info(
-        f"Kelly bet: {self.convert_to_native(bet_amount)} {token_name}, "
-        f"G_improvement: {g_improvement:.6f}, "
-        f"expected_profit: {self.convert_to_native(expected_profit)} {token_name}"
-    )
+# Strategy approved a bet. Only check position management (rebet guard).
+# expected_profit computed by strategy: p * shares(b_opt) - b_opt - fee_per_trade
+# Venue fees already in shares via alpha; fee_per_trade is external friction only.
+expected_profit = strategy_result.get('expected_profit', 0)
 
-    # Only check rebet (position management — prevents re-entering same market
-    # without sufficient liquidity/prediction change). Not a profitability check.
-    is_profitable = self.rebet_allowed(prediction_response, expected_profit)
+token_name = self.get_token_name()
+side_name = "YES" if strategy_vote == 0 else "NO"
+self.context.logger.info(
+    f"Strategy approved bet: {self.convert_to_native(bet_amount)} {token_name} "
+    f"on {side_name}"
+)
 
-    return is_profitable, bet_amount
-
-# For non-Kelly strategies (bet_amount_per_threshold), keep existing logic:
-# ... existing Omenstrat / Polystrat profitability checks unchanged ...
+is_profitable = self.rebet_allowed(prediction_response, expected_profit)
+return is_profitable, bet_amount, strategy_vote
 ```
+
+**No per-strategy branching** — the same code handles Kelly, fixed_bet, and any
+future strategy. The old Omenstrat/Polystrat profitability checks (`_calc_binary_shares`,
+`_compute_new_tokens_distribution`, mid-price shares estimation, `SLIPPAGE`,
+`DEFAULT_MECH_COSTS`) are all removed.
+
+**`_is_profitable()` return type changes** from `Tuple[bool, int]` to
+`Tuple[bool, int, Optional[int]]` — the third element is the vote (side).
+The caller in `async_act()` must propagate this vote into `DecisionReceivePayload`
+instead of using `prediction_response.vote`.
 
 #### 3.3.3 Changes to `base.py` — `get_bet_amount()`
 
@@ -852,16 +847,16 @@ if self.params.using_kelly:
 ```python
 def get_bet_amount(
     self,
-    win_probability: float,
+    p_yes: float,
     confidence: float,
-    selected_type_tokens_in_pool: int,
-    other_tokens_in_pool: int,
+    outcome_token_amounts: List[int],
     bet_fee: int,
-    weighted_accuracy: float,
     collateral_token: str,
     market_type: str = "fpmm",
-    orderbook_asks: Optional[List[Dict[str, str]]] = None,
-    market_price: float = 0.0,
+    price_yes: float = 0.0,
+    price_no: float = 0.0,
+    orderbook_asks_yes: Optional[List[Dict[str, str]]] = None,
+    orderbook_asks_no: Optional[List[Dict[str, str]]] = None,
     min_order_shares: float = 0.0,
 ) -> Generator[None, None, int]:
 ```
@@ -896,16 +891,17 @@ or stale values persisted in `chatui_param_store.json`.
 kwargs.update({
     "trading_strategy": next_strategy,
     "bankroll": bankroll,
-    "win_probability": win_probability,
+    "p_yes": p_yes,
     "confidence": confidence,
-    "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
-    "other_tokens_in_pool": other_tokens_in_pool,
+    "tokens_yes": outcome_token_amounts[0] if outcome_token_amounts else 0,
+    "tokens_no": outcome_token_amounts[1] if len(outcome_token_amounts) > 1 else 0,
     "bet_fee": bet_fee,
-    "weighted_accuracy": weighted_accuracy,
-    "market_type": market_type,          # NEW
-    "orderbook_asks": orderbook_asks,    # NEW
-    "market_price": market_price,        # NEW
-    "min_order_shares": min_order_shares,# NEW
+    "market_type": market_type,
+    "price_yes": price_yes,
+    "price_no": price_no,
+    "orderbook_asks_yes": orderbook_asks_yes,
+    "orderbook_asks_no": orderbook_asks_no,
+    "min_order_shares": min_order_shares,
 })
 ```
 
@@ -940,29 +936,35 @@ class TradingStrategy(enum.Enum):
 class TradingStrategy(enum.Enum):
     KELLY_CRITERION = "kelly_criterion"
     KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat alias
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+    FIXED_BET = "fixed_bet"
+    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"  # backward compat alias
 ```
 
-Keep `KELLY_CRITERION_NO_CONF` in the enum for backward compatibility — users may have
-this value persisted in `chatui_param_store.json` and historical bet records in the
-subgraph will reference it.
+Keep `KELLY_CRITERION_NO_CONF` and `BET_AMOUNT_PER_THRESHOLD` in the enum for backward
+compatibility — users may have these values persisted in `chatui_param_store.json` and
+historical bet records in the subgraph will reference them.
 
-Also update the prompt text that describes the strategy to reflect the new algorithm.
+Also update the prompt text that describes the strategies to reflect the new ones.
 
 #### 3.4.2 `chatui_abci/handlers.py`
 
-Update `_get_ui_trading_strategy()` to map **both** names to RISKY:
+Update `_get_ui_trading_strategy()` to map all names:
 ```python
 if selected_value in (
     TradingStrategy.KELLY_CRITERION.value,
     TradingStrategy.KELLY_CRITERION_NO_CONF.value,
 ):
     return TradingStrategyUI.RISKY
+if selected_value in (
+    TradingStrategy.FIXED_BET.value,
+    TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value,
+):
+    return TradingStrategyUI.BALANCED
 ```
 
 #### 3.4.3 `trader_abci/handlers.py`
 
-Same change — map both kelly names to RISKY.
+Same change — map all strategy names to UI names.
 
 #### 3.4.4 `agent_performance_summary_abci/graph_tooling/predictions_helper.py`
 
@@ -978,11 +980,12 @@ Update `_get_ui_trading_strategy()` to map both kelly names to RISKY.
 
 #### 3.4.5 `agent_performance_summary_abci/graph_tooling/polymarket_predictions_helper.py`
 
-Same — update `strategy_map` to include both kelly names → RISKY:
+Same — update `strategy_map` to include all names:
 ```python
 strategy_map = {
     TradingStrategy.KELLY_CRITERION.value: TradingStrategyUI.RISKY.value,
     TradingStrategy.KELLY_CRITERION_NO_CONF.value: TradingStrategyUI.RISKY.value,
+    TradingStrategy.FIXED_BET.value: TradingStrategyUI.BALANCED.value,
     TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value: TradingStrategyUI.BALANCED.value,
 }
 ```
@@ -1063,21 +1066,137 @@ Update these files to:
 - `packages/valory/agents/trader/aea-config.yaml`
 - `packages/valory/skills/trader_abci/skill.yaml`
 
-### 3.6 Legacy Strategy Cleanup
+### 3.6 New Fixed Bet Strategy — `packages/valory/customs/fixed_bet/`
 
-- Add the new `packages/valory/customs/kelly_criterion/`
-- Update defaults to `kelly_criterion`
-- Normalize legacy `kelly_criterion_no_conf` values to the new strategy at runtime
-- Map both strategy names to the **new** package hash in `file_hash_to_strategies`
-- Keep old enums/UI labels readable so persisted config and historical records do not break
+Simple replacement for `bet_amount_per_threshold`. Returns a configured fixed amount.
+
+**Files to create:**
+- `packages/valory/customs/fixed_bet/__init__.py`
+- `packages/valory/customs/fixed_bet/component.yaml`
+- `packages/valory/customs/fixed_bet/fixed_bet.py`
+- `packages/valory/customs/fixed_bet/tests/__init__.py`
+- `packages/valory/customs/fixed_bet/tests/test_fixed_bet.py`
+
+**`fixed_bet.py`:**
+```python
+REQUIRED_FIELDS = frozenset({"bankroll", "floor_balance", "p_yes"})
+OPTIONAL_FIELDS = frozenset({"bet_amount", "min_bet", "max_bet", "token_decimals"})
+
+def run(**kwargs):
+    """Return a fixed bet amount. Side = higher-probability side."""
+    missing = [f for f in REQUIRED_FIELDS if kwargs.get(f) is None]
+    if missing:
+        return {"bet_amount": 0, "vote": None, "error": [f"Missing: {missing}"]}
+
+    bankroll = kwargs["bankroll"]
+    floor_balance = kwargs["floor_balance"]
+    p_yes = kwargs["p_yes"]
+    bet_amount = kwargs.get("bet_amount", kwargs.get("min_bet", 0))
+
+    # Side selection: pick the higher-probability side
+    p_no = 1.0 - p_yes
+    if p_yes == p_no:
+        return {"bet_amount": 0, "vote": None, "info": ["Tie — no bet"]}
+    vote = int(p_no > p_yes)  # 0=YES, 1=NO
+
+    if bankroll <= floor_balance:
+        return {"bet_amount": 0, "vote": vote, "info": ["Bankroll below floor"]}
+    if bet_amount <= 0:
+        return {"bet_amount": 0, "vote": vote, "info": ["No bet_amount configured"]}
+
+    max_bet = kwargs.get("max_bet", bet_amount)
+    bet_amount = min(bet_amount, max_bet, bankroll - floor_balance)
+
+    return {"bet_amount": int(bet_amount), "vote": vote, "info": [f"Fixed bet: {bet_amount}"]}
+```
+
+**Strategy contract**: every strategy must return `vote` (0=YES, 1=NO, or None=no trade).
+No fallback logic in the caller — the strategy is the single source of truth for side selection.
+
+### 3.7 Delete Old Strategies
+
+**Delete entirely:**
+- `packages/jhehemann/customs/kelly_criterion/` — legacy Kelly WITH confidence
+- `packages/valory/customs/kelly_criterion_no_conf/` — Kelly WITHOUT confidence
+- `packages/valory/customs/bet_amount_per_threshold/` — replaced by `fixed_bet`
 
 **Update `packages/packages.json`:**
-- Add entry for new `valory/customs/kelly_criterion`
-- Remove entries for legacy Kelly packages only once the new package hash is wired for backward compatibility
+- Remove entries for all three deleted packages
+- Add entries for `valory/customs/kelly_criterion` and `valory/customs/fixed_bet`
 
 **Update agent/service YAML files:**
-- Add dependency on new `valory/customs/kelly_criterion`
-- Remove dependencies on deleted legacy packages in the same change if the alias/mapping above is in place
+- Remove dependencies on deleted packages
+- Add dependencies on new packages
+
+### 3.8 Remove Dead Code
+
+Two categories of dead code to remove:
+
+**A) Side-selection code** — `PredictionResponse.vote` and `win_probability` are dead
+now that strategies decide the side.
+
+**B) Profitability-check code** — the Omenstrat/Polystrat branching in `_is_profitable()`
+is dead now that strategies own profitability. Remove from `decision_receive.py`:
+- `_calc_binary_shares()` method
+- `_compute_new_tokens_distribution()` method
+- `_get_bet_sample_info()` method (pool tokens now passed directly)
+- The entire `if not self.params.is_running_on_polymarket: # Omenstrat` block (lines 484-520)
+- The entire `else: # Polystrat` block (lines 521-585)
+- `SLIPPAGE` constant (line 58)
+- `DEFAULT_MECH_COSTS` constant (line 62)
+- `bet_threshold` usage (strategy handles min viable bets)
+- The `using_kelly` branching (all strategies now have the same caller contract)
+
+**`packages/valory/skills/market_manager_abci/bets.py`:**
+
+Remove from `PredictionResponse`:
+```python
+# DELETE these properties:
+@property
+def vote(self) -> Optional[int]:
+    """Return the vote. `0` represents "yes" and `1` represents "no"."""
+    if self.p_no != self.p_yes:
+        return int(self.p_no > self.p_yes)
+    return None
+
+@property
+def win_probability(self) -> float:
+    """Return the probability estimation for winning with vote."""
+    return max(self.p_no, self.p_yes)
+```
+
+**Impact — all consumers of `prediction_response.vote` must be updated:**
+
+| File | Line | Current usage | New behavior |
+|------|------|---------------|-------------|
+| `decision_receive.py:444` | `if prediction_response.vote is None` | Check `p_yes == p_no` directly, or remove (let strategy handle ties) |
+| `decision_receive.py:456` | `_get_bet_sample_info(bet, prediction_response.vote)` | No longer needed for Kelly (strategy gets both sides). For fixed_bet, use `int(prediction_response.p_no > prediction_response.p_yes)` inline |
+| `decision_receive.py:460` | `prediction_response.win_probability` | Pass `prediction_response.p_yes` directly |
+| `decision_receive.py:486` | `_calc_binary_shares(bet, net_bet_amount, prediction_response.vote)` | Removed — Kelly handles this internally |
+| `decision_receive.py:522` | `predicted_vote_side = prediction_response.vote` | Removed — Kelly handles this internally |
+| `decision_receive.py:591` | `_update_liquidity_info(net_bet_amount, prediction_response.vote)` | Use `strategy_vote` from strategy result |
+| `decision_receive.py:637` | `prediction_response.vote is None` (sell check) | Keep for selling logic — use inline `int(p_no > p_yes)` |
+| `decision_receive.py:640` | `get_vote_amount(prediction_response.vote)` | Same — inline calculation |
+| `decision_receive.py:685` | `prediction_response.vote is not None` | Check `prediction_response is not None` only |
+| `decision_receive.py:743` | `vote = prediction_response.vote` | Use `strategy_vote` from `_is_profitable()` return |
+| `base.py:148` | `outcome_index` property | Unchanged — reads from `synchronized_data.vote` which now comes from strategy |
+
+**Also update:**
+- `decision_receive.py:428`: `bet.prediction_response.vote` in `rebet_allowed()` — keep, but use inline vote calc
+- Any tests that mock `prediction_response.vote` or `prediction_response.win_probability`
+
+**Note**: The selling flow (`should_sell_outcome_tokens`, `review_bets_for_selling_mode`) still
+needs a vote to know which side's tokens to sell. For selling, use inline
+`int(prediction_response.p_no > prediction_response.p_yes)` — selling is about
+evaluating existing positions against new mech data, not about new side selection.
+
+Also map both strategy names to the **new** package hash in `file_hash_to_strategies`
+during migration:
+```yaml
+<new_kelly_hash>:
+  - kelly_criterion
+  - kelly_criterion_no_conf
+```
 
 ---
 
@@ -1092,10 +1211,9 @@ Update these files to:
 | `test_missing_required_fields` | Call `run()` with missing bankroll | Returns `error` with missing fields list |
 | `test_bankroll_below_floor` | bankroll < floor_balance | `bet_amount == 0` |
 | `test_zero_bankroll` | bankroll = 0 | `bet_amount == 0` |
-| `test_invalid_win_probability` | p = 1.5 or p = -0.1 | `bet_amount == 0`, error message |
-| `test_invalid_market_price` | market_price = 0 or 1.5 | `bet_amount == 0` |
-| `test_edge_below_min_edge` | p=0.53, market_price=0.52, min_edge=0.03 | `bet_amount == 0` |
-| `test_oracle_prob_below_min` | p=0.4, min_oracle_prob=0.5 | `bet_amount == 0` |
+| `test_invalid_p_yes` | p_yes = 1.5 or p_yes = -0.1 | `bet_amount == 0`, error message |
+| `test_edge_below_min_edge` | p_yes=0.53, price_yes=0.52, min_edge=0.03 | `bet_amount == 0` |
+| `test_oracle_prob_below_min` | p_yes=0.4, min_oracle_prob=0.5 | `bet_amount == 0` for YES side |
 | `test_clob_walk_book_single_level` | One ask level, enough to fill | Correct (cost, shares) |
 | `test_clob_walk_book_multi_level` | Three ask levels, walks all | Shares accumulated correctly across levels |
 | `test_clob_walk_book_partial_fill` | Budget exhausts mid-level | Partial fill at correct price |
@@ -1110,11 +1228,13 @@ Update these files to:
 | `test_min_bet_constraint` | min_bet larger than some levels | Grid starts at min_bet |
 | `test_max_bet_constraint` | max_bet < optimal | Capped at max_bet |
 | `test_n_bets_effect` | n_bets=1 vs n_bets=5, same market | Different bet sizes (n_bets=5 more aggressive) |
-| `test_only_predicted_side_evaluated` | Only mech's predicted side evaluated | Only one side in info logs |
+| `test_both_sides_evaluated` | Both YES and NO evaluated | Both sides in info logs, best G_improvement wins |
+| `test_vote_returned` | Strategy returns correct vote | `vote == 0` when YES wins, `vote == 1` when NO wins |
+| `test_strategy_picks_no_over_yes` | NO side has better G | `vote == 1` even though `p_yes > 0.5` |
 | `test_full_integration_clob` | Realistic CLOB scenario | Non-zero bet with positive G_improvement |
 | `test_full_integration_fpmm` | Realistic FPMM scenario | Non-zero bet with positive G_improvement |
 | `test_unknown_kwargs_no_crash` | Pass extra unknown kwargs | No error, strategy ignores them |
-| `test_return_format` | Any valid call | Dict has bet_amount, expected_profit, g_improvement, info, error |
+| `test_return_format` | Any valid call | Dict has bet_amount, vote, expected_profit, g_improvement, info, error |
 
 ### 4.2 Connection Tests
 
@@ -1136,13 +1256,15 @@ Update these files to:
 | `test_fetch_orderbook_success` | Mock connection returns orderbook → parsed correctly |
 | `test_fetch_orderbook_failure` | Connection returns None → returns None, warning logged |
 | `test_fetch_orderbook_error_response` | Response has error key → returns None |
-| `test_is_profitable_passes_min_order_shares` | Polymarket bet carries `min_order_shares` → Kelly receives it |
-| `test_is_profitable_clob_kelly_positive` | Kelly returns bet_amount > 0, g_improvement > 0 → is_profitable = True |
-| `test_is_profitable_clob_kelly_zero` | Kelly returns bet_amount = 0 → is_profitable = False |
-| `test_is_profitable_clob_rebet_rejected` | rebet_allowed returns False → is_profitable = False despite Kelly positive |
-| `test_is_profitable_fpmm_kelly` | FPMM market, Kelly returns positive → is_profitable = True |
-| `test_is_profitable_non_kelly_unchanged` | bet_amount_per_threshold strategy → existing logic unchanged |
-| `test_orderbook_fetch_failure_fallback` | Orderbook fetch fails → Kelly gets empty asks, returns 0 |
+| `test_is_profitable_passes_min_order_shares` | Polymarket bet carries `min_order_shares` → strategy receives it |
+| `test_fetch_both_orderbooks` | Both YES and NO orderbooks fetched for CLOB | Two connection requests sent |
+| `test_strategy_positive_bet` | Strategy returns bet_amount > 0, vote=0 → is_profitable = True, vote propagated |
+| `test_strategy_vote_propagated_to_payload` | Strategy returns vote=1 (NO) → DecisionReceivePayload gets vote=1 |
+| `test_strategy_returns_zero` | Strategy returns bet_amount = 0 → is_profitable = False |
+| `test_strategy_returns_none_vote` | Strategy returns vote=None → is_profitable = False |
+| `test_rebet_rejected` | rebet_allowed returns False → is_profitable = False despite strategy positive |
+| `test_orderbook_fetch_failure` | Orderbook fetch fails → strategy gets empty asks, returns 0 |
+| `test_no_omenstrat_polystrat_branching` | No `is_running_on_polymarket` branching in profitability (removed) |
 
 ### 4.4 Base Behaviour Tests
 
@@ -1150,15 +1272,28 @@ Update these files to:
 
 | Test | Description |
 |------|-------------|
-| `test_get_bet_amount_passes_market_type` | market_type kwarg reaches strategy |
-| `test_get_bet_amount_passes_orderbook` | orderbook_asks kwarg reaches strategy |
-| `test_get_bet_amount_passes_market_price` | market_price kwarg reaches strategy |
+| `test_get_bet_amount_passes_p_yes` | p_yes kwarg reaches strategy |
+| `test_get_bet_amount_passes_both_orderbooks` | orderbook_asks_yes and _no reach strategy |
+| `test_get_bet_amount_passes_both_prices` | price_yes and price_no reach strategy |
 | `test_get_bet_amount_passes_min_order_shares` | min_order_shares kwarg reaches strategy |
 | `test_last_strategy_result_stored` | After execute_strategy, _last_strategy_result is set |
-| `test_legacy_kelly_name_maps_to_new_strategy` | `kelly_criterion_no_conf` executes new Kelly package |
-| `test_strategies_kwargs_no_bet_kelly_fraction` | STRATEGIES_KWARGS updated without bet_kelly_fraction |
+| `test_kelly_no_conf_mapped_to_kelly` | `kelly_criterion_no_conf` strategy name mapped to `kelly_criterion` |
 
-### 4.5 Enum/Handler Tests
+### 4.5 Fixed Bet Strategy Tests
+
+**File:** `packages/valory/customs/fixed_bet/tests/test_fixed_bet.py`
+
+| Test | Description |
+|------|-------------|
+| `test_missing_required_fields` | Missing bankroll → error |
+| `test_bankroll_below_floor` | bankroll < floor_balance → bet_amount=0 |
+| `test_returns_configured_amount` | bet_amount=1000 → returns 1000 |
+| `test_capped_at_max_bet` | bet_amount=1000, max_bet=500 → returns 500 |
+| `test_capped_at_available_balance` | bet_amount=1000, bankroll-floor=300 → returns 300 |
+| `test_vote_picks_higher_prob` | p_yes=0.7 → vote=0 (YES); p_yes=0.3 → vote=1 (NO) |
+| `test_tie_returns_no_trade` | p_yes=0.5 → vote=None, bet_amount=0 |
+
+### 4.6 Enum/Handler Tests
 
 Update existing tests that reference `kelly_criterion_no_conf` to use `kelly_criterion` in:
 - `chatui_abci/tests/test_handlers.py`
@@ -1181,6 +1316,7 @@ migration release:
 ```bash
 # 1. New strategy tests
 poetry run pytest packages/valory/customs/kelly_criterion/tests/ -v
+poetry run pytest packages/valory/customs/fixed_bet/tests/ -v
 
 # 2. Connection tests
 poetry run pytest packages/valory/connections/polymarket_client/tests/ -v
@@ -1203,9 +1339,13 @@ tox -e py3.10-linux
 # 8. Linting
 tomte check-code
 
-# 9. Verify no old references remain
-grep -r "kelly_criterion_no_conf" packages/
+# 9. Verify old strategy code is gone (only backward-compat enum references should remain)
+grep -r "kelly_criterion_no_conf" packages/ --include="*.py" | grep -v "test_\|enum\|Enum\|backward"
 grep -r "jhehemann.*kelly" packages/
+grep -r "bet_amount_per_threshold" packages/ --include="*.py" | grep -v "test_\|enum\|Enum\|backward"
+
+# 10. Verify PredictionResponse.vote and .win_probability are removed
+grep -rn "prediction_response\.vote\|\.win_probability" packages/ --include="*.py"
 
 # 10. Coverage (must not drop)
 # Check tox coverage job output
@@ -1216,17 +1356,22 @@ grep -r "jhehemann.*kelly" packages/
 ## 6. Execution Order
 
 ```
-1. Write strategy tests first (TDD)
-2. Implement kelly_criterion.py to pass tests
-3. Write connection tests
-4. Implement FETCH_ORDER_BOOK in connection
-5. Write decision_receive tests
-6. Implement decision_receive integration
-7. Update all enums and handler references (with tests)
-8. Update YAML configurations
-9. Delete old kelly strategies
-10. Update packages.json and run autonomy packages lock
-11. Run full test suite and linting
+1.  Write kelly_criterion strategy tests (TDD)
+2.  Implement kelly_criterion.py to pass tests
+3.  Write fixed_bet strategy tests (TDD)
+4.  Implement fixed_bet.py to pass tests
+5.  Write connection tests for FETCH_ORDER_BOOK
+6.  Implement FETCH_ORDER_BOOK in polymarket connection
+7.  Write decision_receive tests (side selection from strategy, both orderbooks)
+8.  Implement decision_receive integration
+9.  Write base.py tests (new get_bet_amount signature)
+10. Implement base.py changes
+11. Remove PredictionResponse.vote and .win_probability, update all consumers
+12. Update all enums and handler references (with tests)
+13. Update YAML configurations
+14. Delete old strategies (kelly_criterion_no_conf, kelly_criterion jhehemann, bet_amount_per_threshold)
+15. Update packages.json and run autonomy packages lock
+16. Run full test suite and linting
 ```
 
 ---
@@ -1242,3 +1387,7 @@ grep -r "jhehemann.*kelly" packages/
 | Operators have old `bet_kelly_fraction` in config | Config YAML is updated in this PR. Operators must update their overrides. |
 | FPMM Kelly gives different results than old quadratic | Expected — grid search is more correct. Differences should be small for well-balanced pools. Document in PR. |
 | Venue minimum order changes or differs across markets | Pipe `min_order_shares` from market metadata instead of hardcoding 5 shares inside the strategy |
+| Strategy picks different side than mech | This is intentional — Kelly evaluates both sides by G_improvement. The mech provides `p_yes`; Kelly uses it to evaluate both YES (p_yes) and NO (1-p_yes) sides. |
+| Selling flow needs a vote | Selling still uses inline `int(p_no > p_yes)` since it's about which existing position to sell, not about new side selection. |
+| Users have `bet_amount_per_threshold` or `kelly_criterion_no_conf` in chatui_param_store | Backward compat aliases in enums + `get_bet_amount()` name mapping handle this. |
+| Two orderbook fetches per market (CLOB) | Adds one extra API call. Acceptable latency tradeoff for correct side selection. |
