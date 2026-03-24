@@ -114,10 +114,12 @@ The strategy evaluates both sides independently:
 
 For each side:
 
-1. apply side-level admissibility filters
+1. apply oracle probability filter
 2. construct venue-specific execution inputs
-3. optimize over candidate bet sizes
-4. compare best side result against no trade
+3. apply venue-specific edge pre-filter
+4. optimize over candidate bet sizes
+5. compute true edge (VWAP for CLOB, market price for FPMM)
+6. compare best side result against no trade
 
 The strategy then returns the side with the largest positive `G_improvement`.
 
@@ -127,24 +129,52 @@ If neither side beats no trade, return no bet.
 
 ## Admissibility Filters
 
-For each side, define:
-
-- `price` = current market price for that side
-- `edge = p - price`
-
-The side is rejected before optimization if either:
-
-```text
-edge < min_edge
-```
-
-or:
-
-```text
-p < min_oracle_prob
-```
-
 These are policy/risk filters, not part of the Kelly objective itself.
+
+### Oracle Probability Filter
+
+Applied to both venues before any venue-specific logic:
+
+```text
+p < min_oracle_prob  →  reject side
+```
+
+### Edge Filter
+
+The edge filter is venue-specific because CLOB and FPMM have different price
+sources.
+
+**CLOB (Polymarket):**
+
+Two-stage edge check, matching `final_kelly.py`:
+
+1. **Pre-filter (cheap):** use best ask price as a conservative proxy.
+   ```text
+   edge_best_ask = p - best_ask_price
+   edge_best_ask < min_edge  →  reject side
+   ```
+   The real edge (against VWAP) will be ≤ this, so if the best-ask edge fails,
+   the real edge would also fail. This avoids running the optimizer unnecessarily.
+
+2. **True edge (after optimization):** computed from the actual execution price.
+   ```text
+   vwap = cost(b_opt) / shares(b_opt)
+   edge = p - vwap
+   ```
+   This is the edge reported in the output. It reflects the real fill price,
+   not a mid-price proxy.
+
+**FPMM (Omen):**
+
+Single-stage edge check using market price:
+
+```text
+edge = p - market_price
+edge < min_edge  →  reject side
+```
+
+For FPMM there is no orderbook, so `market_price` (from `outcomeTokenMarginalPrices`)
+is the only available price reference for the filter.
 
 ---
 
@@ -391,12 +421,12 @@ This is distinct from venue minimum execution constraints.
 | `bankroll` | int | wallet balance | token native units | both |
 | `p_yes` | float | oracle YES probability | `[0,1]` | both |
 | `floor_balance` | int | reserved bankroll floor | token native units | both |
-| `price_yes` | float | current YES market price | `[0,1]` | both |
-| `price_no` | float | current NO market price | `[0,1]` | both |
+| `price_yes` | float | current YES market price (FPMM edge filter; CLOB uses best_ask) | `[0,1]` | both |
+| `price_no` | float | current NO market price (FPMM edge filter; CLOB uses best_ask) | `[0,1]` | both |
 | `max_bet` | int | hard cap per trade | token native units | both |
 | `min_bet` | int | policy minimum spend | token native units | both |
 | `n_bets` | int | bankroll-depth parameter | dimensionless | both |
-| `min_edge` | float | minimum `p - price` | probability units | both |
+| `min_edge` | float | minimum edge threshold (CLOB: vs best_ask; FPMM: vs market_price) | probability units | both |
 | `min_oracle_prob` | float | minimum side probability | probability units | both |
 | `fee_per_trade` | float | external friction only | native token units | both |
 | `grid_points` | int | optimization grid resolution | dimensionless | both |
@@ -431,6 +461,8 @@ The strategy returns:
 | `vote` | int or `None` | `0 = YES`, `1 = NO`, `None = no trade` |
 | `expected_profit` | int | expected profit in native units using optimizer-consistent accounting |
 | `g_improvement` | float | log-growth improvement over no trade |
+| `edge` | float | true edge: `p - vwap` (CLOB) or `p - market_price` (FPMM) |
+| `vwap` | float | execution price: `cost / shares` (CLOB) or `market_price` (FPMM) |
 | `info` | list[str] | informational messages |
 | `error` | list[str] | validation or execution errors |
 
@@ -451,16 +483,15 @@ The strategy returns no trade if any of the following holds:
 
 ## Known Approximations and Open Choices
 
-### Open Parameter-Contract Question
+### Parameter-Contract: Decimal Scale (Resolved)
 
-For Polymarket-compatible config values such as `default_max_bet_size` and
-`absolute_max_bet_size`, trader must define whether the authoritative
-representation is:
+Config values are in venue-native wei. Each service YAML uses the correct scale:
 
-- native 6-decimal USDC units
-- or a normalized 18-decimal internal scale
+- **polymarket_trader** (USDC, 6 decimals): e.g., `default_max_bet_size: 2500000` = 2.5 USDC
+- **trader_pearl** (xDAI, 18 decimals): e.g., `default_max_bet_size: 2000000000000000000` = 2 xDAI
 
-This must be resolved in implementation/config docs.
+The strategy receives `token_decimals` and converts via `value / 10^token_decimals`.
+No normalization layer exists or is needed.
 
 ### Execution-Time Validation
 
