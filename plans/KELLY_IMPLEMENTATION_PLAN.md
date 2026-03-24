@@ -1319,6 +1319,53 @@ evaluating existing positions against new mech data, not about new side selectio
 Legacy name normalization in `SharedState.setup()` and `get_bet_amount()` (see section 3.3.3)
 ensures operators with old names don't crash — no need to list old names in `file_hash_to_strategies`.
 
+### 3.9 Unsupported Code Paths
+
+The following code paths exist in the current `decision_receive.py` but are
+**not currently supported** in production. During implementation, these must be
+guarded so they cannot be traversed, or removed entirely.
+
+**A) Benchmarking mode** (`decision_receive.py` lines 447-450, 587-606)
+
+`_is_profitable()` has benchmarking logic that calls:
+- `_update_liquidity_info(net_bet_amount, prediction_response.vote)`
+- `_write_benchmark_results(prediction_response, bet_amount, liquidity_info)`
+- `_update_selected_bet(prediction_response)`
+
+These use `prediction_response.vote` (which is being removed) and
+`_compute_new_tokens_distribution()` (which is dead code). Since benchmarking
+is not supported, either:
+- remove this code entirely, or
+- gate it behind `if self.benchmarking_mode.enabled:` with a clear error/skip
+
+**B) `rebet_allowed()` (`decision_receive.py` lines 418-438)
+
+This method internally accesses `bet.prediction_response.vote` (line 428):
+```python
+vote = bet.prediction_response.vote
+bet.position_liquidity = bet.outcomeTokenAmounts[vote] if vote else 0
+```
+
+Since rebetting is not currently supported, this path won't execute. But if
+rebetting is re-enabled, `rebet_allowed()` must be updated to work without
+`PredictionResponse.vote` — use `strategy_vote` from the strategy result
+or inline `int(p_no > p_yes)` instead.
+
+**C) Selling flow** (`should_sell_outcome_tokens`, lines 630-651)
+
+Uses `prediction_response.vote` to determine which side's tokens to sell.
+Not currently supported. When re-enabled, use inline
+`int(prediction_response.p_no > prediction_response.p_yes)`.
+
+**D) `fixed_bet` does not return `expected_profit`**
+
+The `fixed_bet` strategy returns `bet_amount` and `vote` but not
+`expected_profit`. The caller reads `strategy_result.get('expected_profit', 0)`,
+so it defaults to 0. This value currently flows to `rebet_allowed()` which is
+not supported. When rebetting is re-enabled, `fixed_bet` must either:
+- compute `expected_profit` (requires market data it currently doesn't use), or
+- the caller must handle the 0 case explicitly
+
 ---
 
 ## 4. Test Plan (TDD)
