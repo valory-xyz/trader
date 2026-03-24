@@ -193,3 +193,43 @@ The remaining blockers are narrower but still important:
 
 Implementation should wait until those are resolved, and the API-call /
 staleness story should be tightened before coding starts.
+
+---
+
+## Required Technical Checks
+
+Legend:
+
+- `V` = passed in the latest `#882` spec
+- `X` = not passed / still unresolved in the latest `#882` spec
+
+### A. Model Checks
+
+- [V] Kelly objective is implemented as specified
+- [V] Omen execution uses FPMM model correctly
+- [X] Polymarket execution walks the book correctly
+- [X] `expected_profit` follows the exact optimizer accounting
+- [V] Venue fee is not double-counted
+- [V] External friction is not omitted
+
+### B. Pricing-to-Execution Checks
+
+- [X] Sizing price basis is logged or observable
+- [X] Placement price basis is logged or observable
+- [X] Slippage tolerance exists or the absence is explicitly accepted
+- [X] Minimum executable size is validated at execution time if needed
+- [X] There is no silent mismatch between sizing assumptions and placement assumptions
+
+### C. Regression Checks
+
+- [V] Omen path remains functional
+- [V] Polymarket path remains functional
+- [V] ChatUI still loads and validates settings
+- [V] Legacy Kelly naming does not break startup
+- [X] Non-Kelly strategy behavior is unchanged where intended
+
+### D. Performance / Request Checks
+
+- [X] API calls per market/cycle are within expected budget
+- [X] Duplicate requests are eliminated where possible
+- [X] No unnecessary new calls are made only for convenience
