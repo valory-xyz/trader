@@ -1081,12 +1081,17 @@ Remove `bet_kelly_fraction`. Add Kelly hyperparameters.
 
 Keep `default_max_bet_size` and `absolute_max_bet_size` for ChatUI compatibility.
 The current ChatUI code still uses these fields to hydrate and validate `max_bet_size`.
-For Polymarket, set both to `5_000_000` (5 USDC):
-- `absolute_max_bet_size` remains the hard ceiling exposed to ChatUI
-- `default_max_bet_size` should match it so the default Kelly config and the UI default do not diverge
-- To be checked with dev: whether these config values should be written using the native
-  6-decimal USDC representation for Polymarket, or whether trader normalizes them to an
-  18-decimal scale before strategy execution.
+
+**Decimal/unit contract (resolved):** Config values are in venue-native wei — each
+service YAML already uses the correct scale for its venue. The strategy receives
+`token_decimals` and converts via `value / 10^token_decimals`. No normalization layer.
+
+- **polymarket_trader** (USDC, 6 decimals): `floor_balance: 1000000` (1 USDC),
+  `default_max_bet_size: 2500000` (2.5 USDC), `absolute_max_bet_size: 5000000` (5 USDC),
+  `absolute_min_bet_size: 1000000` (1 USDC)
+- **trader_pearl** (xDAI, 18 decimals): `floor_balance: 500000000000000000` (0.5 xDAI),
+  `default_max_bet_size: 2000000000000000000` (2 xDAI), `absolute_max_bet_size: 2000000000000000000` (2 xDAI),
+  `absolute_min_bet_size: 25000000000000000` (0.025 xDAI)
 
 #### 3.5.2 Service/Agent YAML Files
 
