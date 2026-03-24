@@ -262,7 +262,15 @@ where:
 - `p_i` is the ask price at level `i`
 - `Σ_i a_i = min_order_shares`
 
-Equivalently, in VWAP form:
+If the best-ask level alone has enough size to fill `min_order_shares`, then:
+
+```text
+venue_min_side = min_order_shares * best_ask_price
+```
+
+Otherwise, the full walked-book minimum-fill cost must be used.
+
+Equivalently, in VWAP form for the actual minimum fill:
 
 ```text
 venue_min_side = vwap_min_fill * min_order_shares
@@ -270,8 +278,9 @@ venue_min_side = vwap_min_fill * min_order_shares
 
 where `vwap_min_fill` is the VWAP of the first executable `min_order_shares`.
 
-This must not be approximated as `min_order_shares * best_ask_price`, because
-top-of-book depth may be smaller than `min_order_shares`.
+So `min_order_shares * best_ask_price` is valid only when the best-ask level
+alone can fill the venue minimum. If top-of-book depth is smaller than
+`min_order_shares`, it understates the true minimum spend and must not be used.
 
 If the orderbook cannot supply `min_order_shares`, then the side is not
 executable and should be rejected before optimization.

@@ -553,7 +553,32 @@ def run(**kwargs) -> Dict[str, Any]:
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
             min_order_shares = float(kwargs.get("min_order_shares", 5.0))
-            b_min_side = max(min_bet, min_order_shares * best_ask_price)
+            best_ask_size = float(sorted_asks[0]["size"])
+            if best_ask_size >= min_order_shares:
+                venue_min_side = min_order_shares * best_ask_price
+            else:
+                remaining_shares = min_order_shares
+                venue_min_side = 0.0
+                for level in sorted_asks:
+                    price = float(level["price"])
+                    size = float(level["size"])
+                    if price <= 0 or size <= 0:
+                        continue
+                    fill = min(size, remaining_shares)
+                    venue_min_side += fill * price
+                    remaining_shares -= fill
+                    if remaining_shares <= 0:
+                        break
+                if remaining_shares > 0:
+                    msg = (
+                        f"{label}: insufficient book depth to fill "
+                        f"min_order_shares={min_order_shares}"
+                    )
+                    info.append(msg)
+                    all_rejections.append(msg)
+                    continue
+
+            b_min_side = max(min_bet, venue_min_side)
             x_native, y_native = 0.0, 0.0
 
             # CLOB pre-filter: quick edge check against best ask (cheapest level).
