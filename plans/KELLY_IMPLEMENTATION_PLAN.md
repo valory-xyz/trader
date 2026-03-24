@@ -110,7 +110,7 @@ DecisionReceiveBehaviour._is_profitable()
     │   │                        │
     │   ◄── returns: {           │
     │         "bet_amount": int, ◄──────────────────────────────────────┘
-    │         "expected_shares": int,
+    │         "expected_profit": int,
     │         "g_improvement": float,
     │       }
     │
@@ -287,6 +287,8 @@ def fpmm_execution(
     alpha : float
         Fee fraction: 1 - (bet_fee / 1e{decimals}). E.g., if bet_fee is 2%,
         alpha = 0.98.
+        This is the venue/market fee term for Omen and is part of the execution
+        model itself. It must not be counted again via `fee_per_trade`.
 
     Returns
     -------
@@ -337,7 +339,11 @@ def optimize_side(
     b_max : float
         Maximum admissible spend (native units).
     fee : float
-        Per-trade friction cost (native units).
+        Per-trade external friction cost (native units), e.g. mech costs and,
+        in future, gas costs. This is separate from venue/market fees:
+        - Omen market fee is already modeled in `shares(b)` via `alpha`
+        - Polymarket market fee is currently 0 in trader
+        Therefore `fee` / `fee_per_trade` must not include the venue fee again.
     grid_points : int
         Number of candidate points in the grid.
     market_type : str
@@ -404,7 +410,10 @@ def run(**kwargs) -> Dict[str, Any]:
     -------
     dict with keys:
         bet_amount : int (wei) — 0 means no trade
-        expected_shares : int (wei) — shares from execution model
+        expected_profit : int (wei) — expected profit computed with the exact
+            same `shares(b)` and `fee` model used inside the Kelly objective.
+            Venue/market fees must already be reflected in `shares(b)` where
+            applicable; `fee_per_trade` is for external friction only.
         g_improvement : float — log-growth improvement over no-trade
         info : list of str — informational log messages
         error : list of str — error messages
@@ -452,7 +461,7 @@ def run(**kwargs) -> Dict[str, Any]:
     W = W_total - floor
     if W <= 0:
         info.append(f"Bankroll ({W_total}) <= floor ({floor}). No bet.")
-        return {"bet_amount": 0, "expected_shares": 0, "g_improvement": 0.0,
+        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
                 "info": info, "error": error}
 
     # Per-bet bankroll: W_bet = min(n_bets * max_bet, W_total - floor)
@@ -462,14 +471,14 @@ def run(**kwargs) -> Dict[str, Any]:
     # --- 4. Validate probability ---
     if not (0 < win_probability < 1):
         error.append(f"Invalid win_probability: {win_probability}")
-        return {"bet_amount": 0, "expected_shares": 0, "g_improvement": 0.0,
+        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
                 "info": info, "error": error}
 
     # --- 5. Get market price and compute edge ---
     market_price = kwargs.get("market_price", 0.0)
     if market_price <= 0 or market_price >= 1:
         error.append(f"Invalid market_price: {market_price}")
-        return {"bet_amount": 0, "expected_shares": 0, "g_improvement": 0.0,
+        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
                 "info": info, "error": error}
 
     # --- 6. Prepare side(s) to evaluate ---
@@ -573,22 +582,35 @@ def run(**kwargs) -> Dict[str, Any]:
     if best_result is None:
         reason = "; ".join(all_rejections) if all_rejections else "no bet improves log-growth"
         info.append(f"No trade: {reason}")
-        return {"bet_amount": 0, "expected_shares": 0, "g_improvement": 0.0,
+        return {"bet_amount": 0, "expected_profit": 0, "g_improvement": 0.0,
                 "info": info, "error": error}
 
     bet_amount_wei = int(best_result["spend"] * scale)
-    expected_shares_wei = int(best_result["shares"] * scale)
+    # Expected profit must use the same accounting as the Kelly objective:
+    #   expected_profit = p * shares(b_opt) - b_opt - fee_per_trade
+    #
+    # where:
+    # - `shares(b_opt)` already includes venue-specific execution and venue fees
+    #   (for Omen, via alpha in the FPMM execution model)
+    # - `b_opt` / `best_result["spend"]` is the modeled gross spend
+    # - `fee_per_trade` is external friction only (mech costs today, gas later),
+    #   and must not include venue/market fees again
+    expected_profit = (
+        win_probability * best_result["shares"] - best_result["spend"] - fee_per_trade
+    )
+    expected_profit_wei = int(expected_profit * scale)
 
     info.append(
         f"Selected {best_result['side_label']}: "
         f"bet={best_result['spend']:.4f} {token_name}, "
         f"shares={best_result['shares']:.4f}, "
+        f"expected_profit={expected_profit:.6f} {token_name}, "
         f"G_improvement={best_result['g_improvement']:.6f}"
     )
 
     return {
         "bet_amount": bet_amount_wei,
-        "expected_shares": expected_shares_wei,
+        "expected_profit": expected_profit_wei,
         "g_improvement": best_result["g_improvement"],
         "info": info,
         "error": error,
@@ -603,7 +625,7 @@ def run(**kwargs) -> Dict[str, Any]:
 | `n_bets` | int | 1 | Bankroll depth: `W_bet = min(n_bets * max_bet, W)`. Higher = more willing to use full `max_bet`. |
 | `min_edge` | float | 0.03 | Minimum `p - market_price` to consider betting. Protects against oracle noise. |
 | `min_oracle_prob` | float | 0.5 | Minimum oracle prob for a side. Rejects "edge-only" bets where oracle still thinks side is unlikely. |
-| `fee_per_trade` | float | 0.01 | Gas + mech cost in native units. Deducted in both win/lose states. |
+| `fee_per_trade` | float | 0.01 | External friction only in native units: mech costs today, optionally gas later. Deducted in both win/lose states. Do not include venue/market fee here. |
 | `grid_points` | int | 500 | Grid resolution for optimizer. 500 is production-grade. |
 | `min_order_shares` | float | 5.0 is the documented Polymarket example/common value, not a guaranteed invariant | Venue-provided minimum order size in shares. Read it from market/orderbook data instead of hardcoding it. |
 
@@ -790,23 +812,30 @@ if self.params.using_kelly:
 
     # Extract extra info from strategy result
     g_improvement = getattr(self, '_last_strategy_result', {}).get('g_improvement', 0.0)
-    expected_shares = getattr(self, '_last_strategy_result', {}).get('expected_shares', 0)
+    expected_profit = getattr(self, '_last_strategy_result', {}).get('expected_profit', 0)
 
-    # `bet_amount` is the gross spend selected by the Kelly optimizer.
-    # For Omen this matches the PR #5 objective, where `cost(b) = b` and the
-    # fee reduction is already modeled via alpha inside shares.
-    potential_net_profit = expected_shares - bet_amount
+    # `expected_profit` must be computed from the exact same `shares(b_opt)` and
+    # `fee` accounting used inside the Kelly optimizer:
+    #     expected_profit = p * shares(b_opt) - b_opt - fee_per_trade
+    #
+    # Important accounting contract:
+    # - venue/market fee belongs inside the venue execution model
+    #   (for Omen, it is already modeled in `shares(b_opt)` via alpha)
+    # - `fee_per_trade` is only for external friction such as mech cost and,
+    #   in future, gas
+    # - therefore venue fee must not be subtracted again downstream
+    # No alternate downstream approximation should be used here.
 
     token_name = self.get_token_name()
     self.context.logger.info(
         f"Kelly bet: {self.convert_to_native(bet_amount)} {token_name}, "
         f"G_improvement: {g_improvement:.6f}, "
-        f"expected_shares: {self.convert_to_native(expected_shares)} {token_name}"
+        f"expected_profit: {self.convert_to_native(expected_profit)} {token_name}"
     )
 
     # Only check rebet (position management — prevents re-entering same market
     # without sufficient liquidity/prediction change). Not a profitability check.
-    is_profitable = self.rebet_allowed(prediction_response, potential_net_profit)
+    is_profitable = self.rebet_allowed(prediction_response, expected_profit)
 
     return is_profitable, bet_amount
 
@@ -1085,7 +1114,7 @@ Update these files to:
 | `test_full_integration_clob` | Realistic CLOB scenario | Non-zero bet with positive G_improvement |
 | `test_full_integration_fpmm` | Realistic FPMM scenario | Non-zero bet with positive G_improvement |
 | `test_unknown_kwargs_no_crash` | Pass extra unknown kwargs | No error, strategy ignores them |
-| `test_return_format` | Any valid call | Dict has bet_amount, expected_shares, g_improvement, info, error |
+| `test_return_format` | Any valid call | Dict has bet_amount, expected_profit, g_improvement, info, error |
 
 ### 4.2 Connection Tests
 
