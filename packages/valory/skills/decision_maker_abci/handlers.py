@@ -163,6 +163,37 @@ class HttpHandler(BaseHttpHandler):
 
         self.rounds_info = load_rounds_info_with_transitions()
 
+        if not self.context.params.is_running_on_polymarket:
+            polymarket_label_overrides = {
+                "polymarket_swap_usdc_round": {
+                    "name": "Preparing for next step",
+                    "description": "Checks and prepares before continuing.",
+                },
+                "polymarket_bet_placement_round": {
+                    "name": "Opening a trade",
+                    "description": "Attempts to open a trade on a prediction market.",
+                },
+                "polymarket_set_approval_round": {
+                    "name": "Setting approval",
+                    "description": "Attempts to set approval on a prediction market.",
+                },
+                "polymarket_post_set_approval_round": {
+                    "name": "Post setting approval",
+                    "description": "Attempts to finalize the approval setting on a prediction market.",
+                },
+                "polymarket_redeem_round": {
+                    "name": "Redeeming winnings",
+                    "description": "Redeems winnings from resolved trades.",
+                },
+                "polymarket_fetch_market_round": {
+                    "name": "Fetching markets",
+                    "description": "Fetches available prediction markets.",
+                },
+            }
+            for round_key, overrides in polymarket_label_overrides.items():
+                if round_key in self.rounds_info:
+                    self.rounds_info[round_key].update(overrides)
+
     @property
     def round_sequence(self) -> RoundSequence:
         """Return the round sequence."""

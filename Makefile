@@ -220,7 +220,7 @@ ci-linter-checks:
 	tox -qq -e copyright-check
 	tox -qq -e liccheck
 	tox -qq -e check-dependencies
-	tomte check-doc-links
+	tomte check-doc-links --url-skips "https://li.quest/v1/quote" --url-skips "https://li.quest/v1/quote/toAmount" --url-skips "https://gateway.autonolas.tech/ipfs/" --url-skips "https://rpc.gnosischain.com/" --url-skips "https://1rpc.io/matic"
 	tox -qq -e check-doc-hashes
 	tomte check-security
 	tox -qq -e check-packages

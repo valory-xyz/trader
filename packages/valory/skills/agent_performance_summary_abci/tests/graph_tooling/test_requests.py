@@ -33,6 +33,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     QUERY_BATCH_SIZE,
     QUESTION_DATA_SEPARATOR,
     USD_PRICE_FIELD,
+    _MAX_SLEEP_TIME,
     to_content,
 )
 
@@ -397,6 +398,7 @@ class TestFetchFromSubgraph:
         sg.process_response.return_value = None
         sg.api_id = "test_subgraph"
         sg.is_retries_exceeded.return_value = False
+        sg.retries_info.suggested_sleep_time = 1.0
 
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
@@ -514,6 +516,7 @@ class TestFetchMechSender:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_mech_subgraph = mock_sg
 
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
@@ -619,6 +622,7 @@ class TestFetchTraderAgent:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_agents_subgraph = mock_sg
 
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
@@ -832,6 +836,7 @@ class TestFetchTraderAgentBets:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.polymarket_bets_subgraph = mock_sg
 
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
@@ -1109,6 +1114,7 @@ class TestFetchAllResolvedMarkets:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_agents_subgraph = mock_sg
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
@@ -1315,6 +1321,7 @@ class TestFetchDailyProfitStatistics:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_agents_subgraph = mock_sg
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
@@ -1522,6 +1529,7 @@ class TestFetchAllMechRequests:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_mech_subgraph = mock_sg
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
@@ -1676,6 +1684,7 @@ class TestFetchMechRequestsByTitles:
         mock_sg.process_response.return_value = None
         mock_sg.api_id = "test"
         mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.retries_info.suggested_sleep_time = 1.0
         b.context.olas_mech_subgraph = mock_sg
         b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
 
@@ -1717,3 +1726,132 @@ class TestFetchMechRequestsByTitles:
         result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Sleep overflow hotfix tests (PREDICT-691)
+# ---------------------------------------------------------------------------
+
+
+class TestSleepTimeClamping:
+    """Tests for sleep time clamping in _handle_response."""
+
+    @staticmethod
+    def _make_subgraph(
+        retries_exceeded: bool = False, sleep_time: float = 1.0
+    ) -> MagicMock:
+        """Create a mock subgraph with controllable retry behaviour."""
+        sg = MagicMock()
+        sg.api_id = "test_subgraph"
+        sg.is_retries_exceeded.return_value = retries_exceeded
+        sg.retries_info.suggested_sleep_time = sleep_time
+        return sg
+
+    def test_overflow_sleep_time_clamped(self) -> None:
+        """2**46 seconds (~46 failed retries) would overflow timedelta; clamp prevents it."""
+        overflow_seconds = 2**46  # the value that caused the original OverflowError
+        b = _make_behaviour()
+        actual_sleep_time = None
+
+        def _capture_sleep(seconds: float) -> Generator:
+            nonlocal actual_sleep_time
+            actual_sleep_time = seconds
+            yield
+
+        b.sleep = _capture_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(sleep_time=overflow_seconds)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert actual_sleep_time == _MAX_SLEEP_TIME
+
+    def test_sleep_time_below_max_unchanged(self) -> None:
+        """Sleep time below _MAX_SLEEP_TIME passes through unchanged."""
+        b = _make_behaviour()
+        actual_sleep_time = None
+
+        def _capture_sleep(seconds: float) -> Generator:
+            nonlocal actual_sleep_time
+            actual_sleep_time = seconds
+            yield
+
+        b.sleep = _capture_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(sleep_time=5.0)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert actual_sleep_time == 5.0
+
+    def test_no_sleep_when_retries_exceeded(self) -> None:
+        """When retries are exceeded, sleep is skipped entirely."""
+        b = _make_behaviour()
+        sleep_called = False
+
+        def _tracking_sleep(*a: Any, **kw: Any) -> Generator:
+            nonlocal sleep_called
+            sleep_called = True
+            yield
+
+        b.sleep = _tracking_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(retries_exceeded=True, sleep_time=10.0)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert b._fetch_status == FetchStatus.FAIL
+        assert sleep_called is False
+
+
+# ---------------------------------------------------------------------------
+# clean_up tests
+# ---------------------------------------------------------------------------
+
+
+class TestCleanUp:
+    """Tests for the clean_up method."""
+
+    def test_resets_retries_on_all_subgraphs(self) -> None:
+        """clean_up resets retries on every subgraph."""
+        b = _make_behaviour()
+
+        subgraph_names = (
+            "polygon_mech_subgraph",
+            "olas_mech_subgraph",
+            "olas_agents_subgraph",
+            "polymarket_agents_subgraph",
+            "open_markets_subgraph",
+            "polymarket_bets_subgraph",
+            "gnosis_staking_subgraph",
+            "polygon_staking_subgraph",
+        )
+        mocks = {}
+        for name in subgraph_names:
+            m = MagicMock()
+            setattr(b.context, name, m)
+            mocks[name] = m
+
+        b.clean_up()
+
+        for _name, m in mocks.items():
+            m.reset_retries.assert_called_once()
+
+    def test_clean_up_tolerates_missing_subgraph(self) -> None:
+        """clean_up does not crash when a subgraph attribute is missing."""
+        b = _make_behaviour()
+        # Delete all subgraph attributes so getattr returns None
+        for name in (
+            "polygon_mech_subgraph",
+            "olas_mech_subgraph",
+            "olas_agents_subgraph",
+            "polymarket_agents_subgraph",
+            "open_markets_subgraph",
+            "polymarket_bets_subgraph",
+            "gnosis_staking_subgraph",
+            "polygon_staking_subgraph",
+        ):
+            b.context.configure_mock(**{name: None})
+
+        # Should not raise
+        b.clean_up()

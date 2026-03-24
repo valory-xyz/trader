@@ -56,6 +56,8 @@ MAX_LOG_SIZE = 1000
 
 QUESTION_DATA_SEPARATOR = "\u241f"
 
+_MAX_SLEEP_TIME = 300.0  # 5 minutes; prevents OverflowError in timedelta
+
 
 def to_content(query: str) -> bytes:
     """Convert the given query string to payload content, i.e., add it under a `queries` key and convert it to bytes."""
@@ -158,9 +160,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
 
             if subgraph.is_retries_exceeded():
                 self._fetch_status = FetchStatus.FAIL
-
-            if sleep_on_fail:
-                sleep_time = subgraph.retries_info.suggested_sleep_time
+            elif sleep_on_fail:
+                sleep_time = min(
+                    subgraph.retries_info.suggested_sleep_time, _MAX_SLEEP_TIME
+                )
                 yield from self.sleep(sleep_time)
             return None
 

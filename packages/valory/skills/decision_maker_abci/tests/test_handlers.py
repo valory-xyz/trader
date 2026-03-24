@@ -663,3 +663,103 @@ class TestHttpHandler:
             http_dialogue.reply.assert_called_once()
             call_kwargs = http_dialogue.reply.call_args[1]
             assert call_kwargs["status_code"] == 200
+
+
+# ---------------------------------------------------------------------------
+# Polymarket label override tests (PREDICT-827)
+# ---------------------------------------------------------------------------
+
+POLYMARKET_ROUND_KEYS = (
+    "polymarket_swap_usdc_round",
+    "polymarket_bet_placement_round",
+    "polymarket_set_approval_round",
+    "polymarket_post_set_approval_round",
+    "polymarket_redeem_round",
+    "polymarket_fetch_market_round",
+)
+
+
+class TestPolymarketLabelOverrides:
+    """Tests for Polymarket round label overrides when not running on Polymarket."""
+
+    def _make_handler(self, is_running_on_polymarket: bool) -> HttpHandler:
+        """Create an HttpHandler with the given Polymarket flag."""
+        context = MagicMock()
+        context.params.service_endpoint = "http://localhost:8080/path"
+        context.params.is_running_on_polymarket = is_running_on_polymarket
+        handler = HttpHandler(name="", skill_context=context)
+        handler.setup()
+        return handler
+
+    def test_omenstrat_labels_do_not_contain_polymarket(self) -> None:
+        """When not running on Polymarket, round labels should not mention Polymarket/POL."""
+        handler = self._make_handler(is_running_on_polymarket=False)
+
+        for key in POLYMARKET_ROUND_KEYS:
+            if key not in handler.rounds_info:
+                continue
+            entry = handler.rounds_info[key]
+            name_lower = entry["name"].lower()
+            assert (
+                "polymarket" not in name_lower
+            ), f"{key} name still mentions Polymarket: {entry['name']}"
+            assert (
+                "pol " not in f" {name_lower} "
+                and "pol " not in name_lower.split()[0:1]
+            ), f"{key} name still mentions POL: {entry['name']}"
+
+    def test_polymarket_labels_preserved_when_running_on_polymarket(self) -> None:
+        """When running on Polymarket, original labels are preserved."""
+        from packages.valory.skills.decision_maker_abci.rounds_info import (
+            load_rounds_info_with_transitions,
+        )
+
+        handler = self._make_handler(is_running_on_polymarket=True)
+        original = load_rounds_info_with_transitions()
+
+        for key in POLYMARKET_ROUND_KEYS:
+            if key not in handler.rounds_info:
+                continue
+            assert (
+                handler.rounds_info[key]["name"] == original[key]["name"]
+            ), f"{key} name was modified on Polymarket mode"
+            assert (
+                handler.rounds_info[key]["description"] == original[key]["description"]
+            ), f"{key} description was modified on Polymarket mode"
+
+    def test_transitions_preserved_after_override(self) -> None:
+        """Label overrides must not clobber the transitions dict."""
+        from packages.valory.skills.decision_maker_abci.rounds_info import (
+            load_rounds_info_with_transitions,
+        )
+
+        handler = self._make_handler(is_running_on_polymarket=False)
+        original = load_rounds_info_with_transitions()
+
+        for key in POLYMARKET_ROUND_KEYS:
+            if key not in handler.rounds_info:
+                continue
+            assert (
+                handler.rounds_info[key]["transitions"] == original[key]["transitions"]
+            ), f"{key} transitions were modified by label override"
+
+    def test_missing_round_key_does_not_crash(self) -> None:
+        """Override skips gracefully when a round key is absent from rounds_info."""
+        import copy
+
+        from packages.valory.skills.decision_maker_abci.rounds_info import (
+            load_rounds_info_with_transitions,
+        )
+
+        # Deep copy to avoid mutating the shared module-level ROUNDS_INFO
+        truncated = copy.deepcopy(load_rounds_info_with_transitions())
+        truncated.pop("polymarket_swap_usdc_round", None)
+
+        with patch(
+            "packages.valory.skills.decision_maker_abci.handlers.load_rounds_info_with_transitions",
+            return_value=truncated,
+        ):
+            handler = self._make_handler(is_running_on_polymarket=False)
+
+        # The removed key should not appear, and no KeyError raised
+        assert "polymarket_swap_usdc_round" not in handler.rounds_info

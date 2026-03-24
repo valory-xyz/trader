@@ -18,7 +18,7 @@ fingerprint:
   graph_tooling/polymarket_predictions_helper.py: bafybeifkswljyw63zye26caqyntjhomabf4oflglfaw6tsgeje37lktd74
   graph_tooling/predictions_helper.py: bafybeibswqdjugeael7rnzi3luu57lgw7mzjbe46kqivh6fqdql2fr7rey
   graph_tooling/queries.py: bafybeibzkjfwwjx6rvjjcnygcwcw47g5dmpgmifxwk6l4rdpqxikgzkbmu
-  graph_tooling/requests.py: bafybeibaqbds35o4jrukcyk7qvfoioeroqhz3leqexaahtlzomvaqg5zuq
+  graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
   handlers.py: bafybeibm7dqkbrf5b5zeu6oxdltpi63ommxu3v2ft64bgyt6uy6uzzprzy
   models.py: bafybeiezoegqvuiqmgnqifobgh233gzkiq5s7z2452vuvbsca2uqzu3e64
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
@@ -32,7 +32,7 @@ fingerprint:
   tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeih6lqpc4tzj77olxe7kzfdpgmzyilfqkmot3ky4cq3i6wp3nrkpee
   tests/graph_tooling/test_predictions_helper.py: bafybeiahyr2qxqikgnarsovrsftuidx3wzkf5n5w3sq5t5hi6bmpvunipi
   tests/graph_tooling/test_queries.py: bafybeie6wyseflaysawnicyyci6a2mdrxpxzwmikg4p4s2iq2uznx5hgpi
-  tests/graph_tooling/test_requests.py: bafybeicjsmr327e5zkilyckwziilj63d2hf33d2i3jzpehvtsa5mxq6iea
+  tests/graph_tooling/test_requests.py: bafybeiez2icgxoz5khs3itvmpaypgokkfdn6zbsoafiecb3hvrpzqrg2ia
   tests/test_behaviours.py: bafybeiaxvqdy4vmoe25bjlzsrcisn7tmiwcqv3oq5zknmvwbtige3hhram
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_handlers.py: bafybeicq3td5j5xe4oxb2ehtvriyh2bimowxxibtrylhekn77fcvvmuyxa

@@ -28,6 +28,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     MAX_LOG_SIZE,
     QUESTION_DATA_SEPARATOR,
     QueryingBehaviour,
+    _MAX_SLEEP_TIME,
     to_content,
     to_graphql_list,
 )
@@ -1051,3 +1052,79 @@ class TestFetchTradesMalformedPagination:
 
         assert result == batch
         b.context.logger.error.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Sleep overflow hotfix tests (PREDICT-691)
+# ---------------------------------------------------------------------------
+
+
+class TestSleepTimeClamping:
+    """Tests for sleep time clamping in _handle_response."""
+
+    @staticmethod
+    def _make_subgraph(
+        retries_exceeded: bool = False, sleep_time: float = 1.0
+    ) -> MagicMock:
+        """Create a mock subgraph with controllable retry behaviour."""
+        sg = MagicMock()
+        sg.api_id = "test_subgraph"
+        sg.is_retries_exceeded.return_value = retries_exceeded
+        sg.retries_info.suggested_sleep_time = sleep_time
+        return sg
+
+    def test_overflow_sleep_time_clamped(self) -> None:
+        """2**46 seconds (~46 failed retries) would overflow timedelta; clamp prevents it."""
+        overflow_seconds = 2**46  # the value that caused the original OverflowError
+        b = _make_behaviour()
+        actual_sleep_time = None
+
+        def _capture_sleep(seconds: float) -> Any:
+            nonlocal actual_sleep_time
+            actual_sleep_time = seconds
+            yield
+
+        b.sleep = _capture_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(sleep_time=overflow_seconds)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert actual_sleep_time == _MAX_SLEEP_TIME
+
+    def test_sleep_time_below_max_unchanged(self) -> None:
+        """Sleep time below _MAX_SLEEP_TIME passes through unchanged."""
+        b = _make_behaviour()
+        actual_sleep_time = None
+
+        def _capture_sleep(seconds: float) -> Any:
+            nonlocal actual_sleep_time
+            actual_sleep_time = seconds
+            yield
+
+        b.sleep = _capture_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(sleep_time=5.0)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert actual_sleep_time == 5.0
+
+    def test_no_sleep_when_retries_exceeded(self) -> None:
+        """When retries are exceeded, sleep is skipped entirely."""
+        b = _make_behaviour()
+        sleep_called = False
+
+        def _tracking_sleep(*a: Any, **kw: Any) -> Any:
+            nonlocal sleep_called
+            sleep_called = True
+            yield
+
+        b.sleep = _tracking_sleep  # type: ignore[method-assign]
+        sg = self._make_subgraph(retries_exceeded=True, sleep_time=10.0)
+
+        gen = b._handle_response(sg, None, "things")
+        _exhaust(gen)
+
+        assert b._fetch_status == FetchStatus.FAIL
+        assert sleep_called is False
