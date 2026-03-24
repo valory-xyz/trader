@@ -853,8 +853,50 @@ future strategy. The old Omenstrat/Polystrat profitability checks (`_calc_binary
 
 **`_is_profitable()` return type changes** from `Tuple[bool, int]` to
 `Tuple[bool, int, Optional[int]]` — the third element is the vote (side).
-The caller in `async_act()` must propagate this vote into `DecisionReceivePayload`
-instead of using `prediction_response.vote`.
+
+**Changes to `async_act()` (decision_receive.py lines 669-764):**
+
+The current code uses `prediction_response.vote` for the payload. After the
+change, `_is_profitable()` returns `strategy_vote` and `async_act()` uses that:
+
+```python
+# Current (line 685):
+#   if prediction_response is not None and prediction_response.vote is not None:
+# New: prediction_response.vote is removed. Check prediction_response is not None.
+# The strategy handles ties via vote=None.
+
+if prediction_response is not None:
+    if not should_be_sold and not self.review_bets_for_selling_mode:
+        is_profitable, bet_amount, strategy_vote = yield from self._is_profitable(
+            prediction_response
+        )
+        decision_received_timestamp = self.synced_timestamp
+        if is_profitable:
+            self.store_bets()
+            bets_hash = self.hash_stored_bets()
+
+# Current (line 743):
+#   vote = prediction_response.vote if prediction_response else None
+# New: use strategy_vote from _is_profitable() return
+vote = strategy_vote if (is_profitable and strategy_vote is not None) else None
+confidence = prediction_response.confidence if prediction_response else None
+
+payload = DecisionReceivePayload(
+    self.context.agent_address,
+    bets_hash,
+    is_profitable,
+    vote,           # now comes from strategy, not prediction_response
+    confidence,
+    bet_amount,
+    next_mock_data_row,
+    policy,
+    decision_received_timestamp,
+    should_be_sold,
+)
+```
+
+Note: selling flow (`should_be_sold`) is not currently supported. When re-enabled,
+it will need its own vote logic using inline `int(p_no > p_yes)`.
 
 #### 3.3.3 Changes to `base.py` — `get_bet_amount()`
 
@@ -1504,7 +1546,7 @@ grep -r "bet_amount_per_threshold" packages/ --include="*.py" | grep -v "test_\|
 # 10. Verify PredictionResponse.vote and .win_probability are removed
 grep -rn "prediction_response\.vote\|\.win_probability" packages/ --include="*.py"
 
-# 10. Coverage (must not drop)
+# 11. Coverage (must not drop)
 # Check tox coverage job output
 ```
 
@@ -1533,14 +1575,47 @@ grep -rn "prediction_response\.vote\|\.win_probability" packages/ --include="*.p
 
 ---
 
-## 7. Risk Considerations
+## 7. API-Call Budget
+
+Per-market request changes in the decision receive cycle:
+
+**Polymarket (CLOB):**
+
+| Call | Before | After |
+|------|--------|-------|
+| Orderbook fetch (YES) | 0 | 1 (new) |
+| Orderbook fetch (NO) | 0 | 1 (new) |
+| Mid-price profitability calc | 1 (in-memory, no API) | 0 (removed) |
+| Strategy execution | 1 (exec) | 1 (exec) |
+
+Net change: +2 API calls per market (both orderbook fetches). The old mid-price
+profitability check was purely in-memory math on already-fetched `outcomeTokenMarginalPrices`,
+not an API call — so nothing is removed on the API side.
+
+**Omen (FPMM):**
+
+| Call | Before | After |
+|------|--------|-------|
+| Pool data / prices | already fetched in market sampling | same |
+| Binary shares calc | 1 (in-memory) | 0 (moved into strategy) |
+| Strategy execution | 1 (exec) | 1 (exec) |
+
+Net change: 0 API calls. FPMM path uses data already available on `Bet` object.
+
+**Execution-time validation:** Out of scope for the sizing algorithm (see
+`plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md` section "Execution-Time Validation").
+If needed, define separately as a pre-placement guard.
+
+---
+
+## 8. Risk Considerations
 
 | Risk | Mitigation |
 |------|------------|
 | Strategy `exec()` sandbox doesn't have `math` | Strategy file imports `math` at top — `exec()` runs the full file which creates the import |
 | Orderbook stale by execution time | Acceptable for sizing; actual execution uses fresh order at placement time |
 | ChatUI/config regression from removed max-bet keys | Keep `default_max_bet_size` and `absolute_max_bet_size` in `strategies_kwargs` until ChatUI is refactored |
-| Operators have old `kelly_criterion_no_conf` in config | Use a migration release that accepts both names and maps them to the new package hash |
+| Operators have old `kelly_criterion_no_conf` in config | Normalize at startup in `SharedState.setup()` and at runtime in `get_bet_amount()` — see section 3.3.3 |
 | Operators have old `bet_kelly_fraction` in config | Config YAML is updated in this PR. Operators must update their overrides. |
 | FPMM Kelly gives different results than old quadratic | Expected — grid search is more correct. Differences should be small for well-balanced pools. Document in PR. |
 | Venue minimum order changes or differs across markets | Pipe `min_order_shares` from market metadata instead of hardcoding 5 shares inside the strategy |
