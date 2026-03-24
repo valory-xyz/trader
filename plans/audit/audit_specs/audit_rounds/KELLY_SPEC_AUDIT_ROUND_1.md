@@ -166,7 +166,7 @@ Status:
 
 ## Open Questions
 
-1. For the selected side, should `expected_profit` use `best_result["label"]` / `best_result["vote"]` to choose the corresponding probability explicitly, rather than a stale shared variable?
+1. Is `expected_profit` explicitly computed with the probability of the selected side (`p_yes` for YES, `p_no = 1 - p_yes` for NO), rather than with a stale shared variable such as `win_probability`?
 2. What is the exact contract of `walk_book_for_shares()` when the orderbook cannot supply `min_order_shares`?
 3. Should `agent_performance_summary_abci` fully migrate to `FIXED_BET`, or intentionally keep both names during the migration window?
 4. Are Polymarket-compatible max-bet values written in native 6-decimal USDC units or normalized to 18 decimals before execution?
@@ -196,40 +196,42 @@ staleness story should be tightened before coding starts.
 
 ---
 
-## Required Technical Checks
+## Technical Check Status
 
 Legend:
 
-- `V` = passed in the latest `#882` spec
-- `X` = not passed / still unresolved in the latest `#882` spec
+- `PASS` = clearly specified in the latest `#882` spec
+- `PARTIAL` = directionally addressed, but still incomplete or ambiguous
+- `OPEN` = not yet resolved in the latest `#882` spec
+- `N/A` = not applicable for this audit round
 
 ### A. Model Checks
 
-- [V] Kelly objective is implemented as specified
-- [V] Omen execution uses FPMM model correctly
-- [X] Polymarket execution walks the book correctly
-- [X] `expected_profit` follows the exact optimizer accounting
-- [V] Venue fee is not double-counted
-- [V] External friction is not omitted
+- [PASS] Kelly objective is implemented as specified
+- [PASS] Omen execution uses FPMM model correctly
+- [PARTIAL] Polymarket execution walks the book correctly
+- [OPEN] `expected_profit` follows the exact optimizer accounting
+- [PASS] Venue fee is not double-counted
+- [PASS] External friction is not omitted
 
 ### B. Pricing-to-Execution Checks
 
-- [X] Sizing price basis is logged or observable
-- [X] Placement price basis is logged or observable
-- [X] Slippage tolerance exists or the absence is explicitly accepted
-- [X] Minimum executable size is validated at execution time if needed
-- [X] There is no silent mismatch between sizing assumptions and placement assumptions
+- [OPEN] Sizing price basis is logged or observable
+- [OPEN] Placement price basis is logged or observable
+- [PARTIAL] Slippage tolerance exists or the absence is explicitly accepted
+- [OPEN] Minimum executable size is validated at execution time if needed
+- [PARTIAL] There is no silent mismatch between sizing assumptions and placement assumptions
 
 ### C. Regression Checks
 
-- [V] Omen path remains functional
-- [V] Polymarket path remains functional
-- [V] ChatUI still loads and validates settings
-- [V] Legacy Kelly naming does not break startup
-- [X] Non-Kelly strategy behavior is unchanged where intended
+- [PASS] Omen path remains functional
+- [PASS] Polymarket path remains functional
+- [PASS] ChatUI still loads and validates settings
+- [PASS] Legacy Kelly naming does not break startup
+- [PARTIAL] Non-Kelly strategy behavior is unchanged where intended
 
 ### D. Performance / Request Checks
 
-- [X] API calls per market/cycle are within expected budget
-- [X] Duplicate requests are eliminated where possible
-- [X] No unnecessary new calls are made only for convenience
+- [OPEN] API calls per market/cycle are within expected budget
+- [OPEN] Duplicate requests are eliminated where possible
+- [OPEN] No unnecessary new calls are made only for convenience
