@@ -577,6 +577,13 @@ def run(**kwargs) -> Dict[str, Any]:
             else:
                 x_native, y_native = tokens_no, tokens_yes
 
+        # If minimum spend exceeds max bet, side is not admissible
+        if b_min_side > max_bet:
+            msg = f"{label}: b_min ({b_min_side:.4f}) > max_bet ({max_bet:.4f})"
+            info.append(msg)
+            all_rejections.append(msg)
+            continue
+
         # Run grid search
         best_spend, best_shares, best_G, G_baseline = optimize_side(
             p=p, W_bet=W_bet, b_min=b_min_side, b_max=max_bet,
