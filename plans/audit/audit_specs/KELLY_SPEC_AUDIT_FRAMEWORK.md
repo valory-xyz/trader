@@ -20,6 +20,7 @@ It should be used to answer:
 The spec audit covers:
 
 - `plans/KELLY_IMPLEMENTATION_PLAN.md`
+- `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md`
 - Reference behavior from `kelly_poly` PR #5
 - Current trader behavior for Omen and Polymarket
 - Parameter/config contracts
@@ -39,6 +40,8 @@ Check whether the design matches PR #5 where intended.
 
 Questions:
 
+- Is `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md` the primary local source of truth for the algorithm?
+- Is the implementation plan consistent with the local algorithm spec?
 - Does the proposed sizing logic match the intended Kelly objective?
 - Are CLOB and FPMM pricing/execution paths explicitly distinct, with no mixed assumptions?
 - If the design deviates from PR #5, is that deviation explicit and justified?
@@ -46,6 +49,7 @@ Questions:
 
 Expected output:
 
+- Clear statement of consistency between local algorithm spec and rollout plan
 - Clear statement of parity vs PR #5
 - Explicit list of intentional deviations
 
@@ -180,14 +184,15 @@ Expected output:
 Every spec audit should produce:
 
 1. A pass/fail statement on model coherence
-2. A list of intentional deviations from PR #5
-3. A complete parameter/unit contract
-4. A venue-by-venue data input map
-5. An API-call budget per market/cycle
-6. A regression risk list
-7. A pricing consistency summary
-8. A slippage/staleness risk summary
-9. A blocking issues list
+2. A consistency check between local algorithm spec and rollout plan
+3. A list of intentional deviations from PR #5
+4. A complete parameter/unit contract
+5. A venue-by-venue data input map
+6. An API-call budget per market/cycle
+7. A regression risk list
+8. A pricing consistency summary
+9. A slippage/staleness risk summary
+10. A blocking issues list
 
 ---
 
@@ -196,6 +201,7 @@ Every spec audit should produce:
 Use this checklist before implementation begins.
 
 - [ ] The design states exactly what is intended to match PR #5.
+- [ ] The local algorithm spec and implementation plan are mutually consistent.
 - [ ] Any deviation from PR #5 is explicit and justified.
 - [ ] Polymarket input flow is fully documented.
 - [ ] Omen input flow is fully documented.

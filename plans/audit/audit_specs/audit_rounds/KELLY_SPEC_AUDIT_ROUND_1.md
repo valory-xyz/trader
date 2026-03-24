@@ -4,6 +4,7 @@
 
 - Document reviewed:
   - `plans/KELLY_IMPLEMENTATION_PLAN.md`
+  - `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md`
 - Reference behavior used:
   - `kelly_poly` PR #5
 - Audit framework used:
@@ -28,6 +29,10 @@ grid-search-based Kelly implementation that:
 - evaluates both YES and NO independently and lets the strategy choose the side
 - compares all candidate bets against a no-trade baseline
 - uses `n_bets` and `max_bet` as the main sizing/risk controls
+
+The local algorithm source of truth for the math and parameter contract is:
+
+- `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md`
 
 ---
 
