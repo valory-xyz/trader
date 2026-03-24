@@ -958,6 +958,48 @@ def __init__(self, **kwargs: Any) -> None:
     self._last_strategy_result: Dict[str, Any] = {}  # NEW
 ```
 
+**Update `_update_with_values_from_chatui()` (`base.py` lines 503-521):**
+
+This method maps ChatUI user config to strategy kwargs. ChatUI stores values in
+**wei** (converted from native units via `int(value * 10**decimals)` in the HTTP
+handler). The strategies receive these wei values directly.
+
+Current mapping:
+```python
+# Kelly: chatui_config.max_bet_size → strategies_kwargs["max_bet"]
+# Threshold: chatui_config.fixed_bet_size → overwrites all bet_amount_per_threshold entries
+```
+
+New mapping:
+```python
+def _update_with_values_from_chatui(self, strategies_kwargs):
+    strategies_kwargs = deepcopy(strategies_kwargs)
+    chatui_config = self.shared_state.chatui_config
+
+    # For Kelly strategy: max_bet_size caps the hard per-trade limit
+    if chatui_config.max_bet_size is not None:
+        strategies_kwargs["max_bet"] = chatui_config.max_bet_size
+
+    # For fixed_bet strategy: fixed_bet_size sets the bet amount
+    if chatui_config.fixed_bet_size is not None:
+        strategies_kwargs["bet_amount"] = chatui_config.fixed_bet_size
+
+    # Keep backward compat: also update bet_amount_per_threshold dict
+    # in case a legacy strategy is still active during migration
+    if chatui_config.fixed_bet_size is not None:
+        if "bet_amount_per_threshold" in strategies_kwargs:
+            for key in strategies_kwargs["bet_amount_per_threshold"]:
+                strategies_kwargs["bet_amount_per_threshold"][key] = (
+                    chatui_config.fixed_bet_size
+                )
+
+    return strategies_kwargs
+```
+
+All values flow in wei. The Kelly strategy converts to native internally via
+`token_decimals`. The fixed_bet strategy operates in wei directly (only does
+`min()` comparisons, no floating point math).
+
 ### 3.4 Update Strategy References
 
 #### 3.4.1 `chatui_abci/prompts.py`
