@@ -162,6 +162,9 @@ where:
 - `b_lower_side = max(min_bet, venue_min_side)`
 - `venue_min_side` is venue-specific
 
+If `b_lower_side > b_max`, the side is not admissible and should be rejected
+before optimization.
+
 If `grid_points < 2`, use `2`.
 
 The grid is:
@@ -217,7 +220,19 @@ This means:
 - sum the actual spend required for those fills
 - use that spend as `venue_min_side`
 
-Equivalently:
+In level notation:
+
+```text
+venue_min_side = Σ_i (a_i * p_i)
+```
+
+where:
+
+- `a_i` is the number of shares filled at ask level `i`
+- `p_i` is the ask price at level `i`
+- `Σ_i a_i = min_order_shares`
+
+Equivalently, in VWAP form:
 
 ```text
 venue_min_side = vwap_min_fill * min_order_shares
@@ -251,10 +266,11 @@ For the selected side:
 Define:
 
 ```text
-alpha = 1 - bet_fee
+alpha = 1 - bet_fee_fraction
 ```
 
-with `bet_fee` represented in normalized native units.
+where `bet_fee_fraction` is the venue fee expressed as a dimensionless fraction
+after any required normalization from on-chain or config representation.
 
 Execution model:
 
@@ -285,6 +301,7 @@ Venue fee is part of venue execution.
 For Omen:
 
 - venue fee is represented by `bet_fee`
+- `bet_fee` must be normalized into `bet_fee_fraction` before computing `alpha`
 - venue fee is incorporated into `shares(b)` via `alpha`
 - it must not be subtracted again downstream
 
@@ -399,7 +416,8 @@ This is distinct from venue minimum execution constraints.
 |---|---|---|---|
 | `tokens_yes` | int | YES pool tokens | native token units |
 | `tokens_no` | int | NO pool tokens | native token units |
-| `bet_fee` | int or float | venue fee input to `alpha` | normalized native units |
+| `bet_fee` | int or float | raw venue fee input before normalization | source-representation |
+| `bet_fee_fraction` | float | venue fee used in `alpha = 1 - bet_fee_fraction` | dimensionless fraction |
 
 ---
 
@@ -432,17 +450,6 @@ The strategy returns no trade if any of the following holds:
 ---
 
 ## Known Approximations and Open Choices
-
-### Accepted Approximation
-
-Polymarket minimum executable spend may be approximated using:
-
-```text
-min_order_shares * best_ask_price
-```
-
-This is not exact on thin books and should be treated as an explicit approximation,
-not as a fully execution-accurate minimum-fill model.
 
 ### Open Parameter-Contract Question
 
