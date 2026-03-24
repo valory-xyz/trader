@@ -463,7 +463,7 @@ def run(**kwargs) -> Dict[str, Any]:
     # --- 1. Validate required fields ---
     missing = [f for f in REQUIRED_FIELDS if kwargs.get(f) is None]
     if missing:
-        return {"bet_amount": 0, "error": [f"Missing required fields: {missing}"]}
+        return {"bet_amount": 0, "vote": None, "error": [f"Missing required fields: {missing}"]}
 
     # --- 2. Extract parameters ---
     bankroll = kwargs["bankroll"]            # int, wei
@@ -557,17 +557,13 @@ def run(**kwargs) -> Dict[str, Any]:
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
-            # b_min for CLOB: cost to buy the venue minimum number of shares.
-            # This must be computed from the walked ask book, not just best ask,
-            # because top-of-book depth may be smaller than min_order_shares.
+            # b_min for CLOB: minimum spend to fill min_order_shares at best ask.
+            # Matches the reference implementation (final_kelly.py):
+            #   b_min = min_order_shares * best_ask
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
+            best_ask_price = float(sorted_asks[0]["price"])
             min_order_shares = float(kwargs.get("min_order_shares", 5.0))
-            min_fill_cost, _ = walk_book_for_shares(sorted_asks, min_order_shares)
-            vwap_min_fill = (
-                min_fill_cost / min_order_shares if min_order_shares > 0 else 0.0
-            )
-            # Use min_bet if it's larger than the minimum executable spend
-            b_min_side = max(min_bet, vwap_min_fill * min_order_shares)
+            b_min_side = max(min_bet, min_order_shares * best_ask_price)
             x_native, y_native = 0.0, 0.0
         else:  # fpmm
             asks = None
@@ -604,6 +600,7 @@ def run(**kwargs) -> Dict[str, Any]:
                     "vote": side["vote"],
                     "label": label,
                     "edge": edge,
+                    "p": p,
                 }
 
     # --- 6. Return result ---
@@ -624,7 +621,7 @@ def run(**kwargs) -> Dict[str, Any]:
     # - `fee_per_trade` is external friction only (mech costs today, gas later),
     #   and must not include venue/market fees again
     expected_profit = (
-        win_probability * best_result["shares"] - best_result["spend"] - fee_per_trade
+        best_result["p"] * best_result["shares"] - best_result["spend"] - fee_per_trade
     )
     expected_profit_wei = int(expected_profit * scale)
 
@@ -829,9 +826,6 @@ position management (`rebet_allowed`).
 strategy_result = getattr(self, '_last_strategy_result', {})
 strategy_vote = strategy_result.get('vote')  # 0=YES, 1=NO
 
-strategy_result = getattr(self, '_last_strategy_result', {})
-strategy_vote = strategy_result.get('vote')  # 0=YES, 1=NO
-
 # Strategy returned no bet — it determined the trade is not profitable.
 if bet_amount <= 0 or strategy_vote is None:
     return False, 0, None
@@ -895,6 +889,8 @@ def get_bet_amount(
 # In the while loop, before executing:
 if next_strategy == STRATEGY_KELLY_CRITERION_NO_CONF:
     next_strategy = STRATEGY_KELLY_CRITERION
+if next_strategy == "bet_amount_per_threshold":
+    next_strategy = "fixed_bet"
 ```
 
 Also update `file_hash_to_strategies` migration logic so the new Kelly package hash can
@@ -997,10 +993,11 @@ Same change — map all strategy names to UI names.
 class TradingStrategy(enum.Enum):
     KELLY_CRITERION = "kelly_criterion"
     KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+    FIXED_BET = "fixed_bet"
+    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"  # backward compat
 ```
 
-Update `_get_ui_trading_strategy()` to map both kelly names to RISKY.
+Update `_get_ui_trading_strategy()` to map all names (same pattern as chatui/trader handlers).
 
 #### 3.4.5 `agent_performance_summary_abci/graph_tooling/polymarket_predictions_helper.py`
 
@@ -1018,18 +1015,14 @@ strategy_map = {
 
 `STRATEGY_KELLY_CRITERION = "kelly_criterion"` — already correct (line 71).
 
-Add a constant for the old name and update `using_kelly` to match both:
+Add a constant for the old name (used in `get_bet_amount` name mapping):
 ```python
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
 STRATEGY_KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat
-
-@property
-def using_kelly(self) -> bool:
-    return self.trading_strategy in (
-        STRATEGY_KELLY_CRITERION,
-        STRATEGY_KELLY_CRITERION_NO_CONF,
-    )
 ```
+
+Remove `using_kelly` property — no per-strategy branching in the caller anymore.
+All strategies have the same contract (`bet_amount` + `vote`).
 
 Remove `bet_kelly_fraction` from any default strategies_kwargs.
 
@@ -1059,6 +1052,8 @@ strategies_kwargs:
   fee_per_trade: 0.01
   grid_points: 500
   absolute_min_bet_size: 10000000000000000
+  # Keep bet_amount_per_threshold for migration — agents with this strategy
+  # configured will have it mapped to fixed_bet at runtime via name normalization.
   bet_amount_per_threshold:
     0.0: 0
     ...
