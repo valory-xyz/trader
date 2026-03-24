@@ -745,12 +745,14 @@ class TestPolymarketLabelOverrides:
 
     def test_missing_round_key_does_not_crash(self) -> None:
         """Override skips gracefully when a round key is absent from rounds_info."""
+        import copy
+
         from packages.valory.skills.decision_maker_abci.rounds_info import (
             load_rounds_info_with_transitions,
         )
 
-        # Build rounds_info with one polymarket key removed
-        truncated = load_rounds_info_with_transitions()
+        # Deep copy to avoid mutating the shared module-level ROUNDS_INFO
+        truncated = copy.deepcopy(load_rounds_info_with_transitions())
         truncated.pop("polymarket_swap_usdc_round", None)
 
         with patch(
