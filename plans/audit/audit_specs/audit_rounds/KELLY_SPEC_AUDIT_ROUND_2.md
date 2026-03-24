@@ -101,8 +101,8 @@ validation is out of scope for the sizing algorithm.
 Impact:
 
 - not a spec contradiction
-- placement-side safeguards still need separate design if runtime slippage
-  protection is required
+- a future dedicated placement/execution spec is needed if runtime slippage
+  protection, stale-quote handling, or execution-time validation are required
 
 Status:
 
@@ -114,8 +114,9 @@ Status:
 
 1. If rebetting is ever re-enabled, should `fixed_bet` compute `expected_profit`,
    or should the caller treat that field as optional for non-Kelly strategies?
-2. Do we want a separate placement-side spec for execution-time validation and
-   slippage protection, or is the current sizing-only scope sufficient for now?
+2. A future dedicated placement/execution spec should define execution-time
+   validation, stale-quote handling, and slippage protection if those guards
+   are needed beyond the current sizing-only scope.
 
 ---
 
