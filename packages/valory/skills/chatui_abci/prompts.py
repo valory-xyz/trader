@@ -76,9 +76,7 @@ class TradingStrategy(enum.Enum):
     """TradingStrategy"""
 
     KELLY_CRITERION = "kelly_criterion"
-    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat alias
     FIXED_BET = "fixed_bet"
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"  # backward compat alias
 
 
 class FieldsThatCanBeRemoved(enum.Enum):

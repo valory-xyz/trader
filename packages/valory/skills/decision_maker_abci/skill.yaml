@@ -292,6 +292,9 @@ models:
       file_hash_to_strategies: {}
       strategies_kwargs:
         floor_balance: 0
+        default_max_bet_size: 800000000000000000
+        absolute_min_bet_size: 10000000000000000
+        absolute_max_bet_size: 2000000000000000000
         n_bets: 1
         min_edge: 0.03
         min_oracle_prob: 0.5

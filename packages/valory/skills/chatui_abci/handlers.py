@@ -323,12 +323,12 @@ class HttpHandler(BaseHttpHandler):
 
         if selected_value in (
             TradingStrategy.KELLY_CRITERION.value,
-            TradingStrategy.KELLY_CRITERION_NO_CONF.value,
+            "kelly_criterion_no_conf",
         ):
             return TradingStrategyUI.RISKY
         if selected_value in (
             TradingStrategy.FIXED_BET.value,
-            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value,
+            "bet_amount_per_threshold",
         ):
             return TradingStrategyUI.BALANCED
         return TradingStrategyUI.RISKY

@@ -69,7 +69,6 @@ DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
-STRATEGY_KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat
 L0_START_FIELD = "l0_start"
 L1_START_FIELD = "l1_start"
 L0_END_FIELD = "l0_end"

@@ -509,18 +509,14 @@ class TestGetUiTradingStrategy:
         result = self.handler._get_ui_trading_strategy(None)
         assert result == TradingStrategyUI.BALANCED
 
-    def test_bet_amount_per_threshold_returns_balanced(self) -> None:
-        """Test BET_AMOUNT_PER_THRESHOLD returns BALANCED."""
-        result = self.handler._get_ui_trading_strategy(
-            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value
-        )
+    def test_legacy_bet_amount_per_threshold_returns_balanced(self) -> None:
+        """Legacy bet_amount_per_threshold must map to BALANCED."""
+        result = self.handler._get_ui_trading_strategy("bet_amount_per_threshold")
         assert result == TradingStrategyUI.BALANCED
 
-    def test_kelly_criterion_returns_risky(self) -> None:
-        """Test KELLY_CRITERION_NO_CONF returns RISKY."""
-        result = self.handler._get_ui_trading_strategy(
-            TradingStrategy.KELLY_CRITERION_NO_CONF.value
-        )
+    def test_legacy_kelly_criterion_no_conf_returns_risky(self) -> None:
+        """Legacy kelly_criterion_no_conf must map to RISKY."""
+        result = self.handler._get_ui_trading_strategy("kelly_criterion_no_conf")
         assert result == TradingStrategyUI.RISKY
 
     def test_unknown_strategy_returns_risky(self) -> None:

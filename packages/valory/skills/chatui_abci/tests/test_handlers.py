@@ -612,20 +612,16 @@ class TestGetUiTradingStrategy:
         result = handler._get_ui_trading_strategy(None)
         assert result == TradingStrategyUI.BALANCED
 
-    def test_bet_amount_per_threshold_returns_balanced(self) -> None:
-        """BET_AMOUNT_PER_THRESHOLD must map to BALANCED."""
+    def test_legacy_bet_amount_per_threshold_returns_balanced(self) -> None:
+        """Legacy bet_amount_per_threshold must map to BALANCED."""
         handler = _make_handler()
-        result = handler._get_ui_trading_strategy(
-            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value
-        )
+        result = handler._get_ui_trading_strategy("bet_amount_per_threshold")
         assert result == TradingStrategyUI.BALANCED
 
-    def test_kelly_criterion_no_conf_returns_risky(self) -> None:
-        """KELLY_CRITERION_NO_CONF must map to RISKY."""
+    def test_legacy_kelly_criterion_no_conf_returns_risky(self) -> None:
+        """Legacy kelly_criterion_no_conf must map to RISKY."""
         handler = _make_handler()
-        result = handler._get_ui_trading_strategy(
-            TradingStrategy.KELLY_CRITERION_NO_CONF.value
-        )
+        result = handler._get_ui_trading_strategy("kelly_criterion_no_conf")
         assert result == TradingStrategyUI.RISKY
 
     def test_unknown_strategy_returns_risky(self) -> None:
@@ -633,6 +629,42 @@ class TestGetUiTradingStrategy:
         handler = _make_handler()
         result = handler._get_ui_trading_strategy("some_unknown_strategy")
         assert result == TradingStrategyUI.RISKY
+
+
+class TestStrategyMigration:
+    """Tests for legacy strategy name migration."""
+
+    def test_legacy_kelly_name_rejected_by_available_strategies(self) -> None:
+        """kelly_criterion_no_conf must not be in AVAILABLE_TRADING_STRATEGIES."""
+        from packages.valory.skills.chatui_abci.handlers import (
+            AVAILABLE_TRADING_STRATEGIES,
+        )
+
+        assert "kelly_criterion_no_conf" not in AVAILABLE_TRADING_STRATEGIES
+
+    def test_legacy_threshold_name_rejected_by_available_strategies(self) -> None:
+        """bet_amount_per_threshold must not be in AVAILABLE_TRADING_STRATEGIES."""
+        from packages.valory.skills.chatui_abci.handlers import (
+            AVAILABLE_TRADING_STRATEGIES,
+        )
+
+        assert "bet_amount_per_threshold" not in AVAILABLE_TRADING_STRATEGIES
+
+    def test_new_kelly_in_available_strategies(self) -> None:
+        """kelly_criterion must be in AVAILABLE_TRADING_STRATEGIES."""
+        from packages.valory.skills.chatui_abci.handlers import (
+            AVAILABLE_TRADING_STRATEGIES,
+        )
+
+        assert "kelly_criterion" in AVAILABLE_TRADING_STRATEGIES
+
+    def test_new_fixed_bet_in_available_strategies(self) -> None:
+        """fixed_bet must be in AVAILABLE_TRADING_STRATEGIES."""
+        from packages.valory.skills.chatui_abci.handlers import (
+            AVAILABLE_TRADING_STRATEGIES,
+        )
+
+        assert "fixed_bet" in AVAILABLE_TRADING_STRATEGIES
 
 
 class TestGetAvailableTools:
@@ -866,9 +898,9 @@ class TestHandleChatuiLlmResponse:
     def test_valid_config_update_sends_ok_with_trading_type(self) -> None:
         """A valid config update must include TRADING_TYPE_FIELD in response."""
         handler = self._make_response_handler(
-            trading_strategy=TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value,
+            trading_strategy=TradingStrategy.FIXED_BET.value,
         )
-        strategy = TradingStrategy.KELLY_CRITERION_NO_CONF.value
+        strategy = TradingStrategy.KELLY_CRITERION.value
         srr_msg = self._make_srr_msg(
             {
                 "response": json.dumps(
@@ -890,9 +922,9 @@ class TestHandleChatuiLlmResponse:
     def test_strategy_change_includes_previous_trading_type(self) -> None:
         """Changing strategy must include PREVIOUS_TRADING_TYPE_FIELD in response."""
         handler = self._make_response_handler(
-            trading_strategy=TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value,
+            trading_strategy=TradingStrategy.FIXED_BET.value,
         )
-        strategy = TradingStrategy.KELLY_CRITERION_NO_CONF.value
+        strategy = TradingStrategy.KELLY_CRITERION.value
         srr_msg = self._make_srr_msg(
             {
                 "response": json.dumps(
@@ -916,7 +948,7 @@ class TestHandleChatuiLlmResponse:
 
     def test_same_strategy_no_previous_trading_type(self) -> None:
         """When strategy does not change, PREVIOUS_TRADING_TYPE_FIELD must not appear."""
-        current_strategy = TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value
+        current_strategy = TradingStrategy.FIXED_BET.value
         handler = self._make_response_handler(
             trading_strategy=current_strategy,
         )
