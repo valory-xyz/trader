@@ -22,7 +22,7 @@ The spec audit covers:
 - `plans/KELLY_IMPLEMENTATION_PLAN.md`
 - `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md`
 - Reference behavior from `kelly_poly` PR #5
-- Current trader behavior for Omen and Polymarket
+- Current trader behavior for Polymarket (CLOB) and Omen (FPMM)
 - Parameter/config contracts
 - Data sources and API-call footprint
 - Pricing and profitability logic at the design level
@@ -43,9 +43,9 @@ Questions:
 - Is `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md` the primary local source of truth for the algorithm?
 - Is the implementation plan consistent with the local algorithm spec?
 - Does the proposed sizing logic match the intended Kelly objective?
-- Are CLOB and FPMM pricing/execution paths explicitly distinct, with no mixed assumptions?
+- Are Polymarket (CLOB) and Omen (FPMM) pricing/execution paths explicitly distinct, with no mixed assumptions?
 - If the design deviates from PR #5, is that deviation explicit and justified?
-- Are Omen and Polymarket both described completely in the data flow?
+- Are Polymarket (CLOB) and Omen (FPMM) both described completely in the data flow?
 
 Expected output:
 
