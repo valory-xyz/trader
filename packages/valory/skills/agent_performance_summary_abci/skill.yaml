@@ -15,8 +15,8 @@ fingerprint:
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
-  graph_tooling/polymarket_predictions_helper.py: bafybeifkswljyw63zye26caqyntjhomabf4oflglfaw6tsgeje37lktd74
-  graph_tooling/predictions_helper.py: bafybeibswqdjugeael7rnzi3luu57lgw7mzjbe46kqivh6fqdql2fr7rey
+  graph_tooling/polymarket_predictions_helper.py: bafybeibpvmois6vhxofqlrt7uy3tohqgvu5dg2madrm7ly6t6wrkvmlwym
+  graph_tooling/predictions_helper.py: bafybeigcvh6a6k7vhjof55rt5golzztyouu3aj5yggq4nd22nl6oafp4zi
   graph_tooling/queries.py: bafybeibzkjfwwjx6rvjjcnygcwcw47g5dmpgmifxwk6l4rdpqxikgzkbmu
   graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
   handlers.py: bafybeibm7dqkbrf5b5zeu6oxdltpi63ommxu3v2ft64bgyt6uy6uzzprzy
@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeigzfvbwdm7b3y7s6ft7rwdqmzrafltz7imvczcptfgwah7lfsyupe
 connections:
-- valory/polymarket_client:0.1.0:bafybeia6pz7glnlnvpaju4wwjp7ohsovc6vosymttgy6rghg4iqqoakz5y
+- valory/polymarket_client:0.1.0:bafybeifj4tgu5sexcvakdrohffvmsfjtyxywmza4t3ksqzhle5tt2opkxi
 handlers:
   abci:
     args: {}
