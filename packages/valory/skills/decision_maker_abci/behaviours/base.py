@@ -126,6 +126,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         self.sell_amount: int = 0
         self.buy_amount: int = 0
+        self._last_strategy_result: Dict[str, Any] = {}
 
     @property
     def market_maker_contract_address(self) -> str:
@@ -507,16 +508,22 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         strategies_kwargs = deepcopy(strategies_kwargs)
         chatui_config = self.shared_state.chatui_config
 
-        # For kelly criterion strategy
+        # For kelly criterion strategy: max_bet_size caps the hard per-trade limit
         if chatui_config.max_bet_size is not None:
             strategies_kwargs["max_bet"] = chatui_config.max_bet_size
 
-        # For bet amount per threshold strategy
+        # For fixed_bet strategy: fixed_bet_size sets the bet amount
         if chatui_config.fixed_bet_size is not None:
-            for key in strategies_kwargs["bet_amount_per_threshold"]:
-                strategies_kwargs["bet_amount_per_threshold"][
-                    key
-                ] = chatui_config.fixed_bet_size
+            strategies_kwargs["bet_amount"] = chatui_config.fixed_bet_size
+
+        # Keep backward compat: also update bet_amount_per_threshold dict
+        # in case a legacy strategy is still active during migration
+        if chatui_config.fixed_bet_size is not None:
+            if "bet_amount_per_threshold" in strategies_kwargs:
+                for key in strategies_kwargs["bet_amount_per_threshold"]:
+                    strategies_kwargs["bet_amount_per_threshold"][
+                        key
+                    ] = chatui_config.fixed_bet_size
 
         return strategies_kwargs
 
@@ -532,15 +539,19 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             else 18
         )
 
-    def get_bet_amount(
+    def get_bet_amount(  # pylint: disable=too-many-arguments,too-many-locals
         self,
-        win_probability: float,
+        p_yes: float,
         confidence: float,
-        selected_type_tokens_in_pool: int,
-        other_tokens_in_pool: int,
+        outcome_token_amounts: List[int],
         bet_fee: int,
-        weighted_accuracy: float,
         collateral_token: str,
+        market_type: str = "fpmm",
+        price_yes: float = 0.0,
+        price_no: float = 0.0,
+        orderbook_asks_yes: Optional[List[Dict[str, str]]] = None,
+        orderbook_asks_no: Optional[List[Dict[str, str]]] = None,
+        min_order_shares: float = 0.0,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -570,15 +581,21 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 {
                     "trading_strategy": next_strategy,
                     "bankroll": bankroll,
-                    "win_probability": win_probability,
+                    "p_yes": p_yes,
                     "confidence": confidence,
-                    "selected_type_tokens_in_pool": selected_type_tokens_in_pool,
-                    "other_tokens_in_pool": other_tokens_in_pool,
+                    "tokens_yes": outcome_token_amounts[0] if outcome_token_amounts else 0,
+                    "tokens_no": outcome_token_amounts[1] if len(outcome_token_amounts) > 1 else 0,
                     "bet_fee": bet_fee,
-                    "weighted_accuracy": weighted_accuracy,
+                    "market_type": market_type,
+                    "price_yes": price_yes,
+                    "price_no": price_no,
+                    "orderbook_asks_yes": orderbook_asks_yes,
+                    "orderbook_asks_no": orderbook_asks_no,
+                    "min_order_shares": min_order_shares,
                 }
             )
             results = self.execute_strategy(**kwargs)
+            self._last_strategy_result = results
             for level in SUPPORTED_STRATEGY_LOG_LEVELS:
                 logger = getattr(self.context.logger, level, None)
                 if logger is not None:
