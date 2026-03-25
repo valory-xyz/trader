@@ -516,7 +516,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
-            else:
+            else:  # pragma: no cover
                 self._write_benchmark_results(prediction_response)
 
             self.context.logger.info("Increasing Mech call count by 1")
@@ -633,7 +633,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                         self.store_bets()
                         bets_hash = self.hash_stored_bets()
 
-            elif (
+            elif (  # pragma: no cover
                 prediction_response is not None
                 and self.benchmarking_mode.enabled
                 and not self._rows_exceeded

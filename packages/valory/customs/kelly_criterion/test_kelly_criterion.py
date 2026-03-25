@@ -193,6 +193,12 @@ class TestFpmmExecution:
         assert cost == 0.0
         assert shares == 0.0
 
+    def test_negative_denominator(self) -> None:
+        """Negative alpha making denominator <= 0 returns zero."""
+        cost, shares = fpmm_execution(1.0, 100.0, 1.0, alpha=-2.0)
+        assert cost == 0.0
+        assert shares == 0.0
+
     def test_no_fee(self) -> None:
         """Alpha=1.0 means no fee."""
         b, x, y = 2.0, 50.0, 50.0
@@ -482,6 +488,20 @@ class TestRunClob:
         result = run(**kwargs)
         assert result["bet_amount"] == 0
 
+    def test_clob_zero_price_level_in_venue_min_calc(self) -> None:
+        """Zero-price level skipped during venue min spend calculation."""
+        kwargs = {
+            **CLOB_KWARGS,
+            "orderbook_asks_yes": [
+                {"price": "0", "size": "100"},  # skipped
+                {"price": "0.55", "size": "100"},
+                {"price": "0.57", "size": "100"},
+            ],
+        }
+        result = run(**kwargs)
+        # Should still work — zero-price level is skipped
+        assert result["bet_amount"] > 0
+
     def test_return_format(self) -> None:
         """Result dict has all required keys."""
         result = run(**CLOB_KWARGS)
@@ -512,6 +532,20 @@ class TestRunFpmm:
         """50/50 pool with p_yes edge should bet YES."""
         result = run(**FPMM_KWARGS)
         assert result["vote"] == 0
+
+    def test_both_sides_evaluated_fpmm(self) -> None:
+        """With min_oracle_prob=0, both sides reach the FPMM edge filter."""
+        result = run(
+            **{
+                **FPMM_KWARGS,
+                "p_yes": 0.55,
+                "min_oracle_prob": 0.0,
+                "min_edge": 0.0,
+            }
+        )
+        info_text = " ".join(result.get("info", []))
+        assert "yes:" in info_text
+        assert "no:" in info_text
 
     def test_usdc_decimals(self) -> None:
         """FPMM with token_decimals=6 (hypothetical) uses USDC scale."""

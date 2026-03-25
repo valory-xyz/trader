@@ -923,6 +923,73 @@ class TestIsProfitable:
         assert is_profitable is True
         assert bet_amount == 500
 
+    def test_clob_with_orderbook_data(self) -> None:
+        """CLOB path with successful orderbook data populates asks."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0, is_polymarket=True
+        )
+        ob_data = {"asks": [{"price": "0.5", "size": "10"}], "bids": []}
+
+        # Override _fetch_orderbook to return actual data
+        patch.stopall()
+        patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ).start().return_value = MagicMock(enabled=False)
+        patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ).start().return_value = bet
+        patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ).start().return_value = MagicMock(is_running_on_polymarket=True)
+        patch.object(behaviour, "convert_to_native", return_value=0.001).start()
+        patch.object(behaviour, "get_token_name", return_value="USDC").start()
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen(ob_data),
+        ).start()
+
+        def mock_get_bet_amount(*_args: Any, **_kwargs: Any) -> Generator:
+            yield
+            return 500  # type: ignore[return-value]
+
+        patch.object(
+            behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+        ).start()
+        behaviour._last_strategy_result = {
+            "bet_amount": 500, "vote": 0, "expected_profit": 100,
+        }
+
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is True
+
+    def test_clob_no_outcome_token_ids(self) -> None:
+        """CLOB path with outcome_token_ids=None skips orderbook fetch."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0, is_polymarket=True
+        )
+        bet.outcome_token_ids = None
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is True
+
+    def test_clob_empty_token_ids(self) -> None:
+        """CLOB path with empty token IDs skips individual fetches."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0, is_polymarket=True
+        )
+        bet.outcome_token_ids = {"Yes": "", "No": ""}
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is True
+
     def test_fpmm_no_orderbook_fetch(self) -> None:
         """FPMM market type does NOT call _fetch_orderbook."""
         behaviour, pred, _ = self._setup_behaviour(
