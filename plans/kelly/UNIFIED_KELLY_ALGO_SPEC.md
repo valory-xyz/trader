@@ -169,15 +169,16 @@ Two-stage edge check, matching `final_kelly.py`:
 
 **FPMM (Omen):**
 
-Single-stage edge check using market price:
+Single-stage edge check using market price for the evaluated side
+(`price_yes` when evaluating YES, `price_no` when evaluating NO):
 
 ```text
-edge = p - market_price
+edge = p - market_price_side
 edge < min_edge  →  reject side
 ```
 
-For FPMM there is no orderbook, so `market_price` (from `outcomeTokenMarginalPrices`)
-is the only available price reference for the filter.
+For FPMM there is no orderbook, so the marginal price is the only available
+price reference for the filter.
 
 ---
 
