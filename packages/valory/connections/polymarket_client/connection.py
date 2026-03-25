@@ -1282,7 +1282,15 @@ class PolymarketClientConnection(BaseSyncConnection):
                 {"price": str(b.price), "size": str(b.size)}
                 for b in (order_book.bids or [])
             ]
-            return {"asks": asks, "bids": bids}, None
+            return {
+                "asks": asks,
+                "bids": bids,
+                "min_order_size": (
+                    str(order_book.min_order_size)
+                    if order_book.min_order_size
+                    else None
+                ),
+            }, None
         except Exception as e:
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)

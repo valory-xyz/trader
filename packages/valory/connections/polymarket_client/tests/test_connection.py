@@ -2072,6 +2072,7 @@ class TestFetchOrderBook:
         order_book = MagicMock()
         order_book.asks = [ask]
         order_book.bids = [bid]
+        order_book.min_order_size = "5"
         conn.client.get_order_book.return_value = order_book
 
         result, error = conn._fetch_order_book("token_123")
@@ -2081,6 +2082,7 @@ class TestFetchOrderBook:
         assert result == {
             "asks": [{"price": "0.55", "size": "100"}],
             "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
         }
 
     def test_empty_book(self) -> None:
@@ -2089,12 +2091,27 @@ class TestFetchOrderBook:
         order_book = MagicMock()
         order_book.asks = []
         order_book.bids = []
+        order_book.min_order_size = "5"
         conn.client.get_order_book.return_value = order_book
 
         result, error = conn._fetch_order_book("token_123")
 
         assert error is None
-        assert result == {"asks": [], "bids": []}
+        assert result == {"asks": [], "bids": [], "min_order_size": "5"}
+
+    def test_none_min_order_size(self) -> None:
+        """None min_order_size returns None."""
+        conn = _make_connection()
+        order_book = MagicMock()
+        order_book.asks = []
+        order_book.bids = []
+        order_book.min_order_size = None
+        conn.client.get_order_book.return_value = order_book
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result["min_order_size"] is None
 
     def test_none_asks_bids(self) -> None:
         """None asks/bids are treated as empty lists."""
@@ -2102,12 +2119,13 @@ class TestFetchOrderBook:
         order_book = MagicMock()
         order_book.asks = None
         order_book.bids = None
+        order_book.min_order_size = None
         conn.client.get_order_book.return_value = order_book
 
         result, error = conn._fetch_order_book("token_123")
 
         assert error is None
-        assert result == {"asks": [], "bids": []}
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
 
     def test_client_exception(self) -> None:
         """Client exception returns None with error message."""

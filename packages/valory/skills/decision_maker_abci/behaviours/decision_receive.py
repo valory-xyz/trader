@@ -460,12 +460,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     ob_yes = yield from self._fetch_orderbook(yes_token_id)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
+                        if ob_yes.get("min_order_size") is not None:
+                            min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
                     ob_no = yield from self._fetch_orderbook(no_token_id)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
-
-            min_order_shares = getattr(bet, "min_order_shares", None) or 5.0
+                        if min_order_shares == 0.0 and ob_no.get("min_order_size") is not None:
+                            min_order_shares = float(ob_no["min_order_size"])
 
         bet_amount = yield from self.get_bet_amount(
             prediction_response.p_yes,
