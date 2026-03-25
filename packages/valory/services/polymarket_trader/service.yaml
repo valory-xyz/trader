@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiag77yi77apn23n4e42cfroejdbe3mylsmnyn7s5kixkhwxnqplle
+agent: valory/trader:0.1.0:bafybeih2z2qq6xzxpzbvg6y7tvfkyd3atsteqom37jrrxqp2thaxxuqv64
 number_of_agents: 1
 deployment:
   agent:
@@ -126,7 +126,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":1000000,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":5000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000,"grid_points":500}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":1000000,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":5000000,"n_bets":5,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000,"grid_points":500}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":25,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
