@@ -360,6 +360,12 @@ For Polymarket:
 
 This term appears directly in the Kelly objective and in `expected_profit`.
 
+Note: `fee_per_trade` only affects the objective for bets that are evaluated.
+If the strategy returns no-trade, the mech cost was still incurred (the mech
+call happens before the strategy runs) but it is a sunk cost — the sizing
+algorithm does not model it. The mech request is made per market regardless
+of whether a trade is placed.
+
 ### Rule
 
 Venue fee and external friction must never be counted twice.
