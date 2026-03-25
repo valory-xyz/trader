@@ -121,6 +121,13 @@ Plan called for mapping `kelly_criterion_no_conf` → `kelly_criterion` in
 `file_hash_to_strategies` has no env override — old names can never enter
 the runtime path. YAMLs we control always have the correct names.
 
+Instead, legacy names were removed from the ChatUI `TradingStrategy` enum
+so the HTTP API rejects them. The auto-migration in `_ensure_chatui_store()`
+resets old names in `chatui_param_store.json` on startup when the YAML
+default changes. Handler display mappings keep old name string literals
+for historical data. The `predictions_helper.py` enum (separate from
+chatui) keeps old names for subgraph historical data.
+
 ### Deferred: PredictionResponse.vote/.win_probability removal (plan 3.8)
 
 Plan called for deleting these properties and updating all consumers.
@@ -153,11 +160,16 @@ handles minimum viable profit internally via `min_edge` and log-utility.
 ## Completed
 
 - [x] `autonomy packages lock` — hashes updated
-- [x] Full test suite — 3286 passed
+- [x] Full test suite — 3291 passed
 - [x] Linting — black, isort, flake8, mypy, pylint, darglint all pass
 - [x] `tox.ini` updated for new strategy test paths
 - [x] `_calc_binary_shares` and `_get_bet_sample_info` removed (dead code)
 - [x] PR #886 opened targeting parent branch (PR #882)
+- [x] `fee_per_trade` changed to wei for consistency with all other kwargs
+- [x] Test files flattened (no subdirectory) to avoid IPFS handler bug
+- [x] Coverage improved to 99.98% (pragmas on unsupported benchmarking paths)
+- [x] Audit finding 1 fixed: added missing ChatUI compat keys to base skill YAMLs
+- [x] Audit finding 2 fixed: removed legacy names from ChatUI enum, added migration tests
 
 ## Remaining Work
 
@@ -165,3 +177,5 @@ handles minimum viable profit internally via `min_edge` and log-utility.
   used by selling flow and some test infrastructure)
 - `_compute_new_tokens_distribution` kept — still used by
   `_calculate_new_liquidity` (benchmarking path)
+- `min_order_shares` not yet venue-provided (audit finding 3 — non-blocking)
+- `rebet_allowed` not called (audit finding 4 — intentional, not currently supported)
