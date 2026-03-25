@@ -50,7 +50,9 @@ Let:
 - `W = W_total - floor_balance`
 - `max_bet` be the hard per-trade cap
 - `n_bets` be the bankroll-depth parameter
-- `W_bet = min(n_bets * max_bet, W)`
+- `W_bet = min(n_bets * max_bet, W)` — the per-bet bankroll used inside the
+  log-utility objective. This is the wealth base against which gains and losses
+  are measured. It is not the actual wallet balance or the bet size cap.
 
 The strategy evaluates one side at a time. For a given side:
 
