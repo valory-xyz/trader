@@ -54,14 +54,14 @@ class TestUpdatedAgentConfig:
     def test_with_values(self) -> None:
         """Test instantiation with all fields populated."""
         config = UpdatedAgentConfig(
-            trading_strategy=TradingStrategy.KELLY_CRITERION_NO_CONF,
+            trading_strategy=TradingStrategy.KELLY_CRITERION,
             allowed_tools=["tool-a", "tool-b"],
             fixed_bet_size=1.0,
             max_bet_size=2.0,
             removed_config_fields=[FieldsThatCanBeRemoved.ALLOWED_TOOLS],
             behavior="test behavior",
         )
-        assert config.trading_strategy == TradingStrategy.KELLY_CRITERION_NO_CONF
+        assert config.trading_strategy == TradingStrategy.KELLY_CRITERION
         assert config.allowed_tools == ["tool-a", "tool-b"]
         assert config.fixed_bet_size == 1.0
         assert config.max_bet_size == 2.0
@@ -71,7 +71,7 @@ class TestUpdatedAgentConfig:
     def test_with_bet_amount_per_threshold(self) -> None:
         """Test instantiation with the other trading strategy."""
         config = UpdatedAgentConfig(
-            trading_strategy=TradingStrategy.BET_AMOUNT_PER_THRESHOLD,
+            trading_strategy=TradingStrategy.FIXED_BET,
             allowed_tools=None,
             fixed_bet_size=5.0,
             max_bet_size=None,
@@ -81,7 +81,7 @@ class TestUpdatedAgentConfig:
             ],
             behavior=None,
         )
-        assert config.trading_strategy == TradingStrategy.BET_AMOUNT_PER_THRESHOLD
+        assert config.trading_strategy == TradingStrategy.FIXED_BET
         assert config.fixed_bet_size == 5.0
 
 

@@ -33,8 +33,8 @@ CHATUI_PROMPT = """You are an expert assistant tasked with helping users update 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
     -- Available strategies:
-        --- "kelly_criterion_no_conf": Uses the Kelly Criterion formula, a well-known method in finance to optimize profits while maximizing the long-term return on an investment. The AI's predicted probability and market parameters are used to compute the bet amount, which is then adjusted based on the tool's weighted accuracy (higher accuracy increases trust in the suggested amount). This is also known as the risky strategy.
-        --- "bet_amount_per_threshold": A static betting strategy using a mapping from confidence thresholds to fixed bet amounts. This is also known as the balanced strategy. But in this implemented version, the user sets a fixed bet size that applies to all confidence thresholds, overriding the threshold-based amounts.
+        --- "kelly_criterion": Uses the Kelly Criterion formula, a well-known method in finance to optimize the long-term return on an investment. The AI's predicted probability and real market conditions are used to compute the optimal bet amount and which side to bet on. This is also known as the risky strategy.
+        --- "fixed_bet": A simple fixed-amount betting strategy. The user sets a fixed bet size that applies to all trades. This is also known as the balanced strategy.
     -- Can not be deselected, but can be changed to another strategy if the user says to change it.
 - Allowed tools: {current_allowed_tools}
     -- Available tools: {available_tools}
@@ -44,14 +44,14 @@ Configuration details:
     -- Each tool in the list must be one of the available tools listed above.
     -- The user can add tools to or remove individual tools from the current allowed list, or replace it entirely.
 - Fixed bet size: "{current_fixed_bet_size}"
-    -- Used with the "bet_amount_per_threshold" (Balanced) strategy only.
+    -- Used with the "fixed_bet" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
     -- Value is in {units} units.
     -- Cannot be less than {absolute_min_bet_size} {units}.
     -- Cannot exceed {absolute_max_bet_size} {units}.
     -- Can be deselected to fall back to the default value if the user says to remove it.
 - Max bet size: "{current_max_bet_size}"
-    -- Used with the "kelly_criterion_no_conf" (Risky) strategy only.
+    -- Used with the "kelly_criterion" (Risky) strategy only.
     -- When set, this caps the maximum bet amount calculated by the Kelly Criterion formula.
     -- Value is in {units} units.
     -- Cannot be less than {absolute_min_bet_size} {units}.
@@ -64,7 +64,7 @@ Carefully read the user's prompt below and decide what configuration changes, if
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Use these tags to make your explanation clearer and easier to read.
 
-When summarizing your actions, include a field called 'behavior' that describes the agent's behavior in one sentence. This description should be easy for a non-technical user to understand. For example: 'A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.' if using bet_amount_per_threshold or 'Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.' if using kelly_criterion_no_conf.
+When summarizing your actions, include a field called 'behavior' that describes the agent's behavior in one sentence. This description should be easy for a non-technical user to understand. For example: 'A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.' if using fixed_bet or 'Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.' if using kelly_criterion.
 
 Always refer to actions as a 'trade' when communicating with users; never describe them as a bet.
 
@@ -75,8 +75,8 @@ User prompt: "{user_prompt}"
 class TradingStrategy(enum.Enum):
     """TradingStrategy"""
 
-    KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
-    BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+    KELLY_CRITERION = "kelly_criterion"
+    FIXED_BET = "fixed_bet"
 
 
 class FieldsThatCanBeRemoved(enum.Enum):

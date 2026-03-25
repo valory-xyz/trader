@@ -1,0 +1,15 @@
+name: fixed_bet
+author: valory
+version: 0.1.0
+type: custom
+description: Fixed bet sizing strategy.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeibknek5lfb43yiu73qgdlxj7gulb57g7xczfnyhtnqxjp3wn45sje
+  fixed_bet.py: bafybeiazrkdq4nhbhr6dogngpaxdnksgio37ylwpdoqw44dflywavo6bne
+  test_fixed_bet.py: bafybeiczxnvznjtwv65nvrjtxy2nnxqiu7lupmdzy4jdrarxyp5yajsudu
+fingerprint_ignore_patterns: []
+entry_point: fixed_bet.py
+callable: run
+dependencies: {}

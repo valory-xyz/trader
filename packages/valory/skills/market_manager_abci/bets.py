@@ -172,6 +172,7 @@ class Bet:
     condition_id: Optional[str] = None
     category: Optional[str] = None
     strategy: Optional[str] = None
+    strategy_vote: Optional[int] = None
     market_spread: Optional[float] = None
 
     def __post_init__(self) -> None:
@@ -345,7 +346,11 @@ class Bet:
 
     def update_investments(self, amount: int) -> bool:
         """Get the investments for the current vote type."""
-        vote = self.prediction_response.vote
+        vote = (
+            self.strategy_vote
+            if self.strategy_vote is not None
+            else self.prediction_response.vote
+        )
         if vote is None:
             return False
 
@@ -382,8 +387,17 @@ class Bet:
         prediction_response: PredictionResponse,
         liquidity: int,
         potential_net_profit: int,
+        new_vote: Optional[int] = None,
     ) -> bool:
-        """Check if a rebet is allowed based on the previous bet's information."""
+        """Check if a rebet is allowed based on the previous bet's information.
+
+        :param prediction_response: the previous prediction response.
+        :param liquidity: the current position liquidity.
+        :param potential_net_profit: the current potential net profit.
+        :param new_vote: the strategy's chosen side (0=YES, 1=NO).
+            Falls back to prediction_response.vote if not provided.
+        :return: whether rebetting is allowed.
+        """
         if self.n_bets == 0:
             # it's the first time betting, always allow it
             return True
@@ -392,7 +406,13 @@ class Bet:
             self.prediction_response.win_probability
             >= prediction_response.win_probability
         )
-        if self.prediction_response.vote == prediction_response.vote:
+        previous_vote = (
+            self.strategy_vote
+            if self.strategy_vote is not None
+            else self.prediction_response.vote
+        )
+        current_vote = new_vote if new_vote is not None else prediction_response.vote
+        if current_vote == previous_vote:
             higher_liquidity = self.position_liquidity >= liquidity
             return more_confident and higher_liquidity
         else:

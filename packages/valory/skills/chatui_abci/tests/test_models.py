@@ -41,7 +41,7 @@ from packages.valory.skills.chatui_abci.models import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-DEFAULT_TRADING_STRATEGY = "kelly_criterion_no_conf"
+DEFAULT_TRADING_STRATEGY = "kelly_criterion"
 DEFAULT_MAX_BET_SIZE = 2_000_000_000_000_000_000
 DEFAULT_MIN_BET_SIZE = 10_000_000_000_000_000
 
@@ -178,6 +178,57 @@ class TestAllowedToolsMigration:
 
         assert state._chatui_config is not None
         assert state._chatui_config.allowed_tools is None
+
+
+# ---------------------------------------------------------------------------
+# Strategy name migration tests
+# ---------------------------------------------------------------------------
+
+
+class TestStrategyNameMigration:
+    """Tests for legacy strategy name auto-migration on startup."""
+
+    def test_old_kelly_name_migrated_to_new(self) -> None:
+        """Store with kelly_criterion_no_conf resets to YAML default (kelly_criterion)."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "kelly_criterion_no_conf",
+                "initial_trading_strategy": "kelly_criterion_no_conf",
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        # YAML says kelly_criterion, store had kelly_criterion_no_conf
+        # Mismatch triggers reset
+        assert state._chatui_config.trading_strategy == DEFAULT_TRADING_STRATEGY
+        assert state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
+
+    def test_old_threshold_name_migrated_to_new(self) -> None:
+        """Store with bet_amount_per_threshold resets to YAML default."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "bet_amount_per_threshold",
+                "initial_trading_strategy": "bet_amount_per_threshold",
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.trading_strategy == DEFAULT_TRADING_STRATEGY
+
+    def test_new_name_no_migration(self) -> None:
+        """Store with kelly_criterion stays as-is (no mismatch)."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "kelly_criterion",
+                "initial_trading_strategy": "kelly_criterion",
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.trading_strategy == "kelly_criterion"
 
 
 # ---------------------------------------------------------------------------

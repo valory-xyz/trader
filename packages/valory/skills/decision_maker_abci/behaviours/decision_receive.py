@@ -26,9 +26,7 @@ from datetime import datetime
 from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    remove_fraction_wei,
-)
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -43,7 +41,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 )
 from packages.valory.skills.market_manager_abci.bets import (
     BINARY_N_SLOTS,
-    Bet,
     CONFIDENCE_FIELD,
     INFO_UTILITY_FIELD,
     P_NO_FIELD,
@@ -55,11 +52,8 @@ from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
 )
 
-SLIPPAGE = 1.05
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
-
-DEFAULT_MECH_COSTS = 0.01
 
 
 class DecisionReceiveBehaviour(StorageManagerBehaviour):
@@ -225,16 +219,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
 
-    @staticmethod
-    def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
-        """Get the bet sample information."""
-        token_amounts = bet.outcomeTokenAmounts
-        selected_type_tokens_in_pool = token_amounts[vote]
-        opposite_vote = bet.opposite_vote(vote)
-        other_tokens_in_pool = token_amounts[opposite_vote]
-
-        return selected_type_tokens_in_pool, other_tokens_in_pool
-
     def _compute_new_tokens_distribution(
         self,
         token_amounts: List[int],
@@ -300,27 +284,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             num_shares,
             available_shares,
         )
-
-    def _calc_binary_shares(
-        self, bet: Bet, net_bet_amount: int, vote: int
-    ) -> Tuple[int, int]:
-        """Calculate the claimed shares. This calculation only works for binary markets."""
-        # calculate the pool's k (x*y=k)
-        token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
-
-        # calculate the number of the traded tokens
-        prices = bet.outcomeTokenMarginalPrices
-        self.context.logger.info(f"Prices: {prices}")
-
-        if prices is None:
-            return 0, 0
-
-        _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
-            token_amounts.copy(), prices, net_bet_amount, vote
-        )
-
-        return num_shares, available_shares
 
     def _update_market_liquidity(self) -> None:
         """Update the current market's liquidity information."""
@@ -416,20 +379,32 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         return liquidity_info
 
     def rebet_allowed(
-        self, prediction_response: PredictionResponse, potential_net_profit: int
+        self,
+        prediction_response: PredictionResponse,
+        potential_net_profit: int,
+        strategy_vote: int,
     ) -> bool:
-        """Whether a rebet is allowed or not."""
+        """Whether a rebet is allowed or not.
+
+        :param prediction_response: the current mech prediction response.
+        :param potential_net_profit: the expected profit from the strategy.
+        :param strategy_vote: the strategy's chosen side (0=YES, 1=NO).
+        :return: whether rebetting is allowed.
+        """
         # WARNING: Every time you call self.sampled_bet a reset in self.bets is done so any changes there will be lost
         bet = self.sampled_bet
         previous_response = deepcopy(bet.prediction_response)
         previous_liquidity = bet.position_liquidity
         previous_net_profit = bet.potential_net_profit
         bet.prediction_response = prediction_response
-        vote = bet.prediction_response.vote
-        bet.position_liquidity = bet.outcomeTokenAmounts[vote] if vote else 0
+        bet.strategy_vote = strategy_vote
+        bet.position_liquidity = bet.outcomeTokenAmounts[strategy_vote]
         bet.potential_net_profit = potential_net_profit
         rebet_allowed = bet.rebet_allowed(
-            previous_response, previous_liquidity, previous_net_profit
+            previous_response,
+            previous_liquidity,
+            previous_net_profit,
+            new_vote=strategy_vote,
         )
         if not rebet_allowed:
             # reset the in-memory bets so that the updates of the sampled bet above are reverted
@@ -437,13 +412,39 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info("Conditions for rebetting are not met!")
         return rebet_allowed
 
+    def _fetch_orderbook(
+        self, token_id: str
+    ) -> Generator[None, None, Optional[Dict[str, Any]]]:
+        """Fetch the orderbook for a CLOB token.
+
+        :param token_id: The CLOB token ID.
+        :yield: None
+        :return: Dict with "asks" and "bids" keys, or None on failure.
+        """
+        payload = {
+            "request_type": RequestType.FETCH_ORDER_BOOK.value,
+            "params": {"token_id": token_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        if response is None:
+            self.context.logger.warning("Failed to fetch orderbook: no response")
+            return None
+        if isinstance(response, dict) and response.get("error"):
+            self.context.logger.warning(
+                f"Failed to fetch orderbook: {response['error']}"
+            )
+            return None
+        return response
+
     def _is_profitable(
         self, prediction_response: PredictionResponse
-    ) -> Generator[None, None, Tuple[bool, int]]:
-        """Whether the decision is profitable or not."""
-        if prediction_response.vote is None:
-            return False, 0
+    ) -> Generator[None, None, Tuple[bool, int, Optional[int]]]:
+        """Whether the decision is profitable or not.
 
+        :param prediction_response: the mech's prediction response.
+        :yield: None
+        :return: (is_profitable, bet_amount, strategy_vote)
+        """
         if self.benchmarking_mode.enabled:
             bet = self.get_active_sampled_bet()  # no reset
             self.context.logger.info(f"Bet used for benchmarking: {bet}")
@@ -452,144 +453,84 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             # this call is destroying what it was in self.bets
             bet = self.sampled_bet
 
-        selected_type_tokens_in_pool, other_tokens_in_pool = self._get_bet_sample_info(
-            bet, prediction_response.vote
-        )
+        # Gather market data for both sides
+        market_type = "clob" if self.params.is_running_on_polymarket else "fpmm"
+        orderbook_asks_yes = None
+        orderbook_asks_no = None
+        min_order_shares = 0.0
+
+        prices = bet.outcomeTokenMarginalPrices
+        price_yes = prices[0] if prices else 0.0
+        price_no = prices[1] if prices else 0.0
+
+        if market_type == "clob":
+            # Fetch orderbooks for BOTH sides
+            if bet.outcome_token_ids is not None:
+                yes_token_id = bet.outcome_token_ids.get("Yes")
+                no_token_id = bet.outcome_token_ids.get("No")
+                if yes_token_id:
+                    ob_yes = yield from self._fetch_orderbook(yes_token_id)
+                    if ob_yes is not None:
+                        orderbook_asks_yes = ob_yes.get("asks", [])
+                        if ob_yes.get("min_order_size") is not None:
+                            min_order_shares = float(ob_yes["min_order_size"])
+                if no_token_id:
+                    ob_no = yield from self._fetch_orderbook(no_token_id)
+                    if ob_no is not None:
+                        orderbook_asks_no = ob_no.get("asks", [])
+                        if (
+                            min_order_shares == 0.0
+                            and ob_no.get("min_order_size") is not None
+                        ):
+                            min_order_shares = float(ob_no["min_order_size"])
 
         bet_amount = yield from self.get_bet_amount(
-            prediction_response.win_probability,
+            prediction_response.p_yes,
             prediction_response.confidence,
-            selected_type_tokens_in_pool,
-            other_tokens_in_pool,
+            bet.outcomeTokenAmounts,
             bet.fee,
-            self.synchronized_data.weighted_accuracy,
             bet.collateralToken,
+            market_type=market_type,
+            price_yes=price_yes,
+            price_no=price_no,
+            orderbook_asks_yes=orderbook_asks_yes,
+            orderbook_asks_no=orderbook_asks_no,
+            min_order_shares=min_order_shares,
         )
-        bet_threshold = self.params.bet_threshold
+
+        strategy_result = self._last_strategy_result
+        strategy_vote = strategy_result.get("vote")
 
         self.context.logger.info(f"Bet amount: {bet_amount}")
-        if bet_amount <= 0 or bet_amount < bet_threshold:
-            self.context.logger.info(
-                f"The bet amount is lower than the threshold {bet_threshold} or is non-positive, hence the bet is deemed not profitable."
-            )
-            return False, 0
 
-        self.context.logger.info(f"Bet fee: {bet.fee}")
-        net_bet_amount = remove_fraction_wei(
-            bet_amount, self.convert_to_native(bet.fee)
+        # Strategy returned no bet
+        if bet_amount <= 0 or strategy_vote is None:
+            self.context.logger.info(
+                "Strategy returned no bet (bet_amount <= 0 or no vote)."
+            )
+            return False, 0, None
+
+        is_profitable = True
+        expected_profit = strategy_result.get("expected_profit", 0)
+
+        token_name = self.get_token_name()
+        side_name = "YES" if strategy_vote == 0 else "NO"
+        self.context.logger.info(
+            f"Strategy approved bet: {self.convert_to_native(bet_amount)} {token_name} "
+            f"on {side_name}, expected_profit={self.convert_to_native(expected_profit)} {token_name}"
         )
-        self.context.logger.info(f"Net bet amount: {net_bet_amount}")
 
-        # Determine is_profitable - differs for Omenstrat and Polystrat
-        if not self.params.is_running_on_polymarket:  # Omenstrat
-            num_shares, available_shares = self._calc_binary_shares(
-                bet, net_bet_amount, prediction_response.vote
+        if (
+            is_profitable
+        ):  # pragma: no branch — always True here; early return above guards
+            is_profitable = self.rebet_allowed(
+                prediction_response, expected_profit, strategy_vote
             )
-
-            self.context.logger.info(f"Adjusted available shares: {available_shares}")
-            if num_shares > available_shares * SLIPPAGE:
-                self.context.logger.warning(
-                    "Kindly contemplate reducing your bet amount, as the pool's liquidity is low compared to your bet. "
-                    "Consequently, this situation entails a higher level of risk as the obtained number of shares, "
-                    "and therefore the potential net profit, will be lower than if the pool had higher liquidity!"
-                )
-            if bet_threshold <= 0:
-                self.context.logger.warning(
-                    f"A non-positive bet threshold was given ({bet_threshold}). The threshold will be disabled, "
-                    f"which means that any non-negative potential profit will be considered profitable!"
-                )
-                bet_threshold = 0
-
-            # Only bet if the actual profit (num_shares - net_bet_amount) > bet_threshold
-            potential_net_profit = num_shares - net_bet_amount - bet_threshold
-
-            is_profitable = potential_net_profit >= 0
-
-            token_name = self.get_token_name()
-            self.context.logger.info(
-                f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
-                f"The potential net profit is {self.convert_to_native(potential_net_profit)} {token_name} and "
-                f"from buying {self.convert_to_native(num_shares)} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
-                f"Decision for profitability of this market: {is_profitable}."
-            )
-
-            if is_profitable:
-                is_profitable = self.rebet_allowed(
-                    prediction_response, potential_net_profit
-                )
-
-        else:  # Polystrat
-            predicted_vote_side = prediction_response.vote  # 0 for yes and 1 for no
-            market_price_for_selected_vote = self.convert_unit_to_wei(
-                bet.outcomeTokenMarginalPrices[predicted_vote_side]
-            )
-            opposing_market_price = self.convert_unit_to_wei(
-                bet.outcomeTokenMarginalPrices[bet.opposite_vote(predicted_vote_side)]
-            )
-
-            if (
-                market_price_for_selected_vote <= 0
-                or market_price_for_selected_vote + opposing_market_price <= 0
-            ):
-                self.context.logger.warning(
-                    "Market prices are not valid for the profitability calculation. "
-                    "Please check the market's liquidity and prices. "
-                    "The bet will be deemed not profitable."
-                )
-                return False, 0
-
-            market_probability_for_selected_vote = market_price_for_selected_vote / (
-                market_price_for_selected_vote + opposing_market_price
-            )
-
-            predicted_vote_probability = (
-                prediction_response.p_yes
-                if predicted_vote_side == 0
-                else prediction_response.p_no
-            )
-            mech_costs = self.convert_unit_to_wei(DEFAULT_MECH_COSTS)
-            num_shares_predicted_vote = (
-                net_bet_amount / market_probability_for_selected_vote
-            )
-            expected_net_profit = (
-                predicted_vote_probability * num_shares_predicted_vote
-                - net_bet_amount
-                - mech_costs
-            )
-
-            is_profitable = expected_net_profit >= 0
-
-            token_name = self.get_token_name()
-            self.context.logger.info(
-                f"The current liquidity of the market is {bet.scaledLiquidityMeasure} {token_name}. "
-                f"The expected net profit is {self.convert_to_native(int(expected_net_profit))} {token_name} and "
-                f"from buying {self.convert_to_native(int(num_shares_predicted_vote))} shares for the option {bet.get_outcome(prediction_response.vote)}.\n"
-                f"Decision for profitability of this market: {is_profitable}."
-            )
-
-            self.context.logger.info(f"{bet_amount=}")
-            self.context.logger.info(f"{net_bet_amount=}")
-            self.context.logger.info(f"{predicted_vote_side=}")
-            self.context.logger.info(f"{market_price_for_selected_vote=}")
-            self.context.logger.info(f"{opposing_market_price=}")
-            self.context.logger.info(f"{market_probability_for_selected_vote=}")
-            self.context.logger.info(f"{predicted_vote_probability=}")
-            self.context.logger.info(f"{mech_costs=}")
-            self.context.logger.info(f"{num_shares_predicted_vote=}")
-            self.context.logger.info(f"{expected_net_profit=}")
-            self.context.logger.info(f"{is_profitable=}")
-
-            if is_profitable:
-                is_profitable = self.rebet_allowed(
-                    prediction_response, int(expected_net_profit)
-                )
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
                 # update the information at the shared state
-                liquidity_info = self._update_liquidity_info(
-                    net_bet_amount, prediction_response.vote
-                )
+                liquidity_info = self._update_liquidity_info(bet_amount, strategy_vote)
                 bet.outcomeTokenAmounts = self.shared_state.current_liquidity_amounts
                 bet.outcomeTokenMarginalPrices = (
                     self.shared_state.current_liquidity_prices
@@ -599,13 +540,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 self._write_benchmark_results(
                     prediction_response, bet_amount, liquidity_info
                 )
-            else:
+            else:  # pragma: no cover
                 self._write_benchmark_results(prediction_response)
 
             self.context.logger.info("Increasing Mech call count by 1")
             self.shared_state.benchmarking_mech_calls += 1
 
-        return is_profitable, bet_amount
+        return is_profitable, bet_amount, strategy_vote
 
     def _update_selected_bet(
         self, prediction_response: Optional[PredictionResponse]
@@ -630,7 +571,16 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     def should_sell_outcome_tokens(
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
-        """Whether the outcome tokens should be sold."""
+        """Whether the outcome tokens should be sold.
+
+        NOTE: Selling flow is currently not supported in production.
+        When enabling, this method needs to be updated to use strategy_vote
+        instead of prediction_response.vote for determining which tokens
+        to sell. Currently uses mech's higher-probability side.
+
+        :param prediction_response: the mech's prediction response.
+        :return: whether the outcome tokens should be sold.
+        """
         # self.bets is empty. Read from file
         self.read_bets()
 
@@ -682,9 +632,17 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             decision_received_timestamp = None
             policy = None
             should_be_sold = False
-            if prediction_response is not None and prediction_response.vote is not None:
+            strategy_vote = None
+            if prediction_response is not None:
+                # Selling flow still uses prediction_response.vote
+                sell_vote = (
+                    int(prediction_response.p_no > prediction_response.p_yes)
+                    if prediction_response.p_yes != prediction_response.p_no
+                    else None
+                )
                 if (
-                    self.review_bets_for_selling_mode
+                    sell_vote is not None
+                    and self.review_bets_for_selling_mode
                     and self.should_sell_outcome_tokens(prediction_response)
                 ):
                     self.context.logger.info(
@@ -700,15 +658,15 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     self.context.logger.info(
                         "Not selling. Checking if the bet is profitable"
                     )
-                    is_profitable, bet_amount = yield from self._is_profitable(
-                        prediction_response
+                    is_profitable, bet_amount, strategy_vote = (
+                        yield from self._is_profitable(prediction_response)
                     )
                     decision_received_timestamp = self.synced_timestamp
                     if is_profitable:
                         self.store_bets()
                         bets_hash = self.hash_stored_bets()
 
-            elif (
+            elif (  # pragma: no cover
                 prediction_response is not None
                 and self.benchmarking_mode.enabled
                 and not self._rows_exceeded
@@ -740,12 +698,26 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
                 self._update_selected_bet(prediction_response)
 
-            vote = prediction_response.vote if prediction_response else None
+            # Use strategy_vote for new bets; sell_vote for selling
+            vote: Optional[int] = None
+            if is_profitable and strategy_vote is not None:
+                vote = strategy_vote
+            elif should_be_sold and self.review_bets_for_selling_mode:
+                sell_vote = (
+                    int(prediction_response.p_no > prediction_response.p_yes)
+                    if prediction_response is not None
+                    and prediction_response.p_yes != prediction_response.p_no
+                    else None
+                )
+                # for selling we return the opposite vote (the side to sell)
+                vote = (
+                    self.sampled_bet.opposite_vote(sell_vote)
+                    if sell_vote is not None
+                    else None
+                )
+            else:
+                vote = None
             confidence = prediction_response.confidence if prediction_response else None
-
-            if should_be_sold and self.review_bets_for_selling_mode and vote:
-                # for selling we are returning vote that needs to be sold. i.e. the opposite vote
-                vote = self.sampled_bet.opposite_vote(vote)
 
             payload = DecisionReceivePayload(
                 self.context.agent_address,

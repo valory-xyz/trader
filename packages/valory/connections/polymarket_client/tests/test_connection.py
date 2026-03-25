@@ -324,6 +324,7 @@ class TestRouteRequest:
             "_redeem_positions",
             "_set_approval",
             "_check_approval",
+            "_fetch_order_book",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -2049,6 +2050,92 @@ class TestOnSendMalformedPayload:
         # Verify error flag is set in the response
         reply_kwargs = dialogue_mock.reply.call_args
         assert reply_kwargs[1]["error"] is True
+
+
+# ---------------------------------------------------------------------------
+# Fetch Order Book
+# ---------------------------------------------------------------------------
+
+
+class TestFetchOrderBook:
+    """Tests for _fetch_order_book handler."""
+
+    def test_success(self) -> None:
+        """Mock client returns order book with asks and bids."""
+        conn = _make_connection()
+        ask = MagicMock()
+        ask.price = "0.55"
+        ask.size = "100"
+        bid = MagicMock()
+        bid.price = "0.45"
+        bid.size = "50"
+        order_book = MagicMock()
+        order_book.asks = [ask]
+        order_book.bids = [bid]
+        order_book.min_order_size = "5"
+        conn.client.get_order_book.return_value = order_book
+
+        result, error = conn._fetch_order_book("token_123")
+
+        conn.client.get_order_book.assert_called_once_with("token_123")
+        assert error is None
+        assert result == {
+            "asks": [{"price": "0.55", "size": "100"}],
+            "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
+        }
+
+    def test_empty_book(self) -> None:
+        """Empty asks and bids return empty lists."""
+        conn = _make_connection()
+        order_book = MagicMock()
+        order_book.asks = []
+        order_book.bids = []
+        order_book.min_order_size = "5"
+        conn.client.get_order_book.return_value = order_book
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": "5"}
+
+    def test_none_min_order_size(self) -> None:
+        """None min_order_size returns None."""
+        conn = _make_connection()
+        order_book = MagicMock()
+        order_book.asks = []
+        order_book.bids = []
+        order_book.min_order_size = None
+        conn.client.get_order_book.return_value = order_book
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result["min_order_size"] is None
+
+    def test_none_asks_bids(self) -> None:
+        """None asks/bids are treated as empty lists."""
+        conn = _make_connection()
+        order_book = MagicMock()
+        order_book.asks = None
+        order_book.bids = None
+        order_book.min_order_size = None
+        conn.client.get_order_book.return_value = order_book
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
+
+    def test_client_exception(self) -> None:
+        """Client exception returns None with error message."""
+        conn = _make_connection()
+        conn.client.get_order_book.side_effect = Exception("API timeout")
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert result is None
+        assert "API timeout" in error
 
 
 # ---------------------------------------------------------------------------

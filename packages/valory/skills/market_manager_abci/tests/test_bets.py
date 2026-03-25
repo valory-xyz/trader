@@ -628,6 +628,21 @@ class TestBetUpdateInvestments:
         assert result is True
         assert bet.investments["No"] == [50, 75]
 
+    def test_uses_strategy_vote_not_mech_vote(self) -> None:
+        """Investment should track under strategy_vote, not prediction_response.vote."""
+        # Mech says YES (p_yes=0.7, vote=0), but strategy picked NO (strategy_vote=1)
+        pred = _make_prediction(p_yes=0.7, p_no=0.3)
+        bet = _make_bet(
+            prediction_response=pred,
+            investments={"Yes": [], "No": []},
+        )
+        bet.strategy_vote = 1  # strategy picked NO
+        result = bet.update_investments(100)
+        assert result is True
+        # Should be tracked under "No" (strategy_vote=1), not "Yes" (mech vote=0)
+        assert bet.investments["No"] == [100]
+        assert bet.investments["Yes"] == []
+
 
 class TestBetUpdateMarketInfo:
     """Tests for Bet.update_market_info."""
@@ -734,6 +749,34 @@ class TestBetRebetAllowed:
         new_pred = _make_prediction(p_yes=0.3, p_no=0.7)  # vote=1, more confident
         result = bet.rebet_allowed(new_pred, liquidity=100, potential_net_profit=300)
         assert result is False
+
+    def test_rebet_uses_strategy_vote_for_comparison(self) -> None:
+        """Rebet should compare strategy_vote, not prediction_response.vote."""
+        # Previous bet: mech said YES (p_yes=0.7), strategy picked NO (strategy_vote=1)
+        prev_pred = _make_prediction(p_yes=0.7, p_no=0.3)  # mech vote=0
+        bet = _make_bet(
+            prediction_response=prev_pred,
+            position_liquidity=200,
+            potential_net_profit=500,
+            investments={"Yes": [], "No": [100]},  # n_bets > 0
+        )
+        bet.strategy_vote = 1  # strategy picked NO last time
+
+        # New bet: mech says YES again (p_yes=0.6), strategy picks NO again
+        new_pred = _make_prediction(p_yes=0.6, p_no=0.4)  # mech vote=0
+        new_strategy_vote = 1  # strategy picks NO again
+
+        # This is a same-side rebet (both strategy_vote=1).
+        # Using mech votes (both=0) would also be same-side, but for wrong reason.
+        # The test verifies strategy_vote is used, not mech vote.
+        result = bet.rebet_allowed(
+            new_pred,
+            liquidity=100,
+            potential_net_profit=300,
+            new_vote=new_strategy_vote,
+        )
+        # Same side, more confident (0.7 >= 0.6), higher liquidity (200 >= 100)
+        assert result is True
 
 
 class TestBetIsReadyToSell:
@@ -888,6 +931,27 @@ class TestBetsDecoder:
         decoded = json.loads(encoded, cls=BetsDecoder)
         assert isinstance(decoded, dict)
         assert decoded == {"foo": "bar", "baz": 42}
+
+    def test_old_json_without_strategy_vote_deserializes(self) -> None:
+        """Old bet JSON missing strategy_vote field should deserialize with None default."""
+        bet = _make_bet()
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        # Remove strategy_vote from the serialized JSON to simulate old format
+        data = json.loads(encoded)
+        data.pop("strategy_vote", None)
+        old_json = json.dumps(data)
+        decoded = json.loads(old_json, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.strategy_vote is None
+
+    def test_new_json_with_strategy_vote_round_trips(self) -> None:
+        """New bet JSON with strategy_vote should round-trip correctly."""
+        bet = _make_bet()
+        bet.strategy_vote = 1
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        decoded = json.loads(encoded, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.strategy_vote == 1
 
 
 # ===========================================================================

@@ -321,12 +321,17 @@ class HttpHandler(BaseHttpHandler):
         if selected_value is None:
             return TradingStrategyUI.BALANCED
 
-        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
+        if selected_value in (
+            TradingStrategy.KELLY_CRITERION.value,
+            "kelly_criterion_no_conf",
+        ):
+            return TradingStrategyUI.RISKY
+        if selected_value in (
+            TradingStrategy.FIXED_BET.value,
+            "bet_amount_per_threshold",
+        ):
             return TradingStrategyUI.BALANCED
-        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
-            return TradingStrategyUI.RISKY
-        else:
-            return TradingStrategyUI.RISKY
+        return TradingStrategyUI.RISKY
 
     def _handle_chatui_llm_response(
         self,

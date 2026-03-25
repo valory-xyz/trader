@@ -76,7 +76,6 @@ PATH_TO_VAR = {
     "config/ctf_exchange": "CTF_EXCHANGE",
     "config/neg_risk_ctf_exchange": "NEG_RISK_CTF_EXCHANGE",
     "config/neg_risk_adapter": "NEG_RISK_ADAPTER",
-    "models/params/args/bet_threshold": "BET_THRESHOLD",
     "models/mechs_subgraph/args/url": "MECHS_SUBGRAPH_URL",
     "models/params/args/staking_contract_address": "STAKING_CONTRACT_ADDRESS",
     "models/params/args/ignored_mechs": "IGNORED_MECHS",
