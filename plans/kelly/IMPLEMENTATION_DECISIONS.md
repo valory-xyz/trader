@@ -112,12 +112,56 @@ Unused strategies with no references from production code.
 
 ---
 
+## Deviations from Plan
+
+### Skipped: runtime name normalization (plan 3.3.3)
+
+Plan called for mapping `kelly_criterion_no_conf` → `kelly_criterion` in
+`SharedState.setup()` and `get_bet_amount()`. Skipped because
+`file_hash_to_strategies` has no env override — old names can never enter
+the runtime path. YAMLs we control always have the correct names.
+
+### Deferred: PredictionResponse.vote/.win_probability removal (plan 3.8)
+
+Plan called for deleting these properties and updating all consumers.
+Deferred because the selling flow (`should_sell_outcome_tokens`) still
+uses `prediction_response.vote`. Inline `int(p_no > p_yes)` is used in
+`async_act` for the selling path instead.
+
+### Changed: bet_amount_per_threshold removed from strategies_kwargs (plan 3.5.1)
+
+Plan said to keep it for migration. Removed because old strategy
+executables can't be downloaded — `file_hash_to_strategies` has no env
+override, so it always comes from YAMLs we control.
+
+### Changed: _update_with_values_from_chatui backward compat removed
+
+Plan section 3.3.3 had code to propagate `fixed_bet_size` into
+`bet_amount_per_threshold` dict. Removed since the dict no longer exists
+in `strategies_kwargs`.
+
+### Added: deleted mike_strat, always_blue, jhehemann
+
+Not in original plan. Removed unused third-party strategies that had no
+references from production code.
+
+### Added: removed bet_threshold
+
+Not explicitly in plan. Dead after `_is_profitable` rewrite — the strategy
+handles minimum viable profit internally via `min_edge` and log-utility.
+
+## Completed
+
+- [x] `autonomy packages lock` — hashes updated
+- [x] Full test suite — 3286 passed
+- [x] Linting — black, isort, flake8, mypy, pylint, darglint all pass
+- [x] `tox.ini` updated for new strategy test paths
+- [x] `_calc_binary_shares` and `_get_bet_sample_info` removed (dead code)
+- [x] PR #886 opened targeting parent branch (PR #882)
+
 ## Remaining Work
 
-- Run `autonomy packages lock` to update placeholder hashes
-- Full test suite run
 - PredictionResponse.vote and .win_probability removal (deferred — still
   used by selling flow and some test infrastructure)
-- `_calc_binary_shares` and `_get_bet_sample_info` removed (dead code).
-  `_compute_new_tokens_distribution` kept — still used by
-  `_calculate_new_liquidity` (benchmarking path).
+- `_compute_new_tokens_distribution` kept — still used by
+  `_calculate_new_liquidity` (benchmarking path)
