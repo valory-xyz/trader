@@ -26,6 +26,7 @@ from typing import Any, Dict
 import pytest
 
 from packages.valory.skills.market_manager_abci.bets import (
+    MARKET_TO_PLATFORM,
     Bet,
     BetsDecoder,
     BetsEncoder,
@@ -938,3 +939,265 @@ class TestRoundTrip:
         assert decoded.prediction_response.p_yes == original.prediction_response.p_yes
         assert decoded.investments["Yes"] == [100, 200]
         assert decoded.investments["No"] == [50]
+
+
+# ===========================================================================
+# 10. Bet.to_request_context
+# ===========================================================================
+
+
+class TestBetToRequestContext:
+    """Tests for Bet.to_request_context."""
+
+    def test_omen_bet_returns_correct_context(self) -> None:
+        """Test that an Omen bet produces the expected request_context."""
+        bet = _make_bet(
+            id="0xfpmm_address",
+            market="omen_subgraph",
+            fee=20000000000000000,  # 2% AMM fee
+            outcomeTokenMarginalPrices=[0.4, 0.6],
+            scaledLiquidityMeasure=5.0,
+            openingTimestamp=1700000000,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_id"] == "0xfpmm_address"
+        assert ctx["type"] == "omen"
+        assert ctx["market_prob"] == 0.4
+        assert ctx["market_liquidity_usd"] == 5.0
+        assert ctx["market_close_at"] == "2023-11-14T22:13:20Z"
+        assert ctx["amm_fee"] == 0.02
+        assert "market_spread" not in ctx
+
+    def test_polymarket_bet_uses_condition_id(self) -> None:
+        """Test that a Polymarket bet uses condition_id as market_id."""
+        bet = _make_bet(
+            id="504911",
+            market="polymarket_client",
+            fee=0,
+            condition_id="0xdef456abc",
+            outcomeTokenMarginalPrices=[0.65, 0.35],
+            scaledLiquidityMeasure=450000.0,
+            openingTimestamp=1751241600,
+            market_spread=0.03,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_id"] == "0xdef456abc"
+        assert ctx["type"] == "polymarket"
+        assert ctx["market_prob"] == 0.65
+        assert ctx["market_liquidity_usd"] == 450000.0
+        assert ctx["market_spread"] == 0.03
+        assert "amm_fee" not in ctx
+
+    def test_omen_bet_falls_back_to_id_when_no_condition_id(self) -> None:
+        """Test that Omen bets (no condition_id) use bet.id as market_id."""
+        bet = _make_bet(
+            id="0xfpmm",
+            market="omen_subgraph",
+            condition_id=None,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_id"] == "0xfpmm"
+
+    def test_unknown_platform_returns_none(self) -> None:
+        """Test that an unrecognized market returns None."""
+        bet = _make_bet(market="unknown_platform")
+        ctx = bet.to_request_context()
+        assert ctx is None
+
+    def test_none_values_stripped(self) -> None:
+        """Test that None values are excluded from the returned dict."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[],
+            openingTimestamp=0,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "market_prob" not in ctx
+        assert "market_close_at" not in ctx
+
+    def test_market_close_at_valid_timestamp(self) -> None:
+        """Test market_close_at with a valid timestamp produces correct ISO format."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            openingTimestamp=1609459200,  # 2021-01-01T00:00:00Z
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_close_at"] == "2021-01-01T00:00:00Z"
+
+    def test_market_prob_uses_first_index(self) -> None:
+        """Test that market_prob uses outcomeTokenMarginalPrices[0], not [1].
+
+        Mutation: changing [0] to [1] must fail this test.
+        """
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[0.3, 0.7],
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_prob"] == 0.3
+        assert ctx["market_prob"] != 0.7
+
+    def test_market_to_platform_mapping(self) -> None:
+        """Test that MARKET_TO_PLATFORM contains expected entries."""
+        assert MARKET_TO_PLATFORM["omen_subgraph"] == "omen"
+        assert MARKET_TO_PLATFORM["polymarket_client"] == "polymarket"
+
+    def test_empty_condition_id_falls_back_to_id(self) -> None:
+        """Test that an empty string condition_id falls back to bet.id."""
+        bet = _make_bet(
+            id="0xfpmm",
+            market="omen_subgraph",
+            condition_id="",
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_id"] == "0xfpmm"
+
+    def test_nan_market_prob_excluded(self) -> None:
+        """Test that NaN in outcomeTokenMarginalPrices is excluded from context."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[float("nan"), 0.5],
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "market_prob" not in ctx
+
+    def test_inf_market_prob_excluded(self) -> None:
+        """Test that Infinity in outcomeTokenMarginalPrices is excluded from context."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[float("inf"), 0.5],
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "market_prob" not in ctx
+
+    def test_negative_inf_market_prob_excluded(self) -> None:
+        """Test that -Infinity in outcomeTokenMarginalPrices is excluded from context."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[float("-inf"), 0.5],
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "market_prob" not in ctx
+
+    def test_zero_liquidity_included(self) -> None:
+        """Test that 0.0 liquidity is included (not stripped by None filter).
+
+        Note: zero-liquidity bets are normally blacklisted upstream, but the
+        method itself should not strip valid 0.0 floats.
+        """
+        bet = _make_bet(
+            market="omen_subgraph",
+            scaledLiquidityMeasure=0.01,  # use >0 to avoid blacklisting
+        )
+        # manually set to 0.0 after construction to bypass _check_usefulness
+        bet.scaledLiquidityMeasure = 0.0
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_liquidity_usd"] == 0.0
+
+    def test_blacklisted_bet_still_returns_context(self) -> None:
+        """Test that to_request_context works on a blacklisted bet.
+
+        Blacklisted bets are filtered before reaching DecisionRequestBehaviour,
+        but the method itself should not crash.
+        """
+        bet = _make_bet(market="omen_subgraph")
+        bet.blacklist_forever()
+        ctx = bet.to_request_context()
+        # Should still return a dict (outcomes=None doesn't affect context)
+        assert ctx is not None
+        assert ctx["type"] == "omen"
+
+    def test_omen_amm_fee_derived_from_fee(self) -> None:
+        """Test that Omen amm_fee is derived from the AMM fee in wei."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            fee=20000000000000000,  # 2% = 2 * 10^16
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["amm_fee"] == 0.02
+        assert "market_spread" not in ctx
+
+    def test_omen_zero_fee_excludes_amm_fee(self) -> None:
+        """Test that Omen bets with fee=0 exclude amm_fee."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            fee=0,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "amm_fee" not in ctx
+
+    def test_polymarket_spread_from_field(self) -> None:
+        """Test that Polymarket market_spread comes from the market_spread field."""
+        bet = _make_bet(
+            market="polymarket_client",
+            fee=0,
+            market_spread=0.05,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["market_spread"] == 0.05
+        assert "amm_fee" not in ctx
+
+    def test_invalid_market_spread_excluded(self) -> None:
+        """Test that out-of-range market_spread values are excluded."""
+        for bad_value in [float("nan"), float("inf"), -0.01, 1.5]:
+            bet = _make_bet(
+                market="polymarket_client",
+                fee=0,
+                market_spread=bad_value,
+            )
+            ctx = bet.to_request_context()
+            assert ctx is not None
+            assert "market_spread" not in ctx, f"spread={bad_value} should be excluded"
+
+    def test_polymarket_no_spread_excludes_field(self) -> None:
+        """Test that Polymarket bets without spread exclude market_spread."""
+        bet = _make_bet(
+            market="polymarket_client",
+            fee=0,
+            market_spread=None,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "market_spread" not in ctx
+
+    def test_omen_amm_fee_and_market_spread_independent(self) -> None:
+        """Test that amm_fee and market_spread are independent fields.
+
+        An Omen bet with both fee and market_spread set should emit both.
+        """
+        bet = _make_bet(
+            market="omen_subgraph",
+            fee=20000000000000000,  # 2%
+            market_spread=0.05,  # hypothetical explicit spread
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["amm_fee"] == 0.02
+        assert ctx["market_spread"] == 0.05
+
+    def test_context_is_json_serializable(self) -> None:
+        """Test that the returned context can be serialized to JSON."""
+        bet = _make_bet(
+            market="omen_subgraph",
+            outcomeTokenMarginalPrices=[0.4, 0.6],
+            openingTimestamp=1700000000,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        serialized = json.dumps(ctx)
+        deserialized = json.loads(serialized)
+        assert deserialized == ctx
