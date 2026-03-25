@@ -1,7 +1,7 @@
 # Kelly Code Audit Report for PR #886
 
 **PR:** [#886](https://github.com/valory-xyz/trader/pull/886)  
-**Latest audited commit:** `0eb18e7b596f12729647ea8835b4158e62002988`  
+**Latest audited commit:** `7568eb3a0b411152eab1c03f7c65c163af071471`  
 **Title:** `feat: unified Kelly criterion implementation (PREDICT-836)`
 
 ## Scope
@@ -12,6 +12,10 @@ This audit was run against the Kelly code audit framework in:
 Reference docs used during audit:
 - `plans/KELLY_IMPLEMENTATION_PLAN.md`
 - `plans/kelly/UNIFIED_KELLY_ALGO_SPEC.md`
+
+Scope clarification after PR discussion:
+- active production services in scope are `packages/valory/services/trader_pearl/service.yaml` and `packages/valory/services/polymarket_trader/service.yaml`
+- `packages/valory/services/trader/service.yaml` is treated as a legacy/deprecated service definition and not as a rollout blocker for this PR
 
 ## Review Comments Read
 
@@ -31,7 +35,7 @@ There were no separate issue comments on the PR when checked.
 
 ## Findings
 
-### High: Omen `trader` config removed compatibility keys that runtime still requires
+### Non-blocking: legacy `trader` service config still lacks compatibility keys
 
 **Files:**
 - `packages/valory/skills/decision_maker_abci/behaviours/base.py`
@@ -44,13 +48,17 @@ The runtime still assumes `strategies_kwargs` contains:
 - `absolute_min_bet_size`
 - `default_max_bet_size`
 
-But those keys are missing from the Omen `trader` service/skill config in this PR.
+Those keys are missing from `packages/valory/services/trader/service.yaml`, but
+the active service definitions used for rollout are `trader_pearl` and
+`polymarket_trader`, not the legacy `trader` service.
 
 **Why this matters:**  
 - `get_bet_amount()` reads `absolute_min_bet_size` directly.
 - ChatUI store hydration reads `default_max_bet_size` and `absolute_min_bet_size` directly.
 
-That means the Omen service can crash with `KeyError` during normal runtime paths.
+That means the legacy `trader` service definition is stale and could still crash
+if someone tried to deploy it, but this does not currently affect the active
+Omen or Polymarket rollout services.
 
 **Code references:**
 - `packages/valory/skills/decision_maker_abci/behaviours/base.py:563-564`
@@ -59,8 +67,8 @@ That means the Omen service can crash with `KeyError` during normal runtime path
 - `packages/valory/skills/trader_abci/skill.yaml:243-250`
 
 **Audit classification:**  
-- Correctness / compatibility regression
-- Blocking
+- Legacy config debt
+- Non-blocking for the current rollout scope
 
 ### Resolved: live legacy strategy-name acceptance is now restricted correctly
 
@@ -111,43 +119,38 @@ fallback from the live Polymarket decision path.
 **Audit classification:**  
 - Resolved in latest audited commit
 
-### High: previous rebet gate is no longer applied in the live profitability path
+### Resolved: repeat-bet guard is restored with `strategy_vote`
 
 **Files:**
 - `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py`
 - `packages/valory/skills/market_manager_abci/bets.py`
 
 **Issue:**  
-`rebet_allowed()` still exists, but `_is_profitable()` no longer calls it before approving a trade.
+This was a previous blocker. The latest audited commit restores the rebet guard
+in `_is_profitable()` and threads `strategy_vote` through the relevant rebet
+logic.
 
 **Why this matters:**  
-This is not just an internal refactor. The previous decision path applied an
-additional repeat-bet guard before approving another trade on the same market.
-The new path no longer does so, which means the trader can place repeated bets
-on the same market without the prior confidence/liquidity/profit comparison
-gate. We should maintain the policy to avoid rebetting when the new candidate
-does not improve on the previous bet under the existing
-confidence/liquidity/profit checks. Since the new path skips that guard, this is
-a blocking policy regression.
+The previous policy to avoid repeated bets unless the new candidate improves
+under the existing confidence/liquidity/profit checks is now enforced again in
+the live profitability path, and the rebet bookkeeping was updated to use
+`strategy_vote`.
 
 **Code references:**
-- `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py:381-401`
-- `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py:468-504`
-- `packages/valory/skills/market_manager_abci/bets.py:372-392`
+- `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py:381-405`
+- `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py:515-520`
+- `packages/valory/skills/market_manager_abci/bets.py:338-349`
+- `packages/valory/skills/market_manager_abci/bets.py:375-403`
 
 **Audit classification:**  
-- Regression / policy regression
-- Blocking
+- Resolved in latest audited commit
 
 ---
 
 ## Spec Mismatches
 
-### 1. Repeat-bet policy differs from the previous live decision flow
-
-The previous decision path applied an additional repeat-bet guard before
-approving another trade on the same market. The current path still skips that
-guard after the strategy returns a positive result.
+No remaining blocking spec mismatches were identified for the active rollout
+services in the latest audited commit.
 
 ---
 
@@ -155,9 +158,9 @@ guard after the strategy returns a positive result.
 
 | Parameter | Kind | Source of truth | Implemented/configured value in PR `886` | Suggested/default | Match? | Notes |
 |---|---|---|---|---|---|---|
-| `floor_balance` | configurable | service / skill YAML | `1_000_000` on Polymarket, `5e17` on `trader_pearl`, `0` on `trader` | plan/spec allows venue-specific config | Partial | Values are intentional per service, but `trader` config differs from the plan examples |
-| `max_bet` | configurable | ChatUI `max_bet_size` or strategy default | defaulted via strategy if not overridden; ChatUI/runtime still expects `default_max_bet_size` compatibility key | `5e6` USDC / `8e17` xDAI in plan | Partial | Runtime still depends on compatibility keys; restored in `trader_abci` skill YAML but still missing in `trader` service YAML |
-| `min_bet` | configurable / derived from config | `absolute_min_bet_size` in `strategies_kwargs`, then passed to strategy | present in Polymarket and `trader_pearl`; restored in `trader_abci` skill YAML; still missing in `trader` service YAML | plan expects compatibility key retained | No | Real runtime issue remains at service level |
+| `floor_balance` | configurable | service / skill YAML | `1_000_000` on Polymarket, `5e17` on `trader_pearl`, `0` on legacy `trader` | plan/spec allows venue-specific config | Partial | Active rollout services look intentional; legacy `trader` service differs |
+| `max_bet` | configurable | ChatUI `max_bet_size` or strategy default | active services expose the expected compatibility keys; legacy `trader` service does not | `5e6` USDC / `8e17` xDAI in plan | Yes for active services | The remaining gap is limited to the legacy `trader` service |
+| `min_bet` | configurable / derived from config | `absolute_min_bet_size` in `strategies_kwargs`, then passed to strategy | present in active Polymarket and Omen rollout services; absent in legacy `trader` service | plan expects compatibility key retained | Yes for active services | No active-service runtime gap remains |
 | `n_bets` | configurable | service / skill YAML | `1` | `1` | Yes | Matches current plan/spec default, though review comments suggest it may be too conservative |
 | `min_edge` | configurable | service / skill YAML | `0.03` | `0.03` | Yes | Matches |
 | `min_oracle_prob` | configurable | service / skill YAML | `0.5` | `0.5` | Yes | Matches |
@@ -180,7 +183,7 @@ guard after the strategy returns a positive result.
 - `fee_per_trade` is now implemented as wei-scaled native units in the code and
   bundled YAML configs.
 - `min_order_shares` now matches the intended Polymarket source-of-truth model.
-- The `trader_abci` skill YAML restored compatibility keys, but the `trader` service YAML is still missing them.
+- The active rollout services now align with the expected compatibility-key contract; the remaining mismatch is limited to the legacy `trader` service definition.
 
 ---
 
@@ -324,6 +327,7 @@ test-verified in this environment.
 - [x] Audited source code directly
 - [x] Ran strategy tests: `52 passed`
 - [x] Sampled 10 live Polymarket markets for `min_order_size`
+- [x] Re-ran the audit after scope clarification from the PR discussion
 - [ ] Ran `decision_maker_abci` behavior tests
   Reason: blocked by missing `hypothesis`
 - [ ] Ran full test suite for the PR in this environment
@@ -352,25 +356,20 @@ validation, not as a full execution-certified signoff.
 
 ## Go / No-Go
 
-**Current result: `no-go`**
+**Current result: `go` for the active rollout services**
 
-### Blocking issues
+### Remaining notes
 
-1. Omen `trader` service config still omits compatibility keys required by runtime.
-2. The previous repeat-bet guard is no longer applied before approving a new trade.
-
-### Non-blocking but important
-
-1. `min_order_shares` now appears fixed and no longer belongs in the open-issues list.
+1. `packages/valory/services/trader/service.yaml` still looks stale, but it is treated as legacy/deprecated rather than an active rollout blocker.
+2. Execution-time revalidation / slippage protection is still follow-up safety work, not a blocker under this audit framework.
 
 ---
 
 ## Short Conclusion
 
-The PR is much closer now. The Polymarket `min_order_size` plumbing looks
-fixed, legacy strategy aliases are no longer part of the live accepted
-strategy set, and the Kelly strategy tests pass on the latest audited head. But
-it is still not merge-ready yet under the Kelly audit framework because two
-blocking issues remain:
-- compatibility keys are still missing in the deployed `trader` service YAML
-- the repeat-bet guard is still not enforced in the live buy path
+With the latest audited commit, the active rollout services now pass this audit:
+the Polymarket `min_order_size` plumbing is fixed, legacy live strategy-name
+acceptance is resolved, and the repeat-bet guard has been restored using
+`strategy_vote`. The remaining config mismatch is limited to the legacy
+`packages/valory/services/trader/service.yaml` definition, which is not treated
+as an active rollout blocker.
