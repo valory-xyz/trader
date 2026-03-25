@@ -7,7 +7,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeigtuothskwyvrhfosps2bu6suauycolj67dpuxqvnicdrdu7yhtvq
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihfknu46evu2bvxxlipdqt2lkbpxt4hra5t7mlr5yowjb4jbjsifm
+agent: valory/trader:0.1.0:bafybeibrwebhaihvaqdqy7mdgnd4u3wjopnprmrsddohtuskzncwhz7dqq
 number_of_agents: 4
 deployment:
   agent:
@@ -126,8 +126,8 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeibvxpgxew632nkcgzmfp2gapdi6lfyfjfd4znedw6d357e4qukiqu":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -414,8 +414,8 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeibvxpgxew632nkcgzmfp2gapdi6lfyfjfd4znedw6d357e4qukiqu":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -546,8 +546,8 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeibvxpgxew632nkcgzmfp2gapdi6lfyfjfd4znedw6d357e4qukiqu":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -678,8 +678,8 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeibvxpgxew632nkcgzmfp2gapdi6lfyfjfd4znedw6d357e4qukiqu":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}

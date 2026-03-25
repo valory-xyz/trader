@@ -63,7 +63,8 @@ DEFAULT_MIN_BET = 1
 DEFAULT_N_BETS = 1
 DEFAULT_MIN_EDGE = 0.03
 DEFAULT_MIN_ORACLE_PROB = 0.5
-DEFAULT_FEE_PER_TRADE = 0.01
+DEFAULT_FEE_PER_TRADE_XDAI = int(1e16)  # 0.01 xDAI
+DEFAULT_FEE_PER_TRADE_USDC = int(1e4)  # 0.01 USDC
 DEFAULT_GRID_POINTS = 500
 DEFAULT_TOKEN_DECIMALS = 18
 
@@ -263,17 +264,22 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
         DEFAULT_MAX_BET_USDC if token_decimals == 6 else DEFAULT_MAX_BET_XDAI
     )
 
+    default_fee = (
+        DEFAULT_FEE_PER_TRADE_USDC if token_decimals == 6 else DEFAULT_FEE_PER_TRADE_XDAI
+    )
+
     max_bet_wei: int = kwargs.get("max_bet", default_max_bet)
     min_bet_wei: int = kwargs.get("min_bet", DEFAULT_MIN_BET)
+    fee_per_trade_wei: int = kwargs.get("fee_per_trade", default_fee)
     n_bets: int = kwargs.get("n_bets", DEFAULT_N_BETS)
     min_edge: float = kwargs.get("min_edge", DEFAULT_MIN_EDGE)
     min_oracle_prob: float = kwargs.get("min_oracle_prob", DEFAULT_MIN_ORACLE_PROB)
-    fee_per_trade: float = kwargs.get("fee_per_trade", DEFAULT_FEE_PER_TRADE)
     grid_points: int = kwargs.get("grid_points", DEFAULT_GRID_POINTS)
 
     # Convert to native units
     max_bet = max_bet_wei / scale
     min_bet = min_bet_wei / scale
+    fee_per_trade = fee_per_trade_wei / scale
     w_total = bankroll / scale
     floor = floor_balance / scale
 

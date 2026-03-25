@@ -56,8 +56,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiezf3kh5f4jmxnwoylc4krghzrkfknkc2r6vve3rgb5eumloco33e
 - valory/termination_abci:0.1.0:bafybeif43h3yc4e6cqieqi2dj7oa55lrircamorkcrgt2kjofua7y2vcgu
 - valory/market_manager_abci:0.1.0:bafybeihns7yyqxxfbzegf4qmddlb2ziltk5ab6nc2hlfwifnyy5qovd56e
-- valory/decision_maker_abci:0.1.0:bafybeihhktb62snlop7wiprd4ysqko4nm2mbw4re5ywc5xehot2jwlfkni
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihbdgl3xnb5aeg5pfn4yadsomxiktogtrkxbkldfsxx77k6t3xfxi
+- valory/decision_maker_abci:0.1.0:bafybeidyyzc5b3k4pccdcn5y2ov5njg7kc3gaiu26l4yk4ivaqeisj44lm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihmkpzse55ndusjjvx5u2gqatzkys6xqqnfw7mjgvhwnc5qz3mcra
 - valory/staking_abci:0.1.0:bafybeiaswxgwid46ypwgzh5tnbjx77urtgiqwyudnfrb4puptn2csxk6te
 - valory/check_stop_trading_abci:0.1.0:bafybeig2wea5joxvd6wmrrhyawlflbsz37lkokg6qq6fl2vhwbupmleaae
 - valory/mech_interact_abci:0.1.0:bafybeig7o3fonhmstrvbimsof6h6ihtht44rr7wxozmtedltdmyyqzi5ue
@@ -246,7 +246,7 @@ models:
         n_bets: 1
         min_edge: 0.03
         min_oracle_prob: 0.5
-        fee_per_trade: 0.01
+        fee_per_trade: 10000000000000000
         grid_points: 500
       service_endpoint: trader.autonolas.tech/
       rpc_sleep_time: 10

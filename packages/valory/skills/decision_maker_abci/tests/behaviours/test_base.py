@@ -71,7 +71,7 @@ DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strateg
 VALID_STRATEGY_FILE_EXTENSIONS = {".py", ".yaml", ".yml"}
 
 # fmt: off
-STRATEGIES_KWARGS = {"floor_balance": 0, "default_max_bet_size": int(2e18), "absolute_min_bet_size": int(1e16), "absolute_max_bet_size": int(2e18), "n_bets": 1, "min_edge": 0.03, "min_oracle_prob": 0.5, "fee_per_trade": 0.01, "grid_points": 500}
+STRATEGIES_KWARGS = {"floor_balance": 0, "default_max_bet_size": int(2e18), "absolute_min_bet_size": int(1e16), "absolute_max_bet_size": int(2e18), "n_bets": 1, "min_edge": 0.03, "min_oracle_prob": 0.5, "fee_per_trade": int(1e16), "grid_points": 500}
 
 STRATEGY_TO_FILEPATH = {"kelly_criterion": "packages/valory/customs/kelly_criterion", "fixed_bet": "packages/valory/customs/fixed_bet"}
 # fmt: on

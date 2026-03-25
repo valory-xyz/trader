@@ -7,7 +7,7 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeigndukiqwp2vzgy3x7u3cn4og3rzvyhhnm3rfjfhskylmpfhndmwe
-  kelly_criterion.py: bafybeiczpfcc2oelzb3j7dr5wdfbuldjtrxcjg6etgx7unahucbob6au5q
+  kelly_criterion.py: bafybeibklfvoo4szkwxam6ddrwv7ggw3rsbbafumksybvqxmfuhmiuspoi
   test_kelly_criterion.py: bafybeidemjcqdxgze2uva6qck53b7kdrhuzp6xpyj7v3duhgmoiat7irpq
 fingerprint_ignore_patterns: []
 entry_point: kelly_criterion.py
