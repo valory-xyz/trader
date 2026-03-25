@@ -12,13 +12,13 @@ fingerprint:
   composition.py: bafybeihdeuedpo5ucvjfbqr6woma6xuutnwhswhv3ne6l6othfhyokarwa
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeiascmjuel3oxf3izuxfjzwewimzgttbwkogxsugdnseyzz2j5ncqa
-  handlers.py: bafybeiga6fchhkue5wlybkw7mcfz2i3dsp33hjljuzneoyp3npygvtxewi
+  handlers.py: bafybeibgqokqbdc3idco33nty4jqjrn2mqsf5sir65toj5grbrgmh52rri
   models.py: bafybeifir6ffdwmszi32tvvdxxs6dpiqatk272lpzupulmnn2nnpkli2om
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeig36duqq3d5b6g45licy6f3texgbdkpguz3xme7hv43ijogptg5uy
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeigx4q3dhm7q6ln6h3hs64matzswxueiybvvwfljkwos5qj6gq5pdi
+  tests/test_handlers.py: bafybeihvj6zpqszsccbxcciiufyy2n2tba3uobxhowo54uqily2g5qu6lq
   tests/test_models.py: bafybeic4buelge2gbl3mongwoaempxhfrhq2hp7uvoevkz42v2uidyr2rm
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidxfy3gyjjahke7gftbakecdlwr5gng5ccnvlshjpgppp7b6pu2ea
 - valory/transaction_settlement_abci:0.1.0:bafybeiezf3kh5f4jmxnwoylc4krghzrkfknkc2r6vve3rgb5eumloco33e
 - valory/termination_abci:0.1.0:bafybeif43h3yc4e6cqieqi2dj7oa55lrircamorkcrgt2kjofua7y2vcgu
-- valory/market_manager_abci:0.1.0:bafybeibfrvyw3ofw6t2veamxto4zgdwfsd2bfqt4r7psotmzvexf4dk3uu
-- valory/decision_maker_abci:0.1.0:bafybeieommkfktxgl7s4ppa4htxcckycvn7rns46z5v3fimmefej2y7vcy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicmxn4qwgsdm2fatz4roizmnokb6xzcvyxxvvvitydhumtv23p7ia
+- valory/market_manager_abci:0.1.0:bafybeibepgkqlcd2kldfymer2r6glrr2ur5e6opnmpxb573xucojnudoqm
+- valory/decision_maker_abci:0.1.0:bafybeibjtwdedtx4do25br56vpsoi6sah5q4cfkhdi23amccffrpw5tivu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeial3j2vrwye4h2ilk3vzowfsxasa5wwgn2hnmvsm7sqd6wnrvcibi
 - valory/staking_abci:0.1.0:bafybeiaswxgwid46ypwgzh5tnbjx77urtgiqwyudnfrb4puptn2csxk6te
 - valory/check_stop_trading_abci:0.1.0:bafybeig2wea5joxvd6wmrrhyawlflbsz37lkokg6qq6fl2vhwbupmleaae
 - valory/mech_interact_abci:0.1.0:bafybeig7o3fonhmstrvbimsof6h6ihtht44rr7wxozmtedltdmyyqzi5ue
-- valory/chatui_abci:0.1.0:bafybeigwfxksiguchhvj6nizv5c65yad5hdpwkq5tqkbcb5cxuju2imvo4
-- valory/agent_performance_summary_abci:0.1.0:bafybeiezuf5zwsc7dtvgetye6n2dn7as63spl3fqlyoogcsesb33a53pke
+- valory/chatui_abci:0.1.0:bafybeihbmzdn44e5metdrj6zvce4obedevb23z2lywc2vflc7zy5b7g7re
+- valory/agent_performance_summary_abci:0.1.0:bafybeiey6fqjkg26pjmeykzga4auxglzxovvf6cekpskzj4t25avs3o56q
 - valory/funds_manager:0.1.0:bafybeihfetdkenkn7tw3a5525ff7irwacgpuaxwbfbyrxasznniasr4ruq
 behaviours:
   main:
@@ -202,7 +202,6 @@ models:
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
-      bet_threshold: 100000000000000000
       ipfs_address: https://gateway.autonolas.tech/ipfs/
       tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
       prompt_template: With the given question "@{question}" and the `yes` option
@@ -243,20 +242,15 @@ models:
       contract_timeout: 300.0
       file_hash_to_strategies: {}
       strategies_kwargs:
-        bet_kelly_fraction: 1.0
-        floor_balance: 500000000000000000
-        bet_amount_per_threshold:
-          0.0: 0
-          0.1: 0
-          0.2: 0
-          0.3: 0
-          0.4: 0
-          0.5: 0
-          0.6: 0
-          0.7: 0
-          0.8: 0
-          0.9: 0
-          1.0: 0
+        floor_balance: 0
+        default_max_bet_size: 800000000000000000
+        absolute_min_bet_size: 10000000000000000
+        absolute_max_bet_size: 2000000000000000000
+        n_bets: 1
+        min_edge: 0.03
+        min_oracle_prob: 0.5
+        fee_per_trade: 10000000000000000
+        grid_points: 500
       service_endpoint: trader.autonolas.tech/
       rpc_sleep_time: 10
       safe_voting_range: 600

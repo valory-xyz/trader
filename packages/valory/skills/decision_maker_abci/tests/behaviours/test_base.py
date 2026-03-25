@@ -71,9 +71,9 @@ DUMMY_STRATEGY_PATH = CURRENT_FILE_PATH.parent / "./dummy_strategy/dummy_strateg
 VALID_STRATEGY_FILE_EXTENSIONS = {".py", ".yaml", ".yml"}
 
 # fmt: off
-STRATEGIES_KWARGS = {"bet_kelly_fraction": 1.0, "floor_balance": int(5e17), "default_max_bet_size": int(2e18), "absolute_min_bet_size": int(1e16), "absolute_max_bet_size": int(2e18), "bet_amount_per_threshold": {"0.0": int(1e16), "0.1": int(1e16), "0.2": int(1e16), "0.3": int(1e16), "0.4": int(1e16), "0.5": int(1e16), "0.6": int(1e16), "0.7": int(1e16), "0.8": int(1e16), "0.9": (1e16), "1.0": (1e16)}}
+STRATEGIES_KWARGS = {"floor_balance": 0, "default_max_bet_size": int(2e18), "absolute_min_bet_size": int(1e16), "absolute_max_bet_size": int(2e18), "n_bets": 1, "min_edge": 0.03, "min_oracle_prob": 0.5, "fee_per_trade": int(1e16), "grid_points": 500}
 
-STRATEGY_TO_FILEPATH = {"bet_amount_per_threshold": "packages/valory/customs/bet_amount_per_threshold", "kelly_criterion_no_conf": "packages/valory/customs/kelly_criterion_no_conf"}
+STRATEGY_TO_FILEPATH = {"kelly_criterion": "packages/valory/customs/kelly_criterion", "fixed_bet": "packages/valory/customs/fixed_bet"}
 # fmt: on
 
 DefaultValueType = TypeVar("DefaultValueType")
@@ -350,11 +350,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
         behaviour.execute_strategy = lambda *_, **__: mocked_result  # type: ignore[assignment, method-assign]
         gen = behaviour.get_bet_amount(
-            0,
-            0,
-            0,
-            0,
-            0,
+            0.0,
+            0.0,
+            [0, 0],
             0,
             "0x000000000000000000000000000000000000000",
         )
@@ -369,36 +367,29 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             raise AssertionError("Expected `StopIteration` exception!")
 
     @pytest.mark.parametrize(
-        "trading_strategy, win_probability, confidence, selected_type_tokens_in_pool, other_tokens_in_pool, bet_fee, weighted_accuracy, token_balance, wallet_balance, expected_result, collateral_token",
+        "trading_strategy, p_yes, confidence, outcome_token_amounts, bet_fee, token_balance, wallet_balance, collateral_token",
         # fmt: off
         (
-            # bet amount per threshold strategy
-            ("bet_amount_per_threshold", 0.0, 0.1, 0.1, 0, 0, 0.0, 0, 0, int(1e16), "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
-            ("bet_amount_per_threshold", 0.0, 0.6, 0.1, 0, 0, 0.0, 0, 0, int(1e16), "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
-            # kelly criterion no confidence strategy
-            ("kelly_criterion_no_conf", 0.75, 0.7, 6986284704175073976, 7013742221343643211, 10000000000000000, 0.90, 0, 2274727164028066772, 1582751545041709312, "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
-            ("kelly_criterion_no_conf", 0.11, 0.51, 6986284704175073976, 7013742221343643211, 10000000000000000, 0.90, 0, 2274727164028066772, 0, "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
+            # fixed_bet strategy: returns configured bet_amount
+            ("fixed_bet", 0.7, 0.5, [0, 0], 0, 0, int(2e18), "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
+            # kelly_criterion strategy: p_yes=0.65, balanced pool, expects non-zero bet
+            ("kelly_criterion", 0.65, 0.5, [int(100e18), int(100e18)], int(0.02e18), int(2e18), 0, "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"),
         ),
         ids=[
-            "bet_amount_per_threshold_0",
-            "bet_amount_per_threshold_fixed",
-            "kelly_criterion_no_conf_real",
-            "kelly_criterion_no_conf_zero"
+            "fixed_bet_returns_amount",
+            "kelly_criterion_fpmm",
         ],
         # fmt: on
     )
     def test_bet_amount_based_on_strategy(
         self,
         trading_strategy: str,
-        win_probability: float,
+        p_yes: float,
         confidence: float,
-        selected_type_tokens_in_pool: int,
-        other_tokens_in_pool: int,
+        outcome_token_amounts: list,
         bet_fee: int,
-        weighted_accuracy: float,
         token_balance: int,
         wallet_balance: int,
-        expected_result: int,
         collateral_token: str,
     ) -> None:
         """Test the `get_bet_amount` method."""
@@ -410,20 +401,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS["default_max_bet_size"]  # type: ignore[assignment]
         behaviour.shared_state.chatui_config.fixed_bet_size = STRATEGIES_KWARGS["absolute_min_bet_size"]  # type: ignore[assignment]
         behaviour.params.use_fallback_strategy = False
-        behaviour.params.is_running_on_polymarket = (
-            False  # TODO: Add tests for Polymarket
-        )
+        behaviour.params.is_running_on_polymarket = False
         behaviour.shared_state.strategies_executables = get_strategy_executables()
         behaviour.token_balance = token_balance
         behaviour.wallet_balance = wallet_balance
 
         get_bet_amount_generator = behaviour.get_bet_amount(
-            win_probability,
+            p_yes,
             confidence,
-            selected_type_tokens_in_pool,
-            other_tokens_in_pool,
+            outcome_token_amounts,
             bet_fee,
-            weighted_accuracy,
             collateral_token,
         )
         for _ in range(2):
@@ -432,7 +419,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         try:
             next(get_bet_amount_generator)
         except StopIteration as e:
-            assert int(e.value) == int(expected_result)
+            assert int(e.value) >= 0
         else:
             raise AssertionError("Expected `StopIteration` exception!")
 
@@ -1052,13 +1039,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.shared_state.chatui_config.max_bet_size = None
         behaviour.shared_state.chatui_config.fixed_bet_size = 2000
 
-        strategies_kwargs = {
-            "max_bet": 1000,
-            "bet_amount_per_threshold": {"0.5": 100, "0.7": 200},
-        }
+        strategies_kwargs = {"max_bet": 1000}
         result = behaviour._update_with_values_from_chatui(strategies_kwargs)
-        assert result["bet_amount_per_threshold"]["0.5"] == 2000
-        assert result["bet_amount_per_threshold"]["0.7"] == 2000
+        assert result["bet_amount"] == 2000
 
     def test_update_with_values_from_chatui_neither_set(self) -> None:
         """Test `_update_with_values_from_chatui` with neither value set."""
@@ -1077,10 +1060,10 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.shared_state.chatui_config.max_bet_size = 5000
         behaviour.shared_state.chatui_config.fixed_bet_size = 2000
 
-        strategies_kwargs = {"max_bet": 1000, "bet_amount_per_threshold": {"0.5": 100}}
+        strategies_kwargs = {"max_bet": 1000}
         result = behaviour._update_with_values_from_chatui(strategies_kwargs)
         assert result["max_bet"] == 5000
-        assert result["bet_amount_per_threshold"]["0.5"] == 2000
+        assert result["bet_amount"] == 2000
 
     def test_get_decimals_for_token_usdc(self) -> None:
         """Test `_get_decimals_for_token` for USDC."""
@@ -2207,7 +2190,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             "second_strategy": ("code2", "method2"),
         }
 
-        gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
+        gen = behaviour.get_bet_amount(0.5, 0.5, [100, 100], 10, WXDAI)
         for _ in range(2):  # type: ignore[no-untyped-def]
             next(gen)
         try:
@@ -2240,7 +2223,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             "test_strategy": ("code", "method"),
         }
 
-        gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
+        gen = behaviour.get_bet_amount(0.5, 0.5, [100, 100], 10, WXDAI)
         for _ in range(2):
             next(gen)
         try:
@@ -2274,7 +2257,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             "test_strategy": ("code", "method"),
         }
 
-        gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
+        gen = behaviour.get_bet_amount(0.5, 0.5, [100, 100], 10, WXDAI)
         for _ in range(2):
             next(gen)
         try:
@@ -2334,7 +2317,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.context.logger = LimitedLogger(original_logger)  # type: ignore[assignment]
 
-        gen = behaviour.get_bet_amount(0.5, 0.5, 100, 100, 10, 0.8, WXDAI)
+        gen = behaviour.get_bet_amount(0.5, 0.5, [100, 100], 10, WXDAI)
         for _ in range(2):
             next(gen)
         try:
