@@ -23,7 +23,9 @@
 import builtins
 import dataclasses
 import json
+import math
 import sys
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union, get_type_hints
 
@@ -33,6 +35,11 @@ CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
 DAY_IN_SECONDS = 24 * 60 * 60
+WEI = 10**18
+MARKET_TO_PLATFORM = {
+    "omen_subgraph": "omen",
+    "polymarket_client": "polymarket",
+}
 
 
 class BinaryOutcome(Enum):
@@ -165,6 +172,7 @@ class Bet:
     condition_id: Optional[str] = None
     category: Optional[str] = None
     strategy: Optional[str] = None
+    market_spread: Optional[float] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -398,6 +406,47 @@ class Bet:
             > (self.openingTimestamp - opening_margin) + DAY_IN_SECONDS
             and self.invested_amount > 0  # only consider selling if has tokens
         )
+
+    def to_request_context(self) -> Optional[Dict[str, Any]]:
+        """Build request_context for the benchmark schema."""
+        platform = MARKET_TO_PLATFORM.get(self.market)
+        if platform is None:
+            return None
+
+        market_id = self.condition_id or self.id
+
+        market_prob = None
+        if self.outcomeTokenMarginalPrices and math.isfinite(
+            self.outcomeTokenMarginalPrices[0]
+        ):
+            market_prob = self.outcomeTokenMarginalPrices[0]
+
+        market_close_at = None
+        if self.openingTimestamp and self.openingTimestamp > 0:
+            market_close_at = (
+                datetime.fromtimestamp(self.openingTimestamp, tz=timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+
+        amm_fee = None
+        if platform == "omen" and self.fee > 0:
+            amm_fee = self.fee / WEI
+
+        spread = self.market_spread
+        if spread is not None and not (0 <= spread <= 1):
+            spread = None
+
+        context: Dict[str, Any] = {
+            "market_id": market_id,
+            "type": platform,
+            "market_prob": market_prob,
+            "market_liquidity_usd": self.scaledLiquidityMeasure,
+            "market_close_at": market_close_at,
+            "amm_fee": amm_fee,
+            "market_spread": spread,
+        }
+        return {k: v for k, v in context.items() if v is not None}
 
 
 class BetsEncoder(json.JSONEncoder):
