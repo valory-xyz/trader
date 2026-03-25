@@ -1640,18 +1640,6 @@ grep -rn "prediction_response\.vote\|\.win_probability" packages/ --include="*.p
 # Check tox coverage job output
 ```
 
-### 5.1 Audit References
-
-Use the existing Kelly audit documents instead of duplicating the audit process
-in this implementation plan:
-
-- `plans/audit/audit_specs/KELLY_SPEC_AUDIT_FRAMEWORK.md`
-- `plans/audit/audit_code/KELLY_CODE_AUDIT_FRAMEWORK.md`
-
-The implementation plan should only retain Kelly-specific test and verification
-items. Audit process, finding format, severity handling, regression review, and
-go/no-go criteria live in the dedicated audit framework documents above.
-
 ---
 
 ## 6. Execution Order
