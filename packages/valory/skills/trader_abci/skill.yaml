@@ -243,20 +243,12 @@ models:
       contract_timeout: 300.0
       file_hash_to_strategies: {}
       strategies_kwargs:
-        bet_kelly_fraction: 1.0
-        floor_balance: 500000000000000000
-        bet_amount_per_threshold:
-          0.0: 0
-          0.1: 0
-          0.2: 0
-          0.3: 0
-          0.4: 0
-          0.5: 0
-          0.6: 0
-          0.7: 0
-          0.8: 0
-          0.9: 0
-          1.0: 0
+        floor_balance: 0
+        n_bets: 1
+        min_edge: 0.03
+        min_oracle_prob: 0.5
+        fee_per_trade: 0.01
+        grid_points: 500
       service_endpoint: trader.autonolas.tech/
       rpc_sleep_time: 10
       safe_voting_range: 600

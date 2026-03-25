@@ -90,7 +90,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
@@ -128,7 +128,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -383,7 +383,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -417,7 +417,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -516,7 +516,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -550,7 +550,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
@@ -649,7 +649,7 @@ type: skill
         mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
         mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
         sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion_no_conf}
+        trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
         use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
         bet_threshold: ${BET_THRESHOLD:int:100000000000000000}
         ipfs_address: ${IPFS_ADDRESS:str:https://gateway.autonolas.tech/ipfs/}
@@ -683,7 +683,7 @@ type: skill
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
         file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
-        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"bet_kelly_fraction":1.0,"floor_balance":500000000000000000,"bet_amount_per_threshold":{"0.0":0,"0.1":0,"0.2":0,"0.3":0,"0.4":0,"0.5":0,"0.6":60000000000000000,"0.7":90000000000000000,"0.8":100000000000000000,"0.9":1000000000000000000,"1.0":10000000000000000000}}}
+        strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
         mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}

@@ -516,15 +516,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if chatui_config.fixed_bet_size is not None:
             strategies_kwargs["bet_amount"] = chatui_config.fixed_bet_size
 
-        # Keep backward compat: also update bet_amount_per_threshold dict
-        # in case a legacy strategy is still active during migration
-        if chatui_config.fixed_bet_size is not None:
-            if "bet_amount_per_threshold" in strategies_kwargs:
-                for key in strategies_kwargs["bet_amount_per_threshold"]:
-                    strategies_kwargs["bet_amount_per_threshold"][
-                        key
-                    ] = chatui_config.fixed_bet_size
-
         return strategies_kwargs
 
     def _get_decimals_for_token(self, collateral_token: str) -> int:
