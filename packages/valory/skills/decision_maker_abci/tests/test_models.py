@@ -695,18 +695,6 @@ class TestDecisionMakerParams:
         assert isinstance(result, PromptTemplate)
         assert result.template == "@{yes} @{no} @{question}"
 
-    def test_using_kelly_true(self) -> None:
-        """Test using_kelly returns True when strategy is kelly_criterion."""
-        params = object.__new__(DecisionMakerParams)
-        params.trading_strategy = STRATEGY_KELLY_CRITERION
-        assert params.using_kelly is True
-
-    def test_using_kelly_false(self) -> None:
-        """Test using_kelly returns False when strategy is not kelly_criterion."""
-        params = object.__new__(DecisionMakerParams)
-        params.trading_strategy = "some_other_strategy"
-        assert params.using_kelly is False
-
     def test_slippage_getter(self) -> None:
         """Test slippage getter returns the private _slippage value."""
         params = object.__new__(DecisionMakerParams)

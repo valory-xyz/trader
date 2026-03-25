@@ -69,6 +69,7 @@ DEFAULT_FROM_BLOCK = "earliest"
 ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 STRATEGY_KELLY_CRITERION = "kelly_criterion"
+STRATEGY_KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"  # backward compat
 L0_START_FIELD = "l0_start"
 L1_START_FIELD = "l1_start"
 L0_END_FIELD = "l0_end"
@@ -501,11 +502,6 @@ class DecisionMakerParams(
             "outcome_side_threshold_filter_threshold", kwargs, float
         )
         super().__init__(*args, **kwargs)
-
-    @property
-    def using_kelly(self) -> bool:
-        """Get the max bet amount if the `bet_amount_per_conf_threshold` strategy is used."""
-        return self.trading_strategy == STRATEGY_KELLY_CRITERION
 
     @property
     def prompt_template(self) -> PromptTemplate:
