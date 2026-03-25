@@ -913,6 +913,21 @@ class TestIsProfitable:
         assert bet_amount == 500
         assert strategy_vote == 1
 
+    def test_strategy_vote_differs_from_mech(self) -> None:
+        """Strategy picks NO (vote=1) even though mech says YES (p_yes=0.8)."""
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=1
+        )
+        # pred has p_yes=0.8 → mech would pick YES (vote=0)
+        # but strategy picks NO (vote=1) due to better log-growth
+        assert pred.p_yes == 0.8  # mech says YES
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, strategy_vote = result
+        assert is_profitable is True
+        assert strategy_vote == 1  # strategy's NO, not mech's YES
+
     def test_clob_fetches_both_orderbooks(self) -> None:
         """CLOB market type triggers _fetch_orderbook for both tokens."""
         behaviour, pred, _ = self._setup_behaviour(
@@ -959,7 +974,9 @@ class TestIsProfitable:
             behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
         ).start()
         behaviour._last_strategy_result = {
-            "bet_amount": 500, "vote": 0, "expected_profit": 100,
+            "bet_amount": 500,
+            "vote": 0,
+            "expected_profit": 100,
         }
 
         result = self._run_is_profitable(behaviour, pred)
@@ -979,6 +996,19 @@ class TestIsProfitable:
 
         is_profitable, bet_amount, _ = result
         assert is_profitable is True
+
+    def test_clob_both_orderbook_failures(self) -> None:
+        """Both CLOB orderbook fetches return None -> strategy gets no data, no trade."""
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
+        )
+        # _fetch_orderbook already mocked to return None in _setup_behaviour
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, strategy_vote = result
+        assert is_profitable is False
+        assert bet_amount == 0
 
     def test_clob_empty_token_ids(self) -> None:
         """CLOB path with empty token IDs skips individual fetches."""
@@ -1097,16 +1127,21 @@ class TestIsProfitable:
                                         ):
                                             with patch.object(behaviour, "store_bets"):
                                                 with patch.object(
-                                                    behaviour, "_write_benchmark_results"
+                                                    behaviour,
+                                                    "_write_benchmark_results",
                                                 ):
                                                     with patch.object(
                                                         type(behaviour),
                                                         "shared_state",
                                                         new_callable=PropertyMock,
                                                     ) as mock_ss:
-                                                        mock_ss.return_value = shared_state
-                                                        result = self._run_is_profitable(
-                                                            behaviour, pred
+                                                        mock_ss.return_value = (
+                                                            shared_state
+                                                        )
+                                                        result = (
+                                                            self._run_is_profitable(
+                                                                behaviour, pred
+                                                            )
                                                         )
 
         is_profitable, bet_amount, strategy_vote = result

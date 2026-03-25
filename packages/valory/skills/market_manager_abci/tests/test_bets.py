@@ -627,7 +627,6 @@ class TestBetUpdateInvestments:
         assert result is True
         assert bet.investments["No"] == [50, 75]
 
-
     def test_uses_strategy_vote_not_mech_vote(self) -> None:
         """Investment should track under strategy_vote, not prediction_response.vote."""
         # Mech says YES (p_yes=0.7, vote=0), but strategy picked NO (strategy_vote=1)
@@ -750,7 +749,6 @@ class TestBetRebetAllowed:
         result = bet.rebet_allowed(new_pred, liquidity=100, potential_net_profit=300)
         assert result is False
 
-
     def test_rebet_uses_strategy_vote_for_comparison(self) -> None:
         """Rebet should compare strategy_vote, not prediction_response.vote."""
         # Previous bet: mech said YES (p_yes=0.7), strategy picked NO (strategy_vote=1)
@@ -771,7 +769,9 @@ class TestBetRebetAllowed:
         # Using mech votes (both=0) would also be same-side, but for wrong reason.
         # The test verifies strategy_vote is used, not mech vote.
         result = bet.rebet_allowed(
-            new_pred, liquidity=100, potential_net_profit=300,
+            new_pred,
+            liquidity=100,
+            potential_net_profit=300,
             new_vote=new_strategy_vote,
         )
         # Same side, more confident (0.7 >= 0.6), higher liquidity (200 >= 100)

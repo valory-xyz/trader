@@ -401,7 +401,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         bet.position_liquidity = bet.outcomeTokenAmounts[strategy_vote]
         bet.potential_net_profit = potential_net_profit
         rebet_allowed = bet.rebet_allowed(
-            previous_response, previous_liquidity, previous_net_profit,
+            previous_response,
+            previous_liquidity,
+            previous_net_profit,
             new_vote=strategy_vote,
         )
         if not rebet_allowed:
@@ -476,7 +478,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     ob_no = yield from self._fetch_orderbook(no_token_id)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
-                        if min_order_shares == 0.0 and ob_no.get("min_order_size") is not None:
+                        if (
+                            min_order_shares == 0.0
+                            and ob_no.get("min_order_size") is not None
+                        ):
                             min_order_shares = float(ob_no["min_order_size"])
 
         bet_amount = yield from self.get_bet_amount(
@@ -570,6 +575,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         When enabling, this method needs to be updated to use strategy_vote
         instead of prediction_response.vote for determining which tokens
         to sell. Currently uses mech's higher-probability side.
+
+        :param prediction_response: the mech's prediction response.
+        :return: whether the outcome tokens should be sold.
         """
         # self.bets is empty. Read from file
         self.read_bets()

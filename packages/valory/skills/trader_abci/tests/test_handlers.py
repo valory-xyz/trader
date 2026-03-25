@@ -46,7 +46,6 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
-from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )

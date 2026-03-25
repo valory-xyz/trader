@@ -338,7 +338,11 @@ class Bet:
 
     def update_investments(self, amount: int) -> bool:
         """Get the investments for the current vote type."""
-        vote = self.strategy_vote if self.strategy_vote is not None else self.prediction_response.vote
+        vote = (
+            self.strategy_vote
+            if self.strategy_vote is not None
+            else self.prediction_response.vote
+        )
         if vote is None:
             return False
 
@@ -394,7 +398,11 @@ class Bet:
             self.prediction_response.win_probability
             >= prediction_response.win_probability
         )
-        previous_vote = self.strategy_vote if self.strategy_vote is not None else self.prediction_response.vote
+        previous_vote = (
+            self.strategy_vote
+            if self.strategy_vote is not None
+            else self.prediction_response.vote
+        )
         current_vote = new_vote if new_vote is not None else prediction_response.vote
         if current_vote == previous_vote:
             higher_liquidity = self.position_liquidity >= liquidity
