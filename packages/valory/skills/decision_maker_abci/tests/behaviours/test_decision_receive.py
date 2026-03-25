@@ -345,34 +345,6 @@ class TestGetDecision:
 # ---------------------------------------------------------------------------
 
 
-class TestGetBetSampleInfo:
-    """Tests for _get_bet_sample_info static method."""
-
-    def test_binary_bet_vote_0(self) -> None:
-        """Should return correct token amounts for vote=0."""
-        bet = MagicMock()
-        bet.outcomeTokenAmounts = [100, 200]
-        bet.opposite_vote.return_value = 1
-
-        selected, other = DecisionReceiveBehaviour._get_bet_sample_info(bet, 0)
-        assert selected == 100
-        assert other == 200
-
-    def test_binary_bet_vote_1(self) -> None:
-        """Should return correct token amounts for vote=1."""
-        bet = MagicMock()
-        bet.outcomeTokenAmounts = [100, 200]
-        bet.opposite_vote.return_value = 0
-
-        selected, other = DecisionReceiveBehaviour._get_bet_sample_info(bet, 1)
-        assert selected == 200
-        assert other == 100
-
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-
-
 class TestGetResponse:
     """Tests for _get_response."""
 
@@ -526,37 +498,6 @@ class TestShouldSellOutcomeTokens:
                 result = behaviour.should_sell_outcome_tokens(pred)
         assert result is True
         assert behaviour.sell_amount == 100
-
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# type: ignore[method-assign]
-
-
-class TestCalcBinaryShares:
-    """Tests for _calc_binary_shares."""
-
-    def test_calc_binary_shares_normal(self) -> None:
-        """Should calculate num_shares and available_shares correctly."""
-        behaviour = _make_behaviour()
-        bet = _make_bet(
-            outcomeTokenAmounts=[1000, 1000],
-            outcomeTokenMarginalPrices=[0.5, 0.5],
-        )
-        num_shares, available_shares = behaviour._calc_binary_shares(bet, 100, 0)
-        assert num_shares > 0
-        assert available_shares > 0
-
-    def test_calc_binary_shares_none_prices(self) -> None:
-        """Should return (0, 0) when prices are None."""
-        behaviour = _make_behaviour()
-        bet = _make_bet(
-            outcomeTokenAmounts=[1000, 1000],
-            outcomeTokenMarginalPrices=None,
-        )
-        num_shares, available_shares = behaviour._calc_binary_shares(bet, 100, 0)
-        assert num_shares == 0
-        assert available_shares == 0
 
 
 # ---------------------------------------------------------------------------

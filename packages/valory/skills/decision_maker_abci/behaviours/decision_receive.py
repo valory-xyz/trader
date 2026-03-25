@@ -220,16 +220,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
 
-    @staticmethod
-    def _get_bet_sample_info(bet: Bet, vote: int) -> Tuple[int, int]:
-        """Get the bet sample information."""
-        token_amounts = bet.outcomeTokenAmounts
-        selected_type_tokens_in_pool = token_amounts[vote]
-        opposite_vote = bet.opposite_vote(vote)
-        other_tokens_in_pool = token_amounts[opposite_vote]
-
-        return selected_type_tokens_in_pool, other_tokens_in_pool
-
     def _compute_new_tokens_distribution(
         self,
         token_amounts: List[int],
@@ -295,27 +285,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             num_shares,
             available_shares,
         )
-
-    def _calc_binary_shares(
-        self, bet: Bet, net_bet_amount: int, vote: int
-    ) -> Tuple[int, int]:
-        """Calculate the claimed shares. This calculation only works for binary markets."""
-        # calculate the pool's k (x*y=k)
-        token_amounts = bet.outcomeTokenAmounts
-        self.context.logger.info(f"Token amounts: {[x for x in token_amounts]}")
-
-        # calculate the number of the traded tokens
-        prices = bet.outcomeTokenMarginalPrices
-        self.context.logger.info(f"Prices: {prices}")
-
-        if prices is None:
-            return 0, 0
-
-        _, _, _, num_shares, available_shares = self._compute_new_tokens_distribution(
-            token_amounts.copy(), prices, net_bet_amount, vote
-        )
-
-        return num_shares, available_shares
 
     def _update_market_liquidity(self) -> None:
         """Update the current market's liquidity information."""

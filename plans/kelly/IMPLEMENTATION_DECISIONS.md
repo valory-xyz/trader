@@ -118,6 +118,6 @@ Unused strategies with no references from production code.
 - Full test suite run
 - PredictionResponse.vote and .win_probability removal (deferred — still
   used by selling flow and some test infrastructure)
-- Dead code cleanup: `_calc_binary_shares`, `_compute_new_tokens_distribution`,
-  `_get_bet_sample_info` still exist but are no longer called by
-  `_is_profitable`
+- `_calc_binary_shares` and `_get_bet_sample_info` removed (dead code).
+  `_compute_new_tokens_distribution` kept — still used by
+  `_calculate_new_liquidity` (benchmarking path).
