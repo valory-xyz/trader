@@ -398,7 +398,11 @@ This value must not be recomputed downstream using a different price model.
 
 ### `floor_balance`
 
-Reserve not available for betting.
+Reserve not available for betting. Default: `0`.
+
+This parameter is available for operators who want a hard safety floor in the
+wallet (e.g., to ensure gas can always be paid). With `n_bets` controlling the
+effective bankroll depth, `floor_balance = 0` is a reasonable default.
 
 ```text
 W = W_total - floor_balance

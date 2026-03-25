@@ -1188,7 +1188,7 @@ strategies_kwargs:
 **New:**
 ```yaml
 strategies_kwargs:
-  floor_balance: 500000000000000000
+  floor_balance: 0
   default_max_bet_size: 5000000
   absolute_max_bet_size: 5000000
   n_bets: 1
