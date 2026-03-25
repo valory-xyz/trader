@@ -116,7 +116,7 @@ If the real venue minimum differs from `5.0`, the strategy can miscompute admiss
 - Spec mismatch
 - Medium severity
 
-### Medium: previous rebet gate is no longer applied in the live profitability path
+### High: previous rebet gate is no longer applied in the live profitability path
 
 **Files:**
 - `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py`
@@ -126,7 +126,14 @@ If the real venue minimum differs from `5.0`, the strategy can miscompute admiss
 `rebet_allowed()` still exists, but `_is_profitable()` no longer calls it before approving a trade.
 
 **Why this matters:**  
-This is a behavior change from the previous flow, and it may allow repeated bets that were previously filtered out.
+This is not just an internal refactor. The previous decision path applied an
+additional repeat-bet guard before approving another trade on the same market.
+The new path no longer does so, which means the trader can place repeated bets
+on the same market without the prior confidence/liquidity/profit comparison
+gate. We should maintain the policy to avoid rebetting when the new candidate
+does not improve on the previous bet under the existing
+confidence/liquidity/profit checks. Since the new path skips that guard, this is
+a blocking policy regression.
 
 **Code references:**
 - `packages/valory/skills/decision_maker_abci/behaviours/decision_receive.py:381-401`
@@ -134,8 +141,8 @@ This is a behavior change from the previous flow, and it may allow repeated bets
 - `packages/valory/skills/market_manager_abci/bets.py:372-392`
 
 **Audit classification:**  
-- Regression risk
-- Medium severity
+- Regression / policy regression
+- Blocking
 
 ---
 
@@ -255,11 +262,11 @@ test-verified in this environment.
 
 1. Omen `trader` config removed compatibility keys still required by runtime.
 2. ChatUI still accepts legacy strategy names without runtime normalization.
+3. The previous repeat-bet guard is no longer applied before approving a new trade.
 
 ### Non-blocking but important
 
 1. `min_order_shares` is not yet truly venue-provided.
-2. Rebet gating behavior changed and should be either restored or explicitly accepted.
 
 ---
 
