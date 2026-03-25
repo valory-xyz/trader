@@ -121,7 +121,7 @@ For each side:
 2. construct venue-specific execution inputs
 3. apply venue-specific edge pre-filter
 4. search over candidate bet sizes on the grid
-5. compute true edge (VWAP for CLOB, market price for FPMM)
+5. compute true edge from execution result (CLOB: `p - VWAP` from walked book; FPMM: `p - market_price`)
 6. compare best side result against no trade
 
 The strategy then returns the side with the largest positive `G_improvement`.
