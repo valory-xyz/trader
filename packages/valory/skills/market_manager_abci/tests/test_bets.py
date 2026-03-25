@@ -26,12 +26,12 @@ from typing import Any, Dict
 import pytest
 
 from packages.valory.skills.market_manager_abci.bets import (
-    MARKET_TO_PLATFORM,
     Bet,
     BetsDecoder,
     BetsEncoder,
     BinaryOutcome,
     DAY_IN_SECONDS,
+    MARKET_TO_PLATFORM,
     PredictionResponse,
     QueueStatus,
     get_default_prediction_response,
