@@ -444,6 +444,17 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     if not market.get("question"):
                         raise ValueError("Missing question")
 
+                    # Parse spread from Gamma API (decimal, e.g. 0.02)
+                    raw_spread = market.get("spread")
+                    market_spread = None
+                    if raw_spread is not None:
+                        try:
+                            parsed = float(raw_spread)
+                            if 0 <= parsed <= 1:
+                                market_spread = parsed
+                        except (ValueError, TypeError):
+                            market_spread = None
+
                     bet_dict = {
                         "id": market_id,
                         "title": market.get("question"),
@@ -470,6 +481,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         ),
                         "investments": {},
                         "outcome_token_ids": outcome_token_ids_map,
+                        "market_spread": market_spread,
                     }
 
                     # Debug: Log category for first few bets
