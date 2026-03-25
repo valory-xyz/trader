@@ -127,7 +127,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber1":["kelly_criterion"],"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber2":["fixed_bet"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
@@ -416,7 +416,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber1":["kelly_criterion"],"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber2":["fixed_bet"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
@@ -549,7 +549,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber1":["kelly_criterion"],"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber2":["fixed_bet"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
@@ -682,7 +682,7 @@ type: skill
         tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
         redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
         contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeiarucfdx3w25ssu6q3lhp5zd35x5hmgsb4l2464wsruk6x2edlwge":["bet_amount_per_threshold"],"bafybeigczy3w6fetd7untc5bfmehyld5t3stfxlwps7gulecjnjlthyg5m":["kelly_criterion_no_conf"]}}
+        file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber1":["kelly_criterion"],"bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber2":["fixed_bet"]}}
         strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":0.01,"grid_points":500}}
         use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
         use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}

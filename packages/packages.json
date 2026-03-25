@@ -1,10 +1,7 @@
 {
     "dev": {
-        "custom/valory/bet_amount_per_threshold/0.1.0": "bafybeidznryjof432nyxawrkknweqgxmnudmu2z6ykfbx6m32n5xtea6rm",
-        "custom/valory/mike_strat/0.1.0": "bafybeibeifst5le4y34irpxpcgmxhur3i2ynkgeynpaj5w7o2tjlr4er54",
-        "custom/jhehemann/kelly_criterion/0.1.0": "bafybeicdmyja6r4erjch5ddxwbz3ps2wvgujht5ibqk6dwow4der3jeg7y",
-        "custom/w1kke/always_blue/0.1.0": "bafybeict5vspysemisfoqcjrf43r656bexvqm7fuy2nmhc7fchja3rn73e",
-        "custom/valory/kelly_criterion_no_conf/0.1.0": "bafybeidudhwb67odf2gytaakfkvhsnrob3lwh5b4cchoao6s4xbbsf7n6u",
+        "custom/valory/kelly_criterion/0.1.0": "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber",
+        "custom/valory/fixed_bet/0.1.0": "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber",
         "contract/valory/realitio/0.1.0": "bafybeibj7wequqhgxcke2bwsq5onp6amk35vdhzf5zcczhytiohz2tfqua",
         "contract/valory/realitio_proxy/0.1.0": "bafybeiehe26tllwbni57zomdyxtwipmdvmrirgc54fp5gwtg324lbfl7im",
         "contract/valory/conditional_tokens/0.1.0": "bafybeieumljzqj6dw3aifiza4msx6m4etyqhsthvcgw3s26kn73oktxdk4",
