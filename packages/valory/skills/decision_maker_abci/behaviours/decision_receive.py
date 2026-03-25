@@ -379,20 +379,30 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         return liquidity_info
 
     def rebet_allowed(
-        self, prediction_response: PredictionResponse, potential_net_profit: int
+        self,
+        prediction_response: PredictionResponse,
+        potential_net_profit: int,
+        strategy_vote: int,
     ) -> bool:
-        """Whether a rebet is allowed or not."""
+        """Whether a rebet is allowed or not.
+
+        :param prediction_response: the current mech prediction response.
+        :param potential_net_profit: the expected profit from the strategy.
+        :param strategy_vote: the strategy's chosen side (0=YES, 1=NO).
+        :return: whether rebetting is allowed.
+        """
         # WARNING: Every time you call self.sampled_bet a reset in self.bets is done so any changes there will be lost
         bet = self.sampled_bet
         previous_response = deepcopy(bet.prediction_response)
         previous_liquidity = bet.position_liquidity
         previous_net_profit = bet.potential_net_profit
         bet.prediction_response = prediction_response
-        vote = bet.prediction_response.vote
-        bet.position_liquidity = bet.outcomeTokenAmounts[vote] if vote else 0
+        bet.strategy_vote = strategy_vote
+        bet.position_liquidity = bet.outcomeTokenAmounts[strategy_vote]
         bet.potential_net_profit = potential_net_profit
         rebet_allowed = bet.rebet_allowed(
-            previous_response, previous_liquidity, previous_net_profit
+            previous_response, previous_liquidity, previous_net_profit,
+            new_vote=strategy_vote,
         )
         if not rebet_allowed:
             # reset the in-memory bets so that the updates of the sampled bet above are reverted
@@ -505,6 +515,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             f"on {side_name}, expected_profit={self.convert_to_native(expected_profit)} {token_name}"
         )
 
+        if is_profitable:
+            is_profitable = self.rebet_allowed(
+                prediction_response, expected_profit, strategy_vote
+            )
+
         if self.benchmarking_mode.enabled:
             if is_profitable:
                 # update the information at the shared state
@@ -549,7 +564,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     def should_sell_outcome_tokens(
         self, prediction_response: Optional[PredictionResponse]
     ) -> bool:
-        """Whether the outcome tokens should be sold."""
+        """Whether the outcome tokens should be sold.
+
+        NOTE: Selling flow is currently not supported in production.
+        When enabling, this method needs to be updated to use strategy_vote
+        instead of prediction_response.vote for determining which tokens
+        to sell. Currently uses mech's higher-probability side.
+        """
         # self.bets is empty. Read from file
         self.read_bets()
 

@@ -703,7 +703,7 @@ class TestRebetAllowed:
             type(behaviour), "sampled_bet", new_callable=PropertyMock
         ) as mock_sb:
             mock_sb.return_value = bet
-            result = behaviour.rebet_allowed(pred, 50)
+            result = behaviour.rebet_allowed(pred, 50, strategy_vote=0)
 
         assert result is True
 
@@ -722,7 +722,7 @@ class TestRebetAllowed:
             type(behaviour), "sampled_bet", new_callable=PropertyMock
         ) as mock_sb:
             mock_sb.return_value = bet
-            result = behaviour.rebet_allowed(pred, 50)
+            result = behaviour.rebet_allowed(pred, 50, strategy_vote=0)
 
         assert result is False
         behaviour.read_bets.assert_called_once()  # type: ignore[union-attr]
@@ -849,6 +849,8 @@ class TestIsProfitable:
         ).start()
         patch.object(behaviour, "convert_to_native", return_value=0.001).start()
         patch.object(behaviour, "get_token_name", return_value="xDAI").start()
+
+        patch.object(behaviour, "rebet_allowed", return_value=True).start()
 
         if is_polymarket:
             patch.object(
@@ -1085,22 +1087,27 @@ class TestIsProfitable:
                                 ):
                                     with patch.object(
                                         behaviour,
-                                        "_update_liquidity_info",
-                                        return_value=liquidity_info,
+                                        "rebet_allowed",
+                                        return_value=True,
                                     ):
-                                        with patch.object(behaviour, "store_bets"):
-                                            with patch.object(
-                                                behaviour, "_write_benchmark_results"
-                                            ):
+                                        with patch.object(
+                                            behaviour,
+                                            "_update_liquidity_info",
+                                            return_value=liquidity_info,
+                                        ):
+                                            with patch.object(behaviour, "store_bets"):
                                                 with patch.object(
-                                                    type(behaviour),
-                                                    "shared_state",
-                                                    new_callable=PropertyMock,
-                                                ) as mock_ss:
-                                                    mock_ss.return_value = shared_state
-                                                    result = self._run_is_profitable(
-                                                        behaviour, pred
-                                                    )
+                                                    behaviour, "_write_benchmark_results"
+                                                ):
+                                                    with patch.object(
+                                                        type(behaviour),
+                                                        "shared_state",
+                                                        new_callable=PropertyMock,
+                                                    ) as mock_ss:
+                                                        mock_ss.return_value = shared_state
+                                                        result = self._run_is_profitable(
+                                                            behaviour, pred
+                                                        )
 
         is_profitable, bet_amount, strategy_vote = result
         assert is_profitable is True
