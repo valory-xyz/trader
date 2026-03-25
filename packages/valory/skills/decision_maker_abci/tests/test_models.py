@@ -576,7 +576,6 @@ def _build_decision_maker_params_kwargs() -> dict:
         "trading_strategy": "kelly_criterion",
         "use_fallback_strategy": False,
         "tools_accuracy_hash": "hash123",
-        "bet_threshold": 1000,
         "prompt_template": "@{yes} @{no} @{question}",
         "dust_threshold": 100,
         "conditional_tokens_address": "0xcond",
@@ -650,7 +649,6 @@ class TestDecisionMakerParams:
             params = DecisionMakerParams(**kwargs)
         assert params.sample_bets_closing_days == 7
         assert params.trading_strategy == "kelly_criterion"
-        assert params.bet_threshold == 1000
         assert params.slippage == 0.1
         assert params.epsilon == 0.2
         assert params.agent_registry_address == "0xaddr"

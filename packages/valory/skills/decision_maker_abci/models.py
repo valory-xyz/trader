@@ -393,8 +393,6 @@ class DecisionMakerParams(
             "use_fallback_strategy", kwargs, bool
         )
         self.tools_accuracy_hash: str = self._ensure("tools_accuracy_hash", kwargs, str)
-        # the threshold amount in WEI starting from which we are willing to place a bet
-        self.bet_threshold: int = self._ensure("bet_threshold", kwargs, int)
         self._prompt_template: str = self._ensure("prompt_template", kwargs, str)
         check_prompt_template(self.prompt_template)
         self.dust_threshold: int = self._ensure("dust_threshold", kwargs, int)
