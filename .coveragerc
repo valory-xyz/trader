@@ -2,8 +2,6 @@
 branch = True
 source =
     packages/valory
-    packages/w1kke
-    packages/jhehemann
 omit =
     */tests/*
     */__init__.py
@@ -22,6 +20,8 @@ exclude_lines =
     if TYPE_CHECKING:
     @abstractmethod
     pass
+partial_branches =
+    pragma: no branch
 
 [html]
 directory = htmlcov

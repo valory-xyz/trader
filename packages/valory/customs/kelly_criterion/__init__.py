@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
@@ -18,22 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Request types for Polymarket connection."""
-
-from enum import Enum
-
-
-class RequestType(Enum):
-    """Enum for supported Polymarket request types."""
-
-    PLACE_BET = "place_bet"
-    FETCH_MARKETS = "fetch_markets"
-    FETCH_MARKET = "fetch_market"
-    GET_POSITIONS = "get_positions"
-    FETCH_ALL_POSITIONS = "fetch_all_positions"
-    GET_TRADES = "get_trades"
-    FETCH_ALL_TRADES = "fetch_all_trades"
-    REDEEM_POSITIONS = "redeem_positions"
-    SET_APPROVAL = "set_approval"
-    CHECK_APPROVAL = "check_approval"
-    FETCH_ORDER_BOOK = "fetch_order_book"
+"""Execution-aware Kelly criterion bet sizing for CLOB and FPMM markets."""
