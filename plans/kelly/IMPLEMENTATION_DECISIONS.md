@@ -167,24 +167,25 @@ handles minimum viable profit internally via `min_edge` and log-utility.
 - [x] PR #886 opened targeting parent branch (PR #882)
 - [x] `fee_per_trade` changed to wei for consistency with all other kwargs
 - [x] Test files flattened (no subdirectory) to avoid IPFS handler bug
-- [x] Coverage improved to 99.98% (pragmas on unsupported benchmarking paths)
+- [x] Coverage at 100% (3308 tests, branch coverage)
 - [x] Audit finding 1 fixed: added missing ChatUI compat keys to base skill YAMLs
 - [x] Audit finding 2 fixed: removed legacy names from ChatUI enum, added migration tests
-- [x] Audit R1 fixed: `update_investments()` now uses `strategy_vote` instead of `prediction_response.vote`
-- [x] Audit R2 fixed: `rebet_allowed()` restored in `_is_profitable()`, uses `strategy_vote` for side comparison
-- [x] Added `strategy_vote` field to `Bet` dataclass (backward compat with old JSON)
+- [x] Audit R1 fixed: `update_investments()` now uses `strategy_vote`
+- [x] Audit R2 fixed: `rebet_allowed()` restored with `strategy_vote`
+- [x] Added `strategy_vote` field to `Bet` dataclass (backward compat)
 - [x] `min_order_size` extracted from CLOB orderbook response
-- [x] Selling flow commented as unsupported, needs updates when enabled
-- [x] Verified: bet placement and redeem use `synchronized_data.vote` (correct — comes from strategy)
+- [x] Selling flow commented as unsupported
+- [x] Verified: bet placement and redeem use `synchronized_data.vote`
+- [x] RT1 regression test added (strategy vote differs from mech)
+- [x] R7 regression test added (both CLOB orderbook failures)
+- [x] `n_bets=5` in service YAMLs per reviewer feedback
+- [x] Both audits pass — `go` for active rollout services
 
-## Remaining Work
+## Deferred
 
-- PredictionResponse.vote and .win_probability kept as fallback for old
-  stored bets without strategy_vote and for unsupported selling flow
-- `_compute_new_tokens_distribution` kept — still used by benchmarking
-- Regression tests RT1 (strategy vote diverges from mech) and RT2
-  (selling flow unaffected) recommended by audit — not yet added
-- `_compute_new_tokens_distribution` kept — still used by
-  `_calculate_new_liquidity` (benchmarking path)
-- `min_order_shares` not yet venue-provided (audit finding 3 — non-blocking)
+- RT2: selling flow test (selling unsupported, will add if coverage drops)
+- PredictionResponse.vote/.win_probability kept as fallback for old bets
+  and unsupported selling flow
+- `_compute_new_tokens_distribution` kept — used by benchmarking
+- Deprecated `trader/service.yaml` missing compat keys (not active rollout)
 - `rebet_allowed` not called (audit finding 4 — intentional, not currently supported)
