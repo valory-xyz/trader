@@ -68,7 +68,10 @@ class DecisionRequestBehaviour(DecisionMakerBaseBehaviour):
         prompt = self.params.prompt_template.substitute(prompt_params)
         tool = self.synchronized_data.mech_tool
         nonce = str(uuid4())
-        self._metadata = MechMetadata(prompt, tool, nonce)
+        request_context = sampled_bet.to_request_context()
+        self._metadata = MechMetadata(
+            prompt, tool, nonce, request_context=request_context
+        )
         msg = f"Prepared metadata {self.metadata!r} for the request."
         self.context.logger.info(msg)
 
