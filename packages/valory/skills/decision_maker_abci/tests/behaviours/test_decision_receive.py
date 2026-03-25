@@ -956,9 +956,7 @@ class TestIsProfitable:
         self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
-        # Verify the new kwargs were passed (they come as positional args in the call)
-        # get_bet_amount(p_yes, confidence, outcome_token_amounts, bet_fee, collateral_token, ...)
-        # We check the keyword args
+        # Verify new keyword args reach the strategy
         assert "market_type" in captured_kwargs
         assert "price_yes" in captured_kwargs
         assert "price_no" in captured_kwargs

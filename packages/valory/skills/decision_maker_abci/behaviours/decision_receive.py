@@ -41,7 +41,6 @@ from packages.valory.skills.decision_maker_abci.states.decision_receive import (
 )
 from packages.valory.skills.market_manager_abci.bets import (
     BINARY_N_SLOTS,
-    Bet,
     CONFIDENCE_FIELD,
     INFO_UTILITY_FIELD,
     P_NO_FIELD,
@@ -407,6 +406,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         """Fetch the orderbook for a CLOB token.
 
         :param token_id: The CLOB token ID.
+        :yield: None
         :return: Dict with "asks" and "bids" keys, or None on failure.
         """
         payload = {
@@ -429,6 +429,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
     ) -> Generator[None, None, Tuple[bool, int, Optional[int]]]:
         """Whether the decision is profitable or not.
 
+        :param prediction_response: the mech's prediction response.
+        :yield: None
         :return: (is_profitable, bet_amount, strategy_vote)
         """
         if self.benchmarking_mode.enabled:
@@ -504,9 +506,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         if self.benchmarking_mode.enabled:
             if is_profitable:
                 # update the information at the shared state
-                liquidity_info = self._update_liquidity_info(
-                    bet_amount, strategy_vote
-                )
+                liquidity_info = self._update_liquidity_info(bet_amount, strategy_vote)
                 bet.outcomeTokenAmounts = self.shared_state.current_liquidity_amounts
                 bet.outcomeTokenMarginalPrices = (
                     self.shared_state.current_liquidity_prices
@@ -625,8 +625,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     self.context.logger.info(
                         "Not selling. Checking if the bet is profitable"
                     )
-                    is_profitable, bet_amount, strategy_vote = yield from self._is_profitable(
-                        prediction_response
+                    is_profitable, bet_amount, strategy_vote = (
+                        yield from self._is_profitable(prediction_response)
                     )
                     decision_received_timestamp = self.synced_timestamp
                     if is_profitable:
@@ -666,6 +666,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 self._update_selected_bet(prediction_response)
 
             # Use strategy_vote for new bets; sell_vote for selling
+            vote: Optional[int] = None
             if is_profitable and strategy_vote is not None:
                 vote = strategy_vote
             elif should_be_sold and self.review_bets_for_selling_mode:
@@ -676,7 +677,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     else None
                 )
                 # for selling we return the opposite vote (the side to sell)
-                vote = self.sampled_bet.opposite_vote(sell_vote) if sell_vote is not None else None
+                vote = (
+                    self.sampled_bet.opposite_vote(sell_vote)
+                    if sell_vote is not None
+                    else None
+                )
             else:
                 vote = None
             confidence = prediction_response.confidence if prediction_response else None

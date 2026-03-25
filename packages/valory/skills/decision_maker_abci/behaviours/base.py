@@ -574,8 +574,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "bankroll": bankroll,
                     "p_yes": p_yes,
                     "confidence": confidence,
-                    "tokens_yes": outcome_token_amounts[0] if outcome_token_amounts else 0,
-                    "tokens_no": outcome_token_amounts[1] if len(outcome_token_amounts) > 1 else 0,
+                    "tokens_yes": (
+                        outcome_token_amounts[0] if outcome_token_amounts else 0
+                    ),
+                    "tokens_no": (
+                        outcome_token_amounts[1]
+                        if len(outcome_token_amounts) > 1
+                        else 0
+                    ),
                     "bet_fee": bet_fee,
                     "market_type": market_type,
                     "price_yes": price_yes,

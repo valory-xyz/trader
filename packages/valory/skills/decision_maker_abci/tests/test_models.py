@@ -36,7 +36,6 @@ from packages.valory.skills.decision_maker_abci.models import (
     PromptTemplate,
     REQUIRED_BET_TEMPLATE_KEYS,
     RedeemingProgress,
-    STRATEGY_KELLY_CRITERION,
     SharedState,
     ZERO_BYTES,
     ZERO_HEX,
