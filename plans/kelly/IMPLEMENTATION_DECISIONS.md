@@ -187,5 +187,5 @@ handles minimum viable profit internally via `min_edge` and log-utility.
 - PredictionResponse.vote/.win_probability kept as fallback for old bets
   and unsupported selling flow
 - `_compute_new_tokens_distribution` kept — used by benchmarking
-- Deprecated `trader/service.yaml` missing compat keys (not active rollout)
+- ~~`trader/service.yaml` missing compat keys~~ — resolved: service removed entirely
 - `rebet_allowed` not called (audit finding 4 — intentional, not currently supported)
