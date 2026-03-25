@@ -328,6 +328,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.REDEEM_POSITIONS: self._redeem_positions,
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
+            RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -1262,5 +1263,27 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         except Exception as e:
             error_msg = f"Error checking approvals: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, error_msg
+
+    def _fetch_order_book(self, token_id: str) -> Tuple[Any, Any]:
+        """Fetch the order book for a given token from the CLOB.
+
+        :param token_id: The CLOB token ID for the outcome.
+        :return: Tuple of (order_book_dict, error_string).
+        """
+        try:
+            order_book = self.client.get_order_book(token_id)
+            asks = [
+                {"price": str(a.price), "size": str(a.size)}
+                for a in (order_book.asks or [])
+            ]
+            bids = [
+                {"price": str(b.price), "size": str(b.size)}
+                for b in (order_book.bids or [])
+            ]
+            return {"asks": asks, "bids": bids}, None
+        except Exception as e:
+            error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
             return None, error_msg
