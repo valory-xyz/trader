@@ -1,0 +1,16 @@
+name: kelly_criterion
+author: valory
+version: 0.1.0
+type: custom
+description: Execution-aware Kelly criterion bet sizing for CLOB and FPMM markets.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber
+  kelly_criterion.py: bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber
+  tests/__init__.py: bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber
+  tests/test_kelly_criterion.py: bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenber
+fingerprint_ignore_patterns: []
+entry_point: kelly_criterion.py
+callable: run
+dependencies: {}
