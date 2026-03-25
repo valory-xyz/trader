@@ -520,7 +520,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             f"on {side_name}, expected_profit={self.convert_to_native(expected_profit)} {token_name}"
         )
 
-        if is_profitable:
+        if (
+            is_profitable
+        ):  # pragma: no branch — always True here; early return above guards
             is_profitable = self.rebet_allowed(
                 prediction_response, expected_profit, strategy_vote
             )

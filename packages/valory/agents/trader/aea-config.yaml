@@ -65,10 +65,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidxfy3gyjjahke7gftbakecdlwr5gng5ccnvlshjpgppp7b6pu2ea
 - valory/termination_abci:0.1.0:bafybeif43h3yc4e6cqieqi2dj7oa55lrircamorkcrgt2kjofua7y2vcgu
 - valory/transaction_settlement_abci:0.1.0:bafybeiezf3kh5f4jmxnwoylc4krghzrkfknkc2r6vve3rgb5eumloco33e
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiehd447wic7wpm4rlk5lyjiwsefuwsiyg4j25gxonxl4ks5loj6zm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeial3j2vrwye4h2ilk3vzowfsxasa5wwgn2hnmvsm7sqd6wnrvcibi
 - valory/market_manager_abci:0.1.0:bafybeibepgkqlcd2kldfymer2r6glrr2ur5e6opnmpxb573xucojnudoqm
-- valory/decision_maker_abci:0.1.0:bafybeihm5sb5ak7nitnes2iyv5u3mf5lml7eebcrnyixxqygpviakkbjjm
-- valory/trader_abci:0.1.0:bafybeicrb3dwcqmoxapsserxngakfrhipxto5h6lelzuarcp6ucekfxrq4
+- valory/decision_maker_abci:0.1.0:bafybeibjtwdedtx4do25br56vpsoi6sah5q4cfkhdi23amccffrpw5tivu
+- valory/trader_abci:0.1.0:bafybeigok7nbfhdpnqmc3ntza3g2ldb74q3vynf6x2vwwe2tqpusu7urry
 - valory/staking_abci:0.1.0:bafybeiaswxgwid46ypwgzh5tnbjx77urtgiqwyudnfrb4puptn2csxk6te
 - valory/check_stop_trading_abci:0.1.0:bafybeig2wea5joxvd6wmrrhyawlflbsz37lkokg6qq6fl2vhwbupmleaae
 - valory/mech_interact_abci:0.1.0:bafybeig7o3fonhmstrvbimsof6h6ihtht44rr7wxozmtedltdmyyqzi5ue
@@ -76,7 +76,7 @@ skills:
 - valory/agent_performance_summary_abci:0.1.0:bafybeiey6fqjkg26pjmeykzga4auxglzxovvf6cekpskzj4t25avs3o56q
 - valory/funds_manager:0.1.0:bafybeihfetdkenkn7tw3a5525ff7irwacgpuaxwbfbyrxasznniasr4ruq
 customs:
-- valory/kelly_criterion:0.1.0:bafybeifrw5k5cwts5kgcok6747t37xjpe22hsv7fqzfkfut7rbkpxdrmtm
+- valory/kelly_criterion:0.1.0:bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa
 - valory/fixed_bet:0.1.0:bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm
 default_ledger: ethereum
 required_ledgers:
@@ -241,7 +241,7 @@ models:
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies: ${dict:{"bafybeiea53d2v3vqentqikgigp5qm3676j5i22gu76nx4ezaq3lk5kibh4":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
+      file_hash_to_strategies: ${dict:{"bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
       strategies_kwargs: ${dict:{"floor_balance":500000000000000000,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
       service_endpoint: ${str:https://trader.autonolas.tech/}
       rpc_sleep_time: ${int:10}

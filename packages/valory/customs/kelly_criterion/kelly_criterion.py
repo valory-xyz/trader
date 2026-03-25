@@ -429,7 +429,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
         )
 
         if best_spend > 0 and g_improvement > 0:
-            if (
+            if (  # pragma: no branch — first side always sets best_result
                 best_result is None
                 or g_improvement > best_result["g_improvement"]
             ):

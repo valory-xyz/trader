@@ -941,11 +941,15 @@ class TestIsProfitable:
         assert bet_amount == 500
 
     def test_clob_with_orderbook_data(self) -> None:
-        """CLOB path with successful orderbook data populates asks."""
+        """CLOB path with successful orderbook data populates asks and min_order_size."""
         behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=500, strategy_vote=0, is_polymarket=True
         )
-        ob_data = {"asks": [{"price": "0.5", "size": "10"}], "bids": []}
+        ob_data = {
+            "asks": [{"price": "0.5", "size": "10"}],
+            "bids": [],
+            "min_order_size": "5",
+        }
 
         # Override _fetch_orderbook to return actual data
         patch.stopall()
@@ -984,6 +988,73 @@ class TestIsProfitable:
 
         is_profitable, bet_amount, _ = result
         assert is_profitable is True
+
+    def test_clob_min_order_size_from_no_orderbook(self) -> None:
+        """min_order_size extracted from NO orderbook when YES has none."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0, is_polymarket=True
+        )
+        ob_yes = {"asks": [{"price": "0.5", "size": "10"}], "bids": []}
+        ob_no = {
+            "asks": [{"price": "0.5", "size": "10"}],
+            "bids": [],
+            "min_order_size": "3",
+        }
+
+        patch.stopall()
+        patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ).start().return_value = MagicMock(enabled=False)
+        patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ).start().return_value = bet
+        patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ).start().return_value = MagicMock(is_running_on_polymarket=True)
+        patch.object(behaviour, "convert_to_native", return_value=0.001).start()
+        patch.object(behaviour, "get_token_name", return_value="USDC").start()
+        patch.object(behaviour, "rebet_allowed", return_value=True).start()
+
+        call_count = {"n": 0}
+
+        def mock_fetch(_tid: str) -> Generator:
+            call_count["n"] += 1
+            yield
+            return ob_yes if call_count["n"] == 1 else ob_no  # type: ignore[return-value]
+
+        patch.object(behaviour, "_fetch_orderbook", side_effect=mock_fetch).start()
+
+        def mock_get_bet_amount(*_args: Any, **_kwargs: Any) -> Generator:
+            yield
+            return 500  # type: ignore[return-value]
+
+        patch.object(
+            behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+        ).start()
+        behaviour._last_strategy_result = {
+            "bet_amount": 500,
+            "vote": 0,
+            "expected_profit": 100,
+        }
+
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, _, _ = result
+        assert is_profitable is True
+
+    def test_rebet_rejected(self) -> None:
+        """Strategy approves bet but rebet_allowed returns False."""
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0
+        )
+        # Override rebet_allowed to return False
+        patch.object(behaviour, "rebet_allowed", return_value=False).start()
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is False
 
     def test_clob_no_outcome_token_ids(self) -> None:
         """CLOB path with outcome_token_ids=None skips orderbook fetch."""
