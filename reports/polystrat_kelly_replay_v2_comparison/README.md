@@ -7,6 +7,13 @@ windows: 4-day (Mar 23-26, 315 bets), 7-day (Mar 20-26, 1045 bets), and 2-week
 dataset unless stated otherwise. The shorter windows are used to check consistency.
 **New in v2:** negRisk segmentation, oracle calibration analysis, pricing artifact investigation
 
+**v2 fixed parameters:** bankroll=15, max_bet=2.5, **n_bets=3**, min_bet=1.0,
+min_edge=0.01, fee=0, mech_fee=0.01, grid_points=500.
+min_oracle_prob varied: 0.1, 0.3, 0.5. With n_bets=3, W_bet=7.5 (binary sizing).
+
+**See also [v2b comparison](../polystrat_kelly_replay_v2b_comparison/README.md)**
+for the same analysis with **n_bets=1** (v1-matching parameters, proper Kelly sizing).
+
 ---
 
 ### WHAT WE DID AND WHAT WE FOUND

@@ -1,13 +1,20 @@
 ### Polystrat Kelly Replay v2b -- v1-Matching Parameters Comparison
 
 **Date:** 2026-03-26
-**Data period:** 2026-03-12 to 2026-03-26 (2 weeks), with 7-day and 4-day sub-windows.
-**Purpose:** Reproduce the v2 negRisk-segmented analysis using the EXACT same
-parameters as v1 (n_bets=1), to enable direct comparison with v1 results.
+**Data period:** 2026-03-12 to 2026-03-26 (2 weeks). Analyzed at three overlapping
+windows: 4-day (Mar 23-26, 315 bets), 7-day (Mar 20-26, 1045 bets), and 2-week
+(Mar 12-26, 3297 bets, 107 agents). All conclusions are based on the full 2-week
+dataset unless stated otherwise. The shorter windows are used to check consistency.
+**New in v2b:** Uses v1-matching parameters (n_bets=1) with the v2 negRisk segmentation,
+to enable direct comparison between v1 results and negRisk-aware analysis.
 
 ---
 
 #### Parameter Comparison
+
+The key difference between v2 and v2b is `n_bets`: v2 uses n_bets=3 (produces
+binary go/no-go sizing), v2b uses n_bets=1 (produces proper intermediate Kelly
+sizing, matching the v1 original configuration).
 
 | Parameter | v1 | v2 | v2b (this) |
 |-----------|----|----|-----------|
@@ -21,6 +28,13 @@ parameters as v1 (n_bets=1), to enable direct comparison with v1 results.
 
 v2b uses n_bets=1 like v1, so W_bet = min(1 x 2.5, 15) = 2.5. This produces
 proper Kelly sizing (intermediate values) rather than the binary go/no-go of v2.
+
+**v2b fixed parameters:** bankroll=15, max_bet=2.5, **n_bets=1**, min_bet=1.0,
+min_edge=0.01, fee=0, mech_fee=0.01, grid_points=500.
+min_oracle_prob varied: 0.1, 0.3, 0.5. With n_bets=1, W_bet=2.5 (proper sizing).
+
+**See also [v2 comparison](../polystrat_kelly_replay_v2_comparison/README.md)**
+for the same analysis with **n_bets=3** (binary sizing, larger W_bet=7.5).
 
 ---
 
@@ -100,6 +114,10 @@ driven by synthetic-pricing artifacts on side switches.
 - [v2b Mar 12-26](../polystrat_kelly_replay_v2b_2026-03-12_2026-03-26/README.md) -- 3297 bets
 - [v2b Mar 20-26](../polystrat_kelly_replay_v2b_2026-03-20_2026-03-26/README.md) -- 1045 bets
 - [v2b Mar 23-26](../polystrat_kelly_replay_v2b_2026-03-23_2026-03-26/README.md) -- 315 bets
+
+#### Deep-Dive Analysis
+
+- [PARAMETER_DEEP_ANALYSIS.md](PARAMETER_DEEP_ANALYSIS.md) -- fine-grained mop sweep (0.10-0.50), side switch investigation, bet sizing distribution
 
 #### Compare with
 
