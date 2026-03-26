@@ -87,6 +87,7 @@ PATH_TO_VAR = {
     "models/params/args/mech_wrapped_native_token_address": "MECH_WRAPPED_NATIVE_TOKEN_ADDRESS",  # nosec
     "models/params/args/is_outcome_side_threshold_filter_enabled": "IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED",
     "models/params/args/outcome_side_threshold_filter_threshold": "OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD",
+    "models/params/args/exclude_neg_risk_markets": "EXCLUDE_NEG_RISK_MARKETS",
     "models/params/args/disable_trading": "DISABLE_TRADING",
     "models/params/args/enable_position_review": "ENABLE_POSITION_REVIEW",
     "models/params/args/tools_accuracy_hash": "TOOLS_ACCURACY_HASH",

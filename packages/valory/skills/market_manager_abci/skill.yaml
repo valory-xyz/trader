@@ -11,10 +11,10 @@ fingerprint:
   behaviours/__init__.py: bafybeiemmuvhbsh2laur3ide7v5jsdwk2zkd3srvfnd35473fgbocwaknq
   behaviours/base.py: bafybeiesdrlddg6enexyi6pm73i77ejh3rjmgzd7yatrakiwcmrwvhq64i
   behaviours/fetch_markets_router.py: bafybeiezt27o6u5tstmopzyyc5g7goyzsremai36ldxn7n2qjvhimbiyha
-  behaviours/polymarket_fetch_market.py: bafybeieoy3k7odg66owxi2s5a3dgkewsvivdhjnj4aszhaxaeos2t4r4au
+  behaviours/polymarket_fetch_market.py: bafybeig5bw44ytwhty6e6nalyz75nmnwio2kgjl4eexdfh4pcbamrq7lbi
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeidq4gkjtbkriw2zqmwfmmjdmghto25yg2kfzhvy4kbhaoeogplwnu
-  bets.py: bafybeicvrfyvdcwy2xbelutfe6tzr7ddbpcbu7ilyb6xpompnechwfb5vq
+  bets.py: bafybeid4nstd2noz63pyfjjzysqw3jzls4quosllrwdkrlttuouudrwrre
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -40,7 +40,7 @@ fingerprint:
   tests/test_behaviours_base.py: bafybeihjbd3qvmqyttbs5ih5agzkc6vyermru4vcsxm5ladj7dxrrwqw2m
   tests/test_behaviours_polymarket.py: bafybeibrbtx5zzcmdr3xdvzdk3krfgfb5qerftzfl44tfm4wcxt6m7eikq
   tests/test_behaviours_update_bets.py: bafybeicdz2ybsjhqsbnmj5sm2vcbouozjyqnqpg5r5nh6e3rcwwdtzacb4
-  tests/test_bets.py: bafybeic5gscddzorijvwn4mhsaxkay3ddxiqahguu3vzcjux2z2c4qiaz4
+  tests/test_bets.py: bafybeidcasafb6d7jsoi45q7innsynazrksbhypmw3e6ru3a7ydvfhdnhi
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_graph_queries.py: bafybeifrh723g6jbu2yvikz74eyfjwdbo4sz7ockecliia5zfqe5vu3ed4
   tests/test_graph_requests.py: bafybeiaimscyjth3qqumfhczrnuydaja4qb6w2ggjf35e7cllao3bqpyzm
@@ -48,7 +48,7 @@ fingerprint:
   tests/test_models.py: bafybeih6a3uwvfthzkxhvoeae4rklw6ud632nzoi3xqrmvrsdiottdrrs4
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeiaiozpmj6sqywzc3xf7zvadaupchtquaeuv3lq2us5svrlvmmvmw4
-  tests/test_utils.py: bafybeictoae446oppe3s6elz3kyjtskgodlyesbpfo5lmtspkobcmzkr3y
+  tests/test_utils.py: bafybeidz75qmje2y2sdvmsv26vpzudc5ouo4dldmyaw7ghllfqqlemd77u
 fingerprint_ignore_patterns: []
 connections:
 - valory/polymarket_client:0.1.0:bafybeibdw5epieory45xurxrvhv7irx6jtkedk4tuhvi5wazryafucjiea

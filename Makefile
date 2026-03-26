@@ -81,7 +81,7 @@ generators: clean-cache fix-abci-app-specs
 .PHONY: common-checks-1
 common-checks-1:
 	tox -qq -e copyright-check
-	tomte check-doc-links
+	tomte check-doc-links --url-skips "https://li.quest/v1/quote" --url-skips "https://li.quest/v1/quote/toAmount" --url-skips "https://gateway.autonolas.tech/ipfs/" --url-skips "https://rpc.gnosischain.com/" --url-skips "https://1rpc.io/matic"
 	tox -qq -p -e check-hash -e check-packages -e check-doc-hashes -e analyse-service
 
 .PHONY: common-checks-2
