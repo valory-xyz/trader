@@ -1,0 +1,44 @@
+{
+  "min_oracle_prob": 0.3,
+  "segments": {
+    "all": {
+      "segment": "all",
+      "bets": 1045,
+      "cf_bets": 841,
+      "yes": 127,
+      "no": 714,
+      "side_switch": 3,
+      "actual_profit": -381.41,
+      "cf_profit": -338.68,
+      "actual_roi_pct": -15.1,
+      "cf_roi_pct": -17.76,
+      "roi_delta_pp": -2.66
+    },
+    "neg_risk": {
+      "segment": "negRisk",
+      "bets": 902,
+      "cf_bets": 739,
+      "yes": 96,
+      "no": 643,
+      "side_switch": 2,
+      "actual_profit": -316.96,
+      "cf_profit": -291.71,
+      "actual_roi_pct": -14.36,
+      "cf_roi_pct": -17.51,
+      "roi_delta_pp": -3.15
+    },
+    "non_neg_risk": {
+      "segment": "non-negRisk",
+      "bets": 143,
+      "cf_bets": 102,
+      "yes": 31,
+      "no": 71,
+      "side_switch": 1,
+      "actual_profit": -64.45,
+      "cf_profit": -46.97,
+      "actual_roi_pct": -20.26,
+      "cf_roi_pct": -19.5,
+      "roi_delta_pp": 0.75
+    }
+  }
+}
