@@ -703,6 +703,13 @@ class TestBetUpdateMarketInfo:
         assert bet.outcomeTokenMarginalPrices == [0.5, 0.5]
         assert bet.scaledLiquidityMeasure == 10.0
 
+    def test_neg_risk_updated(self) -> None:
+        """Test that update_market_info copies neg_risk from the incoming bet."""
+        bet = _make_bet(neg_risk=False)
+        other = _make_bet(neg_risk=True)
+        bet.update_market_info(other)
+        assert bet.neg_risk is True
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""
