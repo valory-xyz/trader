@@ -25,13 +25,13 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/mech:0.1.0:bafybeihquknpac6bgrj5dhynjqnmnugzg6tq72hmj3rxnmgz5ohbirpqj4
+- valory/mech:0.1.0:bafybeieg4sb4c6fdqrluctuee4of3lhcfoioddh6lrllmhyxmxpb67kjty
 - valory/agent_mech:0.1.0:bafybeielgw42wh6sucnquowlqqf3dbvzd7gj4r6vfn322t3i5pkxbbrwz4
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeigzfvbwdm7b3y7s6ft7rwdqmzrafltz7imvczcptfgwah7lfsyupe
-- valory/mech_interact_abci:0.1.0:bafybeig7o3fonhmstrvbimsof6h6ihtht44rr7wxozmtedltdmyyqzi5ue
-- valory/staking_abci:0.1.0:bafybeiaswxgwid46ypwgzh5tnbjx77urtgiqwyudnfrb4puptn2csxk6te
+- valory/abstract_round_abci:0.1.0:bafybeia4gzaxgykfkcerb3cublmei7bmozqn36tzfbnmzkrg2xdrrjfnfa
+- valory/mech_interact_abci:0.1.0:bafybeidl2wq7flzjgroj3gukewcrdwcbyz5e3gudhrfy5o74brjlxd64fy
+- valory/staking_abci:0.1.0:bafybeifotak4c3wquoa57hwxzksbgj536gwpaeade5skju2vyrqqw6kpda
 behaviours:
   main:
     args: {}
