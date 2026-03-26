@@ -48,7 +48,7 @@ fingerprint:
   tests/test_models.py: bafybeih6a3uwvfthzkxhvoeae4rklw6ud632nzoi3xqrmvrsdiottdrrs4
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeiaiozpmj6sqywzc3xf7zvadaupchtquaeuv3lq2us5svrlvmmvmw4
-  tests/test_utils.py: bafybeihmzcsduc2iidzcpjkwbhc63sfc24defzdz3asi3m5d6u2dbcotna
+  tests/test_utils.py: bafybeictoae446oppe3s6elz3kyjtskgodlyesbpfo5lmtspkobcmzkr3y
 fingerprint_ignore_patterns: []
 connections:
 - valory/polymarket_client:0.1.0:bafybeibdw5epieory45xurxrvhv7irx6jtkedk4tuhvi5wazryafucjiea
