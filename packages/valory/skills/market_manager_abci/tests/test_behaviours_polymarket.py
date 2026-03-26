@@ -1711,6 +1711,21 @@ class TestFetchMarketsFromPolymarket:
         bet_dict = result[0]
         assert bet_dict["market_spread"] is None
 
+    def test_valid_market_out_of_range_spread_ignored(self) -> None:
+        """Test that an out-of-range spread value (> 1) results in None."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(spread="2.0")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert bet_dict["market_spread"] is None
+
     def test_market_negative_price(self) -> None:
         """Test market with negative price is skipped."""
         behaviour = self._setup_behaviour()
