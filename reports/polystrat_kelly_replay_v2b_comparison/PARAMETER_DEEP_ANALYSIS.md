@@ -179,3 +179,42 @@ Setting mop below 0.20 enables side switches that look profitable in replay
 but rely on synthetic opposite-side pricing that does not reflect real CLOB
 spreads. Until the replay methodology is improved with historical orderbook
 data, results below mop=0.20 should not be trusted.
+
+---
+
+#### Final Conclusion: Is mop=0.10 Appropriate?
+
+**No. mop=0.10 is not recommended for production.**
+
+The replay shows +9.7pp at mop=0.10, but this result is not reliable:
+
+1. **71% of side switches lose money.** Only 2 of 7 win, and the wins are
+   on a single market (AMZN close above 210) in a single week.
+
+2. **The wins depend on synthetic pricing.** The replay creates YES shares at
+   0.04 (= 1 - 0.96 fill price). The real CLOB YES ask was likely 0.10-0.15.
+   At real prices, the +24 USDC per win shrinks to +8-12 USDC, which may not
+   offset the 5 losing switches (-5 USDC total).
+
+3. **The oracle does not predict these wins.** It says p_yes=0.18 for the AMZN
+   bets -- it thinks YES is unlikely. Kelly bets YES only because the synthetic
+   price makes the edge look enormous (0.18 - 0.04 = +14%). At real prices
+   (0.18 - 0.12 = +6%), the edge is marginal.
+
+4. **The result is not stable across windows.** The 2 AMZN wins are specific
+   to Mar 24-25. A different 2-week period without a stock price spike in that
+   range would show mop=0.10 performing worse than mop=0.30.
+
+**Recommended value: mop=0.30**
+
+- Eliminates all side-switch artifacts
+- Produces identical results to mop=0.40 and mop=0.50 on this data
+- Less restrictive than mop=0.50 (leaves room if future market composition
+  includes markets where oracle p_yes is in the 0.30-0.50 range)
+- Neutral ROI delta (-0.1pp) which is the honest baseline
+- Proper Kelly intermediate sizing (avg 1.56 USDC, 0% at max_bet)
+
+If oracle quality improves in the future and the mech can reliably predict
+outcomes with p_yes in the 0.20-0.50 range, lowering mop to 0.20 could be
+reconsidered -- but only with a replay that uses real historical orderbook
+prices instead of the synthetic `1 - fill_price` approximation.
