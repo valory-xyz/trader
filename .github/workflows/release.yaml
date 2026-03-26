@@ -85,7 +85,7 @@ jobs:
             cd $SERVICE || exit 1
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
             docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-            autonomy build-image --builder multiarch-builder --platform linux/amd64 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.14 --version $VERSION-amd64 --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/amd64 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.16rc1 --version $VERSION-amd64 --push || exit 1
 
   publish-images-arm:
     name: Publish Docker Images (arm64 + arm/v7)
@@ -141,7 +141,7 @@ jobs:
             cd $SERVICE || exit 1
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
             docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-            autonomy build-image --builder multiarch-builder --platform linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt install -y libffi-dev libssl-dev && pip config set global.extra-index-url https://www.piwheels.org/simple" -e open-autonomy==0.21.14 --version $VERSION-arm --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt install -y libffi-dev libssl-dev && pip config set global.extra-index-url https://www.piwheels.org/simple" -e open-autonomy==0.21.16rc1 --version $VERSION-arm --push || exit 1
 
   merge-image-manifests:
     name: Merge Multi-arch Image Manifests

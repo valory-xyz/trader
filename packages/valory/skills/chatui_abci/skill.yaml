@@ -24,7 +24,7 @@ fingerprint:
   tests/test_rounds.py: bafybeigj6j2nrhdtw4tjkxzqwodqwdmzo2slczveajwwj3ifjmuwy2kk7e
 fingerprint_ignore_patterns: []
 connections:
-- dvilela/genai:0.1.0:bafybeic3ydvjmb33addd5ye3et3xl4enhmoug4n4agmutz6xgan7rvpqiq
+- dvilela/genai:0.1.0:bafybeieuwwoww4scfzs7ljzlmotldu5jp24o4h235qy54ovliwxf6zjxai
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
