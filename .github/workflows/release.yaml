@@ -173,7 +173,7 @@ jobs:
             fi
             echo VERSION=$TAG > env.sh
             echo AUTHOR=$(grep 'service/' packages/packages.json | awk -F/ '{print $2}' | head -1) >> env.sh
-            echo SERVICE=$(grep 'service/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
+            echo AGENT=$(grep 'agent/' packages/packages.json | awk -F/ '{print $3}' | head -1) >> env.sh
             echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
             cat env.sh
 
@@ -182,12 +182,12 @@ jobs:
           source env.sh || exit 1
           echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin || exit 1
           docker buildx imagetools create \
-            $AUTHOR/oar-$SERVICE:$VERSION-amd64 \
-            $AUTHOR/oar-$SERVICE:$VERSION-arm \
-            --tag $AUTHOR/oar-$SERVICE:$VERSION || exit 1
+            $AUTHOR/oar-$AGENT:$VERSION-amd64 \
+            $AUTHOR/oar-$AGENT:$VERSION-arm \
+            --tag $AUTHOR/oar-$AGENT:$VERSION || exit 1
           docker buildx imagetools create \
-            $AUTHOR/oar-$SERVICE:$VERSION \
-            --tag $AUTHOR/oar-$SERVICE:$DEFAULT_IMAGE_TAG || exit 1
+            $AUTHOR/oar-$AGENT:$VERSION \
+            --tag $AUTHOR/oar-$AGENT:$DEFAULT_IMAGE_TAG || exit 1
 
   build-agent-runner:
     needs:

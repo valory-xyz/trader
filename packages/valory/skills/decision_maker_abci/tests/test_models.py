@@ -614,6 +614,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "slippages_for_swap": {"ETH": 0.01},
         "is_outcome_side_threshold_filter_enabled": False,
         "outcome_side_threshold_filter_threshold": 0.5,
+        "exclude_neg_risk_markets": False,
     }
 
 
@@ -683,6 +684,7 @@ class TestDecisionMakerParams:
         assert params.slippages_for_swap == {"ETH": 0.01}
         assert params.is_outcome_side_threshold_filter_enabled is False
         assert params.outcome_side_threshold_filter_threshold == 0.5
+        assert params.exclude_neg_risk_markets is False
 
     def test_prompt_template_property(self) -> None:
         """Test prompt_template property returns a PromptTemplate."""

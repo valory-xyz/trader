@@ -166,6 +166,7 @@ class Bet:
     category: Optional[str] = None
     strategy: Optional[str] = None
     strategy_vote: Optional[int] = None
+    neg_risk: bool = False
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -368,6 +369,7 @@ class Bet:
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
+        self.neg_risk = bet.neg_risk
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""

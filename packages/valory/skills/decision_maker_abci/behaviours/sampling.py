@@ -281,6 +281,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     available_bets.remove(sampled_bet)
                     continue
 
+            if (
+                self.params.is_running_on_polymarket
+                and self.params.exclude_neg_risk_markets
+                and sampled_bet.neg_risk
+            ):
+                msg = f"Sampled bet {sampled_bet.id} is a negRisk market, skipping"
+                self.context.logger.info(msg)
+                available_bets.remove(sampled_bet)
+                continue
+
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
             msg = f"Sampled bet: {sampled_bet}"

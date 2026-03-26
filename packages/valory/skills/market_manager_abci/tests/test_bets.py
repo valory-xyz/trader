@@ -359,6 +359,28 @@ class TestBetPostInit:
         assert bet.queue_status == QueueStatus.EXPIRED
 
 
+class TestBetNegRisk:
+    """Tests for Bet.neg_risk field."""
+
+    def test_neg_risk_defaults_to_false(self) -> None:
+        """Test that neg_risk defaults to False when not provided."""
+        bet = _make_bet()
+        assert bet.neg_risk is False
+
+    def test_neg_risk_stores_true(self) -> None:
+        """Test that neg_risk=True is stored correctly."""
+        bet = _make_bet(neg_risk=True)
+        assert bet.neg_risk is True
+
+    def test_neg_risk_round_trip(self) -> None:
+        """Test that neg_risk survives a JSON round-trip."""
+        original = _make_bet(neg_risk=True)
+        encoded = json.dumps(original, cls=BetsEncoder)
+        decoded = json.loads(encoded, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.neg_risk is True
+
+
 class TestBetLt:
     """Tests for Bet.__lt__."""
 
@@ -680,6 +702,13 @@ class TestBetUpdateMarketInfo:
         assert bet.outcomeTokenAmounts == [30, 40]
         assert bet.outcomeTokenMarginalPrices == [0.5, 0.5]
         assert bet.scaledLiquidityMeasure == 10.0
+
+    def test_neg_risk_updated(self) -> None:
+        """Test that update_market_info copies neg_risk from the incoming bet."""
+        bet = _make_bet(neg_risk=False)
+        other = _make_bet(neg_risk=True)
+        bet.update_market_info(other)
+        assert bet.neg_risk is True
 
 
 class TestBetSetProcessedSellCheck:

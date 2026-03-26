@@ -160,7 +160,7 @@ Please take into consideration the following:
  the current implementation considers `potential_net_profit = num_shares - net_bet_amount - mech_price - BET_THRESHOLD`, 
  although this calculation might be refined. 
  The `net_bet_amount` is the bet amount minus the FPMM's fees.
-- When assigning `BET_THRESHOLD` take into consideration that FPMM fees are typically in the range of 0.02 xDAI. We urge you to keep an eye on these fees, as they might vary.
+- When assigning `BET_THRESHOLD` take into consideration that fees (at the time of writing this guide) are in the range of 0.02 xDAI. You can query the Omen subgraph on [The Graph's decentralized network](https://thegraph.com/explorer) to check current fees. We urge you to keep an eye on these fees, as they might vary.
 
 ## For advanced users
 
