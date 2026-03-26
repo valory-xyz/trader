@@ -166,6 +166,7 @@ class Bet:
     category: Optional[str] = None
     strategy: Optional[str] = None
     strategy_vote: Optional[int] = None
+    neg_risk: bool = False
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

@@ -498,6 +498,9 @@ class DecisionMakerParams(
         self.outcome_side_threshold_filter_threshold: float = self._ensure(
             "outcome_side_threshold_filter_threshold", kwargs, float
         )
+        self.exclude_neg_risk_markets: bool = self._ensure(
+            "exclude_neg_risk_markets", kwargs, bool
+        )
         super().__init__(*args, **kwargs)
 
     @property

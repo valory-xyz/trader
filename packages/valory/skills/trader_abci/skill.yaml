@@ -55,9 +55,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidxfy3gyjjahke7gftbakecdlwr5gng5ccnvlshjpgppp7b6pu2ea
 - valory/transaction_settlement_abci:0.1.0:bafybeiezf3kh5f4jmxnwoylc4krghzrkfknkc2r6vve3rgb5eumloco33e
 - valory/termination_abci:0.1.0:bafybeif43h3yc4e6cqieqi2dj7oa55lrircamorkcrgt2kjofua7y2vcgu
-- valory/market_manager_abci:0.1.0:bafybeibepgkqlcd2kldfymer2r6glrr2ur5e6opnmpxb573xucojnudoqm
-- valory/decision_maker_abci:0.1.0:bafybeibjtwdedtx4do25br56vpsoi6sah5q4cfkhdi23amccffrpw5tivu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeial3j2vrwye4h2ilk3vzowfsxasa5wwgn2hnmvsm7sqd6wnrvcibi
+- valory/market_manager_abci:0.1.0:bafybeicykqnkfuwz4ilng5ryozsarzg6wepwmobgcykaegqbuaoyosqvxe
+- valory/decision_maker_abci:0.1.0:bafybeicp577gnwhz5dgixgjj5s36wkt55zvvlpz5b22jdnpysl2jpthiku
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiftjwfbumjwaizegnnjjhkvazvxqvto4iumxdgvfhy7yacmgdepgq
 - valory/staking_abci:0.1.0:bafybeiaswxgwid46ypwgzh5tnbjx77urtgiqwyudnfrb4puptn2csxk6te
 - valory/check_stop_trading_abci:0.1.0:bafybeig2wea5joxvd6wmrrhyawlflbsz37lkokg6qq6fl2vhwbupmleaae
 - valory/mech_interact_abci:0.1.0:bafybeig7o3fonhmstrvbimsof6h6ihtht44rr7wxozmtedltdmyyqzi5ue
@@ -296,6 +296,7 @@ models:
       slippages_for_swap: {}
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8
+      exclude_neg_risk_markets: false
       deliveries_lookback_days: 30
     class_name: TraderParams
   benchmarking_mode:

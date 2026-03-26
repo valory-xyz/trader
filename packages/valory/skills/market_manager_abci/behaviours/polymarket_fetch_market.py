@@ -470,6 +470,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         ),
                         "investments": {},
                         "outcome_token_ids": outcome_token_ids_map,
+                        "neg_risk": market.get("neg_risk", False),
                     }
 
                     # Debug: Log category for first few bets
