@@ -63,6 +63,7 @@ def _make_mock_bet(  # type: ignore[no-untyped-def]
     processed_timestamp=0,
     liquidity=100.0,
     outcome_prices=None,
+    neg_risk=False,
 ):
     """Create a mock Bet object."""
     if opening_timestamp is None:
@@ -79,6 +80,7 @@ def _make_mock_bet(  # type: ignore[no-untyped-def]
     bet.processed_timestamp = processed_timestamp
     bet.scaledLiquidityMeasure = liquidity
     bet.outcomeTokenMarginalPrices = outcome_prices
+    bet.neg_risk = neg_risk
     bet.blacklist_forever = MagicMock()
     return bet
 
@@ -498,6 +500,8 @@ class TestSample:
         kpi_is_met=False,
         is_outcome_side_threshold_filter_enabled=False,
         outcome_side_threshold_filter_threshold=0.95,
+        exclude_neg_risk_markets=False,
+        is_running_on_polymarket=False,
     ):
         """Create a behaviour for _sample testing."""
         behaviour = _make_behaviour()
@@ -517,6 +521,8 @@ class TestSample:
         params.outcome_side_threshold_filter_threshold = (
             outcome_side_threshold_filter_threshold
         )
+        params.exclude_neg_risk_markets = exclude_neg_risk_markets
+        params.is_running_on_polymarket = is_running_on_polymarket
 
         benchmarking_mode = MagicMock()
         benchmarking_mode.enabled = benchmarking_enabled
@@ -784,6 +790,188 @@ class TestSample:
                                 result = behaviour._sample()
 
         assert result == 1
+
+    def test_sample_exclude_neg_risk_skips_neg_risk_bet(self) -> None:
+        """Should skip negRisk bets when exclude_neg_risk_markets is enabled."""
+        now = int(time.time())
+        bet_neg = _make_mock_bet(
+            bet_id="neg",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=100.0,
+            neg_risk=True,
+        )
+        bet_neg.queue_status.is_expired = MagicMock(return_value=False)
+
+        bet_ok = _make_mock_bet(
+            bet_id="ok",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=80.0,
+            neg_risk=False,
+        )
+        bet_ok.queue_status.is_expired = MagicMock(return_value=False)
+
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[bet_neg, bet_ok],
+            exclude_neg_risk_markets=True,
+            is_running_on_polymarket=True,
+        )
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock, return_value=params
+        ):
+            with patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ):
+                with patch.object(
+                    type(behaviour),
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ):
+                    with patch.object(
+                        type(behaviour),
+                        "shared_state",
+                        new_callable=PropertyMock,
+                        return_value=ss,
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "kpi_is_met",
+                            new_callable=PropertyMock,
+                            return_value=False,
+                        ):
+                            with patch.object(
+                                type(behaviour),
+                                "review_bets_for_selling",
+                                new_callable=PropertyMock,
+                                return_value=False,
+                            ):
+                                result = behaviour._sample()
+
+        assert result == 1
+
+    def test_sample_neg_risk_bet_passes_when_filter_disabled(self) -> None:
+        """Should not skip negRisk bets when exclude_neg_risk_markets is disabled."""
+        now = int(time.time())
+        bet_neg = _make_mock_bet(
+            bet_id="neg",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=100.0,
+            neg_risk=True,
+        )
+        bet_neg.queue_status.is_expired = MagicMock(return_value=False)
+
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[bet_neg],
+            exclude_neg_risk_markets=False,
+        )
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock, return_value=params
+        ):
+            with patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ):
+                with patch.object(
+                    type(behaviour),
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ):
+                    with patch.object(
+                        type(behaviour),
+                        "shared_state",
+                        new_callable=PropertyMock,
+                        return_value=ss,
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "kpi_is_met",
+                            new_callable=PropertyMock,
+                            return_value=False,
+                        ):
+                            with patch.object(
+                                type(behaviour),
+                                "review_bets_for_selling",
+                                new_callable=PropertyMock,
+                                return_value=False,
+                            ):
+                                result = behaviour._sample()
+
+        assert result == 0
+
+    def test_sample_exclude_neg_risk_all_neg_risk_returns_none(self) -> None:
+        """Should return None when all bets are negRisk and filter is enabled."""
+        now = int(time.time())
+        bet1 = _make_mock_bet(
+            bet_id="neg1",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=100.0,
+            neg_risk=True,
+        )
+        bet1.queue_status.is_expired = MagicMock(return_value=False)
+
+        bet2 = _make_mock_bet(
+            bet_id="neg2",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=80.0,
+            neg_risk=True,
+        )
+        bet2.queue_status.is_expired = MagicMock(return_value=False)
+
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[bet1, bet2],
+            exclude_neg_risk_markets=True,
+            is_running_on_polymarket=True,
+        )
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock, return_value=params
+        ):
+            with patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ):
+                with patch.object(
+                    type(behaviour),
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ):
+                    with patch.object(
+                        type(behaviour),
+                        "shared_state",
+                        new_callable=PropertyMock,
+                        return_value=ss,
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "kpi_is_met",
+                            new_callable=PropertyMock,
+                            return_value=False,
+                        ):
+                            with patch.object(
+                                type(behaviour),
+                                "review_bets_for_selling",
+                                new_callable=PropertyMock,
+                                return_value=False,
+                            ):
+                                result = behaviour._sample()
+
+        assert result is None
 
     def test_sample_multi_bets_fallback(self) -> None:
         """Should use multi-bet fallback when no bets in single-bet mode."""

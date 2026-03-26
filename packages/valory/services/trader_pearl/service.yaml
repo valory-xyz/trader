@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidr34kyypyxftaf4svhbwbvpoxgjc657fp76ebdzk65d7hre4pmrq
+agent: valory/trader:0.1.0:bafybeiaz3xuadotzxp7t46fepvaotkvo23447sbogjkivboeuuyn4wntrq
 number_of_agents: 1
 deployment:
   agent:
@@ -156,6 +156,7 @@ models:
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
   benchmark_tool:
     args:
