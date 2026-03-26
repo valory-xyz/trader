@@ -150,26 +150,48 @@ on range sub-markets of multi-outcome events.
 
 ---
 
-#### Practical conclusions
+#### CORRECTION: mop=0.1 results are misleading
+
+**See [SIDE_SWITCH_ANALYSIS.md](SIDE_SWITCH_ANALYSIS.md) for the full investigation.**
+
+The +23.9pp improvement at mop=0.1 is an artifact of:
+
+1. **Synthetic pricing:** opposite-side price = `1 - fill_price`, producing
+   unrealistically cheap YES shares at 0.017-0.04 when real asks were 0.05-0.15+
+2. **Survivorship bias:** 4 tail-event winners (TSLA, AMZN stock spikes) at
+   50:1 synthetic odds account for +174 USDC; the other 16 switches lost -16 USDC
+3. **Oracle does not predict these:** p_yes=0.13 for the winning bets — the oracle
+   thinks YES is very unlikely, and Kelly only bets because the synthetic price
+   makes the edge look enormous
+
+**75% of side switches LOSE money.** The net positive depends on rare tail events
+at unrealistic prices.
+
+---
+
+#### Corrected Practical Conclusions
 
 1. **The v1 instability is explained by market composition.** When negRisk and
    non-negRisk are analyzed separately, the results are consistent.
 
-2. **Kelly adds value on non-negRisk markets** at lower min_oracle_prob (0.1-0.3),
-   through side switching and bet sizing.
+2. **Kelly does not add value on negRisk markets** at any setting. The oracle
+   has no exploitable edge on range markets.
 
-3. **Kelly does not add value on negRisk markets** at any setting. The oracle is
-   not informative for range markets.
+3. **Kelly adds modest value on non-negRisk markets at mop=0.5** (+1.4pp on
+   the 2-week window), through bet sizing. This is the only reliable improvement.
 
-4. **The production config (mop=0.5) disables side switching**, which is the main
-   value mechanism. This suggests mop=0.5 is too conservative for non-negRisk.
+4. **mop=0.1 is dangerous, not beneficial.** The apparent improvement is driven
+   by lottery-ticket bets at unrealistic synthetic prices. In production, these
+   bets would face real spreads and would likely lose money.
 
-5. **Recommended action:** implement different min_oracle_prob per market type:
-   - negRisk: mop=0.5 (or higher -- results are insensitive)
-   - non-negRisk: mop=0.1 (enable side switches)
+5. **Recommended production config:**
+   - `min_oracle_prob = 0.5` for all market types
+   - negRisk: Kelly formula is correct but produces no improvement (oracle limitation)
+   - non-negRisk: Kelly improves bet sizing by ~1.4pp (modest but real)
 
-This requires passing the `neg_risk` field to the Kelly criterion and applying
-different filters per market type.
+6. **To unlock further improvement**, the bottleneck is oracle quality, not the
+   Kelly formula or the min_oracle_prob filter. Better-calibrated mech predictions
+   would create real edge for Kelly to exploit.
 
 ---
 
