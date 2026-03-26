@@ -184,6 +184,51 @@ You can also explore the [`service.yaml`](./packages/valory/services/trader/serv
 
 Finally, if you are experienced with the [Open Autonomy](https://stack.olas.network/) framework, you can also modify the internal business logic of the service yourself.
 
+## Running the agent
+
+### Prerequisites
+
+```bash
+pip install aea-helpers
+```
+
+### Run as a local agent (development)
+
+1. Set up your `.env` file with required environment variables (RPC endpoints, API keys, etc.)
+2. Place your `ethereum_private_key.txt` in the repo root
+3. Run:
+
+```bash
+aea-helpers run-agent \
+  --name valory/trader \
+  --config-replace \
+  --config-mapping config-mapping.json \
+  --connection-key
+```
+
+To run multiple agents on the same machine, use `--free-ports` to auto-assign non-conflicting ports:
+
+```bash
+aea-helpers run-agent \
+  --name valory/trader \
+  --config-replace \
+  --config-mapping config-mapping.json \
+  --connection-key \
+  --free-ports
+```
+
+### Run as a service (Docker deployment)
+
+```bash
+aea-helpers run-service --name valory/trader --env-file .env
+```
+
+### Create a release
+
+```bash
+aea-helpers make-release --version <VERSION> --env <ENV> --description "<DESCRIPTION>"
+```
+
 ## Included strategies
 
 | Strategies |
