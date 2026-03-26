@@ -1,7 +1,10 @@
 ### Polystrat Kelly Replay v2 -- Cross-Window Comparison
 
 **Date:** 2026-03-26
-**Data:** 3 replay windows (4-day, 7-day, 2-week), 3297 total bets, 107 agents
+**Data period:** 2026-03-12 to 2026-03-26 (2 weeks). Analyzed at three overlapping
+windows: 4-day (Mar 23-26, 315 bets), 7-day (Mar 20-26, 1045 bets), and 2-week
+(Mar 12-26, 3297 bets, 107 agents). All conclusions are based on the full 2-week
+dataset unless stated otherwise. The shorter windows are used to check consistency.
 **New in v2:** negRisk segmentation, oracle calibration analysis, pricing artifact investigation
 
 ---
