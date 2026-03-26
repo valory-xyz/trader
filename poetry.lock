@@ -2,14 +2,14 @@
 
 [[package]]
 name = "aea-helpers"
-version = "0.21.16rc1"
+version = "0.21.16"
 description = "CLI helpers for CI and dependency management in AEA-based projects."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "aea_helpers-0.21.16rc1-py3-none-any.whl", hash = "sha256:57ad96e25a322be79bf432a92b6046e9fae50742f32524bddcfe438035552fdb"},
-    {file = "aea_helpers-0.21.16rc1.tar.gz", hash = "sha256:889cb88eac26b833b249d8743207eb69192421eed83fc69991529b06ae053252"},
+    {file = "aea_helpers-0.21.16-py3-none-any.whl", hash = "sha256:cf61403295cd42d1143b03fbdf1b3dd1f984066ca9dbf25e8ae45c969a79c4c2"},
+    {file = "aea_helpers-0.21.16.tar.gz", hash = "sha256:069e1a209bdb350335cf39c52bab7140d6688ae8fd0dcc9a36c27b1d6dc4829c"},
 ]
 
 [package.dependencies]
@@ -2828,14 +2828,14 @@ web3 = ">=7.0.0,<8"
 
 [[package]]
 name = "open-aea-test-autonomy"
-version = "0.21.16rc1"
+version = "0.21.16"
 description = "Plugin containing test tools for open-autonomy packages."
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "open_aea_test_autonomy-0.21.16rc1-py3-none-any.whl", hash = "sha256:e473c86a40e857bd8f41873ba951d76767071cfd80038c1ed441edf0a8dfbb0e"},
-    {file = "open_aea_test_autonomy-0.21.16rc1.tar.gz", hash = "sha256:1f56fe14a48e1dc53f11f0becbbdb631e3623f6b27048748db931d895f23896c"},
+    {file = "open_aea_test_autonomy-0.21.16-py3-none-any.whl", hash = "sha256:c646c8bf75a166d0acd65c1cdc6ce2464177b9a0a1ff1835e1a6aa0be7d464f7"},
+    {file = "open_aea_test_autonomy-0.21.16.tar.gz", hash = "sha256:ede9075beac9640b9073efdba219c4c45f54f470398b1b69892575cb882fed56"},
 ]
 
 [package.dependencies]
@@ -2846,14 +2846,14 @@ pytest = "8.4.2"
 
 [[package]]
 name = "open-autonomy"
-version = "0.21.16rc1"
+version = "0.21.16"
 description = "A framework for the creation of autonomous agent services."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "open_autonomy-0.21.16rc1-py3-none-any.whl", hash = "sha256:1f7b247210e162d9d77602905ddda393f35e2cc75a6626ea25e815a72c1beb65"},
-    {file = "open_autonomy-0.21.16rc1.tar.gz", hash = "sha256:a179fcb0e84467bff336fe3416321b2604c894192fe51b28e1ae8ae8d5a9335f"},
+    {file = "open_autonomy-0.21.16-py3-none-any.whl", hash = "sha256:0a5b9a65997a20a2bf979f50a53f25f05b49e0c3162d0d8a4115ade60fa27286"},
+    {file = "open_autonomy-0.21.16.tar.gz", hash = "sha256:d7c7cea3cd8f4da492aa94e8263aedc26618194aad9d2a0efb80caf6b963ed98"},
 ]
 
 [package.dependencies]
@@ -5121,4 +5121,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "<3.15,>=3.10"
-content-hash = "b7cee98275085c1277d1bd5cd8ecce8c134c4668240030e0dbab643b7519eca2"
+content-hash = "bd6a5862134c87792e180420e78dbef7139a137f678cb3df477655000537a1bd"

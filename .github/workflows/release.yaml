@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
       - uses: addnab/docker-run-action@v3
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
           shell: bash
           run: |
@@ -47,7 +47,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
           shell: bash
           run: |
@@ -72,7 +72,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
           shell: bash
           run: |
@@ -85,7 +85,7 @@ jobs:
             cd $SERVICE || exit 1
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
             docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-            autonomy build-image --builder multiarch-builder --platform linux/amd64 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.16rc1 --version $VERSION-amd64 --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/amd64 --pre-install-command "apt update && apt upgrade -y && apt install -y libffi-dev libssl-dev" -e open-autonomy==0.21.16 --version $VERSION-amd64 --push || exit 1
 
   publish-images-arm:
     name: Publish Docker Images (arm64 + arm/v7)
@@ -103,7 +103,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
           shell: bash
           run: |
@@ -128,7 +128,7 @@ jobs:
       - uses: addnab/docker-run-action@v3
         name: Build Images
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work -e DOCKER_USER -e DOCKER_PASSWORD
           shell: bash
           run: |
@@ -141,7 +141,7 @@ jobs:
             cd $SERVICE || exit 1
             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USER --password-stdin || exit 1
             docker buildx create --name multiarch-builder --driver docker-container --bootstrap --use
-            autonomy build-image --builder multiarch-builder --platform linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt install -y libffi-dev libssl-dev && pip config set global.extra-index-url https://www.piwheels.org/simple" -e open-autonomy==0.21.16rc1 --version $VERSION-arm --push || exit 1
+            autonomy build-image --builder multiarch-builder --platform linux/arm64,linux/arm/v7 --pre-install-command "apt update && apt install -y libffi-dev libssl-dev && pip config set global.extra-index-url https://www.piwheels.org/simple" -e open-autonomy==0.21.16 --version $VERSION-arm --push || exit 1
 
   merge-image-manifests:
     name: Merge Multi-arch Image Manifests
@@ -156,7 +156,7 @@ jobs:
       - name: Set up tag and vars
         uses: addnab/docker-run-action@v3
         with:
-          image: valory/open-autonomy-user:0.21.14
+          image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
           shell: bash
           run: |
