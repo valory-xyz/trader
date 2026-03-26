@@ -645,6 +645,8 @@ class PolymarketPredictionsFetcher(
         strategy_map = {
             TradingStrategy.KELLY_CRITERION_NO_CONF.value: TradingStrategyUI.RISKY.value,
             TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value: TradingStrategyUI.BALANCED.value,
+            TradingStrategy.KELLY_CRITERION.value: TradingStrategyUI.RISKY.value,
+            TradingStrategy.FIXED_BET.value: TradingStrategyUI.BALANCED.value,
         }
         return strategy_map.get(strategy)
 

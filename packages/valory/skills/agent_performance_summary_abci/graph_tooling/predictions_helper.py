@@ -62,6 +62,8 @@ class TradingStrategy(enum.Enum):
 
     KELLY_CRITERION_NO_CONF = "kelly_criterion_no_conf"
     BET_AMOUNT_PER_THRESHOLD = "bet_amount_per_threshold"
+    KELLY_CRITERION = "kelly_criterion"
+    FIXED_BET = "fixed_bet"
 
 
 class TradingStrategyUI(enum.Enum):
@@ -826,9 +828,10 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if selected_value is None:
             return None
 
-        if selected_value == TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value:
-            return TradingStrategyUI.BALANCED.value
-        elif selected_value == TradingStrategy.KELLY_CRITERION_NO_CONF.value:
-            return TradingStrategyUI.RISKY.value
-        else:
-            return None
+        strategy_map = {
+            TradingStrategy.BET_AMOUNT_PER_THRESHOLD.value: TradingStrategyUI.BALANCED.value,
+            TradingStrategy.KELLY_CRITERION_NO_CONF.value: TradingStrategyUI.RISKY.value,
+            TradingStrategy.FIXED_BET.value: TradingStrategyUI.BALANCED.value,
+            TradingStrategy.KELLY_CRITERION.value: TradingStrategyUI.RISKY.value,
+        }
+        return strategy_map.get(selected_value)

@@ -113,6 +113,18 @@ class SharedState(BaseSharedState):
 
         current_store = self._get_current_json_store()
 
+        # Reverse-migrate strategy names written by newer Kelly code.
+        _strategy_reverse_map = {
+            "kelly_criterion": "kelly_criterion_no_conf",
+            "fixed_bet": "bet_amount_per_threshold",
+        }
+        ts = current_store.get("trading_strategy")
+        if ts in _strategy_reverse_map:
+            current_store["trading_strategy"] = _strategy_reverse_map[ts]
+        its = current_store.get("initial_trading_strategy")
+        if its in _strategy_reverse_map:
+            current_store["initial_trading_strategy"] = _strategy_reverse_map[its]
+
         # Migrate legacy mech_tool (single string) -> allowed_tools (list).
         # The migration only fires when the "allowed_tools" key is completely absent
         # from the store, so clearing the list (writing null) is preserved correctly.

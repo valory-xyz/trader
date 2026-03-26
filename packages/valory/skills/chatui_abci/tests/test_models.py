@@ -503,3 +503,64 @@ class TestEnsureChatuiStoreBranches:
 
         assert state._chatui_config is not None
         assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE
+
+
+# ---------------------------------------------------------------------------
+# Reverse migration tests (kelly_criterion -> kelly_criterion_no_conf)
+# ---------------------------------------------------------------------------
+
+
+class TestStrategyReverseMigration:
+    """Tests for reverse-migrating new Kelly strategy names back to old ones."""
+
+    def test_kelly_criterion_migrated_to_no_conf(self) -> None:
+        """Store with kelly_criterion must be reverse-migrated to kelly_criterion_no_conf."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "kelly_criterion",
+                "initial_trading_strategy": "kelly_criterion",
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.trading_strategy == DEFAULT_TRADING_STRATEGY
+        assert (
+            state._chatui_config.initial_trading_strategy == DEFAULT_TRADING_STRATEGY
+        )
+
+    def test_fixed_bet_migrated_to_bet_amount_per_threshold(self) -> None:
+        """Store with fixed_bet must be reverse-migrated to bet_amount_per_threshold."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "fixed_bet",
+                "initial_trading_strategy": "fixed_bet",
+            }
+        )
+        # Set YAML default to bet_amount_per_threshold so the YAML-change
+        # reset does NOT fire, isolating the reverse migration.
+        state.context.params.trading_strategy = "bet_amount_per_threshold"  # type: ignore[attr-defined]
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.trading_strategy == "bet_amount_per_threshold"
+        assert (
+            state._chatui_config.initial_trading_strategy
+            == "bet_amount_per_threshold"
+        )
+
+    def test_old_names_are_not_affected(self) -> None:
+        """Store with old strategy names must pass through unchanged."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": "kelly_criterion_no_conf",
+                "initial_trading_strategy": "kelly_criterion_no_conf",
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.trading_strategy == "kelly_criterion_no_conf"
+        assert (
+            state._chatui_config.initial_trading_strategy == "kelly_criterion_no_conf"
+        )
