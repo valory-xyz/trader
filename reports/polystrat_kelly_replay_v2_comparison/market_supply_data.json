@@ -1,0 +1,16 @@
+{
+  "snapshot_period": "2026-03-12 to 2026-03-26",
+  "total_unique_markets": 435,
+  "neg_risk_markets": 340,
+  "non_neg_risk_markets": 95,
+  "non_neg_risk_types": {
+    "Stock threshold (close above X)": 77,
+    "Earnings beat": 5,
+    "Election/politics": 3,
+    "Speech prediction": 9,
+    "Stock threshold (close over X)": 1
+  },
+  "current_active_sampled": 100,
+  "current_neg_risk": 83,
+  "current_non_neg_risk": 17
+}
