@@ -193,6 +193,13 @@ at unrealistic prices.
    Kelly formula or the min_oracle_prob filter. Better-calibrated mech predictions
    would create real edge for Kelly to exploit.
 
+7. **negRisk YES with strong edge does not work.** See
+   [NEGRISK_YES_STRATEGY_ANALYSIS.md](NEGRISK_YES_STRATEGY_ANALYSIS.md).
+   The oracle is completely uncalibrated on range markets (YES wins ~35%
+   regardless of oracle p_yes). Edge-threshold YES bets select for cheap shares,
+   not oracle skill. The marginal +2.4% ROI at edge >= 0.30 is a leverage
+   artifact on 120 bets, not a reliable strategy.
+
 ---
 
 #### Methodology notes
