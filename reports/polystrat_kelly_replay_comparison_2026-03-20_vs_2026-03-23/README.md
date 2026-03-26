@@ -110,35 +110,42 @@ So the broad picture is:
 - the realized ROI result is unstable across windows
 - the positive 4-day result does not generalize to the longer 7-day and 2-week samples
 
-## 3. Is the latest 4-day result better because `p_yes` is more reliable?
+### What changes if neg-risk markets are removed?
 
-This was the natural next question, so I ran a simple reliability check directly on the replay rows by comparing `p_yes` against the realized winning side.
+The later neg-risk segmentation pass makes the cross-window result easier to interpret.
 
-Crude calibration metrics:
+First, none of these windows is mostly non-neg-risk:
 
-- Brier score: mean squared error between predicted probability and realized outcome, where lower is better. Formula: `Brier = (1 / N) * sum_i (p_i - y_i)^2`
-- Log loss: negative log-likelihood of the realized outcome under the predicted probability, where lower is better. Formula: `LogLoss = -(1 / N) * sum_i [y_i * log(p_i) + (1 - y_i) * log(1 - p_i)]`
-- Here, `N` is the number of replay rows included in the check, `p_i` is the predicted `p_yes` for row `i`, and `y_i` is the realized binary outcome for row `i` (`1` if YES won, `0` otherwise).
-- 4-day Brier score: `0.379853`
-- 7-day Brier score: `0.327660`
-- 4-day log loss: `1.341943`
-- 7-day log loss: `1.053509`
+- 2-week window: `3297` total, `2943` neg-risk (`89%`), `354` non-neg-risk (`11%`)
+- 7-day window: `1045` total, `902` neg-risk (`86%`), `143` non-neg-risk (`14%`)
+- 4-day window: `315` total, `217` neg-risk (`69%`), `98` non-neg-risk (`31%`)
 
-These numbers do not support the claim that `p_yes` is more reliable on the latest 4 days. If anything, this quick check points the other way.
+So the latest 4-day slice is still majority neg-risk, but it contains a materially larger non-neg-risk share than the 7-day and 2-week windows.
 
-Important caveats:
+More importantly, if we remove neg-risk markets and keep only non-neg-risk rows under the original `min_oracle_prob = 0.1` setup, both the optimizer-readout and the ROI picture improve materially.
 
-- this is only a coarse diagnostic
-- the 7-day sample is larger, so it is statistically more stable
-- this is not a full calibration study by market regime, tool, or agent cluster
+Optimizer reliability on non-neg-risk only, measured by the share of rows with positive `g_improvement`:
 
-Still, with the evidence we have right now, the answer is:
+- 2-week non-neg-risk: `270 / 354` (`76.3%`) positive
+- 7-day non-neg-risk: `97 / 143` (`67.8%`) positive
+- 4-day non-neg-risk: `81 / 98` (`82.7%`) positive
 
-- no, we do not currently have evidence that the 4-day result is better because `p_yes` is more reliable than in the 7-day dataset
+So even after removing neg-risk markets, the new implementation still optimizes better than the historical sizing in a clear majority of cases.
 
-That means the 4-day outperformance is more likely due to sample composition, exposure differences, or normal sampling variation than to a clearly better-calibrated probability signal.
+ROI on non-neg-risk only under the same `mop=0.1` replay:
 
-## 4. Why does this Kelly still produce better log utility in some small but unusual cases?
+- 2-week non-neg-risk: actual ROI `-24.5%`, counterfactual ROI `-14.8%`, delta `+9.7` percentage points
+- 7-day non-neg-risk: actual ROI `-20.3%`, counterfactual ROI `+3.7%`, delta `+23.9` percentage points
+- 4-day non-neg-risk: actual ROI `-17.9%`, counterfactual ROI `+7.7%`, delta `+25.6` percentage points
+
+So if neg-risk markets are excluded, the remaining non-neg-risk sample looks much better than the mixed sample on both dimensions:
+
+- the optimizer still looks mechanically reliable
+- the ROI result turns positive relative to baseline across all three windows
+
+This strongly suggests that neg-risk market exposure is a major reason the aggregate mixed-window results look unstable and weak.
+
+## 3. Why does this Kelly still produce better log utility in some small but unusual cases?
 
 The short answer is:
 
