@@ -246,6 +246,7 @@ At mop=0.5, aggregate delta is -0.5pp to +1.4pp -- consistent and modest.
 | [SIDE_SWITCH_ANALYSIS.md](SIDE_SWITCH_ANALYSIS.md) | Why does mop=0.1 look good? | Artifact: synthetic pricing + 4 lottery wins |
 | [NEGRISK_YES_STRATEGY_ANALYSIS.md](NEGRISK_YES_STRATEGY_ANALYSIS.md) | Bet YES on negRisk with strong edge? | No: oracle is random |
 | [BET_SIZING_ANALYSIS.md](BET_SIZING_ANALYSIS.md) | Why always 0 or 2.50? | W_bet >> max_bet causes saturation |
+| [MARKET_SUPPLY_ANALYSIS.md](MARKET_SUPPLY_ANALYSIS.md) | Are there enough non-negRisk markets? | ~85 active (17%), sufficient for current throughput |
 
 ---
 
