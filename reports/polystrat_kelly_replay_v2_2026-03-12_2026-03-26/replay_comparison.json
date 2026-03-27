@@ -1,0 +1,155 @@
+{
+  "mop_01": {
+    "label": "min_oracle_prob=0.1 (original)",
+    "min_oracle_prob": 0.1,
+    "segments": {
+      "all": {
+        "total_bets": 3297,
+        "with_mech": 3286,
+        "would_bet": 2736,
+        "would_bet_yes": 410,
+        "would_bet_no": 2326,
+        "side_switches": 56,
+        "actual_traded_usdc": 7763.72,
+        "actual_profit_usdc": -883.1,
+        "actual_roi_pct": -11.33,
+        "counterfactual_traded_usdc": 6192.52,
+        "counterfactual_profit_usdc": -574.19,
+        "counterfactual_roi_pct": -9.23,
+        "roi_delta_pp": 2.1
+      },
+      "neg_risk": {
+        "total_bets": 2943,
+        "with_mech": 2932,
+        "would_bet": 2427,
+        "would_bet_yes": 296,
+        "would_bet_no": 2131,
+        "side_switches": 36,
+        "actual_traded_usdc": 7005.5,
+        "actual_profit_usdc": -696.55,
+        "actual_roi_pct": -9.9,
+        "counterfactual_traded_usdc": 5493.7,
+        "counterfactual_profit_usdc": -569.9,
+        "counterfactual_roi_pct": -10.33,
+        "roi_delta_pp": -0.43
+      },
+      "non_neg_risk": {
+        "total_bets": 354,
+        "with_mech": 354,
+        "would_bet": 309,
+        "would_bet_yes": 114,
+        "would_bet_no": 195,
+        "side_switches": 20,
+        "actual_traded_usdc": 758.22,
+        "actual_profit_usdc": -186.55,
+        "actual_roi_pct": -24.49,
+        "counterfactual_traded_usdc": 698.82,
+        "counterfactual_profit_usdc": -4.29,
+        "counterfactual_roi_pct": -0.61,
+        "roi_delta_pp": 23.88
+      }
+    }
+  },
+  "mop_03": {
+    "label": "min_oracle_prob=0.3",
+    "min_oracle_prob": 0.3,
+    "segments": {
+      "all": {
+        "total_bets": 3297,
+        "with_mech": 3286,
+        "would_bet": 2691,
+        "would_bet_yes": 373,
+        "would_bet_no": 2318,
+        "side_switches": 11,
+        "actual_traded_usdc": 7763.72,
+        "actual_profit_usdc": -883.1,
+        "actual_roi_pct": -11.33,
+        "counterfactual_traded_usdc": 6142.8,
+        "counterfactual_profit_usdc": -721.65,
+        "counterfactual_roi_pct": -11.7,
+        "roi_delta_pp": -0.37
+      },
+      "neg_risk": {
+        "total_bets": 2943,
+        "with_mech": 2932,
+        "would_bet": 2401,
+        "would_bet_yes": 271,
+        "would_bet_no": 2130,
+        "side_switches": 10,
+        "actual_traded_usdc": 7005.5,
+        "actual_profit_usdc": -696.55,
+        "actual_roi_pct": -9.9,
+        "counterfactual_traded_usdc": 5466.7,
+        "counterfactual_profit_usdc": -567.95,
+        "counterfactual_roi_pct": -10.34,
+        "roi_delta_pp": -0.44
+      },
+      "non_neg_risk": {
+        "total_bets": 354,
+        "with_mech": 354,
+        "would_bet": 290,
+        "would_bet_yes": 102,
+        "would_bet_no": 188,
+        "side_switches": 1,
+        "actual_traded_usdc": 758.22,
+        "actual_profit_usdc": -186.55,
+        "actual_roi_pct": -24.49,
+        "counterfactual_traded_usdc": 676.1,
+        "counterfactual_profit_usdc": -153.7,
+        "counterfactual_roi_pct": -22.64,
+        "roi_delta_pp": 1.85
+      }
+    }
+  },
+  "mop_05": {
+    "label": "min_oracle_prob=0.5 (production)",
+    "min_oracle_prob": 0.5,
+    "segments": {
+      "all": {
+        "total_bets": 3297,
+        "with_mech": 3286,
+        "would_bet": 2680,
+        "would_bet_yes": 363,
+        "would_bet_no": 2317,
+        "side_switches": 0,
+        "actual_traded_usdc": 7763.72,
+        "actual_profit_usdc": -883.1,
+        "actual_roi_pct": -11.33,
+        "counterfactual_traded_usdc": 6130.08,
+        "counterfactual_profit_usdc": -725.9,
+        "counterfactual_roi_pct": -11.79,
+        "roi_delta_pp": -0.46
+      },
+      "neg_risk": {
+        "total_bets": 2943,
+        "with_mech": 2932,
+        "would_bet": 2391,
+        "would_bet_yes": 262,
+        "would_bet_no": 2129,
+        "side_switches": 0,
+        "actual_traded_usdc": 7005.5,
+        "actual_profit_usdc": -696.55,
+        "actual_roi_pct": -9.9,
+        "counterfactual_traded_usdc": 5455.02,
+        "counterfactual_profit_usdc": -569.53,
+        "counterfactual_roi_pct": -10.39,
+        "roi_delta_pp": -0.49
+      },
+      "non_neg_risk": {
+        "total_bets": 354,
+        "with_mech": 354,
+        "would_bet": 289,
+        "would_bet_yes": 101,
+        "would_bet_no": 188,
+        "side_switches": 0,
+        "actual_traded_usdc": 758.22,
+        "actual_profit_usdc": -186.55,
+        "actual_roi_pct": -24.49,
+        "counterfactual_traded_usdc": 675.06,
+        "counterfactual_profit_usdc": -156.37,
+        "counterfactual_roi_pct": -23.06,
+        "roi_delta_pp": 1.42
+      }
+    }
+  }
+}

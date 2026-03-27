@@ -1,0 +1,458 @@
+{
+  "window_start_date": "2026-03-20",
+  "window_end_date": "2026-03-26",
+  "source_report": "reports/omen_dynamic_agents_exact_2026-03-20_2026-03-26",
+  "subset_definition": "agents with at least 6 distinct historical bet sizes in the analyzed window",
+  "aggregate": {
+    "agents": 15,
+    "trades": 237,
+    "new_better": 162,
+    "old_better": 0,
+    "ties": 71,
+    "old_bets_placed": 237,
+    "new_bets_placed": 221,
+    "old_funding_xdai": 247.27448,
+    "new_funding_xdai": 426.599751,
+    "actual_profit_xdai": 12.773425,
+    "counterfactual_profit_xdai": 25.628015,
+    "actual_roi": 0.051166,
+    "counterfactual_roi": 0.059765,
+    "tie_actual_at_2": 71,
+    "tie_new_at_2": 71,
+    "tie_same_size": 71
+  },
+  "agent_summaries": [
+    {
+      "agent_safe": "0x4b914bf678637215dd41ac2941e044dd06cca912",
+      "trades": 29,
+      "new_better": 19,
+      "old_better": 0,
+      "ties": 8,
+      "old_bets_placed": 29,
+      "new_bets_placed": 24,
+      "old_funding_xdai": 23.032803,
+      "new_funding_xdai": 45.015732,
+      "actual_profit_xdai": -3.013355,
+      "counterfactual_profit_xdai": -2.493372,
+      "actual_roi": -0.129202,
+      "counterfactual_roi": -0.055095,
+      "actual_sizes": [
+        0.025,
+        0.259486,
+        1.236736,
+        1.317004,
+        1.819577,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        0.468287,
+        1.339028,
+        1.378607,
+        1.82981,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x557f2c2fc1f3b4d68782e171560cc7f39a8de1fc",
+      "trades": 23,
+      "new_better": 23,
+      "old_better": 0,
+      "ties": 0,
+      "old_bets_placed": 23,
+      "new_bets_placed": 21,
+      "old_funding_xdai": 9.163994,
+      "new_funding_xdai": 40.080411,
+      "actual_profit_xdai": -1.125013,
+      "counterfactual_profit_xdai": 7.65237,
+      "actual_roi": -0.119759,
+      "counterfactual_roi": 0.18993,
+      "actual_sizes": [
+        0.025,
+        0.342622,
+        0.5,
+        0.74093,
+        0.780442,
+        1.0
+      ],
+      "counterfactual_sizes": [
+        0.773046,
+        1.307365,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xaf79ff71db50d493f24064fee3e8a283907f98ea",
+      "trades": 20,
+      "new_better": 7,
+      "old_better": 0,
+      "ties": 12,
+      "old_bets_placed": 20,
+      "new_bets_placed": 18,
+      "old_funding_xdai": 35.660174,
+      "new_funding_xdai": 35.481513,
+      "actual_profit_xdai": 17.903373,
+      "counterfactual_profit_xdai": 20.13884,
+      "actual_roi": 0.499255,
+      "counterfactual_roi": 0.564722,
+      "actual_sizes": [
+        0.072582,
+        0.780069,
+        1.62502,
+        1.696208,
+        1.715357,
+        1.780001,
+        1.990937,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        1.481513,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xb14e4609cdbea18049c7b01ef00f1ade5a870a6b",
+      "trades": 18,
+      "new_better": 9,
+      "old_better": 0,
+      "ties": 8,
+      "old_bets_placed": 18,
+      "new_bets_placed": 17,
+      "old_funding_xdai": 23.704022,
+      "new_funding_xdai": 32.452455,
+      "actual_profit_xdai": 0.303652,
+      "counterfactual_profit_xdai": -0.537227,
+      "actual_roi": 0.012714,
+      "counterfactual_roi": -0.016468,
+      "actual_sizes": [
+        0.025,
+        0.515352,
+        0.81713,
+        1.262534,
+        1.26592,
+        1.743086,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        0.931363,
+        1.521092,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x78aa375dc9d41eb59af02f1276fbb02ce07cb4d7",
+      "trades": 16,
+      "new_better": 7,
+      "old_better": 0,
+      "ties": 9,
+      "old_bets_placed": 16,
+      "new_bets_placed": 16,
+      "old_funding_xdai": 23.769146,
+      "new_funding_xdai": 32.0,
+      "actual_profit_xdai": -4.563573,
+      "counterfactual_profit_xdai": -1.066564,
+      "actual_roi": -0.190712,
+      "counterfactual_roi": -0.033164,
+      "actual_sizes": [
+        0.025,
+        0.182194,
+        0.800628,
+        1.495438,
+        1.614043,
+        1.626843,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x21876a9459cbd688f06fdc601e7d18be51bdc7b5",
+      "trades": 16,
+      "new_better": 14,
+      "old_better": 0,
+      "ties": 2,
+      "old_bets_placed": 16,
+      "new_bets_placed": 14,
+      "old_funding_xdai": 13.901749,
+      "new_funding_xdai": 25.249249,
+      "actual_profit_xdai": 0.357448,
+      "counterfactual_profit_xdai": 5.529684,
+      "actual_roi": 0.02542,
+      "counterfactual_roi": 0.217796,
+      "actual_sizes": [
+        0.025,
+        0.174471,
+        0.286683,
+        0.493697,
+        0.832157,
+        1.214583,
+        1.450618,
+        1.636,
+        1.757756,
+        1.930784,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        0.495992,
+        0.927405,
+        1.825852,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xcc96f5d68a98c7b2af479112d633436497faa64f",
+      "trades": 16,
+      "new_better": 16,
+      "old_better": 0,
+      "ties": 0,
+      "old_bets_placed": 16,
+      "new_bets_placed": 16,
+      "old_funding_xdai": 8.017086,
+      "new_funding_xdai": 30.618687,
+      "actual_profit_xdai": 1.18715,
+      "counterfactual_profit_xdai": -2.033442,
+      "actual_roi": 0.14518,
+      "counterfactual_roi": -0.066067,
+      "actual_sizes": [
+        0.025,
+        0.672737,
+        0.682906,
+        0.765192,
+        0.876816,
+        0.888017,
+        0.956418,
+        1.0
+      ],
+      "counterfactual_sizes": [
+        1.200501,
+        1.418186,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xf9b972d37f63bf81933abe17195233ca811f8287",
+      "trades": 14,
+      "new_better": 7,
+      "old_better": 0,
+      "ties": 7,
+      "old_bets_placed": 14,
+      "new_bets_placed": 13,
+      "old_funding_xdai": 17.534063,
+      "new_funding_xdai": 24.662224,
+      "actual_profit_xdai": 2.11022,
+      "counterfactual_profit_xdai": 2.776523,
+      "actual_roi": 0.119396,
+      "counterfactual_roi": 0.111992,
+      "actual_sizes": [
+        0.025,
+        0.069008,
+        0.147016,
+        0.385558,
+        0.56599,
+        1.170474,
+        1.171017,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        0.662224,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x74c93a79ab31b0570cde0bd4a6172ac1115ae043",
+      "trades": 14,
+      "new_better": 10,
+      "old_better": 0,
+      "ties": 4,
+      "old_bets_placed": 14,
+      "new_bets_placed": 13,
+      "old_funding_xdai": 14.106188,
+      "new_funding_xdai": 26.0,
+      "actual_profit_xdai": -6.75934,
+      "counterfactual_profit_xdai": -15.02287,
+      "actual_roi": -0.474467,
+      "counterfactual_roi": -0.574928,
+      "actual_sizes": [
+        0.025,
+        0.16599,
+        0.325853,
+        0.490469,
+        0.940166,
+        1.067373,
+        1.316908,
+        1.724429,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xb636a134b75fabea557e6d4a8187cace39630187",
+      "trades": 14,
+      "new_better": 10,
+      "old_better": 0,
+      "ties": 4,
+      "old_bets_placed": 14,
+      "new_bets_placed": 13,
+      "old_funding_xdai": 11.529596,
+      "new_funding_xdai": 25.485471,
+      "actual_profit_xdai": -4.115471,
+      "counterfactual_profit_xdai": -0.978017,
+      "actual_roi": -0.352666,
+      "counterfactual_roi": -0.038181,
+      "actual_sizes": [
+        0.025,
+        0.100056,
+        0.46781,
+        0.889153,
+        1.922577,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        1.485471,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x9aeac5414d5fdde84be968a7cf4e43928c484158",
+      "trades": 13,
+      "new_better": 9,
+      "old_better": 0,
+      "ties": 4,
+      "old_bets_placed": 13,
+      "new_bets_placed": 13,
+      "old_funding_xdai": 13.392755,
+      "new_funding_xdai": 26.0,
+      "actual_profit_xdai": -1.668928,
+      "counterfactual_profit_xdai": -4.372834,
+      "actual_roi": -0.123416,
+      "counterfactual_roi": -0.167349,
+      "actual_sizes": [
+        0.025,
+        0.16093,
+        0.954524,
+        0.991937,
+        1.480326,
+        1.705038,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0xec456f92b9a1e0a79be63100720483824da85a3d",
+      "trades": 13,
+      "new_better": 13,
+      "old_better": 0,
+      "ties": 0,
+      "old_bets_placed": 13,
+      "new_bets_placed": 13,
+      "old_funding_xdai": 11.032306,
+      "new_funding_xdai": 25.869389,
+      "actual_profit_xdai": 5.171005,
+      "counterfactual_profit_xdai": 12.320646,
+      "actual_roi": 0.463256,
+      "counterfactual_roi": 0.473882,
+      "actual_sizes": [
+        0.025,
+        0.53518,
+        0.710006,
+        0.778205,
+        0.983915,
+        1.0
+      ],
+      "counterfactual_sizes": [
+        1.869389,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x5461768d1c2ce52e807ff76c793584401300fb80",
+      "trades": 12,
+      "new_better": 7,
+      "old_better": 0,
+      "ties": 5,
+      "old_bets_placed": 12,
+      "new_bets_placed": 12,
+      "old_funding_xdai": 18.138967,
+      "new_funding_xdai": 23.370692,
+      "actual_profit_xdai": 9.476487,
+      "counterfactual_profit_xdai": 12.129933,
+      "actual_roi": 0.519005,
+      "counterfactual_roi": 0.516372,
+      "actual_sizes": [
+        0.025,
+        1.006901,
+        1.036205,
+        1.35285,
+        1.466198,
+        1.50908,
+        1.742733,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        1.576503,
+        1.873347,
+        1.920842,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x333dd90d00c8a46dde6a0e59569a9a8c25a9e2f4",
+      "trades": 11,
+      "new_better": 5,
+      "old_better": 0,
+      "ties": 6,
+      "old_bets_placed": 11,
+      "new_bets_placed": 11,
+      "old_funding_xdai": 17.729551,
+      "new_funding_xdai": 21.707114,
+      "actual_profit_xdai": 0.086931,
+      "counterfactual_profit_xdai": -3.099341,
+      "actual_roi": 0.004873,
+      "counterfactual_roi": -0.14206,
+      "actual_sizes": [
+        0.122254,
+        1.020532,
+        1.168239,
+        1.541188,
+        1.877338,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        1.707114,
+        2.0
+      ]
+    },
+    {
+      "agent_safe": "0x2060813f352df3a6deff946afaedfa513cdbcf0e",
+      "trades": 8,
+      "new_better": 6,
+      "old_better": 0,
+      "ties": 2,
+      "old_bets_placed": 8,
+      "new_bets_placed": 7,
+      "old_funding_xdai": 6.56208,
+      "new_funding_xdai": 12.606814,
+      "actual_profit_xdai": -2.577161,
+      "counterfactual_profit_xdai": -5.316314,
+      "actual_roi": -0.388005,
+      "counterfactual_roi": -0.419373,
+      "actual_sizes": [
+        0.025,
+        0.07804,
+        0.094064,
+        0.404973,
+        1.935003,
+        2.0
+      ],
+      "counterfactual_sizes": [
+        0.693888,
+        1.912926,
+        2.0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "actual": {
+    "count": 68,
+    "max_pct": 86.811,
+    "mean_pct": -23.475,
+    "median_pct": -25.333,
+    "min_pct": -100.0,
+    "p10_pct": -75.68,
+    "p90_pct": 36.613
+  },
+  "counterfactual": {
+    "count": 68,
+    "max_pct": 87.698,
+    "mean_pct": -23.482,
+    "median_pct": -23.964,
+    "min_pct": -100.0,
+    "p10_pct": -100.0,
+    "p90_pct": 48.149
+  },
+  "delta": {
+    "count": 68,
+    "max_pct": 90.547,
+    "mean_pct": -0.007,
+    "median_pct": 0.0,
+    "min_pct": -86.368,
+    "p10_pct": -25.03,
+    "p90_pct": 21.842
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "bankroll_usdc": 15.0,
+  "floor_balance_usdc": 0.0,
+  "min_bet_usdc": 1.0,
+  "max_bet_usdc": 2.5,
+  "n_bets": 1,
+  "min_edge": 0.01,
+  "min_oracle_prob": 0.1,
+  "fee_per_trade_usdc": 0.0,
+  "mech_fee_usdc": 0.01,
+  "grid_points": 500
+}
