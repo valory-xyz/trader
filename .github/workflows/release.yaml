@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
-      - uses: maus007/docker-run-action-fork@v3
+      - uses: maus007/docker-run-action-fork@v1
         with:
           image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - name: Set up tag and vars
-        uses: maus007/docker-run-action-fork@v3
+        uses: maus007/docker-run-action-fork@v1
         with:
           image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
@@ -62,7 +62,7 @@ jobs:
             echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
             cat env.sh
 
-      - uses: maus007/docker-run-action-fork@v3
+      - uses: maus007/docker-run-action-fork@v1
         name: Build Images
         with:
           image: valory/open-autonomy-user:0.21.16
@@ -94,7 +94,7 @@ jobs:
           fetch-depth: 0
       - uses: docker/setup-buildx-action@v3
       - name: Set up tag and vars
-        uses: maus007/docker-run-action-fork@v3
+        uses: maus007/docker-run-action-fork@v1
         with:
           image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
@@ -118,7 +118,7 @@ jobs:
             echo DEFAULT_IMAGE_TAG=$(cat packages/packages.json | grep agent/ | awk -F: '{print $2}' | tr -d '", ' | head -n 1) >> env.sh
             cat env.sh
 
-      - uses: maus007/docker-run-action-fork@v3
+      - uses: maus007/docker-run-action-fork@v1
         name: Build Images
         with:
           image: valory/open-autonomy-user:0.21.16
@@ -147,7 +147,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up tag and vars
-        uses: maus007/docker-run-action-fork@v3
+        uses: maus007/docker-run-action-fork@v1
         with:
           image: valory/open-autonomy-user:0.21.16
           options: -v ${{ github.workspace }}:/work
