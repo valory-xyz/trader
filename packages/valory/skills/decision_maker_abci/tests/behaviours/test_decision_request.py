@@ -146,6 +146,11 @@ class TestDecisionRequestBehaviour:
         mock_bet.title = "Will it rain?"
         mock_bet.yes = "Yes"
         mock_bet.no = "No"
+        mock_bet.to_request_context.return_value = {
+            "market_id": "0xabc",
+            "type": "omen",
+            "market_prob": 0.4,
+        }
 
         template = Template("$question $yes $no")
 
@@ -174,6 +179,52 @@ class TestDecisionRequestBehaviour:
         assert behaviour._metadata is not None
         assert behaviour._metadata.prompt == "Will it rain? Yes No"
         assert behaviour._metadata.tool == "tool1"
+        assert behaviour._metadata.schema_version == "2.0"
+        assert behaviour._metadata.request_context == {
+            "market_id": "0xabc",
+            "type": "omen",
+            "market_prob": 0.4,
+        }
+        mock_bet.to_request_context.assert_called_once()
+
+    def test_setup_passes_none_request_context(self) -> None:
+        """Setup should pass None request_context when to_request_context returns None."""
+        from string import Template
+
+        behaviour = _make_behaviour()
+
+        mock_bet = MagicMock()
+        mock_bet.title = "Will it rain?"
+        mock_bet.yes = "Yes"
+        mock_bet.no = "No"
+        mock_bet.to_request_context.return_value = None
+
+        template = Template("$question $yes $no")
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                slot_count=BINARY_N_SLOTS, prompt_template=template
+            )
+            with patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_bm:
+                mock_bm.return_value = MagicMock(enabled=False)
+                with patch.object(
+                    type(behaviour), "sampled_bet", new_callable=PropertyMock
+                ) as mock_sb:
+                    mock_sb.return_value = mock_bet
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd:
+                        mock_sd.return_value = MagicMock(mech_tool="tool1")
+                        behaviour.setup()
+
+        assert behaviour._metadata is not None
+        assert behaviour._metadata.request_context is None
 
     def test_async_act_with_metadata(self) -> None:
         """async_act should produce a payload with mech_requests when _metadata is set."""

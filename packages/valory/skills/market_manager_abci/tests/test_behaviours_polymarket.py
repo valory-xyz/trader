@@ -1674,11 +1674,57 @@ class TestFetchMarketsFromPolymarket:
         assert bet_dict["collateralToken"] == USCDE_POLYGON
         assert bet_dict["creator"] == "0xsubmitter"
         assert bet_dict["fee"] == 0
+        assert bet_dict["market_spread"] is None
         assert bet_dict["outcomeSlotCount"] == 2
         assert bet_dict["investments"] == {}
         assert bet_dict["position_liquidity"] == 0
         assert bet_dict["potential_net_profit"] == 0
         assert isinstance(bet_dict["outcome_token_ids"], dict)
+
+    def test_valid_market_reads_spread(self) -> None:
+        """Test that spread from the Gamma API response is included in bet_dict."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(spread="0.04")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert bet_dict["market_spread"] == 0.04
+
+    def test_valid_market_invalid_spread_ignored(self) -> None:
+        """Test that an invalid spread value results in None."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(spread="not_a_number")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert bet_dict["market_spread"] is None
+
+    def test_valid_market_out_of_range_spread_ignored(self) -> None:
+        """Test that an out-of-range spread value (> 1) results in None."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(spread="2.0")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert bet_dict["market_spread"] is None
 
     def test_market_negative_price(self) -> None:
         """Test market with negative price is skipped."""
