@@ -71,14 +71,26 @@ for the same analysis with **n_bets=3** (binary sizing, larger W_bet=7.5).
 With n_bets=1, W_bet=2.5 is smaller, so the optimizer is more conservative and
 fewer bets pass the log-growth threshold.
 
-**The non-negRisk mop=0.1 improvement (+9.7pp) is lower than v2 (+23.9pp).**
-This is expected: the v2 artifact was amplified by the larger W_bet (7.5 vs 2.5)
-which allowed bigger bets on the synthetic-priced tail events. With W_bet=2.5,
-the tail-event payouts are smaller but still present (7 side switches vs 20).
+**The non-negRisk mop=0.1 improvement (+9.7pp) is the same synthetic-pricing
+artifact identified in the v2 analysis.** Of the 7 side switches at mop=0.1:
+- 5 LOSE money (71%)
+- 2 WIN on AMZN "close above 210" at synthetic YES price 0.04 (real was ~0.10+)
+- The oracle says p_yes=0.18 for these wins -- it does NOT predict them
+- At realistic CLOB prices, the payout drops from 25x to ~10x
+
+This is the same pattern as the v2
+[SIDE_SWITCH_ANALYSIS](../polystrat_kelly_replay_v2_comparison/SIDE_SWITCH_ANALYSIS.md):
+lottery-ticket bets at unrealistic synthetic prices. The improvement shrinks
+from +23.9pp (v2) to +9.7pp (v2b) only because n_bets=1 limits bet sizes.
 
 **At mop=0.5, v2b shows -0.2pp on non-negRisk vs v2's +1.4pp.**
 With smaller W_bet, Kelly is more conservative and fewer bets are taken. The
 modest improvement from v2 disappears.
+
+**Fine-grained mop analysis (see [PARAMETER_DEEP_ANALYSIS.md](PARAMETER_DEEP_ANALYSIS.md))
+shows that mop=0.30 through mop=0.50 produce identical results.** The transition
+happens at mop=0.20: below that, side switches appear; above, they vanish.
+For non-negRisk markets, mop=0.30 is the recommended safe floor.
 
 ---
 
