@@ -299,6 +299,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def setup(self) -> None:
         """Set up the behaviour."""
+        self._current_market = "polymarket_client"
         # Read the bets from the agent's data dir as JSON, if they exist
         self.read_bets()
 
@@ -335,6 +336,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
+                if not self.bets[index].market:
+                    self.bets[index].market = self._current_market
 
     def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
