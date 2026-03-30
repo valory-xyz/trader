@@ -1,10 +1,39 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
+#
+#   Copyright 2021-2026 Valory AG
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# ------------------------------------------------------------------------------
+
 """Analyze Pearl log bundles and emit a compact structured report."""
+
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-positional-arguments
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=broad-exception-caught
+# pylint: disable=too-many-statements
+# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-nested-blocks
+# pylint: disable=chained-comparison
+# pylint: disable=too-many-boolean-expressions
 
 from __future__ import annotations
 
 import argparse
-import ast
 import json
 import math
 import re
@@ -14,7 +43,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
-
 
 TIMESTAMP_RE = re.compile(r"^\[(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d{3}\]")
 PEARL_VERSION_RE = re.compile(r"Pearl/(?P<version>[\w\.\-]+)")
@@ -94,21 +122,23 @@ RUNTIME_APPROVED_BET_RE = re.compile(
 RUNTIME_NO_BET_RE = re.compile(
     r"Strategy returned no bet \(bet_amount <= 0 or no vote\)\."
 )
-RUNTIME_SIDE_DIAGNOSTIC_RE = re.compile(
-    r"(?P<label>yes|no): (?P<message>.+)"
-)
+RUNTIME_SIDE_DIAGNOSTIC_RE = re.compile(r"(?P<label>yes|no): (?P<message>.+)")
 RUNTIME_NO_TRADE_REASON_RE = re.compile(r"No trade: (?P<reason>.+)")
 RUNTIME_MAX_BET_RE = re.compile(
     r"max_bet: (?P<max_bet>[-\d\.]+), n_bets: (?P<n_bets>\d+), min_edge: (?P<min_edge>[-\d\.]+)"
 )
 USED_TRADING_STRATEGY_RE = re.compile(r"Used trading strategy: (?P<strategy>[\w_]+)")
-RUNTIME_P_YES_RE = re.compile(r"market_type: (?P<market_type>\w+), p_yes: (?P<p_yes>[-\d\.]+)")
+RUNTIME_P_YES_RE = re.compile(
+    r"market_type: (?P<market_type>\w+), p_yes: (?P<p_yes>[-\d\.]+)"
+)
 RUNTIME_SELECTED_RE = re.compile(
     r"Selected (?P<label>yes|no): bet=(?P<bet>[-\d\.]+) (?P<token>\w+), "
     r"shares=(?P<shares>[-\d\.]+), expected_profit=(?P<expected_profit>[-\d\.]+) (?P=token), "
     r"G_improvement=(?P<g_improvement>[-\d\.]+)"
 )
-PREDICTION_ACCURACY_RE = re.compile(r'"prediction_accuracy": (?P<prediction_accuracy>[-\d\.]+)')
+PREDICTION_ACCURACY_RE = re.compile(
+    r'"prediction_accuracy": (?P<prediction_accuracy>[-\d\.]+)'
+)
 PREPARED_METADATA_RE = re.compile(r"'tool': '(?P<tool>[^']+)'")
 PREPARED_METADATA_QUESTION_RE = re.compile(
     r'With the given question "(?P<question>.+?)" and the `yes` option represented'
@@ -124,7 +154,9 @@ ORDERBOOK_REQUEST_RE = re.compile(
 ORDERBOOK_RESPONSE_RE = re.compile(
     r'payload=\{"asks": \[(?P<asks>.*?)\], "bids":',
 )
-ORDERBOOK_LEVEL_RE = re.compile(r'"price": "(?P<price>[-\d\.]+)", "size": "(?P<size>[-\d\.]+)"')
+ORDERBOOK_LEVEL_RE = re.compile(
+    r'"price": "(?P<price>[-\d\.]+)", "size": "(?P<size>[-\d\.]+)"'
+)
 SIDE_METRICS_RE = re.compile(
     r"(?P<label>yes|no): spend=(?P<spend>[-\d\.]+), shares=(?P<shares>[-\d\.]+), "
     r"vwap=(?P<vwap>[-\d\.]+), edge=(?P<edge>[+\-][-\d\.]+), "
@@ -181,8 +213,7 @@ def optimize_side_local(
     if b_max <= 0 or w_bet <= 0:
         return 0.0, 0.0, g_baseline, g_baseline
     b_min = min(b_min, b_max)
-    if grid_points < 2:
-        grid_points = 2
+    grid_points = max(grid_points, 2)
     best_spend = 0.0
     best_shares = 0.0
     best_g = g_baseline
@@ -267,7 +298,9 @@ class SessionSummary:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to a serializable dictionary."""
-        latest_perf = self.performance_snapshots[-1] if self.performance_snapshots else None
+        latest_perf = (
+            self.performance_snapshots[-1] if self.performance_snapshots else None
+        )
         return {
             "file": self.file,
             "start_time": self.start_time,
@@ -278,28 +311,30 @@ class SessionSummary:
             "allowed_tools": self.allowed_tools,
             "fixed_bet_size": self.fixed_bet_size,
             "max_bet_size": self.max_bet_size,
-            "latest_market_fetch": self.fetched_yes_no_markets[-1]
-            if self.fetched_yes_no_markets
-            else None,
-            "latest_constructed_markets": self.constructed_markets[-1]
-            if self.constructed_markets
-            else None,
+            "latest_market_fetch": (
+                self.fetched_yes_no_markets[-1] if self.fetched_yes_no_markets else None
+            ),
+            "latest_constructed_markets": (
+                self.constructed_markets[-1] if self.constructed_markets else None
+            ),
             "category_validation": self.category_validation,
             "latest_total_trades": self.total_trades[-1] if self.total_trades else None,
-            "latest_total_positions": self.total_positions[-1]
-            if self.total_positions
-            else None,
-            "latest_redeemable_positions": self.redeemable_positions[-1]
-            if self.redeemable_positions
-            else None,
+            "latest_total_positions": (
+                self.total_positions[-1] if self.total_positions else None
+            ),
+            "latest_redeemable_positions": (
+                self.redeemable_positions[-1] if self.redeemable_positions else None
+            ),
             "latest_performance": latest_perf,
             "latest_bet_total": self.bet_totals[-1] if self.bet_totals else None,
             "marketplace_address": self.marketplace_address,
             "marketplace_supports_v2": self.marketplace_supports_v2,
-            "latest_pol_usdc_rate": self.pol_usdc_rates[-1] if self.pol_usdc_rates else None,
-            "latest_balance_snapshot": self.balance_snapshots[-1]
-            if self.balance_snapshots
-            else None,
+            "latest_pol_usdc_rate": (
+                self.pol_usdc_rates[-1] if self.pol_usdc_rates else None
+            ),
+            "latest_balance_snapshot": (
+                self.balance_snapshots[-1] if self.balance_snapshots else None
+            ),
             "prediction_history_items": self.prediction_history_items,
             "position_details": self.position_details,
             "runtime_bet_amounts": self.runtime_bet_amounts,
@@ -358,7 +393,9 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
             session.initial_trading_strategy = chatui_match.group(
                 "initial_trading_strategy"
             )
-            session.allowed_tools = clean_allowed_tools(chatui_match.group("allowed_tools"))
+            session.allowed_tools = clean_allowed_tools(
+                chatui_match.group("allowed_tools")
+            )
             session.fixed_bet_size = int(chatui_match.group("fixed_bet_size"))
             session.max_bet_size = int(chatui_match.group("max_bet_size"))
 
@@ -519,9 +556,13 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
             pending_side_diagnostics = {}
 
         side_diag_match = RUNTIME_SIDE_DIAGNOSTIC_RE.search(line)
-        if side_diag_match is not None and "Selected " not in line and "No trade:" not in line:
-            pending_side_diagnostics[side_diag_match.group("label")] = side_diag_match.group(
-                "message"
+        if (
+            side_diag_match is not None
+            and "Selected " not in line
+            and "No trade:" not in line
+        ):
+            pending_side_diagnostics[side_diag_match.group("label")] = (
+                side_diag_match.group("message")
             )
             session.runtime_side_diagnostics.append(
                 {
@@ -534,8 +575,8 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
         no_trade_reason_match = RUNTIME_NO_TRADE_REASON_RE.search(line)
         if no_trade_reason_match is not None:
             if session.runtime_no_bet_reasons:
-                session.runtime_no_bet_reasons[-1]["reason"] = no_trade_reason_match.group(
-                    "reason"
+                session.runtime_no_bet_reasons[-1]["reason"] = (
+                    no_trade_reason_match.group("reason")
                 )
                 session.runtime_no_bet_reasons[-1]["side_diagnostics"] = dict(
                     pending_side_diagnostics
@@ -554,9 +595,11 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
                 {
                     "timestamp": ts_str if ts is not None else None,
                     "tool": prepared_metadata_match.group("tool"),
-                    "question": question_match.group("question")
-                    if question_match is not None
-                    else None,
+                    "question": (
+                        question_match.group("question")
+                        if question_match is not None
+                        else None
+                    ),
                 }
             )
 
@@ -601,10 +644,15 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
             pending_orderbook_token_id = orderbook_request_match.group("token_id")
 
         orderbook_response_match = ORDERBOOK_RESPONSE_RE.search(line)
-        if orderbook_response_match is not None and pending_orderbook_token_id is not None:
+        if (
+            orderbook_response_match is not None
+            and pending_orderbook_token_id is not None
+        ):
             asks = [
                 {"price": m.group("price"), "size": m.group("size")}
-                for m in ORDERBOOK_LEVEL_RE.finditer(orderbook_response_match.group("asks"))
+                for m in ORDERBOOK_LEVEL_RE.finditer(
+                    orderbook_response_match.group("asks")
+                )
             ]
             session.orderbook_snapshots.append(
                 {
@@ -666,7 +714,9 @@ def analyze_session(name: str, lines: List[str]) -> SessionSummary:
     return session
 
 
-def backfill_session_from_runtime(session: Optional[SessionSummary]) -> Optional[SessionSummary]:
+def backfill_session_from_runtime(
+    session: Optional[SessionSummary],
+) -> Optional[SessionSummary]:
     """Backfill missing active-session fields from runtime logs when startup config is absent."""
     if session is None:
         return None
@@ -675,7 +725,9 @@ def backfill_session_from_runtime(session: Optional[SessionSummary]) -> Optional
         session.trading_strategy = session.runtime_strategy_names[-1]["strategy"]
 
     if (not session.allowed_tools) and session.prepared_tools:
-        session.allowed_tools = sorted({entry["tool"] for entry in session.prepared_tools})
+        session.allowed_tools = sorted(
+            {entry["tool"] for entry in session.prepared_tools}
+        )
 
     if session.max_bet_size is None and session.runtime_max_bet_contexts:
         last_max_bet = session.runtime_max_bet_contexts[-1]["max_bet"]
@@ -756,19 +808,22 @@ def build_execution_audits(active: Optional[SessionSummary]) -> List[Dict[str, A
         audit["wealth_proxy_basis"] = "latest_available_funds_plus_total_bet"
         expected_value = probability * payout - cost - mech_fee
         audit["expected_value"] = expected_value
-        audit["expected_value_status"] = (
-            "pass" if expected_value > 0 else "fail"
-        )
+        audit["expected_value_status"] = "pass" if expected_value > 0 else "fail"
 
-        if wealth_proxy <= 0 or wealth_proxy - cost <= 0 or wealth_proxy - cost + payout <= 0:
-            audit["notes"].append("Non-positive wealth branch prevents log-wealth check.")
+        if (
+            wealth_proxy <= 0
+            or wealth_proxy - cost <= 0
+            or wealth_proxy - cost + payout <= 0
+        ):
+            audit["notes"].append(
+                "Non-positive wealth branch prevents log-wealth check."
+            )
             audits.append(audit)
             continue
 
-        expected_log_wealth = (
-            probability * math.log(wealth_proxy - cost + payout - mech_fee)
-            + (1.0 - probability) * math.log(wealth_proxy - cost - mech_fee)
-        )
+        expected_log_wealth = probability * math.log(
+            wealth_proxy - cost + payout - mech_fee
+        ) + (1.0 - probability) * math.log(wealth_proxy - cost - mech_fee)
         baseline_log_wealth = math.log(wealth_proxy)
         audit["expected_log_wealth"] = expected_log_wealth
         audit["baseline_log_wealth"] = baseline_log_wealth
@@ -784,7 +839,9 @@ def build_execution_audits(active: Optional[SessionSummary]) -> List[Dict[str, A
     return audits
 
 
-def build_runtime_log_wealth_audits(active: Optional[SessionSummary]) -> List[Dict[str, Any]]:
+def build_runtime_log_wealth_audits(
+    active: Optional[SessionSummary],
+) -> List[Dict[str, Any]]:
     """Build provisional log-wealth audits from runtime Kelly logs."""
     if active is None:
         return []
@@ -845,19 +902,22 @@ def build_runtime_log_wealth_audits(active: Optional[SessionSummary]) -> List[Di
             or wealth_proxy - selected["bet"] <= 0
             or wealth_proxy - selected["bet"] + selected["shares"] <= 0
         ):
-            audit["notes"].append("Non-positive wealth branch prevents log-wealth check.")
+            audit["notes"].append(
+                "Non-positive wealth branch prevents log-wealth check."
+            )
             audits.append(audit)
             continue
 
-        expected_log_wealth = (
-            probability * math.log(wealth_proxy - selected["bet"] + selected["shares"] - fee)
-            + (1.0 - probability) * math.log(wealth_proxy - selected["bet"] - fee)
-        )
+        expected_log_wealth = probability * math.log(
+            wealth_proxy - selected["bet"] + selected["shares"] - fee
+        ) + (1.0 - probability) * math.log(wealth_proxy - selected["bet"] - fee)
         baseline_log_wealth = math.log(wealth_proxy)
         audit["expected_log_wealth"] = expected_log_wealth
         audit["baseline_log_wealth"] = baseline_log_wealth
         audit["delta_log_wealth"] = expected_log_wealth - baseline_log_wealth
-        audit["status"] = "pass" if expected_log_wealth >= baseline_log_wealth else "fail"
+        audit["status"] = (
+            "pass" if expected_log_wealth >= baseline_log_wealth else "fail"
+        )
         audit["notes"].append(
             f"Uses runtime max_bet as wealth proxy, runtime shares as payout proxy, and fee={DEFAULT_AUDIT_FEE:.2f}."
         )
@@ -866,7 +926,9 @@ def build_runtime_log_wealth_audits(active: Optional[SessionSummary]) -> List[Di
     return audits
 
 
-def describe_execution_audit_availability(active: Optional[SessionSummary]) -> Dict[str, Any]:
+def describe_execution_audit_availability(
+    active: Optional[SessionSummary],
+) -> Dict[str, Any]:
     """Explain whether execution math audit can run for the active session."""
     if active is None:
         return {
@@ -1001,11 +1063,14 @@ def build_live_trade_quality(active: Optional[SessionSummary]) -> List[Dict[str,
         fee = DEFAULT_AUDIT_FEE
         ev = probability * shares - cost - fee
         wealth_proxy = max_bet_ctx["max_bet"]
-        if wealth_proxy > 0 and wealth_proxy - cost > 0 and wealth_proxy - cost + shares - fee > 0:
-            expected_log_wealth = (
-                probability * math.log(wealth_proxy - cost + shares - fee)
-                + (1.0 - probability) * math.log(wealth_proxy - cost - fee)
-            )
+        if (
+            wealth_proxy > 0
+            and wealth_proxy - cost > 0
+            and wealth_proxy - cost + shares - fee > 0
+        ):
+            expected_log_wealth = probability * math.log(
+                wealth_proxy - cost + shares - fee
+            ) + (1.0 - probability) * math.log(wealth_proxy - cost - fee)
             delta_log_wealth = expected_log_wealth - math.log(wealth_proxy)
         else:
             expected_log_wealth = None
@@ -1014,11 +1079,17 @@ def build_live_trade_quality(active: Optional[SessionSummary]) -> List[Dict[str,
         rows.append(
             {
                 "timestamp": ts,
-                "tool": tool_ctx["tool"] if tool_ctx is not None else (active.allowed_tools[0] if active.allowed_tools else None),
+                "tool": (
+                    tool_ctx["tool"]
+                    if tool_ctx is not None
+                    else (active.allowed_tools[0] if active.allowed_tools else None)
+                ),
                 "question": tool_ctx.get("question") if tool_ctx is not None else None,
                 "p": probability,
                 "confidence": mech_ctx["confidence"] if mech_ctx is not None else None,
-                "info_utility": mech_ctx["info_utility"] if mech_ctx is not None else None,
+                "info_utility": (
+                    mech_ctx["info_utility"] if mech_ctx is not None else None
+                ),
                 "shares": shares,
                 "cost": cost,
                 "execution_price": execution_price,
@@ -1043,12 +1114,12 @@ def build_tool_analysis(active: Optional[SessionSummary]) -> Dict[str, Any]:
     avg_confidence = None
     avg_info_utility = None
     if active.mech_response_summaries:
-        avg_confidence = sum(m["confidence"] for m in active.mech_response_summaries) / len(
-            active.mech_response_summaries
-        )
-        avg_info_utility = sum(m["info_utility"] for m in active.mech_response_summaries) / len(
-            active.mech_response_summaries
-        )
+        avg_confidence = sum(
+            m["confidence"] for m in active.mech_response_summaries
+        ) / len(active.mech_response_summaries)
+        avg_info_utility = sum(
+            m["info_utility"] for m in active.mech_response_summaries
+        ) / len(active.mech_response_summaries)
 
     accuracy_store_summary: Dict[str, Dict[str, int]] = {}
     for update in active.accuracy_store_updates:
@@ -1060,9 +1131,11 @@ def build_tool_analysis(active: Optional[SessionSummary]) -> Dict[str, Any]:
     return {
         "allowed_tools": active.allowed_tools,
         "prepared_tool_usage": tool_usage,
-        "prediction_accuracy": active.prediction_accuracy_values[-1]
-        if active.prediction_accuracy_values
-        else None,
+        "prediction_accuracy": (
+            active.prediction_accuracy_values[-1]
+            if active.prediction_accuracy_values
+            else None
+        ),
         "mech_response_count": len(active.mech_response_summaries),
         "avg_confidence": avg_confidence,
         "avg_info_utility": avg_info_utility,
@@ -1280,9 +1353,11 @@ def build_tools_market_summary(tools_market_analysis: Dict[str, Any]) -> List[st
         parts: List[str] = []
         sorted_buckets = sorted(
             buckets.items(),
-            key=lambda item: item[1].get("avg_ev")
-            if item[1].get("avg_ev") is not None
-            else float("-inf"),
+            key=lambda item: (
+                item[1].get("avg_ev")
+                if item[1].get("avg_ev") is not None
+                else float("-inf")
+            ),
             reverse=True,
         )
 
@@ -1294,9 +1369,7 @@ def build_tools_market_summary(tools_market_analysis: Dict[str, Any]) -> List[st
                 and worst_bucket.get("avg_ev") is not None
                 and best_type != worst_type
             ):
-                parts.append(
-                    f"`{best_type}`: better edge / EV than `{worst_type}`"
-                )
+                parts.append(f"`{best_type}`: better edge / EV than `{worst_type}`")
 
         strongest_conf = max(
             (
@@ -1335,7 +1408,9 @@ def build_settlement_update_tracker(active: Optional[SessionSummary]) -> Dict[st
             settled_status_counts[status] += 1
 
     accuracy_updates = len(active.accuracy_store_updates)
-    has_new_settlements = accuracy_updates > 0 or sum(settled_status_counts.values()) > 0
+    has_new_settlements = (
+        accuracy_updates > 0 or sum(settled_status_counts.values()) > 0
+    )
     likely_accuracy_static = (
         bool(active.prediction_accuracy_values) and not has_new_settlements
     )
@@ -1357,7 +1432,9 @@ def build_cause_hints(
 
     hints: List[str] = []
     active_tool_analysis = build_tool_analysis(active)
-    previous_tool_analysis = build_tool_analysis(previous) if previous is not None else {}
+    previous_tool_analysis = (
+        build_tool_analysis(previous) if previous is not None else {}
+    )
     active_market_profile = build_market_profile(active)
 
     active_tools = set(active_tool_analysis.get("prepared_tool_usage", {}).keys())
@@ -1379,7 +1456,8 @@ def build_cause_hints(
         low_conf_types = [
             market_type
             for market_type, bucket in active_market_profile.items()
-            if bucket.get("avg_confidence") is not None and bucket["avg_confidence"] < 0.7
+            if bucket.get("avg_confidence") is not None
+            and bucket["avg_confidence"] < 0.7
         ]
         if low_conf_types:
             hints.append(
@@ -1437,9 +1515,7 @@ def build_historical_tool_quality(
     per_tool: Dict[str, Dict[str, Any]] = {}
     for sample in settled_samples:
         tool = sample.get("tool") or "unknown"
-        bucket = per_tool.setdefault(
-            tool, {"won": 0, "lost": 0, "squared_errors": []}
-        )
+        bucket = per_tool.setdefault(tool, {"won": 0, "lost": 0, "squared_errors": []})
         bucket[sample["status"]] += 1
         bucket["squared_errors"].append(sample["squared_error"])
 
@@ -1645,23 +1721,30 @@ def build_polymarket_clob_no_bet_diagnostics(
                 (
                     ob["asks"]
                     for ob in reversed(active.orderbook_snapshots)
-                    if ob.get("timestamp") and ts and ob["timestamp"] <= ts and ob["token_id"] == token_id
+                    if ob.get("timestamp")
+                    and ts
+                    and ob["timestamp"] <= ts
+                    and ob["token_id"] == token_id
                 ),
                 None,
             )
             if not asks_snapshot:
                 continue
 
-            probability = prob_ctx["p_yes"] if label == "yes" else 1.0 - prob_ctx["p_yes"]
+            probability = (
+                prob_ctx["p_yes"] if label == "yes" else 1.0 - prob_ctx["p_yes"]
+            )
             w_bet = max_ctx["max_bet"]
-            unconstrained_spend, unconstrained_shares, unconstrained_g, baseline = optimize_side_local(
-                p=probability,
-                w_bet=w_bet,
-                b_min=1e-6,
-                b_max=w_bet,
-                fee=fee,
-                grid_points=500,
-                asks=asks_snapshot,
+            unconstrained_spend, unconstrained_shares, unconstrained_g, baseline = (
+                optimize_side_local(
+                    p=probability,
+                    w_bet=w_bet,
+                    b_min=1e-6,
+                    b_max=w_bet,
+                    fee=fee,
+                    grid_points=500,
+                    asks=asks_snapshot,
+                )
             )
             unconstrained_ev = (
                 probability * unconstrained_shares - unconstrained_spend - fee
@@ -1678,7 +1761,9 @@ def build_polymarket_clob_no_bet_diagnostics(
                 "fallback_edge": edge,
                 "logged_g_improvement": g_improvement,
                 "token_id": token_id,
-                "best_ask_logged": min(float(level["price"]) for level in asks_snapshot),
+                "best_ask_logged": min(
+                    float(level["price"]) for level in asks_snapshot
+                ),
                 "unconstrained_spend": unconstrained_spend,
                 "unconstrained_shares": unconstrained_shares,
                 "unconstrained_ev": unconstrained_ev,
@@ -1709,19 +1794,25 @@ def build_polymarket_clob_no_bet_diagnostics(
                             remaining -= fill
                             if remaining <= 0:
                                 break
-                        diag["logged_book_min_executable_spend_for_live_min_size"] = venue_min_spend
-                        diag["logged_book_min_executable_shares_for_live_min_size"] = venue_min_shares
-                        diag["platform_constraint_blocks_trade"] = venue_min_spend > w_bet
+                        diag["logged_book_min_executable_spend_for_live_min_size"] = (
+                            venue_min_spend
+                        )
+                        diag["logged_book_min_executable_shares_for_live_min_size"] = (
+                            venue_min_shares
+                        )
+                        diag["platform_constraint_blocks_trade"] = (
+                            venue_min_spend > w_bet
+                        )
                         venue_win = w_bet - venue_min_spend + venue_min_shares - fee
                         venue_lose = w_bet - venue_min_spend - fee
                         venue_valid = (
-                            venue_min_shares > 0
-                            and venue_win > 0
-                            and venue_lose > 0
+                            venue_min_shares > 0 and venue_win > 0 and venue_lose > 0
                         )
                         diag["venue_min_trade_valid"] = venue_valid
                         if venue_valid:
-                            venue_ev = probability * venue_min_shares - venue_min_spend - fee
+                            venue_ev = (
+                                probability * venue_min_shares - venue_min_spend - fee
+                            )
                             venue_log = (
                                 probability * math.log(venue_win)
                                 + (1.0 - probability) * math.log(venue_lose)
@@ -1856,9 +1947,7 @@ def _expected_side_behavior(
             f"was found, so no trade is expected on that side."
         )
 
-    return (
-        f"{side_label} was not expected to produce a tradable Kelly-positive sizing outcome."
-    )
+    return f"{side_label} was not expected to produce a tradable Kelly-positive sizing outcome."
 
 
 def build_expected_no_bet_explanations(report: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1893,8 +1982,14 @@ def build_expected_no_bet_explanations(report: Dict[str, Any]) -> List[Dict[str,
                 diag
                 and diag.get("platform_constraint_blocks_trade")
                 and diag.get("unconstrained_spend")
-                and (diag.get("unconstrained_ev") is not None and diag.get("unconstrained_ev") > 0)
-                and (diag.get("unconstrained_log_delta") is not None and diag.get("unconstrained_log_delta") > 0)
+                and (
+                    diag.get("unconstrained_ev") is not None
+                    and diag.get("unconstrained_ev") > 0
+                )
+                and (
+                    diag.get("unconstrained_log_delta") is not None
+                    and diag.get("unconstrained_log_delta") > 0
+                )
             ):
                 summary = (
                     "Bet was not placed because the platform minimum trade size "
@@ -1929,14 +2024,14 @@ def build_expected_no_bet_explanations(report: Dict[str, Any]) -> List[Dict[str,
                     "Bet was not placed because one side failed the entry gate and "
                     "the opposite side did not produce an executable Kelly-positive size."
                 )
-            elif (yes_prob_gate or yes_best_ask_gate) and (no_prob_gate or no_best_ask_gate):
+            elif (yes_prob_gate or yes_best_ask_gate) and (
+                no_prob_gate or no_best_ask_gate
+            ):
                 summary = (
                     "Bet was not placed because both sides failed the entry gates."
                 )
             elif yes_zero_spend or no_zero_spend:
-                summary = (
-                    "Bet was not placed because no side produced an executable Kelly-positive trade."
-                )
+                summary = "Bet was not placed because no side produced an executable Kelly-positive trade."
         if summary is None and side_expectations:
             summary = "Bet was not placed because no side produced an executable Kelly-positive trade."
 
@@ -2036,7 +2131,9 @@ def build_sizing_logic_summary(active: Optional[SessionSummary]) -> Dict[str, An
     }
 
 
-def choose_relevant_sessions(sessions: List[SessionSummary]) -> Dict[str, Optional[SessionSummary]]:
+def choose_relevant_sessions(
+    sessions: List[SessionSummary],
+) -> Dict[str, Optional[SessionSummary]]:
     """Pick the active session and previous same-family session when possible."""
     market_sessions = [
         session
@@ -2208,9 +2305,7 @@ def build_overview(
                 f"won={counts.get('won', 0)}, lost={counts.get('lost', 0)}"
             )
             if settled_outcomes.get("avg_gross_multiple") is not None:
-                msg += (
-                    f", avg payout/bet={settled_outcomes['avg_gross_multiple']:.2f}x"
-                )
+                msg += f", avg payout/bet={settled_outcomes['avg_gross_multiple']:.2f}x"
             if settled_outcomes.get("avg_net_profit") is not None:
                 msg += f", avg net result={settled_outcomes['avg_net_profit']:.2f}"
             msg += "."
@@ -2248,6 +2343,7 @@ def build_overview(
 
 def render_markdown(report: Dict[str, Any]) -> str:
     """Render a compact Markdown summary."""
+
     def fmt_visible(value: Any, *, omen_not_exposed: bool = False) -> str:
         if value is None and omen_not_exposed and report.get("market_family") == "omen":
             return "not exposed in Omen logs"
@@ -2259,7 +2355,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
     }
 
     lines = [
-        f"# Pearl Log Analysis",
+        "# Pearl Log Analysis",
         "",
         f"- Bundle: `{report['bundle']}`",
         f"- Generated at: `{report['generated_at']}`",
@@ -2495,9 +2591,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
         if audits:
             passed = sum(a["status"] == "pass" for a in audits)
             failed = sum(a["status"] == "fail" for a in audits)
-            lines.append(
-                f"- Runtime Kelly audit: pass=`{passed}`, fail=`{failed}`"
-            )
+            lines.append(f"- Runtime Kelly audit: pass=`{passed}`, fail=`{failed}`")
         if sizing_logic.get("avg_edge") is not None:
             lines.append(f"- Average edge: `{sizing_logic['avg_edge']:.6f}`")
         if sizing_logic.get("avg_ev") is not None:
@@ -2549,7 +2643,9 @@ def render_markdown(report: Dict[str, Any]) -> str:
                 f"- Average mech info utility: `{tool_analysis['avg_info_utility']:.2f}`"
             )
         if tool_analysis.get("accuracy_store_summary"):
-            for tool, summary in sorted(tool_analysis["accuracy_store_summary"].items()):
+            for tool, summary in sorted(
+                tool_analysis["accuracy_store_summary"].items()
+            ):
                 lines.append(
                     f"- Accuracy store updates for `{tool}`: "
                     f"winning=`{summary.get('winning', 0)}`, losing=`{summary.get('losing', 0)}`"
@@ -2586,9 +2682,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
             lines.append("- Root mean square error: `unavailable`")
         if historical_tool_quality.get("per_tool"):
             for tool, bucket in sorted(historical_tool_quality["per_tool"].items()):
-                line = (
-                    f"- `{tool}`: won=`{bucket.get('won', 0)}`, lost=`{bucket.get('lost', 0)}`"
-                )
+                line = f"- `{tool}`: won=`{bucket.get('won', 0)}`, lost=`{bucket.get('lost', 0)}`"
                 if bucket.get("brier") is not None:
                     line += (
                         f", brier=`{bucket['brier']:.6f}`, rmse=`{bucket['rmse']:.6f}`"
@@ -2622,9 +2716,7 @@ def render_markdown(report: Dict[str, Any]) -> str:
                 f"- Average net result: `{settled_bet_outcomes['avg_net_profit']:.2f}`"
             )
         for tool, bucket in sorted(settled_bet_outcomes.get("per_tool", {}).items()):
-            line = (
-                f"- `{tool}`: won=`{bucket.get('won', 0)}`, lost=`{bucket.get('lost', 0)}`"
-            )
+            line = f"- `{tool}`: won=`{bucket.get('won', 0)}`, lost=`{bucket.get('lost', 0)}`"
             if bucket.get("avg_gross_multiple") is not None:
                 line += f", avg payout/bet=`{bucket['avg_gross_multiple']:.2f}x`"
             if bucket.get("avg_net_profit") is not None:
