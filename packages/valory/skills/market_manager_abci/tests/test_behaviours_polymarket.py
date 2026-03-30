@@ -809,6 +809,27 @@ class TestProcessChunk:
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].scaledLiquidityMeasure == 20.0
 
+    def test_existing_bet_with_empty_market_gets_backfilled(self) -> None:
+        """Test that an existing bet with empty market gets backfilled."""
+        existing_bet = _make_bet(id="b1", market="")
+        behaviour = _make_behaviour(bets=[existing_bet])
+        behaviour._current_market = "polymarket_client"
+        raw_bet = dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[300, 400],
+            outcomeTokenMarginalPrices=[0.6, 0.4],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=20.0,
+        )
+        behaviour._process_chunk([raw_bet])
+        assert behaviour.bets[0].market == "polymarket_client"
+
 
 # ===========================================================================
 # Tests for _validate_trade
