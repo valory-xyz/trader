@@ -132,6 +132,7 @@ Interfaces to on-chain contracts (FPMM market maker, conditional tokens, Realiti
 - Uses `unittest.mock.MagicMock` for mocking dependencies
 - Test classes with setup methods; parametrized tests common
 - Coverage tracked via `.coveragerc`
+- **CI enforces 100% coverage** — after making changes, run coverage against **every file you modified**, not just the primary one. Use `--cov=packages.valory.skills.<skill>.<module>` for each changed module.
 
 ## Important Workflows
 

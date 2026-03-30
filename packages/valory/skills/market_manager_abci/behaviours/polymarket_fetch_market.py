@@ -299,6 +299,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def setup(self) -> None:
         """Set up the behaviour."""
+        self._current_market = "polymarket_client"
         # Read the bets from the agent's data dir as JSON, if they exist
         self.read_bets()
 
@@ -335,6 +336,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
+                if not self.bets[index].market:
+                    self.bets[index].market = self._current_market
 
     def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
@@ -444,6 +447,17 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     if not market.get("question"):
                         raise ValueError("Missing question")
 
+                    # Parse spread from Gamma API (decimal, e.g. 0.02)
+                    raw_spread = market.get("spread")
+                    market_spread = None
+                    if raw_spread is not None:
+                        try:
+                            parsed = float(raw_spread)
+                            if 0 <= parsed <= 1:
+                                market_spread = parsed
+                        except (ValueError, TypeError):
+                            market_spread = None
+
                     bet_dict = {
                         "id": market_id,
                         "title": market.get("question"),
@@ -470,6 +484,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         ),
                         "investments": {},
                         "outcome_token_ids": outcome_token_ids_map,
+                        "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
                     }
 

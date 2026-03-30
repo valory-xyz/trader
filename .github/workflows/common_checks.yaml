@@ -81,7 +81,8 @@ jobs:
             --url-skips "https://li.quest/v1/quote/toAmount" \
             --url-skips "https://gateway.autonolas.tech/ipfs/" \
             --url-skips "https://rpc.gnosischain.com/" \
-            --url-skips "https://1rpc.io/matic"
+            --url-skips "https://1rpc.io/matic" \
+            --url-skips "https://omen.subgraph.autonolas.tech"
       - name: Check doc IPFS hashes
         run: tox -e check-doc-hashes
 
