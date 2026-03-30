@@ -438,10 +438,12 @@ class Bet:
         market_id = self.condition_id or self.id
 
         market_prob = None
-        if self.outcomeTokenMarginalPrices and math.isfinite(
-            self.outcomeTokenMarginalPrices[0]
-        ):
-            market_prob = self.outcomeTokenMarginalPrices[0]
+        if self.outcomes and BinaryOutcome.YES.value in self.outcomes:
+            yes_idx = self.outcomes.index(BinaryOutcome.YES.value)
+            if self.outcomeTokenMarginalPrices and math.isfinite(
+                self.outcomeTokenMarginalPrices[yes_idx]
+            ):
+                market_prob = self.outcomeTokenMarginalPrices[yes_idx]
 
         market_close_at = None
         if self.openingTimestamp and self.openingTimestamp > 0:
