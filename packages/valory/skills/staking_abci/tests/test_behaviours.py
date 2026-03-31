@@ -294,9 +294,12 @@ class TestWaitForConditionWithSleep:
             return call_count >= 2
             yield  # pragma: no cover
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "sleep", _noop_gen):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "sleep", _noop_gen),
+        ):
             gen = b.wait_for_condition_with_sleep(condition)
             with pytest.raises(StopIteration):
                 next(gen)
@@ -312,9 +315,12 @@ class TestWaitForConditionWithSleep:
             return False
             yield  # pragma: no cover
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "sleep", _noop_gen):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "sleep", _noop_gen),
+        ):
             gen = b.wait_for_condition_with_sleep(condition, timeout=0)
             with pytest.raises(TimeoutException):
                 # Drive the generator past the first iteration
@@ -363,9 +369,12 @@ class TestContractInteract:
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"data_key": "result_value"}
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "get_contract_api_response", _return_gen(response_msg)),
+        ):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -386,9 +395,12 @@ class TestContractInteract:
         response_msg = MagicMock()
         response_msg.performative = ContractApiMessage.Performative.ERROR
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "get_contract_api_response", _return_gen(response_msg)),
+        ):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -409,9 +421,12 @@ class TestContractInteract:
         response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
         response_msg.raw_transaction.body = {"other_key": "value"}
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "get_contract_api_response", _return_gen(response_msg)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "get_contract_api_response", _return_gen(response_msg)),
+        ):
             gen = b.contract_interact(
                 contract_address="0x1",
                 contract_public_id=MagicMock(),
@@ -442,9 +457,12 @@ class TestStakingContractInteract:
             "0xNonNull" if use_v2 else NULL_ADDRESS
         )
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "contract_interact", _return_gen(True)),
+        ):
             gen = b._staking_contract_interact(
                 contract_callable="test_fn",
                 placeholder="test_placeholder",
@@ -463,9 +481,12 @@ class TestMechActivityCheckerContractInteract:
         mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.mech_activity_checker_contract = "0xMechChecker"
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "contract_interact", _return_gen(True)),
+        ):
             gen = b._mech_activity_checker_contract_interact(
                 contract_callable="test_fn",
                 placeholder="test_placeholder",
@@ -503,9 +524,12 @@ class TestCheckServiceStaked:
         mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "_staking_contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_staking_contract_interact", _return_gen(True)),
+        ):
             gen = b._check_service_staked()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -558,10 +582,13 @@ class TestGetMethods:
         mock_ctx = MagicMock()
         mock_ctx.params.mech_activity_checker_contract = "0xNonNull"  # != NULL_ADDRESS
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "_mech_activity_checker_contract_interact", _return_gen(True)
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                b, "_mech_activity_checker_contract_interact", _return_gen(True)
+            ),
         ):
             gen = b._get_liveness_ratio()
             with pytest.raises(StopIteration) as exc_info:
@@ -574,9 +601,12 @@ class TestGetMethods:
         mock_ctx = MagicMock()
         mock_ctx.params.mech_activity_checker_contract = NULL_ADDRESS
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "_staking_contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_staking_contract_interact", _return_gen(True)),
+        ):
             gen = b._get_liveness_ratio()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -633,9 +663,12 @@ class TestGetServiceInfo:
         b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
         mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "_staking_contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_staking_contract_interact", _return_gen(True)),
+        ):
             gen = b._get_service_info()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -663,9 +696,12 @@ class TestGetAgentIds:
         b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
         mock_ctx = MagicMock()  # type: ignore[type-abstract]
         mock_ctx.params.on_chain_service_id = 42
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "_staking_contract_interact", _return_gen(True)):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_staking_contract_interact", _return_gen(True)),
+        ):
             gen = b._get_agent_ids()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -684,13 +720,14 @@ class TestCallCheckpointBehaviourInit:
         """__init__ sets default attributes."""
         mock_params = MagicMock()
         mock_params.store_path = Path("/tmp")  # nosec B108
-        with patch.object(
-            StakingInteractBaseBehaviour, "__init__", return_value=None
-        ), patch.object(
-            CallCheckpointBehaviour,
-            "params",
-            new_callable=PropertyMock,
-            return_value=mock_params,
+        with (
+            patch.object(StakingInteractBaseBehaviour, "__init__", return_value=None),
+            patch.object(
+                CallCheckpointBehaviour,
+                "params",
+                new_callable=PropertyMock,
+                return_value=mock_params,
+            ),
         ):
             b = CallCheckpointBehaviour()
         assert b._service_staking_state == StakingState.UNSTAKED
@@ -859,9 +896,12 @@ class TestReadStoredTimestamp:
         """Test that FileNotFoundError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", side_effect=FileNotFoundError):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", side_effect=FileNotFoundError),
+        ):
             result = b.read_stored_timestamp()
         assert result is None
         mock_ctx.logger.error.assert_called_once()
@@ -870,9 +910,12 @@ class TestReadStoredTimestamp:
         """Test that PermissionError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", side_effect=PermissionError):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", side_effect=PermissionError),
+        ):
             result = b.read_stored_timestamp()
         assert result is None
         mock_ctx.logger.error.assert_called_once()
@@ -881,9 +924,12 @@ class TestReadStoredTimestamp:
         """Test that OSError returns None and logs error."""
         b = self._make()
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", side_effect=OSError):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", side_effect=OSError),
+        ):
             result = b.read_stored_timestamp()
         assert result is None
         mock_ctx.logger.error.assert_called_once()
@@ -893,9 +939,12 @@ class TestReadStoredTimestamp:
         b = self._make()
         mock_ctx = MagicMock()
         m = mock_open(read_data="not_a_number\n")
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", m):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", m),
+        ):
             result = b.read_stored_timestamp()
         assert result is None
         mock_ctx.logger.error.assert_called_once()
@@ -939,9 +988,12 @@ class TestStoreTimestamp:
         mock_ctx = MagicMock()
         m = mock_open()
         m.return_value.write.side_effect = IOError("write failed")
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", m):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", m),
+        ):
             result = b.store_timestamp()
         assert result == 0
         mock_ctx.logger.error.assert_called_once()
@@ -951,9 +1003,12 @@ class TestStoreTimestamp:
         b = self._make()
         b._checkpoint_ts = 1700000000
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch("builtins.open", side_effect=PermissionError):
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch("builtins.open", side_effect=PermissionError),
+        ):
             result = b.store_timestamp()
         assert result == 0
         mock_ctx.logger.error.assert_called_once()
@@ -989,15 +1044,17 @@ class TestGetSafeTxHash:
         mock_sync = MagicMock()
         mock_sync.safe_contract_address = "0xSafe"
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            type(b),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync,
-        ), patch.object(
-            b, "contract_interact", _return_gen(True)
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync,
+            ),
+            patch.object(b, "contract_interact", _return_gen(True)),
         ):
             gen = b._get_safe_tx_hash()
             with pytest.raises(StopIteration) as exc_info:
@@ -1016,12 +1073,16 @@ class TestPrepareSafeTx:
         mock_ctx = MagicMock()
         mock_ctx.params.staking_contract_address = "0xStaking"
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(b, "wait_for_condition_with_sleep", _noop_gen), patch(
-            "packages.valory.skills.staking_abci.behaviours.hash_payload_to_hex",
-            return_value="0xresult",
-        ) as mock_hash:
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch(
+                "packages.valory.skills.staking_abci.behaviours.hash_payload_to_hex",
+                return_value="0xresult",
+            ) as mock_hash,
+        ):
             gen = b._prepare_safe_tx()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -1054,15 +1115,17 @@ class TestCheckNewEpoch:
         mock_sync.period_count = 5
         mock_sync.previous_checkpoint = 100  # same as ts_checkpoint
 
-        with patch.object(
-            type(b),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync,
-        ), patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=MagicMock()
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
+        with (
+            patch.object(
+                type(b),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync,
+            ),
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=MagicMock()
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
         ):
             gen = b.check_new_epoch()
             with pytest.raises(StopIteration) as exc_info:
@@ -1077,19 +1140,19 @@ class TestCheckNewEpoch:
         mock_sync.previous_checkpoint = 0  # falsy, no new_checkpoint_detected
 
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync,
-        ), patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "read_stored_timestamp", return_value=50
-        ), patch.object(
-            b, "store_timestamp", return_value=10
+        with (
+            patch.object(
+                type(b),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync,
+            ),
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "read_stored_timestamp", return_value=50),
+            patch.object(b, "store_timestamp", return_value=10),
         ):
             gen = b.check_new_epoch()
             with pytest.raises(StopIteration) as exc_info:
@@ -1106,17 +1169,18 @@ class TestCheckNewEpoch:
         mock_sync.previous_checkpoint = 100  # != 200 and truthy
 
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync,
-        ), patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "store_timestamp", return_value=10
+        with (
+            patch.object(
+                type(b),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync,
+            ),
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "store_timestamp", return_value=10),
         ):
             gen = b.check_new_epoch()
             with pytest.raises(StopIteration) as exc_info:
@@ -1132,17 +1196,18 @@ class TestCheckNewEpoch:
         mock_sync.previous_checkpoint = 100  # != 200
 
         mock_ctx = MagicMock()
-        with patch.object(
-            type(b),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync,
-        ), patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "store_timestamp", return_value=0
+        with (
+            patch.object(
+                type(b),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync,
+            ),
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "store_timestamp", return_value=0),
         ):
             gen = b.check_new_epoch()
             with pytest.raises(StopIteration) as exc_info:
@@ -1177,23 +1242,21 @@ class TestAsyncAct:
         mock_ctx.params.on_chain_service_id = 1
         mock_set_done = MagicMock()
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            type(b),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test",
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "check_new_epoch", _return_gen(False)
-        ), patch.object(
-            b, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            b, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            b, "set_done", mock_set_done
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test",
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "check_new_epoch", _return_gen(False)),
+            patch.object(b, "send_a2a_transaction", _noop_gen),
+            patch.object(b, "wait_until_round_end", _noop_gen),
+            patch.object(b, "set_done", mock_set_done),
         ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
@@ -1211,30 +1274,28 @@ class TestAsyncAct:
         mock_rs = MagicMock()
         mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            type(b),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test",
-        ), patch.object(
-            type(b),
-            "round_sequence",
-            new_callable=PropertyMock,
-            return_value=mock_rs,
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "_prepare_safe_tx", _return_gen("0xtxhex")
-        ), patch.object(
-            b, "check_new_epoch", _return_gen(True)
-        ), patch.object(
-            b, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            b, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            b, "set_done", MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test",
+            ),
+            patch.object(
+                type(b),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=mock_rs,
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "_prepare_safe_tx", _return_gen("0xtxhex")),
+            patch.object(b, "check_new_epoch", _return_gen(True)),
+            patch.object(b, "send_a2a_transaction", _noop_gen),
+            patch.object(b, "wait_until_round_end", _noop_gen),
+            patch.object(b, "set_done", MagicMock()),
         ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
@@ -1251,28 +1312,27 @@ class TestAsyncAct:
         mock_rs = MagicMock()
         mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            type(b),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test",
-        ), patch.object(
-            type(b),
-            "round_sequence",
-            new_callable=PropertyMock,
-            return_value=mock_rs,
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "check_new_epoch", _return_gen(False)
-        ), patch.object(
-            b, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            b, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            b, "set_done", MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test",
+            ),
+            patch.object(
+                type(b),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=mock_rs,
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "check_new_epoch", _return_gen(False)),
+            patch.object(b, "send_a2a_transaction", _noop_gen),
+            patch.object(b, "wait_until_round_end", _noop_gen),
+            patch.object(b, "set_done", MagicMock()),
         ):
             gen = b.async_act()
             with pytest.raises(StopIteration):
@@ -1286,23 +1346,21 @@ class TestAsyncAct:
         mock_ctx.agent_address = "agent_0"
         mock_ctx.params.on_chain_service_id = 1
 
-        with patch.object(
-            type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-        ), patch.object(
-            type(b),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test",
-        ), patch.object(
-            b, "wait_for_condition_with_sleep", _noop_gen
-        ), patch.object(
-            b, "check_new_epoch", _return_gen(False)
-        ), patch.object(
-            b, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            b, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            b, "set_done", MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test",
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "check_new_epoch", _return_gen(False)),
+            patch.object(b, "send_a2a_transaction", _noop_gen),
+            patch.object(b, "wait_until_round_end", _noop_gen),
+            patch.object(b, "set_done", MagicMock()),
         ):
             gen = b.async_act()
             with pytest.raises(StopIteration):

@@ -35,7 +35,7 @@ fingerprint:
   tests/graph_tooling/test_requests.py: bafybeiez2icgxoz5khs3itvmpaypgokkfdn6zbsoafiecb3hvrpzqrg2ia
   tests/test_behaviours.py: bafybeiaxvqdy4vmoe25bjlzsrcisn7tmiwcqv3oq5zknmvwbtige3hhram
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
-  tests/test_handlers.py: bafybeicq3td5j5xe4oxb2ehtvriyh2bimowxxibtrylhekn77fcvvmuyxa
+  tests/test_handlers.py: bafybeih5fpmtk3jr4pjw63wmy3g3ys536xlbe527uelzv5vlsl6wnhwmqa
   tests/test_models.py: bafybeifzhbzgqfym7p4wemvcagdgpcstsf3j33fcbfnhwnqhxxk7vuep34
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihygetmlgnhawrbyswvpvv3wpztr2hlhxkljmohp4r7qcmvglpwdq
 connections:
-- valory/polymarket_client:0.1.0:bafybeibdw5epieory45xurxrvhv7irx6jtkedk4tuhvi5wazryafucjiea
+- valory/polymarket_client:0.1.0:bafybeicmjxnukrjeaiapxwh6j6wioc43qqmqd777zrv4mbwdaewg2d3oe4
 handlers:
   abci:
     args: {}

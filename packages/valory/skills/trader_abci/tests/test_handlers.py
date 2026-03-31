@@ -554,13 +554,17 @@ class TestHandleGetAgentInfo:
         mock_staking.agent_ids = "[1, 2]"
         mock_staking.service_id = 42
 
-        with patch.object(
-            type(self.handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(self.handler), "staking_synchronized_data", new_callable=PropertyMock
-        ) as mock_ssd, patch.object(
-            self.handler, "_send_ok_response"
-        ) as mock_send:
+        with (
+            patch.object(
+                type(self.handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(self.handler),
+                "staking_synchronized_data",
+                new_callable=PropertyMock,
+            ) as mock_ssd,
+            patch.object(self.handler, "_send_ok_response") as mock_send,
+        ):
             mock_sd.return_value = mock_synced
             mock_ssd.return_value = mock_staking
 
@@ -592,9 +596,12 @@ class TestHandleGetTradingDetails:
         mock_synced.safe_contract_address = "0xSafe"
         self.handler.shared_state.chatui_config.trading_strategy = None
 
-        with patch.object(
-            type(self.handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(self.handler, "_send_ok_response") as mock_send:
+        with (
+            patch.object(
+                type(self.handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(self.handler, "_send_ok_response") as mock_send,
+        ):
             mock_sd.return_value = mock_synced
             self.handler._handle_get_trading_details(http_msg, http_dialogue)
             mock_send.assert_called_once()
@@ -608,11 +615,14 @@ class TestHandleGetTradingDetails:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
 
-        with patch.object(
-            type(self.handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            self.handler, "_send_internal_server_error_response"
-        ) as mock_err:
+        with (
+            patch.object(
+                type(self.handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                self.handler, "_send_internal_server_error_response"
+            ) as mock_err,
+        ):
             mock_sd.side_effect = Exception("boom")
             self.handler._handle_get_trading_details(http_msg, http_dialogue)
             mock_err.assert_called_once()
@@ -635,14 +645,16 @@ class TestHandleGetStaticFile:
         http_msg.url = "http://localhost:8080/test.js"
         http_dialogue = MagicMock()
 
-        with patch.object(self.handler, "_send_ok_response") as mock_send, patch.object(
-            self.handler, "_get_content_type", return_value="application/javascript"
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.urlparse"
-        ) as mock_urlparse, patch(
-            "packages.valory.skills.trader_abci.handlers.Path"
-        ) as MockPath, patch(
-            "builtins.open", mock_open(read_data=b"js_content")
+        with (
+            patch.object(self.handler, "_send_ok_response") as mock_send,
+            patch.object(
+                self.handler, "_get_content_type", return_value="application/javascript"
+            ),
+            patch(
+                "packages.valory.skills.trader_abci.handlers.urlparse"
+            ) as mock_urlparse,
+            patch("packages.valory.skills.trader_abci.handlers.Path") as MockPath,
+            patch("builtins.open", mock_open(read_data=b"js_content")),
         ):
             mock_urlparse.return_value.path = "/test.js"
             file_path_mock = MagicMock()
@@ -659,12 +671,13 @@ class TestHandleGetStaticFile:
         http_msg.url = "http://localhost:8080/nonexistent"
         http_dialogue = MagicMock()
 
-        with patch.object(self.handler, "_send_ok_response") as mock_send, patch(
-            "packages.valory.skills.trader_abci.handlers.urlparse"
-        ) as mock_urlparse, patch(
-            "packages.valory.skills.trader_abci.handlers.Path"
-        ) as MockPath, patch(
-            "builtins.open", mock_open(read_data="<html>index</html>")
+        with (
+            patch.object(self.handler, "_send_ok_response") as mock_send,
+            patch(
+                "packages.valory.skills.trader_abci.handlers.urlparse"
+            ) as mock_urlparse,
+            patch("packages.valory.skills.trader_abci.handlers.Path") as MockPath,
+            patch("builtins.open", mock_open(read_data="<html>index</html>")),
         ):
             mock_urlparse.return_value.path = "/nonexistent"
             file_path_mock = MagicMock()
@@ -681,14 +694,13 @@ class TestHandleGetStaticFile:
         http_msg.url = "http://localhost:8080/missing"
         http_dialogue = MagicMock()
 
-        with patch.object(
-            self.handler, "_send_not_found_response"
-        ) as mock_not_found, patch(
-            "packages.valory.skills.trader_abci.handlers.urlparse"
-        ) as mock_urlparse, patch(
-            "packages.valory.skills.trader_abci.handlers.Path"
-        ) as MockPath, patch(
-            "builtins.open", side_effect=FileNotFoundError("nope")
+        with (
+            patch.object(self.handler, "_send_not_found_response") as mock_not_found,
+            patch(
+                "packages.valory.skills.trader_abci.handlers.urlparse"
+            ) as mock_urlparse,
+            patch("packages.valory.skills.trader_abci.handlers.Path") as MockPath,
+            patch("builtins.open", side_effect=FileNotFoundError("nope")),
         ):
             mock_urlparse.return_value.path = "/missing"
             file_path_mock = MagicMock()
@@ -844,10 +856,15 @@ class TestGetAdjustedFundsStatus:
         mock_fn = MagicMock(return_value=fund_status)
         handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
 
-        with patch.object(
-            type(handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            handler, "_get_pol_equivalent_for_usdc", return_value=11000000000000000000
+        with (
+            patch.object(
+                type(handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                handler,
+                "_get_pol_equivalent_for_usdc",
+                return_value=11000000000000000000,
+            ),
         ):
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
@@ -939,10 +956,11 @@ class TestGetAdjustedFundsStatus:
         mock_fn = MagicMock(return_value=fund_status)
         handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
 
-        with patch.object(
-            type(handler), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            handler, "_get_pol_equivalent_for_usdc", return_value=None
+        with (
+            patch.object(
+                type(handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(handler, "_get_pol_equivalent_for_usdc", return_value=None),
         ):
             mock_sd.return_value = mock_synced
             _ = handler._get_adjusted_funds_status()
@@ -1207,9 +1225,12 @@ class TestHandleGetFundsStatus:
         mock_result = MagicMock()
         mock_result.get_response_body.return_value = {"funds": "ok"}
 
-        with patch.object(
-            handler, "_get_adjusted_funds_status", return_value=mock_result
-        ), patch.object(handler, "_send_ok_response") as mock_send:
+        with (
+            patch.object(
+                handler, "_get_adjusted_funds_status", return_value=mock_result
+            ),
+            patch.object(handler, "_send_ok_response") as mock_send,
+        ):
             handler._handle_get_funds_status(http_msg, http_dialogue)
             mock_send.assert_called_once()
             handler.executor.submit.assert_not_called()  # type: ignore[attr-defined]
@@ -1226,9 +1247,12 @@ class TestHandleGetFundsStatus:
         mock_result = MagicMock()
         mock_result.get_response_body.return_value = {"funds": "ok"}
 
-        with patch.object(
-            handler, "_get_adjusted_funds_status", return_value=mock_result
-        ), patch.object(handler, "_send_ok_response"):
+        with (
+            patch.object(
+                handler, "_get_adjusted_funds_status", return_value=mock_result
+            ),
+            patch.object(handler, "_send_ok_response"),
+        ):
             handler._handle_get_funds_status(http_msg, http_dialogue)
             handler.executor.submit.assert_called_once()  # type: ignore[attr-defined]
 
@@ -1250,13 +1274,15 @@ class TestGetEoaAccount:
         """Test when password is available."""
         mock_account = MagicMock()
 
-        with patch.object(
-            self.handler, "_get_password_from_args", return_value="mypass"
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.EthereumCrypto"
-        ) as MockCrypto, patch(
-            "packages.valory.skills.trader_abci.handlers.Account"
-        ) as MockAccount:
+        with (
+            patch.object(
+                self.handler, "_get_password_from_args", return_value="mypass"
+            ),
+            patch(
+                "packages.valory.skills.trader_abci.handlers.EthereumCrypto"
+            ) as MockCrypto,
+            patch("packages.valory.skills.trader_abci.handlers.Account") as MockAccount,
+        ):
             MockCrypto.return_value.private_key = "0xkey"
             MockAccount.from_key.return_value = mock_account
             result = self.handler._get_eoa_account()
@@ -1266,11 +1292,11 @@ class TestGetEoaAccount:
         """Test fallback to plaintext key when no password."""
         mock_account = MagicMock()
 
-        with patch.object(
-            self.handler, "_get_password_from_args", return_value=None
-        ), patch.object(Path, "open", mock_open(read_data="0xplainkey")), patch(
-            "packages.valory.skills.trader_abci.handlers.Account"
-        ) as MockAccount:
+        with (
+            patch.object(self.handler, "_get_password_from_args", return_value=None),
+            patch.object(Path, "open", mock_open(read_data="0xplainkey")),
+            patch("packages.valory.skills.trader_abci.handlers.Account") as MockAccount,
+        ):
             MockAccount.from_key.return_value = mock_account
             result = self.handler._get_eoa_account()
             assert result == mock_account
@@ -1278,11 +1304,11 @@ class TestGetEoaAccount:
 
     def test_account_from_key_exception(self) -> None:
         """Test exception when Account.from_key fails."""
-        with patch.object(
-            self.handler, "_get_password_from_args", return_value=None
-        ), patch.object(Path, "open", mock_open(read_data="invalid_key")), patch(
-            "packages.valory.skills.trader_abci.handlers.Account"
-        ) as MockAccount:
+        with (
+            patch.object(self.handler, "_get_password_from_args", return_value=None),
+            patch.object(Path, "open", mock_open(read_data="invalid_key")),
+            patch("packages.valory.skills.trader_abci.handlers.Account") as MockAccount,
+        ):
             MockAccount.from_key.side_effect = Exception("bad key")
             result = self.handler._get_eoa_account()
             assert result is None
@@ -1391,9 +1417,10 @@ class TestCheckUsdcBalance:
         mock_contract.functions.balanceOf.return_value.call.return_value = 5000000
         mock_w3.eth.contract.return_value = mock_contract
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._check_usdc_balance("0xAddress", "polygon", "0xUSDC")
             assert result == 5000000
@@ -1665,9 +1692,10 @@ class TestGetNonceAndGasWeb3:
         mock_w3.eth.get_transaction_count.return_value = 42
         mock_w3.eth.gas_price = 50000000000
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
             assert nonce == 42
@@ -1685,9 +1713,10 @@ class TestGetNonceAndGasWeb3:
         mock_w3 = MagicMock()
         mock_w3.eth.get_transaction_count.side_effect = Exception("rpc error")
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
             assert nonce is None
@@ -1709,9 +1738,10 @@ class TestEstimateGas:
         mock_w3 = MagicMock()
         mock_w3.eth.estimate_gas.return_value = 100000
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": "0x10"},
@@ -1726,9 +1756,10 @@ class TestEstimateGas:
         mock_w3 = MagicMock()
         mock_w3.eth.estimate_gas.return_value = 200000
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 16},
@@ -1753,9 +1784,10 @@ class TestEstimateGas:
         mock_w3 = MagicMock()
         mock_w3.eth.estimate_gas.side_effect = Exception("gas estimation failed")
 
-        with patch.object(
-            self.handler, "_get_web3_instance", return_value=mock_w3
-        ), patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._estimate_gas(
                 {"to": "0x1", "data": "0x", "value": 0},
@@ -1790,18 +1822,19 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler,
-            "_get_chain_config",
-            return_value={
-                "chain_name": "polygon",
-                "chain_id": 137,
-                "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
-                "usdc_address": "",
-                "usdc_e_address": "",
-            },
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(
+                self.handler,
+                "_get_chain_config",
+                return_value={
+                    "chain_name": "polygon",
+                    "chain_id": 137,
+                    "native_token_address": POLYGON_NATIVE_TOKEN_ADDRESS,
+                    "usdc_address": "",
+                    "usdc_e_address": "",
+                },
+            ),
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1811,9 +1844,10 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(self.handler, "_check_usdc_balance", return_value=None):
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=None),
+        ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -1822,9 +1856,10 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(self.handler, "_check_usdc_balance", return_value=2000000):
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=2000000),
+        ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -1833,12 +1868,10 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler, "_get_lifi_quote", return_value=None
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(self.handler, "_get_lifi_quote", return_value=None),
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1848,14 +1881,14 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={"some": "data"},
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={"some": "data"},
+            ),
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1865,24 +1898,25 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": "0x10",
-                }
-            },
-        ), patch.object(
-            self.handler,
-            "_get_nonce_and_gas_web3",
-            return_value=(None, None),
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": "0x10",
+                    }
+                },
+            ),
+            patch.object(
+                self.handler,
+                "_get_nonce_and_gas_web3",
+                return_value=(None, None),
+            ),
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1892,24 +1926,24 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": "0x10",
-                }
-            },
-        ), patch.object(
-            self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
-        ), patch.object(
-            self.handler, "_estimate_gas", return_value=None
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": "0x10",
+                    }
+                },
+            ),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(self.handler, "_estimate_gas", return_value=None),
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1919,29 +1953,27 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": "0x10",
-                }
-            },
-        ), patch.object(
-            self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
-        ), patch.object(
-            self.handler, "_estimate_gas", return_value=150000
-        ), patch.object(
-            self.handler, "_sign_and_submit_tx_web3", return_value=None
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": "0x10",
+                    }
+                },
+            ),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(self.handler, "_estimate_gas", return_value=150000),
+            patch.object(self.handler, "_sign_and_submit_tx_web3", return_value=None),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1951,31 +1983,30 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": "0x10",
-                }
-            },
-        ), patch.object(
-            self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
-        ), patch.object(
-            self.handler, "_estimate_gas", return_value=150000
-        ), patch.object(
-            self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
-        ), patch.object(
-            self.handler, "_check_transaction_status", return_value=False
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": "0x10",
+                    }
+                },
+            ),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(self.handler, "_estimate_gas", return_value=150000),
+            patch.object(
+                self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
+            ),
+            patch.object(self.handler, "_check_transaction_status", return_value=False),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
@@ -1985,31 +2016,30 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": "0x10",
-                }
-            },
-        ), patch.object(
-            self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
-        ), patch.object(
-            self.handler, "_estimate_gas", return_value=150000
-        ), patch.object(
-            self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
-        ), patch.object(
-            self.handler, "_check_transaction_status", return_value=True
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": "0x10",
+                    }
+                },
+            ),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(self.handler, "_estimate_gas", return_value=150000),
+            patch.object(
+                self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
+            ),
+            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
@@ -2019,31 +2049,30 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            self.handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(
-            self.handler, "_check_usdc_balance", return_value=100
-        ), patch.object(
-            self.handler,
-            "_get_lifi_quote",
-            return_value={
-                "transactionRequest": {
-                    "to": "0x1",
-                    "data": "0x",
-                    "value": 16,
-                }
-            },
-        ), patch.object(
-            self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
-        ), patch.object(
-            self.handler, "_estimate_gas", return_value=150000
-        ), patch.object(
-            self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
-        ), patch.object(
-            self.handler, "_check_transaction_status", return_value=True
-        ), patch(
-            "packages.valory.skills.trader_abci.handlers.Web3"
-        ) as MockWeb3:
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler,
+                "_get_lifi_quote",
+                return_value={
+                    "transactionRequest": {
+                        "to": "0x1",
+                        "data": "0x",
+                        "value": 16,
+                    }
+                },
+            ),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(self.handler, "_estimate_gas", return_value=150000),
+            patch.object(
+                self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
+            ),
+            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
             MockWeb3.to_checksum_address = lambda addr: addr
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
@@ -2058,9 +2087,10 @@ class TestEnsureSufficientFundsForX402Payments:
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
-        with patch.object(
-            handler, "_get_eoa_account", return_value=mock_account
-        ), patch.object(handler, "_check_usdc_balance", return_value=2000000):
+        with (
+            patch.object(handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(handler, "_check_usdc_balance", return_value=2000000),
+        ):
             result = handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
@@ -2084,9 +2114,10 @@ class TestTeardownAndShutdown:
     def test_teardown(self) -> None:
         """Test teardown calls super().teardown() and _executor_shutdown."""
         handler = _make_handler()
-        with patch.object(BaseHttpHandler, "teardown") as mock_super, patch.object(
-            handler, "_executor_shutdown"
-        ) as mock_shutdown:
+        with (
+            patch.object(BaseHttpHandler, "teardown") as mock_super,
+            patch.object(handler, "_executor_shutdown") as mock_shutdown,
+        ):
             handler.teardown()
             mock_super.assert_called_once()
             mock_shutdown.assert_called_once()
@@ -2157,14 +2188,17 @@ class TestGetPolToUsdcRateZeroPrice:
 
         chain_config = self.handler._get_chain_config()
 
-        with patch(
-            "packages.valory.skills.trader_abci.handlers.requests.get",
-            return_value=mock_response,
-        ), patch.object(
-            type(self.handler),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
+        with (
+            patch(
+                "packages.valory.skills.trader_abci.handlers.requests.get",
+                return_value=mock_response,
+            ),
+            patch.object(
+                type(self.handler),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
         ):
             result = self.handler._get_pol_to_usdc_rate(chain_config)
 
@@ -2191,14 +2225,17 @@ class TestHandleGetAgentInfoPreFSM:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
 
-        with patch.object(
-            type(self.handler),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            side_effect=AttributeError("not available yet"),
-        ), patch.object(
-            self.handler, "_send_internal_server_error_response"
-        ) as mock_send_error:
+        with (
+            patch.object(
+                type(self.handler),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                side_effect=AttributeError("not available yet"),
+            ),
+            patch.object(
+                self.handler, "_send_internal_server_error_response"
+            ) as mock_send_error,
+        ):
             self.handler._handle_get_agent_info(http_msg, http_dialogue)
 
         mock_send_error.assert_called_once()
@@ -2225,13 +2262,16 @@ class TestHandleGetFundsStatusNoTryExcept:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
 
-        with patch.object(
-            self.handler,
-            "_get_adjusted_funds_status",
-            side_effect=AttributeError("funds_status not populated"),
-        ), patch.object(
-            self.handler, "_send_internal_server_error_response"
-        ) as mock_send_error:
+        with (
+            patch.object(
+                self.handler,
+                "_get_adjusted_funds_status",
+                side_effect=AttributeError("funds_status not populated"),
+            ),
+            patch.object(
+                self.handler, "_send_internal_server_error_response"
+            ) as mock_send_error,
+        ):
             self.handler._handle_get_funds_status(http_msg, http_dialogue)
 
         mock_send_error.assert_called_once()

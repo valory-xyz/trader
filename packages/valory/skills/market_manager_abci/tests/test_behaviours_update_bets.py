@@ -124,10 +124,13 @@ class TestInit:
             # but we can verify the signature accepts **kwargs.
             # Use object.__new__ and call __init__ manually with a mock.
             behaviour = object.__new__(UpdateBetsBehaviour)
-            with patch(
-                "packages.valory.skills.market_manager_abci.behaviours.update_bets.BetsManagerBehaviour.__init__"
-            ) as mock_bets_init, patch(
-                "packages.valory.skills.market_manager_abci.behaviours.update_bets.QueryingBehaviour.__init__"
+            with (
+                patch(
+                    "packages.valory.skills.market_manager_abci.behaviours.update_bets.BetsManagerBehaviour.__init__"
+                ) as mock_bets_init,
+                patch(
+                    "packages.valory.skills.market_manager_abci.behaviours.update_bets.QueryingBehaviour.__init__"
+                ),
             ):
                 mock_bets_init.return_value = None
                 # __init__ calls super().__init__(**kwargs) which hits MRO

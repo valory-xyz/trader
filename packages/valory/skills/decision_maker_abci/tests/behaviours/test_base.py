@@ -1638,18 +1638,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1681,18 +1688,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.SELL,
@@ -1723,18 +1737,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1764,18 +1785,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._calc_token_amount(
                 operation=TradingOperation.BUY,
@@ -1834,18 +1862,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)
@@ -1874,18 +1909,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "return_amount",
-            new_callable=PropertyMock,
-            return_value=2000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "return_amount",
+                new_callable=PropertyMock,
+                return_value=2000,
+            ),
         ):
             gen = behaviour._build_token_tx(TradingOperation.SELL)
             next(gen)
@@ -1913,18 +1955,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)
@@ -1951,18 +2000,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         behaviour.get_contract_api_response = mock_get_contract_api  # type: ignore[assignment, method-assign]
 
-        with mock.patch.object(
-            type(behaviour),
-            "market_maker_contract_address",
-            new_callable=PropertyMock,
-            return_value="0xmarket",
-        ), mock.patch.object(
-            type(behaviour), "outcome_index", new_callable=PropertyMock, return_value=0
-        ), mock.patch.object(
-            type(behaviour),  # type: ignore[no-untyped-def]
-            "investment_amount",
-            new_callable=PropertyMock,
-            return_value=1000,
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "market_maker_contract_address",
+                new_callable=PropertyMock,
+                return_value="0xmarket",
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "outcome_index",
+                new_callable=PropertyMock,
+                return_value=0,
+            ),
+            mock.patch.object(
+                type(behaviour),  # type: ignore[no-untyped-def]
+                "investment_amount",
+                new_callable=PropertyMock,
+                return_value=1000,
+            ),
         ):
             gen = behaviour._build_token_tx(TradingOperation.BUY)
             next(gen)

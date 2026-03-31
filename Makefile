@@ -126,15 +126,13 @@ sync-packages:
 
 
 
-.PHONY: poetry-install
-poetry-install: 
-
-	PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring poetry install
-	PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring poetry run pip install --upgrade --force-reinstall setuptools==59.5.0  # fix for KeyError: 'setuptools._distutils.compilers'
+.PHONY: uv-install
+uv-install:
+	uv sync --all-groups
 
 .PHONY: build-agent-runner
-build-agent-runner: poetry-install  agent
-	poetry run pyinstaller \
+build-agent-runner: uv-install  agent
+	uv run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
 	--collect-all autonomy \
@@ -144,15 +142,15 @@ build-agent-runner: poetry-install  agent
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	$(shell poetry run python get_pyinstaller_dependencies.py) \
+	$(shell uv run python get_pyinstaller_dependencies.py) \
 	--onefile pyinstaller/trader_bin.py \
 	--name agent_runner_bin
-	./dist/agent_runner_bin --version 
-	
+	./dist/agent_runner_bin --version
+
 
 .PHONY: build-agent-runner-mac
-build-agent-runner-mac: poetry-install  agent
-	poetry run pyinstaller \
+build-agent-runner-mac: uv-install  agent
+	uv run pyinstaller \
 	--collect-data eth_account \
 	--collect-all aea \
 	--collect-all autonomy \
@@ -162,7 +160,7 @@ build-agent-runner-mac: poetry-install  agent
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	$(shell poetry run python get_pyinstaller_dependencies.py) \
+	$(shell uv run python get_pyinstaller_dependencies.py) \
 	--onefile pyinstaller/trader_bin.py \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
@@ -175,9 +173,9 @@ build-agent-runner-mac: poetry-install  agent
 ./agent_id: ./packages/packages.json
 	cat ./packages/packages.json | jq -r '.dev | to_entries[] | select(.key | startswith("agent/")) | .key | sub("^agent/"; "")' > ./agent_id
 
-./agent:  poetry-install ./hash_id
+./agent:  uv-install ./hash_id
 	@if [ ! -d "agent" ]; then \
-		poetry run autonomy -s fetch --remote `cat ./hash_id` --alias agent; \
+		uv run autonomy -s fetch --remote `cat ./hash_id` --alias agent; \
 	fi \
 
 
@@ -188,7 +186,7 @@ build-agent-runner-mac: poetry-install  agent
 	tar czf ./agent.tar.gz ./agent
 
 ./agent/ethereum_private_key.txt: ./agent
-	poetry run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy -s add-key ethereum ethereum_private_key.txt; autonomy -s add-key ethereum ethereum_private_key.txt --connection; autonomy -s issue-certificates;"
+	uv run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy -s add-key ethereum ethereum_private_key.txt; autonomy -s add-key ethereum ethereum_private_key.txt --connection; autonomy -s issue-certificates;"
 
 
 # Configuration

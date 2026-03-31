@@ -63,7 +63,7 @@ class PolymarketBetPlacementRound(TxPreparationRound):
                 SynchronizedData,
                 synced_data.update(
                     synchronized_data_class=self.synchronized_data_class,
-                    **{"cached_signed_orders": cached_orders}
+                    **{"cached_signed_orders": cached_orders},
                 ),
             )
 
@@ -74,7 +74,7 @@ class PolymarketBetPlacementRound(TxPreparationRound):
                 SynchronizedData,
                 synced_data.update(
                     synchronized_data_class=self.synchronized_data_class,
-                    **{"utilized_tools": utilized_tools_update}
+                    **{"utilized_tools": utilized_tools_update},
                 ),
             )
 
@@ -84,7 +84,7 @@ class PolymarketBetPlacementRound(TxPreparationRound):
                 SynchronizedData,
                 synced_data.update(
                     synchronized_data_class=self.synchronized_data_class,
-                    **{"policy": policy_update}
+                    **{"policy": policy_update},
                 ),
             )
 

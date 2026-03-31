@@ -85,27 +85,28 @@ class TestAsyncAct:
 
         mock_set_done = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test_behaviour",
-        ), patch.object(
-            type(behaviour),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
-        ), patch.object(
-            behaviour, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_behaviour",
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
+            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
@@ -124,21 +125,25 @@ class TestAsyncAct:
         mock_shared_state = MagicMock(spec=SharedState)
         mock_shared_state._chatui_config = None  # type: ignore[attr-defined]
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test_behaviour",
-        ), patch.object(
-            type(behaviour),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_behaviour",
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
         ):
             gen = behaviour.async_act()
             with pytest.raises(

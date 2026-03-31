@@ -100,12 +100,15 @@ class TestSharedState:
         original_event_to_timeout = TraderAbciApp.event_to_timeout.copy()
 
         try:
-            with patch.object(
-                type(state),
-                "params",
-                new_callable=PropertyMock,
-                return_value=mock_params,
-            ), patch.object(BaseSharedState, "setup", return_value=None):
+            with (
+                patch.object(
+                    type(state),
+                    "params",
+                    new_callable=PropertyMock,
+                    return_value=mock_params,
+                ),
+                patch.object(BaseSharedState, "setup", return_value=None),
+            ):
                 state.setup()
 
             # Verify req_to_callback is set

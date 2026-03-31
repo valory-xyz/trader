@@ -97,15 +97,18 @@ class TestGetBalance:
         mock_response = MagicMock()
         mock_response.state.body = {"get_balance_result": "5000"}
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -121,15 +124,18 @@ class TestGetBalance:
         mock_response = MagicMock()
         mock_response.state.body = {"get_balance_result": "0"}
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -145,15 +151,18 @@ class TestGetBalance:
         mock_response = MagicMock()
         mock_response.state.body = {}
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -170,15 +179,18 @@ class TestGetBalance:
         mock_response = MagicMock()
         mock_response.state.body = {"get_balance_result": "not_a_number"}
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -196,15 +208,18 @@ class TestGetBalance:
         # Make .state.body raise TypeError on subscript
         mock_response.state.body.__getitem__ = MagicMock(side_effect=TypeError)
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -225,15 +240,18 @@ class TestGetBalance:
             side_effect=AEAEnforceError("test")
         )
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "get_ledger_api_response",
-            _return_gen(mock_response),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "get_ledger_api_response",
+                _return_gen(mock_response),
+            ),
         ):
             gen = behaviour._get_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -258,15 +276,18 @@ class TestCheckBalance:
         mock_context.params.agent_balance_threshold = 1000
         mock_context.params.mech_chain_id = "gnosis"
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "_get_balance",
-            _return_gen(5000),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "_get_balance",
+                _return_gen(5000),
+            ),
         ):
             gen = behaviour._check_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -280,15 +301,18 @@ class TestCheckBalance:
         mock_context.params.agent_balance_threshold = 1000
         mock_context.params.mech_chain_id = "gnosis"
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "_get_balance",
-            _return_gen(1000),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "_get_balance",
+                _return_gen(1000),
+            ),
         ):
             gen = behaviour._check_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -302,15 +326,18 @@ class TestCheckBalance:
         mock_context.params.agent_balance_threshold = 5000
         mock_context.params.mech_chain_id = "gnosis"
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "_get_balance",
-            _return_gen(100),
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "_get_balance",
+                _return_gen(100),
+            ),
         ):
             gen = behaviour._check_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -336,15 +363,18 @@ class TestCheckBalance:
             return 5000  # type: ignore[return-value]
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            behaviour,
-            "_get_balance",
-            _get_balance_with_retry,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                behaviour,
+                "_get_balance",
+                _get_balance_with_retry,
+            ),
         ):
             gen = behaviour._check_balance(self.VALID_ADDR)
             with pytest.raises(StopIteration) as exc_info:
@@ -388,15 +418,18 @@ class TestRefillRequired:
             }
         )
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour,
-            "_check_balance",
-            _return_gen(False),
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(
+                behaviour,
+                "_check_balance",
+                _return_gen(False),
+            ),
         ):
             gen = behaviour._refill_required()
             with pytest.raises(StopIteration) as exc_info:
@@ -424,15 +457,18 @@ class TestRefillRequired:
             return True  # type: ignore[return-value]
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour,
-            "_check_balance",
-            _check_balance_varying,
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(
+                behaviour,
+                "_check_balance",
+                _check_balance_varying,
+            ),
         ):
             gen = behaviour._refill_required()
             with pytest.raises(StopIteration) as exc_info:
@@ -449,15 +485,18 @@ class TestRefillRequired:
             }
         )
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour,
-            "_check_balance",
-            _return_gen(True),
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(
+                behaviour,
+                "_check_balance",
+                _return_gen(True),
+            ),
         ):
             gen = behaviour._refill_required()
             with pytest.raises(StopIteration) as exc_info:
@@ -480,26 +519,24 @@ class TestPreTxSettlementAsyncAct:
         mock_context.params.refill_check_interval = 30
         mock_set_done = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test_pre_tx",
-        ), patch.object(
-            behaviour, "_refill_required", _return_gen(False)
-        ), patch.object(
-            behaviour, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
-        ), patch.object(
-            behaviour, "sleep", _noop_gen
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_pre_tx",
+            ),
+            patch.object(behaviour, "_refill_required", _return_gen(False)),
+            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
+            patch.object(behaviour, "sleep", _noop_gen),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
@@ -521,26 +558,24 @@ class TestPreTxSettlementAsyncAct:
             return None
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test_pre_tx",
-        ), patch.object(
-            behaviour, "_refill_required", _return_gen(True)
-        ), patch.object(
-            behaviour, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
-        ), patch.object(
-            behaviour, "sleep", _mock_sleep
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_pre_tx",
+            ),
+            patch.object(behaviour, "_refill_required", _return_gen(True)),
+            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
+            patch.object(behaviour, "sleep", _mock_sleep),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
@@ -628,16 +663,19 @@ class TestOnRedeemRoundTxSettled:
         mock_shared_state = MagicMock()
         mock_shared_state.redeeming_progress = progress
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
         ):
             behaviour._on_redeem_round_tx_settled()
 
@@ -666,16 +704,19 @@ class TestOnRedeemRoundTxSettled:
         mock_shared_state = MagicMock()
         mock_shared_state.redeeming_progress = progress
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
         ):
             behaviour._on_redeem_round_tx_settled()
 
@@ -701,20 +742,24 @@ class TestOnTxSettled:
 
         mock_handler = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour,
-            "_on_redeem_round_tx_settled",
-            mock_handler,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(
+                behaviour,
+                "_on_redeem_round_tx_settled",
+                mock_handler,
+            ),
         ):
             behaviour._on_tx_settled()
             mock_handler.assert_called_once()
@@ -726,16 +771,19 @@ class TestOnTxSettled:
         mock_sync_data = MagicMock()
         mock_sync_data.tx_submitter = "unknown_submitter"
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
         ):
             behaviour._on_tx_settled()
             mock_context.logger.info.assert_called_once_with(
@@ -755,22 +803,22 @@ class TestPostTxSettlementAsyncAct:
         mock_set_done = MagicMock()
         mock_on_tx_settled = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour, "_on_tx_settled", mock_on_tx_settled
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(behaviour, "_on_tx_settled", mock_on_tx_settled),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
@@ -795,25 +843,27 @@ class TestPostTxSettlementAsyncAct:
         mock_shared_state = MagicMock()
         mock_shared_state.redeeming_progress = progress
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            type(behaviour),
-            "shared_state",
-            new_callable=PropertyMock,
-            return_value=mock_shared_state,
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):
