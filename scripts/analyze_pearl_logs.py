@@ -364,7 +364,7 @@ def iter_zip_text_files(bundle: Path) -> Iterable[tuple[str, List[str]]]:
                 continue
             try:
                 text = zf.read(name).decode("utf-8", "ignore")
-            except Exception:
+            except (KeyError, NotImplementedError, RuntimeError):
                 continue
             yield name, text.splitlines()
 
