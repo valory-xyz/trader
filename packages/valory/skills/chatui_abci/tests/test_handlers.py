@@ -432,12 +432,13 @@ class TestHttpHandlerSetup:
         handler.routes = {}
 
         # Patch the parent setup() and the hostname_regex property
-        with patch.object(
-            HttpHandler.__bases__[0], "setup", return_value=None
-        ), patch.object(
-            type(handler),
-            "hostname_regex",
-            new_callable=lambda: property(lambda self: r".*localhost(:\d+)?"),
+        with (
+            patch.object(HttpHandler.__bases__[0], "setup", return_value=None),
+            patch.object(
+                type(handler),
+                "hostname_regex",
+                new_callable=lambda: property(lambda self: r".*localhost(:\d+)?"),
+            ),
         ):
             handler.setup()
 

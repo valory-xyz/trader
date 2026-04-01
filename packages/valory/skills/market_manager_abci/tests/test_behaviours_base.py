@@ -305,10 +305,13 @@ class TestStoreBets:
         mock_file.__enter__ = MagicMock(return_value=mock_file)
         mock_file.__exit__ = MagicMock(return_value=False)
 
-        with patch(
-            "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
-            return_value=serialized,
-        ), patch("builtins.open", return_value=mock_file):
+        with (
+            patch(
+                "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
+                return_value=serialized,
+            ),
+            patch("builtins.open", return_value=mock_file),
+        ):
             b.store_bets()
 
         b.context.logger.error.assert_called_once()
@@ -321,10 +324,13 @@ class TestStoreBets:
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
-        with patch(
-            "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
-            return_value=serialized,
-        ), patch("builtins.open", side_effect=FileNotFoundError("no such dir")):
+        with (
+            patch(
+                "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
+                return_value=serialized,
+            ),
+            patch("builtins.open", side_effect=FileNotFoundError("no such dir")),
+        ):
             b.store_bets()
 
         b.context.logger.error.assert_called_once()
@@ -336,10 +342,13 @@ class TestStoreBets:
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
-        with patch(
-            "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
-            return_value=serialized,
-        ), patch("builtins.open", side_effect=PermissionError("forbidden")):
+        with (
+            patch(
+                "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
+                return_value=serialized,
+            ),
+            patch("builtins.open", side_effect=PermissionError("forbidden")),
+        ):
             b.store_bets()
 
         b.context.logger.error.assert_called_once()
@@ -351,10 +360,13 @@ class TestStoreBets:
         b.bets = [MagicMock()]
 
         serialized = '{"bets": "data"}'
-        with patch(
-            "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
-            return_value=serialized,
-        ), patch("builtins.open", side_effect=OSError("generic os error")):
+        with (
+            patch(
+                "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
+                return_value=serialized,
+            ),
+            patch("builtins.open", side_effect=OSError("generic os error")),
+        ):
             b.store_bets()
 
         b.context.logger.error.assert_called_once()
@@ -371,10 +383,13 @@ class TestStoreBets:
         mock_file.__enter__ = MagicMock(return_value=mock_file)
         mock_file.__exit__ = MagicMock(return_value=False)
 
-        with patch(
-            "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
-            return_value=serialized,
-        ), patch("builtins.open", return_value=mock_file):
+        with (
+            patch(
+                "packages.valory.skills.market_manager_abci.behaviours.base.serialize_bets",
+                return_value=serialized,
+            ),
+            patch("builtins.open", return_value=mock_file),
+        ):
             b.store_bets()
 
         b.context.logger.error.assert_called_once()
@@ -483,8 +498,9 @@ class TestReadBets:
         """Test that read_bets handles error opening file."""
         b = _make_behaviour()
 
-        with patch("os.path.isfile", return_value=True), patch(
-            "builtins.open", side_effect=FileNotFoundError("gone")
+        with (
+            patch("os.path.isfile", return_value=True),
+            patch("builtins.open", side_effect=FileNotFoundError("gone")),
         ):
             b.read_bets()
 
@@ -496,8 +512,9 @@ class TestReadBets:
         """Test that read_bets handles PermissionError when opening file."""
         b = _make_behaviour()
 
-        with patch("os.path.isfile", return_value=True), patch(
-            "builtins.open", side_effect=PermissionError("no access")
+        with (
+            patch("os.path.isfile", return_value=True),
+            patch("builtins.open", side_effect=PermissionError("no access")),
         ):
             b.read_bets()
 
@@ -509,8 +526,9 @@ class TestReadBets:
         """Test that read_bets handles OSError when opening file."""
         b = _make_behaviour()
 
-        with patch("os.path.isfile", return_value=True), patch(
-            "builtins.open", side_effect=OSError("os error")
+        with (
+            patch("os.path.isfile", return_value=True),
+            patch("builtins.open", side_effect=OSError("os error")),
         ):
             b.read_bets()
 

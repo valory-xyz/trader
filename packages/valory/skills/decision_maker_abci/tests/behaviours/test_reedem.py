@@ -382,9 +382,10 @@ class TestRedeemInfoBehaviourInit:
             QueryingBehaviour,
         )
 
-        with patch.object(
-            StorageManagerBehaviour, "__init__", return_value=None
-        ), patch.object(QueryingBehaviour, "__init__", return_value=None):
+        with (
+            patch.object(StorageManagerBehaviour, "__init__", return_value=None),
+            patch.object(QueryingBehaviour, "__init__", return_value=None),
+        ):
             behaviour = object.__new__(RedeemBehaviour)
             RedeemInfoBehaviour.__init__(behaviour)
 
@@ -443,9 +444,12 @@ class TestRedeemInfoBehaviourInit:
             StorageManagerBehaviour,
         )
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(StorageManagerBehaviour, "setup", return_value=None):
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(StorageManagerBehaviour, "setup", return_value=None),
+        ):
             mock_sd.return_value = mock_synced
             RedeemInfoBehaviour.setup(behaviour)
 
@@ -1393,13 +1397,17 @@ class TestCheckAlreadyRedeemedViaEvents:
 
         behaviour.wait_for_condition_with_sleep = lambda gen_fn: gen_fn()  # type: ignore[assignment, method-assign, misc]
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_sd.return_value = mock_synced
             params = MagicMock()
@@ -1439,13 +1447,17 @@ class TestCheckAlreadyRedeemedViaEvents:
             yield
             return False
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_sd.return_value = mock_synced
             params = MagicMock()
@@ -1491,13 +1503,17 @@ class TestCheckAlreadyRedeemedViaEvents:
             yield
             return True
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_sd.return_value = mock_synced
             params = MagicMock()
@@ -1539,15 +1555,20 @@ class TestCheckAlreadyRedeemedViaSubgraph:
         behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
         behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch(
-            "packages.valory.skills.decision_maker_abci.behaviours.reedem.get_condition_id_to_balances"
-        ) as mock_balances, patch(
-            "packages.valory.skills.decision_maker_abci.behaviours.reedem.filter_claimed_conditions"
-        ) as mock_filter:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch(
+                "packages.valory.skills.decision_maker_abci.behaviours.reedem.get_condition_id_to_balances"
+            ) as mock_balances,
+            patch(
+                "packages.valory.skills.decision_maker_abci.behaviours.reedem.filter_claimed_conditions"
+            ) as mock_filter,
+        ):
             mock_rp.return_value = progress
             mock_sd.return_value = mock_synced
             mock_balances.return_value = ({"cond1": 100}, {"cond2": 50})
@@ -1690,11 +1711,14 @@ class TestCleanRedeemInfo:
         params = MagicMock()
         params.use_subgraph_for_redeeming = False
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -1725,11 +1749,14 @@ class TestCleanRedeemInfo:
         params = MagicMock()
         params.use_subgraph_for_redeeming = True
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -1957,11 +1984,14 @@ class TestSimulateClaiming:
 
         behaviour._realitio_interact = mock_realitio_interact  # type: ignore[assignment, method-assign]
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+        ):
             mock_rp.return_value = progress  # type: ignore[no-untyped-def]
             mock_sd.return_value = mock_synced
 
@@ -2003,11 +2033,14 @@ class TestBuildClaimData:
         params = MagicMock()
         params.realitio_address = "0xrealitio"
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -2150,11 +2183,14 @@ class TestGetClaimParamsViaEvents:
         params.max_filtering_retries = 3
         params.reduce_factor = 0.5
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -2187,11 +2223,14 @@ class TestGetClaimParamsViaEvents:
         params.max_filtering_retries = 0
         params.reduce_factor = 0.5
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -2230,11 +2269,14 @@ class TestGetClaimParamsViaEvents:
         params.max_filtering_retries = 3
         params.reduce_factor = 0.5
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(  # type: ignore[no-untyped-def]
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(  # type: ignore[no-untyped-def]
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_rp.return_value = progress
             mock_params.return_value = params
 
@@ -2720,11 +2762,14 @@ class TestProcessCandidate:
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = True
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp:
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
 
@@ -2749,11 +2794,14 @@ class TestProcessCandidate:
         params.dust_threshold = 10
         params.use_subgraph_for_redeeming = True
 
-        with patch.object(  # type: ignore[no-untyped-def]
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp:
+        with (
+            patch.object(  # type: ignore[no-untyped-def]
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
 
@@ -2784,11 +2832,14 @@ class TestProcessCandidate:
 
         behaviour._prepare_single_redeem = mock_prepare_single_redeem  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp:
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
 
@@ -2872,13 +2923,17 @@ class TestPrepareSafeTx:
         behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
         behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "tx_hex", new_callable=PropertyMock
-        ) as mock_tx_hex:
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx_hex,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
             mock_tx_hex.return_value = "0xresult"
@@ -2934,13 +2989,17 @@ class TestPrepareSafeTx:
         params = MagicMock()
         params.redeeming_batch_size = 1  # only 1 position
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "tx_hex", new_callable=PropertyMock
-        ) as mock_tx_hex:
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx_hex,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
             mock_tx_hex.return_value = "0xresult"
@@ -2990,13 +3049,17 @@ class TestPrepareSafeTx:
         params = MagicMock()
         params.redeeming_batch_size = 5
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "tx_hex", new_callable=PropertyMock  # type: ignore[no-untyped-def]
-        ) as mock_tx_hex:
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock  # type: ignore[no-untyped-def]
+            ) as mock_tx_hex,
+        ):
             mock_params.return_value = params
             mock_rp.return_value = progress
             mock_tx_hex.return_value = "0xresult"
@@ -3046,10 +3109,11 @@ class TestStoreUtilizedToolsAndFinish:
             """Mock parent finish_behaviour."""
             yield
 
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params, patch.object(
-            RedeemInfoBehaviour, "finish_behaviour", mock_parent_finish
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(RedeemInfoBehaviour, "finish_behaviour", mock_parent_finish),
         ):
             mock_params.return_value = params
             gen = behaviour.finish_behaviour(payload)
@@ -3096,10 +3160,13 @@ class TestSetupPolicyAndTools:
             yield
             return True
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            RedeemInfoBehaviour, "_setup_policy_and_tools", mock_parent_setup
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                RedeemInfoBehaviour, "_setup_policy_and_tools", mock_parent_setup
+            ),
         ):
             mock_sd.return_value = mock_synced
 
@@ -3126,13 +3193,17 @@ class TestBenchmarkingAct:
         mock_data = MagicMock()
         mock_data.is_winning = True
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "mock_data", new_callable=PropertyMock
-        ) as mock_md, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock  # type: ignore[no-untyped-def]
-        ) as mock_bm:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "mock_data", new_callable=PropertyMock
+            ) as mock_md,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock  # type: ignore[no-untyped-def]
+            ) as mock_bm,
+        ):
             mock_sd.return_value = mock_synced
             mock_md.return_value = mock_data
             mock_bm.return_value = MagicMock(enabled=False)
@@ -3260,11 +3331,14 @@ class TestNormalAct:
         behaviour._clean_redeem_info = mock_clean_redeem_info  # type: ignore[method-assign]
         behaviour._prepare_safe_tx = mock_prepare_safe_tx  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "redeeming_progress", new_callable=PropertyMock
-        ) as mock_rp, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_bm:
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_bm,
+        ):
             mock_rp.return_value = progress
             mock_bm.return_value = MagicMock(enabled=False)
 
@@ -3385,15 +3459,20 @@ class TestAsyncAct:
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
         behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
         # type: ignore[no-untyped-def]
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "mock_data", new_callable=PropertyMock
-        ) as mock_md, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_benchmark, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "mock_data", new_callable=PropertyMock
+            ) as mock_md,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_benchmark,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_sd.return_value = mock_synced
             mock_md.return_value = mock_data
             mock_benchmark.return_value = mock_bm
@@ -3450,13 +3529,17 @@ class TestAsyncAct:
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
         behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_benchmark, patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_benchmark,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
             mock_params.return_value = params
@@ -3483,10 +3566,13 @@ class TestAsyncAct:
             yield
             return False
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            RedeemInfoBehaviour, "_setup_policy_and_tools", mock_parent_setup
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                RedeemInfoBehaviour, "_setup_policy_and_tools", mock_parent_setup
+            ),
         ):
             mock_sd.return_value = mock_synced
 
@@ -3522,11 +3608,14 @@ class TestAsyncAct:
 
         behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_benchmark:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_benchmark,
+        ):
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 
@@ -3581,11 +3670,14 @@ class TestAsyncAct:
         behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
         behaviour.update_bet_transaction_information = mock_update_bet  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_benchmark:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_benchmark,
+        ):
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 
@@ -3639,11 +3731,14 @@ class TestAsyncAct:
         behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
         behaviour.update_bet_transaction_information = mock_update_bet  # type: ignore[method-assign]
 
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd, patch.object(
-            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
-        ) as mock_benchmark:
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+            ) as mock_benchmark,
+        ):
             mock_sd.return_value = mock_synced
             mock_benchmark.return_value = mock_bm
 

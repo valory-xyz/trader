@@ -1972,11 +1972,14 @@ class TestRequestWithRetriesJsonDecodeError:
         mock_response.raise_for_status.return_value = None
         mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
 
-        with patch(
-            "packages.valory.connections.polymarket_client.connection.requests.get",
-            return_value=mock_response,
-        ), patch(
-            "packages.valory.connections.polymarket_client.connection.time.sleep",
+        with (
+            patch(
+                "packages.valory.connections.polymarket_client.connection.requests.get",
+                return_value=mock_response,
+            ),
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep",
+            ),
         ):
             result, error = conn._request_with_retries("https://example.com/api")
 

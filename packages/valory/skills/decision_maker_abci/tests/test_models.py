@@ -558,9 +558,12 @@ class TestSharedState:
         self.state.context.params = mock_params
         self.state.redeeming_progress = MagicMock()
 
-        with patch.object(
-            type(self.state).__mro__[1], "setup", return_value=None  # type: ignore[arg-type]
-        ), pytest.raises(ValueError, match="not in the strategies"):
+        with (
+            patch.object(
+                type(self.state).__mro__[1], "setup", return_value=None  # type: ignore[arg-type]
+            ),
+            pytest.raises(ValueError, match="not in the strategies"),
+        ):
             self.state.setup()
 
 
@@ -631,9 +634,10 @@ class TestDecisionMakerParams:
                 return 0
             return MagicMock()
 
-        with patch.object(
-            DecisionMakerParams, "_ensure", side_effect=mock_ensure
-        ), pytest.raises(ValueError, match="must be positive"):
+        with (
+            patch.object(DecisionMakerParams, "_ensure", side_effect=mock_ensure),
+            pytest.raises(ValueError, match="must be positive"),
+        ):
             DecisionMakerParams(
                 skill_context=MagicMock(),
                 agent_registry_address="0xaddr",

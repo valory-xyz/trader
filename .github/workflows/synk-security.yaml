@@ -27,6 +27,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Export requirements for Snyk
+        run: uv export --format requirements-txt --no-hashes --no-editable --no-emit-project > requirements.txt
       - name: Set up Snyk CLI to check for security issues
         uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
 
@@ -35,7 +39,7 @@ jobs:
         continue-on-error: true
 
       - name: Snyk Open Source monitor
-        run: snyk monitor --all-projects
+        run: snyk monitor --file=requirements.txt --package-manager=pip --skip-unresolved
 
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3

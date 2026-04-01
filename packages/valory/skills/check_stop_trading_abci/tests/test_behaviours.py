@@ -144,12 +144,15 @@ class TestComputeStopTrading:
         mock_context = MagicMock()
         mock_context.params.disable_trading = False
         mock_context.params.stop_trading_if_staking_kpi_met = True
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(behaviour, "is_staking_kpi_met", _return_gen(True)):
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(behaviour, "is_staking_kpi_met", _return_gen(True)),
+        ):
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -162,12 +165,15 @@ class TestComputeStopTrading:
         mock_context = MagicMock()
         mock_context.params.disable_trading = False
         mock_context.params.stop_trading_if_staking_kpi_met = True
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(behaviour, "is_staking_kpi_met", _return_gen(False)):
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(behaviour, "is_staking_kpi_met", _return_gen(False)),
+        ):
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -187,18 +193,20 @@ class TestGetStakingKpiRequestCount:
         mock_sync_data = MagicMock()
         mock_sync_data.safe_contract_address = "0xSafe"
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_sync_data,
-        ), patch.object(
-            behaviour, "contract_interact", _return_gen(True)
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_sync_data,
+            ),
+            patch.object(behaviour, "contract_interact", _return_gen(True)),
         ):
             gen = behaviour._get_staking_kpi_request_count()
             with pytest.raises(StopIteration) as exc_info:
@@ -229,12 +237,15 @@ class TestIsStakingKpiMet:
         behaviour.service_staking_state = StakingState.UNSTAKED
         mock_context = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen):
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
+        ):
             gen = behaviour.is_staking_kpi_met()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
@@ -251,18 +262,20 @@ class TestIsStakingKpiMet:
         behaviour.liveness_ratio = 10**18  # 1 request per second
         mock_context = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synced_timestamp",
-            new_callable=PropertyMock,
-            return_value=1010,
-        ), patch.object(
-            behaviour, "wait_for_condition_with_sleep", _noop_gen
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=1010,
+            ),
+            patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
         ):
             gen = behaviour.is_staking_kpi_met()
             with pytest.raises(StopIteration) as exc_info:
@@ -283,18 +296,20 @@ class TestIsStakingKpiMet:
         behaviour.liveness_ratio = 10**18
         mock_context = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "synced_timestamp",
-            new_callable=PropertyMock,
-            return_value=1010,
-        ), patch.object(
-            behaviour, "wait_for_condition_with_sleep", _noop_gen
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=1010,
+            ),
+            patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
         ):
             gen = behaviour.is_staking_kpi_met()
             with pytest.raises(StopIteration) as exc_info:
@@ -316,24 +331,23 @@ class TestAsyncAct:
         mock_context.agent_address = "agent_0"
         mock_set_done = MagicMock()
 
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
-        ), patch.object(
-            type(behaviour),
-            "behaviour_id",
-            new_callable=PropertyMock,
-            return_value="test_behaviour",
-        ), patch.object(
-            behaviour, "_compute_stop_trading", _return_gen(True)
-        ), patch.object(
-            behaviour, "send_a2a_transaction", _noop_gen
-        ), patch.object(
-            behaviour, "wait_until_round_end", _noop_gen
-        ), patch.object(
-            behaviour, "set_done", mock_set_done
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_behaviour",
+            ),
+            patch.object(behaviour, "_compute_stop_trading", _return_gen(True)),
+            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", mock_set_done),
         ):
             gen = behaviour.async_act()
             with pytest.raises(StopIteration):

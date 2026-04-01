@@ -1180,9 +1180,12 @@ class TestHandleGetPredictions:
             "items": [{"id": str(i)} for i in range(5)],
         }
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1209,9 +1212,12 @@ class TestHandleGetPredictions:
             "items": [],
         }
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1255,9 +1261,12 @@ class TestHandleGetPredictions:
 
         mock_result = {"total_predictions": 0, "items": []}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1291,9 +1300,12 @@ class TestHandleGetPredictions:
 
         mock_result = {"total_predictions": 10, "items": [{"id": "6"}]}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1331,9 +1343,12 @@ class TestHandleGetPredictions:
 
         mock_result = {"total_predictions": 0, "items": []}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1352,9 +1367,12 @@ class TestHandleGetPredictions:
 
         mock_result = {"total_predictions": 0, "items": []}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_predictions.return_value = mock_result
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
 
@@ -1426,9 +1444,10 @@ class TestHandleGetProfitOverTime:
             summary
         )
 
-        with patch.object(
-            self.handler, "_filter_profit_data_by_window"
-        ) as mock_filter, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch.object(self.handler, "_filter_profit_data_by_window") as mock_filter,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             mock_filter.return_value = []
             self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
             mock_filter.assert_called_once()
@@ -1540,9 +1559,10 @@ class TestHandleGetProfitOverTime:
             summary
         )
 
-        with patch.object(
-            self.handler, "_filter_profit_data_by_window"
-        ) as mock_filter, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch.object(self.handler, "_filter_profit_data_by_window") as mock_filter,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             mock_filter.return_value = []
             self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
             # The flagonly param should be skipped, window=7d should be parsed
@@ -1816,9 +1836,12 @@ class TestHandleGetPositionDetails:
         )
         position_data = {"bet_id": "bet123", "status": "won", "profit": 10.0}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response") as mock_ok:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = position_data
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1832,9 +1855,12 @@ class TestHandleGetPositionDetails:
         )
         position_data = {"bet_id": "bet456", "platform": "polymarket"}
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
-        ) as MockFetcher, patch.object(handler, "_send_ok_response") as mock_ok:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(handler, "_send_ok_response") as mock_ok,
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = position_data
             handler._handle_get_position_details(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
@@ -1845,11 +1871,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/nonexistent"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_not_found_response"
-        ) as mock_not_found:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_not_found_response") as mock_not_found,
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = None
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
             mock_not_found.assert_called_once()
@@ -1872,11 +1899,14 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet789"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(
-            self.handler, "_send_internal_server_error_response"
-        ) as mock_err:
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(
+                self.handler, "_send_internal_server_error_response"
+            ) as mock_err,
+        ):
             MockFetcher.return_value.fetch_position_details.side_effect = RuntimeError(
                 "DB error"
             )
@@ -1891,9 +1921,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/0xabc?extra=param"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"id": "ok"}
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -1907,9 +1940,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet1"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -1923,9 +1959,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet1"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -1938,9 +1977,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet1"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -1955,9 +1997,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet1"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
-        ) as MockFetcher, patch.object(handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -1969,9 +2014,12 @@ class TestHandleGetPositionDetails:
             url="http://localhost:8080/api/v1/agent/position-details/bet999"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
 
@@ -2173,9 +2221,12 @@ class TestEdgeCases:
             url="http://localhost:8080/api/v1/agent/position-details/0x1234567890abcdef"
         )
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
-        ) as MockFetcher, patch.object(self.handler, "_send_ok_response"):
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response"),
+        ):
             MockFetcher.return_value.fetch_position_details.return_value = {"ok": True}
             self.handler._handle_get_position_details(http_msg, self.http_dialogue)
             call_args = MockFetcher.return_value.fetch_position_details.call_args

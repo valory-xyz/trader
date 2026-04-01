@@ -193,16 +193,16 @@ jobs:
           smksp_cert_sync.exe
         shell: cmd
 
-      - name: Install and configure Poetry
-        run: pip install poetry
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: prepare agent
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             export SDKROOT=$(xcrun --show-sdk-path)
           fi
-          make poetry-install
-          poetry run autonomy init --reset --author "dummy_author_git_ci" --ipfs --remote
+          make uv-install
+          uv run autonomy init --reset --author "dummy_author_git_ci" --ipfs --remote
           make hash_id
           make agent_id
 
