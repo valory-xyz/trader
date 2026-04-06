@@ -18,7 +18,7 @@ The Trader service is an [agent service](https://stack.olas.network/open-autonom
 - System requirements:
 
   - Python `== 3.10`
-  - [Poetry](https://python-poetry.org/docs/) `>=1.4.0`
+  - [uv](https://docs.astral.sh/uv/)
   - [Docker Engine](https://docs.docker.com/engine/install/)
   - [Docker Compose](https://docs.docker.com/compose/install/)
 
@@ -28,7 +28,7 @@ The Trader service is an [agent service](https://stack.olas.network/open-autonom
 
 - Create a development environment:
 
-      poetry install && poetry shell
+      uv sync --all-groups
 
 - Configure the Open Autonomy framework:
 

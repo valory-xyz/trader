@@ -9,7 +9,7 @@ The **Trader** is an autonomous agent service built on the [Open Autonomy](https
 ## Tech Stack
 
 - **Language**: Python 3.10–3.11
-- **Package Manager**: Poetry (>=1.4.0)
+- **Package Manager**: uv
 - **Framework**: Open Autonomy 0.21.8
 - **Key Libraries**: Web3 (>=7), Pydantic 2.11.9, aiohttp, py-clob-client (Polymarket)
 - **Testing**: Pytest 7.4.4, tox, hypothesis
@@ -146,5 +146,5 @@ After modifying any package:
 After adding/removing dependencies:
 
 1. Update `pyproject.toml` and `tox.ini` ([deps-packages] and [extra-deps] sections)
-2. Run `poetry lock` then `make poetry-install`
+2. Run `uv lock` then `uv sync --all-groups`
 3. Run `tox -e check-dependencies`
