@@ -81,11 +81,11 @@ POLYMARKET_CATEGORY_KEYWORDS = {
         "vaccine", "drug", "pharmaceutical", "fda", "covid", "pandemic", "therapy", "surgery",
         "mental health", "diet", "nutrition", "obesity", "who", "treatment",
     ],
-    "travel": [
-        "travel", "tourism", "airline", "flight", "airport", "plane", "boeing", "airbus",
-        "hotel", "resort", "visa", "passport", "destination", "cruise", "vacation", "booking",
-        "airbnb", "expedia", "trip", "passenger", "transportation", "tour", "bus", "ntsb",
-    ],
+    # "travel": [
+    #     "travel", "tourism", "airline", "flight", "airport", "plane", "boeing", "airbus",
+    #     "hotel", "resort", "visa", "passport", "destination", "cruise", "vacation", "booking",
+    #     "airbnb", "expedia", "trip", "passenger", "transportation", "tour", "bus", "ntsb",
+    # ],
     "entertainment": [
         "entertainment", "movie", "film", "cinema", "hollywood", "actor", "actress", "netflix",
         "disney", "hbo", "box office", "oscar", "tv", "series", "streaming", "show", "theater",
