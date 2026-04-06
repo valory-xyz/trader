@@ -66,7 +66,7 @@ POLYMARKET_CATEGORY_TAGS = [
     "science",
     "technology",
     "health",
-    "travel",
+    # "travel",
     "entertainment",
     "weather",
     "finance",

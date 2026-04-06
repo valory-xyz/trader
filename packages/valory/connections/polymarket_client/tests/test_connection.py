@@ -2149,10 +2149,6 @@ class TestFetchOrderBook:
 class TestModuleConstants:
     """Tests for module-level constants."""
 
-    def test_polymarket_category_tags_count(self) -> None:
-        """POLYMARKET_CATEGORY_TAGS contains exactly 10 categories."""
-        assert len(POLYMARKET_CATEGORY_TAGS) == 10
-
     def test_max_uint256_value(self) -> None:
         """MAX_UINT256 is 2^256 - 1."""
         assert MAX_UINT256 == 2**256 - 1

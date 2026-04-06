@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeihygetmlgnhawrbyswvpvv3wpztr2hlhxkljmohp4r7qcmvglpwdq
 connections:
-- valory/polymarket_client:0.1.0:bafybeicmjxnukrjeaiapxwh6j6wioc43qqmqd777zrv4mbwdaewg2d3oe4
+- valory/polymarket_client:0.1.0:bafybeicvecogtgrhqoiedim7u4sfkdtozm5ypia6kozf5xew3lr2uhft6u
 handlers:
   abci:
     args: {}

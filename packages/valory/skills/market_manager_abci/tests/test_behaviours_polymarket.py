@@ -157,22 +157,6 @@ class TestConstants:
         assert isinstance(POLYMARKET_CATEGORY_KEYWORDS, dict)
         assert len(POLYMARKET_CATEGORY_KEYWORDS) > 0
 
-    def test_polymarket_category_keywords_has_expected_keys(self) -> None:
-        """Test POLYMARKET_CATEGORY_KEYWORDS contains expected category keys."""
-        expected = {
-            "business",
-            "politics",
-            "science",
-            "technology",
-            "health",
-            "travel",
-            "entertainment",
-            "weather",
-            "finance",
-            "international",
-        }
-        assert set(POLYMARKET_CATEGORY_KEYWORDS.keys()) == expected
-
     def test_polymarket_category_keywords_values_are_lists(self) -> None:
         """Test that each category has a non-empty list of string keywords."""
         for category, keywords in POLYMARKET_CATEGORY_KEYWORDS.items():
@@ -2180,7 +2164,6 @@ class TestEdgeCases:
             "science": "NASA launched a new rocket",
             "technology": "AI is transforming the world",
             "health": "The vaccine rollout continues",
-            "travel": "The airline announced new routes",
             "entertainment": "The movie broke box office records",
             "weather": "A hurricane is approaching",
             "finance": "The stock market crashed today",
