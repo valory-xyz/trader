@@ -135,13 +135,13 @@ type: skill
 models:
   benchmark_tool:
     args:
-      log_dir: ${str:/benchmarks}
+      log_dir: ${BENCHMARKS_DIR:str:/benchmarks}
   params:
     args:
       setup:
-        all_participants: ${list:["0x0000000000000000000000000000000000000000"]}
+        all_participants: ${ALL_PARTICIPANTS:list:["0x0000000000000000000000000000000000000000"]}
         consensus_threshold: ${int:null}
-        safe_contract_address: ${str:0x0000000000000000000000000000000000000000}
+        safe_contract_address: ${SAFE_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       cleanup_history_depth: ${int:1}
       cleanup_history_depth_current: ${int:null}
       finalize_timeout: ${float:60.0}
@@ -165,7 +165,7 @@ models:
       keeper_allowed_retries: ${int:3}
       keeper_timeout: ${float:30.0}
       max_attempts: ${int:10}
-      reset_tendermint_after: ${int:2}
+      reset_tendermint_after: ${RESET_TENDERMINT_AFTER:int:2}
       retry_attempts: ${int:400}
       retry_timeout: ${int:3}
       request_retry_delay: ${float:1.0}
@@ -203,18 +203,18 @@ models:
       the_graph_error_message_key: ${str:message}
       the_graph_payment_required_error: ${str:payment required for subsequent requests
         for this API key}
-      mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-      mech_chain_id: ${str:gnosis}
+      mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+      mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
-      mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
+      mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
       trading_strategy: ${str:kelly_criterion}
-      use_fallback_strategy: ${bool:true}
+      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
-      tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
-      prompt_template: ${str:With the given question "@{question}" and the `yes` option
-        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
-        the respective probabilities of `p_yes` and `p_no` occurring?}
+      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+      prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        and the `yes` option represented by `@{yes}` and the `no` option represented
+        by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}
       dust_threshold: ${int:10000000000000}
       conditional_tokens_address: ${str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
       realitio_proxy_address: ${str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
@@ -228,63 +228,63 @@ models:
       slippage: ${float:0.01}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.25}
-      store_path: ${str:/data/}
-      irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
+      store_path: ${STORE_PATH:str:/data/}
+      irrelevant_tools: ${IRRELEVANT_TOOLS:list:["openai-text-davinci-002", "openai-text-davinci-003",
         "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
         "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
         "stabilityai-stable-diffusion-768-v2-1"]}
-      staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+      staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       staking_interaction_sleep_time: ${int:5}
-      disable_trading: ${bool:false}
+      disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${bool:true}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
       file_hash_to_strategies: ${dict:{"bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-      strategies_kwargs: ${dict:{"floor_balance":500000000000000000,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":500000000000000000,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
       service_endpoint: ${str:https://trader.autonolas.tech/}
       rpc_sleep_time: ${int:10}
       safe_voting_range: ${int:600}
       rebet_chance: ${float:0.6}
       mech_interaction_sleep_time: ${int:10}
-      use_mech_marketplace: ${bool:false}
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       policy_store_update_offset: ${int:259200}
-      mech_marketplace_config: ${dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
       expected_mech_response_time: ${int:300}
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
       tool_quarantine_duration: ${int:10800}
-      default_chain_id: ${str:gnosis}
+      default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
-      enable_position_review: ${bool:true}
+      enable_position_review: ${ENABLE_POSITION_REVIEW:bool:true}
       review_period_seconds: ${int:86400}
-      use_multi_bets_mode: ${bool:true}
-      enable_multi_bets_fallback: ${bool:false}
+      use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+      enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       coingecko_pol_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
-      genai_api_key: ${str:""}
+      genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
-      polygon_ledger_rpc: ${str:https://1rpc.io/matic}
+      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
-      use_x402: ${bool:false}
-      is_agent_performance_summary_enabled: ${bool:true}
-      is_achievement_checker_enabled: ${bool:true}
-      is_running_on_polymarket: ${bool:false}
-      polymarket_builder_program_enabled: ${bool:true}
-      polymarket_usdc_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
-      polymarket_ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
-      polymarket_ctf_exchange_address: ${str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
-      polymarket_neg_risk_ctf_exchange_address: ${str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
-      polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-      ignored_mechs: ${list:[]}
+      use_x402: ${USE_X402:bool:false}
+      is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+      is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
+      is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
+      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:true}
+      polymarket_usdc_address: ${USDC_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_ctf_address: ${CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+      polymarket_ctf_exchange_address: ${CTF_EXCHANGE:str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
+      polymarket_neg_risk_ctf_exchange_address: ${NEG_RISK_CTF_EXCHANGE:str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
+      polymarket_neg_risk_adapter_address: ${NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+      ignored_mechs: ${IGNORED_MECHS:list:[]}
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
-      is_outcome_side_threshold_filter_enabled: ${bool:false}
-      outcome_side_threshold_filter_threshold: ${float:0.8}
-      exclude_neg_risk_markets: ${bool:false}
+      is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
+      outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
       deliveries_lookback_days: ${int:30}
   benchmarking_mode:
     args:
@@ -326,7 +326,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+      url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
   omen_subgraph:
     args:
       headers:
@@ -338,7 +338,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+      url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   randomness_api:
     args:
       method: ${str:GET}
@@ -375,7 +375,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+      url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   conditional_tokens_subgraph:
     args:
       headers:
@@ -387,7 +387,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+      url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
   realitio_subgraph:
     args:
       headers:
@@ -399,7 +399,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
+      url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
   open_markets_subgraph:
     args:
       headers:
@@ -447,7 +447,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://staking-gnosis.subgraph.autonolas.tech}
+      url: ${GNOSIS_STAKING_SUBGRAPH:str:https://staking-gnosis.subgraph.autonolas.tech}
   mech_tools:
     args:
       headers:
@@ -468,7 +468,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
+      url: ${MECHS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
       delivery_rate_cap: ${int:10000000000000000}
   polymarket_agents_subgraph:
     args:
@@ -533,12 +533,12 @@ config:
       default_gas_price_strategy: ${str:eip1559}
       poa_chain: ${bool:false}
     gnosis:
-      address: ${str:https://rpc.gnosischain.com}
+      address: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       chain_id: ${int:100}
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
     polygon:
-      address: ${str:https://1rpc.io/matic}
+      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       chain_id: ${int:137}
       poa_chain: ${bool:true}
       default_gas_price_strategy: ${str:eip1559}
@@ -560,18 +560,18 @@ config:
 public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${str:""}
-  genai_x402_server_base_url: ${str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
-  use_x402: ${bool:false}
+  genai_api_key: ${GENAI_API_KEY:str:""}
+  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
+  use_x402: ${USE_X402:bool:false}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
 models:
   params:
     args:
-      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
-      rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
-      safe_contract_addresses: ${dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      rpc_urls: ${RPC_URLS:dict:{"gnosis":"https://rpc.gnosischain.com"}}
+      safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
 ---
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
@@ -579,8 +579,8 @@ config:
   host: https://clob.polymarket.com
   chain_id: 137
   safe_contract_addresses:
-    polygon: ${str:0x}
+    polygon: ${SAFE_CONTRACT_ADDRESS:str:0x}
   remote_builder_url: ${str:http://localhost:5001/sign}
-  polymarket_builder_program_enabled: ${bool:true}
-  polygon_ledger_rpc: ${str:https://1rpc.io/matic}
-  is_running_on_polymarket: ${bool:false}
+  polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:true}
+  polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+  is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
