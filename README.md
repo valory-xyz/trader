@@ -201,8 +201,6 @@ pip install aea-helpers
 ```bash
 aea-helpers run-agent \
   --name valory/trader \
-  --config-replace \
-  --config-mapping config-mapping.json \
   --connection-key
 ```
 
@@ -211,8 +209,6 @@ To run multiple agents on the same machine, use `--free-ports` to auto-assign no
 ```bash
 aea-helpers run-agent \
   --name valory/trader \
-  --config-replace \
-  --config-mapping config-mapping.json \
   --connection-key \
   --free-ports
 ```
