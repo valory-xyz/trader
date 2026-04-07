@@ -143,7 +143,7 @@ build-agent-runner: uv-install  agent
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
 	$(shell uv run aea-helpers build-binary-deps ./agent) \
-	--onefile pyinstaller/agent_bin.py \
+	--onefile $(shell uv run aea-helpers bin-template-path) \
 	--name agent_runner_bin
 	./dist/agent_runner_bin --version
 
@@ -161,7 +161,7 @@ build-agent-runner-mac: uv-install  agent
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
 	$(shell uv run aea-helpers build-binary-deps ./agent) \
-	--onefile pyinstaller/agent_bin.py \
+	--onefile $(shell uv run aea-helpers bin-template-path) \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
 	./dist/agent_runner_bin --version
