@@ -38,7 +38,7 @@ ELIGIBILITY (catalog gates)  →  PERFORMANCE (segment routing)  →  FEEDBACK (
 ## Architectural principles
 
 - **Mech selection is mech-interact's job. Tool selection is the caller's job.** Mech-interact provides a clean catalog and routes a chosen tool to a qualified mech. The caller (trader) decides *which tool* to use given task-specific signals. mech-interact never sees Brier scores, market platforms, or question categories.
-- **Catalog filtering is declarative.** Each gate filters on a single attribute (category, payment type, mech reliability). No tool-specific blocklists; the existing `irrelevant_tools` list is subsumed and deprecated.
+- **Catalog filtering is declarative and composable.** Each gate filters on a single attribute. The four gates are: category (mech-level), capability (mech-level), reputation (mech-level), and name (tool-level — the existing `irrelevant_tools` list, kept as a first-class fourth dimension).
 - **Cold start is explicit.** A grace period guarantees new mechs a fair trial; the gate's spam-filtering teeth take over after the trial.
 - **Brier first.** Tool ranking optimises for accuracy, not edge. Edge is a system diagnostic, not a tool ranking signal.
 - **Backward compatibility = safe default.** Every new param defaults to "off" / "no gate" so existing deployments are unaffected until they opt in.
@@ -186,9 +186,34 @@ min_mech_score: 0.0   # default: gate disabled
 
 **Note: gate is mech-level, not tool-level.** A mech with strong reputation across `prediction-online` also vouches for any new tool it adds. Per-tool delivery tracking would require a subgraph schema change and is out of scope. Layer 3 benchmarks handle per-tool quality.
 
-### Deprecation: `irrelevant_tools` blocklist
+### `irrelevant_tools` — kept as a fourth gate dimension
 
-The existing `irrelevant_tools: Set[str]` in `MechInteractParams` is caller policy that has leaked into mech-interact. The category gate is the principled replacement. Plan: keep `irrelevant_tools` as a no-op-when-empty config field for one release, then remove. (Decision deferred.)
+`irrelevant_tools: Set[str]` in `MechInteractParams` is **not deprecated**. It's a name-level filter that follows the same producer/consumer pattern as the other gates: mech-interact provides the mechanism, the caller provides the policy via `MechInteractParams` overrides. Treat it as a fourth gate alongside category, capability, and reputation.
+
+It does two distinct jobs:
+
+1. **Wrong-category exclusion** — most entries in the trader's current list (e.g. `native-transfer`, `openai-gpt-3.5-turbo`, `stabilityai-stable-diffusion-*`, `deepmind-optimization`) are tools whose purpose is not prediction at all. The category gate replaces this job once mechs declare categories properly; these entries can be removed as Layer 1 lands.
+2. **Within-category exclusion** — entries like `prediction-online-lite`, `claude-prediction-online-lite`, `prediction-offline-sme`, `prediction-online-sum-url-content` are prediction tools, just inferior variants the trader has decided not to use. The category gate doesn't touch them. Layer 2 (Brier ranking) may *deprioritise* such tools over time, but soft preference isn't a substitute for hard exclusion — the operator may still want a name-level kill switch for tools they never want to use regardless of measured performance.
+
+**Future evolution:** as Layer 1 gates land and mechs adopt category metadata, the wrong-category portion of the list shrinks naturally. The within-category portion stays. Each removal is a deliberate per-tool decision, not a wholesale deprecation.
+
+**Composition order with the new gates** (revised):
+
+```
+for mech in candidate_mechs:
+    if mech.received_requests < COLD_START_GRACE:    # 1. Grace bypass
+        admit(mech, filter_tools_by=irrelevant_tools)  # name gate still applies
+        continue
+    if not category_match(mech, task_type):           # 2. Category gate
+        skip(mech); continue
+    if not capability_match(mech, allowed_payment_types):  # 3. Capability gate
+        skip(mech); continue
+    if mech.gate_score < min_mech_score:              # 4. Reputation gate
+        skip(mech); continue
+    admit(mech, filter_tools_by=irrelevant_tools)     # 5. Name gate (per-tool filter)
+```
+
+The name gate runs at the tool-level (after a mech is admitted, filter out individually-blocked tools from its `relevant_tools`), unlike the other gates which operate at the mech level.
 
 ---
 
@@ -381,6 +406,7 @@ The benchmark CI pins **one CSV per platform** to IPFS. Trader consumes via the 
 | 9 | Platform dimension is deployment-time (per-service `TOOLS_ACCURACY_HASH`), not data-time. Layer 2 only adds `category` to the CSV schema. | "we already have ways to set different accuracy hash for each platform" |
 | 10 | CSV schema bump = one new optional `category` column. Empty = aggregate (today's behaviour). | inferred from polystrat CSV inspection |
 | 11 | Capability gate plumbing locked: `payment_type` field on `MechInfo`, in-memory cache on `MechInformationBehaviour`, populated alongside IPFS metadata fetch. ~50 mech pool, payment types stable, cross-period caching acceptable. | "1. number of mechs shouldn't matter... 2. stable in practice 3. look 2" |
+| 12 | `irrelevant_tools` is **kept as a fourth gate dimension** (name-level, tool-scoped), not deprecated. Sits alongside category, capability, reputation in the gate framework. | "what. that would still be needed maybe?" |
 
 ## Open questions
 
@@ -389,7 +415,7 @@ The benchmark CI pins **one CSV per platform** to IPFS. Trader consumes via the 
 | 1 | Wilson confidence level. **Recommended default: 95%** (standard binomial CI). Open for revision after seeing real mech data. | Layer 1 reputation |
 | 2 | IPFS metadata schema: per-tool vs mech-level vs hybrid. **Recommended: hybrid** — parser checks per-tool category first, falls back to mech-level, falls back to `"uncategorized"`. Backward compatible with legacy flat lists. | Layer 1 category |
 | ~~3~~ | ~~Capability gate plumbing~~ — **closed**: add `payment_type` field to `MechInfo`, populate in `MechInformationBehaviour.populate_tools()` via existing `_get_payment_type()` contract call, cache in-memory on the behaviour across periods. Pool is ~10 active / 50 historical mechs, payment types are stable in practice, cross-period caching is acceptable. Cold start re-fetches; persistence is a deferred follow-up. | Layer 1 capability |
-| 4 | Deprecation timeline for `irrelevant_tools` blocklist | Layer 1 |
+| ~~4~~ | ~~Deprecation timeline for `irrelevant_tools` blocklist~~ — **closed**: not deprecated. Reframed as a first-class fourth gate (name-level, tool-scoped). Its current contents do two jobs: wrong-category exclusion (will shrink as Layer 1 lands and mechs declare categories) and within-category exclusion (stays — Brier ranking is a soft preference, not a substitute for hard kill switch). | Layer 1 |
 | ~~5~~ | ~~Omen `Bet.category = None` handling~~ — **closed (revised)**: trader adopts mech-predict's shared `classify_category()`, so Omen markets get a category from their title. No `None` case in normal operation. Aggregate fallback still catches sparse cells. | Layer 2 |
 | 6 | `min_mech_score` production default. **Recommended: 0.3** (per gist). Open for revision after observing the gate's effect on real mech data. | Layer 1 reputation |
 | 7 | Free-form category vocabulary vs registry | Layer 1 category |
