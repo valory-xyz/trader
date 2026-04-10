@@ -159,3 +159,36 @@ class TestPostBetUpdateBehaviour:
         update_sell_calls.assert_not_called()
         assert len(payloads_sent) == 1
         assert isinstance(payloads_sent[0], PostBetUpdatePayload)
+
+    def test_async_act_skips_bookkeeping_when_did_not_transact(self) -> None:
+        """When did_transact is False (e.g., a tendermint replay or restart that lands in PostBetUpdateRound without a fresh successful tx in the current period), async_act must not re-mutate the bet's queue_status / processed_timestamp / invested_amount based on stale tx_submitter state. It should still emit a payload so the FSM round can advance."""
+        behaviour = _make_behaviour()
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        # tx_submitter looks legitimate but did_transact is False — this is
+        # the stale-state scenario we are guarding against.
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = False
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_not_called()
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], PostBetUpdatePayload)

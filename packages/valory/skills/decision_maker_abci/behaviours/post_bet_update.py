@@ -83,17 +83,38 @@ class PostBetUpdateBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            tx_submitter = self.synchronized_data.tx_submitter
-            if tx_submitter == BetPlacementRound.auto_round_id():
+            # Defensive: `PostBetUpdateRound` is registered as an
+            # `initial_state` of `DecisionMakerAbciApp` because the chain
+            # composition routes `FinishedBetPlacementTxRound` /
+            # `FinishedSellOutcomeTokensTxRound` (final states of
+            # `tx_settlement_multiplexer_abci`) into it. That means a
+            # tendermint replay or agent restart could land here without a
+            # fresh successful tx in the current period. The
+            # `did_transact` guard mirrors the legacy `RedeemBehaviour`
+            # post-tx hook (`reedem.py:956-957`) and prevents
+            # re-mutating `queue_status` / `processed_timestamp` /
+            # `invested_amount` based on stale `tx_submitter` state.
+            did_transact = self.synchronized_data.did_transact
+            tx_submitter = self.synchronized_data.tx_submitter if did_transact else None
+            if did_transact and tx_submitter == BetPlacementRound.auto_round_id():
                 self.context.logger.info(
                     "Running post-bet bookkeeping after BetPlacementRound."
                 )
                 self.update_bet_transaction_information()
-            elif tx_submitter == SellOutcomeTokensRound.auto_round_id():
+            elif (
+                did_transact and tx_submitter == SellOutcomeTokensRound.auto_round_id()
+            ):
                 self.context.logger.info(
                     "Running post-sell bookkeeping after SellOutcomeTokensRound."
                 )
                 self.update_sell_transaction_information()
+            elif not did_transact:
+                self.context.logger.info(
+                    "PostBetUpdateRound reached without a fresh successful tx "
+                    "in the current period (likely a tendermint replay or "
+                    "restart); skipping bookkeeping to avoid re-mutating "
+                    "stale state."
+                )
             else:
                 self.context.logger.warning(
                     f"PostBetUpdateRound reached with unexpected "
