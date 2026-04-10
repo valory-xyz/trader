@@ -56,8 +56,10 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
@@ -69,6 +71,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
+    PostBetUpdateRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
@@ -151,10 +156,17 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechInformationRound: CheckBenchmarkingModeRound,
     FailedMechInformationRound: MechVersionDetectionRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
-    FinishedPolymarketFetchMarketRound: CheckStopTradingRound,
-    FinishedMarketManagerRound: CheckStopTradingRound,
+    # Always-redeem-first: route the cycle entry through `RedeemRouterRound`
+    # so any unclaimed winning positions are redeemed before the agent
+    # attempts to query the mech or place new bets. This prevents the
+    # death-spiral where a low safe balance blocks the mech request and
+    # the agent can never reach the redeem flow that would refund itself.
+    FinishedPolymarketFetchMarketRound: RedeemRouterRound,
+    FinishedMarketManagerRound: RedeemRouterRound,
     FinishedCheckStopTradingRound: RandomnessRound,
-    FinishedWithSkipTradingRound: RedeemRouterRound,
+    # Skip-trading no longer detours through redeem (already done at the
+    # start of the cycle); wrap up directly via the staking checkpoint.
+    FinishedWithSkipTradingRound: CallCheckpointRound,
     FinishedWithReviewBetsRound: RandomnessRound,
     FailedMarketManagerRound: ResetAndPauseRound,
     FinishedDecisionMakerRound: PreTxSettlementRound,
@@ -168,18 +180,34 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestTxRound: MechResponseRound,
     FinishedMechResponseRound: DecisionReceiveRound,
     FinishedMechResponseTimeoutRound: HandleFailedTxRound,
-    FinishedMechRequestSkipRound: RedeemRouterRound,
-    FinishedBetPlacementTxRound: RedeemRouterRound,
-    FinishedSellOutcomeTokensTxRound: RedeemRouterRound,
-    FinishedRedeemingTxRound: CallCheckpointRound,
+    # Mech-request skip, no-decision, and the off-chain Polymarket bet exit
+    # all go straight to the staking checkpoint; any winnings produced this
+    # period are picked up by the next cycle's early redeem.
+    FinishedMechRequestSkipRound: CallCheckpointRound,
+    FinishedPolymarketBetPlacementRound: CallCheckpointRound,
+    # Omen on-chain bet placement and sell-outcome-tokens go through
+    # `PostBetUpdateRound` first, which runs the local-state bookkeeping
+    # (advancing the bet's queue status, processed timestamp, invested
+    # amount, and strategy) that the legacy design used to do as a side
+    # effect of the post-bet `RedeemBehaviour.async_act`. After bookkeeping,
+    # the cycle wraps up via the staking checkpoint.
+    FinishedBetPlacementTxRound: PostBetUpdateRound,
+    FinishedSellOutcomeTokensTxRound: PostBetUpdateRound,
+    FinishedPostBetUpdateRound: CallCheckpointRound,
+    # Redeem terminals (Omen on-chain via tx settlement, Polymarket
+    # on-chain via tx settlement, direct Polymarket DONE/MOCK_TX, and the
+    # no-positions-to-redeem path) all hand control back to
+    # `CheckStopTradingRound` so the trading decision can run after
+    # redemption has been attempted.
+    FinishedRedeemingTxRound: CheckStopTradingRound,
+    FinishedPolymarketRedeemRound: CheckStopTradingRound,
+    FinishedWithoutRedeemingRound: CheckStopTradingRound,
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
-    FinishedPolymarketRedeemRound: CallCheckpointRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
-    FinishedWithoutDecisionRound: RedeemRouterRound,
-    FinishedWithoutRedeemingRound: CallCheckpointRound,
+    FinishedWithoutDecisionRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
