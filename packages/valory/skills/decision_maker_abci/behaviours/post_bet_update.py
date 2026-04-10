@@ -48,6 +48,34 @@ class PostBetUpdateBehaviour(DecisionMakerBaseBehaviour):
     `update_sell_transaction_information` based on the `tx_submitter`,
     then advances the round so the cycle can continue to the staking
     checkpoint.
+
+    Intentional divergence from the legacy `RedeemBehaviour.async_act`
+    hook (`reedem.py:956-964`): the legacy code called
+    `update_bet_transaction_information()` for both `BetPlacementRound`
+    and `SellOutcomeTokensRound`, lazily reusing the bet helper for
+    sells. This was the outlier — every other inline caller in the
+    codebase already dispatches by tx type:
+
+    - `BetPlacementBehaviour` (benchmarking, `bet_placement.py:127`) calls
+      `update_bet_transaction_information`
+    - `SellOutcomeTokensBehaviour` (benchmarking,
+      `sell_outcome_tokens.py:91`) calls
+      `update_sell_transaction_information`
+    - `PolymarketBetPlacementBehaviour`
+      (`polymarket_bet_placement.py:148,156`) calls
+      `update_bet_transaction_information` (Polymarket has no sell)
+
+    `test_sell_outcome_tokens.py::test_async_act_benchmarking_mode`
+    already codifies the sell-uses-sell-helper expectation. Calling
+    `update_sell_transaction_information` for sell-outcome tx is
+    semantically correct (it does not bump `invested_amount` and skips
+    the strategy-attribution write that only makes sense for fresh
+    bets), and aligns this new hook with the rest of the codebase.
+
+    The legacy `RedeemBehaviour` post-tx hook is left in place as a
+    defensive no-op: under the new FSM the period reset clears
+    `tx_submitter`/`did_transact` before the next cycle's early redeem
+    runs, so the divergence is academic in normal flow.
     """
 
     matching_round = PostBetUpdateRound

@@ -24,7 +24,7 @@ fingerprint:
   behaviours/polymarket_reedem.py: bafybeiaqznmnyvnkcqq7evw6iihqm57d4qqzzclyflbqksrqggvb53lmii
   behaviours/polymarket_set_approval.py: bafybeibbet2jvu573iqwl5pbq72vrngu2ugwugf3rrsqfdi5donvnr2gt4
   behaviours/polymarket_swap.py: bafybeiack4epupksyvpm5hj6hot2cwtbvme2dqmogxdgzjn6v5mseg2m24
-  behaviours/post_bet_update.py: bafybeiadndsldtwaxclfwq44lanmsns3abvzc76pbidxydg57t6tipv54m
+  behaviours/post_bet_update.py: bafybeia2en5ayqhvkmnqompn7qikeq7wfmfwomxq2ektaj66kvtqfgfjlm
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeicprmsx3icwulc7qpxwx3xborufqjutrppxozx4zbbcvtjywtwuvu
