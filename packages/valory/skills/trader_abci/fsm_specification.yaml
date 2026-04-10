@@ -103,6 +103,7 @@ states:
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PostBetUpdateRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 - RandomnessRound
@@ -270,11 +271,15 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
-    (PostTxSettlementRound, BET_PLACEMENT_DONE): CallCheckpointRound
+    (PostBetUpdateRound, DONE): CallCheckpointRound
+    (PostBetUpdateRound, NONE): PostBetUpdateRound
+    (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
+    (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
+    (PostTxSettlementRound, BET_PLACEMENT_DONE): PostBetUpdateRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CheckStopTradingRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
-    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): CallCheckpointRound
+    (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): PostBetUpdateRound
     (PostTxSettlementRound, SET_APPROVAL_DONE): PolymarketPostSetApprovalRound
     (PostTxSettlementRound, STAKING_DONE): ResetAndPauseRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound

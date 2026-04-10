@@ -59,6 +59,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
@@ -70,6 +71,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
+    PostBetUpdateRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
@@ -176,14 +180,20 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMechRequestTxRound: MechResponseRound,
     FinishedMechResponseRound: DecisionReceiveRound,
     FinishedMechResponseTimeoutRound: HandleFailedTxRound,
-    # Mech-request skip and post-action wrap-ups (bet, sell, no-decision,
-    # off-chain Polymarket bet) all go straight to the staking checkpoint;
-    # the early-redeem at the start of the next cycle will pick up any
-    # winnings.
+    # Mech-request skip, no-decision, and the off-chain Polymarket bet exit
+    # all go straight to the staking checkpoint; any winnings produced this
+    # period are picked up by the next cycle's early redeem.
     FinishedMechRequestSkipRound: CallCheckpointRound,
-    FinishedBetPlacementTxRound: CallCheckpointRound,
-    FinishedSellOutcomeTokensTxRound: CallCheckpointRound,
     FinishedPolymarketBetPlacementRound: CallCheckpointRound,
+    # Omen on-chain bet placement and sell-outcome-tokens go through
+    # `PostBetUpdateRound` first, which runs the local-state bookkeeping
+    # (advancing the bet's queue status, processed timestamp, invested
+    # amount, and strategy) that the legacy design used to do as a side
+    # effect of the post-bet `RedeemBehaviour.async_act`. After bookkeeping,
+    # the cycle wraps up via the staking checkpoint.
+    FinishedBetPlacementTxRound: PostBetUpdateRound,
+    FinishedSellOutcomeTokensTxRound: PostBetUpdateRound,
+    FinishedPostBetUpdateRound: CallCheckpointRound,
     # Redeem terminals (Omen on-chain via tx settlement, Polymarket
     # on-chain via tx settlement, direct Polymarket DONE/MOCK_TX, and the
     # no-positions-to-redeem path) all hand control back to

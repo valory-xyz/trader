@@ -39,6 +39,7 @@ final_states:
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -52,6 +53,7 @@ start_states:
 - DecisionRequestRound
 - HandleFailedTxRound
 - PolymarketPostSetApprovalRound
+- PostBetUpdateRound
 - RandomnessRound
 - RedeemRouterRound
 states:
@@ -68,6 +70,7 @@ states:
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -79,6 +82,7 @@ states:
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PostBetUpdateRound
 - RandomnessRound
 - RedeemRound
 - RedeemRouterRound
@@ -161,6 +165,10 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PostBetUpdateRound, DONE): FinishedPostBetUpdateRound
+    (PostBetUpdateRound, NONE): PostBetUpdateRound
+    (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
+    (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
