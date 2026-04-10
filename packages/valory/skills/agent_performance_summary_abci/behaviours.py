@@ -21,6 +21,7 @@
 
 import bisect
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
@@ -43,6 +44,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
+    _parse_current_answer,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -513,28 +515,51 @@ class FetchPerformanceSummaryBehaviour(
         else:
             return self._calculate_omen_accuracy(agent_bets_data)
 
+    def _now(self) -> int:
+        """Return the current wall-clock time as a Unix timestamp.
+
+        Indirected through a method so tests can patch it deterministically.
+
+        :return: current Unix timestamp in seconds.
+        """
+        return int(time.time())
+
     def _calculate_omen_accuracy(self, agent_bets_data: dict) -> Optional[float]:
         """Calculate prediction accuracy for Omen markets."""
         bets = agent_bets_data.get("bets", [])
-        bets_on_resolved_markets = [
-            bet
-            for bet in bets
-            if bet.get("fixedProductMarketMaker", {}).get("currentAnswer") is not None
-        ]
+        now = self._now()
 
-        if not bets_on_resolved_markets:
+        # Bug A (ZD#919): only finalized markets contribute to accuracy.
+        # Reality.eth answers can flip during the dispute window, so a bet
+        # whose market has currentAnswer set but answerFinalizedTimestamp
+        # in the future is still provisional and must be excluded.
+        bets_on_finalized_markets = []
+        for bet in bets:
+            fpmm = bet.get("fixedProductMarketMaker", {})
+            if fpmm.get("currentAnswer") is None:
+                continue
+            finalized_ts = fpmm.get("answerFinalizedTimestamp")
+            if finalized_ts is None or int(finalized_ts) > now:
+                continue
+            bets_on_finalized_markets.append(bet)
+
+        if not bets_on_finalized_markets:
             return None
 
         won_bets = 0
         total_bets = 0
 
-        for bet in bets_on_resolved_markets:
+        for bet in bets_on_finalized_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
             if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
                 continue
+            correct = _parse_current_answer(market_answer)
+            if correct is None:
+                # Malformed currentAnswer — skip rather than crash.
+                continue
             total_bets += 1
-            if int(market_answer, 0) == int(bet_answer):
+            if correct == int(bet_answer):
                 won_bets += 1
 
         if total_bets == 0:

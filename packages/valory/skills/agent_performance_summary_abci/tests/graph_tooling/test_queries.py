@@ -159,3 +159,23 @@ def test_query_contains_query_keyword(
     assert (
         "query" in query_value.lower()
     ), f"{constant_name} does not contain the 'query' keyword"
+
+
+# Bug A (ZD#919): the status helpers gate the "invalid" label on
+# answerFinalizedTimestamp. Both Omen queries that feed status logic must
+# select that field, otherwise status silently falls back to "pending".
+@pytest.mark.parametrize(
+    "constant_name,query_value",
+    [
+        ("GET_PREDICTION_HISTORY_QUERY", GET_PREDICTION_HISTORY_QUERY),
+        ("GET_TRADER_AGENT_BETS_QUERY", GET_TRADER_AGENT_BETS_QUERY),
+    ],
+)
+def test_query_selects_answer_finalized_timestamp(
+    constant_name: str, query_value: str
+) -> None:
+    """Both Omen status queries must select answerFinalizedTimestamp."""
+    assert "answerFinalizedTimestamp" in query_value, (
+        f"{constant_name} must select answerFinalizedTimestamp on the fpmm "
+        f"to support the Bug A finalization gate"
+    )
