@@ -248,7 +248,7 @@ ROUNDS_INFO = {
     },
     "post_bet_update_round": {
         "name": "Running post-bet bookkeeping",
-        "description": "Updates the local bet's queue status, processed timestamp, invested amount, and strategy after an Omen bet placement or sell-outcome-tokens transaction settles.",
+        "description": "Updates the local bet's queue status, processed timestamp, invested amount, and strategy after an Omen bet placement transaction settles.",
         "transitions": {},
     },
     "fetch_markets_router_round": {
