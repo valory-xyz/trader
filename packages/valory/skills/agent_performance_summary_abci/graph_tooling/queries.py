@@ -65,6 +65,9 @@ query StakingService($id: ID!) {
 }
 """
 
+# Bug A (ZD#919): the status helpers gate the "invalid" label on
+# answerFinalizedTimestamp. Keep this query in sync with
+# GET_PREDICTION_HISTORY_QUERY — both must select that field.
 GET_TRADER_AGENT_BETS_QUERY = """
 query GetOlasTraderAgentBets($id: ID!) {
     traderAgent(id: $id) {
@@ -74,6 +77,7 @@ query GetOlasTraderAgentBets($id: ID!) {
         fixedProductMarketMaker {
           id
           currentAnswer
+          answerFinalizedTimestamp
         }
       }
     }
@@ -110,6 +114,9 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
 }
 """
 
+# Bug A (ZD#919): the status helpers gate the "invalid" label on
+# answerFinalizedTimestamp. Keep this query in sync with
+# GET_TRADER_AGENT_BETS_QUERY — both must select that field.
 GET_PREDICTION_HISTORY_QUERY = """
 query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
   marketParticipants(
@@ -132,6 +139,7 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       outcomes
       currentAnswer
       currentAnswerTimestamp
+      answerFinalizedTimestamp
     }
     bets {
       id

@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     INVALID_ANSWER_HEX,
     PredictionsFetcher,
     WEI_TO_NATIVE,
+    _parse_current_answer,
 )
 
 # ---------------------------------------------------------------------------
@@ -57,10 +58,14 @@ def _make_bet(  # type: ignore[no-untyped-def]
     question: str = "Will it rain?",
     current_answer: str = "0x0000000000000000000000000000000000000000000000000000000000000000",
     current_answer_timestamp: str = "1700001000",
+    answer_finalized_timestamp: Optional[str] = "1000000000",
     outcomes: Optional[List[str]] = None,
     participants: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Create a mock bet dict for testing."""
+    # NB: default answer_finalized_timestamp is far in the past so the
+    # Bug A finalization gate is satisfied for all standard fixtures;
+    # tests that need pending-finalization should override it.
     if outcomes is None:
         outcomes = ["Yes", "No"]
     if participants is None:
@@ -72,19 +77,22 @@ def _make_bet(  # type: ignore[no-untyped-def]
                 "totalBets": 1,
             }
         ]
+    fpmm: Dict[str, Any] = {
+        "id": fpmm_id,
+        "question": question,
+        "currentAnswer": current_answer,
+        "currentAnswerTimestamp": current_answer_timestamp,
+        "outcomes": outcomes,
+        "participants": participants,
+    }
+    if answer_finalized_timestamp is not None:
+        fpmm["answerFinalizedTimestamp"] = answer_finalized_timestamp
     return {
         "id": bet_id,
         "amount": amount,
         "outcomeIndex": outcome_index,
         "timestamp": timestamp,
-        "fixedProductMarketMaker": {
-            "id": fpmm_id,
-            "question": question,
-            "currentAnswer": current_answer,
-            "currentAnswerTimestamp": current_answer_timestamp,
-            "outcomes": outcomes,
-            "participants": participants,
-        },
+        "fixedProductMarketMaker": fpmm,
     }
 
 
@@ -965,6 +973,52 @@ class TestBuildMarketContext:
 
         assert ctx["market_1"]["winning_total_amount"] == 0.0
 
+    def test_market_context_includes_answer_finalized_ts(self) -> None:
+        """_build_market_context must store answerFinalizedTimestamp from fpmm.
+
+        Bug A: _calculate_bet_net_profit reads answer_finalized_ts from
+        market_ctx (not from the raw bet), so the context builder must
+        propagate the field.
+        """
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "bet_1",
+            "amount": str(WEI_TO_NATIVE),
+            "outcomeIndex": 0,
+            "fixedProductMarketMaker": {
+                "id": "market_1",
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "currentAnswerTimestamp": "1700001000",
+                "answerFinalizedTimestamp": "1700087400",
+                "outcomes": ["Yes", "No"],
+                "participants": [{"totalPayout": "0", "totalTraded": "0"}],
+            },
+        }
+
+        ctx = fetcher._build_market_context([bet])
+
+        assert ctx["market_1"]["answer_finalized_ts"] == "1700087400"
+
+    def test_market_context_finalized_ts_missing_is_none(self) -> None:
+        """When fpmm omits answerFinalizedTimestamp the ctx entry is None."""
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "bet_1",
+            "amount": str(WEI_TO_NATIVE),
+            "outcomeIndex": 0,
+            "fixedProductMarketMaker": {
+                "id": "market_1",
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "currentAnswerTimestamp": "1700001000",
+                "outcomes": ["Yes", "No"],
+                "participants": [{"totalPayout": "0", "totalTraded": "0"}],
+            },
+        }
+
+        ctx = fetcher._build_market_context([bet])
+
+        assert ctx["market_1"]["answer_finalized_ts"] is None
+
     def test_null_answer_not_accumulated(self) -> None:
         """Test that null answers are not accumulated."""
         fetcher = _make_fetcher()
@@ -1055,28 +1109,76 @@ class TestCalculateBetNetProfit:
         assert result == (0.0, None)
 
     def test_invalid_market_with_payout(self) -> None:
-        """Test invalid market with refund."""
+        """Test invalid market with refund (finalization in the past)."""
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "1700000000",
             "total_payout": 2.0,
             "total_traded": 4.0,
         }
-        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         # refund_share = 2.0 * (1.0 / 4.0) = 0.5
         # net_profit = 0.5 - 1.0 = -0.5
         assert result == (-0.5, 0.5)
 
     def test_invalid_market_zero_payout(self) -> None:
-        """Test invalid market with zero payout."""
+        """Test invalid market with zero payout (finalization in the past)."""
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "1700000000",
             "total_payout": 0,
             "total_traded": 0,
         }
-        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+
+        assert result == (0.0, None)
+
+    def test_invalid_pending_finalization_returns_zero_none(self) -> None:
+        """Sentinel + future finalization -> (0.0, None) regardless of payout (Bug A)."""
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "1700100000",
+            "total_payout": 2.0,
+            "total_traded": 4.0,
+        }
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+
+        assert result == (0.0, None)
+
+    def test_resolved_pending_finalization_returns_zero_none(self) -> None:
+        """Non-sentinel + future finalization -> (0.0, None) (still in dispute window)."""
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "1700100000",
+            "total_payout": 2.0,
+            "total_traded": 1.0,
+            "winning_total_amount": 1.0,
+        }
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+
+        assert result == (0.0, None)
+
+    def test_malformed_current_answer_returns_zero_none(self) -> None:
+        """Malformed current_answer + finalized -> (0.0, None) (defensive)."""
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": "0xZZ",
+            "answer_finalized_ts": "1700000000",
+            "total_payout": 2.0,
+            "total_traded": 1.0,
+            "winning_total_amount": 1.0,
+        }
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1085,6 +1187,7 @@ class TestCalculateBetNetProfit:
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "1000000000",
             "total_payout": 2.0,
             "total_traded": 2.0,
             "winning_total_amount": 1.0,
@@ -1099,6 +1202,7 @@ class TestCalculateBetNetProfit:
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "1000000000",
             "total_payout": 2.0,
             "total_traded": 1.0,
             "winning_total_amount": 1.0,
@@ -1114,6 +1218,7 @@ class TestCalculateBetNetProfit:
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "1000000000",
             "total_payout": 0,
             "total_traded": 1.0,
             "winning_total_amount": 0,
@@ -1123,14 +1228,16 @@ class TestCalculateBetNetProfit:
         assert result == (0.0, None)
 
     def test_invalid_market_zero_total_traded_only(self) -> None:
-        """Test invalid market with non-zero payout but zero traded."""
+        """Test invalid market with non-zero payout but zero traded (finalized)."""
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "1700000000",
             "total_payout": 2.0,
             "total_traded": 0,
         }
-        result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
 
         assert result == (0.0, None)
 
@@ -1139,6 +1246,7 @@ class TestCalculateBetNetProfit:
         fetcher = _make_fetcher()
         ctx = {
             "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "1000000000",
             "total_payout": 2.0,
             "total_traded": 1.0,
             "winning_total_amount": 0,
@@ -1166,23 +1274,111 @@ class TestGetPredictionStatus:
         assert result == "pending"
 
     def test_invalid_market(self) -> None:
-        """Test invalid market."""
+        """Sentinel + finalization in the past -> invalid."""
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": INVALID_ANSWER_HEX,
+                "answerFinalizedTimestamp": "1700000000",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "invalid"
+
+    def test_invalid_sentinel_pending_finalization_returns_pending(self) -> None:
+        """Sentinel + finalization in the future -> pending (Bug A)."""
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": INVALID_ANSWER_HEX,
+                "answerFinalizedTimestamp": "1700100000",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
+
+    def test_invalid_sentinel_missing_finalization_returns_pending(self) -> None:
+        """Sentinel + no finalization field -> pending (defensive: subgraph lag)."""
         fetcher = _make_fetcher()
         bet = {
             "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
             "outcomeIndex": 0,
         }
 
-        result = fetcher._get_prediction_status(bet, None)
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
+
+    def test_invalid_sentinel_finalization_at_now_returns_invalid(self) -> None:
+        """Sentinel + finalization == now -> invalid (boundary: <= comparison)."""
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": INVALID_ANSWER_HEX,
+                "answerFinalizedTimestamp": "1700000000",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
 
         assert result == "invalid"
+
+    def test_resolved_pending_finalization_returns_pending(self) -> None:
+        """Non-sentinel answer + future finalization -> pending.
+
+        Reality.eth answers can flip during the dispute window. Even a
+        non-sentinel answer should not be treated as terminal until the
+        dispute window has closed.
+        """
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "answerFinalizedTimestamp": "1700100000",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
+
+    def test_malformed_current_answer_returns_pending(self) -> None:
+        """Malformed currentAnswer hex -> pending (defensive, doesn't crash)."""
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "bet_xyz",
+            "fixedProductMarketMaker": {
+                "currentAnswer": "0xZZ",
+                "answerFinalizedTimestamp": "1700000000",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
 
     def test_won_with_payout(self) -> None:
         """Test winning bet with payout (redeemed)."""
         fetcher = _make_fetcher()
         bet = {
             "fixedProductMarketMaker": {
-                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "answerFinalizedTimestamp": "1000000000",
             },
             "outcomeIndex": 0,
         }
@@ -1197,7 +1393,8 @@ class TestGetPredictionStatus:
         fetcher = _make_fetcher()
         bet = {
             "fixedProductMarketMaker": {
-                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "answerFinalizedTimestamp": "1000000000",
             },
             "outcomeIndex": 0,
         }
@@ -1212,7 +1409,8 @@ class TestGetPredictionStatus:
         fetcher = _make_fetcher()
         bet = {
             "fixedProductMarketMaker": {
-                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "answerFinalizedTimestamp": "1000000000",
             },
             "outcomeIndex": 0,
         }
@@ -1226,7 +1424,8 @@ class TestGetPredictionStatus:
         fetcher = _make_fetcher()
         bet = {
             "fixedProductMarketMaker": {
-                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000"
+                "currentAnswer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+                "answerFinalizedTimestamp": "1000000000",
             },
             "outcomeIndex": 1,
         }
@@ -2514,3 +2713,65 @@ class TestFetchBetFromSubgraphWrongBetReturned:
 
         # Returns None when requested bet_id not found
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# _parse_current_answer tests (Bug A §4.4 — defensive parse)
+# ---------------------------------------------------------------------------
+
+
+class TestParseCurrentAnswer:
+    """Tests for the _parse_current_answer module-level helper.
+
+    This helper centralises the int(value, 0) cast that previously crashed
+    on malformed subgraph values. It returns Optional[int] — None for any
+    value that cannot be interpreted as a valid outcome index (None,
+    sentinel, malformed hex, empty, garbage). Callers treat None as
+    'cannot classify -> pending / skip'.
+    """
+
+    def test_none_returns_none(self) -> None:
+        """None input -> None."""
+        assert _parse_current_answer(None) is None
+
+    def test_invalid_sentinel_returns_none(self) -> None:
+        """The 0xff..ff invalid sentinel is not a valid outcome index -> None."""
+        assert _parse_current_answer(INVALID_ANSWER_HEX) is None
+
+    def test_zero_hex(self) -> None:
+        """0x0 -> 0."""
+        assert _parse_current_answer("0x0") == 0
+
+    def test_one_hex(self) -> None:
+        """0x1 -> 1."""
+        assert _parse_current_answer("0x1") == 1
+
+    def test_full_width_zero(self) -> None:
+        """A 32-byte zero hex string -> 0."""
+        assert (
+            _parse_current_answer(
+                "0x0000000000000000000000000000000000000000000000000000000000000000"
+            )
+            == 0
+        )
+
+    def test_full_width_one(self) -> None:
+        """A 32-byte one hex string -> 1."""
+        assert (
+            _parse_current_answer(
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+            )
+            == 1
+        )
+
+    def test_malformed_hex_returns_none(self) -> None:
+        """Garbage characters inside the hex prefix do not crash."""
+        assert _parse_current_answer("0xZZ") is None
+
+    def test_empty_string_returns_none(self) -> None:
+        """Empty string is not parseable -> None."""
+        assert _parse_current_answer("") is None
+
+    def test_garbage_string_returns_none(self) -> None:
+        """Non-hex garbage -> None."""
+        assert _parse_current_answer("not-a-hex") is None

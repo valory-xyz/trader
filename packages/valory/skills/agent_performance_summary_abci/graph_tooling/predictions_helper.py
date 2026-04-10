@@ -22,6 +22,7 @@
 
 import enum
 import json
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -46,6 +47,26 @@ PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DEFAULT_CURRENCY = "USD"
+
+
+def _parse_current_answer(value: Optional[str]) -> Optional[int]:
+    """Parse a Reality.eth currentAnswer hex string into an outcome index.
+
+    Returns ``None`` for any value that cannot be interpreted as a valid
+    outcome index (None, the invalid sentinel, malformed hex, empty,
+    garbage). Callers treat ``None`` as "cannot classify — fall back to
+    pending / skip". Centralising the cast prevents subgraph data quality
+    issues from crashing the status pipeline.
+
+    :param value: the raw currentAnswer string from the subgraph, or None.
+    :return: parsed outcome index, or None if unparseable.
+    """
+    if value is None or value == INVALID_ANSWER_HEX:
+        return None
+    try:
+        return int(value, 0)
+    except (ValueError, TypeError):
+        return None
 
 
 class BetStatus(enum.Enum):
@@ -94,6 +115,15 @@ class PredictionsFetcher(BasePredictionsFetcher):
         self.logger = logger
         self.predict_url = context.olas_agents_subgraph.url
         self.mech_url = context.olas_mech_subgraph.url
+
+    def _now(self) -> int:
+        """Return the current wall-clock time as a Unix timestamp.
+
+        Indirected through a method so tests can patch it deterministically.
+
+        :return: current Unix timestamp in seconds.
+        """
+        return int(time.time())
 
     def fetch_predictions(
         self,
@@ -659,6 +689,9 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 {
                     "current_answer": fpmm.get("currentAnswer"),
                     "current_answer_ts": fpmm.get("currentAnswerTimestamp"),
+                    # Bug A (ZD#919): needed by _calculate_bet_net_profit to
+                    # gate the "invalid" refund path on finalization.
+                    "answer_finalized_ts": fpmm.get("answerFinalizedTimestamp"),
                     "outcomes": fpmm.get("outcomes") or [],
                     "participant": (fpmm.get("participants") or [None])[0],
                     "total_payout": None,
@@ -674,9 +707,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 entry["total_traded"] = float(participant.get("totalTraded", 0))
 
             amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            current_answer = entry["current_answer"]
-            if current_answer not in (None, INVALID_ANSWER_HEX):
-                correct = int(current_answer, 0)
+            correct = _parse_current_answer(entry["current_answer"])
+            if correct is not None:
                 if int(bet.get("outcomeIndex", 0)) == correct:
                     entry["winning_total_amount"] += amount
 
@@ -737,6 +769,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             return 0.0, None
 
         current_answer = market_ctx.get("current_answer")
+        answer_finalized_ts = market_ctx.get("answer_finalized_ts")
         total_payout = market_ctx.get("total_payout") or 0.0
         total_traded = market_ctx.get("total_traded") or 0.0
         winning_total = market_ctx.get("winning_total_amount") or 0.0
@@ -746,6 +779,12 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if current_answer is None:
             return 0.0, None
 
+        # Bug A (ZD#919): Reality.eth answers can flip during the dispute
+        # window, so any answer (including the invalid sentinel) must wait
+        # for finalization before becoming terminal.
+        if answer_finalized_ts is None or int(answer_finalized_ts) > self._now():
+            return 0.0, None
+
         # Invalid market refund path
         if current_answer == INVALID_ANSWER_HEX:
             if total_payout == 0 or total_traded == 0:
@@ -753,7 +792,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
             refund_share = total_payout * (bet_amount / total_traded)
             return refund_share - bet_amount, refund_share
 
-        correct_answer = int(current_answer, 0)
+        correct_answer = _parse_current_answer(current_answer)
+        if correct_answer is None:
+            # Malformed currentAnswer (not None, not sentinel, not parseable).
+            # Treat as unresolved rather than crash.
+            return 0.0, None
 
         # Losing bet
         if outcome_index != correct_answer:
@@ -783,12 +826,36 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if current_answer is None:
             return BetStatus.PENDING.value
 
-        # Check for invalid market
+        # Bug A (ZD#919): Reality.eth currentAnswer can flip during the
+        # 24h dispute window. Any answer (including the invalid sentinel)
+        # is provisional until answerFinalizedTimestamp passes.
+        # Note: this only checks Reality.eth finalization. The on-chain
+        # ConditionalTokens payoutDenominator/payoutNumerators may not yet
+        # reflect the final state — there is a brief window between
+        # Reality finalization and RealitioProxy.resolve() being called
+        # in which the displayed status may be terminal here but the CT
+        # condition is still unresolved. The user-visible delta is small
+        # (one trader cycle) and an RPC fallback is intentionally out of
+        # scope; the subgraph is treated as the source of truth.
+        answer_finalized_ts = fpmm.get("answerFinalizedTimestamp")
+        if answer_finalized_ts is None or int(answer_finalized_ts) > self._now():
+            return BetStatus.PENDING.value
+
+        # Check for invalid market (now safe — finalization passed)
         if current_answer == INVALID_ANSWER_HEX:
             return BetStatus.INVALID.value
 
+        correct_answer = _parse_current_answer(current_answer)
+        if correct_answer is None:
+            # Malformed currentAnswer — log and degrade to pending rather
+            # than crash on int(...) further down.
+            self.logger.warning(
+                f"Malformed currentAnswer for bet {bet.get('id')!r}: "
+                f"{current_answer!r}"
+            )
+            return BetStatus.PENDING.value
+
         outcome_index = int(bet.get("outcomeIndex", 0))
-        correct_answer = int(current_answer, 0)
 
         # Check if won
         if outcome_index == correct_answer:
