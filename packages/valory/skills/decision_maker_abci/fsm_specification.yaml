@@ -36,6 +36,7 @@ final_states:
 - BenchmarkingModeDisabledRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
 - FinishedRedeemTxPreparationRound
@@ -64,6 +65,7 @@ states:
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
 - FinishedRedeemTxPreparationRound
@@ -96,7 +98,7 @@ transition_func:
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
-    (BlacklistingRound, DONE): RedeemRouterRound
+    (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
     (BlacklistingRound, MOCK_TX): FinishedWithoutDecisionRound
     (BlacklistingRound, NONE): ImpossibleRound
@@ -126,12 +128,12 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
-    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
-    (PolymarketBetPlacementRound, DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, DONE): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
-    (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
+    (PolymarketBetPlacementRound, MOCK_TX): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, NONE): ImpossibleRound
     (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound

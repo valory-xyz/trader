@@ -47,7 +47,11 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedPolymarketBetPlacementRound,
     FinishedWithoutDecisionRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
@@ -57,9 +61,6 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
     RandomnessRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
-from packages.valory.skills.decision_maker_abci.states.redeem_router import (
-    RedeemRouterRound,
-)
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -161,12 +162,23 @@ def test_decision_receive_round_transition(setup_app: DecisionMakerAbciApp) -> N
 
 
 def test_blacklisting_round_transition(setup_app: DecisionMakerAbciApp) -> None:
-    """Test transitions from BlacklistingRound."""
+    """Test transitions from BlacklistingRound.
+
+    After the always-redeem-first restructure, blacklisting wraps up the
+    cycle directly via `FinishedWithoutDecisionRound` (which is mapped to
+    `CallCheckpointRound` at the chain level) instead of detouring through
+    the redeem router. Redemption now runs at the start of every cycle,
+    so the legacy "redeem after blacklist" detour would be a wasteful
+    no-op and would also re-enter the trading flow within the same
+    period, breaking the one-bet-attempt-per-cycle invariant.
+
+    :param setup_app: the DecisionMakerAbciApp fixture.
+    """
     app = setup_app
     transition_function = app.transition_function[BlacklistingRound]
 
-    # Test transition on done
-    assert transition_function[Event.DONE] == RedeemRouterRound
+    assert transition_function[Event.DONE] == FinishedWithoutDecisionRound
+    assert transition_function[Event.MOCK_TX] == FinishedWithoutDecisionRound
 
 
 def test_bet_placement_round_transition(setup_app: DecisionMakerAbciApp) -> None:
@@ -176,6 +188,33 @@ def test_bet_placement_round_transition(setup_app: DecisionMakerAbciApp) -> None
 
     # Test transition on done
     assert transition_function[Event.DONE] == FinishedDecisionMakerRound
+
+
+def test_polymarket_bet_placement_round_transition(
+    setup_app: DecisionMakerAbciApp,
+) -> None:
+    """Test transitions from PolymarketBetPlacementRound.
+
+    Polymarket bets are placed off-chain via py-clob-client and therefore
+    have no on-chain tx for the multiplexer to route. After the always-
+    redeem-first restructure, the post-bet exits go directly to the new
+    `FinishedPolymarketBetPlacementRound` final state (mapped to
+    `CallCheckpointRound` at the chain level) instead of detouring
+    through the redeem router. Any winnings produced by the just-placed
+    bet will be picked up by the early-redeem at the start of the next
+    cycle.
+
+    :param setup_app: the DecisionMakerAbciApp fixture.
+    """
+    app = setup_app
+    transition_function = app.transition_function[PolymarketBetPlacementRound]
+
+    assert transition_function[Event.DONE] == FinishedPolymarketBetPlacementRound
+    assert (
+        transition_function[Event.BET_PLACEMENT_DONE]
+        == FinishedPolymarketBetPlacementRound
+    )
+    assert transition_function[Event.MOCK_TX] == FinishedPolymarketBetPlacementRound
 
 
 def test_redeem_round_transition(setup_app: DecisionMakerAbciApp) -> None:
@@ -193,3 +232,4 @@ def test_final_states(setup_app: DecisionMakerAbciApp) -> None:
     assert FinishedDecisionMakerRound in app.final_states
     assert BenchmarkingModeDisabledRound in app.final_states
     assert FinishedWithoutDecisionRound in app.final_states
+    assert FinishedPolymarketBetPlacementRound in app.final_states
