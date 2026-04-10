@@ -108,7 +108,7 @@ models:
       reduce_factor: ${REDUCE_FACTOR:float:0.25}
       max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
       minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
-      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
+      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
       slippage: ${SLIPPAGE:float:0.01}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
