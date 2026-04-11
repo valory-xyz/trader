@@ -157,6 +157,29 @@ class TestRealitioContract:
         )
         assert result == {"finalized": True}
 
+    def test_get_best_answer(self) -> None:
+        """Test reading the best answer for a question."""
+        answer_bytes = b"\x01" + b"\x00" * 31
+        self.mock_contract.functions.getBestAnswer.return_value.call.return_value = (
+            answer_bytes
+        )
+        result = RealitioContract.get_best_answer(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            question_id=QUESTION_ID,
+        )
+        assert result == {"best_answer": "0x" + answer_bytes.hex()}
+
+    def test_get_bond(self) -> None:
+        """Test reading the bond for a question."""
+        self.mock_contract.functions.getBond.return_value.call.return_value = 123
+        result = RealitioContract.get_bond(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            question_id=QUESTION_ID,
+        )
+        assert result == {"bond": 123}
+
     def test_get_claim_params_success(self) -> None:
         """Test successful claim params retrieval."""
         mock_event = MagicMock()
