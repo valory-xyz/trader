@@ -49,7 +49,21 @@ ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DEFAULT_CURRENCY = "USD"
 
 
-def _parse_current_answer(value: Optional[str]) -> Optional[int]:
+def now_ts() -> int:
+    """Return current wall-clock time as a Unix timestamp (seconds).
+
+    Single module-level time source. ``PredictionsFetcher._now`` and
+    ``FetchPerformanceSummaryBehaviour._now`` both delegate here so the
+    two classes cannot drift (e.g. one switching to milliseconds while
+    the other stays on seconds). Tests can patch this symbol to freeze
+    time, or patch the instance method for per-instance control.
+
+    :return: current Unix timestamp in seconds.
+    """
+    return int(time.time())
+
+
+def parse_current_answer(value: Optional[str]) -> Optional[int]:
     """Parse a Reality.eth currentAnswer hex string into an outcome index.
 
     Returns ``None`` for any value that cannot be interpreted as a valid
@@ -67,6 +81,33 @@ def _parse_current_answer(value: Optional[str]) -> Optional[int]:
         return int(value, 0)
     except (ValueError, TypeError):
         return None
+
+
+def parse_timestamp(value: Any) -> Optional[int]:
+    """Parse a subgraph Unix-seconds timestamp into a positive int.
+
+    Returns ``None`` for any value that must not pass a finalization
+    gate: ``None``, the ``"0"`` / ``0`` sentinel some Omen subgraph
+    indexers emit for unset fields, negative values, malformed strings,
+    and non-numeric garbage. Callers treat ``None`` as "unfinalized →
+    pending", mirroring :func:`parse_current_answer` for currentAnswer.
+
+    Added in response to PR #903 review (comment #1): the original gate
+    ``int(ts) > now`` (a) crashed on malformed input and (b) let the
+    ``"0"`` sentinel slip through as terminal.
+
+    :param value: the raw timestamp value from the subgraph.
+    :return: positive Unix-seconds int, or None if unparseable/unset.
+    """
+    if value is None:
+        return None
+    try:
+        parsed = int(value)
+    except (ValueError, TypeError):
+        return None
+    if parsed <= 0:
+        return None
+    return parsed
 
 
 class BetStatus(enum.Enum):
@@ -119,11 +160,14 @@ class PredictionsFetcher(BasePredictionsFetcher):
     def _now(self) -> int:
         """Return the current wall-clock time as a Unix timestamp.
 
-        Indirected through a method so tests can patch it deterministically.
+        Thin delegator to the module-level :func:`now_ts` so the two
+        classes that need a time source share one implementation and
+        cannot drift. Kept as an instance method so existing tests can
+        still ``patch.object(fetcher, "_now", return_value=...)``.
 
         :return: current Unix timestamp in seconds.
         """
-        return int(time.time())
+        return now_ts()
 
     def fetch_predictions(
         self,
@@ -707,7 +751,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 entry["total_traded"] = float(participant.get("totalTraded", 0))
 
             amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
-            correct = _parse_current_answer(entry["current_answer"])
+            correct = parse_current_answer(entry["current_answer"])
             if correct is not None:
                 if int(bet.get("outcomeIndex", 0)) == correct:
                     entry["winning_total_amount"] += amount
@@ -781,8 +825,10 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Bug A (ZD#919): Reality.eth answers can flip during the dispute
         # window, so any answer (including the invalid sentinel) must wait
-        # for finalization before becoming terminal.
-        if answer_finalized_ts is None or int(answer_finalized_ts) > self._now():
+        # for finalization before becoming terminal. parse_timestamp
+        # treats None / "0" / malformed values as unfinalized (pending).
+        finalized_ts = parse_timestamp(answer_finalized_ts)
+        if finalized_ts is None or finalized_ts > self._now():
             return 0.0, None
 
         # Invalid market refund path
@@ -792,7 +838,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
             refund_share = total_payout * (bet_amount / total_traded)
             return refund_share - bet_amount, refund_share
 
-        correct_answer = _parse_current_answer(current_answer)
+        correct_answer = parse_current_answer(current_answer)
         if correct_answer is None:
             # Malformed currentAnswer (not None, not sentinel, not parseable).
             # Treat as unresolved rather than crash.
@@ -837,15 +883,15 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # condition is still unresolved. The user-visible delta is small
         # (one trader cycle) and an RPC fallback is intentionally out of
         # scope; the subgraph is treated as the source of truth.
-        answer_finalized_ts = fpmm.get("answerFinalizedTimestamp")
-        if answer_finalized_ts is None or int(answer_finalized_ts) > self._now():
+        answer_finalized_ts = parse_timestamp(fpmm.get("answerFinalizedTimestamp"))
+        if answer_finalized_ts is None or answer_finalized_ts > self._now():
             return BetStatus.PENDING.value
 
         # Check for invalid market (now safe — finalization passed)
         if current_answer == INVALID_ANSWER_HEX:
             return BetStatus.INVALID.value
 
-        correct_answer = _parse_current_answer(current_answer)
+        correct_answer = parse_current_answer(current_answer)
         if correct_answer is None:
             # Malformed currentAnswer — log and degrade to pending rather
             # than crash on int(...) further down.

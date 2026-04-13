@@ -21,7 +21,6 @@
 
 import bisect
 import json
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
@@ -44,7 +43,9 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
-    _parse_current_answer,
+    now_ts,
+    parse_current_answer,
+    parse_timestamp,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -518,11 +519,15 @@ class FetchPerformanceSummaryBehaviour(
     def _now(self) -> int:
         """Return the current wall-clock time as a Unix timestamp.
 
-        Indirected through a method so tests can patch it deterministically.
+        Thin delegator to :func:`predictions_helper.now_ts` so this
+        class shares a single time source with ``PredictionsFetcher``
+        and the two cannot drift (e.g. one switching to milliseconds
+        while the other stays on seconds). Kept as an instance method
+        so tests can still ``patch.object(self, "_now", ...)``.
 
         :return: current Unix timestamp in seconds.
         """
-        return int(time.time())
+        return now_ts()
 
     def _calculate_omen_accuracy(self, agent_bets_data: dict) -> Optional[float]:
         """Calculate prediction accuracy for Omen markets."""
@@ -533,17 +538,30 @@ class FetchPerformanceSummaryBehaviour(
         # Reality.eth answers can flip during the dispute window, so a bet
         # whose market has currentAnswer set but answerFinalizedTimestamp
         # in the future is still provisional and must be excluded.
+        # parse_timestamp treats None / "0" / malformed as unfinalized.
         bets_on_finalized_markets = []
+        bets_with_answer = 0
         for bet in bets:
             fpmm = bet.get("fixedProductMarketMaker", {})
             if fpmm.get("currentAnswer") is None:
                 continue
-            finalized_ts = fpmm.get("answerFinalizedTimestamp")
-            if finalized_ts is None or int(finalized_ts) > now:
+            bets_with_answer += 1
+            finalized_ts = parse_timestamp(fpmm.get("answerFinalizedTimestamp"))
+            if finalized_ts is None or finalized_ts > now:
                 continue
             bets_on_finalized_markets.append(bet)
 
         if not bets_on_finalized_markets:
+            # Signal subgraph regressions (indexer lag, schema drift) so
+            # accuracy silently disappearing from the UI is diagnosable.
+            # Only warn if markets *have* a resolved answer but none are
+            # finalized — all-unresolved is the normal state pre-resolution.
+            if bets_with_answer > 0:
+                self.context.logger.warning(
+                    "Omen accuracy unavailable: %d resolved bets have no "
+                    "valid answerFinalizedTimestamp (subgraph regression?).",
+                    bets_with_answer,
+                )
             return None
 
         won_bets = 0
@@ -554,7 +572,7 @@ class FetchPerformanceSummaryBehaviour(
             bet_answer = bet.get("outcomeIndex")
             if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
                 continue
-            correct = _parse_current_answer(market_answer)
+            correct = parse_current_answer(market_answer)
             if correct is None:
                 # Malformed currentAnswer — skip rather than crash.
                 continue

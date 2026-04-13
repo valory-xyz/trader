@@ -900,6 +900,118 @@ class TestCalculateOmenAccuracy:
         result = b._calculate_omen_accuracy({"bets": bets})
         assert abs(result - 66.66666666666667) < 0.01  # type: ignore[operator]
 
+    def test_zero_finalization_timestamp_excluded(self) -> None:
+        """A "0" finalization timestamp must be treated as unfinalized.
+
+        Bug A post-review (comment #1b): the subgraph emits ``"0"`` as
+        an 'unset' sentinel. Falsifiability: the ``"0"``-ts bet is
+        wrong-side. Under the old gate ``int(ts) > now`` it would slip
+        through (0 > now is False) and be counted, yielding 50%. The
+        ``parse_timestamp`` fix excludes it, yielding 100%.
+        """
+        b = self._make()
+        bets = [
+            # Unset finalization ('0') + wrong outcome — must be excluded.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "0",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result == 100.0
+
+    def test_malformed_finalization_timestamp_excluded(self) -> None:
+        """Malformed finalization ts must not crash.
+
+        Bug A post-review (comment #1a): the bet degrades to 'pending'
+        (excluded from accuracy) rather than raising ValueError.
+        """
+        b = self._make()
+        bets = [
+            # Malformed ts — must be excluded, not raise ValueError.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "not-a-timestamp",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result == 100.0
+
+    def test_warns_when_resolved_bets_have_no_finalization(self) -> None:
+        """Warn when resolved bets have no finalization timestamp.
+
+        PR #903 comment #2: silent behaviour (returning None with no log) would hide a
+        future subgraph regression where ``answerFinalizedTimestamp``
+        stops populating. The warning only fires when markets *are*
+        resolved — all-unresolved is the expected pre-resolution state
+        and must not be warned about.
+
+        Falsifiability: patch the logger, call with one resolved-but-
+        pending bet, assert warning was invoked exactly once.
+        """
+        b = self._make()
+        mock_context = MagicMock()
+        mock_logger = MagicMock()
+        mock_context.logger = mock_logger
+        b._context = mock_context  # type: ignore[attr-defined]
+        bets = [
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "9999999999",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+
+        result = b._calculate_omen_accuracy({"bets": bets})
+
+        assert result is None
+        assert mock_logger.warning.call_count == 1
+
+    def test_no_warning_when_all_bets_unresolved(self) -> None:
+        """Do not warn when no bets are resolved yet.
+
+        That is the expected pre-resolution state, not a regression.
+        Falsifiability: an unconditional warning on
+        ``bets_on_finalized_markets`` empty would fail this.
+        """
+        b = self._make()
+        mock_context = MagicMock()
+        mock_logger = MagicMock()
+        mock_context.logger = mock_logger
+        b._context = mock_context  # type: ignore[attr-defined]
+        bets = [
+            {"fixedProductMarketMaker": {"currentAnswer": None}},
+        ]
+
+        result = b._calculate_omen_accuracy({"bets": bets})
+
+        assert result is None
+        assert mock_logger.warning.call_count == 0
+
 
 # ---------------------------------------------------------------------------
 # _calculate_polymarket_accuracy

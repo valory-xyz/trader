@@ -31,7 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     INVALID_ANSWER_HEX,
     PredictionsFetcher,
     WEI_TO_NATIVE,
-    _parse_current_answer,
+    parse_current_answer,
 )
 
 # ---------------------------------------------------------------------------
@@ -2716,12 +2716,12 @@ class TestFetchBetFromSubgraphWrongBetReturned:
 
 
 # ---------------------------------------------------------------------------
-# _parse_current_answer tests (Bug A §4.4 — defensive parse)
+# parse_current_answer tests (Bug A §4.4 — defensive parse)
 # ---------------------------------------------------------------------------
 
 
 class TestParseCurrentAnswer:
-    """Tests for the _parse_current_answer module-level helper.
+    """Tests for the parse_current_answer module-level helper.
 
     This helper centralises the int(value, 0) cast that previously crashed
     on malformed subgraph values. It returns Optional[int] — None for any
@@ -2732,24 +2732,24 @@ class TestParseCurrentAnswer:
 
     def test_none_returns_none(self) -> None:
         """None input -> None."""
-        assert _parse_current_answer(None) is None
+        assert parse_current_answer(None) is None
 
     def test_invalid_sentinel_returns_none(self) -> None:
         """The 0xff..ff invalid sentinel is not a valid outcome index -> None."""
-        assert _parse_current_answer(INVALID_ANSWER_HEX) is None
+        assert parse_current_answer(INVALID_ANSWER_HEX) is None
 
     def test_zero_hex(self) -> None:
         """0x0 -> 0."""
-        assert _parse_current_answer("0x0") == 0
+        assert parse_current_answer("0x0") == 0
 
     def test_one_hex(self) -> None:
         """0x1 -> 1."""
-        assert _parse_current_answer("0x1") == 1
+        assert parse_current_answer("0x1") == 1
 
     def test_full_width_zero(self) -> None:
         """A 32-byte zero hex string -> 0."""
         assert (
-            _parse_current_answer(
+            parse_current_answer(
                 "0x0000000000000000000000000000000000000000000000000000000000000000"
             )
             == 0
@@ -2758,7 +2758,7 @@ class TestParseCurrentAnswer:
     def test_full_width_one(self) -> None:
         """A 32-byte one hex string -> 1."""
         assert (
-            _parse_current_answer(
+            parse_current_answer(
                 "0x0000000000000000000000000000000000000000000000000000000000000001"
             )
             == 1
@@ -2766,12 +2766,251 @@ class TestParseCurrentAnswer:
 
     def test_malformed_hex_returns_none(self) -> None:
         """Garbage characters inside the hex prefix do not crash."""
-        assert _parse_current_answer("0xZZ") is None
+        assert parse_current_answer("0xZZ") is None
 
     def test_empty_string_returns_none(self) -> None:
         """Empty string is not parseable -> None."""
-        assert _parse_current_answer("") is None
+        assert parse_current_answer("") is None
 
     def test_garbage_string_returns_none(self) -> None:
         """Non-hex garbage -> None."""
-        assert _parse_current_answer("not-a-hex") is None
+        assert parse_current_answer("not-a-hex") is None
+
+
+# ---------------------------------------------------------------------------
+# parse_timestamp tests (Bug A post-review hardening — comment #1)
+# ---------------------------------------------------------------------------
+
+
+class TestParseTimestamp:
+    """Tests for the parse_timestamp module-level helper.
+
+    Centralises the int() cast on subgraph timestamp fields so callers
+    do not crash on malformed data (symmetric with parse_current_answer)
+    and so the "0" unset-sentinel some subgraphs emit is treated as
+    unfinalized rather than silently slipping past the gate as terminal.
+    """
+
+    def test_none_returns_none(self) -> None:
+        """None -> None (unfinalized)."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp(None) is None
+
+    def test_zero_string_returns_none(self) -> None:
+        """'0' -> None (subgraph unset sentinel, treat as unfinalized)."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp("0") is None
+
+    def test_zero_int_returns_none(self) -> None:
+        """0 (int) -> None."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp(0) is None
+
+    def test_negative_returns_none(self) -> None:
+        """Negative values are invalid Unix timestamps -> None."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp("-1") is None
+
+    def test_malformed_returns_none(self) -> None:
+        """Non-numeric garbage -> None (does not raise)."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp("not-a-timestamp") is None
+
+    def test_empty_string_returns_none(self) -> None:
+        """Empty string -> None."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp("") is None
+
+    def test_valid_string(self) -> None:
+        """Valid positive Unix ts string -> int."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp("1700000000") == 1700000000
+
+    def test_valid_int(self) -> None:
+        """Valid positive int ts -> int."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_timestamp,
+        )
+
+        assert parse_timestamp(1700000000) == 1700000000
+
+
+# ---------------------------------------------------------------------------
+# Status gate: "0" timestamp + malformed timestamp (Bug A post-review)
+# ---------------------------------------------------------------------------
+
+
+class TestFinalizationGateHardening:
+    """Tests covering "0" subgraph timestamp + malformed timestamp cases.
+
+    Added in response to PR #903 review comment #1: the original gate
+    ``int(answer_finalized_ts) > now`` would (a) treat a subgraph "0"
+    as terminal (since 0 > now is False) and (b) crash on malformed
+    input. These tests pin the corrected behaviour: both cases degrade
+    to "pending" rather than misclassifying or crashing.
+    """
+
+    def test_status_zero_finalization_returns_pending(self) -> None:
+        """Sentinel + ``"0"`` finalization timestamp -> pending, not invalid."""
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": INVALID_ANSWER_HEX,
+                "answerFinalizedTimestamp": "0",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
+
+    def test_status_malformed_finalization_returns_pending(self) -> None:
+        """Malformed finalization timestamp -> pending (does not raise)."""
+        fetcher = _make_fetcher()
+        bet = {
+            "fixedProductMarketMaker": {
+                "currentAnswer": INVALID_ANSWER_HEX,
+                "answerFinalizedTimestamp": "not-a-timestamp",
+            },
+            "outcomeIndex": 0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            result = fetcher._get_prediction_status(bet, None)
+
+        assert result == "pending"
+
+    def test_net_profit_zero_finalization_returns_zero_none(self) -> None:
+        """_calculate_bet_net_profit: ``"0"`` finalization -> (0.0, None)."""
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "0",
+            "total_payout": 2.0,
+            "total_traded": 4.0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+
+        assert result == (0.0, None)
+
+    def test_net_profit_malformed_finalization_returns_zero_none(self) -> None:
+        """_calculate_bet_net_profit: malformed ts -> (0.0, None), no raise."""
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "answer_finalized_ts": "not-a-timestamp",
+            "total_payout": 2.0,
+            "total_traded": 1.0,
+            "winning_total_amount": 1.0,
+        }
+
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            result = fetcher._calculate_bet_net_profit({"outcomeIndex": 0}, ctx, 1.0)
+
+        assert result == (0.0, None)
+
+
+# ---------------------------------------------------------------------------
+# parse_current_answer public (non-underscore) alias — comment #3
+# ---------------------------------------------------------------------------
+
+
+class TestParseCurrentAnswerPublicName:
+    """parse_current_answer (no underscore) is the public cross-module name.
+
+    behaviours.py imports the symbol directly; a leading underscore on
+    a name used across modules trips linters configured to flag private
+    imports. The rename makes it match its actual visibility.
+    """
+
+    def test_public_name_is_exported(self) -> None:
+        """Module exposes ``parse_current_answer`` without underscore."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling import (  # noqa: E501
+            predictions_helper,
+        )
+
+        assert hasattr(predictions_helper, "parse_current_answer")
+
+    def test_public_name_parses_valid_hex(self) -> None:
+        """Sanity: the public symbol behaves the same as the parser helper."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            parse_current_answer,
+        )
+
+        assert parse_current_answer("0x1") == 1
+        assert parse_current_answer(None) is None
+        assert parse_current_answer(INVALID_ANSWER_HEX) is None
+
+
+# ---------------------------------------------------------------------------
+# now_ts module-level single-source helper — comment #4
+# ---------------------------------------------------------------------------
+
+
+class TestNowTsModuleLevel:
+    """``now_ts`` is a single module-level time source.
+
+    Both ``PredictionsFetcher._now`` and ``FetchPerformanceSummaryBehaviour._now``
+    previously held independent copies of ``int(time.time())``. Extracting
+    a single module-level function removes the drift surface the review
+    flagged (comment #4); the per-class methods remain as thin delegators
+    so existing ``patch.object(instance, "_now", ...)`` test patterns
+    continue to work.
+    """
+
+    def test_now_ts_is_exported(self) -> None:
+        """Module exposes ``now_ts``."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling import (  # noqa: E501
+            predictions_helper,
+        )
+
+        assert callable(getattr(predictions_helper, "now_ts", None))
+
+    def test_now_ts_returns_int(self) -> None:
+        """``now_ts`` returns an int (seconds since epoch)."""
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            now_ts,
+        )
+
+        assert isinstance(now_ts(), int)
+
+    def test_fetcher_now_delegates_to_module(self) -> None:
+        """``PredictionsFetcher._now`` delegates to the module-level ``now_ts``.
+
+        Falsifiability: patching ``now_ts`` at the module level must
+        affect the instance method; if the method still calls
+        ``int(time.time())`` directly, the patch would be bypassed and
+        the assertion would fail.
+        """
+        fetcher = _make_fetcher()
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci."
+            "graph_tooling.predictions_helper.now_ts",
+            return_value=42,
+        ):
+            assert fetcher._now() == 42
