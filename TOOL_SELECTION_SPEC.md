@@ -13,7 +13,7 @@
 | Component | Repo | Role in this spec |
 |---|---|---|
 | `trader` | [`valory-xyz/trader`](https://github.com/valory-xyz/trader) | Layer 2 (segment-aware `EGreedyPolicy`); category classifier consumer; `tradeable_categories` config |
-| `mech-interact` | [`valory-xyz/mech-interact`](https://github.com/valory-xyz/mech-interact) | Layer 1 (catalog gates: category, capability, reputation, cold-start grace). Vendored into trader at `packages/valory/skills/mech_interact_abci/`; file paths in this spec refer to that vendored copy. |
+| `mech-interact` | [`valory-xyz/mech-interact`](https://github.com/valory-xyz/mech-interact) | Layer 1 (catalog gates: tool-type, capability, delivery, cold-start grace). Vendored into trader at `packages/valory/skills/mech_interact_abci/`; file paths in this spec refer to that vendored copy. |
 | `mech-predict` | [`valory-xyz/mech-predict`](https://github.com/valory-xyz/mech-predict) | Layer 3 (benchmark loop, scorer additions, segment-keyed CSV publish, shared `classify_category()`) |
 
 This spec describes the target end-state, locked decisions, and remaining open questions.
@@ -29,7 +29,7 @@ ELIGIBILITY (catalog gates)  →  PERFORMANCE (segment routing)  →  FEEDBACK (
         in mech-interact              in trader / EGreedyPolicy        in mech-predict
 ```
 
-- **Layer 1 (mech-interact):** filter the mech/tool catalog. Three gates run at pool construction time: category, capability, reputation. Plus a cold-start grace period.
+- **Layer 1 (mech-interact):** filter the mech/tool catalog. Three gates run at pool construction time: tool-type, capability, delivery. Plus a cold-start grace period.
 - **Layer 2 (trader):** category-aware tool selection. Extend `EGreedyPolicy` to key its accuracy store by `(tool, category)` and consume one new optional column in the existing IPFS performance CSV. Platform dimension is already handled at deployment time — each service points `TOOLS_ACCURACY_HASH` at its own platform's CSV.
 - **Layer 3 (mech-predict):** benchmark loop produces the category-keyed CSVs (per platform). Brier-first ranking; edge and conditional accuracy are diagnostics, not ranking signals.
 
@@ -38,49 +38,61 @@ ELIGIBILITY (catalog gates)  →  PERFORMANCE (segment routing)  →  FEEDBACK (
 ## Architectural principles
 
 - **Mech selection is mech-interact's job. Tool selection is the caller's job.** Mech-interact provides a clean catalog and routes a chosen tool to a qualified mech. The caller (trader) decides *which tool* to use given task-specific signals. mech-interact never sees Brier scores, market platforms, or question categories.
-- **Catalog filtering is declarative and composable.** Each gate filters on a single attribute. The four gates are: category (mech-level), capability (mech-level), reputation (mech-level), and name (tool-level — the existing `irrelevant_tools` list, kept as a first-class fourth dimension).
+- **Catalog filtering is declarative and composable.** Each gate filters on a single attribute. The four gates are: tool-type (mech-level), capability (mech-level), delivery (mech-level), and name (tool-level — the existing `irrelevant_tools` list, kept as a first-class fourth dimension).
 - **Cold start is explicit.** A grace period guarantees new mechs a fair trial; the gate's spam-filtering teeth take over after the trial.
 - **Brier first.** Tool ranking optimises for accuracy, not edge. Edge is a system diagnostic, not a tool ranking signal.
 - **Backward compatibility = safe default.** Every new param defaults to "off" / "no gate" so existing deployments are unaffected until they opt in.
 
 ---
 
+## Terminology
+
+This spec uses two distinct taxonomies that must not be confused:
+
+- **Tool type** (`prediction`, `image_generation`, …) — describes what kind of work a mech/tool does. Owned by mech-interact (Layer 1). Mechs self-declare via the `category` field in their IPFS metadata; callers select via the `task_type` param. Used by the **tool-type gate**.
+- **Market topic** (`politics`, `travel`, `crypto`, `health`, …) — describes the subject of a prediction market. Owned by trader (Layer 2). Source per phase: Polymarket API tag (Phase 1) or shared classifier (Phase 2, deferred). Used by per-`(tool, topic)` Brier routing in `EGreedyPolicy`, and by the `tradeable_categories` filter in `market_manager_abci`.
+
+The IPFS metadata field and several code identifiers (`Bet.category`, `tradeable_categories`, `_candidates_for_category`, the CSV `category` column, `category_keywords.py`) keep the historical name "category" — the *concept* they refer to is always one of the two above, and the surrounding section context disambiguates. This spec uses **"tool type"** and **"market topic"** in prose whenever a sentence could otherwise be read either way.
+
+---
+
 ## Layer 1 — Catalog gates (mech-interact)
 
-All four gates run in `populate_tools()` (`behaviours/mech_info.py:71-100`), the same function that today applies the `irrelevant_tools` filter at line 96. Mechs that fail a mech-level gate (category, capability, reputation) are skipped with `continue`, so their `relevant_tools` are never populated. The name gate runs at tool level within the mech's tool list (same site as today's `relevant_tools = set(res) - self.params.irrelevant_tools`). The `mech_tools` property (`states/base.py:319-324`) stays read-only — it simply unions `relevant_tools` across mechs, and all filtering has already happened upstream.
+All four gates run in `populate_tools()` (`behaviours/mech_info.py:71-100`), the same function that today applies the `irrelevant_tools` filter at line 96. Mechs that fail a mech-level gate (tool-type, capability, delivery) are skipped with `continue`, so their `relevant_tools` are never populated. The name gate runs at tool level within the mech's tool list (same site as today's `relevant_tools = set(res) - self.params.irrelevant_tools`). The `mech_tools` property (`states/base.py:319-324`) stays read-only — it simply unions `relevant_tools` across mechs, and all filtering has already happened upstream.
 
 ### Gate composition order (logical)
 
 ```
 for mech in candidate_mechs:
-    if not category_match(mech, task_type):            # 1. Category gate
+    if not tool_type_match(mech, task_type):           # 1. Tool-type gate
         skip(mech); continue
     if not capability_match(mech, allowed_payment_types):  # 2. Capability gate
         skip(mech); continue
-    if mech.received_requests < COLD_START_GRACE:     # 3. Grace bypass (reputation only)
+    if mech.received_requests < COLD_START_GRACE:     # 3. Grace bypass (delivery only)
         admit(mech, filter_tools_by=irrelevant_tools)
         continue
-    if mech.gate_score < min_mech_score:              # 4. Reputation gate
+    if mech.gate_score < min_mech_score:              # 4. Delivery gate
         skip(mech); continue
     admit(mech, filter_tools_by=irrelevant_tools)      # 5. Name gate (per-tool)
 ```
 
-**Key property:** grace exempts a mech from Wilson/reputation checks only. Category, capability, and name gates still apply to mechs in the grace window — because those aren't about evidence, they're about correctness. A new image-generation mech can't fake its way into a prediction agent's pool by being new.
+**Key property:** grace exempts a mech from Wilson/delivery checks only. Tool-type, capability, and name gates still apply to mechs in the grace window — because those aren't about evidence, they're about correctness. A new image-generation mech can't fake its way into a prediction agent's pool by being new.
 
-**Implementation may reorder gates for efficiency** as long as the AND-semantics are preserved. In particular: reputation and grace data (`received_requests`, `self_delivered`, `last_delivered`) is already on `MechInfo` from the subgraph query, so checking reputation/grace first saves the cost of fetching IPFS metadata and the payment-type contract call for mechs that would be excluded anyway. Efficient execution order is typically reputation-or-grace → capability → IPFS fetch → category → name. The final pool is identical to the logical order because all gates are AND conditions.
+**Implementation may reorder gates for efficiency** as long as the AND-semantics are preserved. In particular: delivery and grace data (`received_requests`, `self_delivered`, `last_delivered`) is already on `MechInfo` from the subgraph query, so checking delivery/grace first saves the cost of fetching IPFS metadata and the payment-type contract call for mechs that would be excluded anyway. Efficient execution order is typically delivery-or-grace → capability → IPFS fetch → tool-type → name. The final pool is identical to the logical order because all gates are AND conditions.
 
 ### 1. Cold-start grace period
 
-**Locked.** A mech with `received_requests < 20` (counted from the subgraph, **global** across all agents) bypasses **only the reputation gate**. Category, capability, and name gates still apply — grace is a reputation exception, not a correctness exception.
+**Locked.** A mech with `received_requests < 20` (counted from the subgraph, **global** across all agents) bypasses **only the delivery gate**. Category, capability, and name gates still apply — grace is a delivery exception, not a correctness exception.
 
-- **Rationale:** prevents the death spiral where a new mech can't earn reputation because the gate excludes it before it gets a chance.
-- **Why only reputation:** Wilson lower bound needs evidence to compute a meaningful score. Category (wrong type of tool), capability (unpayable), and name (explicit blocklist) are not about evidence — they're about whether the mech belongs in the pool at all. A new image-generation mech is never valid for a prediction agent regardless of age.
+- **Rationale:** prevents the death spiral where a new mech can't accumulate a delivery score because the gate excludes it before it gets a chance.
+- **Why only delivery:** Wilson lower bound needs evidence to compute a meaningful score. Tool-type (wrong kind of mech), capability (unpayable), and name (explicit blocklist) are not about evidence — they're about whether the mech belongs in the pool at all. A new image-generation mech is never valid for a prediction agent regardless of age.
 - **Why global:** if the mech has already been hammered by other agents on the network and proven bad, this agent shouldn't grant it a fresh local trial. Subgraph already exposes `received_requests` per mech.
-- **Why 20:** at 20/20 successful deliveries, Wilson lower bound ≈ 0.83 → `gate_score ≈ 0.90` — solidly clear of the reputation gate. At 0/20, Wilson ≈ 0 → fails immediately at request #21. Clean handoff.
+- **Why 20:** at 20/20 successful deliveries, Wilson lower bound ≈ 0.83 → `gate_score ≈ 0.90` — solidly clear of the delivery gate. At 0/20, Wilson ≈ 0 → fails immediately at request #21. Clean handoff.
+- **Calibration caveat:** `20` is math-driven (it's the smallest `n` that produces a clean Wilson handoff against `min_mech_score = 0.3`), not empirically calibrated against real mech-onboarding data. If observed onboarding distributions show legitimate mechs typically take longer than 20 global requests to clear that bar, the threshold should be raised. Tracked as Open Question #20.
 
-### 2. Category gate (Gate 1 in source docs)
+### 2. Tool-type gate (Gate 1 in source docs — was "category gate")
 
-Mech operators self-declare a `category` in IPFS metadata. Caller sets `task_type` in `skill.yaml`. Tool is admitted if its declared category matches `task_type`.
+Mech operators self-declare a tool type via the `category` field in IPFS metadata (the IPFS field name is historical; the value is a tool type like `prediction` or `image_generation` — see Terminology). Caller sets `task_type` in `skill.yaml`. Tool is admitted if its declared type matches `task_type`.
 
 **IPFS metadata schema (hybrid, backward compatible):**
 
@@ -109,8 +121,8 @@ Mech operators self-declare a `category` in IPFS metadata. Caller sets `task_typ
 **Caller config (trader):** `task_type: prediction` in `decision_maker_abci/skill.yaml`.
 
 **Known limits (acknowledged):**
-- Self-declared, no on-chain verification — a mech can lie. Reputation gate + Layer 3 benchmarks catch this over time.
-- No enforcement of category semantics — a mech can declare `prediction` and return random numbers. Same answer: Layer 3.
+- Self-declared, no on-chain verification — a mech can lie about its tool type. The delivery gate does **not** catch this (a lying mech still responds). Caught by (a) the `irrelevant_tools` name gate once the offending tool is identified, and (b) Layer 3 benchmarks over time (Brier collapses for tools that aren't actually doing prediction).
+- No enforcement of tool-type semantics — a mech can declare `prediction` and return random numbers. Same answer: Layer 3 + name gate.
 
 ### 3. Capability gate (new — from NVM bug)
 
@@ -153,9 +165,11 @@ The related constants (`TOKEN_PAYMENT_TYPES`, `NVM_PAYMENT_TYPES`, `PAYMENT_TYPE
 
 **NVM deadlock fix as a side effect:** trader sets `allowed_payment_types: ["NATIVE", "TOKEN_USDC", "TOKEN_OLAS"]`, NVM mechs never reach the FSM, the deadlock is impossible. This is the long-term proper fix; the short-term ship-now patch (Option B from `BUG_REPORT_NVM_SUBSCRIPTION_DEADLOCK.md` — penalize NVM mech and fall through) remains valid until the capability gate ships.
 
-### 4. Reputation gate (Gate 2 in source docs)
+### 4. Delivery gate (Gate 2 in source docs — was "reputation gate")
 
-After category and capability, enforce a quality floor on mech reliability + activity.
+After category and capability, enforce a floor on mech responsiveness + activity.
+
+> **What this gate measures:** whether the mech *responds* to requests, not whether its responses are *correct*. A mech that always returns `p_yes = 0.5` for every question scores perfectly here. Accuracy quality is enforced downstream — Layer 3 benchmarks and the `irrelevant_tools` name gate are the hooks for evicting consistently-wrong-but-reliably-delivering mechs. Calling this a "delivery gate" rather than a "reputation gate" makes that scope explicit.
 
 **Score formula:**
 ```
@@ -165,6 +179,27 @@ wilson_reliability = Wilson lower bound (95% confidence) on (self_delivered / re
 gate_liveness      = exp(-age_seconds / gate_taf)
                      where gate_taf = gate_liveness_half_life_seconds / ln(2)
 ```
+
+**Wilson lower bound — formal definition.** With `n = received_requests`, `k = self_delivered`, and 95% confidence (`z = 1.96`):
+
+```
+if n == 0:
+    wilson_reliability = 0.0          # no evidence → fail; grace is the admission path
+else:
+    p_hat  = k / n
+    denom  = 1 + z**2 / n
+    center = p_hat + z**2 / (2*n)
+    margin = z * sqrt((p_hat * (1 - p_hat) + z**2 / (4*n)) / n)
+    wilson_reliability = max(0.0, (center - margin) / denom)
+```
+
+Edge-case handling, locked:
+
+- `n == 0` → `0.0`. Mech fails the gate; the grace bypass (`received_requests < COLD_START_GRACE`) is the intended admission path for fresh mechs.
+- `k > n` → treat as data error, clamp `k = n` before computing. Should never happen with subgraph data; defensive.
+- Final value clamped to `[0.0, 1.0]` (the `max(0.0, ...)` above handles the lower bound; the formula naturally bounds at 1.0 for `k == n`).
+
+**Why 0.6 / 0.4:** reliability is the stronger signal of a working mech — a 100%-reliable mech that's been idle for a day is more useful than a 50%-reliable mech that just responded. Weighting reliability higher prevents brief activity bursts from masking poor track records. The exact split is a heuristic placeholder, not a calibrated optimum; tune against real `gate_score` distributions post-rollout (Open Question #21).
 
 **Important: the gate's liveness uses its own half-life constant, NOT the existing `HALF_LIFE_SECONDS`.** The existing `HALF_LIFE_SECONDS = 60 * 60` (`states/base.py:48`) feeds `Service.liveness` → `MechInfo.liveness` → `MechInfo.__lt__`, which is the *existing* priority-ranking mechanism and must not be changed silently. The gate introduces a new parameter `gate_liveness_half_life_seconds` in `MechInteractParams` (default `86400`, i.e. 24h) that controls the gate's own liveness calculation independently.
 
@@ -200,18 +235,18 @@ min_mech_score: 0.0                           # default: gate disabled
 gate_liveness_half_life_seconds: 86400        # 24h — gate-specific, independent of HALF_LIFE_SECONDS
 ```
 
-**Note: gate is mech-level, not tool-level.** A mech with strong reputation across `prediction-online` also vouches for any new tool it adds. Per-tool delivery tracking would require a subgraph schema change and is out of scope. Layer 3 benchmarks handle per-tool quality.
+**Note: gate is mech-level, not tool-level.** A mech with a strong delivery record on `prediction-online` also vouches for any new tool it adds. Per-tool delivery tracking would require a subgraph schema change and is out of scope. Layer 3 benchmarks handle per-tool quality.
 
 ### `irrelevant_tools` — kept as a fourth gate dimension
 
-`irrelevant_tools: Set[str]` in `MechInteractParams` is **not deprecated**. It's a name-level filter that follows the same producer/consumer pattern as the other gates: mech-interact provides the mechanism, the caller provides the policy via `MechInteractParams` overrides. Treat it as a fourth gate alongside category, capability, and reputation.
+`irrelevant_tools: Set[str]` in `MechInteractParams` is **not deprecated**. It's a name-level filter that follows the same producer/consumer pattern as the other gates: mech-interact provides the mechanism, the caller provides the policy via `MechInteractParams` overrides. Treat it as a fourth gate alongside tool-type, capability, and delivery.
 
 It does two distinct jobs:
 
-1. **Wrong-category exclusion** — most entries in the trader's current list (e.g. `native-transfer`, `openai-gpt-3.5-turbo`, `stabilityai-stable-diffusion-*`, `deepmind-optimization`) are tools whose purpose is not prediction at all. The category gate replaces this job once mechs declare categories properly; these entries can be removed as Layer 1 lands.
-2. **Within-category exclusion** — entries like `prediction-online-lite`, `claude-prediction-online-lite`, `prediction-offline-sme`, `prediction-online-sum-url-content` are prediction tools, just inferior variants the trader has decided not to use. The category gate doesn't touch them. Layer 2 (Brier ranking) may *deprioritise* such tools over time, but soft preference isn't a substitute for hard exclusion — the operator may still want a name-level kill switch for tools they never want to use regardless of measured performance.
+1. **Wrong-tool-type exclusion** — most entries in the trader's current list (e.g. `native-transfer`, `openai-gpt-3.5-turbo`, `stabilityai-stable-diffusion-*`, `deepmind-optimization`) are tools whose purpose is not prediction at all. The tool-type gate replaces this job once mechs declare types properly; these entries can be removed as Layer 1 lands.
+2. **Within-tool-type exclusion** — entries like `prediction-online-lite`, `claude-prediction-online-lite`, `prediction-offline-sme`, `prediction-online-sum-url-content` are prediction tools, just inferior variants the trader has decided not to use. The tool-type gate doesn't touch them. Layer 2 (Brier ranking) may *deprioritise* such tools over time, but soft preference isn't a substitute for hard exclusion — the operator may still want a name-level kill switch for tools they never want to use regardless of measured performance.
 
-**Future evolution:** as Layer 1 gates land and mechs adopt category metadata, the wrong-category portion of the list shrinks naturally. The within-category portion stays. Each removal is a deliberate per-tool decision, not a wholesale deprecation.
+**Future evolution:** as Layer 1 gates land and mechs adopt tool-type metadata, the wrong-tool-type portion of the list shrinks naturally. The within-tool-type portion stays. Each removal is a deliberate per-tool decision, not a wholesale deprecation.
 
 **Composition order with the new gates** (revised):
 
@@ -220,11 +255,11 @@ for mech in candidate_mechs:
     if mech.received_requests < COLD_START_GRACE:    # 1. Grace bypass
         admit(mech, filter_tools_by=irrelevant_tools)  # name gate still applies
         continue
-    if not category_match(mech, task_type):           # 2. Category gate
+    if not tool_type_match(mech, task_type):          # 2. Tool-type gate
         skip(mech); continue
     if not capability_match(mech, allowed_payment_types):  # 3. Capability gate
         skip(mech); continue
-    if mech.gate_score < min_mech_score:              # 4. Reputation gate
+    if mech.gate_score < min_mech_score:              # 4. Delivery gate
         skip(mech); continue
     admit(mech, filter_tools_by=irrelevant_tools)     # 5. Name gate (per-tool filter)
 ```
@@ -239,39 +274,43 @@ All changes inside `decision_maker_abci/policy.py` and `decision_maker_abci/beha
 
 **Platform is deployment-time, not data-time.** Each service already points its `TOOLS_ACCURACY_HASH` env var at a different IPFS CSV — `polymarket_trader/service.yaml:99` uses the Polymarket-derived CSV, `trader_pearl/service.yaml:99` uses the Omen-derived CSV. The trader binary loads whichever CSV the service points to. So Layer 2 only needs to add **one** new dimension to the existing pipeline: `category`.
 
-### Category source — shared classifier
+### Market-topic source — phased
 
-**The classifier is the contract.** Both trader and mech-predict run the same `classify_category()` function on the same input (market title) so a market lands in the same bucket regardless of which side does the lookup. Sharing the *vocabulary* alone is insufficient — independently-maintained classifiers will drift even with the same category names.
+The earlier draft of this spec proposed sharing a classifier file (`category_keywords.py`) between trader and mech-predict via committed SHA256 hashes + a nightly cross-repo drift check. That approach was retired during review (see closed Open Question #12 below): the cross-repo sync overhead was disproportionate to the benefit, and the only repo that strictly needs the full classifier is mech-predict.
 
-**Mechanism (open for reviewer input on sync approach):** hash-pin with committed `.sha256` files + nightly cross-repo check.
+**Phase 1 (initial rollout) — no shared classifier in trader.**
 
-- Both repos commit `category_keywords.py` AND `category_keywords.sha256` next to it.
-- Each repo's CI runs `sha256sum -c category_keywords.sha256` on every PR — catches **local drift** immediately (someone edited the file without updating the hash).
-- A scheduled GitHub Action in one repo (the canonical source — suggest mech-predict) runs nightly: fetches the other repo's file via `gh api repos/valory-xyz/trader/contents/.../category_keywords.py`, compares hashes, opens an issue on divergence. Catches **cross-repo drift**.
-- Updating the classifier requires coordinated PRs across both repos with matching `.py` + `.sha256`.
-- Rationale: minimum tooling (`sha256sum` + ~30 lines of workflow YAML), no runtime/build dependencies, no submodule pain. The nightly latency for cross-repo detection is acceptable because local drift is caught immediately at PR time.
-- **Alternatives considered:** commit-pin (consumer stores canonical SHA, downloads at PR time — stricter semantics but adds a cross-repo auth dependency), git submodule (standard but known UX pain), tiny PyPI package (overkill for a ~50-line file). **This decision is explicitly open for reviewer input** — other sync mechanisms may be preferable depending on ops constraints.
+Each platform uses the cheapest source already available:
 
-**Source of truth (today):** [`benchmark/datasets/fetch_production.py`](https://github.com/valory-xyz/mech-predict/blob/main/benchmark/datasets/fetch_production.py) in mech-predict (`CATEGORY_KEYWORDS` + `classify_category()` around lines 95–646 and ~1291). 14 categories: the 9 that overlap with Polymarket's API tags (`business, politics, science, technology, health, entertainment, weather, finance, international`) plus 5 extras (`travel, sports, sustainability, curiosities, pets`). Mech-predict already runs this on Omen titles whenever the FPMM category is empty (which is always for Omen) — see [`benchmark/datasets/fetch_open.py`](https://github.com/valory-xyz/mech-predict/blob/main/benchmark/datasets/fetch_open.py) around line 207.
+- **Polymarket:** use the existing API tag as `Bet.category`. Polymarket already exposes a `tags` field per market and the trader already iterates per-tag in `polymarket_fetch_market.py`. The hand-curated `POLYMARKET_CATEGORY_KEYWORDS` and `_validate_market_category()` (lines 51–110, 158, 185) are **simplified**, not replaced — keep just enough logic to tag each market with one of the 9 currently-traded categories.
+- **Omen:** `Bet.category = None`. Same as today. Omen markets fall through to the aggregate row in `_candidates_for_category` and `_weighted_accuracy_for` — Layer 1 + Layer 2 aggregate routing applies, per-category routing does not. No regression from current behaviour.
 
-**Trader-side changes:**
-- `Bet.category` is populated by `classify_category(market_title)` for both Polymarket and Omen. Polymarket's API tag becomes informational, not canonical.
-- The existing `_validate_market_category()` and `POLYMARKET_CATEGORY_KEYWORDS` in `polymarket_fetch_market.py:51-110` are **replaced** by the shared classifier (trader-only change, no external consumers of the validator's output).
-- A new `tradeable_categories: List[str]` config in `market_manager_abci/skill.yaml` makes the trader's previously-implicit "we only trade categories we have keywords for" rule explicit. Markets classified into a non-tradeable category are filtered out at market-fetch time, so downstream code never sees them. **Initial value mirrors the trader's current 9 Polymarket categories** (today's `POLYMARKET_CATEGORY_KEYWORDS` keys): `business, politics, science, technology, health, entertainment, weather, finance, international`. Chosen to match today's behaviour for zero net change at rollout, not hand-picked. After migration to the shared classifier, `POLYMARKET_CATEGORY_KEYWORDS` is removed and `tradeable_categories` becomes a configurable subset of the shared classifier's vocabulary.
-- **Travel was dropped from polystrat due to anti-predictive tool performance** (tools were systematically wrong on travel markets — Layer 3 diagnostic territory). On omenstrat, travel was filtered upstream at the market-creator level. Note that both statements describe different layers and both hold: Omen has no travel markets upstream (filtered at market creator), but the keyword classifier may still tag some Omen titles as travel via title keywords (e.g., a market about Boeing whose title mentions "airlines"). `tradeable_categories` is the safety net for these classifier false positives — it catches mis-tags regardless of what upstream does, so excluding travel via this config is doing genuine work even on Omen.
+**`tradeable_categories: List[str]`** config in `market_manager_abci/skill.yaml` makes the previously-implicit "we only trade categories we have keywords for" rule explicit. Markets whose Polymarket tag is not in `tradeable_categories` are filtered at market-fetch time. Initial value mirrors today's 9: `business, politics, science, technology, health, entertainment, weather, finance, international`. For Omen, the config is inert in Phase 1 (no per-market topic to filter against).
+
+**Phase 2 (deferred) — re-evaluate Omen per-category routing.**
+
+If Layer 3 numbers show a meaningful Brier delta between aggregate and per-category routing for Omen, revisit how to source `Bet.category` for Omen markets. Options to evaluate at that time, decided with data in hand:
+
+- Tiny shared package on PyPI (the ~50-line classifier as a single dependency, version-pinned in both repos).
+- IPFS runtime fetch — trader pulls the classifier artifact alongside the CSV, no build-time coupling.
+- Mech-predict embeds market-id → category mapping in the published CSV; trader looks up by market id without classifying.
+
+None of these are committed up-front. Phase 2 is gated on observed evidence that Omen per-category routing is worth the integration cost.
 
 **Separation of concerns:**
 
 | Layer | Owner | Decision |
 |---|---|---|
-| Classifier | Shared file (mech-predict + trader) | What category does this market belong to? |
-| Tradeable filter | Trader (`tradeable_categories` config) | Which categories does *this trader* trade? |
-| Layer 2 lookup | Trader (`EGreedyPolicy`) | Which tool wins for this category cell? |
-| Benchmark scope | Mech-predict | Which categories does *the benchmark* score? |
+| Tag source | Polymarket API (Phase 1), TBD for Omen Phase 2 | What topic does this market belong to? |
+| Tradeable filter | Trader (`tradeable_categories` config) | Which topics does *this trader* trade? |
+| Layer 2 lookup | Trader (`EGreedyPolicy`) | Which tool wins for this `(tool, topic)` cell? |
+| Benchmark scope | Mech-predict | Which topics does *the benchmark* score? |
 
-This means mech-predict can keep benchmarking on travel/sports/etc., the CSV will have those rows, and the trader simply never queries them. Each consumer decides its own scope; the classifier is the only thing they share.
+Mech-predict keeps its existing internal classifier (`classify_category()` in `benchmark/datasets/fetch_production.py`) — it's the only consumer that needs full classification coverage. The trader does not import or duplicate it in Phase 1.
 
-**Omen behaviour changes:** `Bet.category` is no longer `None` for Omen — it's whatever the shared classifier returns from the title. Omen now gets per-category routing through the same Layer 2 fallback chain as Polymarket. The aggregate fallback remains the safety net for tools whose Omen-category cells are sparse or missing.
+**Omen behaviour:** unchanged from today. `Bet.category = None`, aggregate fallback at Layer 2.
+
+**Travel disposition:** unchanged — travel was dropped from polystrat at the trader's keyword/tag layer due to anti-predictive tool performance, and from omenstrat at the market-creator level. Phase 1's Polymarket tag check honors the same exclusion.
 
 ### Today's CSV (single-key)
 
@@ -399,6 +438,40 @@ def _weighted_accuracy_for(self, tool: str, category: Optional[str]) -> float:
 
 **Realistic fragmentation check** (using polystrat data): `prediction-request-reasoning` has 6605 total requests — fragmented across ~10 Polymarket categories that's ~660/category, comfortably above `n ≥ 30`. Lighter tools like `prediction-offline` (184 total) fragment to ~18/category, below the floor — they correctly fall back to aggregate. Most tools will route on aggregate for most categories until their per-category cells fill. Heavy tools get the most segment-specific routing benefit, which is the right place for it.
 
+### Staleness and update cadence
+
+The aggregate row in `accuracy_store[tool][""]` is updated **live** by the trader on every bet resolution (`update_accuracy_store(tool, winning)`). Per-category cells are **not** updated live — they're refreshed only when Layer 3 re-pins the IPFS CSV. This creates an asymmetry: a tool can be visibly degrading on the live aggregate while its per-category cells still report week-old benchmark data. Without explicit handling, category-aware routing would override the fresher live signal with stale data.
+
+Three guards manage this:
+
+**1. CSV update cadence (locked).** Layer 3 re-pins the CSV **daily** (aligned to mech-predict's `benchmark_flywheel.yaml` cron `0 6 * * *` UTC). Daily is the assumed worst-case staleness; the freshness/divergence guards below tolerate it.
+
+**2. Freshness guard on per-category cells.** Each row's `max` field already brackets the data window. Extend `_candidates_for_category` and `_weighted_accuracy_for` so a per-category cell only qualifies when `now − cell.max ≤ cell_freshness_window` (default **14 days**). Stale cells fall through to the aggregate row — same fallback path as cells below `N_MIN_CELL`. One additional clause per check, no new data plumbing.
+
+```python
+def _per_category_cell_qualifies(self, cell, category) -> bool:
+    return (
+        cell is not None
+        and cell.requests >= N_MIN_CELL
+        and (now() - cell.max) <= self.cell_freshness_window
+    )
+```
+
+**3. Divergence policy.** If the live aggregate has drifted significantly from the CSV-published aggregate for the same tool, treat all per-category cells for that tool as untrustworthy and route on the live aggregate. Concretely: if `|aggregate_live − aggregate_csv| > divergence_threshold` (default **0.10** in accuracy points), `_weighted_accuracy_for` returns the aggregate even when a per-category cell would otherwise qualify. Catches the "tool degraded this week, CSV hasn't caught up" case directly.
+
+```python
+def _weighted_accuracy_for(self, tool, category):
+    cells = self.weighted_accuracy[tool]
+    if category is not None:
+        cell = self.accuracy_store[tool].get(category)
+        if self._per_category_cell_qualifies(cell, category) \
+                and not self._aggregate_diverged(tool):
+            return cells[category]
+    return cells[""]
+```
+
+`cell_freshness_window` and `divergence_threshold` are tracked as Open Questions (#23, #24) — placeholders, tune post-rollout.
+
 ### Quarantine and exploration
 
 - **Quarantine stays tool-level**, not category-level. A tool that times out / errors consecutively is broken everywhere, not "broken on politics but fine on crypto." Matches the failure mode (bugs/timeouts, not domain weakness).
@@ -451,26 +524,20 @@ Checklist of implementation touchpoints Layer 2 must cover. Grouped by file.
 
 **`packages/valory/skills/market_manager_abci/behaviours/polymarket_fetch_market.py`**
 
-- Remove the hand-curated `POLYMARKET_CATEGORY_KEYWORDS` dict (lines 51-110)
-- Remove `_validate_market_category()` (line 158) and `_validate_markets_by_category()` (line 185) — replaced by the shared classifier
-- Keep the per-category fetch loop (it's driven by Polymarket's API tags, not by our keyword dict)
-- Populate `Bet.category` via `classify_category(market_title)` from the shared classifier module
-- Apply `tradeable_categories` filter here (drop markets whose classified category is not in the caller's allowed list)
+- Keep the per-category fetch loop (it's driven by Polymarket's API tags).
+- Simplify `POLYMARKET_CATEGORY_KEYWORDS` and `_validate_market_category()` (lines 51–110, 158) to the minimum needed to map a Polymarket API tag to one of the 9 currently-traded categories. Don't replace with a richer classifier in Phase 1.
+- Populate `Bet.category` from the Polymarket API tag (Phase 1).
+- Apply `tradeable_categories` filter here (drop markets whose tag is not in the caller's allowed list).
 
 **`packages/valory/skills/market_manager_abci/bets.py`**
 
-- `Bet.category` stays as `Optional[str]` in the dataclass (no type change needed), but semantically it becomes non-`None` after the classifier change
+- `Bet.category` stays as `Optional[str]`. Semantics in Phase 1: non-`None` for Polymarket (from API tag), `None` for Omen.
 
 **`packages/valory/skills/market_manager_abci/skill.yaml`**
 
-- Add `tradeable_categories: list` parameter. Default: the current 9 categories (see Trader-side changes above).
+- Add `tradeable_categories: list` parameter. Default: the current 9 categories (see Phase 1 above).
 
-**Shared classifier file** (new, both repos)
-
-- `packages/valory/skills/market_manager_abci/category_keywords.py` (trader) — duplicated from [`benchmark/datasets/fetch_production.py`](https://github.com/valory-xyz/mech-predict/blob/main/benchmark/datasets/fetch_production.py) (mech-predict)
-- `packages/valory/skills/market_manager_abci/category_keywords.sha256` — committed hash, verified by CI
-- CI hook in both repos: `sha256sum -c category_keywords.sha256`
-- Nightly cross-repo drift check (scheduled GitHub Action) — see "Mechanism" in the Category source section above. **Open for reviewer input on exact sync approach.**
+**No shared classifier file in Phase 1.** Mech-predict keeps `classify_category()` internal to its own repo. The trader does not import or duplicate it. The cross-repo `.sha256` machinery and nightly drift-check workflow originally specified here are not implemented — see closed Open Question #12.
 
 ---
 
@@ -541,33 +608,65 @@ The benchmark CI pins **one CSV per platform** to IPFS. Trader consumes via the 
 | 9 | Platform dimension is deployment-time (per-service `TOOLS_ACCURACY_HASH`), not data-time. Layer 2 only adds `category` to the CSV schema. | "we already have ways to set different accuracy hash for each platform" |
 | 10 | CSV schema bump = one new optional `category` column. Empty = aggregate (today's behaviour). | inferred from polystrat CSV inspection |
 | 11 | Capability gate plumbing locked: `payment_type` field on `MechInfo`, in-memory cache on `MechInformationBehaviour` keyed by `mech.address`, populated alongside IPFS metadata fetch via refactored `_get_payment_type_for(mech_address)` in `MechInteractBaseBehaviour`. ~50 mech pool, payment types stable, cross-period caching acceptable. | "1. number of mechs shouldn't matter... 2. stable in practice 3. look 2" |
-| 12 | `irrelevant_tools` is **kept as a fourth gate dimension** (name-level, tool-scoped), not deprecated. Sits alongside category, capability, reputation in the gate framework. | "what. that would still be needed maybe?" |
+| 12 | `irrelevant_tools` is **kept as a fourth gate dimension** (name-level, tool-scoped), not deprecated. Sits alongside tool-type, capability, delivery in the gate framework. | "what. that would still be needed maybe?" |
 | 13 | `EGreedyPolicy` accuracy store becomes **nested dict** `Dict[str, Dict[str, AccuracyInfo]]` (outer=tool, inner=category, `""` key = aggregate). Chosen over flat tuple keys specifically because it requires zero changes to the existing encoder/decoder. | review #1 |
 | 14 | `PaymentType` enum + related constants move from `behaviours/request.py` to new neutral module `mech_interact_abci/payment_types.py`. Required to let `states/base.py` import without creating a circular dependency. | review #2 |
 | 15 | `_get_payment_type` refactored into `MechInteractBaseBehaviour` with explicit `mech_address` parameter and generic result attribute. Existing `MechRequestBehaviour` callers are updated to pass their own `priority_mech_address` and read the result. | review #3 |
-| 16 | Grace bypass exempts **only the reputation gate**. Category, capability, and name gates still apply to mechs in grace. | review #8 |
+| 16 | Grace bypass exempts **only the delivery gate**. Tool-type, capability, and name gates still apply to mechs in grace. | review #8 |
 | 17 | Gate liveness uses a new parameter `gate_liveness_half_life_seconds` (default 24h). The existing `HALF_LIFE_SECONDS = 60 * 60` in `states/base.py:48` stays unchanged — it feeds `MechInfo.__lt__` priority ranking and must not be silently changed. Ranking and gate tune independently. | review #9 |
-| 18 | Classifier sync mechanism = hash-pin with committed `.sha256` files + nightly cross-repo check. **This specific mechanism is open for reviewer input** — alternatives (commit-pin, submodule, PyPI package) were considered but hash-pin is the minimum tooling that catches both local and cross-repo drift. | review #12 |
+| ~~18~~ | ~~Classifier sync via committed `.sha256` + nightly cross-repo check~~ — **reverted (review #3 by DIvyaNautiyal07)**. Phased instead: Phase 1 trader uses Polymarket API tag for Polymarket, `Bet.category = None` for Omen (aggregate fallback). No classifier in trader; mech-predict keeps its internal classifier. Phase 2 (deferred) re-evaluates Omen routing if Layer 3 numbers justify the integration cost. | review #12 → reverted |
 | 19 | `_candidates_for_category` rule: `n ≥ N_MIN_CELL` applies only to per-category cells; aggregate row is always valid as fallback regardless of sample size. Preserves today's behaviour that any tool with any data is a candidate. | review #15 |
 
 ## Open questions
 
 | # | Question | Section |
 |---|---|---|
-| 1 | Wilson confidence level. **Recommended default: 95%** (standard binomial CI). Open for revision after seeing real mech data. | Layer 1 reputation |
-| 2 | IPFS metadata schema: per-tool vs mech-level vs hybrid. **Recommended: hybrid** — parser checks per-tool category first, falls back to mech-level, falls back to `"uncategorized"`. Backward compatible with legacy flat lists. | Layer 1 category |
+| 1 | Wilson confidence level. **Recommended default: 95%** (standard binomial CI). Open for revision after seeing real mech data. | Layer 1 delivery |
+| 2 | IPFS metadata schema: per-tool vs mech-level vs hybrid. **Recommended: hybrid** — parser checks per-tool category first, falls back to mech-level, falls back to `"uncategorized"`. Backward compatible with legacy flat lists. | Layer 1 tool-type |
 | ~~3~~ | ~~Capability gate plumbing~~ — **closed**: add `payment_type` field to `MechInfo`, populate in `MechInformationBehaviour.populate_tools()` via existing `_get_payment_type()` contract call, cache in-memory on the behaviour across periods. Pool is ~10 active / 50 historical mechs, payment types are stable in practice, cross-period caching is acceptable. Cold start re-fetches; persistence is a deferred follow-up. | Layer 1 capability |
 | ~~4~~ | ~~Deprecation timeline for `irrelevant_tools` blocklist~~ — **closed**: not deprecated. Reframed as a first-class fourth gate (name-level, tool-scoped). Its current contents do two jobs: wrong-category exclusion (will shrink as Layer 1 lands and mechs declare categories) and within-category exclusion (stays — Brier ranking is a soft preference, not a substitute for hard kill switch). | Layer 1 |
-| ~~5~~ | ~~Omen `Bet.category = None` handling~~ — **closed (revised)**: trader adopts mech-predict's shared `classify_category()`, so Omen markets get a category from their title. No `None` case in normal operation. Aggregate fallback still catches sparse cells. | Layer 2 |
-| 6 | `min_mech_score` production default. **Recommended: 0.3** (per gist). Open for revision after observing the gate's effect on real mech data. | Layer 1 reputation |
-| 7 | Free-form category vocabulary vs registry | Layer 1 category |
+| ~~5~~ | ~~Omen `Bet.category = None` handling~~ — **closed (revised twice)**: Phase 1 keeps `Bet.category = None` for Omen and routes via the aggregate row — same as today's behaviour. Phase 2 re-evaluates if Layer 3 shows per-category routing materially helps Omen. | Layer 2 |
+| 6 | `min_mech_score` production default. **Recommended: 0.3** (per gist). Open for revision after observing the gate's effect on real mech data. | Layer 1 delivery |
+| 7 | Free-form tool-type vocabulary vs registry | Layer 1 tool-type |
 | 8 | Min `n` per cell for routing (proposed: 30) | Layer 2 fallback |
-| ~~11~~ | ~~Category vocabulary alignment~~ — **closed**: trader adopts mech-predict's `classify_category()` directly. Shared classifier > shared vocabulary. | Layer 2 / Layer 3 |
-| ~~12~~ | ~~Sharing mechanism~~ — **closed**: duplicated file with CI hash check. | Layer 2 / Layer 3 |
+| ~~11~~ | ~~Category vocabulary alignment~~ — **closed (revised)**: in Phase 1, no shared vocabulary needed — Polymarket API tags drive the trader, mech-predict uses its own internal classifier. Vocabulary alignment is a Phase 2 concern only if/when the trader needs richer per-market topics. | Layer 2 / Layer 3 |
+| ~~12~~ | ~~Sharing mechanism~~ — **closed (revised)**: no sharing in Phase 1 (no shared classifier). If Phase 2 needs one, the candidate options at that time are tiny PyPI package, IPFS runtime fetch, or mech-predict embedding market-id → topic in the published CSV. Decision deferred to when there is data justifying the integration cost. | Layer 2 / Layer 3 |
 | ~~13~~ | ~~Travel disposition~~ — **closed**: mech-predict keeps travel in the classifier; trader filters via `tradeable_categories`. Travel was dropped on polystrat due to *anti-predictive tool performance* (Layer 3 diagnostic territory). On omenstrat it was dropped at market creator level — Omen has no travel markets to begin with. | Layer 2 |
 | ~~14~~ | ~~`tradeable_categories` location~~ — **closed**: lives in trader's `market_manager_abci/skill.yaml`. Filtering at market-fetch time means downstream code never sees non-tradeable markets. Initial value: current 9 (`business, politics, science, technology, health, entertainment, weather, finance, international`). | Layer 2 |
 | ~~15~~ | ~~Validator replacement scope~~ — **closed**: trader-only, no external consumers of the existing validator's output. | Layer 2 |
 | 16 | **Future:** make `tradeable_categories` data-driven from Layer 3 disagreement-stratified Brier (auto-exclude categories where best-tool Brier is worse than no-skill). Travel-dropped-from-polystrat is the canonical example this would have caught automatically. Not in scope for the initial implementation. | Layer 2 / Layer 3 |
+| 20 | Empirically validate `COLD_START_GRACE = 20` against observed mech-onboarding distributions: how many global requests does a legitimate mech typically accumulate in its first week? If significantly more than 20, raise the threshold so legitimate mechs aren't kicked into the gate before they have a chance. Math-driven default; needs production data to confirm or revise. | Layer 1 cold-start |
+| 21 | Calibrate the `(0.6, 0.4)` reliability/liveness weights in the delivery `gate_score` against observed mech-score distributions. The current split is a heuristic placeholder; once the gate is collecting data, check whether it's actually separating good mechs from bad on the right axis, and tune. | Layer 1 delivery |
+| 22 | **New-tool promotion policy** — when a tool first appears in the Layer 3 CSV with a competitive Brier, the trader's `EGreedyPolicy` immediately treats it as a regular candidate (eps-exploration gives it traffic, no ramp/exposure cap). No problem observed yet. If new tools start winning routing on a single lucky streak before stabilising, add a probation mechanism: trigger condition (`n_csv ≥ 100` and Brier within `delta` of current best), evidence window (first N live selections logged separately), guardrail (cap `weighted_accuracy` at current-best until live `n ≥ 50` and live Brier confirms the benchmark), rollback (existing quarantine). Tracked but deferred — Layer 3's leaderboard-stability metric (Open Question for Layer 3) is the upstream signal that would surface this risk first. | Layer 2 / Layer 3 |
+| 23 | `cell_freshness_window` for the per-category staleness guard. Default proposed: **14 days**. Should be ≥ 2× CSV cadence (currently daily) so a single missed publish doesn't invalidate cells. Tune after observing how often per-category cells go stale in practice. | Layer 2 staleness |
+| 24 | `divergence_threshold` for the live-vs-CSV aggregate guard. Default proposed: **0.10** accuracy points (i.e. 10pp drift triggers fallback to live aggregate). Tune after observing the natural distribution of `\|live − csv\|` deltas across tools. | Layer 2 staleness |
+
+---
+
+## Success metrics
+
+How we'll know each layer is doing real work after rollout. Each step in the rollout sequence below gets go/no-go against the metrics relevant to that layer.
+
+### Layer 1 — is the gate doing real work without over-filtering?
+
+- **Pool size before/after each gate enables.** Validates the gate is actually excluding mechs and quantifies how many. Expect meaningful reduction (~10–20% per gate); zero means the gate is a no-op and should be re-examined; > 50% means we over-filtered and are starving selection.
+- **Zero NVM-deadlock incidents in the 2 weeks post capability-gate enable.** Concrete bug the capability gate exists to kill. Detection: inbound Zendesk tickets — the deadlock manifests as user-reported stuck agents, so absence-of-tickets is the operational signal we already have. If deadlock tickets continue post-rollout, the gate isn't wired correctly. Binary pass/fail.
+
+### Layer 2 — is category routing actually better than aggregate routing?
+
+- **Per-category Brier vs aggregate Brier on the same tool, for cells above `N_MIN_CELL`.** The core question — is routing by category picking more accurate tools than the aggregate would have? If per-category cells aren't Brier-better than aggregate, the whole Layer 2 exercise is noise.
+- **Tool-selection entropy per category.** Are we actually routing differently across categories, or collapsing to one winner everywhere? Low entropy across all categories means the mechanism exists but doesn't do anything interesting — same tool wins regardless, so we added complexity for no routing benefit.
+- **Fraction of selections hitting aggregate fallback vs per-category cell.** Operational visibility — tells us what share of traffic is benefiting from Layer 2 vs falling through to pre-Layer 2 behaviour. Softer signal than the first two but cheap to emit and useful for interpreting them.
+
+### Layer 3 — is the benchmark producing usable data?
+
+- **CSV cell coverage: count of `(tool, category)` cells with `n ≥ N_MIN_CELL`.** The benchmark is only useful to the trader at cells it has sufficiently filled. If most cells sit below the floor, Layer 2 routes on aggregate everywhere and we effectively have no per-category system. This is the capacity metric — it tells us whether the benchmark is generating enough data, not just generating data.
+- **Brier leaderboard stability week-over-week.** Churn test — if the "best tool" for a given category flips every week, either the per-cell sample is too small (underpowered benchmark) or tools are genuinely volatile (last week's routing decision doesn't apply this week). Either way, stability tells us whether the CSV is trustworthy as routing input. Unstable leaderboards mean Layer 2 is chasing noise.
+
+### Overall — is the system doing its actual job?
+
+- **Trader P&L delta, pre vs post rollout.** The ultimate test. Baseline window not pre-defined — judged in context of available data when each layer ships.
+- **Bet volume sanity.** Over-gating (Layer 1 too strict, Layer 2 quarantining everything) could starve the agent of bets. Flat P&L at half the volume is not a win. Volume is the "did we break something" guardrail.
 
 ---
 
@@ -589,11 +688,11 @@ Roughly in dependency order; parallelisable where noted.
 2. **`PaymentType` relocation prerequisite**: create `mech_interact_abci/payment_types.py`, move `PaymentType` enum + `TOKEN_PAYMENT_TYPES` / `NVM_PAYMENT_TYPES` / `PAYMENT_TYPE_TO_NVM_CONTRACT` from `behaviours/request.py:71-91` into it. Update imports in `behaviours/request.py` and anywhere else the enum is referenced. Non-functional refactor; unblocks the `MechInfo.payment_type` field.
 3. **`_get_payment_type` refactor prerequisite**: move into `MechInteractBaseBehaviour` with explicit `mech_address` parameter and generic result attribute. Update `MechRequestBehaviour` callers to pass their own `priority_mech_address` and read the new result attribute. Non-functional refactor; unblocks per-mech payment-type fetching from `MechInformationBehaviour`.
 4. **Layer 1 capability gate plumbing**: add `payment_type` field to `MechInfo`, add `_payment_type_cache` to `MechInformationBehaviour`, populate in `populate_tools()`, add `allowed_payment_types` param, apply filter. Enables capability gate and resolves the NVM deadlock long-term. *(Requires #2 and #3.)*
-5. **Layer 1 reputation gate**: Wilson lower bound + `gate_liveness_half_life_seconds` param (default 24h) + grace bypass (reputation only). Default disabled via `min_mech_score = 0.0`. `HALF_LIFE_SECONDS` in `states/base.py:48` stays unchanged.
-6. **Layer 1 category gate**: IPFS schema parser (hybrid per-tool/mech-level/uncategorized fallback) + `task_type` filter. Default disabled.
-7. **Shared classifier file + CI hash check**: create `category_keywords.py` + `category_keywords.sha256` in both repos, wire `sha256sum -c` into CI, set up the nightly cross-repo drift check GitHub Action.
+5. **Layer 1 delivery gate**: Wilson lower bound + `gate_liveness_half_life_seconds` param (default 24h) + grace bypass (delivery only). Default disabled via `min_mech_score = 0.0`. `HALF_LIFE_SECONDS` in `states/base.py:48` stays unchanged.
+6. **Layer 1 tool-type gate**: IPFS schema parser (hybrid per-tool/mech-level/uncategorized fallback) + `task_type` filter. Default disabled.
+7. **(Removed.)** Phase 1 has no shared classifier, so no `category_keywords.py` / `.sha256` / nightly drift workflow. Step retained as a placeholder in numbering for traceability against earlier review threads.
 8. **Layer 3 scorer additions**: `by_tool_category` cross-breakdown, conditional accuracy, disagreement-stratified Brier. *(Owned by mech-predict, parallelisable with #4–#6.)*
-9. **Layer 3 IPFS publish**: extended CSV with optional `category` column pinned by CI. *(Depends on #7 + #8.)*
-10. **Layer 2 trader policy bump**: extend `EGreedyPolicy` to nested `{tool: {category: ...}}` accuracy store, update storage_manager.py parsing, update `ToolSelectionBehaviour` call site, plumb `Bet.category` through, replace `POLYMARKET_CATEGORY_KEYWORDS` with shared classifier, add `tradeable_categories` config. See Migration notes checklist. *(Requires #7 + #9.)*
+9. **Layer 3 IPFS publish**: extended CSV with optional `category` column pinned by CI. *(Depends on #8.)* Note: today the benchmark only produces `scores.json` / GH artifacts — the IPFS publish path itself is net-new. See Layer 3 publishing section.
+10. **Layer 2 trader policy bump**: extend `EGreedyPolicy` to nested `{tool: {category: ...}}` accuracy store, update storage_manager.py parsing, update `ToolSelectionBehaviour` call site, plumb `Bet.category` through (Polymarket API tag for Polymarket; `None` for Omen), simplify `POLYMARKET_CATEGORY_KEYWORDS` to the minimum tag-mapping needed, add `tradeable_categories` config, add staleness/freshness/divergence guards. See Migration notes checklist. *(Requires #9.)*
 11. **Production rollout**: enable Layer 1 gates one at a time (`task_type`, then `allowed_payment_types`, then `min_mech_score = 0.3`). Monitor pool size and selection diversity at each step.
-12. **Shrink** `irrelevant_tools` as Layer 1 gates prove themselves in production. Wrong-category entries can be removed once the category gate is enforcing. Within-category entries stay.
+12. **Shrink** `irrelevant_tools` as Layer 1 gates prove themselves in production. Wrong-tool-type entries can be removed once the tool-type gate is enforcing. Within-tool-type entries stay.
