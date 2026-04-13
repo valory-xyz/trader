@@ -21,7 +21,6 @@
 
 import bisect
 import json
-import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
@@ -44,7 +43,9 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     PredictionsFetcher,
-    _parse_current_answer,
+    now_ts,
+    parse_current_answer,
+    parse_timestamp,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -512,17 +513,28 @@ class FetchPerformanceSummaryBehaviour(
         # Platform-specific accuracy calculation
         if self.params.is_running_on_polymarket:
             return self._calculate_polymarket_accuracy(agent_bets_data)
-        else:
-            return self._calculate_omen_accuracy(agent_bets_data)
+
+        # ZD#919: enrich Omen bets with Reality.eth finalization data from
+        # omen_subgraph before computing accuracy. The olas_agents subgraph
+        # does not expose answerFinalizedTimestamp; without enrichment
+        # every bet would be filtered out as unfinalized and accuracy
+        # would silently disappear from the UI.
+        fetcher = PredictionsFetcher(self.context, self.context.logger)
+        fetcher._enrich_bets_with_finalization(agent_bets_data["bets"])
+        return self._calculate_omen_accuracy(agent_bets_data)
 
     def _now(self) -> int:
         """Return the current wall-clock time as a Unix timestamp.
 
-        Indirected through a method so tests can patch it deterministically.
+        Thin delegator to :func:`predictions_helper.now_ts` so this
+        class shares a single time source with ``PredictionsFetcher``
+        and the two cannot drift (e.g. one switching to milliseconds
+        while the other stays on seconds). Kept as an instance method
+        so tests can still ``patch.object(self, "_now", ...)``.
 
         :return: current Unix timestamp in seconds.
         """
-        return int(time.time())
+        return now_ts()
 
     def _calculate_omen_accuracy(self, agent_bets_data: dict) -> Optional[float]:
         """Calculate prediction accuracy for Omen markets."""
@@ -533,17 +545,35 @@ class FetchPerformanceSummaryBehaviour(
         # Reality.eth answers can flip during the dispute window, so a bet
         # whose market has currentAnswer set but answerFinalizedTimestamp
         # in the future is still provisional and must be excluded.
+        # parse_timestamp treats None / "0" / malformed as unfinalized.
         bets_on_finalized_markets = []
+        bets_with_answer = 0
         for bet in bets:
             fpmm = bet.get("fixedProductMarketMaker", {})
             if fpmm.get("currentAnswer") is None:
                 continue
-            finalized_ts = fpmm.get("answerFinalizedTimestamp")
-            if finalized_ts is None or int(finalized_ts) > now:
+            bets_with_answer += 1
+            # ZD#919: Kleros arbitration suspends the 24h clock; the answer
+            # is provisional regardless of currentAnswer / finalization
+            # timestamp. Exclude from accuracy until arbitration resolves.
+            if fpmm.get("isPendingArbitration"):
+                continue
+            finalized_ts = parse_timestamp(fpmm.get("answerFinalizedTimestamp"))
+            if finalized_ts is None or finalized_ts > now:
                 continue
             bets_on_finalized_markets.append(bet)
 
         if not bets_on_finalized_markets:
+            # Signal subgraph regressions (indexer lag, schema drift) so
+            # accuracy silently disappearing from the UI is diagnosable.
+            # Only warn if markets *have* a resolved answer but none are
+            # finalized — all-unresolved is the normal state pre-resolution.
+            if bets_with_answer > 0:
+                self.context.logger.warning(
+                    "Omen accuracy unavailable: %d resolved bets have no "
+                    "valid answerFinalizedTimestamp (subgraph regression?).",
+                    bets_with_answer,
+                )
             return None
 
         won_bets = 0
@@ -552,11 +582,14 @@ class FetchPerformanceSummaryBehaviour(
         for bet in bets_on_finalized_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
-            if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
+            if bet_answer is None:
                 continue
-            correct = _parse_current_answer(market_answer)
+            correct = parse_current_answer(market_answer)
             if correct is None:
-                # Malformed currentAnswer — skip rather than crash.
+                # parse_current_answer returns None for the INVALID_ANSWER_HEX
+                # sentinel and for malformed hex. Both must be excluded from
+                # accuracy — invalid markets have no correct outcome, and
+                # malformed data would crash int(...) further down.
                 continue
             total_bets += 1
             if correct == int(bet_answer):

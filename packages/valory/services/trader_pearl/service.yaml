@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidrgr2iqamvpt6bpatk2a3w5uiiavn4pe7bcpzz2q5e5zkysta2s4
+agent: valory/trader:0.1.0:bafybeib3lwx73675eic5o7vrx4zcklmoytyj3wflr27optarburw7hltji
 number_of_agents: 1
 deployment:
   agent:
@@ -108,7 +108,7 @@ models:
       reduce_factor: ${REDUCE_FACTOR:float:0.25}
       max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
       minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
-      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
       slippage: ${SLIPPAGE:float:0.01}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
@@ -152,7 +152,7 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
-      ignored_mechs: ${IGNORED_MECHS:list:[]}
+      ignored_mechs: ${IGNORED_MECHS:list:["0x33ca1e117c4254b2ee8cd7ef1621739431a37396"]}
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}

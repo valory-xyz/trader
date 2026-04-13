@@ -65,9 +65,9 @@ query StakingService($id: ID!) {
 }
 """
 
-# Bug A (ZD#919): the status helpers gate the "invalid" label on
-# answerFinalizedTimestamp. Keep this query in sync with
-# GET_PREDICTION_HISTORY_QUERY — both must select that field.
+# ZD#919: finalization/arbitration fields are NOT on the olas_agents
+# predict-omen subgraph; they are enriched from omen_subgraph via
+# GET_OMEN_FINALIZATION_QUERY after this query returns.
 GET_TRADER_AGENT_BETS_QUERY = """
 query GetOlasTraderAgentBets($id: ID!) {
     traderAgent(id: $id) {
@@ -77,7 +77,6 @@ query GetOlasTraderAgentBets($id: ID!) {
         fixedProductMarketMaker {
           id
           currentAnswer
-          answerFinalizedTimestamp
         }
       }
     }
@@ -114,9 +113,9 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
 }
 """
 
-# Bug A (ZD#919): the status helpers gate the "invalid" label on
-# answerFinalizedTimestamp. Keep this query in sync with
-# GET_TRADER_AGENT_BETS_QUERY — both must select that field.
+# ZD#919: finalization/arbitration fields are NOT on the olas_agents
+# predict-omen subgraph; they are enriched from omen_subgraph via
+# GET_OMEN_FINALIZATION_QUERY after this query returns.
 GET_PREDICTION_HISTORY_QUERY = """
 query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
   marketParticipants(
@@ -139,7 +138,6 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       outcomes
       currentAnswer
       currentAnswerTimestamp
-      answerFinalizedTimestamp
     }
     bets {
       id
@@ -487,6 +485,24 @@ query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
         }
       }
     }
+  }
+}
+"""
+
+# ZD#919: Reality.eth finalization and arbitration fields are not indexed
+# on the olas_agents predict-omen subgraph (its fpmm entity is
+# FixedProductMarketMakerCreation, which has no answerFinalizedTimestamp
+# or isPendingArbitration). They are indexed on omen_subgraph
+# (omen.subgraph.autonolas.tech). Query is keyed by a list of fpmm ids
+# collected from the olas_agents response; callers chunk at 1000 (the
+# Graph id_in hard cap) and merge results back into each bet's
+# fixedProductMarketMaker dict before status helpers read them.
+GET_OMEN_FINALIZATION_QUERY = """
+query GetOmenFinalization($ids: [ID!]!) {
+  fixedProductMarketMakers(where: { id_in: $ids }, first: 1000) {
+    id
+    answerFinalizedTimestamp
+    isPendingArbitration
   }
 }
 """

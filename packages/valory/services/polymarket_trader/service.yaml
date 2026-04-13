@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidrgr2iqamvpt6bpatk2a3w5uiiavn4pe7bcpzz2q5e5zkysta2s4
+agent: valory/trader:0.1.0:bafybeib3lwx73675eic5o7vrx4zcklmoytyj3wflr27optarburw7hltji
 number_of_agents: 1
 deployment:
   agent:
@@ -108,7 +108,7 @@ models:
       reduce_factor: ${REDUCE_FACTOR:float:0.25}
       max_filtering_retries: ${MAX_FILTERING_RETRIES:int:6}
       minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
-      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:5}
+      redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
       slippage: ${SLIPPAGE:float:0.01}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
