@@ -582,11 +582,14 @@ class FetchPerformanceSummaryBehaviour(
         for bet in bets_on_finalized_markets:
             market_answer = bet["fixedProductMarketMaker"]["currentAnswer"]
             bet_answer = bet.get("outcomeIndex")
-            if market_answer == INVALID_ANSWER_HEX or bet_answer is None:
+            if bet_answer is None:
                 continue
             correct = parse_current_answer(market_answer)
             if correct is None:
-                # Malformed currentAnswer — skip rather than crash.
+                # parse_current_answer returns None for the INVALID_ANSWER_HEX
+                # sentinel and for malformed hex. Both must be excluded from
+                # accuracy — invalid markets have no correct outcome, and
+                # malformed data would crash int(...) further down.
                 continue
             total_bets += 1
             if correct == int(bet_answer):

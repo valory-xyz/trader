@@ -957,7 +957,13 @@ class PredictionsFetcher(BasePredictionsFetcher):
         correct_answer = parse_current_answer(current_answer)
         if correct_answer is None:
             # Malformed currentAnswer (not None, not sentinel, not parseable).
-            # Treat as unresolved rather than crash.
+            # Treat as unresolved rather than crash. Log symmetrically with
+            # _get_prediction_status so a subgraph data-quality regression
+            # surfaces in both code paths, not just one.
+            self.logger.warning(
+                f"Malformed currentAnswer for bet {bet.get('id')!r}: "
+                f"{current_answer!r}"
+            )
             return 0.0, None
 
         # Losing bet

@@ -1690,6 +1690,32 @@ class TestCalculateBetNetProfit:
 
         assert result == (0.0, None)
 
+    def test_malformed_current_answer_logs_warning(self) -> None:
+        """Log a warning on malformed currentAnswer (symmetric observability).
+
+        ``_calculate_bet_net_profit`` must log a warning on malformed
+        ``currentAnswer``, matching ``_get_prediction_status``'s behaviour.
+        Without this, a subgraph data-quality regression would surface
+        in one helper and not the other.
+        """
+        fetcher = _make_fetcher()
+        ctx = {
+            "current_answer": "0xZZ",
+            "answer_finalized_ts": "1700000000",
+            "total_payout": 2.0,
+            "total_traded": 1.0,
+            "winning_total_amount": 1.0,
+        }
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            fetcher._calculate_bet_net_profit(
+                {"id": "bet_1", "outcomeIndex": 0}, ctx, 1.0
+            )
+
+        assert fetcher.logger.warning.called, (
+            "_calculate_bet_net_profit must log a warning on malformed "
+            "currentAnswer so data-quality regressions are diagnosable"
+        )
+
     def test_losing_bet(self) -> None:
         """Test a losing bet."""
         fetcher = _make_fetcher()
