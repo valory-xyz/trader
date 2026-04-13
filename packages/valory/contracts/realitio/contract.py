@@ -135,6 +135,32 @@ class RealitioContract(Contract):
         return dict(finalized=is_finalized)
 
     @classmethod
+    def get_best_answer(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+    ) -> JSONLike:
+        """Read ``getBestAnswer(questionId)`` for a question."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        best_answer_bytes = contract_instance.functions.getBestAnswer(
+            question_id
+        ).call()
+        return dict(best_answer="0x" + best_answer_bytes.hex())
+
+    @classmethod
+    def get_bond(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        question_id: bytes,
+    ) -> JSONLike:
+        """Read ``getBond(questionId)`` for a question."""
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        bond = contract_instance.functions.getBond(question_id).call()
+        return dict(bond=bond)
+
+    @classmethod
     def get_claim_params(
         cls,
         ledger_api: LedgerApi,
