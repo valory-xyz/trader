@@ -21,6 +21,23 @@
 
 # pylint: skip-file
 
+import pytest
+
+from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradingRound
+from packages.valory.skills.decision_maker_abci.states.final_states import (
+    FinishedPostBetUpdateRound,
+)
+from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
+    PostBetUpdateRound,
+)
+from packages.valory.skills.decision_maker_abci.states.redeem_router import (
+    RedeemRouterRound,
+)
+from packages.valory.skills.market_manager_abci.rounds import (
+    FinishedMarketManagerRound,
+    FinishedPolymarketFetchMarketRound,
+)
+from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
     Event,
@@ -31,8 +48,65 @@ from packages.valory.skills.trader_abci.composition import (
     abci_app_transition_mapping,
     termination_config,
 )
+from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    FinishedBetPlacementTxRound,
+    FinishedRedeemingTxRound,
+    FinishedSellOutcomeTokensTxRound,
+)
 
 EXPECTED_TRANSITION_MAPPING_LENGTH = 46
+
+# Transitions introduced or rewired by the always-redeem-first /
+# `PostBetUpdateRound` FSM restructure (PR #904). Each pair must hold
+# exactly; a typo, swap, or accidental retarget will trip the matching
+# parametrised assertion. The count tripwire above stays in place to
+# catch additions/removals that preserve every listed edge.
+RESTRUCTURE_TRANSITIONS = {
+    # Always-redeem-first: market fetch → redeem router, so any unclaimed
+    # winnings are redeemed before the next mech/bet cycle.
+    FinishedMarketManagerRound: RedeemRouterRound,
+    FinishedPolymarketFetchMarketRound: RedeemRouterRound,
+    # Redeem terminals now feed CheckStopTrading (previously the other
+    # way around).
+    FinishedRedeemingTxRound: CheckStopTradingRound,
+    # Omen on-chain bet / sell settle into the new PostBetUpdateRound
+    # which runs the local-state bookkeeping that legacy RedeemBehaviour
+    # used to do as a post-tx side effect.
+    FinishedBetPlacementTxRound: PostBetUpdateRound,
+    FinishedSellOutcomeTokensTxRound: PostBetUpdateRound,
+    FinishedPostBetUpdateRound: CallCheckpointRound,
+}
+
+
+@pytest.mark.parametrize(
+    "src,dst",
+    list(RESTRUCTURE_TRANSITIONS.items()),
+    ids=lambda cls: getattr(cls, "__name__", str(cls)),
+)
+def test_restructure_transition(src: type, dst: type) -> None:
+    """Each PR-#904 transition must resolve to its exact target round."""
+    assert src in abci_app_transition_mapping, f"{src.__name__} missing from mapping"
+    assert abci_app_transition_mapping[src] is dst, (
+        f"{src.__name__} -> {abci_app_transition_mapping[src].__name__}, "
+        f"expected {dst.__name__}"
+    )
+
+
+def test_only_expected_edges_enter_post_bet_update() -> None:
+    """Exactly the Omen bet / sell tx-settlement terminals feed PostBetUpdateRound.
+
+    An accidental additional route into PostBetUpdateRound would let
+    non-bet/sell flows trigger the post-bet bookkeeping helpers.
+    """
+    edges_into = {
+        src
+        for src, dst in abci_app_transition_mapping.items()
+        if dst is PostBetUpdateRound
+    }
+    assert edges_into == {
+        FinishedBetPlacementTxRound,
+        FinishedSellOutcomeTokensTxRound,
+    }
 
 
 def test_abci_app_transition_mapping_type() -> None:

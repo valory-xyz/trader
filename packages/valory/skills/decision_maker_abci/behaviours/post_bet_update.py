@@ -96,11 +96,33 @@ class PostBetUpdateBehaviour(DecisionMakerBaseBehaviour):
             # `invested_amount` based on stale `tx_submitter` state.
             did_transact = self.synchronized_data.did_transact
             tx_submitter = self.synchronized_data.tx_submitter if did_transact else None
-            if did_transact and tx_submitter == BetPlacementRound.auto_round_id():
+            # Idempotency guard: `PostBetUpdateRound` self-loops on
+            # NO_MAJORITY / ROUND_TIMEOUT / NONE. On retry, synced data is
+            # unchanged so a naive re-run would re-mutate local bet state
+            # (queue_status advances twice, invested_amount double-bumps,
+            # processed_timestamp rewrites). Key the guard on
+            # `final_tx_hash` so a new period with a fresh settled tx
+            # naturally re-applies bookkeeping.
+            settled_tx_hash = (
+                self.synchronized_data.final_tx_hash if did_transact else None
+            )
+            already_applied = (
+                settled_tx_hash is not None
+                and self.context.state.post_bet_update_applied_tx_hash
+                == settled_tx_hash
+            )
+            if already_applied:
+                self.context.logger.info(
+                    "PostBetUpdateRound retry for tx_hash=%s; "
+                    "bookkeeping already applied in this period; skipping.",
+                    settled_tx_hash,
+                )
+            elif did_transact and tx_submitter == BetPlacementRound.auto_round_id():
                 self.context.logger.info(
                     "Running post-bet bookkeeping after BetPlacementRound."
                 )
                 self.update_bet_transaction_information()
+                self.context.state.post_bet_update_applied_tx_hash = settled_tx_hash
             elif (
                 did_transact and tx_submitter == SellOutcomeTokensRound.auto_round_id()
             ):
@@ -108,6 +130,7 @@ class PostBetUpdateBehaviour(DecisionMakerBaseBehaviour):
                     "Running post-sell bookkeeping after SellOutcomeTokensRound."
                 )
                 self.update_sell_transaction_information()
+                self.context.state.post_bet_update_applied_tx_hash = settled_tx_hash
             elif not did_transact:
                 self.context.logger.info(
                     "PostBetUpdateRound reached without a fresh successful tx "
