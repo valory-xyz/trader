@@ -34,12 +34,17 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_pr
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
+    GET_OMEN_FINALIZATION_QUERY,
     GET_PREDICTION_HISTORY_QUERY,
     GET_SPECIFIC_MARKET_BETS_QUERY,
 )
 
 # Constants
 WEI_TO_NATIVE = 10**18
+# The Graph's `id_in` filter caps at 1000 entries per call. Batched
+# finalization enrichment chunks at this limit to avoid silent truncation
+# for agents with large histories.
+OMEN_ID_IN_CHUNK = 1000
 INVALID_ANSWER_HEX = (
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 )
@@ -156,6 +161,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
         self.logger = logger
         self.predict_url = context.olas_agents_subgraph.url
         self.mech_url = context.olas_mech_subgraph.url
+        self.omen_url = context.omen_subgraph.url
 
     def _now(self) -> int:
         """Return the current wall-clock time as a Unix timestamp.
@@ -168,6 +174,96 @@ class PredictionsFetcher(BasePredictionsFetcher):
         :return: current Unix timestamp in seconds.
         """
         return now_ts()
+
+    def _fetch_finalization_by_fpmm_ids(
+        self, fpmm_ids: List[str]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Fetch Reality.eth finalization data from omen_subgraph by id.
+
+        Chunks at :data:`OMEN_ID_IN_CHUNK` because The Graph's ``id_in``
+        filter caps at 1000 entries per call. Failures (network, non-200,
+        malformed JSON) degrade silently to an empty result for the
+        affected chunk; callers downstream treat missing enrichment as
+        "not finalized" and the bet stays pending — same defensive shape
+        as the existing subgraph paths.
+
+        :param fpmm_ids: List of FPMM contract addresses (lowercased hex).
+        :return: ``{fpmm_id: {answerFinalizedTimestamp, isPendingArbitration, ...}}``.
+        """
+        if not fpmm_ids:
+            return {}
+
+        merged: Dict[str, Dict[str, Any]] = {}
+        for i in range(0, len(fpmm_ids), OMEN_ID_IN_CHUNK):
+            batch = fpmm_ids[i : i + OMEN_ID_IN_CHUNK]
+            try:
+                response = requests.post(
+                    self.omen_url,
+                    json={
+                        "query": GET_OMEN_FINALIZATION_QUERY,
+                        "variables": {"ids": batch},
+                    },
+                    headers={"Content-Type": "application/json"},
+                    timeout=30,
+                )
+            except Exception as exc:  # noqa: BLE001 - degrade on any error
+                self.logger.warning(f"Omen finalization fetch errored: {exc}")
+                continue
+
+            if response.status_code != 200:
+                self.logger.warning(
+                    f"Omen finalization fetch failed with status "
+                    f"{response.status_code}; chunk skipped"
+                )
+                continue
+
+            try:
+                payload = response.json() or {}
+            except ValueError as exc:
+                self.logger.warning(f"Omen finalization response not JSON: {exc}")
+                continue
+
+            data = payload.get("data") or {}
+            for row in data.get("fixedProductMarketMakers") or []:
+                fpmm_id = row.get("id")
+                if fpmm_id is not None:
+                    merged[fpmm_id] = row
+
+        return merged
+
+    def _enrich_bets_with_finalization(self, bets: List[Dict]) -> None:
+        """Mutate each bet's fpmm dict in place with omen finalization fields.
+
+        Bets whose ``fixedProductMarketMaker`` is missing or has no ``id``
+        are left untouched. Bets whose id is not returned by the omen
+        query (e.g. indexer skew) get safe defaults
+        (``answerFinalizedTimestamp = None``,
+        ``isPendingArbitration = False``) which downstream gate logic
+        treats as "not finalized" → bet stays pending.
+
+        :param bets: List of bet dicts as returned by the olas_agents
+            queries; each must have a ``fixedProductMarketMaker`` key.
+        """
+        ids = list(
+            {
+                fpmm_id
+                for fpmm_id in (
+                    (bet.get("fixedProductMarketMaker") or {}).get("id") for bet in bets
+                )
+                if fpmm_id
+            }
+        )
+        if not ids:
+            return
+
+        enrichment = self._fetch_finalization_by_fpmm_ids(ids)
+        for bet in bets:
+            fpmm = bet.get("fixedProductMarketMaker")
+            if not fpmm:
+                continue
+            row = enrichment.get(fpmm.get("id"), {})
+            fpmm["answerFinalizedTimestamp"] = row.get("answerFinalizedTimestamp")
+            fpmm["isPendingArbitration"] = bool(row.get("isPendingArbitration", False))
 
     def fetch_predictions(
         self,
@@ -196,6 +292,12 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         if not bets:
             return {"total_predictions": total_bets, "items": []}
+
+        # ZD#919: enrich each bet's fpmm dict with finalization fields from
+        # omen_subgraph BEFORE classification helpers run. The olas_agents
+        # subgraph does not expose answerFinalizedTimestamp; without this
+        # call every bet would be silently classified as pending.
+        self._enrich_bets_with_finalization(bets)
 
         items = self._format_predictions(bets, safe_address, status_filter)
 
@@ -624,6 +726,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
             if not bets:
                 return None
 
+            # ZD#919: enrich with finalization fields from omen_subgraph
+            # before any status helper runs. Single-bet path always
+            # produces a one-element id list (deduplicated by the helper).
+            self._enrich_bets_with_finalization(bets)
+
             # Pick the requested bet
             bet = next((b for b in bets if b.get("id") == bet_id), None)
             if bet is None:
@@ -733,9 +840,12 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 {
                     "current_answer": fpmm.get("currentAnswer"),
                     "current_answer_ts": fpmm.get("currentAnswerTimestamp"),
-                    # Bug A (ZD#919): needed by _calculate_bet_net_profit to
-                    # gate the "invalid" refund path on finalization.
+                    # ZD#919: finalization & arbitration flags are populated
+                    # via _enrich_bets_with_finalization (omen_subgraph) before
+                    # this method runs. Both feed the gates in
+                    # _calculate_bet_net_profit and _get_prediction_status.
                     "answer_finalized_ts": fpmm.get("answerFinalizedTimestamp"),
+                    "is_pending_arbitration": bool(fpmm.get("isPendingArbitration")),
                     "outcomes": fpmm.get("outcomes") or [],
                     "participant": (fpmm.get("participants") or [None])[0],
                     "total_payout": None,
@@ -823,6 +933,12 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if current_answer is None:
             return 0.0, None
 
+        # ZD#919: a market under Kleros arbitration is provisional until the
+        # arbitrator submits a final answer, which can take days or weeks.
+        # Treat as unfinalized regardless of the on-chain currentAnswer.
+        if market_ctx.get("is_pending_arbitration"):
+            return 0.0, None
+
         # Bug A (ZD#919): Reality.eth answers can flip during the dispute
         # window, so any answer (including the invalid sentinel) must wait
         # for finalization before becoming terminal. parse_timestamp
@@ -870,6 +986,14 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Market not resolved
         if current_answer is None:
+            return BetStatus.PENDING.value
+
+        # ZD#919: a Kleros arbitration request suspends the 24h finalization
+        # clock and nulls answerFinalizedTimestamp on the omen subgraph
+        # (handleArbitrationRequest in Protofire's mapping). Treat the
+        # market as pending regardless of currentAnswer for as long as
+        # arbitration is active — which can be days or weeks.
+        if fpmm.get("isPendingArbitration"):
             return BetStatus.PENDING.value
 
         # Bug A (ZD#919): Reality.eth currentAnswer can flip during the

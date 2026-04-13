@@ -1012,6 +1012,45 @@ class TestCalculateOmenAccuracy:
         assert result is None
         assert mock_logger.warning.call_count == 0
 
+    def test_arbitration_bets_excluded_from_accuracy(self) -> None:
+        """ZD#919: arbitration-pending bets must not contribute to accuracy.
+
+        Falsifiability: one arbitration-pending bet (would-be-correct) +
+        one ordinary correct bet. Without the gate, denominator=2 and
+        numerator=2 → 100% (correct by accident). With the gate, the
+        arbitration bet is filtered → denominator=1, numerator=1 → 100%
+        but for a different reason. To make this falsifiable in BOTH
+        directions, use one arbitration-pending WRONG bet plus one
+        finalized CORRECT bet — without the gate, accuracy = 50%; with
+        the gate, accuracy = 100%.
+        """
+        b = self._make()
+        bets = [
+            # Would be a wrong bet if we counted it — but it's pending
+            # arbitration, so it must be excluded.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                    "isPendingArbitration": True,
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                    "isPendingArbitration": False,
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # Arbitration bet excluded → 1 correct out of 1 valid = 100%.
+        # Without the gate this would be 50% (1/2).
+        assert result == 100.0
+
 
 # ---------------------------------------------------------------------------
 # _calculate_polymarket_accuracy
@@ -1198,6 +1237,55 @@ class TestGetPredictionAccuracy:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 100.0
+
+    def test_omen_platform_invokes_enrichment_before_accuracy(self) -> None:
+        """ZD#919 wiring: enrichment runs before _calculate_omen_accuracy.
+
+        ``_get_prediction_accuracy`` must enrich Omen bets with
+        omen_subgraph finalization data before
+        ``_calculate_omen_accuracy`` runs. Removing the enrichment call
+        would cause every Omen bet to be silently filtered out as
+        unfinalized.
+        """
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            PredictionsFetcher,
+        )
+
+        b = self._make()
+        ctx, params, synced_data, _ = _mock_context(is_polymarket=False)
+        bets_data = {
+            "bets": [
+                {
+                    "fixedProductMarketMaker": {
+                        "id": "0xfpmm1",
+                        "currentAnswer": "0x0",
+                        "answerFinalizedTimestamp": "1000000000",
+                    },
+                    "outcomeIndex": "0",
+                }
+            ]
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)
+            ),
+            patch.object(
+                PredictionsFetcher,
+                "_enrich_bets_with_finalization",
+            ) as mock_enrich,
+        ):
+            gen = b._get_prediction_accuracy()
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+
+        mock_enrich.assert_called_once()
+        bets_arg = mock_enrich.call_args.args[0]
+        assert isinstance(bets_arg, list)
+        assert bets_arg[0]["fixedProductMarketMaker"]["id"] == "0xfpmm1"
 
     def test_polymarket_platform(self) -> None:
         """Delegates to _calculate_polymarket_accuracy on Polymarket."""

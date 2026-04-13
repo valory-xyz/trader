@@ -513,8 +513,15 @@ class FetchPerformanceSummaryBehaviour(
         # Platform-specific accuracy calculation
         if self.params.is_running_on_polymarket:
             return self._calculate_polymarket_accuracy(agent_bets_data)
-        else:
-            return self._calculate_omen_accuracy(agent_bets_data)
+
+        # ZD#919: enrich Omen bets with Reality.eth finalization data from
+        # omen_subgraph before computing accuracy. The olas_agents subgraph
+        # does not expose answerFinalizedTimestamp; without enrichment
+        # every bet would be filtered out as unfinalized and accuracy
+        # would silently disappear from the UI.
+        fetcher = PredictionsFetcher(self.context, self.context.logger)
+        fetcher._enrich_bets_with_finalization(agent_bets_data["bets"])
+        return self._calculate_omen_accuracy(agent_bets_data)
 
     def _now(self) -> int:
         """Return the current wall-clock time as a Unix timestamp.
@@ -546,6 +553,11 @@ class FetchPerformanceSummaryBehaviour(
             if fpmm.get("currentAnswer") is None:
                 continue
             bets_with_answer += 1
+            # ZD#919: Kleros arbitration suspends the 24h clock; the answer
+            # is provisional regardless of currentAnswer / finalization
+            # timestamp. Exclude from accuracy until arbitration resolves.
+            if fpmm.get("isPendingArbitration"):
+                continue
             finalized_ts = parse_timestamp(fpmm.get("answerFinalizedTimestamp"))
             if finalized_ts is None or finalized_ts > now:
                 continue
