@@ -117,6 +117,17 @@ class PostBetUpdateBehaviour(DecisionMakerBaseBehaviour):
                     "bookkeeping already applied in this period; skipping.",
                     settled_tx_hash,
                 )
+            elif did_transact and settled_tx_hash is None:
+                # `PostTxSettlementRound.end_block` logs a warning and still
+                # emits `BET_PLACEMENT_DONE` / `SELL_OUTCOME_TOKENS_DONE`
+                # when `final_tx_hash` is None. Skip bookkeeping here rather
+                # than applying mutations we cannot idempotency-key, which
+                # would double-mutate on a self-loop retry.
+                self.context.logger.warning(
+                    "PostBetUpdateRound reached with did_transact=True but "
+                    "final_tx_hash is None; skipping bookkeeping to avoid "
+                    "non-idempotent mutations."
+                )
             elif did_transact and tx_submitter == BetPlacementRound.auto_round_id():
                 self.context.logger.info(
                     "Running post-bet bookkeeping after BetPlacementRound."
