@@ -220,6 +220,14 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.benchmarking_mech_calls: int = 0
         # whether the mech response round timed out
         self.mech_timed_out: bool = False
+        # final_tx_hash of the most recent tx whose post-bet bookkeeping
+        # was already applied by `PostBetUpdateBehaviour`. Guards against
+        # double-mutation when `PostBetUpdateRound` self-loops on
+        # NO_MAJORITY / ROUND_TIMEOUT: the local bet mutations
+        # (queue_status, invested_amount, processed_timestamp) are not
+        # consensus-replicated, so re-running the behaviour would advance
+        # them twice.
+        self.post_bet_update_applied_tx_hash: Optional[str] = None
 
     @property
     def mock_question_id(self) -> Any:

@@ -1,0 +1,351 @@
+# -*- coding: utf-8 -*-
+# ------------------------------------------------------------------------------
+#
+#   Copyright 2026 Valory AG
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+# ------------------------------------------------------------------------------
+
+"""Tests for PostBetUpdateBehaviour.
+
+This behaviour is the post-tx-settlement hook for Omen `BetPlacementRound`
+and `SellOutcomeTokensRound`. It runs the local-state bookkeeping that the
+legacy design used to do as a side effect of `RedeemBehaviour.async_act`,
+which is no longer reachable post-bet under the always-redeem-first FSM
+restructure. The behaviour reads `tx_submitter` from synchronized data and
+dispatches to either `update_bet_transaction_information` or
+`update_sell_transaction_information` accordingly, then submits a payload
+to advance the round.
+"""
+
+from unittest.mock import MagicMock, PropertyMock, patch
+
+from packages.valory.skills.decision_maker_abci.behaviours.post_bet_update import (
+    PostBetUpdateBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.payloads import PostBetUpdatePayload
+from packages.valory.skills.decision_maker_abci.states.bet_placement import (
+    BetPlacementRound,
+)
+from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
+    SellOutcomeTokensRound,
+)
+
+
+def _make_behaviour() -> PostBetUpdateBehaviour:
+    """Return a PostBetUpdateBehaviour with mocked dependencies."""
+    behaviour = object.__new__(PostBetUpdateBehaviour)
+    context = MagicMock()
+    context.agent_address = "test_agent"
+    behaviour.__dict__["_context"] = context
+    return behaviour
+
+
+def _exhaust(gen) -> None:  # type: ignore[no-untyped-def]
+    """Exhaust a generator, ignoring StopIteration."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration:
+        pass
+
+
+class TestPostBetUpdateBehaviour:
+    """Tests for PostBetUpdateBehaviour."""
+
+    def test_async_act_with_bet_placement_calls_update_bet(self) -> None:
+        """When tx_submitter is BetPlacementRound, async_act should call update_bet_transaction_information and emit a PostBetUpdatePayload."""
+        behaviour = _make_behaviour()
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = True
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_called_once_with()
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 1
+        payload = payloads_sent[0]
+        assert isinstance(payload, PostBetUpdatePayload)
+        assert payload.sender == "test_agent"
+        assert payload.vote is True
+
+    def test_async_act_with_sell_outcome_calls_update_sell(self) -> None:
+        """When tx_submitter is SellOutcomeTokensRound, async_act should call update_sell_transaction_information and emit a PostBetUpdatePayload."""
+        behaviour = _make_behaviour()
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = SellOutcomeTokensRound.auto_round_id()
+        mock_synced.did_transact = True
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_sell_calls.assert_called_once_with()
+        update_bet_calls.assert_not_called()
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], PostBetUpdatePayload)
+
+    def test_async_act_with_unknown_submitter_skips_bookkeeping(self) -> None:
+        """When tx_submitter is some other round (defensive), async_act should not call either bookkeeping helper but still emit a payload to advance the round."""
+        behaviour = _make_behaviour()
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = "some_other_round"
+        mock_synced.did_transact = True
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_not_called()
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], PostBetUpdatePayload)
+
+    def test_retry_with_same_tx_hash_does_not_reapply_bookkeeping(self) -> None:
+        """Guard against re-applying bookkeeping on PostBetUpdateRound retries.
+
+        PostBetUpdateRound self-loops on NO_MAJORITY/ROUND_TIMEOUT (rounds.py:456-461).
+
+        On retry, synchronized_data is unchanged, so without a guard
+        async_act would re-invoke update_bet_transaction_information and
+        double-mutate local bet state (queue_status advances twice,
+        invested_amount double-bumps). The behaviour must track the
+        already-applied tx_hash in shared state and skip re-application.
+        """
+        behaviour = _make_behaviour()
+        # Simulate a clean shared-state slot (MagicMock would otherwise
+        # return a truthy sentinel that happens to mis-compare).
+        behaviour.context.state.post_bet_update_applied_tx_hash = None
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = True
+        mock_synced.final_tx_hash = "0xdeadbeef"
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_called_once_with()
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 2
+
+    def test_new_tx_hash_reapplies_bookkeeping(self) -> None:
+        """A later period with a fresh final_tx_hash must re-apply bookkeeping.
+
+        The idempotency guard is keyed on final_tx_hash; a different tx
+        indicates a new settled bet whose bookkeeping has not yet run.
+        """
+        behaviour = _make_behaviour()
+        behaviour.context.state.post_bet_update_applied_tx_hash = None
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = True
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            mock_synced.final_tx_hash = "0xfirst"
+            _exhaust(behaviour.async_act())
+            mock_synced.final_tx_hash = "0xsecond"
+            _exhaust(behaviour.async_act())
+
+        assert update_bet_calls.call_count == 2
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 2
+
+    def test_retry_with_same_tx_hash_does_not_reapply_sell_bookkeeping(self) -> None:
+        """Mirror of the bet-placement retry guard for sell-outcome-tokens."""
+        behaviour = _make_behaviour()
+        behaviour.context.state.post_bet_update_applied_tx_hash = None
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = SellOutcomeTokensRound.auto_round_id()
+        mock_synced.did_transact = True
+        mock_synced.final_tx_hash = "0xcafebabe"
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+            _exhaust(behaviour.async_act())
+
+        update_sell_calls.assert_called_once_with()
+        update_bet_calls.assert_not_called()
+        assert len(payloads_sent) == 2
+
+    def test_async_act_skips_bookkeeping_when_final_tx_hash_missing(self) -> None:
+        """When did_transact is True but final_tx_hash is None, async_act must skip bookkeeping.
+
+        `PostTxSettlementRound.end_block` currently logs a warning and still
+        emits `BET_PLACEMENT_DONE` / `SELL_OUTCOME_TOKENS_DONE` when
+        `final_tx_hash` is None, so this round can be reached with a null
+        hash. Without an explicit guard, bookkeeping would run with the
+        idempotency marker set to None, which a self-loop retry would then
+        re-run (None-keyed marker never compares equal).
+        """
+        behaviour = _make_behaviour()
+        behaviour.context.state.post_bet_update_applied_tx_hash = None
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = True
+        mock_synced.final_tx_hash = None
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_not_called()
+        update_sell_calls.assert_not_called()
+        assert behaviour.context.state.post_bet_update_applied_tx_hash is None
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], PostBetUpdatePayload)
+
+    def test_async_act_skips_bookkeeping_when_did_not_transact(self) -> None:
+        """When did_transact is False (e.g., a tendermint replay or restart that lands in PostBetUpdateRound without a fresh successful tx in the current period), async_act must not re-mutate the bet's queue_status / processed_timestamp / invested_amount based on stale tx_submitter state. It should still emit a payload so the FSM round can advance."""
+        behaviour = _make_behaviour()
+
+        payloads_sent: list = []
+        update_bet_calls = MagicMock()
+        update_sell_calls = MagicMock()
+
+        def mock_finish(payload):  # type: ignore[no-untyped-def]
+            payloads_sent.append(payload)
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = update_bet_calls  # type: ignore[method-assign]
+        behaviour.update_sell_transaction_information = update_sell_calls  # type: ignore[method-assign]
+
+        mock_synced = MagicMock()
+        # tx_submitter looks legitimate but did_transact is False — this is
+        # the stale-state scenario we are guarding against.
+        mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+        mock_synced.did_transact = False
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            _exhaust(behaviour.async_act())
+
+        update_bet_calls.assert_not_called()
+        update_sell_calls.assert_not_called()
+        assert len(payloads_sent) == 1
+        assert isinstance(payloads_sent[0], PostBetUpdatePayload)

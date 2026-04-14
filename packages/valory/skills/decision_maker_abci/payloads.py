@@ -158,6 +158,11 @@ class RedeemRouterPayload(VotingPayload):
 
 
 @dataclass(frozen=True)
+class PostBetUpdatePayload(VotingPayload):
+    """Represents a payload for the post-bet bookkeeping round."""
+
+
+@dataclass(frozen=True)
 class PolymarketRedeemPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for redeeming."""
 

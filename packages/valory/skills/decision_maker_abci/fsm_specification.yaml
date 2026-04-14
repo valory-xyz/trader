@@ -36,8 +36,10 @@ final_states:
 - BenchmarkingModeDisabledRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -51,6 +53,7 @@ start_states:
 - DecisionRequestRound
 - HandleFailedTxRound
 - PolymarketPostSetApprovalRound
+- PostBetUpdateRound
 - RandomnessRound
 - RedeemRouterRound
 states:
@@ -64,8 +67,10 @@ states:
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -77,6 +82,7 @@ states:
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PostBetUpdateRound
 - RandomnessRound
 - RedeemRound
 - RedeemRouterRound
@@ -96,7 +102,7 @@ transition_func:
     (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
-    (BlacklistingRound, DONE): RedeemRouterRound
+    (BlacklistingRound, DONE): FinishedWithoutDecisionRound
     (BlacklistingRound, FETCH_ERROR): ImpossibleRound
     (BlacklistingRound, MOCK_TX): FinishedWithoutDecisionRound
     (BlacklistingRound, NONE): ImpossibleRound
@@ -126,12 +132,12 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
-    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
-    (PolymarketBetPlacementRound, DONE): RedeemRouterRound
+    (PolymarketBetPlacementRound, DONE): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
-    (PolymarketBetPlacementRound, MOCK_TX): RedeemRouterRound
+    (PolymarketBetPlacementRound, MOCK_TX): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, NONE): ImpossibleRound
     (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound
@@ -159,6 +165,10 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PostBetUpdateRound, DONE): FinishedPostBetUpdateRound
+    (PostBetUpdateRound, NONE): PostBetUpdateRound
+    (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
+    (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
