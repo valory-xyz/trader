@@ -639,11 +639,17 @@ class TestCalculateOmenAccuracy:
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "1",
             },
         ]
@@ -655,7 +661,10 @@ class TestCalculateOmenAccuracy:
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
         ]
@@ -663,15 +672,21 @@ class TestCalculateOmenAccuracy:
         assert result == 0.0
 
     def test_invalid_answer_hex_excluded_from_denominator(self) -> None:
-        """Bets with INVALID_ANSWER_HEX are excluded from both numerator and denominator."""
+        """Finalized invalid bets are excluded from both numerator and denominator."""
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": INVALID_ANSWER_HEX,
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "1",
             },
         ]
@@ -684,7 +699,10 @@ class TestCalculateOmenAccuracy:
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": None,
             },
         ]
@@ -697,11 +715,17 @@ class TestCalculateOmenAccuracy:
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": INVALID_ANSWER_HEX,
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": None,
             },
         ]
@@ -712,24 +736,36 @@ class TestCalculateOmenAccuracy:
         """Invalid bets don't dilute accuracy of valid bets."""
         b = self._make()
         bets = [
-            # Invalid market
+            # Invalid market (finalized)
             {
-                "fixedProductMarketMaker": {"currentAnswer": INVALID_ANSWER_HEX},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": INVALID_ANSWER_HEX,
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             # Missing outcomeIndex
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": None,
             },
             # Valid correct bet
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "1",
             },
             # Valid wrong bet
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
         ]
@@ -737,20 +773,122 @@ class TestCalculateOmenAccuracy:
         # 2 invalid excluded, 1 correct + 1 wrong = 50%
         assert result == 50.0
 
+    def test_pending_finalization_excluded_from_denominator(self) -> None:
+        """Bug A: bets in the dispute window are excluded from accuracy.
+
+        A non-sentinel currentAnswer with answerFinalizedTimestamp in the
+        future should not affect the denominator — the answer can still
+        flip before the window closes.
+        """
+        b = self._make()
+        bets = [
+            # Pending finalization — should be excluded
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "9999999999",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "1",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # Pending excluded, 1 correct of 1 finalized = 100%
+        assert result == 100.0
+
+    def test_malformed_current_answer_skipped(self) -> None:
+        """Bug A §4.4: a malformed currentAnswer is skipped, not crashed on.
+
+        Pre-fix this would raise ValueError from int(market_answer, 0).
+        Post-fix it is skipped via _parse_current_answer returning None.
+        Falsifiability: the malformed bet's outcome happens to match its
+        own outcomeIndex, so under buggy code (which would crash), or
+        under a non-defensive fix (which would count it), the result
+        differs from the post-fix value of 100% (1 correct of 1 valid).
+        """
+        b = self._make()
+        bets = [
+            # Malformed currentAnswer — must be skipped
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0xZZ",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "1",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # Malformed skipped, 1 correct of 1 valid = 100%
+        assert result == 100.0
+
+    def test_missing_finalization_field_excluded(self) -> None:
+        """Bug A: bets without answerFinalizedTimestamp field are excluded.
+
+        Defensive case: subgraph schema drift or indexer lag could omit
+        the field. Treat as pending rather than crashing or guessing.
+
+        Falsifiability: the bet without the field is wrong-side, so the
+        buggy pre-fix code computes 50% (1 correct of 2). The fix excludes
+        it and computes 100% (1 correct of 1).
+        """
+        b = self._make()
+        bets = [
+            # No finalization field, wrong outcome — excluded by fix
+            {
+                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # Missing-field wrong bet excluded, 1 correct of 1 finalized = 100%
+        assert result == 100.0
+
     def test_mixed_results(self) -> None:
         """Returns correct percentage for mixed results."""
         b = self._make()
         bets = [
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "0",
             },
             {
-                "fixedProductMarketMaker": {"currentAnswer": "0x1"},
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
                 "outcomeIndex": "1",
             },
             {
@@ -761,6 +899,157 @@ class TestCalculateOmenAccuracy:
         # 3 resolved, 2 correct => 66.67%  # type: ignore[operator]
         result = b._calculate_omen_accuracy({"bets": bets})
         assert abs(result - 66.66666666666667) < 0.01  # type: ignore[operator]
+
+    def test_zero_finalization_timestamp_excluded(self) -> None:
+        """A "0" finalization timestamp must be treated as unfinalized.
+
+        Bug A post-review (comment #1b): the subgraph emits ``"0"`` as
+        an 'unset' sentinel. Falsifiability: the ``"0"``-ts bet is
+        wrong-side. Under the old gate ``int(ts) > now`` it would slip
+        through (0 > now is False) and be counted, yielding 50%. The
+        ``parse_timestamp`` fix excludes it, yielding 100%.
+        """
+        b = self._make()
+        bets = [
+            # Unset finalization ('0') + wrong outcome — must be excluded.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "0",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result == 100.0
+
+    def test_malformed_finalization_timestamp_excluded(self) -> None:
+        """Malformed finalization ts must not crash.
+
+        Bug A post-review (comment #1a): the bet degrades to 'pending'
+        (excluded from accuracy) rather than raising ValueError.
+        """
+        b = self._make()
+        bets = [
+            # Malformed ts — must be excluded, not raise ValueError.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "not-a-timestamp",
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        assert result == 100.0
+
+    def test_warns_when_resolved_bets_have_no_finalization(self) -> None:
+        """Warn when resolved bets have no finalization timestamp.
+
+        PR #903 comment #2: silent behaviour (returning None with no log) would hide a
+        future subgraph regression where ``answerFinalizedTimestamp``
+        stops populating. The warning only fires when markets *are*
+        resolved — all-unresolved is the expected pre-resolution state
+        and must not be warned about.
+
+        Falsifiability: patch the logger, call with one resolved-but-
+        pending bet, assert warning was invoked exactly once.
+        """
+        b = self._make()
+        mock_context = MagicMock()
+        mock_logger = MagicMock()
+        mock_context.logger = mock_logger
+        b._context = mock_context  # type: ignore[attr-defined]
+        bets = [
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "9999999999",
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+
+        result = b._calculate_omen_accuracy({"bets": bets})
+
+        assert result is None
+        assert mock_logger.warning.call_count == 1
+
+    def test_no_warning_when_all_bets_unresolved(self) -> None:
+        """Do not warn when no bets are resolved yet.
+
+        That is the expected pre-resolution state, not a regression.
+        Falsifiability: an unconditional warning on
+        ``bets_on_finalized_markets`` empty would fail this.
+        """
+        b = self._make()
+        mock_context = MagicMock()
+        mock_logger = MagicMock()
+        mock_context.logger = mock_logger
+        b._context = mock_context  # type: ignore[attr-defined]
+        bets = [
+            {"fixedProductMarketMaker": {"currentAnswer": None}},
+        ]
+
+        result = b._calculate_omen_accuracy({"bets": bets})
+
+        assert result is None
+        assert mock_logger.warning.call_count == 0
+
+    def test_arbitration_bets_excluded_from_accuracy(self) -> None:
+        """ZD#919: arbitration-pending bets must not contribute to accuracy.
+
+        Falsifiability: one arbitration-pending bet (would-be-correct) +
+        one ordinary correct bet. Without the gate, denominator=2 and
+        numerator=2 → 100% (correct by accident). With the gate, the
+        arbitration bet is filtered → denominator=1, numerator=1 → 100%
+        but for a different reason. To make this falsifiable in BOTH
+        directions, use one arbitration-pending WRONG bet plus one
+        finalized CORRECT bet — without the gate, accuracy = 50%; with
+        the gate, accuracy = 100%.
+        """
+        b = self._make()
+        bets = [
+            # Would be a wrong bet if we counted it — but it's pending
+            # arbitration, so it must be excluded.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x1",
+                    "answerFinalizedTimestamp": "1000000000",
+                    "isPendingArbitration": True,
+                },
+                "outcomeIndex": "0",
+            },
+            # Finalized correct bet.
+            {
+                "fixedProductMarketMaker": {
+                    "currentAnswer": "0x0",
+                    "answerFinalizedTimestamp": "1000000000",
+                    "isPendingArbitration": False,
+                },
+                "outcomeIndex": "0",
+            },
+        ]
+        result = b._calculate_omen_accuracy({"bets": bets})
+        # Arbitration bet excluded → 1 correct out of 1 valid = 100%.
+        # Without the gate this would be 50% (1/2).
+        assert result == 100.0
 
 
 # ---------------------------------------------------------------------------
@@ -928,7 +1217,10 @@ class TestGetPredictionAccuracy:
         bets_data = {
             "bets": [
                 {
-                    "fixedProductMarketMaker": {"currentAnswer": "0x0"},
+                    "fixedProductMarketMaker": {
+                        "currentAnswer": "0x0",
+                        "answerFinalizedTimestamp": "1000000000",
+                    },
                     "outcomeIndex": "0",
                 }
             ]
@@ -945,6 +1237,55 @@ class TestGetPredictionAccuracy:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 100.0
+
+    def test_omen_platform_invokes_enrichment_before_accuracy(self) -> None:
+        """ZD#919 wiring: enrichment runs before _calculate_omen_accuracy.
+
+        ``_get_prediction_accuracy`` must enrich Omen bets with
+        omen_subgraph finalization data before
+        ``_calculate_omen_accuracy`` runs. Removing the enrichment call
+        would cause every Omen bet to be silently filtered out as
+        unfinalized.
+        """
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (  # noqa: E501
+            PredictionsFetcher,
+        )
+
+        b = self._make()
+        ctx, params, synced_data, _ = _mock_context(is_polymarket=False)
+        bets_data = {
+            "bets": [
+                {
+                    "fixedProductMarketMaker": {
+                        "id": "0xfpmm1",
+                        "currentAnswer": "0x0",
+                        "answerFinalizedTimestamp": "1000000000",
+                    },
+                    "outcomeIndex": "0",
+                }
+            ]
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_trader_agent_bets", side_effect=_return_gen(bets_data)
+            ),
+            patch.object(
+                PredictionsFetcher,
+                "_enrich_bets_with_finalization",
+            ) as mock_enrich,
+        ):
+            gen = b._get_prediction_accuracy()
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+
+        mock_enrich.assert_called_once()
+        bets_arg = mock_enrich.call_args.args[0]
+        assert isinstance(bets_arg, list)
+        assert bets_arg[0]["fixedProductMarketMaker"]["id"] == "0xfpmm1"
 
     def test_polymarket_platform(self) -> None:
         """Delegates to _calculate_polymarket_accuracy on Polymarket."""

@@ -42,6 +42,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     GnosisStakingSubgraph,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
+    OmenSubgraph,
     OpenMarketsSubgraph,
     PerformanceMetricsData,
     PerformanceStatsData,
@@ -883,6 +884,7 @@ class TestSubgraphSubclasses:
         [
             OlasAgentsSubgraph,
             OlasMechSubgraph,
+            OmenSubgraph,
             GnosisStakingSubgraph,
             PolygonStakingSubgraph,
             OpenMarketsSubgraph,
@@ -901,6 +903,7 @@ class TestSubgraphSubclasses:
         [
             OlasAgentsSubgraph,
             OlasMechSubgraph,
+            OmenSubgraph,
             GnosisStakingSubgraph,
             PolygonStakingSubgraph,
             OpenMarketsSubgraph,

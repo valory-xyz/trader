@@ -357,6 +357,16 @@ class OlasMechSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Olas Mech's subgraph specifications."""
 
 
+class OmenSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Omen xDai subgraph.
+
+    Used to enrich bets from the olas_agents subgraph with Reality.eth
+    finalization data (answerFinalizedTimestamp, isPendingArbitration),
+    which is not exposed by the olas_agents subgraph's
+    FixedProductMarketMakerCreation entity.
+    """
+
+
 class GnosisStakingSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Gnosis Staking's subgraph specifications."""
 
