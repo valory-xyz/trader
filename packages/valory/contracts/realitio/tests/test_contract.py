@@ -25,16 +25,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from web3.exceptions import ContractLogicError
+from web3.exceptions import ContractLogicError, Web3Exception
 
 from packages.valory.contracts.realitio.contract import (
-    UNIT_SEPARATOR,
     RealitioContract,
+    UNIT_SEPARATOR,
     build_question,
     format_answers,
     get_entries,
 )
-
 
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 QUESTION_ID = b"\x00" * 32
@@ -88,13 +87,16 @@ class TestGetEntries:
         mock_log = MagicMock()
         mock_eth.get_logs.return_value = [mock_log]
 
-        with patch(
-            "packages.valory.contracts.realitio.contract.event_abi_to_log_topic",
-            return_value=b"\x01" * 32,
-        ), patch(
-            "packages.valory.contracts.realitio.contract.get_event_data",
-            return_value={"decoded": True},
-        ) as mock_get_event_data:
+        with (
+            patch(
+                "packages.valory.contracts.realitio.contract.event_abi_to_log_topic",
+                return_value=b"\x01" * 32,
+            ),
+            patch(
+                "packages.valory.contracts.realitio.contract.get_event_data",
+                return_value={"decoded": True},
+            ) as mock_get_event_data,
+        ):
             result = get_entries(
                 mock_eth, mock_contract, mock_event_abi, [b"\x02" * 32]
             )
@@ -254,6 +256,109 @@ class TestRealitioContract:
 
         assert "error" in result
         assert "RPC timed out" in result["error"]
+
+    def test_get_claim_params_chunked(self) -> None:
+        """When chunk_size is set, the range is split and entries are concatenated."""
+        self.mock_contract.events.LogNewAnswer.return_value.abi = {
+            "name": "LogNewAnswer"
+        }
+
+        calls = []
+
+        def fake_get_entries(_eth, _inst, _abi, _topics, start, end):  # type: ignore[no-untyped-def]
+            calls.append((start, end))
+            # One entry per window, to let us verify concatenation.
+            return [MagicMock()]
+
+        with patch(
+            "packages.valory.contracts.realitio.contract.get_entries",
+            side_effect=fake_get_entries,
+        ):
+            result = RealitioContract.get_claim_params(
+                ledger_api=self.mock_ledger_api,
+                contract_address=CONTRACT_ADDRESS,
+                from_block=0,
+                to_block=9,
+                question_id=QUESTION_ID,
+                timeout=5.0,
+                chunk_size=4,
+            )
+
+        # Range [0, 9] with chunk_size=4 → [0,3], [4,7], [8,9]
+        assert calls == [(0, 3), (4, 7), (8, 9)]
+        assert len(result["answered"]) == 3
+
+    def test_get_claim_params_chunk_size_zero_acts_as_unchunked(self) -> None:
+        """chunk_size <= 0 falls back to a single get_entries call."""
+        self.mock_contract.events.LogNewAnswer.return_value.abi = {
+            "name": "LogNewAnswer"
+        }
+
+        calls = []
+
+        def fake_get_entries(_eth, _inst, _abi, _topics, start, end):  # type: ignore[no-untyped-def]
+            calls.append((start, end))
+            return []
+
+        with patch(
+            "packages.valory.contracts.realitio.contract.get_entries",
+            side_effect=fake_get_entries,
+        ):
+            RealitioContract.get_claim_params(
+                ledger_api=self.mock_ledger_api,
+                contract_address=CONTRACT_ADDRESS,
+                from_block=0,
+                to_block=100,
+                question_id=QUESTION_ID,
+                timeout=5.0,
+                chunk_size=0,
+            )
+
+        assert calls == [(0, 100)]
+
+    def test_get_claim_params_rpc_rejection_web3_exception(self) -> None:
+        """Web3Exception from eth_getLogs is caught and surfaced as an error."""
+        self.mock_contract.events.LogNewAnswer.return_value.abi = {
+            "name": "LogNewAnswer"
+        }
+
+        with patch(
+            "packages.valory.contracts.realitio.contract.get_entries",
+            side_effect=Web3Exception("query returned more than 10000 results"),
+        ):
+            result = RealitioContract.get_claim_params(
+                ledger_api=self.mock_ledger_api,
+                contract_address=CONTRACT_ADDRESS,
+                from_block=0,
+                to_block=100000,
+                question_id=QUESTION_ID,
+                timeout=5.0,
+            )
+
+        assert "error" in result
+        assert "eth_getLogs failed" in result["error"]
+
+    def test_get_claim_params_rpc_rejection_value_error(self) -> None:
+        """Legacy provider ValueError from eth_getLogs is also caught."""
+        self.mock_contract.events.LogNewAnswer.return_value.abi = {
+            "name": "LogNewAnswer"
+        }
+
+        with patch(
+            "packages.valory.contracts.realitio.contract.get_entries",
+            side_effect=ValueError({"code": -32005, "message": "range too wide"}),
+        ):
+            result = RealitioContract.get_claim_params(
+                ledger_api=self.mock_ledger_api,
+                contract_address=CONTRACT_ADDRESS,
+                from_block=0,
+                to_block=100000,
+                question_id=QUESTION_ID,
+                timeout=5.0,
+            )
+
+        assert "error" in result
+        assert "eth_getLogs failed" in result["error"]
 
     def test_build_claim_winnings(self) -> None:
         """Test building claim winnings transaction."""
@@ -569,15 +674,15 @@ class TestABIConsistency:
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
         missing = referenced_functions - abi_functions
-        assert not missing, (
-            f"Functions used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Functions used in contract.py but missing from ABI: {missing}"
 
     def test_events_present_in_abi(self) -> None:
         """All contract events referenced in contract.py must exist in the ABI."""
         _, abi_events = self._get_abi_names()
         _, referenced_events = self._get_contract_references()
         missing = referenced_events - abi_events
-        assert not missing, (
-            f"Events used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Events used in contract.py but missing from ABI: {missing}"
