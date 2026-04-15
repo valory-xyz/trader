@@ -40,6 +40,7 @@ from web3.types import BlockIdentifier, EventData, FilterParams, TContractEvent,
 ClaimParamsType = Tuple[List[bytes], List[ChecksumAddress], List[int], List[bytes]]
 
 FIVE_MINUTES = 300.0
+DEFAULT_GETLOGS_CHUNK_SIZE = 5000
 
 PUBLIC_ID = PublicId.from_str("valory/realitio:0.1.0")
 _logger = logging.getLogger(
@@ -168,7 +169,7 @@ class RealitioContract(Contract):
         to_block: int,
         question_id: bytes,
         timeout: float = FIVE_MINUTES,
-        chunk_size: Optional[int] = None,
+        chunk_size: Optional[int] = DEFAULT_GETLOGS_CHUNK_SIZE,
     ) -> Dict[str, Union[str, list]]:
         """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
         eth = ledger_api.api.eth

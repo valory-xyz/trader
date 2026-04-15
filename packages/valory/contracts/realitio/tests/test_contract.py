@@ -28,6 +28,7 @@ import pytest
 from web3.exceptions import ContractLogicError, Web3Exception
 
 from packages.valory.contracts.realitio.contract import (
+    DEFAULT_GETLOGS_CHUNK_SIZE,
     RealitioContract,
     UNIT_SEPARATOR,
     build_question,
@@ -287,6 +288,36 @@ class TestRealitioContract:
         # Range [0, 9] with chunk_size=4 → [0,3], [4,7], [8,9]
         assert calls == [(0, 3), (4, 7), (8, 9)]
         assert len(result["answered"]) == 3
+
+    def test_get_claim_params_default_chunk_size_splits_wide_range(self) -> None:
+        """Default chunk_size splits ranges wider than DEFAULT_GETLOGS_CHUNK_SIZE."""
+        self.mock_contract.events.LogNewAnswer.return_value.abi = {
+            "name": "LogNewAnswer"
+        }
+
+        calls = []
+
+        def fake_get_entries(_eth, _inst, _abi, _topics, start, end):  # type: ignore[no-untyped-def]
+            calls.append((start, end))
+            return []
+
+        # Pick a range that forces more than one chunk with the default.
+        to_block = DEFAULT_GETLOGS_CHUNK_SIZE * 2
+        with patch(
+            "packages.valory.contracts.realitio.contract.get_entries",
+            side_effect=fake_get_entries,
+        ):
+            RealitioContract.get_claim_params(
+                ledger_api=self.mock_ledger_api,
+                contract_address=CONTRACT_ADDRESS,
+                from_block=0,
+                to_block=to_block,
+                question_id=QUESTION_ID,
+                timeout=5.0,
+            )
+
+        assert len(calls) == 3
+        assert calls[0] == (0, DEFAULT_GETLOGS_CHUNK_SIZE - 1)
 
     def test_get_claim_params_chunk_size_zero_acts_as_unchunked(self) -> None:
         """chunk_size <= 0 falls back to a single get_entries call."""
