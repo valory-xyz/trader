@@ -70,8 +70,8 @@ skills:
 - valory/decision_maker_abci:0.1.0:bafybeigb4tn6mwdo2g7qb47t7iku3xnq2od7zp6qzycqavtf7bjflihuai
 - valory/trader_abci:0.1.0:bafybeieh27nrggbrdast2rlpcoc4hff5m3f52rnh3ka3kieoa7wmx4okui
 - valory/staking_abci:0.1.0:bafybeiha6zse3dkllrjp6z6xsat5yvxshkd5nijo24i6wm3lnslldxcvki
-- valory/check_stop_trading_abci:0.1.0:bafybeieg75z2sxntexr2kcdhtpc3r2naxptqjha7sxukemh4dyp7xwyiwa
-- valory/mech_interact_abci:0.1.0:bafybeifnwgjflfhagoomgqtnmlymlal5r23qcyesdyrhu5hyw7h6iqhqda
+- valory/check_stop_trading_abci:0.1.0:bafybeiaawedash74gnujlt7bggjp46ikmemhlyiezwo3a4qbtlgt4ndyue
+- valory/mech_interact_abci:0.1.0:bafybeied5l5xlygjyo3uju5bw52pidjvbkgdahhuzvahh6qis7kd3ht6ta
 - valory/chatui_abci:0.1.0:bafybeigjrpw5bux4p23sptyzmj4brevrc3qee7z63sfcqwwbdcjvu2nb2y
 - valory/agent_performance_summary_abci:0.1.0:bafybeif7u75nwrxxmur7v3bzi6ejqxvsltzqpmlakbmvp6rxjebslbeooq
 - valory/funds_manager:0.1.0:bafybeihxaharfszjutbrl5a2i76co22suhdt5bfsryv76ikkltisugqbjm
