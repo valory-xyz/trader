@@ -194,12 +194,11 @@ class RealitioContract(Contract):
                 if chunk_size is None or chunk_size <= 0:
                     return _get_entries_window(from_block, to_block)
                 entries: List[EventData] = []
-                cursor = from_block
-                while cursor <= to_block:
-                    window_end = min(cursor + chunk_size - 1, to_block)
-                    window_start = cursor
+                window_start = from_block
+                while window_start <= to_block:
+                    window_end = min(window_start + chunk_size - 1, to_block)
                     entries.extend(_get_entries_window(window_start, window_end))
-                    cursor = window_end + 1
+                    window_start = window_end + 1
                 return entries
             except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
                 return (
