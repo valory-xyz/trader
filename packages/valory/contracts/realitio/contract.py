@@ -34,7 +34,7 @@ from urllib3.exceptions import ReadTimeoutError as Urllib3ReadTimeoutError
 from web3._utils.events import get_event_data
 from web3.contract import Contract as W3Contract
 from web3.eth import Eth
-from web3.exceptions import ContractLogicError, Web3Exception
+from web3.exceptions import ContractLogicError, Web3RPCError
 from web3.types import BlockIdentifier, EventData, FilterParams, TContractEvent, _Hash32
 
 ClaimParamsType = Tuple[List[bytes], List[ChecksumAddress], List[int], List[bytes]]
@@ -171,7 +171,13 @@ class RealitioContract(Contract):
         timeout: float = FIVE_MINUTES,
         chunk_size: Optional[int] = DEFAULT_GETLOGS_CHUNK_SIZE,
     ) -> Dict[str, Union[str, list]]:
-        """Filters the `LogNewAnswer` event by question id to calculate the history hashes."""
+        """Filter ``LogNewAnswer`` events to build the history-hash chain for ``claimWinnings``.
+
+        The block range is split into windows of ``chunk_size`` blocks
+        (default ``DEFAULT_GETLOGS_CHUNK_SIZE``) to stay within RPC
+        ``eth_getLogs`` limits. Pass ``chunk_size=None`` or ``<=0`` to
+        disable chunking. Returns ``{"error": ...}`` on RPC failure.
+        """
         eth = ledger_api.api.eth
         contract_instance = cls.get_instance(ledger_api, contract_address)
         event_abi = contract_instance.events.LogNewAnswer().abi
@@ -183,15 +189,17 @@ class RealitioContract(Contract):
 
         def get_claim_params() -> Any:
             """Get claim params."""
+            window_start, window_end = from_block, to_block
             try:
                 if chunk_size is None or chunk_size <= 0:
                     return _get_entries_window(from_block, to_block)
                 entries: List[EventData] = []
                 cursor = from_block
                 while cursor <= to_block:
-                    chunk_end = min(cursor + chunk_size - 1, to_block)
-                    entries.extend(_get_entries_window(cursor, chunk_end))
-                    cursor = chunk_end + 1
+                    window_end = min(cursor + chunk_size - 1, to_block)
+                    window_start = cursor
+                    entries.extend(_get_entries_window(window_start, window_end))
+                    cursor = window_end + 1
                 return entries
             except (Urllib3ReadTimeoutError, RequestsReadTimeoutError):
                 return (
@@ -199,10 +207,11 @@ class RealitioContract(Contract):
                     f"The service tried to filter from block {from_block} to {to_block}. "
                     f"If this issue persists, please try lowering the `EVENT_FILTERING_BATCH_SIZE`!"
                 )
-            except (Web3Exception, ValueError) as exc:
+            except Web3RPCError as exc:
                 return (
-                    f"eth_getLogs failed from block {from_block} to {to_block} "
-                    f"(chunk_size={chunk_size}): {exc!r}"
+                    f"eth_getLogs rejected window [{window_start}, {window_end}] "
+                    f"(full range [{from_block}, {to_block}], "
+                    f"chunk_size={chunk_size}): {exc!r}"
                 )
 
         answered, err = cls.execute_with_timeout(get_claim_params, timeout=timeout)

@@ -25,7 +25,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from web3.exceptions import ContractLogicError, Web3Exception
+from web3.exceptions import ContractLogicError, Web3RPCError
 
 from packages.valory.contracts.realitio.contract import (
     DEFAULT_GETLOGS_CHUNK_SIZE,
@@ -347,15 +347,15 @@ class TestRealitioContract:
 
         assert calls == [(0, 100)]
 
-    def test_get_claim_params_rpc_rejection_web3_exception(self) -> None:
-        """Web3Exception from eth_getLogs is caught and surfaced as an error."""
+    def test_get_claim_params_rpc_rejection(self) -> None:
+        """Web3RPCError from eth_getLogs is caught and reports the failing window."""
         self.mock_contract.events.LogNewAnswer.return_value.abi = {
             "name": "LogNewAnswer"
         }
 
         with patch(
             "packages.valory.contracts.realitio.contract.get_entries",
-            side_effect=Web3Exception("query returned more than 10000 results"),
+            side_effect=Web3RPCError("query returned more than 10000 results"),
         ):
             result = RealitioContract.get_claim_params(
                 ledger_api=self.mock_ledger_api,
@@ -367,29 +367,8 @@ class TestRealitioContract:
             )
 
         assert "error" in result
-        assert "eth_getLogs failed" in result["error"]
-
-    def test_get_claim_params_rpc_rejection_value_error(self) -> None:
-        """Legacy provider ValueError from eth_getLogs is also caught."""
-        self.mock_contract.events.LogNewAnswer.return_value.abi = {
-            "name": "LogNewAnswer"
-        }
-
-        with patch(
-            "packages.valory.contracts.realitio.contract.get_entries",
-            side_effect=ValueError({"code": -32005, "message": "range too wide"}),
-        ):
-            result = RealitioContract.get_claim_params(
-                ledger_api=self.mock_ledger_api,
-                contract_address=CONTRACT_ADDRESS,
-                from_block=0,
-                to_block=100000,
-                question_id=QUESTION_ID,
-                timeout=5.0,
-            )
-
-        assert "error" in result
-        assert "eth_getLogs failed" in result["error"]
+        assert "eth_getLogs rejected" in result["error"]
+        assert "[0, 4999]" in result["error"]
 
     def test_build_claim_winnings(self) -> None:
         """Test building claim winnings transaction."""
