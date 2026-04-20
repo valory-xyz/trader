@@ -29,6 +29,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
+    GET_OMEN_FINALIZATION_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
     GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
@@ -120,6 +121,10 @@ QUERY_CONSTANTS = {
         GET_POLYMARKET_SPECIFIC_BET_QUERY,
         "GetPolymarketSpecificBet",
     ),
+    "GET_OMEN_FINALIZATION_QUERY": (
+        GET_OMEN_FINALIZATION_QUERY,
+        "GetOmenFinalization",
+    ),
 }
 
 
@@ -159,3 +164,29 @@ def test_query_contains_query_keyword(
     assert (
         "query" in query_value.lower()
     ), f"{constant_name} does not contain the 'query' keyword"
+
+
+# Bug A (ZD#919): status helpers gate the "invalid" label on Reality.eth
+# finalization. The olas_agents subgraph does not expose
+# answerFinalizedTimestamp or isPendingArbitration, so we source both from
+# omen_subgraph via a single dedicated finalization query. This test pins
+# the schema of that query — the three olas queries no longer need the
+# field (enrichment happens in _enrich_bets_with_finalization).
+def test_omen_finalization_query_selects_required_fields() -> None:
+    """GET_OMEN_FINALIZATION_QUERY must select both finalization fields."""
+    assert "answerFinalizedTimestamp" in GET_OMEN_FINALIZATION_QUERY, (
+        "GET_OMEN_FINALIZATION_QUERY must select answerFinalizedTimestamp "
+        "to support the Bug A finalization gate"
+    )
+    assert "isPendingArbitration" in GET_OMEN_FINALIZATION_QUERY, (
+        "GET_OMEN_FINALIZATION_QUERY must select isPendingArbitration to "
+        "correctly classify markets under Kleros arbitration as pending"
+    )
+    assert "fixedProductMarketMakers" in GET_OMEN_FINALIZATION_QUERY, (
+        "GET_OMEN_FINALIZATION_QUERY must target the "
+        "fixedProductMarketMakers entity on omen_subgraph"
+    )
+    assert "id_in" in GET_OMEN_FINALIZATION_QUERY, (
+        "GET_OMEN_FINALIZATION_QUERY must filter by id_in for batched "
+        "enrichment keyed on fpmm ids"
+    )

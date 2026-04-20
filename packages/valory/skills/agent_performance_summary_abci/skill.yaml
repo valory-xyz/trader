@@ -10,17 +10,17 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeicinegfwaayhvh2km4alolybovn6oy7q2gtfxukzryongxeim2iyq
-  behaviours.py: bafybeidvjikldbpbgieydbbvppova737setvgtegwsj6fvuigzez36eshm
+  behaviours.py: bafybeid7yy5jp6lridzkyhfjdncpkz4pfw4gj6rjprorbzniqq52nm4cqy
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
   graph_tooling/polymarket_predictions_helper.py: bafybeibpvmois6vhxofqlrt7uy3tohqgvu5dg2madrm7ly6t6wrkvmlwym
-  graph_tooling/predictions_helper.py: bafybeigcvh6a6k7vhjof55rt5golzztyouu3aj5yggq4nd22nl6oafp4zi
-  graph_tooling/queries.py: bafybeibzkjfwwjx6rvjjcnygcwcw47g5dmpgmifxwk6l4rdpqxikgzkbmu
+  graph_tooling/predictions_helper.py: bafybeielkfyjkycayfnbmqvhxzohrurtmyzjzqfxhtsp5ovyfpf2btl45u
+  graph_tooling/queries.py: bafybeiewho6s44oedop76nhfwium6iq5bqh6rhkki6yytj5cqmpsd7ug34
   graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
   handlers.py: bafybeibm7dqkbrf5b5zeu6oxdltpi63ommxu3v2ft64bgyt6uy6uzzprzy
-  models.py: bafybeiezoegqvuiqmgnqifobgh233gzkiq5s7z2452vuvbsca2uqzu3e64
+  models.py: bafybeiafteppxirtryqhuozlewqvk454dzdvg3orihjqb3igfco2noevia
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -30,13 +30,13 @@ fingerprint:
   tests/graph_tooling/__init__.py: bafybeia4232yl536xzhvnkjblvfbtphtp34t4zylkay4fimm26bgo5tzru
   tests/graph_tooling/test_base_predictions_helper.py: bafybeihcnx5crq5j5nr5p6h5y3vuqgqapdnkcghubehk7fnnyv2vmcpriq
   tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeih6lqpc4tzj77olxe7kzfdpgmzyilfqkmot3ky4cq3i6wp3nrkpee
-  tests/graph_tooling/test_predictions_helper.py: bafybeiahyr2qxqikgnarsovrsftuidx3wzkf5n5w3sq5t5hi6bmpvunipi
-  tests/graph_tooling/test_queries.py: bafybeie6wyseflaysawnicyyci6a2mdrxpxzwmikg4p4s2iq2uznx5hgpi
+  tests/graph_tooling/test_predictions_helper.py: bafybeiexjvh4yx4wx7i4oj5ltgxisnldbcgklejbg45cgfwqvk5zkk2c4e
+  tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
   tests/graph_tooling/test_requests.py: bafybeiez2icgxoz5khs3itvmpaypgokkfdn6zbsoafiecb3hvrpzqrg2ia
-  tests/test_behaviours.py: bafybeiaxvqdy4vmoe25bjlzsrcisn7tmiwcqv3oq5zknmvwbtige3hhram
+  tests/test_behaviours.py: bafybeihuzqvptrkisbevhdirvasqzchkzpoeobijolgr3i6mjmtfleda7q
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_handlers.py: bafybeih5fpmtk3jr4pjw63wmy3g3ys536xlbe527uelzv5vlsl6wnhwmqa
-  tests/test_models.py: bafybeifzhbzgqfym7p4wemvcagdgpcstsf3j33fcbfnhwnqhxxk7vuep34
+  tests/test_models.py: bafybeiaccjetj3nbpstm3ee25kjiug2wzusnlysxdk53ybu5wavekjtwy4
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
   tests/test_save_performance_summary.py: bafybeibgyx3n4dn7zhb7vfcc4wwq7nuyfep723cyqfrpnwqgsvhhwagure
@@ -105,6 +105,21 @@ models:
       retries: 5
       url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
     class_name: OlasAgentsSubgraph
+  omen_subgraph:
+    args:
+      api_id: omen
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:fixedProductMarketMakers
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://omen.subgraph.autonolas.tech
+    class_name: OmenSubgraph
   olas_mech_subgraph:
     args:
       api_id: olas_mech

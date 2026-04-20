@@ -77,5 +77,13 @@ class FinishedPolymarketRedeemRound(DegenerateRound):
     """A round representing that polymarket redeem has finished."""
 
 
+class FinishedPolymarketBetPlacementRound(DegenerateRound):
+    """A round representing that an off-chain Polymarket bet has been placed and the cycle should wrap up via the staking checkpoint."""
+
+
+class FinishedPostBetUpdateRound(DegenerateRound):
+    """A round representing that the post-bet bookkeeping has run after an Omen bet/sell tx and the cycle should wrap up via the staking checkpoint."""
+
+
 class FinishedPolymarketSwapTxPreparationRound(DegenerateRound):
     """A round representing that Polymarket swap has finished and needs to go to tx settlement."""

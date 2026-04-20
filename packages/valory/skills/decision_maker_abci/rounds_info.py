@@ -246,6 +246,11 @@ ROUNDS_INFO = {
         "description": "Redeems winnings from resolved Polymarket trades.",
         "transitions": {},
     },
+    "post_bet_update_round": {
+        "name": "Running post-bet bookkeeping",
+        "description": "Updates the local bet's queue status, processed timestamp, invested amount, and strategy after an Omen bet placement transaction settles.",
+        "transitions": {},
+    },
     "fetch_markets_router_round": {
         "name": "Routing to market fetching logic",
         "description": "Routes between Omen and Polymarket market fetching based on configuration.",
