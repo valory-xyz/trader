@@ -254,6 +254,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if not idx:
                 return None
 
+        # Policy filter: reject candidates whose Polymarket tags are on the
+        # operator-configured disable list. Lowercased on both sides so tag
+        # casing drift upstream doesn't silently break the match.
+        disabled_tags = {t.lower() for t in self.params.disabled_polymarket_tags}
+        if disabled_tags:
+            self.context.logger.debug(
+                f"Sampling: filtering candidates against "
+                f"{len(disabled_tags)} disabled tags"
+            )
+
         # Loop until we find a valid bet or run out of options
         while available_bets:
             # sample a bet using the priority logic
@@ -290,6 +300,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.context.logger.info(msg)
                 available_bets.remove(sampled_bet)
                 continue
+
+            if disabled_tags:
+                bet_tags = {t.lower() for t in sampled_bet.poly_tags}
+                hit = disabled_tags & bet_tags
+                if hit:
+                    msg = (
+                        f"Sampled bet {sampled_bet.id} has disabled tag(s) "
+                        f"{sorted(hit)}, skipping"
+                    )
+                    self.context.logger.info(msg)
+                    available_bets.remove(sampled_bet)
+                    continue
 
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity

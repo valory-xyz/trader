@@ -934,6 +934,37 @@ class TestFetchMarkets:
         assert result is None
         assert "Unexpected error" in error
 
+    def test_fetch_markets_warns_on_full_tradeable_drop(self) -> None:
+        """WARN when the tradeable filter drops 100% of a non-empty input.
+
+        Guards against silent collapse if Polymarket ever changes how
+        outcomePrices / clobTokenIds are encoded, or introduces a new
+        lifecycle state that makes `active` falsy for every market.
+        """
+        conn = _make_connection()
+        # Five yes/no markets, all inactive → tradeable filter drops all five.
+        markets = [
+            {
+                "id": f"m{i}",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["Yes","No"]',
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": False,
+                "_poly_tags": ["politics"],
+            }
+            for i in range(5)
+        ]
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=(markets, None))
+
+        result, error = conn._fetch_markets()
+        assert error is None
+        # Every category should have logged the 100% drop warning once.
+        warning_calls = [
+            c for c in conn.logger.warning.call_args_list if "dropped 100%" in str(c)
+        ]
+        assert len(warning_calls) == len(POLYMARKET_CATEGORY_TAGS)
+
 
 # ---------------------------------------------------------------------------
 # _fetch_markets_by_tag_slug (new /events-based fetcher)
@@ -1068,79 +1099,6 @@ class TestFetchMarketsByTagSlug:
         assert error is None
         assert len(result) == 1
         assert result[0]["id"] == "m1"
-
-
-# ---------------------------------------------------------------------------
-# disabled_tags filter in _fetch_markets
-# ---------------------------------------------------------------------------
-
-
-class TestFetchMarketsDisabledTagsFilter:
-    """Tests for the disabled_tags filter applied by _fetch_markets."""
-
-    _TRADEABLE = {
-        "outcomes": '["Yes","No"]',
-        "outcomePrices": '["0.5","0.5"]',
-        "clobTokenIds": '["t1","t2"]',
-        "active": True,
-        "createdAt": "2026-01-01T00:00:00Z",
-    }
-
-    def test_drops_markets_with_intersecting_tags(self) -> None:
-        """Markets whose _poly_tags intersect disabled_tags are dropped."""
-        conn = _make_connection()
-        good = {
-            **self._TRADEABLE,
-            "id": "good",
-            "_poly_tags": ["politics", "elections"],
-        }
-        banned = {
-            **self._TRADEABLE,
-            "id": "banned",
-            "_poly_tags": ["politics", "hide-from-new"],
-        }
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([good, banned], None))
-
-        result, error = conn._fetch_markets(disabled_tags=["hide-from-new"])
-        assert error is None
-        for cat_markets in result.values():
-            ids = [m["id"] for m in cat_markets]
-            assert "banned" not in ids
-            assert "good" in ids
-
-    def test_empty_disabled_tags_is_noop(self) -> None:
-        """An empty disabled_tags list does not filter anything."""
-        conn = _make_connection()
-        m = {**self._TRADEABLE, "id": "m1", "_poly_tags": ["hide-from-new"]}
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
-
-        result, error = conn._fetch_markets(disabled_tags=[])
-        assert error is None
-        # Market with no disabled tags should survive in every category
-        for cat_markets in result.values():
-            assert len(cat_markets) == 1
-
-    def test_omitted_disabled_tags_is_noop(self) -> None:
-        """No disabled_tags kwarg at all → no filtering."""
-        conn = _make_connection()
-        m = {**self._TRADEABLE, "id": "m1", "_poly_tags": ["hide-from-new"]}
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
-
-        result, error = conn._fetch_markets()
-        assert error is None
-        for cat_markets in result.values():
-            assert len(cat_markets) == 1
-
-    def test_market_without_poly_tags_passes_filter(self) -> None:
-        """A market missing _poly_tags is treated as untagged and kept."""
-        conn = _make_connection()
-        m = {**self._TRADEABLE, "id": "m1"}
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
-
-        result, error = conn._fetch_markets(disabled_tags=["hide-from-new"])
-        assert error is None
-        for cat_markets in result.values():
-            assert len(cat_markets) == 1
 
 
 # ---------------------------------------------------------------------------

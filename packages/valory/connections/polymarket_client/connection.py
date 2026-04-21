@@ -574,19 +574,17 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         return unique_markets
 
-    def _fetch_markets(
-        self,
-        disabled_tags: Optional[list] = None,
-    ) -> Tuple[Any, Any]:
+    def _fetch_markets(self) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
 
         Fetches events per category from /events?tag_slug=X, flattens to markets
-        with per-market _poly_tags attached, and filters for Yes/No outcomes.
-        Markets whose _poly_tags intersect `disabled_tags` are dropped. Resolved
-        markets (extreme outcome prices) are blacklisted downstream by
-        PolymarketFetchMarketBehaviour._blacklist_expired_bets.
+        with per-market _poly_tags attached, and filters for Yes/No outcomes +
+        tradeable status. The disabled-tags policy filter runs downstream in
+        decision_maker_abci's sampling behaviour so legacy bets get a chance
+        to refresh their poly_tags via update_market_info before the filter
+        runs. Resolved markets (extreme outcome prices) are blacklisted
+        downstream by PolymarketFetchMarketBehaviour._blacklist_expired_bets.
 
-        :param disabled_tags: Tag slugs whose markets must be excluded
         :return: Tuple of (filtered_markets_dict, error_message)
         """
         try:
@@ -629,26 +627,16 @@ class PolymarketClientConnection(BaseSyncConnection):
                     f"(dropped {len(yes_no_markets) - len(tradeable_markets)} "
                     f"inactive / unpriced)"
                 )
+                if yes_no_markets and not tradeable_markets:
+                    self.logger.warning(
+                        f"Tradeable filter dropped 100% of "
+                        f"{len(yes_no_markets)} markets for category "
+                        f"'{category}' — possible upstream schema change"
+                    )
 
                 filtered_markets_by_category[category] = tradeable_markets
                 self.logger.info(
                     f"  Found {len(tradeable_markets)} markets for '{category}'"
-                )
-
-            disabled_set = set(disabled_tags or [])
-            if disabled_set:
-                total_dropped = 0
-                for category, markets in filtered_markets_by_category.items():
-                    kept = [
-                        m
-                        for m in markets
-                        if not (set(m.get("_poly_tags", [])) & disabled_set)
-                    ]
-                    total_dropped += len(markets) - len(kept)
-                    filtered_markets_by_category[category] = kept
-                self.logger.info(
-                    f"Dropped {total_dropped} markets matching disabled tags "
-                    f"({len(disabled_set)} slugs)"
                 )
 
             total_markets = sum(
