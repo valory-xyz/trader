@@ -29,7 +29,7 @@ fingerprint:
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeicprmsx3icwulc7qpxwx3xborufqjutrppxozx4zbbcvtjywtwuvu
   behaviours/round_behaviour.py: bafybeidpkzdmj3edgfomozi4nnapmkynis2qmfajeopjz4l72plruyfw7q
-  behaviours/sampling.py: bafybeibfcqes7u3mzl5hcrxspohtquuu6wk4hfuqggzhabk53lh32nniwi
+  behaviours/sampling.py: bafybeig3w6bmlivit3sx5adiflq6bclzipfugxzmjn7v7shdq4l7a2q2gu
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeifuthllbvup2ox2nqotpzpsg7tq53vvbjy4lfcdjlhojeawm57cda
   behaviours/tool_selection.py: bafybeih7s7lvhquocztakzsvpbzy4z7tbvxswztr73q2nzopc2qrbdrlki
@@ -86,7 +86,7 @@ fingerprint:
   tests/behaviours/test_post_bet_update.py: bafybeic5dtpz5dbjnamw323x3thttpcwx22vpubuhu4m5iiz3ixo5v3x7m
   tests/behaviours/test_redeem_router.py: bafybeifttfb4ik5hpyc6rivp6gcseih3dtcnw2437u4j2teshfr6tejlvm
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
-  tests/behaviours/test_sampling.py: bafybeiesvs3fazefk4v7wxmm6mtwiajx6ateghyjn7si5yt4uojmzv2w2m
+  tests/behaviours/test_sampling.py: bafybeihfb3eke7hmhagkv5tcvpvgj4mljatllnjauiae5hfaaoxlffqhfy
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
   tests/behaviours/test_storage_manager.py: bafybeieytnqhqkdskzr35cod6a7b7gew57ndzsc67v66hxl2yik2ej5on4
   tests/behaviours/test_tool_selection.py: bafybeigqcg2q65wqz3oq7f7lbkl7fzv5hrx5ec42whzwzs2oxzryxw4nlq

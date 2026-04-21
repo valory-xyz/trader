@@ -255,14 +255,35 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 return None
 
         # Policy filter: reject candidates whose Polymarket tags are on the
-        # operator-configured disable list. Lowercased on both sides so tag
-        # casing drift upstream doesn't silently break the match.
-        disabled_tags = {t.lower() for t in self.params.disabled_polymarket_tags}
+        # operator-configured disable list. Normalize both sides — strip
+        # whitespace + lowercase — so tag casing drift or accidental
+        # whitespace upstream doesn't silently break the match. Pre-filter
+        # the candidate pool once here rather than per-iteration inside the
+        # while-loop so we avoid redundant priority-sorting of bets we've
+        # already decided to skip.
+        disabled_tags = {
+            t.strip().lower() for t in self.params.disabled_polymarket_tags
+        }
         if disabled_tags:
+            before = len(available_bets)
+            available_bets = [
+                bet
+                for bet in available_bets
+                if not (disabled_tags & {t.strip().lower() for t in bet.poly_tags})
+            ]
+            skipped = before - len(available_bets)
             self.context.logger.debug(
-                f"Sampling: filtering candidates against "
-                f"{len(disabled_tags)} disabled tags"
+                f"Sampling: pre-filtered {skipped} disabled-tag bets "
+                f"against {len(disabled_tags)} slugs; "
+                f"{len(available_bets)} candidates remain"
             )
+            if not available_bets:
+                msg = (
+                    f"All {before} candidate bets were dropped by the "
+                    f"disabled-tag filter!"
+                )
+                self.context.logger.warning(msg)
+                return None
 
         # Loop until we find a valid bet or run out of options
         while available_bets:
@@ -300,18 +321,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.context.logger.info(msg)
                 available_bets.remove(sampled_bet)
                 continue
-
-            if disabled_tags:
-                bet_tags = {t.lower() for t in sampled_bet.poly_tags}
-                hit = disabled_tags & bet_tags
-                if hit:
-                    msg = (
-                        f"Sampled bet {sampled_bet.id} has disabled tag(s) "
-                        f"{sorted(hit)}, skipping"
-                    )
-                    self.context.logger.info(msg)
-                    available_bets.remove(sampled_bet)
-                    continue
 
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity

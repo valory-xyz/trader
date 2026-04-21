@@ -1464,6 +1464,152 @@ class TestSample:
         # (index 1) is returned.
         assert result == 1
 
+    def test_sample_strips_whitespace_around_tags(self) -> None:
+        """Tags with leading/trailing whitespace still match after strip()+lower().
+
+        Guards against silent bypass if Polymarket ever returns a tag like
+        "  hide-from-new  " or if an operator pastes a disabled slug with
+        trailing whitespace into the YAML.
+        """
+        now = int(time.time())
+        bet_banned = _make_mock_bet(
+            bet_id="banned",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=100.0,
+            poly_tags=["  Hide-From-New  "],  # padded AND mixed case
+        )
+        bet_banned.queue_status.is_expired = MagicMock(return_value=False)
+
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[bet_banned],
+            disabled_polymarket_tags=["hide-from-new"],
+        )
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock, return_value=params
+        ):
+            with patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ):
+                with patch.object(
+                    type(behaviour),
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ):
+                    with patch.object(
+                        type(behaviour),
+                        "shared_state",
+                        new_callable=PropertyMock,
+                        return_value=ss,
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "kpi_is_met",
+                            new_callable=PropertyMock,
+                            return_value=False,
+                        ):
+                            with patch.object(
+                                type(behaviour),
+                                "review_bets_for_selling",
+                                new_callable=PropertyMock,
+                                return_value=False,
+                            ):
+                                result = behaviour._sample()
+
+        # Padding and case both normalized away → bet is skipped.
+        assert result is None
+
+    def test_sample_prefilters_banned_bets_before_loop(self) -> None:
+        """Banned bets are dropped from available_bets before the loop starts.
+
+        Dropping them before the while-loop avoids re-sorting the candidate
+        pool each time a banned bet is skipped.
+
+        Discriminating assertion: wrap `_sampled_bet_idx` and assert it is
+        called once (the pre-filter reduced 5 banned + 1 ok to [bet_ok],
+        so one sort call returns index immediately). If the filter still
+        lived inside the loop, `_sampled_bet_idx` would be called 6 times —
+        once per banned bet + once for the final ok pick.
+        """
+        now = int(time.time())
+        banned_bets = [
+            _make_mock_bet(
+                bet_id=f"banned{i}",
+                queue_status=QueueStatus.TO_PROCESS,
+                opening_timestamp=now + 86400 * 5,
+                liquidity=100.0,
+                poly_tags=["hide-from-new"],
+            )
+            for i in range(5)
+        ]
+        for b in banned_bets:
+            b.queue_status.is_expired = MagicMock(return_value=False)
+
+        bet_ok = _make_mock_bet(
+            bet_id="ok",
+            queue_status=QueueStatus.TO_PROCESS,
+            opening_timestamp=now + 86400 * 5,
+            liquidity=80.0,
+            poly_tags=["politics"],
+        )
+        bet_ok.queue_status.is_expired = MagicMock(return_value=False)
+
+        all_bets = banned_bets + [bet_ok]
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=all_bets,
+            disabled_polymarket_tags=["hide-from-new"],
+        )
+
+        # Wrap _sampled_bet_idx so we can count how many times it ran.
+        real_sampler = behaviour._sampled_bet_idx
+        call_counter = MagicMock(side_effect=real_sampler)
+        behaviour._sampled_bet_idx = call_counter  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock, return_value=params
+        ):
+            with patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ):
+                with patch.object(
+                    type(behaviour),
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ):
+                    with patch.object(
+                        type(behaviour),
+                        "shared_state",
+                        new_callable=PropertyMock,
+                        return_value=ss,
+                    ):
+                        with patch.object(
+                            type(behaviour),
+                            "kpi_is_met",
+                            new_callable=PropertyMock,
+                            return_value=False,
+                        ):
+                            with patch.object(
+                                type(behaviour),
+                                "review_bets_for_selling",
+                                new_callable=PropertyMock,
+                                return_value=False,
+                            ):
+                                result = behaviour._sample()
+
+        # bet_ok is at index 5 in self.bets (5 banned bets precede it).
+        assert result == 5
+        # Pre-filter collapsed candidates to [bet_ok] → single sort call.
+        assert call_counter.call_count == 1
+
 
 class TestBenchmarkingIncDay:
     """Tests for _benchmarking_inc_day."""
