@@ -1846,12 +1846,136 @@ class TestUpdateBets:
         behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)  # type: ignore[method-assign]
         behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
         behaviour.context.params.opening_margin = 1000
+        behaviour.context.params.disabled_polymarket_tags = []
         type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
         # type: ignore[method-assign]
         gen = behaviour._update_bets()
         _exhaust_gen(gen)  # type: ignore[method-assign]
 
         assert len(behaviour.bets) == 1
+        behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
+
+
+# ===========================================================================
+# Tests for disabled-tag handling in polymarket fetch behaviour
+# ===========================================================================
+
+
+class TestDisabledPolymarketTags:
+    """Tests for how disabled_polymarket_tags flows through the behaviour."""
+
+    def _setup_behaviour(self) -> PolymarketFetchMarketBehaviour:
+        """Build a behaviour with params and store_path populated."""
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
+        behaviour.context.params.disabled_polymarket_tags = [
+            "hide-from-new",
+            "trump-iran",
+        ]
+        behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
+        return behaviour
+
+    def test_request_payload_includes_disabled_tags(self) -> None:
+        """The FETCH_MARKETS request payload must include disabled_tags from params."""
+        behaviour = self._setup_behaviour()
+        behaviour.send_polymarket_connection_request = _return_gen({})  # type: ignore[method-assign]
+        with patch.object(
+            behaviour,
+            "send_polymarket_connection_request",
+            wraps=_return_gen({}),
+        ) as send_mock:
+            gen = behaviour._fetch_markets_from_polymarket()
+            _exhaust_gen(gen)  # type: ignore[arg-type]
+
+            sent_payload = send_mock.call_args[0][0]
+            assert (
+                sent_payload["params"]["disabled_tags"]
+                == behaviour.context.params.disabled_polymarket_tags
+            )
+
+    def test_bet_dict_carries_poly_tags_from_market(self) -> None:
+        """Bet dicts built from markets include poly_tags from _poly_tags."""
+        behaviour = self._setup_behaviour()
+        behaviour.context.params.disabled_polymarket_tags = []  # no blacklisting here
+        market = _make_valid_market()
+        market["_poly_tags"] = ["politics", "elections"]
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["poly_tags"] == ["politics", "elections"]
+
+    def test_blacklist_disabled_tag_bets_flags_intersecting_bets(self) -> None:
+        """_blacklist_disabled_tag_bets calls blacklist_forever on intersecting bets."""
+        bet_banned = _make_bet(id="banned", poly_tags=["politics", "hide-from-new"])
+        bet_keep = _make_bet(id="keep", poly_tags=["politics"])
+        behaviour = _make_behaviour(bets=[bet_banned, bet_keep])
+        behaviour.context.params.disabled_polymarket_tags = ["hide-from-new"]
+        bet_banned.blacklist_forever = MagicMock()  # type: ignore[method-assign]
+        bet_keep.blacklist_forever = MagicMock()  # type: ignore[method-assign]
+
+        behaviour._blacklist_disabled_tag_bets()
+
+        bet_banned.blacklist_forever.assert_called_once()
+        bet_keep.blacklist_forever.assert_not_called()
+
+    def test_blacklist_disabled_tag_bets_empty_list_noop(self) -> None:
+        """With an empty disabled list, no bets are blacklisted."""
+        bet = _make_bet(id="b1", poly_tags=["hide-from-new"])
+        behaviour = _make_behaviour(bets=[bet])
+        behaviour.context.params.disabled_polymarket_tags = []
+        bet.blacklist_forever = MagicMock()  # type: ignore[method-assign]
+
+        behaviour._blacklist_disabled_tag_bets()
+
+        bet.blacklist_forever.assert_not_called()
+
+    def test_blacklist_disabled_tag_bets_skips_already_expired(self) -> None:
+        """Already-expired bets are not re-flagged."""
+        bet = _make_bet(id="b1", poly_tags=["hide-from-new"])
+        bet.queue_status = QueueStatus.EXPIRED
+        behaviour = _make_behaviour(bets=[bet])
+        behaviour.context.params.disabled_polymarket_tags = ["hide-from-new"]
+        bet.blacklist_forever = MagicMock()  # type: ignore[method-assign]
+
+        behaviour._blacklist_disabled_tag_bets()
+
+        bet.blacklist_forever.assert_not_called()
+
+    def test_update_bets_invokes_blacklist_disabled_tag_bets(self) -> None:
+        """_update_bets wires _blacklist_disabled_tag_bets between process and expiry checks."""
+        behaviour = _make_behaviour()
+        behaviour._current_market = "polymarket"
+        bet_data = [
+            dict(
+                id="b1",
+                title="Test?",
+                collateralToken="0xtoken",
+                creator="0xcreator",
+                fee=0,
+                openingTimestamp=9999999999,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[100, 200],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=10.0,
+                poly_tags=["hide-from-new"],
+            )
+        ]
+        behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)  # type: ignore[method-assign]
+        behaviour._blacklist_disabled_tag_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.params.opening_margin = 1000
+        behaviour.context.params.disabled_polymarket_tags = ["hide-from-new"]
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+
+        gen = behaviour._update_bets()
+        _exhaust_gen(gen)  # type: ignore[arg-type]
+
+        behaviour._blacklist_disabled_tag_bets.assert_called_once()  # type: ignore[attr-defined]
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
 
 

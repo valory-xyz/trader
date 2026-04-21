@@ -117,6 +117,9 @@ class MarketManagerParams(BaseParams):
         self.enable_multi_bets_fallback: bool = self._ensure(
             "enable_multi_bets_fallback", kwargs, bool
         )
+        self.disabled_polymarket_tags: List[str] = self._ensure(
+            "disabled_polymarket_tags", kwargs, List[str]
+        )
         super().__init__(*args, **kwargs)
 
     @property

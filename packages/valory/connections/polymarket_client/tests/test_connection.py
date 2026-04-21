@@ -20,9 +20,6 @@
 """Tests for the polymarket_client connection."""
 
 import json
-import os
-import tempfile
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -33,7 +30,6 @@ from packages.valory.connections.polymarket_client.connection import (
     CONDITIONAL_TOKENS_CONTRACT,
     DATA_API_BASE_URL,
     GAMMA_API_BASE_URL,
-    MARKETS_LIMIT,
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
@@ -474,65 +470,6 @@ class TestPlaceBet:
 
 
 # ---------------------------------------------------------------------------
-# _load_cache_file / _save_cache_file
-# ---------------------------------------------------------------------------
-
-
-class TestCacheFileMethods:
-    """Tests for _load_cache_file and _save_cache_file."""
-
-    def test_load_existing_cache_file(self) -> None:
-        """Loads existing JSON cache file correctly."""
-        conn = _make_connection()
-        data = {"allowances_set": True, "tag_id_cache": {"politics": "42"}}
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(data, f)
-            tmp_path = f.name
-        try:
-            result = conn._load_cache_file(tmp_path)
-            assert result == data
-        finally:
-            os.unlink(tmp_path)
-
-    def test_load_missing_cache_file_returns_defaults(self) -> None:
-        """Returns default dict when file does not exist."""
-        conn = _make_connection()
-        result = conn._load_cache_file("/nonexistent/path/cache.json")
-        assert result == {"allowances_set": False, "tag_id_cache": {}}
-
-    def test_load_invalid_json_returns_defaults(self) -> None:
-        """Returns default dict when file contains invalid JSON."""
-        conn = _make_connection()
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            f.write("not valid json {{")
-            tmp_path = f.name
-        try:
-            result = conn._load_cache_file(tmp_path)
-            assert result == {"allowances_set": False, "tag_id_cache": {}}
-        finally:
-            os.unlink(tmp_path)
-
-    def test_save_cache_file_creates_file(self) -> None:
-        """Saves cache data to file and creates parent directories."""
-        conn = _make_connection()
-        data = {"allowances_set": True, "tag_id_cache": {"politics": "7"}}
-        with tempfile.TemporaryDirectory() as tmpdir:
-            cache_path = os.path.join(tmpdir, "subdir", "cache.json")
-            conn._save_cache_file(cache_path, data)
-            assert Path(cache_path).exists()
-            with open(cache_path) as f:
-                loaded = json.load(f)
-            assert loaded == data
-
-    def test_save_cache_file_handles_exception(self) -> None:
-        """Logs error but does not raise when save fails."""
-        conn = _make_connection()
-        with patch("builtins.open", side_effect=OSError("disk full")):
-            conn._save_cache_file("/tmp/test_cache.json", {})  # nosec B108
-        conn.logger.error.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
 # _request_with_retries
 # ---------------------------------------------------------------------------
 
@@ -599,192 +536,181 @@ class TestRequestWithRetries:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_tag_id
+# _filter_tradeable_markets
 # ---------------------------------------------------------------------------
 
 
-class TestFetchTagId:
-    """Tests for _fetch_tag_id."""
+class TestFilterTradeableMarkets:
+    """Tests for _filter_tradeable_markets.
 
-    def test_returns_cached_tag_id(self) -> None:
-        """Returns tag_id from in-memory cache without making API call."""
+    /events returns some nested markets that are tagged Yes/No but are not
+    actually tradeable (missing outcomePrices / clobTokenIds, or active=False).
+    The old /markets endpoint filtered these server-side. This filter matches
+    that behaviour client-side so the downstream behaviour doesn't warn on them.
+    """
+
+    def test_drops_market_missing_outcome_prices(self) -> None:
+        """Market with empty outcomePrices is dropped."""
         conn = _make_connection()
-        cache = {"politics": "99"}
-        tag_id, error = conn._fetch_tag_id("politics", cache)
-        assert tag_id == "99"
-        assert error is None
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": "[]",
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+            },
+            {
+                "id": "m2",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["m2"]
 
-    def test_fetches_tag_id_from_api_and_caches(self) -> None:
-        """Fetches tag_id from API when not in cache, then caches it."""
+    def test_drops_market_missing_clob_token_ids(self) -> None:
+        """Market with empty clobTokenIds is dropped."""
         conn = _make_connection()
-        cache = {}
-        conn._request_with_retries = MagicMock(
-            return_value=({"id": "42", "slug": "science"}, None)
-        )
-        tag_id, error = conn._fetch_tag_id("science", cache)
-        assert tag_id == "42"
-        assert error is None
-        assert cache["science"] == "42"
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": "[]",
+                "active": True,
+            },
+            {
+                "id": "m2",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["m2"]
 
-    def test_api_error_propagates(self) -> None:
-        """Returns (None, error_message) when API fails."""
+    def test_drops_market_with_active_false(self) -> None:
+        """Market with active=False is dropped even if other fields are populated."""
         conn = _make_connection()
-        conn._request_with_retries = MagicMock(
-            return_value=(None, "connection refused")
-        )
-        tag_id, error = conn._fetch_tag_id("finance", {})
-        assert tag_id is None
-        assert "Error fetching tag" in error
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": False,
+            },
+            {
+                "id": "m2",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["m2"]
 
-    def test_no_id_in_response(self) -> None:
-        """Returns error when API response lacks 'id' field."""
+    def test_drops_market_missing_active_field(self) -> None:
+        """Market without an `active` key is treated as not-tradeable and dropped."""
         conn = _make_connection()
-        conn._request_with_retries = MagicMock(
-            return_value=({"slug": "finance"}, None)  # no 'id' key
-        )
-        tag_id, error = conn._fetch_tag_id("finance", {})
-        assert tag_id is None
-        assert "No tag ID found" in error
-
-    def test_updates_persistent_cache_file(self) -> None:
-        """Updates persistent cache file when cache_file_path provided."""
-        conn = _make_connection()
-        cache = {}
-        cache_data = {"allowances_set": False, "tag_id_cache": {}}
-        conn._request_with_retries = MagicMock(return_value=({"id": "77"}, None))
-        conn._save_cache_file = MagicMock()
-
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            cache_path = f.name
-        try:
-            tag_id, error = conn._fetch_tag_id(
-                "technology", cache, cache_file_path=cache_path, cache_data=cache_data
-            )
-            assert tag_id == "77"
-            conn._save_cache_file.assert_called_once()
-        finally:
-            os.unlink(cache_path)
-
-    def test_initialises_missing_tag_id_cache_in_cache_data(self) -> None:
-        """Handles cache_data without 'tag_id_cache' key by initialising it."""
-        conn = _make_connection()
-        cache = {}
-        cache_data = {"allowances_set": False}  # no tag_id_cache
-        conn._request_with_retries = MagicMock(return_value=({"id": "55"}, None))
-        conn._save_cache_file = MagicMock()
-
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            cache_path = f.name
-        try:
-            tag_id, _ = conn._fetch_tag_id(
-                "health", cache, cache_file_path=cache_path, cache_data=cache_data
-            )
-            assert cache_data["tag_id_cache"]["health"] == "55"
-        finally:
-            os.unlink(cache_path)
-
-    def test_handles_none_tag_id_cache_in_cache_data(self) -> None:
-        """Handles cache_data with tag_id_cache=None by re-initialising it."""
-        conn = _make_connection()
-        cache = {}
-        cache_data = {"allowances_set": False, "tag_id_cache": None}
-        conn._request_with_retries = MagicMock(return_value=({"id": "66"}, None))
-        conn._save_cache_file = MagicMock()
-
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-            cache_path = f.name
-        try:
-            tag_id, _ = conn._fetch_tag_id(
-                "business", cache, cache_file_path=cache_path, cache_data=cache_data
-            )
-            assert isinstance(cache_data["tag_id_cache"], dict)
-            assert cache_data["tag_id_cache"]["business"] == "66"
-        finally:
-            os.unlink(cache_path)
-
-
-# ---------------------------------------------------------------------------
-# _fetch_markets_by_tag
-# ---------------------------------------------------------------------------
-
-
-class TestFetchMarketsByTag:
-    """Tests for _fetch_markets_by_tag."""
-
-    def test_returns_single_page(self) -> None:
-        """Returns markets from a single page (less than MARKETS_LIMIT)."""
-        conn = _make_connection()
-        markets = [{"id": f"m{i}"} for i in range(5)]
-        conn._request_with_retries = MagicMock(return_value=(markets, None))
-
-        result, error = conn._fetch_markets_by_tag(
-            "42", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
-        )
-        assert result == markets
-        assert error is None
-
-    def test_paginates_multiple_pages(self) -> None:
-        """Paginates until a page with fewer than MARKETS_LIMIT items is returned."""
-        conn = _make_connection()
-        page1 = [{"id": f"m{i}"} for i in range(MARKETS_LIMIT)]
-        page2 = [{"id": f"m{i}"} for i in range(10)]
-
-        conn._request_with_retries = MagicMock(
-            side_effect=[(page1, None), (page2, None)]
-        )
-
-        result, error = conn._fetch_markets_by_tag(
-            "42", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
-        )
-        assert len(result) == MARKETS_LIMIT + 10
-        assert error is None
-
-    def test_api_error_propagates(self) -> None:
-        """Returns (None, error) when API call fails."""
-        conn = _make_connection()
-        conn._request_with_retries = MagicMock(
-            return_value=(None, "connection timeout")
-        )
-        result, error = conn._fetch_markets_by_tag(
-            "42", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
-        )
-        assert result is None
-        assert error == "connection timeout"
-
-    def test_empty_response_stops_pagination(self) -> None:
-        """Stops pagination when empty list is returned."""
-        conn = _make_connection()
-        conn._request_with_retries = MagicMock(return_value=([], None))
-        result, error = conn._fetch_markets_by_tag(
-            "42", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
-        )
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
         assert result == []
-        assert error is None
 
-    def test_sends_correct_params_to_gamma_api(self) -> None:
-        """_fetch_markets_by_tag passes tag_id, dates, MARKETS_LIMIT, and offset=0 to the API.
-
-        The API must receive all five required parameters. Using the wrong limit
-        or missing the tag_id would silently return unrelated markets.
-        """
+    def test_drops_market_with_missing_fields(self) -> None:
+        """Market with no outcomePrices / clobTokenIds keys at all is dropped."""
         conn = _make_connection()
-        conn._request_with_retries = MagicMock(return_value=([], None))
+        markets = [{"id": "m1", "active": True}]
+        result = conn._filter_tradeable_markets(markets)
+        assert result == []
 
-        tag_id = "42"
-        end_date_min = "2025-01-01T00:00:00Z"
-        end_date_max = "2025-01-05T00:00:00Z"
-        conn._fetch_markets_by_tag(tag_id, end_date_min, end_date_max)
+    def test_drops_market_with_malformed_json_fields(self) -> None:
+        """Market whose outcomePrices / clobTokenIds is not valid JSON is dropped."""
+        conn = _make_connection()
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": "not json",
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert result == []
 
-        call_args = conn._request_with_retries.call_args
-        actual_url = call_args[0][0]
-        actual_params = call_args[1]["params"]
+    def test_keeps_fully_populated_active_market(self) -> None:
+        """A market with populated fields and active=True is kept."""
+        conn = _make_connection()
+        markets = [
+            {
+                "id": "m1",
+                "outcomePrices": '["0.4","0.6"]',
+                "clobTokenIds": '["tok1","tok2"]',
+                "active": True,
+            },
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["m1"]
 
-        assert f"{GAMMA_API_BASE_URL}/markets" in actual_url
-        assert actual_params["tag_id"] == tag_id
-        assert actual_params["end_date_min"] == end_date_min
-        assert actual_params["end_date_max"] == end_date_max
-        assert actual_params["limit"] == MARKETS_LIMIT
-        assert actual_params["offset"] == 0
+    def test_empty_input_returns_empty(self) -> None:
+        """No markets → empty list."""
+        conn = _make_connection()
+        assert conn._filter_tradeable_markets([]) == []
+
+
+# ---------------------------------------------------------------------------
+# _fetch_markets applies tradeable filter
+# ---------------------------------------------------------------------------
+
+
+class TestFetchMarketsAppliesTradeableFilter:
+    """Ensure _fetch_markets runs the new tradeable filter alongside the others."""
+
+    def test_fetch_markets_drops_inactive_or_unpriced_markets(self) -> None:
+        """Markets that pass yes/no but fail the tradeable filter are excluded."""
+        conn = _make_connection()
+        # Mix of yes/no markets: one tradeable, one missing prices, one inactive
+        markets = [
+            {
+                "id": "keep",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["Yes","No"]',
+                "outcomePrices": '["0.4","0.6"]',
+                "clobTokenIds": '["tok1","tok2"]',
+                "active": True,
+                "_poly_tags": ["politics"],
+            },
+            {
+                "id": "drop_prices",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["Yes","No"]',
+                "outcomePrices": "[]",
+                "clobTokenIds": '["tok1","tok2"]',
+                "active": True,
+                "_poly_tags": ["politics"],
+            },
+            {
+                "id": "drop_inactive",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "outcomes": '["Yes","No"]',
+                "outcomePrices": '["0.4","0.6"]',
+                "clobTokenIds": '["tok1","tok2"]',
+                "active": False,
+                "_poly_tags": ["politics"],
+            },
+        ]
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=(markets, None))
+
+        result, error = conn._fetch_markets()
+        assert error is None
+        for cat_markets in result.values():
+            ids = [m["id"] for m in cat_markets]
+            assert ids == ["keep"]
 
 
 # ---------------------------------------------------------------------------
@@ -931,34 +857,46 @@ class TestFetchMarkets:
     """Tests for _fetch_markets."""
 
     def test_successful_fetch_returns_markets_by_category(self) -> None:
-        """Returns dict of category->markets with Yes/No filtering applied.
+        """Returns dict of category->markets with Yes/No + tradeable filtering applied.
 
-        Markets that do NOT have Yes/No outcomes or that are too old must be
-        excluded from the result even if they are returned by the API.
+        Markets that do NOT have Yes/No outcomes, that are too old, or that
+        are untradeable must be excluded even if returned by the API.
         """
         conn = _make_connection()
-        conn._load_cache_file = MagicMock(
-            return_value={"allowances_set": False, "tag_id_cache": {}}
-        )
-        conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
-        # Mix: one valid Yes/No market and two that should be filtered out
+        # Mix: one valid tradeable market and two that should be filtered out
         markets = [
-            # passes both filters
+            # passes all filters
             {
                 "id": "m1",
                 "createdAt": "2026-01-01T00:00:00Z",
                 "outcomes": '["Yes","No"]',
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+                "_poly_tags": ["politics"],
             },
             # fails yes/no filter (multi-outcome)
             {
                 "id": "m2",
                 "createdAt": "2026-01-01T00:00:00Z",
                 "outcomes": '["A","B","C"]',
+                "outcomePrices": '["0.3","0.3","0.4"]',
+                "clobTokenIds": '["t1","t2","t3"]',
+                "active": True,
+                "_poly_tags": ["politics"],
             },
             # fails createdAt filter (too old - empty string < MIN_CREATED_AT)
-            {"id": "m3", "createdAt": "", "outcomes": '["Yes","No"]'},
+            {
+                "id": "m3",
+                "createdAt": "",
+                "outcomes": '["Yes","No"]',
+                "outcomePrices": '["0.5","0.5"]',
+                "clobTokenIds": '["t1","t2"]',
+                "active": True,
+                "_poly_tags": ["politics"],
+            },
         ]
-        conn._fetch_markets_by_tag = MagicMock(return_value=(markets, None))
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=(markets, None))
 
         result, error = conn._fetch_markets()
         assert error is None
@@ -971,29 +909,11 @@ class TestFetchMarkets:
             assert len(cat_markets) == 1
             assert cat_markets[0]["id"] == "m1"
 
-    def test_tag_id_error_skips_category(self) -> None:
-        """Category is skipped when tag_id fetch fails."""
-        conn = _make_connection()
-        conn._load_cache_file = MagicMock(
-            return_value={"allowances_set": False, "tag_id_cache": {}}
-        )
-        conn._fetch_tag_id = MagicMock(return_value=(None, "tag not found"))
-        conn._fetch_markets_by_tag = MagicMock()
-
-        result, error = conn._fetch_markets()
-        assert error is None
-        assert result == {}  # All categories skipped
-        conn._fetch_markets_by_tag.assert_not_called()
-
     def test_markets_fetch_error_continues_other_categories(self) -> None:
         """Continues to next category when market fetch fails for one."""
         conn = _make_connection()
-        conn._load_cache_file = MagicMock(
-            return_value={"allowances_set": False, "tag_id_cache": {}}
-        )
-        conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
         # First category fails, rest succeed with empty list
-        conn._fetch_markets_by_tag = MagicMock(
+        conn._fetch_markets_by_tag_slug = MagicMock(
             side_effect=[(None, "api error")]
             + [([], None)] * (len(POLYMARKET_CATEGORY_TAGS) - 1)
         )
@@ -1003,51 +923,235 @@ class TestFetchMarkets:
         # All categories with successful fetch (empty) should be present
         assert len(result) == len(POLYMARKET_CATEGORY_TAGS) - 1
 
-    def test_uses_cache_file_path(self) -> None:
-        """Loads and uses tag_id cache from file when cache_file_path provided."""
-        conn = _make_connection()
-        cached_data = {
-            "allowances_set": False,
-            "tag_id_cache": {
-                cat: f"id_{i}" for i, cat in enumerate(POLYMARKET_CATEGORY_TAGS)
-            },
-        }
-        conn._load_cache_file = MagicMock(return_value=cached_data)
-        conn._fetch_tag_id = MagicMock(
-            side_effect=lambda cat, cache, *args, **kw: (cache.get(cat, None), None)
-        )
-        conn._fetch_markets_by_tag = MagicMock(return_value=([], None))
-
-        result, error = conn._fetch_markets(
-            cache_file_path="/tmp/cache.json"  # nosec B108
-        )
-        assert error is None
-        conn._load_cache_file.assert_called_once_with("/tmp/cache.json")  # nosec B108
-
     def test_unexpected_exception_returns_error(self) -> None:
         """Catches unexpected exceptions and returns error message."""
         conn = _make_connection()
-        conn._load_cache_file = MagicMock(side_effect=RuntimeError("disk full"))
-
-        result, error = conn._fetch_markets(
-            cache_file_path="/tmp/cache.json"  # nosec B108
+        conn._fetch_markets_by_tag_slug = MagicMock(
+            side_effect=RuntimeError("disk full")
         )
+
+        result, error = conn._fetch_markets()
         assert result is None
         assert "Unexpected error" in error
 
-    def test_none_tag_id_cache_in_loaded_data(self) -> None:
-        """Handles loaded cache_data with tag_id_cache=None."""
+    def test_cache_file_path_kwarg_accepted_but_ignored(self) -> None:
+        """_fetch_markets still accepts cache_file_path for payload compatibility."""
         conn = _make_connection()
-        conn._load_cache_file = MagicMock(
-            return_value={"allowances_set": False, "tag_id_cache": None}
-        )
-        conn._fetch_tag_id = MagicMock(return_value=("tag123", None))
-        conn._fetch_markets_by_tag = MagicMock(return_value=([], None))
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([], None))
 
         result, error = conn._fetch_markets(
             cache_file_path="/tmp/cache.json"  # nosec B108
         )
         assert error is None
+        assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# _fetch_markets_by_tag_slug (new /events-based fetcher)
+# ---------------------------------------------------------------------------
+
+
+class TestFetchMarketsByTagSlug:
+    """Tests for _fetch_markets_by_tag_slug (the /events?tag_slug=X fetcher)."""
+
+    def test_flattens_events_and_attaches_poly_tags(self) -> None:
+        """Each event's tag slugs are attached to every child market as _poly_tags."""
+        conn = _make_connection()
+        events = [
+            {
+                "id": "e1",
+                "tags": [{"slug": "politics"}, {"slug": "elections"}],
+                "markets": [{"id": "m1"}, {"id": "m2"}],
+            },
+            {
+                "id": "e2",
+                "tags": [{"slug": "world"}],
+                "markets": [{"id": "m3"}],
+            },
+        ]
+        conn._request_with_retries = MagicMock(return_value=(events, None))
+
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+
+        assert error is None
+        assert len(result) == 3
+        ids = [m["id"] for m in result]
+        assert ids == ["m1", "m2", "m3"]
+        assert result[0]["_poly_tags"] == ["politics", "elections"]
+        assert result[1]["_poly_tags"] == ["politics", "elections"]
+        assert result[2]["_poly_tags"] == ["world"]
+
+    def test_paginates_until_short_page(self) -> None:
+        """Paginates /events until a page smaller than EVENTS_LIMIT is returned."""
+        from packages.valory.connections.polymarket_client.connection import (
+            EVENTS_LIMIT,
+        )
+
+        page1 = [
+            {"id": f"e{i}", "tags": [], "markets": [{"id": f"m{i}"}]}
+            for i in range(EVENTS_LIMIT)
+        ]
+        page2 = [
+            {"id": f"e{i}x", "tags": [], "markets": [{"id": f"m{i}x"}]}
+            for i in range(3)
+        ]
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(
+            side_effect=[(page1, None), (page2, None)]
+        )
+
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+        assert error is None
+        assert len(result) == EVENTS_LIMIT + 3
+
+    def test_empty_response_stops_pagination(self) -> None:
+        """Empty events list stops pagination."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=([], None))
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+        assert result == []
+        assert error is None
+
+    def test_api_error_propagates(self) -> None:
+        """Returns (None, error) on API error."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=(None, "boom"))
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+        assert result is None
+        assert error == "boom"
+
+    def test_sends_correct_params_to_events_endpoint(self) -> None:
+        """Hits /events with tag_slug, date window, limit, and offset=0."""
+        from packages.valory.connections.polymarket_client.connection import (
+            EVENTS_LIMIT,
+        )
+
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=([], None))
+
+        conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+
+        call_args = conn._request_with_retries.call_args
+        actual_url = call_args[0][0]
+        actual_params = call_args[1]["params"]
+
+        assert f"{GAMMA_API_BASE_URL}/events" in actual_url
+        assert actual_params["tag_slug"] == "politics"
+        assert actual_params["end_date_min"] == "2025-01-01T00:00:00Z"
+        assert actual_params["end_date_max"] == "2025-01-05T00:00:00Z"
+        assert actual_params["limit"] == EVENTS_LIMIT
+        assert actual_params["offset"] == 0
+
+    def test_event_with_no_tags_yields_empty_poly_tags(self) -> None:
+        """Markets under an event with no tags get _poly_tags=[] (not missing)."""
+        conn = _make_connection()
+        events = [{"id": "e1", "markets": [{"id": "m1"}]}]
+        conn._request_with_retries = MagicMock(return_value=(events, None))
+
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+        assert error is None
+        assert result[0]["_poly_tags"] == []
+
+    def test_event_with_no_markets_contributes_nothing(self) -> None:
+        """An event without a markets list is skipped."""
+        conn = _make_connection()
+        events = [
+            {"id": "e1", "tags": [{"slug": "x"}]},
+            {"id": "e2", "tags": [{"slug": "y"}], "markets": [{"id": "m1"}]},
+        ]
+        conn._request_with_retries = MagicMock(return_value=(events, None))
+
+        result, error = conn._fetch_markets_by_tag_slug(
+            "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
+        )
+        assert error is None
+        assert len(result) == 1
+        assert result[0]["id"] == "m1"
+
+
+# ---------------------------------------------------------------------------
+# disabled_tags filter in _fetch_markets
+# ---------------------------------------------------------------------------
+
+
+class TestFetchMarketsDisabledTagsFilter:
+    """Tests for the disabled_tags filter applied by _fetch_markets."""
+
+    _TRADEABLE = {
+        "outcomes": '["Yes","No"]',
+        "outcomePrices": '["0.5","0.5"]',
+        "clobTokenIds": '["t1","t2"]',
+        "active": True,
+        "createdAt": "2026-01-01T00:00:00Z",
+    }
+
+    def test_drops_markets_with_intersecting_tags(self) -> None:
+        """Markets whose _poly_tags intersect disabled_tags are dropped."""
+        conn = _make_connection()
+        good = {
+            **self._TRADEABLE,
+            "id": "good",
+            "_poly_tags": ["politics", "elections"],
+        }
+        banned = {
+            **self._TRADEABLE,
+            "id": "banned",
+            "_poly_tags": ["politics", "hide-from-new"],
+        }
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([good, banned], None))
+
+        result, error = conn._fetch_markets(disabled_tags=["hide-from-new"])
+        assert error is None
+        for cat_markets in result.values():
+            ids = [m["id"] for m in cat_markets]
+            assert "banned" not in ids
+            assert "good" in ids
+
+    def test_empty_disabled_tags_is_noop(self) -> None:
+        """An empty disabled_tags list does not filter anything."""
+        conn = _make_connection()
+        m = {**self._TRADEABLE, "id": "m1", "_poly_tags": ["hide-from-new"]}
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
+
+        result, error = conn._fetch_markets(disabled_tags=[])
+        assert error is None
+        # Market with no disabled tags should survive in every category
+        for cat_markets in result.values():
+            assert len(cat_markets) == 1
+
+    def test_omitted_disabled_tags_is_noop(self) -> None:
+        """No disabled_tags kwarg at all → no filtering."""
+        conn = _make_connection()
+        m = {**self._TRADEABLE, "id": "m1", "_poly_tags": ["hide-from-new"]}
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
+
+        result, error = conn._fetch_markets()
+        assert error is None
+        for cat_markets in result.values():
+            assert len(cat_markets) == 1
+
+    def test_market_without_poly_tags_passes_filter(self) -> None:
+        """A market missing _poly_tags is treated as untagged and kept."""
+        conn = _make_connection()
+        m = {**self._TRADEABLE, "id": "m1"}
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([m], None))
+
+        result, error = conn._fetch_markets(disabled_tags=["hide-from-new"])
+        assert error is None
+        for cat_markets in result.values():
+            assert len(cat_markets) == 1
 
 
 # ---------------------------------------------------------------------------

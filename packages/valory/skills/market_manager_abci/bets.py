@@ -175,6 +175,7 @@ class Bet:
     strategy_vote: Optional[int] = None
     market_spread: Optional[float] = None
     neg_risk: bool = False
+    poly_tags: List[str] = dataclasses.field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

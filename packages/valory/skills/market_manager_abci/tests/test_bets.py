@@ -982,6 +982,25 @@ class TestBetsDecoder:
         assert isinstance(decoded, Bet)
         assert decoded.strategy_vote == 1
 
+    def test_old_json_without_poly_tags_deserializes(self) -> None:
+        """Legacy bet JSON missing poly_tags should deserialize with [] default."""
+        bet = _make_bet()
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        data = json.loads(encoded)
+        data.pop("poly_tags", None)
+        legacy_json = json.dumps(data)
+        decoded = json.loads(legacy_json, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.poly_tags == []
+
+    def test_new_json_with_poly_tags_round_trips(self) -> None:
+        """New bet JSON with poly_tags should round-trip correctly."""
+        bet = _make_bet(poly_tags=["politics", "trump-iran"])
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        decoded = json.loads(encoded, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.poly_tags == ["politics", "trump-iran"]
+
 
 # ===========================================================================
 # 8. serialize_bets

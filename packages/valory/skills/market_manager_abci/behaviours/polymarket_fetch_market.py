@@ -154,6 +154,26 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 ):
                     bet.blacklist_forever()
 
+    def _blacklist_disabled_tag_bets(self) -> None:
+        """Blacklist in-pool bets whose poly_tags intersect disabled_polymarket_tags.
+
+        Covers legacy bets already in multi_bets.json — the connection-side
+        filter only prevents the ingest of new banned markets, so this loop
+        catches bets that were added before the tag was disabled.
+        """
+        disabled = set(self.params.disabled_polymarket_tags)
+        if not disabled:
+            return
+        for bet in self.bets:
+            if bet.queue_status.is_expired():
+                continue
+            hit = set(bet.poly_tags) & disabled
+            if hit:
+                self.context.logger.info(
+                    f"Blacklisting bet {bet.id!r} — disabled tags: {sorted(hit)}"
+                )
+                bet.blacklist_forever()
+
     @staticmethod
     def _validate_market_category(market_title: str, category: str) -> bool:
         """
@@ -347,6 +367,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             "request_type": RequestType.FETCH_MARKETS.value,
             "params": {
                 "cache_file_path": cache_file_path,
+                "disabled_tags": list(self.params.disabled_polymarket_tags),
             },
         }
 
@@ -486,6 +507,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "outcome_token_ids": outcome_token_ids_map,
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
+                        "poly_tags": list(market.get("_poly_tags", []) or []),
                     }
 
                     # Debug: Log category for first few bets
@@ -546,6 +568,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
 
         self._process_chunk(bets_market_chunk)
+        self._blacklist_disabled_tag_bets()
         self._blacklist_expired_bets()
 
         # truncate the bets, otherwise logs get too big
