@@ -2290,6 +2290,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/23/e138d01ff004577ca81e2b90ee4a7a9d2ba306fcf1a5bfe1daf0e7a962ec/open_autonomy-0.21.18-py3-none-any.whl", hash = "sha256:f84766bc4679ccf1123f38d985ef870cb7df32db3f14563794442dd19cd470c1", size = 1386503, upload-time = "2026-04-16T17:43:28.447Z" },
 ]
 
+[package.optional-dependencies]
+cli = [
+    { name = "click" },
+    { name = "coverage" },
+    { name = "open-aea-cli-ipfs" },
+    { name = "pytest" },
+    { name = "python-dotenv" },
+    { name = "texttable" },
+]
+
 [[package]]
 name = "openapi-core"
 version = "0.22.0"
@@ -3524,6 +3534,15 @@ wheels = [
 ]
 
 [[package]]
+name = "texttable"
+version = "1.6.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/84/4686ee611bb020038375c5f11fe7b6b3bb94ee78614a1faba45effe51591/texttable-1.6.7.tar.gz", hash = "sha256:290348fb67f7746931bcdfd55ac7584ecd4e5b0846ab164333f0794b121760f2", size = 12891, upload-time = "2022-11-23T07:18:44.102Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/a7/2c12b543f853dae886286b824200eb9d7cd2466e3d14eff1799fbe8223b9/texttable-1.6.7-py2.py3-none-any.whl", hash = "sha256:b7b68139aa8a6339d2c320ca8b1dc42d13a7831a346b446cb9eb385f0c76310c", size = 10714, upload-time = "2022-11-23T07:18:42.04Z" },
+]
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3678,7 +3697,7 @@ dependencies = [
     { name = "open-aea-ledger-cosmos" },
     { name = "open-aea-ledger-ethereum" },
     { name = "open-aea-test-autonomy" },
-    { name = "open-autonomy" },
+    { name = "open-autonomy", extra = ["cli"] },
     { name = "openapi-core" },
     { name = "openapi-spec-validator" },
     { name = "packaging" },
@@ -3734,7 +3753,7 @@ requires-dist = [
     { name = "open-aea-ledger-cosmos", specifier = "==2.2.1" },
     { name = "open-aea-ledger-ethereum", specifier = "==2.2.1" },
     { name = "open-aea-test-autonomy", specifier = "==0.21.18" },
-    { name = "open-autonomy", specifier = "==0.21.18" },
+    { name = "open-autonomy", extras = ["cli"], specifier = "==0.21.18" },
     { name = "openapi-core", specifier = "==0.22.0" },
     { name = "openapi-spec-validator", specifier = ">=0.7.0,<0.8.0" },
     { name = "packaging" },
