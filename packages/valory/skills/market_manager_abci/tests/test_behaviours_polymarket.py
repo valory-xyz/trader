@@ -1945,10 +1945,29 @@ class TestDisabledPolymarketTags:
 
         bet.blacklist_forever.assert_not_called()
 
-    def test_update_bets_invokes_blacklist_disabled_tag_bets(self) -> None:
-        """_update_bets wires _blacklist_disabled_tag_bets between process and expiry checks."""
-        behaviour = _make_behaviour()
-        behaviour._current_market = "polymarket"
+    def test_update_bets_blacklists_legacy_bet_when_its_tag_becomes_disabled(
+        self,
+    ) -> None:
+        """End-to-end: legacy bet tags refreshed then blacklisted.
+
+        A legacy bet with poly_tags=[] gets its tags refreshed via
+        update_market_info from the incoming chunk, then blacklisted because
+        the refreshed tags intersect disabled_polymarket_tags.
+
+        Regression guard against the Bet.update_market_info → poly_tags copy
+        bug: without the copy, the existing bet keeps poly_tags=[] and the
+        blacklist loop sees no intersection, so pre-PR bets whose tags are
+        later disabled would never be blacklisted.
+        """
+        # Simulate a bet that existed in multi_bets.json before this PR (no tags).
+        legacy_bet = _make_bet(id="b1", poly_tags=[])
+        behaviour = _make_behaviour(bets=[legacy_bet])
+        behaviour._current_market = "polymarket_client"
+        behaviour.context.params.opening_margin = 1000
+        behaviour.context.params.disabled_polymarket_tags = ["hide-from-new"]
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+
+        # Fresh chunk re-observes the same bet with real poly_tags attached.
         bet_data = [
             dict(
                 id="b1",
@@ -1962,21 +1981,18 @@ class TestDisabledPolymarketTags:
                 outcomeTokenMarginalPrices=[0.5, 0.5],
                 outcomes=["Yes", "No"],
                 scaledLiquidityMeasure=10.0,
-                poly_tags=["hide-from-new"],
+                poly_tags=["hide-from-new", "politics"],
             )
         ]
         behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)  # type: ignore[method-assign]
-        behaviour._blacklist_disabled_tag_bets = MagicMock()  # type: ignore[method-assign]
-        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
-        behaviour.context.params.opening_margin = 1000
-        behaviour.context.params.disabled_polymarket_tags = ["hide-from-new"]
-        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
 
         gen = behaviour._update_bets()
         _exhaust_gen(gen)  # type: ignore[arg-type]
 
-        behaviour._blacklist_disabled_tag_bets.assert_called_once()  # type: ignore[attr-defined]
-        behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
+        # update_market_info must have carried the tags over, and the blacklist
+        # loop must have expired the bet on the same cycle.
+        assert legacy_bet.poly_tags == ["hide-from-new", "politics"]
+        assert legacy_bet.queue_status == QueueStatus.EXPIRED
 
 
 # ===========================================================================

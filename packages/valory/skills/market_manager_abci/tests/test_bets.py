@@ -711,6 +711,19 @@ class TestBetUpdateMarketInfo:
         bet.update_market_info(other)
         assert bet.neg_risk is True
 
+    def test_update_market_info_copies_poly_tags(self) -> None:
+        """update_market_info carries poly_tags from the incoming bet.
+
+        Pre-PR bets deserialize from multi_bets.json with poly_tags=[]. Without
+        this copy, the legacy-blacklist loop never sees the real tags and can
+        never blacklist a legacy bet whose tag was later added to the disable
+        list.
+        """
+        existing = _make_bet(id="b1", poly_tags=[])
+        incoming = _make_bet(id="b1", poly_tags=["politics", "trump-iran"])
+        existing.update_market_info(incoming)
+        assert existing.poly_tags == ["politics", "trump-iran"]
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""

@@ -379,6 +379,7 @@ class Bet:
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
         self.neg_risk = bet.neg_risk
+        self.poly_tags = list(bet.poly_tags)
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""

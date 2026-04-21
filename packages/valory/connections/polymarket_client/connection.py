@@ -547,7 +547,11 @@ class PolymarketClientConnection(BaseSyncConnection):
             try:
                 outcome_prices = json.loads(market.get("outcomePrices") or "[]")
                 clob_token_ids = json.loads(market.get("clobTokenIds") or "[]")
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
+                self.logger.debug(
+                    f"Dropped market {market.get('id')}: "
+                    f"malformed JSON in price/token fields ({e})"
+                )
                 continue
             if outcome_prices and clob_token_ids:
                 tradeable.append(market)
@@ -572,7 +576,6 @@ class PolymarketClientConnection(BaseSyncConnection):
 
     def _fetch_markets(
         self,
-        cache_file_path: str = None,
         disabled_tags: Optional[list] = None,
     ) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
@@ -583,7 +586,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         markets (extreme outcome prices) are blacklisted downstream by
         PolymarketFetchMarketBehaviour._blacklist_expired_bets.
 
-        :param cache_file_path: Unused; kept for backwards-compatible payload shape
         :param disabled_tags: Tag slugs whose markets must be excluded
         :return: Tuple of (filtered_markets_dict, error_message)
         """

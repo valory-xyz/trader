@@ -934,17 +934,6 @@ class TestFetchMarkets:
         assert result is None
         assert "Unexpected error" in error
 
-    def test_cache_file_path_kwarg_accepted_but_ignored(self) -> None:
-        """_fetch_markets still accepts cache_file_path for payload compatibility."""
-        conn = _make_connection()
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([], None))
-
-        result, error = conn._fetch_markets(
-            cache_file_path="/tmp/cache.json"  # nosec B108
-        )
-        assert error is None
-        assert isinstance(result, dict)
-
 
 # ---------------------------------------------------------------------------
 # _fetch_markets_by_tag_slug (new /events-based fetcher)
