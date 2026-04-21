@@ -67,6 +67,8 @@ jobs:
         run: tox -e liccheck
       - name: Check dependencies
         run: tox -e check-dependencies
+      - name: Check third-party package hashes against upstreams
+        run: tox -e check-third-party-hashes
       - name: Check doc links
         run: |
           tomte check-doc-links \
