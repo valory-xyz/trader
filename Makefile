@@ -236,7 +236,7 @@ run-agent:
 	LOG_FILE="./logs/agent_log_$$TIMESTAMP.log"; \
 	LATEST_LOG_FILE="./logs/agent_log_latest.log"; \
 	echo "Running agent and logging to $$LOG_FILE"; \
-	aea-helpers run-agent \
+	uv run aea-helpers run-agent \
 	--name valory/trader \
 	--config-replace \
 	--config-mapping config-mapping.json \
