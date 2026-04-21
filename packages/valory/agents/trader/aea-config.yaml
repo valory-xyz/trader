@@ -15,7 +15,7 @@ connections:
 - valory/ledger:0.19.0:bafybeidqf5dmueqm655z3bkw36mviobpcpuek4bhha7iq2nnz6sfu32kva
 - valory/p2p_libp2p_client:0.1.0:bafybeielj3jso3wvrarp5n5rq7llpw4vgxybqiyensgjalb5ubfiawwhhu
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
-- dvilela/genai:0.1.0:bafybeifjtwmabid2tarptzislpohvt4ip3ql65kehtkugjv6fsrhwc6mb4
+- valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
 - valory/x402:0.1.0:bafybeibg4a4drxliwba6ortn5xvqpgnhf6e5e5ji35gufaeg5jx55yrrci
 - valory/polymarket_client:0.1.0:bafybeicvecogtgrhqoiedim7u4sfkdtozm5ypia6kozf5xew3lr2uhft6u
 contracts:
@@ -65,14 +65,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezqq76bdcrlgshyo2e544sm3u57amerpwla3sacosle5zivaij24
 - valory/termination_abci:0.1.0:bafybeigp6mrueymod7a7arxn2p5mvvz2klvhhda3pls32z4fyxibqjisqu
 - valory/transaction_settlement_abci:0.1.0:bafybeic6f4ujckiutqxueagohb5iv7kgzpamhuhiq7shn6fmiwbkt3cqny
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidrxd7hz2k6rdv5zhppup2chpn5iflgwlvxxuc7tagikbirgsgv44
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiceqc55rkjlrpar2poli5kgugpmdvqbwughb4vomofnewurkcbyfi
 - valory/market_manager_abci:0.1.0:bafybeic6idgokx6kqxkdies2lvoihnkcllajyl4jrv5oafs2ywans4gfdi
-- valory/decision_maker_abci:0.1.0:bafybeiezb366ss3lagt3wf7hdgpsyh5ixwhsutv2x5ll4o7g2rhnshtrb4
-- valory/trader_abci:0.1.0:bafybeibqsfxuwax5gzz5t77wwvgcoc42umtmbtzda2l74ibevwnk4j5kb4
+- valory/decision_maker_abci:0.1.0:bafybeidegjm7vtk2vwkwqx3vkmwenhm2wkeudiwbeh5askhi725an2f3cm
+- valory/trader_abci:0.1.0:bafybeihf7u22e3ae5da6ajv7eojkcfp3izuman4eh3rp7nveqkhxyge7bu
 - valory/staking_abci:0.1.0:bafybeigib6bggysnsxsyxu7kbucemunpmjy7y3xuwjakapur4do2cvfvpu
 - valory/check_stop_trading_abci:0.1.0:bafybeic3afldd5ktf5s27anddxdnulb6xwnm7y7pgyxifers4msvig62gu
 - valory/mech_interact_abci:0.1.0:bafybeicxqsip4uer3o4dnocumvwctplnurlyzsxyzyg6wr4yqwxgnicmca
-- valory/chatui_abci:0.1.0:bafybeiackvyt2fnl55mef6ylguhfwpx3lu3tjqc37e7d52uzetd56ao6v4
+- valory/chatui_abci:0.1.0:bafybeidd4vl5czbcjx4seegz4kjdg43jsewdwn2if2xzrslc4oqdo5szka
 - valory/agent_performance_summary_abci:0.1.0:bafybeiajkh6xmnjazljv4753ofwn4so7dwbufcohw6xit4ystcu7s5lzje
 - valory/funds_manager:0.1.0:bafybeignvgpt36ph6bui47qmygwad6ii7qz6cdfz5ungy2egg4iicj7ym4
 customs:
@@ -557,7 +557,7 @@ config:
   timeout: ${float:30.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
-public_id: dvilela/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
+public_id: valory/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
   genai_api_key: ${GENAI_API_KEY:str:""}
