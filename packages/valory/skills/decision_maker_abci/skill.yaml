@@ -124,7 +124,7 @@ fingerprint:
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
 fingerprint_ignore_patterns: []
 connections:
-- valory/http_server:0.22.0:bafybeid4oqsfkqo36lryoecymjnq4whme3tgupqfq6m4l7lbr5r4yxtswu
+- valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/polymarket_client:0.1.0:bafybeihw3sxo7dqd3wv3jzxuhc7dri6i3ca64rkb24x4ua5itaz7jywonu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeicm3rxjpqc4kcjmxoj5ixqfzu6jn4alalyn3xuqxa5y2g22kpp72m
@@ -143,13 +143,13 @@ protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeihygetmlgnhawrbyswvpvv3wpztr2hlhxkljmohp4r7qcmvglpwdq
-- valory/market_manager_abci:0.1.0:bafybeihijhzyp3pjx2d3y5csvt4n6ftyhb64b7zcuznnmhyhne7ibtryum
-- valory/transaction_settlement_abci:0.1.0:bafybeiajyrszyyo6z4lxogutv4ougiaeoxak6xkq5gtrbey32gbgnirznq
-- valory/mech_interact_abci:0.1.0:bafybeied5l5xlygjyo3uju5bw52pidjvbkgdahhuzvahh6qis7kd3ht6ta
-- valory/staking_abci:0.1.0:bafybeiha6zse3dkllrjp6z6xsat5yvxshkd5nijo24i6wm3lnslldxcvki
-- valory/agent_performance_summary_abci:0.1.0:bafybeifgcpnnagvfoynjedevhwdlbk6k7nnfzylta3vvrox7ffbqfp5lfi
-- valory/chatui_abci:0.1.0:bafybeigqdqsqnwial33tvzpmcb2vhktn7glr2m5rf233rm4e3bc2xl57ee
+- valory/abstract_round_abci:0.1.0:bafybeihgbc5geup3ljdfgyontr2p5e4myxjkthaplm5ei727uw2pawstcy
+- valory/market_manager_abci:0.1.0:bafybeifs3nuqofzzx5cenuz7qujgmtp46gihfhiq7sscncfqy3mn2mbtni
+- valory/transaction_settlement_abci:0.1.0:bafybeic6f4ujckiutqxueagohb5iv7kgzpamhuhiq7shn6fmiwbkt3cqny
+- valory/mech_interact_abci:0.1.0:bafybeicxqsip4uer3o4dnocumvwctplnurlyzsxyzyg6wr4yqwxgnicmca
+- valory/staking_abci:0.1.0:bafybeigib6bggysnsxsyxu7kbucemunpmjy7y3xuwjakapur4do2cvfvpu
+- valory/agent_performance_summary_abci:0.1.0:bafybeig4je7lfg3555r42gsp7y26k2u2b647ywvzhru6hwp3vbbhqat4m4
+- valory/chatui_abci:0.1.0:bafybeihflyobugabpmodptvjfzvy3hzp535s6phae76pymctrowbfbpypm
 behaviours:
   main:
     args: {}
