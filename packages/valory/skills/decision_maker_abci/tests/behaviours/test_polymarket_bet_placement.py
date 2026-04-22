@@ -812,7 +812,7 @@ class TestPolymarketBetPlacementBehaviour:
 
         behaviour.send_polymarket_connection_request = mock_send  # type: ignore[method-assign]
 
-        cache_key = "1_bet1_token123"
+        cache_key = "v2_1_bet1_token123"
         cached_orders = {cache_key: '{"cached": "order"}'}
 
         with patch.object(
@@ -942,7 +942,7 @@ class TestPolymarketBetPlacementBehaviour:
         assert payloads_sent[0].event == Event.BET_PLACEMENT_FAILED.value
         # The signed_order_json should be cached
         cached = json.loads(payloads_sent[0].cached_signed_orders)
-        assert "1_bet1_token123" in cached
+        assert "v2_1_bet1_token123" in cached
 
     def test_finish_behaviour_stores_tools(self) -> None:
         """finish_behaviour should call _store_utilized_tools before super."""

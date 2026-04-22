@@ -48,6 +48,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval i
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
+    PolymarketWrapCollateralRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
@@ -75,6 +78,7 @@ class Event(Enum):
     UNRECOGNIZED = "unrecognized"
     NO_MAJORITY = "no_majority"
     SWAP_DONE = "swap_done"
+    WRAP_COLLATERAL_DONE = "wrap_collateral_done"
 
 
 class PreTxSettlementRound(VotingRound):
@@ -124,6 +128,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             MechPurchaseSubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
             PolymarketSetApprovalRound.auto_round_id(): Event.SET_APPROVAL_DONE,
             PolymarketSwapUsdcRound.auto_round_id(): Event.SWAP_DONE,
+            PolymarketWrapCollateralRound.auto_round_id(): Event.WRAP_COLLATERAL_DONE,
         }
 
         synced_data = SynchronizedData(self.synchronized_data.db)
@@ -185,6 +190,10 @@ class FinishedPolymarketSwapTxRound(DegenerateRound):
     """Round that represents that polymarket swap has finished."""
 
 
+class FinishedPolymarketWrapCollateralTxRound(DegenerateRound):
+    """Round that represents that a Polymarket USDC.e→pUSD wrap has settled."""
+
+
 class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
     """TxSettlementMultiplexerAbciApp
 
@@ -241,6 +250,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.SELL_OUTCOME_TOKENS_DONE: FinishedSellOutcomeTokensTxRound,
             Event.REDEEMING_DONE: FinishedRedeemingTxRound,
             Event.SWAP_DONE: FinishedPolymarketSwapTxRound,
+            Event.WRAP_COLLATERAL_DONE: FinishedPolymarketWrapCollateralTxRound,
             Event.STAKING_DONE: FinishedStakingTxRound,
             Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
             Event.SET_APPROVAL_DONE: FinishedSetApprovalTxRound,
@@ -255,6 +265,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedSetApprovalTxRound: {},
         FinishedRedeemingTxRound: {},
         FinishedPolymarketSwapTxRound: {},
+        FinishedPolymarketWrapCollateralTxRound: {},
         FinishedStakingTxRound: {},
         FailedMultiplexerRound: {},
     }
@@ -268,6 +279,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedSellOutcomeTokensTxRound,
         FinishedRedeemingTxRound,
         FinishedPolymarketSwapTxRound,
+        FinishedPolymarketWrapCollateralTxRound,
         FinishedStakingTxRound,
         FinishedSubscriptionTxRound,
         FinishedSetApprovalTxRound,
@@ -284,6 +296,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedSellOutcomeTokensTxRound: set(),
         FinishedRedeemingTxRound: set(),
         FinishedPolymarketSwapTxRound: set(),
+        FinishedPolymarketWrapCollateralTxRound: set(),
         FinishedStakingTxRound: set(),
         FailedMultiplexerRound: set(),
         FinishedSubscriptionTxRound: set(),

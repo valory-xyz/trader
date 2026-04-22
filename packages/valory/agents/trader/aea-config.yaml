@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeid4oqsfkqo36lryoecymjnq4whme3tgupqfq6m4l7lbr5r4yxtswu
 - dvilela/genai:0.1.0:bafybeieuwwoww4scfzs7ljzlmotldu5jp24o4h235qy54ovliwxf6zjxai
 - valory/x402:0.1.0:bafybeibg4a4drxliwba6ortn5xvqpgnhf6e5e5ji35gufaeg5jx55yrrci
-- valory/polymarket_client:0.1.0:bafybeihw3sxo7dqd3wv3jzxuhc7dri6i3ca64rkb24x4ua5itaz7jywonu
+- valory/polymarket_client:0.1.0:bafybeiei7dhajh2mso5caicm5zcr7sfbsedp5jl6nn27hdze7gibmcclmy
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeice337zvg3ol4cwpw2iikxcukmthwmw32ytwtdnkcju222qfc323y
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeieonbkuskzg2rwgbqwmouusnfdd4npow2pzasimetiebo3jhwjh7m
@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeidcnf77bc3o7pssa5zesilpbm4ley2k45taii5j5rrvvty7uhu3lq
 - valory/termination_abci:0.1.0:bafybeia33hlouukdpwaxctunauudv5gpfdxndimra7yqiof4a3skcwdqkq
 - valory/transaction_settlement_abci:0.1.0:bafybeiajyrszyyo6z4lxogutv4ougiaeoxak6xkq5gtrbey32gbgnirznq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaxzmygwv2ds3s57edx5raugwa6clqdyesofxhkkqn4pfpzqqshfa
-- valory/market_manager_abci:0.1.0:bafybeihijhzyp3pjx2d3y5csvt4n6ftyhb64b7zcuznnmhyhne7ibtryum
-- valory/decision_maker_abci:0.1.0:bafybeifhzxqbvimci4uqfnul5h64refzxvm3v5o2obpp7e2zhuveiemthu
-- valory/trader_abci:0.1.0:bafybeidpidhuflr2pkwygcgyg7jodnf5tsiijfaabrgo7ofmoh4q6yeoom
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicfdgjzqirabgbc2pmmlwaap5yzupyi4oo6mv7bmfy2vwj5wrgkwa
+- valory/market_manager_abci:0.1.0:bafybeidlmysc4h45h5qiowxvr234d3253abxydnclivmgts2vk7oa7dhg4
+- valory/decision_maker_abci:0.1.0:bafybeibxzothothfteyen5f3adv7ckfdthlfvivbeme4dfbhqn6ckbdgs4
+- valory/trader_abci:0.1.0:bafybeiguq22hrs5fdu2s7tsipjy6wqmxfpvpoylhxkkl4u5sjvhaflb54e
 - valory/staking_abci:0.1.0:bafybeiha6zse3dkllrjp6z6xsat5yvxshkd5nijo24i6wm3lnslldxcvki
 - valory/check_stop_trading_abci:0.1.0:bafybeiaawedash74gnujlt7bggjp46ikmemhlyiezwo3a4qbtlgt4ndyue
 - valory/mech_interact_abci:0.1.0:bafybeied5l5xlygjyo3uju5bw52pidjvbkgdahhuzvahh6qis7kd3ht6ta
-- valory/chatui_abci:0.1.0:bafybeigqdqsqnwial33tvzpmcb2vhktn7glr2m5rf233rm4e3bc2xl57ee
-- valory/agent_performance_summary_abci:0.1.0:bafybeifgcpnnagvfoynjedevhwdlbk6k7nnfzylta3vvrox7ffbqfp5lfi
+- valory/chatui_abci:0.1.0:bafybeices62uqyxg4i2yo457r7phkp66qqpmsickhrihouthemx5tprj6e
+- valory/agent_performance_summary_abci:0.1.0:bafybeihwhynl6rli3pu7dnyfme4d5mgahdujpye4vplp2jnueochzkqjnm
 - valory/funds_manager:0.1.0:bafybeihxaharfszjutbrl5a2i76co22suhdt5bfsryv76ikkltisugqbjm
 customs:
 - valory/kelly_criterion:0.1.0:bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa
@@ -274,10 +274,13 @@ models:
       is_achievement_checker_enabled: ${bool:true}
       is_running_on_polymarket: ${bool:false}
       polymarket_builder_program_enabled: ${bool:true}
-      polymarket_usdc_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+      polymarket_usdc_e_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_collateral_onramp_address: ${str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+      polymarket_usdc_e_wrap_dust_threshold: ${int:1000000}
       polymarket_ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
-      polymarket_ctf_exchange_address: ${str:0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E}
-      polymarket_neg_risk_ctf_exchange_address: ${str:0xC5d563A36AE78145C45a50134d48A1215220f80a}
+      polymarket_ctf_exchange_address: ${str:0xE111180000d2663C0091e4f400237545B87B996B}
+      polymarket_neg_risk_ctf_exchange_address: ${str:0xe2222d279d744050d28e00520010520000310F59}
       polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
       ignored_mechs: ${list:[]}
       penalize_mech_time_window: ${int:1800}
@@ -577,11 +580,19 @@ models:
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  host: https://clob.polymarket.com
+  host: https://clob-v2.polymarket.com
   chain_id: 137
   safe_contract_addresses:
     polygon: ${str:0x}
-  remote_builder_url: ${str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${bool:true}
+  builder_code: ${str:}
+  clob_version: ${str:v2}
+  collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+  usdc_e_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+  collateral_onramp_address: ${str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+  ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+  ctf_exchange: ${str:0xE111180000d2663C0091e4f400237545B87B996B}
+  neg_risk_ctf_exchange: ${str:0xe2222d279d744050d28e00520010520000310F59}
+  neg_risk_adapter: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
   polygon_ledger_rpc: ${str:https://1rpc.io/matic}
   is_running_on_polymarket: ${bool:false}

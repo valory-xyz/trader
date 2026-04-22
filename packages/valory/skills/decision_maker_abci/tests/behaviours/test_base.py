@@ -45,7 +45,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     MultisendBatch,
     TradingOperation,
-    USCDE_POLYGON,
+    USDC_E_POLYGON,
     USDC_POLYGON,
     WXDAI,
     remove_fraction_wei,
@@ -1069,7 +1069,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_get_decimals_for_token` for USDC."""
         behaviour = self.behaviour
         assert behaviour._get_decimals_for_token(USDC_POLYGON) == 6
-        assert behaviour._get_decimals_for_token(USCDE_POLYGON) == 6
+        assert behaviour._get_decimals_for_token(USDC_E_POLYGON) == 6
 
     def test_get_decimals_for_token_wxdai(self) -> None:
         """Test `_get_decimals_for_token` for wxDAI."""
@@ -2208,11 +2208,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.context.logger.info.assert_called()
 
     def test_collateral_amount_info_usdc(self) -> None:
-        """Test `_collateral_amount_info` with USDC token."""
+        """Test `_collateral_amount_info` with USDC.e token (v1 Polymarket collateral)."""
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         with mock.patch.object(behaviour, "read_bets"):
-            behaviour.bets = [MagicMock(collateralToken=USDC_POLYGON)]
+            behaviour.bets = [MagicMock(collateralToken=USDC_E_POLYGON)]
             result = behaviour._collateral_amount_info(10**6)
         assert "USDC.e" in result
 
@@ -2328,7 +2328,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_is_usdc` for USDC Polygon addresses."""
         behaviour = self.behaviour
         assert behaviour._is_usdc(USDC_POLYGON) is True
-        assert behaviour._is_usdc(USCDE_POLYGON) is True
+        assert behaviour._is_usdc(USDC_E_POLYGON) is True
         assert behaviour._is_usdc(WXDAI) is False
         assert behaviour._is_usdc("0xrandom") is False
 

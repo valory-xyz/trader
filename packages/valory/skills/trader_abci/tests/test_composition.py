@@ -54,7 +54,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedSellOutcomeTokensTxRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 46
+EXPECTED_TRANSITION_MAPPING_LENGTH = 48
 
 # Transitions introduced or rewired by the always-redeem-first /
 # `PostBetUpdateRound` FSM restructure (PR #904). Each pair must hold

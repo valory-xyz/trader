@@ -39,6 +39,7 @@ final_states:
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
@@ -70,6 +71,7 @@ states:
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
@@ -82,6 +84,7 @@ states:
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PolymarketWrapCollateralRound
 - PostBetUpdateRound
 - RandomnessRound
 - RedeemRound
@@ -108,7 +111,7 @@ transition_func:
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
     (BlacklistingRound, ROUND_TIMEOUT): BlacklistingRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): BenchmarkingModeDisabledRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): PolymarketWrapCollateralRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
@@ -142,7 +145,7 @@ transition_func:
     (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound
     (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
-    (PolymarketPostSetApprovalRound, DONE): BenchmarkingModeDisabledRound
+    (PolymarketPostSetApprovalRound, DONE): PolymarketWrapCollateralRound
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
@@ -165,6 +168,12 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PolymarketWrapCollateralRound, DONE): BenchmarkingModeDisabledRound
+    (PolymarketWrapCollateralRound, MOCK_TX): BenchmarkingModeDisabledRound
+    (PolymarketWrapCollateralRound, NONE): BenchmarkingModeDisabledRound
+    (PolymarketWrapCollateralRound, NO_MAJORITY): PolymarketWrapCollateralRound
+    (PolymarketWrapCollateralRound, PREPARE_TX): FinishedPolymarketWrapCollateralTxPreparationRound
+    (PolymarketWrapCollateralRound, ROUND_TIMEOUT): PolymarketWrapCollateralRound
     (PostBetUpdateRound, DONE): FinishedPostBetUpdateRound
     (PostBetUpdateRound, NONE): PostBetUpdateRound
     (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound

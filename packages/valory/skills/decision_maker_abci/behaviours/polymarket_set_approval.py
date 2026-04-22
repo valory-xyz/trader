@@ -140,8 +140,10 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
 
     def _prepare_approval_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare Safe transaction for setting approvals."""
-        # Get contract addresses from params
-        usdc_address = self.params.polymarket_usdc_address
+        # Get contract addresses from params. In v2 the collateral token is
+        # pUSD (was USDC.e in v1); approvals are issued against the v2 exchange
+        # contracts.
+        collateral_address = self.params.polymarket_collateral_address
         ctf_address = self.params.polymarket_ctf_address
         ctf_exchange_address = self.params.polymarket_ctf_exchange_address
         neg_risk_ctf_exchange_address = (
@@ -150,16 +152,17 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         neg_risk_adapter_address = self.params.polymarket_neg_risk_adapter_address
 
         # Build approval transactions and add to multisend_batches (must match
-        # polymarket_client _check_approval: 3 USDC allowances + 3 CTF setApprovalForAll)
-        # 1. USDC approve for CTF Exchange
-        usdc_approve_batch = MultisendBatch(
-            to=usdc_address,
+        # polymarket_client _check_approval: 3 collateral allowances + 3 CTF
+        # setApprovalForAll).
+        # 1. Collateral approve for CTF Exchange
+        collateral_approve_batch = MultisendBatch(
+            to=collateral_address,
             data=HexBytes(
                 self._build_erc20_approve_data(ctf_exchange_address, 2**256 - 1)
             ),
             value=0,
         )
-        self.multisend_batches.append(usdc_approve_batch)
+        self.multisend_batches.append(collateral_approve_batch)
 
         # 2. CTF setApprovalForAll for CTF Exchange
         ctf_approve1_batch = MultisendBatch(
@@ -171,9 +174,9 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve1_batch)
 
-        # 3. USDC approve for NegRisk CTF Exchange (required for usdc_allowances.neg_risk_ctf_exchange)
-        usdc_approve_neg_risk_ctf_batch = MultisendBatch(
-            to=usdc_address,
+        # 3. Collateral approve for NegRisk CTF Exchange
+        collateral_approve_neg_risk_ctf_batch = MultisendBatch(
+            to=collateral_address,
             data=HexBytes(
                 self._build_erc20_approve_data(
                     neg_risk_ctf_exchange_address, 2**256 - 1
@@ -181,7 +184,7 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
             ),
             value=0,
         )
-        self.multisend_batches.append(usdc_approve_neg_risk_ctf_batch)
+        self.multisend_batches.append(collateral_approve_neg_risk_ctf_batch)
 
         # 4. CTF setApprovalForAll for NegRisk CTF Exchange
         ctf_approve2_batch = MultisendBatch(
@@ -195,15 +198,15 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve2_batch)
 
-        # 5. USDC approve for NegRisk Adapter (required for usdc_allowances.neg_risk_adapter)
-        usdc_approve_neg_risk_adapter_batch = MultisendBatch(
-            to=usdc_address,
+        # 5. Collateral approve for NegRisk Adapter
+        collateral_approve_neg_risk_adapter_batch = MultisendBatch(
+            to=collateral_address,
             data=HexBytes(
                 self._build_erc20_approve_data(neg_risk_adapter_address, 2**256 - 1)
             ),
             value=0,
         )
-        self.multisend_batches.append(usdc_approve_neg_risk_adapter_batch)
+        self.multisend_batches.append(collateral_approve_neg_risk_adapter_batch)
 
         # 6. CTF setApprovalForAll for NegRisk Adapter
         ctf_approve3_batch = MultisendBatch(

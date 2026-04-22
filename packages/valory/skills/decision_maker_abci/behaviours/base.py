@@ -84,8 +84,9 @@ WaitableConditionType = Generator[None, None, bool]
 SAFE_GAS = 0
 CID_PREFIX = "f01701220"
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_E_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 USDC_POLYGON = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+PUSD_POLYGON = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"  # Polymarket v2 collateral
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -292,10 +293,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         return self.collateral_token.lower() == WXDAI.lower()
 
     def _is_usdc(self, collateral_token: str) -> bool:
-        """Get whether the collateral address is USDC (Polygon)."""
+        """Get whether the collateral address is a USD-pegged Polygon token.
+
+        Treats pUSD as USDC-equivalent since it is 1:1 backed and 6-decimal.
+        """
         return collateral_token.lower() in [
             USDC_POLYGON.lower(),
-            USCDE_POLYGON.lower(),
+            USDC_E_POLYGON.lower(),
+            PUSD_POLYGON.lower(),
         ]
 
     @property
@@ -350,7 +355,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if self.benchmarking_mode.enabled or self.is_wxdai:
             return f"{self.wei_to_native(amount):.6f} wxDAI"
         elif self.is_usdc:
-            return f"{self.usdc_to_native(amount):.6f} USDC.e"
+            token = self.collateral_token.lower()
+            if token == PUSD_POLYGON.lower():
+                label = "pUSD"
+            elif token == USDC_E_POLYGON.lower():
+                label = "USDC.e"
+            else:
+                label = "USDC"
+            return f"{self.usdc_to_native(amount):.6f} {label}"
         else:
             return f"{amount} WEI of the collateral token with address {self.collateral_token}"
 
@@ -525,7 +537,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             if collateral_token.lower()
             in [
                 USDC_POLYGON.lower(),
-                USCDE_POLYGON.lower(),
+                USDC_E_POLYGON.lower(),
+                PUSD_POLYGON.lower(),
             ]
             else 18
         )

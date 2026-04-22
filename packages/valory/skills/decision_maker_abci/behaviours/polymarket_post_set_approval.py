@@ -125,9 +125,21 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         self._write_allowances_file(all_approvals_set)
 
     def _write_allowances_file(self, allowances_set: bool) -> None:
-        """Write the allowances file to persist the approval state."""
+        """Write the allowances file to persist the approval state.
+
+        The ``clob_version`` stamp lets the check-benchmarking round ignore
+        a file that was written under a retired CLOB version (e.g. a v1
+        ``allowances_set: true`` left behind across the v2 cutover).
+        """
+        from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (  # noqa: WPS433
+            POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+        )
+
         allowances_path = self.params.store_path / "polymarket.json"
-        allowances_data = {"allowances_set": allowances_set}
+        allowances_data = {
+            "allowances_set": allowances_set,
+            "clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+        }
 
         try:
             with open(allowances_path, "w") as f:

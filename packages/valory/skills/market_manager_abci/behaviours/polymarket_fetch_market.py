@@ -41,7 +41,8 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
     PolymarketFetchMarketRound,
 )
 
-USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_E_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+PUSD_POLYGON = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # USDC has 6 decimals on Polymarket
 USDC_DECIMALS = 10**6
@@ -459,7 +460,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "title": market.get("question"),
                         "category": category,
                         "condition_id": market.get("conditionId"),
-                        "collateralToken": USCDE_POLYGON,  # Polymarket uses USDC.e on Polygon
+                        "collateralToken": PUSD_POLYGON,  # Polymarket v2 uses pUSD on Polygon
                         "creator": market.get("submitted_by", ZERO_ADDRESS),
                         "fee": 0,  # Polymarket fee is typically 0 or handled differently
                         "openingTimestamp": opening_timestamp,

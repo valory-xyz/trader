@@ -20,9 +20,11 @@
 
 """Genai connection."""
 
+import dataclasses
 import json
 import time
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 import requests
@@ -35,12 +37,10 @@ from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
-from py_builder_signing_sdk.config import BuilderConfig, RemoteBuilderConfig
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import MarketOrderArgs, OrderType
-from py_clob_client.exceptions import PolyApiException
-from py_clob_client.order_builder.constants import BUY
-from py_order_utils.model import SignedOrder as UtilsSignedOrder
+from py_clob_client_v2 import BuilderConfig, ClobClient, MarketOrderArgs, OrderType
+from py_clob_client_v2.exceptions import PolyApiException
+from py_clob_client_v2.order_builder.constants import BUY
+from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
 from web3 import Web3
 from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
@@ -110,6 +110,33 @@ class SrrDialogues(BaseSrrDialogues):
         )
 
 
+def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
+    """Serialize a v2 signed order to a JSON-safe dict.
+
+    v2 SDK's SignedOrderV2 is a plain dataclass (no `.dict()` method) and
+    carries `side` and `signatureType` as IntEnums, which json.dumps refuses.
+    We convert enums to their int values here and include the ``clob_version``
+    marker so the cache-invalidation check in W5 can distinguish v1 entries.
+    """
+    data = dataclasses.asdict(signed)
+    for key, value in list(data.items()):
+        if isinstance(value, Enum):
+            data[key] = int(value)
+    data["clob_version"] = "v2"
+    return data
+
+
+def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
+    """Rehydrate a v2 signed order from a cached JSON dict.
+
+    The ``clob_version`` marker, if present, is ignored here; cache-invalidation
+    logic is expected to reject entries without the v2 marker before calling
+    this.
+    """
+    payload = {k: v for k, v in payload.items() if k != "clob_version"}
+    return SignedOrderV2(**payload)
+
+
 class PolymarketClientConnection(BaseSyncConnection):
     """Proxy to the functionality of the Genai library."""
 
@@ -148,41 +175,57 @@ class PolymarketClientConnection(BaseSyncConnection):
         builder_program_enabled = self.configuration.config.get(
             "polymarket_builder_program_enabled", True
         )
+        builder_code = self.configuration.config.get("builder_code") or ""
 
         self.dialogues = SrrDialogues(connection_id=PUBLIC_ID)
 
-        # Initialize relay client if builder program is enabled
-        self.relayer_client = None
-        self.builder_config = None
-        if builder_program_enabled:
-            remote_builder_url = self.configuration.config.get("remote_builder_url")
+        # Build the v2 BuilderConfig. Only the builder_code field matters for
+        # attribution; builder_address is optional. When the builder program is
+        # disabled or no code is provided, pass None so the SDK defaults to the
+        # zero bytes32 (no attribution).
+        self.builder_config: Optional[BuilderConfig] = None
+        if builder_program_enabled and builder_code:
             self.logger.info(
-                f"Builder program enabled. Initializing RelayClient with remote builder URL: {remote_builder_url}"
+                f"Builder program enabled. Using builder_code={builder_code[:10]}..."
             )
-            remote_builder_config = RemoteBuilderConfig(url=remote_builder_url)
-            self.builder_config = BuilderConfig(
-                remote_builder_config=remote_builder_config
+            self.builder_config = BuilderConfig(builder_code=builder_code)
+        elif builder_program_enabled:
+            self.logger.info(
+                "Builder program enabled but builder_code is empty; "
+                "orders will be posted without attribution."
             )
 
+        # Relayer client is kept for Safe execTransaction gas relay (approvals,
+        # redemptions, bet placements). v2 only deprecates the builder-signing
+        # relay, not the tx-execution relay.
         self.relayer_client = RelayClient(
             relayer_url=RELAYER_URL,
             chain_id=chain_id,
             private_key=self.connection_private_key,
-            builder_config=self.builder_config,
+            builder_config=None,
         )
         self.client = ClobClient(
             host,
-            key=self.connection_private_key,
             chain_id=chain_id,
+            key=self.connection_private_key,
             signature_type=2,
             funder=self.safe_address,
             builder_config=self.builder_config,
         )
-        self.client.set_api_creds(self.client.create_or_derive_api_creds())
+        self.client.set_api_creds(self.client.create_or_derive_api_key())
 
-        # Load contract addresses for set approval
-        self.usdc_address = to_checksum_address(
-            self.configuration.config.get("usdc_address")
+        # Load contract addresses. In v2 the collateral token is pUSD; USDC.e
+        # is kept only as a wrap-source. The onramp contract exposes
+        # wrap()/unwrap() to convert between the two.
+        self.clob_version = self.configuration.config.get("clob_version", "v2")
+        self.collateral_address = to_checksum_address(
+            self.configuration.config.get("collateral_address")
+        )
+        self.usdc_e_address = to_checksum_address(
+            self.configuration.config.get("usdc_e_address")
+        )
+        self.collateral_onramp_address = to_checksum_address(
+            self.configuration.config.get("collateral_onramp_address")
         )
         self.ctf_address = to_checksum_address(
             self.configuration.config.get("ctf_address")
@@ -370,12 +413,31 @@ class PolymarketClientConnection(BaseSyncConnection):
         signed_order_json = None
 
         try:
-            # Use cached order or create new one
+            # Use cached order or create new one. A cached entry is trusted
+            # only if it carries the v2 marker added by
+            # ``_serialize_signed_order_v2``; v1 entries (missing the marker
+            # or with a different shape) are silently dropped and a fresh
+            # order is signed.
+            signed = None
             if cached_signed_order_json:
-                signed_dict = json.loads(cached_signed_order_json)
-                signed = UtilsSignedOrder(**signed_dict)
-                signed_order_json = cached_signed_order_json
-            else:
+                try:
+                    signed_dict = json.loads(cached_signed_order_json)
+                    if (
+                        signed_dict.get("clob_version") == "v2"
+                        and "timestamp" in signed_dict
+                    ):
+                        signed = _deserialize_signed_order_v2(signed_dict)
+                        signed_order_json = cached_signed_order_json
+                    else:
+                        self.logger.warning(
+                            "Dropping stale (non-v2) cached signed order; resigning."
+                        )
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(
+                        f"Cached signed order could not be parsed ({e}); resigning."
+                    )
+
+            if signed is None:
                 mo = MarketOrderArgs(
                     token_id=token_id,
                     amount=amount,
@@ -383,7 +445,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                     order_type=OrderType.FOK,
                 )
                 signed = self.client.create_market_order(mo)
-                signed_order_json = json.dumps(signed.dict())
+                signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
 
             # Post order
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
@@ -1039,7 +1101,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             # Create approval transactions for CTF Exchange
             usdc_approve_ctf = SafeTransaction(
-                to=self.usdc_address,
+                to=self.collateral_address,
                 operation=OperationType.Call,
                 data=self._encode_approve(self.ctf_exchange, MAX_UINT256),
                 value="0",
@@ -1054,7 +1116,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             # Create approval transactions for Neg Risk CTF Exchange
             usdc_approve_neg_risk = SafeTransaction(
-                to=self.usdc_address,
+                to=self.collateral_address,
                 operation=OperationType.Call,
                 data=self._encode_approve(self.neg_risk_ctf_exchange, MAX_UINT256),
                 value="0",
@@ -1071,7 +1133,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             # Create approval transactions for Neg Risk Adapter
             usdc_approve_adapter = SafeTransaction(
-                to=self.usdc_address,
+                to=self.collateral_address,
                 operation=OperationType.Call,
                 data=self._encode_approve(self.neg_risk_adapter, MAX_UINT256),
                 value="0",
@@ -1165,13 +1227,13 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             # Check USDC allowances
             usdc_ctf_exchange_allowance = self._check_erc20_allowance(
-                self.usdc_address, self.safe_address, self.ctf_exchange
+                self.collateral_address, self.safe_address, self.ctf_exchange
             )
             usdc_neg_risk_allowance = self._check_erc20_allowance(
-                self.usdc_address, self.safe_address, self.neg_risk_ctf_exchange
+                self.collateral_address, self.safe_address, self.neg_risk_ctf_exchange
             )
             usdc_adapter_allowance = self._check_erc20_allowance(
-                self.usdc_address, self.safe_address, self.neg_risk_adapter
+                self.collateral_address, self.safe_address, self.neg_risk_adapter
             )
 
             # Check CTF approvals
@@ -1221,26 +1283,36 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _fetch_order_book(self, token_id: str) -> Tuple[Any, Any]:
         """Fetch the order book for a given token from the CLOB.
 
+        v2 ``get_order_book`` returns the raw CLOB response as a plain dict
+        (v1 wrapped it in an ``OrderBookSummary`` object); each level is a
+        ``{"price": "...", "size": "..."}`` dict.
+
         :param token_id: The CLOB token ID for the outcome.
         :return: Tuple of (order_book_dict, error_string).
         """
         try:
-            order_book = self.client.get_order_book(token_id)
-            asks = [
-                {"price": str(a.price), "size": str(a.size)}
-                for a in (order_book.asks or [])
-            ]
-            bids = [
-                {"price": str(b.price), "size": str(b.size)}
-                for b in (order_book.bids or [])
-            ]
+            raw = self.client.get_order_book(token_id)
+            raw_asks = (raw.get("asks") if isinstance(raw, dict) else raw.asks) or []
+            raw_bids = (raw.get("bids") if isinstance(raw, dict) else raw.bids) or []
+            min_order_size = (
+                raw.get("min_order_size")
+                if isinstance(raw, dict)
+                else raw.min_order_size
+            )
+
+            def _level_to_dict(level: Any) -> Dict[str, str]:
+                if isinstance(level, dict):
+                    return {
+                        "price": str(level.get("price")),
+                        "size": str(level.get("size")),
+                    }
+                return {"price": str(level.price), "size": str(level.size)}
+
             return {
-                "asks": asks,
-                "bids": bids,
+                "asks": [_level_to_dict(a) for a in raw_asks],
+                "bids": [_level_to_dict(b) for b in raw_bids],
                 "min_order_size": (
-                    str(order_book.min_order_size)
-                    if order_book.min_order_size
-                    else None
+                    str(min_order_size) if min_order_size is not None else None
                 ),
             }, None
         except Exception as e:

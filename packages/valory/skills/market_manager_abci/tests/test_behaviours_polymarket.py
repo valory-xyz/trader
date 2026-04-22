@@ -28,9 +28,10 @@ from unittest.mock import MagicMock, PropertyMock, patch
 from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market import (
     EXTREME_PRICE_THRESHOLD,
     POLYMARKET_CATEGORY_KEYWORDS,
+    PUSD_POLYGON,
     PolymarketFetchMarketBehaviour,
-    USCDE_POLYGON,
     USDC_DECIMALS,
+    USDC_E_POLYGON,
     ZERO_ADDRESS,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
@@ -136,9 +137,13 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
 class TestConstants:
     """Tests for module-level constants."""
 
-    def test_uscde_polygon(self) -> None:
-        """Test USCDE_POLYGON constant."""
-        assert USCDE_POLYGON == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    def test_usdc_e_polygon(self) -> None:
+        """USDC.e is kept as wrap source address."""
+        assert USDC_E_POLYGON == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+
+    def test_pusd_polygon(self) -> None:
+        """pUSD is the v2 collateral."""
+        assert PUSD_POLYGON == "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 
     def test_zero_address(self) -> None:
         """Test ZERO_ADDRESS constant."""
@@ -1461,7 +1466,7 @@ class TestFetchMarketsFromPolymarket:
         assert result is not None
         assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["id"] == "market1"
-        assert result[0]["collateralToken"] == USCDE_POLYGON
+        assert result[0]["collateralToken"] == PUSD_POLYGON
 
     def test_market_missing_outcomes(self) -> None:
         """Test market with empty outcomes is skipped."""
@@ -1676,7 +1681,7 @@ class TestFetchMarketsFromPolymarket:
         assert bet_dict["title"] == "Will Tesla stock go up?"
         assert bet_dict["category"] == "technology"
         assert bet_dict["condition_id"] == "0xcond"
-        assert bet_dict["collateralToken"] == USCDE_POLYGON
+        assert bet_dict["collateralToken"] == PUSD_POLYGON
         assert bet_dict["creator"] == "0xsubmitter"
         assert bet_dict["fee"] == 0
         assert bet_dict["market_spread"] is None

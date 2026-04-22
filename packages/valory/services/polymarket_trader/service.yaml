@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeif6syec2zczcbfcwdig7qffqpxgk4ekkbwhgl4xwyhvxjxrlyh76y
+agent: valory/trader:0.1.0:bafybeicuadtwxwejlpc64xthxhr7dco5dya3vesgl5rt7izluqpxpckuma
 number_of_agents: 1
 deployment:
   agent:
@@ -387,10 +387,18 @@ models:
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  host: https://clob.polymarket.com
+  host: https://clob-v2.polymarket.com
   chain_id: 137
   safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
-  remote_builder_url: ${REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+  builder_code: ${POLYMARKET_BUILDER_CODE:str:}
+  clob_version: ${CLOB_VERSION:str:v2}
+  collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+  usdc_e_address: ${POLYMARKET_USDC_E_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+  collateral_onramp_address: ${POLYMARKET_COLLATERAL_ONRAMP_ADDRESS:str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+  ctf_address: ${POLYMARKET_CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+  ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
+  neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
+  neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}

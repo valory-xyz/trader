@@ -39,13 +39,13 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     POLYGON_NATIVE_TOKEN_ADDRESS,
     POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD,
     PREDICT_MARKET_DURATION_DAYS,
+    PUSD_ADDRESS,
     QUESTION_DATA_SEPARATOR,
     RATE_CALC_BASE_AMOUNT,
     SECONDS_PER_DAY,
     TX_HISTORY_DEPTH,
     UPDATE_INTERVAL,
     USDC_DECIMALS_DIVISOR,
-    USDC_E_ADDRESS,
     UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
@@ -212,9 +212,9 @@ class TestModuleConstants:
         """WXDAI_ADDRESS is the correct address."""
         assert WXDAI_ADDRESS == "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
-    def test_usdc_e_address(self) -> None:
-        """USDC_E_ADDRESS is the correct address."""
-        assert USDC_E_ADDRESS == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+    def test_pusd_address(self) -> None:
+        """PUSD_ADDRESS is the v2 collateral token on Polygon."""
+        assert PUSD_ADDRESS == "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 
     def test_usdc_decimals_divisor(self) -> None:
         """USDC_DECIMALS_DIVISOR is 10**6."""

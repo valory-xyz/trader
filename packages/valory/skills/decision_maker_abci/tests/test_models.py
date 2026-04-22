@@ -608,7 +608,10 @@ def _build_decision_maker_params_kwargs() -> dict:
         "enable_position_review": False,
         "review_period_seconds": 3600,
         "polymarket_builder_program_enabled": False,
-        "polymarket_usdc_address": "0xusdc",
+        "polymarket_collateral_address": "0xpusd",
+        "polymarket_usdc_e_address": "0xusdce",
+        "polymarket_collateral_onramp_address": "0xonramp",
+        "polymarket_usdc_e_wrap_dust_threshold": 1000000,
         "polymarket_ctf_address": "0xctf",
         "polymarket_ctf_exchange_address": "0xexch",
         "polymarket_neg_risk_ctf_exchange_address": "0xnegexch",
@@ -679,7 +682,10 @@ class TestDecisionMakerParams:
         assert params.review_period_seconds == 3600
         assert params.min_confidence_for_selling == 0.5
         assert params.polymarket_builder_program_enabled is False
-        assert params.polymarket_usdc_address == "0xusdc"
+        assert params.polymarket_collateral_address == "0xpusd"
+        assert params.polymarket_usdc_e_address == "0xusdce"
+        assert params.polymarket_collateral_onramp_address == "0xonramp"
+        assert params.polymarket_usdc_e_wrap_dust_threshold == 1000000
         assert params.polymarket_ctf_address == "0xctf"
         assert params.polymarket_ctf_exchange_address == "0xexch"
         assert params.polymarket_neg_risk_ctf_exchange_address == "0xnegexch"

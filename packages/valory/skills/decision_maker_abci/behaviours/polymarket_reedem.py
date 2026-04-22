@@ -357,7 +357,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             result = yield from self._redeem_position(
                 condition_id=condition_id,
                 outcome_index=outcome_index,
-                collateral_token=self.params.polymarket_usdc_address,
+                collateral_token=self.params.polymarket_collateral_address,
                 is_neg_risk=is_neg_risk,
                 size=size,
             )
@@ -446,7 +446,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 redeem_amounts[outcome_index] = int(balance)
 
                 redeem_data = self._build_redeem_neg_risk_data(
-                    collateral_token=self.params.polymarket_usdc_address,
+                    collateral_token=self.params.polymarket_collateral_address,
                     condition_id=condition_id,
                     redeem_amounts=redeem_amounts,
                 )
@@ -455,7 +455,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 # For standard markets, use CTF contract
                 index_sets = [outcome_index + 1]
                 redeem_data = self._build_redeem_positions_data(
-                    collateral_token=self.params.polymarket_usdc_address,
+                    collateral_token=self.params.polymarket_collateral_address,
                     condition_id=condition_id,
                     index_sets=index_sets,
                 )

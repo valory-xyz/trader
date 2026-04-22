@@ -2577,28 +2577,30 @@ wheels = [
 [[package]]
 name = "py-builder-signing-sdk"
 version = "0.0.2"
-source = { git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38#487579780479676d20867ead63db968bf460ea38" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/18/e3/fab3253021a4d766345f491f00e40d89c7c5640bf6d20d9f5a3182b482de/py_builder_signing_sdk-0.0.2.tar.gz", hash = "sha256:27fa4401944220c51809f549a263c6e53b5cd981fca98eda7ef6f21944e6bf94", size = 6411, upload-time = "2025-10-20T22:17:56.658Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/57/fb/23c68c8f6356a50f959e2df2ae80e8344c3ff8ccca92943848a57a495928/py_builder_signing_sdk-0.0.2-py3-none-any.whl", hash = "sha256:114b9d57bec228177d759ce15c475589f47db2252ed1fd67cac3c9b0640abe76", size = 9082, upload-time = "2025-10-20T22:17:55.629Z" },
+]
 
 [[package]]
-name = "py-clob-client"
-version = "0.34.5"
+name = "py-clob-client-v2"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eth-account" },
     { name = "eth-utils" },
     { name = "httpx", extra = ["http2"] },
     { name = "poly-eip712-structs" },
-    { name = "py-builder-signing-sdk" },
     { name = "py-order-utils" },
-    { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/a4/64f81cd2ba674f575cb53a46be3fb14adc2ba92dd229ac0eb2c4a0456662/py_clob_client-0.34.5.tar.gz", hash = "sha256:fdc3907e3dae8e2e8bcc93a7c97780493a8d97e0e40247c84d2291ccb2d4e026", size = 38164, upload-time = "2026-01-13T17:13:32.037Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/3a/62b7a1d8476023b09d48dc3edd0557fe2d5e450c2242219b7da1b2419bd2/py_clob_client_v2-1.0.0.tar.gz", hash = "sha256:ccbba4fbd0b4beba03dac1265421fe52aeb0141809fce7aabc03df9879313a66", size = 40426, upload-time = "2026-04-17T15:02:55.768Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/64/1d5a1ecc0a95f1552da62ebd01d4b6bae63505c6ccba36632250d313445e/py_clob_client-0.34.5-py3-none-any.whl", hash = "sha256:31b7b57d522164f3eeab6bfdd78c42d8b313ff3d4469e0966fa2296121fbfb12", size = 43788, upload-time = "2026-01-13T17:13:30.877Z" },
+    { url = "https://files.pythonhosted.org/packages/13/42/1822c6a6a540bd12e4b41cdb27e17f6850f97a06c08460e43789b887661d/py_clob_client_v2-1.0.0-py3-none-any.whl", hash = "sha256:f9fa3315f154ceeb9e3084284a1bfc792df74f12b9441612e545a2480f603453", size = 46700, upload-time = "2026-04-17T15:02:53.641Z" },
 ]
 
 [[package]]
@@ -3712,10 +3714,10 @@ dependencies = [
     { name = "openapi-spec-validator" },
     { name = "packaging" },
     { name = "pip" },
+    { name = "poly-eip712-structs" },
     { name = "protobuf" },
     { name = "py-builder-relayer-client" },
-    { name = "py-builder-signing-sdk" },
-    { name = "py-clob-client" },
+    { name = "py-clob-client-v2" },
     { name = "py-eth-sig-utils" },
     { name = "py-multibase" },
     { name = "py-multicodec" },
@@ -3768,10 +3770,10 @@ requires-dist = [
     { name = "openapi-spec-validator", specifier = ">=0.7.0,<0.8.0" },
     { name = "packaging" },
     { name = "pip", specifier = ">=24.0" },
+    { name = "poly-eip712-structs", specifier = ">=0.0.1" },
     { name = "protobuf", specifier = ">=5,<6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
-    { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
-    { name = "py-clob-client", specifier = "==0.34.5" },
+    { name = "py-clob-client-v2", specifier = "==1.0.0" },
     { name = "py-eth-sig-utils" },
     { name = "py-multibase", specifier = "==1.0.3" },
     { name = "py-multicodec", specifier = "==0.2.1" },

@@ -54,6 +54,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
@@ -79,6 +80,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval i
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
+    PolymarketWrapCollateralRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
@@ -276,7 +280,11 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
             Event.BENCHMARKING_ENABLED: BenchmarkingRandomnessRound,
-            Event.BENCHMARKING_DISABLED: BenchmarkingModeDisabledRound,
+            # Route the "cycle starts" path through the wrap round so any
+            # USDC.e the user deposited between cycles is converted to pUSD
+            # before the bankroll check. On Omen cycles the wrap round's
+            # is_running_on_polymarket guard makes it a cheap no-op.
+            Event.BENCHMARKING_DISABLED: PolymarketWrapCollateralRound,
             Event.SET_APPROVAL: PolymarketSetApprovalRound,
             Event.PREPARE_TX: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
@@ -347,6 +355,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # loop on the same state until Mech deliver is received
             Event.ROUND_TIMEOUT: DecisionReceiveRound,
         },
+        PolymarketWrapCollateralRound: {
+            # No wrap needed (balance at or below dust): start the trading
+            # cycle. BenchmarkingModeDisabled routes to FetchMarketsRouter in
+            # the composed trader_abci, which drives sampling → mech →
+            # decision → bet placement.
+            Event.DONE: BenchmarkingModeDisabledRound,
+            Event.NONE: BenchmarkingModeDisabledRound,
+            # Wrap tx built: hand off to Safe tx settlement.
+            Event.PREPARE_TX: FinishedPolymarketWrapCollateralTxPreparationRound,
+            Event.MOCK_TX: BenchmarkingModeDisabledRound,
+            Event.NO_MAJORITY: PolymarketWrapCollateralRound,
+            Event.ROUND_TIMEOUT: PolymarketWrapCollateralRound,
+        },
         BlacklistingRound: {
             # After blacklisting a market we end the cycle via the checkpoint;
             # any winnings will be picked up by the early-redeem at the start
@@ -411,7 +432,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.MOCK_TX: PolymarketPostSetApprovalRound,
         },
         PolymarketPostSetApprovalRound: {
-            Event.DONE: BenchmarkingModeDisabledRound,
+            # Insert the wrap step: approvals are confirmed, now make sure any
+            # USDC.e in the Safe is converted to pUSD before the trading
+            # cycle's bankroll check runs.
+            Event.DONE: PolymarketWrapCollateralRound,
             # degenerate round on purpose, owner must refill the safe
             Event.APPROVAL_FAILED: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: PolymarketPostSetApprovalRound,
@@ -467,6 +491,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedPolymarketBetPlacementRound: {},
         FinishedPostBetUpdateRound: {},
         FinishedPolymarketSwapTxPreparationRound: {},
+        FinishedPolymarketWrapCollateralTxPreparationRound: {},
         FinishedSetApprovalTxPreparationRound: {},
         FinishedWithoutDecisionRound: {},
         FinishedWithoutRedeemingRound: {},
@@ -507,6 +532,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedPolymarketBetPlacementRound,
         FinishedPostBetUpdateRound,
         FinishedPolymarketSwapTxPreparationRound,
+        FinishedPolymarketWrapCollateralTxPreparationRound,
         FinishedSetApprovalTxPreparationRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
@@ -546,6 +572,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedPolymarketBetPlacementRound: set(),
         FinishedPostBetUpdateRound: set(),
         FinishedPolymarketSwapTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedPolymarketWrapCollateralTxPreparationRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },

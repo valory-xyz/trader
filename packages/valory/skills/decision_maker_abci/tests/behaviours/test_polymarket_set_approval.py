@@ -344,7 +344,7 @@ class TestPolymarketSetApprovalBehaviour:
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0x1234567890123456789012345678901234567890",
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
@@ -383,7 +383,7 @@ class TestPolymarketSetApprovalBehaviour:
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0x1234567890123456789012345678901234567890",
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
@@ -422,7 +422,7 @@ class TestPolymarketSetApprovalBehaviour:
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
             mock_params.return_value = MagicMock(
-                polymarket_usdc_address="0x1234567890123456789012345678901234567890",
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
