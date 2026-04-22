@@ -24,6 +24,7 @@ from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 import pytest
+from aea.exceptions import AEAEnforceError
 from aea.skills.base import Model
 
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
@@ -162,6 +163,7 @@ DEFAULT_MM_KWARGS: Dict[str, Any] = {
     "use_multi_bets_mode": False,
     "is_running_on_polymarket": False,
     "enable_multi_bets_fallback": False,
+    "disabled_polymarket_tags": [],
 }
 
 
@@ -187,6 +189,34 @@ class TestMarketManagerParamsInit:
         assert params.use_multi_bets_mode is False
         assert params.is_running_on_polymarket is False
         assert params.enable_multi_bets_fallback is False
+        assert params.disabled_polymarket_tags == []
+
+    def test_init_reads_disabled_polymarket_tags_as_list(self) -> None:
+        """Test that disabled_polymarket_tags is read as List[str]."""
+        mock_skill_context = MagicMock()
+        tags = ["hide-from-new", "trump-iran", "primaries"]
+        kwargs = {**DEFAULT_MM_KWARGS, "disabled_polymarket_tags": tags}
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = MarketManagerParams(
+                skill_context=mock_skill_context,
+                **kwargs,
+            )
+        assert params.disabled_polymarket_tags == tags
+
+    def test_init_missing_disabled_polymarket_tags_raises(self) -> None:
+        """Missing disabled_polymarket_tags key should raise via _ensure."""
+        mock_skill_context = MagicMock()
+        kwargs = {
+            k: v
+            for k, v in DEFAULT_MM_KWARGS.items()
+            if k != "disabled_polymarket_tags"
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            with pytest.raises(AEAEnforceError, match="disabled_polymarket_tags"):
+                MarketManagerParams(
+                    skill_context=mock_skill_context,
+                    **kwargs,
+                )
 
     def test_init_calls_super(self) -> None:
         """Test that MarketManagerParams init calls BaseParams.__init__."""

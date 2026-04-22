@@ -23,7 +23,6 @@
 import json
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 import requests
@@ -73,6 +72,7 @@ POLYMARKET_CATEGORY_TAGS = [
     "international",
 ]
 MARKETS_LIMIT = 300
+EVENTS_LIMIT = 200
 MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
@@ -405,35 +405,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
 
-    def _load_cache_file(self, cache_file_path: str) -> Dict:
-        """Load the cache file from disk.
-
-        :param cache_file_path: Path to the cache file
-        :return: Cache data dictionary
-        """
-        try:
-            with open(cache_file_path, "r") as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            self.logger.warning(f"Could not load cache file: {e}. Using empty cache.")
-            return {"allowances_set": False, "tag_id_cache": {}}
-
-    def _save_cache_file(self, cache_file_path: str, cache_data: Dict) -> None:
-        """Save the cache file to disk.
-
-        :param cache_file_path: Path to the cache file
-        :param cache_data: Cache data dictionary to save
-        """
-        try:
-            # Ensure directory exists
-            cache_path = Path(cache_file_path)
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-            with open(cache_file_path, "w") as f:
-                json.dump(cache_data, f, indent=2)
-        except Exception as e:
-            self.logger.error(f"Could not save cache file: {e}")
-
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES
     ) -> Tuple[Any, str]:
@@ -464,96 +435,62 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         return None, last_error
 
-    def _fetch_tag_id(
-        self,
-        category: str,
-        tag_id_cache: Dict[str, str],
-        cache_file_path: str = None,
-        cache_data: Dict = None,
-    ) -> Tuple[str, str]:
-        """Fetch tag ID for a category slug.
-
-        :param category: The category name
-        :param tag_id_cache: In-memory cache dictionary for tag IDs
-        :param cache_file_path: Optional path to persistent cache file
-        :param cache_data: Optional cache data dict to update
-        :return: Tuple of (tag_id, error_message)
-        """
-        tag_slug = category.lower()
-
-        # Check in-memory cache first
-        if tag_slug in tag_id_cache:
-            self.logger.info(f"  Using cached tag_id: {tag_id_cache[tag_slug]}")
-            return tag_id_cache[tag_slug], None
-
-        # Fetch from API
-        tag_url = f"{GAMMA_API_BASE_URL}/tags/slug/{tag_slug}"
-        tag_data, error = self._request_with_retries(tag_url)
-
-        if error:
-            return None, f"Error fetching tag for '{category}': {error}"
-
-        tag_id = tag_data.get("id")
-        if not tag_id:
-            return None, f"No tag ID found for slug '{tag_slug}'"
-
-        # Update in-memory cache
-        tag_id_cache[tag_slug] = tag_id
-
-        # Update persistent cache if provided
-        if cache_file_path and cache_data is not None:
-            # Ensure tag_id_cache dict exists
-            if "tag_id_cache" not in cache_data or not isinstance(
-                cache_data["tag_id_cache"], dict
-            ):
-                cache_data["tag_id_cache"] = {}
-            cache_data["tag_id_cache"][tag_slug] = tag_id
-            self._save_cache_file(cache_file_path, cache_data)
-
-        self.logger.info(f"  Found tag_id: {tag_id}")
-        return tag_id, None
-
-    def _fetch_markets_by_tag(
-        self, tag_id: str, end_date_min: str, end_date_max: str
+    def _fetch_markets_by_tag_slug(
+        self, tag_slug: str, end_date_min: str, end_date_max: str
     ) -> Tuple[list, str]:
-        """Fetch all markets for a given tag ID with pagination.
+        """Fetch markets for a tag slug via /events, flattened with per-market tags.
 
-        :param tag_id: The tag ID to filter markets by
+        Hits `/events?tag_slug=X` (paginated), flattens each event's child markets,
+        and attaches the event's tag slugs to every market as `_poly_tags`. The
+        events endpoint returns markets with the same field shape as `/markets`
+        but additionally carries the tag taxonomy required for filtering.
+
+        :param tag_slug: The tag slug to filter events by
         :param end_date_min: Minimum end date filter
         :param end_date_max: Maximum end date filter
         :return: Tuple of (markets_list, error_message)
         """
         offset = 0
-        all_markets = []
+        all_markets: list = []
 
         while True:
             params = {
-                "tag_id": tag_id,
+                "tag_slug": tag_slug,
                 "end_date_max": end_date_max,
                 "end_date_min": end_date_min,
-                "limit": MARKETS_LIMIT,
+                "limit": EVENTS_LIMIT,
                 "offset": offset,
             }
 
-            markets_data, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/markets", params=params
+            events_data, error = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/events", params=params
             )
 
             if error:
                 return None, error
 
-            if not markets_data:
+            if not events_data:
                 break
 
-            all_markets.extend(markets_data)
+            markets_this_page = 0
+            for event in events_data:
+                tag_slugs = [
+                    t.get("slug") for t in (event.get("tags") or []) if t.get("slug")
+                ]
+                for market in event.get("markets") or []:
+                    market["_poly_tags"] = tag_slugs
+                    all_markets.append(market)
+                    markets_this_page += 1
+
             self.logger.info(
-                f"  Fetched {len(markets_data)} markets (total: {len(all_markets)})"
+                f"  Fetched {len(events_data)} events "
+                f"→ {markets_this_page} markets (total: {len(all_markets)})"
             )
 
-            if len(markets_data) < MARKETS_LIMIT:
+            if len(events_data) < EVENTS_LIMIT:
                 break
 
-            offset += len(markets_data)
+            offset += len(events_data)
 
         return all_markets, None
 
@@ -592,6 +529,34 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         return yes_no_markets
 
+    def _filter_tradeable_markets(self, markets: list) -> list:
+        """Filter to markets that are active and have populated price + CLOB tokens.
+
+        The /events endpoint can surface nested markets that are yes/no-shaped
+        but not yet (or no longer) tradeable — empty outcomePrices/clobTokenIds
+        or active=False. The old /markets?tag_id=X endpoint filtered these
+        server-side. This filter matches that behaviour client-side.
+
+        :param markets: List of market dictionaries
+        :return: Markets with non-empty outcomePrices and clobTokenIds, active=True
+        """
+        tradeable = []
+        for market in markets:
+            if not market.get("active"):
+                continue
+            try:
+                outcome_prices = json.loads(market.get("outcomePrices") or "[]")
+                clob_token_ids = json.loads(market.get("clobTokenIds") or "[]")
+            except (json.JSONDecodeError, TypeError) as e:
+                self.logger.debug(
+                    f"Dropped market {market.get('id')}: "
+                    f"malformed JSON in price/token fields ({e})"
+                )
+                continue
+            if outcome_prices and clob_token_ids:
+                tradeable.append(market)
+        return tradeable
+
     def _remove_duplicate_markets(self, markets: list) -> list:
         """Remove duplicate markets based on market ID.
 
@@ -609,40 +574,26 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         return unique_markets
 
-    def _fetch_markets(self, cache_file_path: str = None) -> Tuple[Any, Any]:
+    def _fetch_markets(self) -> Tuple[Any, Any]:
         """Fetch current markets from Polymarket with category-based filtering.
 
-        Fetches markets from multiple categories and filters for Yes/No outcomes.
-        Resolved/over markets (extreme outcome prices) are blacklisted in the
-        PolymarketFetchMarketBehaviour._blacklist_expired_bets logic.
+        Fetches events per category from /events?tag_slug=X, flattens to markets
+        with per-market _poly_tags attached, and filters for Yes/No outcomes +
+        tradeable status. The disabled-tags policy filter runs downstream in
+        decision_maker_abci's sampling behaviour so legacy bets get a chance
+        to refresh their poly_tags via update_market_info before the filter
+        runs. Resolved markets (extreme outcome prices) are blacklisted
+        downstream by PolymarketFetchMarketBehaviour._blacklist_expired_bets.
 
-        :param cache_file_path: Optional path to persistent cache file for tag IDs
         :return: Tuple of (filtered_markets_dict, error_message)
         """
         try:
-            # Calculate time window
             end_date_min = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             end_date_max = (
                 datetime.now(timezone.utc) + timedelta(days=MARKETS_TIME_WINDOW_DAYS)
             ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            filtered_markets_by_category = {}
-
-            # Load persistent cache if path provided
-            cache_data = None
-            if cache_file_path:
-                cache_data = self._load_cache_file(cache_file_path)
-                # Handle case where tag_id_cache key is missing or None
-                tag_id_cache = cache_data.get("tag_id_cache") or {}
-                # Ensure tag_id_cache exists in cache_data for saving later
-                if (
-                    "tag_id_cache" not in cache_data
-                    or cache_data["tag_id_cache"] is None
-                ):
-                    cache_data["tag_id_cache"] = {}
-                self.logger.info(f"Loaded {len(tag_id_cache)} cached tag IDs")
-            else:
-                tag_id_cache = {}
+            filtered_markets_by_category: Dict[str, list] = {}
 
             self.logger.info(
                 f"Fetching markets for {len(POLYMARKET_CATEGORY_TAGS)} categories"
@@ -652,17 +603,8 @@ class PolymarketClientConnection(BaseSyncConnection):
             for category in POLYMARKET_CATEGORY_TAGS:
                 self.logger.info(f"Processing category: {category}")
 
-                # Step 1: Fetch tag ID
-                tag_id, error = self._fetch_tag_id(
-                    category, tag_id_cache, cache_file_path, cache_data
-                )
-                if error:
-                    self.logger.warning(f"  {error}. Skipping.")
-                    continue
-
-                # Step 2: Fetch markets with pagination
-                category_markets, error = self._fetch_markets_by_tag(
-                    tag_id, end_date_min, end_date_max
+                category_markets, error = self._fetch_markets_by_tag_slug(
+                    category, end_date_min, end_date_max
                 )
                 if error:
                     self.logger.error(
@@ -670,8 +612,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                     )
                     continue
 
-                # Step 3: Filter by createdAt (subgraph indexes markets after MARKETS_MIN_CREATED_AT),
-                # then filter for Yes/No outcomes only
                 markets_after_cutoff = self._filter_markets_by_created_at(
                     category_markets
                 )
@@ -681,12 +621,24 @@ class PolymarketClientConnection(BaseSyncConnection):
                 yes_no_markets = self._filter_yes_no_markets(markets_after_cutoff)
                 self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
 
-                filtered_markets_by_category[category] = yes_no_markets
+                tradeable_markets = self._filter_tradeable_markets(yes_no_markets)
                 self.logger.info(
-                    f"  Found {len(yes_no_markets)} markets for '{category}'"
+                    f"  Filtered to {len(tradeable_markets)} tradeable markets "
+                    f"(dropped {len(yes_no_markets) - len(tradeable_markets)} "
+                    f"inactive / unpriced)"
+                )
+                if yes_no_markets and not tradeable_markets:
+                    self.logger.warning(
+                        f"Tradeable filter dropped 100% of "
+                        f"{len(yes_no_markets)} markets for category "
+                        f"'{category}' — possible upstream schema change"
+                    )
+
+                filtered_markets_by_category[category] = tradeable_markets
+                self.logger.info(
+                    f"  Found {len(tradeable_markets)} markets for '{category}'"
                 )
 
-            # Return all filtered markets by category (with potential duplicates)
             total_markets = sum(
                 len(markets) for markets in filtered_markets_by_category.values()
             )

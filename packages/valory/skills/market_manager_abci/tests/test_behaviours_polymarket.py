@@ -1846,6 +1846,7 @@ class TestUpdateBets:
         behaviour._fetch_markets_from_polymarket = _return_gen(bet_data)  # type: ignore[method-assign]
         behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
         behaviour.context.params.opening_margin = 1000
+        behaviour.context.params.disabled_polymarket_tags = []
         type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
         # type: ignore[method-assign]
         gen = behaviour._update_bets()
@@ -1853,6 +1854,40 @@ class TestUpdateBets:
 
         assert len(behaviour.bets) == 1
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
+
+
+# ===========================================================================
+# Tests for poly_tags flowing from market dict to Bet object
+# ===========================================================================
+
+
+class TestPolyTagsFlowThrough:
+    """poly_tags must flow from the /events market dict onto the Bet object.
+
+    The disabled-tag policy filter lives in decision_maker_abci's sampling
+    behaviour; the data contract at this layer is that each Bet carries the
+    tags the connection attached, so the sampling filter has data to match.
+    """
+
+    def _setup_behaviour(self) -> PolymarketFetchMarketBehaviour:
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = Path("/tmp")  # nosec B108
+        behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
+        return behaviour
+
+    def test_bet_dict_carries_poly_tags_from_market(self) -> None:
+        """Bet dicts built from markets include poly_tags from _poly_tags."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market()
+        market["_poly_tags"] = ["politics", "elections"]
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["poly_tags"] == ["politics", "elections"]
 
 
 # ===========================================================================
