@@ -27,7 +27,7 @@ from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 
-from packages.dvilela.connections.genai.connection import (
+from packages.valory.connections.genai.connection import (
     PUBLIC_ID as GENAI_CONNECTION_PUBLIC_ID,
 )
 from packages.valory.protocols.http.message import HttpMessage

@@ -60,13 +60,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install tomte[tox,cli]==0.6.2 tox-uv
+        run: pip install tomte[tox,cli]==0.6.5 tox-uv
       - name: Check copyright headers
         run: tox -e copyright-check
       - name: License compatibility check
         run: tox -e liccheck
       - name: Check dependencies
         run: tox -e check-dependencies
+      - name: Check third-party package hashes against upstreams
+        run: tox -e check-third-party-hashes
       - name: Check doc links
         run: |
           tomte check-doc-links \
@@ -97,7 +99,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install tomte[tox,cli]==0.6.2 tox-uv
+          pip install tomte[tox,cli]==0.6.5 tox-uv
           pip install marshmallow==3.26.2
 
           # Install `mdspell` for spelling checks
@@ -166,7 +168,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install tomte[tox]==0.6.2 tox-uv
+          pip install tomte[tox]==0.6.5 tox-uv
           pip install --user --upgrade setuptools
 
           # install Protobuf compiler
@@ -187,7 +189,7 @@ jobs:
       - if: matrix.os == 'macos-15'
         name: Install dependencies (macos-15)
         run: |
-          pip install tomte[tox]==0.6.2 tox-uv
+          pip install tomte[tox]==0.6.5 tox-uv
           brew install gcc
           # brew install protobuf
           # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/72457f0166d5619a83f508f2345b22d0617b5021/Formula/protobuf.rb
@@ -215,7 +217,7 @@ jobs:
           choco install make -y
           # to check make was installed
           make --version
-          pip install tomte[tox]==0.6.2 tox-uv
+          pip install tomte[tox]==0.6.5 tox-uv
 
       - if: matrix.os == 'windows-2025'
         name: Packages unit tests windows-2025
@@ -240,7 +242,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install tomte[tox]==0.6.2 tox-uv
+          pip install tomte[tox]==0.6.5 tox-uv
           pip install --user --upgrade setuptools
       - name: Check coverage
         run: tox -e coverage

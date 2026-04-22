@@ -142,8 +142,8 @@ build-agent-runner: uv-install  agent
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	$(shell uv run python get_pyinstaller_dependencies.py) \
-	--onefile pyinstaller/trader_bin.py \
+	$(shell uv run aea-helpers build-binary-deps ./agent) \
+	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
 	--name agent_runner_bin
 	./dist/agent_runner_bin --version
 
@@ -160,8 +160,8 @@ build-agent-runner-mac: uv-install  agent
 	--hidden-import aea_ledger_ethereum \
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
-	$(shell uv run python get_pyinstaller_dependencies.py) \
-	--onefile pyinstaller/trader_bin.py \
+	$(shell uv run aea-helpers build-binary-deps ./agent) \
+	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
 	./dist/agent_runner_bin --version
@@ -189,28 +189,14 @@ build-agent-runner-mac: uv-install  agent
 	uv run bash -c "cd ./agent; autonomy  -s generate-key ethereum; autonomy -s add-key ethereum ethereum_private_key.txt; autonomy -s add-key ethereum ethereum_private_key.txt --connection; autonomy -s issue-certificates;"
 
 
-# Configuration
-TIMEOUT := 20
-COMMAND := cd ./agent && SKILL_TRADER_ABCI_MODELS_PARAMS_ARGS_STORE_PATH=/tmp ../dist/agent_runner_bin -s run
-SEARCH_STRING := Starting AEA
-
-
-# Determine OS and set appropriate options
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-    # macOS specific settings
-    MKTEMP = mktemp -t tmp
-else ifeq ($(OS),Windows_NT)
-    # Windows specific settings
-    MKTEMP = echo $$(cygpath -m "$$(mktemp -t tmp.XXXXXX)")
-else
-    # Linux and other Unix-like systems
-    MKTEMP = mktemp
-endif
-
 .PHONY: check-agent-runner
 check-agent-runner:
-	python check_agent_runner.py
+	# aea-config.yaml uses a named env-var template (${STORE_PATH:str:/data/})
+	# for the skill's store_path, so a single STORE_PATH override drives it.
+	# Path-based env vars like SKILL_..._STORE_PATH are the fallback when the
+	# template lacks an explicit var name and are silently ignored here.
+	uv run aea-helpers check-binary ./dist/agent_runner_bin ./agent \
+	--env-var STORE_PATH=/tmp
 
 .PHONY: ci-linter-checks
 ci-linter-checks:
@@ -238,6 +224,4 @@ run-agent:
 	echo "Running agent and logging to $$LOG_FILE"; \
 	uv run aea-helpers run-agent \
 	--name valory/trader \
-	--config-replace \
-	--config-mapping config-mapping.json \
 	--connection-key 2>&1 | tee $$LOG_FILE $$LATEST_LOG_FILE'
