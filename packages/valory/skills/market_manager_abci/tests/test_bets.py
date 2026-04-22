@@ -711,6 +711,19 @@ class TestBetUpdateMarketInfo:
         bet.update_market_info(other)
         assert bet.neg_risk is True
 
+    def test_update_market_info_copies_poly_tags(self) -> None:
+        """update_market_info carries poly_tags from the incoming bet.
+
+        Pre-PR bets deserialize from multi_bets.json with poly_tags=[]. Without
+        this copy, the legacy-blacklist loop never sees the real tags and can
+        never blacklist a legacy bet whose tag was later added to the disable
+        list.
+        """
+        existing = _make_bet(id="b1", poly_tags=[])
+        incoming = _make_bet(id="b1", poly_tags=["politics", "trump-iran"])
+        existing.update_market_info(incoming)
+        assert existing.poly_tags == ["politics", "trump-iran"]
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""
@@ -981,6 +994,25 @@ class TestBetsDecoder:
         decoded = json.loads(encoded, cls=BetsDecoder)
         assert isinstance(decoded, Bet)
         assert decoded.strategy_vote == 1
+
+    def test_old_json_without_poly_tags_deserializes(self) -> None:
+        """Legacy bet JSON missing poly_tags should deserialize with [] default."""
+        bet = _make_bet()
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        data = json.loads(encoded)
+        data.pop("poly_tags", None)
+        legacy_json = json.dumps(data)
+        decoded = json.loads(legacy_json, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.poly_tags == []
+
+    def test_new_json_with_poly_tags_round_trips(self) -> None:
+        """New bet JSON with poly_tags should round-trip correctly."""
+        bet = _make_bet(poly_tags=["politics", "trump-iran"])
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        decoded = json.loads(encoded, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.poly_tags == ["politics", "trump-iran"]
 
 
 # ===========================================================================

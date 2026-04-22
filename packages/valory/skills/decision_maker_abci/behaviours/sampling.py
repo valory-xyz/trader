@@ -254,6 +254,37 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             if not idx:
                 return None
 
+        # Policy filter: reject candidates whose Polymarket tags are on the
+        # operator-configured disable list. Normalize both sides — strip
+        # whitespace + lowercase — so tag casing drift or accidental
+        # whitespace upstream doesn't silently break the match. Pre-filter
+        # the candidate pool once here rather than per-iteration inside the
+        # while-loop so we avoid redundant priority-sorting of bets we've
+        # already decided to skip.
+        disabled_tags = {
+            t.strip().lower() for t in self.params.disabled_polymarket_tags
+        }
+        if disabled_tags:
+            before = len(available_bets)
+            available_bets = [
+                bet
+                for bet in available_bets
+                if not (disabled_tags & {t.strip().lower() for t in bet.poly_tags})
+            ]
+            skipped = before - len(available_bets)
+            self.context.logger.debug(
+                f"Sampling: pre-filtered {skipped} disabled-tag bets "
+                f"against {len(disabled_tags)} slugs; "
+                f"{len(available_bets)} candidates remain"
+            )
+            if not available_bets:
+                msg = (
+                    f"All {before} candidate bets were dropped by the "
+                    f"disabled-tag filter!"
+                )
+                self.context.logger.warning(msg)
+                return None
+
         # Loop until we find a valid bet or run out of options
         while available_bets:
             # sample a bet using the priority logic

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeie2o7gtzl2erutp5c5ofda4enoovcfrkwcu5dcoppf34yamrfn7je
+agent: valory/trader:0.1.0:bafybeif6syec2zczcbfcwdig7qffqpxgk4ekkbwhgl4xwyhvxjxrlyh76y
 number_of_agents: 1
 deployment:
   agent:
@@ -83,6 +83,7 @@ models:
       slot_count: ${SLOT_COUNT:int:2}
       opening_margin: ${OPENING_MARGIN:int:300}
       languages: ${LANGUAGES:list:["en_US"]}
+      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${ABT:int:5}
       abt_error_mult: ${ABT_ERROR_MULT:int:5}
       the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}

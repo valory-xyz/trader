@@ -341,13 +341,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
-        # Prepare payload data for FETCH_MARKETS request
-        cache_file_path = str(self.params.store_path / "polymarket.json")
         polymarket_fetch_markets_payload = {
             "request_type": RequestType.FETCH_MARKETS.value,
-            "params": {
-                "cache_file_path": cache_file_path,
-            },
+            "params": {},
         }
 
         response = yield from self.send_polymarket_connection_request(
@@ -486,6 +482,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "outcome_token_ids": outcome_token_ids_map,
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
+                        "poly_tags": list(market.get("_poly_tags", []) or []),
                     }
 
                     # Debug: Log category for first few bets
