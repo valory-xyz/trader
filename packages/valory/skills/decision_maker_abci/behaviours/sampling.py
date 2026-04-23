@@ -39,6 +39,20 @@ UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
 
 
+def _polymarket_dry_run_enabled() -> bool:
+    """Whether the CLOB v2 dry-run hardcode gate is active.
+
+    Strict truthy check: only ``"1"`` / ``"true"`` (case-insensitive). Plain
+    ``bool(os.environ.get(X))`` would activate on ``"0"`` / ``"false"`` too.
+
+    :return: True when the env var is set to a strictly-truthy value.
+    """
+    return os.environ.get("POLYMARKET_DRY_RUN_HARDCODE", "").lower() in (
+        "1",
+        "true",
+    )
+
+
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
 
@@ -202,10 +216,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # TEMP: CLOB v2 dry-run — force one of the two Polymarket test
         # markets that carry v2 orderbook depth. Gated on POLYMARKET_DRY_RUN_HARDCODE
         # env var; delete this block after the 2026-04-28 cutover.
-        if (
-            os.environ.get("POLYMARKET_DRY_RUN_HARDCODE")
-            and self.params.is_running_on_polymarket
-        ):
+        if _polymarket_dry_run_enabled() and self.params.is_running_on_polymarket:
             for dry_run_idx, dry_run_bet in enumerate(self.bets):
                 if dry_run_bet.id in ("665325", "678407"):
                     self.context.logger.info(

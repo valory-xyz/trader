@@ -19,6 +19,7 @@
 
 """Tests for SamplingBehaviour."""
 
+import os
 import time
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -27,6 +28,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     UNIX_DAY,
     UNIX_WEEK,
     WEEKDAYS,
+    _polymarket_dry_run_enabled,
 )
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
@@ -1784,3 +1786,47 @@ class TestAsyncAct:
         assert isinstance(payload, SamplingPayload)
         assert payload.benchmarking_finished is True
         assert payload.day_increased is True
+
+
+class TestPolymarketDryRunGate:
+    """Gate-strictness for the POLYMARKET_DRY_RUN_HARDCODE env var.
+
+    The plain ``bool(os.environ.get(X))`` idiom is truthy for any non-empty
+    string — including ``"0"`` and ``"false"`` — which would silently
+    activate the dry-run hardcode for configs that look disabled. Must
+    accept only ``"1"`` / ``"true"`` (case-insensitive).
+    """
+
+    def test_unset_is_disabled(self) -> None:
+        """Gate must be off when the env var is unset."""
+        env = {
+            k: v for k, v in os.environ.items() if k != "POLYMARKET_DRY_RUN_HARDCODE"
+        }
+        with patch.dict(os.environ, env, clear=True):
+            assert _polymarket_dry_run_enabled() is False
+
+    def test_empty_string_is_disabled(self) -> None:
+        """Empty string must not activate the gate."""
+        with patch.dict(os.environ, {"POLYMARKET_DRY_RUN_HARDCODE": ""}):
+            assert _polymarket_dry_run_enabled() is False
+
+    def test_zero_string_is_disabled(self) -> None:
+        """'0' must not activate the gate (main concern of the review)."""
+        with patch.dict(os.environ, {"POLYMARKET_DRY_RUN_HARDCODE": "0"}):
+            assert _polymarket_dry_run_enabled() is False
+
+    def test_false_string_is_disabled(self) -> None:
+        """'false' must not activate the gate."""
+        with patch.dict(os.environ, {"POLYMARKET_DRY_RUN_HARDCODE": "false"}):
+            assert _polymarket_dry_run_enabled() is False
+
+    def test_one_string_enables(self) -> None:
+        """'1' must activate the gate."""
+        with patch.dict(os.environ, {"POLYMARKET_DRY_RUN_HARDCODE": "1"}):
+            assert _polymarket_dry_run_enabled() is True
+
+    def test_true_string_enables_case_insensitive(self) -> None:
+        """'TRUE' / 'True' must activate the gate (case-insensitive)."""
+        for value in ("true", "True", "TRUE"):
+            with patch.dict(os.environ, {"POLYMARKET_DRY_RUN_HARDCODE": value}):
+                assert _polymarket_dry_run_enabled() is True, f"failed for {value!r}"

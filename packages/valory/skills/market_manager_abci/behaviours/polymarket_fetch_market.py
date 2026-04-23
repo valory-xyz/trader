@@ -50,6 +50,23 @@ USDC_DECIMALS = 10**6
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
 
+
+def _polymarket_dry_run_enabled() -> bool:
+    """Whether the CLOB v2 dry-run hardcode gate is active.
+
+    Strict truthy check: only ``"1"`` / ``"true"`` (case-insensitive). Plain
+    ``bool(os.environ.get(X))`` would activate on ``"0"`` / ``"false"`` too.
+    Must stay in sync with the sibling gate in
+    ``decision_maker_abci.behaviours.sampling``.
+
+    :return: True when the env var is set to a strictly-truthy value.
+    """
+    return os.environ.get("POLYMARKET_DRY_RUN_HARDCODE", "").lower() in (
+        "1",
+        "true",
+    )
+
+
 # Polymarket category keywords for validation
 # fmt: off
 POLYMARKET_CATEGORY_KEYWORDS = {
@@ -538,7 +555,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # 2026-04-23. Gated on POLYMARKET_DRY_RUN_HARDCODE env var. Matching
         # force-select lives in sampling._sample(). Delete both blocks after
         # the 2026-04-28 v2 cutover.
-        if os.environ.get("POLYMARKET_DRY_RUN_HARDCODE"):
+        if _polymarket_dry_run_enabled():
             all_bets.append(
                 {
                     "id": "665325",

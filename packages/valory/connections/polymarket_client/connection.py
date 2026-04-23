@@ -111,6 +111,32 @@ class SrrDialogues(BaseSrrDialogues):
         )
 
 
+def _validate_builder_code(code: Optional[str], logger: Any) -> str:
+    """Validate the operator-supplied builder_code shape.
+
+    The SDK may silently accept a malformed code and produce orders with
+    wrong / zero builder attribution — so a misconfigured operator env
+    would route revenue share to the wrong (or no) account. Accept only
+    ``0x``-prefixed 66-char bytes32. Blank out and log a WARNING otherwise;
+    an empty/None input is the documented "disabled" case and is tolerated
+    silently.
+
+    :param code: the raw value from the connection config.
+    :param logger: logger to emit the warning through.
+    :return: a validated builder_code, or ``""`` if invalid / absent.
+    """
+    if not code:
+        return ""
+    if not (code.startswith("0x") and len(code) == 66):
+        logger.warning(
+            f"POLYMARKET_BUILDER_CODE has unexpected shape (len={len(code)}, "
+            f"starts_with_0x={code.startswith('0x')}); orders will be "
+            "posted without attribution."
+        )
+        return ""
+    return code
+
+
 def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
     """Serialize a v2 signed order to a JSON-safe dict.
 
@@ -182,7 +208,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         builder_program_enabled = self.configuration.config.get(
             "polymarket_builder_program_enabled", True
         )
-        builder_code = self.configuration.config.get("builder_code") or ""
+        builder_code = _validate_builder_code(
+            self.configuration.config.get("builder_code"), self.logger
+        )
 
         self.dialogues = SrrDialogues(connection_id=PUBLIC_ID)
 

@@ -35,6 +35,7 @@ from packages.valory.connections.polymarket_client.connection import (
     POLYMARKET_CATEGORY_TAGS,
     PolymarketClientConnection,
     SrrDialogues,
+    _validate_builder_code,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
 
@@ -2229,6 +2230,60 @@ class TestFetchOrderBook:
 
         assert result is None
         assert "API timeout" in error
+
+
+# ---------------------------------------------------------------------------
+# _validate_builder_code
+# ---------------------------------------------------------------------------
+
+
+class TestValidateBuilderCode:
+    """Shape-check for the operator-supplied builder_code.
+
+    A silently-accepted malformed builder_code misattributes every order's
+    revenue share, so the shape check must reject anything that isn't a
+    ``0x``-prefixed 66-char bytes32 and blank it out with a WARNING.
+    """
+
+    def test_empty_string_returns_empty_no_warning(self) -> None:
+        """Empty input is the 'disabled' case — no validation, no warning."""
+        logger = MagicMock()
+        assert _validate_builder_code("", logger) == ""
+        logger.warning.assert_not_called()
+
+    def test_none_returns_empty_no_warning(self) -> None:
+        """None is also the 'disabled' case — tolerated silently."""
+        logger = MagicMock()
+        assert _validate_builder_code(None, logger) == ""
+        logger.warning.assert_not_called()
+
+    def test_well_formed_bytes32_passes(self) -> None:
+        """0x-prefixed 66-char input is returned unchanged with no warning."""
+        logger = MagicMock()
+        code = "0x" + "a" * 64
+        assert _validate_builder_code(code, logger) == code
+        logger.warning.assert_not_called()
+
+    def test_missing_0x_prefix_blanks_and_warns(self) -> None:
+        """A 66-char string without the 0x prefix must be rejected."""
+        logger = MagicMock()
+        code = "a" * 66
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_truncated_bytes32_blanks_and_warns(self) -> None:
+        """A 0x-prefixed but short (<66 chars) string must be rejected."""
+        logger = MagicMock()
+        code = "0x" + "a" * 32
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_too_long_bytes32_blanks_and_warns(self) -> None:
+        """A 0x-prefixed but over-length (>66 chars) string must be rejected."""
+        logger = MagicMock()
+        code = "0x" + "a" * 80
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
