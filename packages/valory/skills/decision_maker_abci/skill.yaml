@@ -475,6 +475,8 @@ dependencies:
     version: <8,>=7.0.0
   eth-abi:
     version: ==5.2.0
+  eth-utils:
+    version: ==5.3.0
   pyyaml:
     version: <7.0.0,>=6.0.0
   python-dateutil:
