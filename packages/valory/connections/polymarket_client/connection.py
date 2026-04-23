@@ -40,7 +40,8 @@ from py_builder_relayer_client.models import OperationType, SafeTransaction
 from py_clob_client_v2 import BuilderConfig, ClobClient, MarketOrderArgs, OrderType
 from py_clob_client_v2.exceptions import PolyApiException
 from py_clob_client_v2.order_builder.constants import BUY
-from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
+from py_clob_client_v2.order_utils.model.order_data_v2 import Side, SignedOrderV2
+from py_clob_client_v2.order_utils.model.signature_type_v2 import SignatureTypeV2
 from web3 import Web3
 from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
@@ -134,6 +135,12 @@ def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
     this.
     """
     payload = {k: v for k, v in payload.items() if k != "clob_version"}
+    if "side" in payload and not isinstance(payload["side"], Side):
+        payload["side"] = Side(payload["side"])
+    if "signatureType" in payload and not isinstance(
+        payload["signatureType"], SignatureTypeV2
+    ):
+        payload["signatureType"] = SignatureTypeV2(payload["signatureType"])
     return SignedOrderV2(**payload)
 
 

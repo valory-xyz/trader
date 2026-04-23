@@ -25,7 +25,7 @@ wraps it to pUSD via the Polymarket Collateral Onramp so the subsequent bet
 has the v2 collateral token to spend.
 """
 
-from typing import Any, Generator, Optional
+from typing import Generator, Optional
 
 from eth_abi import encode
 from eth_utils import keccak  # type: ignore[import-not-found]
@@ -52,10 +52,6 @@ class PolymarketWrapCollateralBehaviour(DecisionMakerBaseBehaviour):
     """A behaviour that wraps any USDC.e held by the Safe into pUSD."""
 
     matching_round = PolymarketWrapCollateralRound
-
-    def __init__(self, **kwargs: Any) -> None:
-        """Initialize the wrap behaviour."""
-        super().__init__(**kwargs)
 
     def async_act(self) -> Generator:
         """Check USDC.e balance, build wrap multisend if above dust."""
@@ -182,9 +178,9 @@ class PolymarketWrapCollateralBehaviour(DecisionMakerBaseBehaviour):
     @staticmethod
     def _encode_erc20_approve(spender: str, amount: int) -> str:
         """Encode ERC-20 approve(address,uint256) calldata."""
-        spender_padded = spender[2:].zfill(64).lower()
-        amount_hex = hex(amount)[2:].zfill(64)
-        return f"{ERC20_APPROVE_SELECTOR}{spender_padded}{amount_hex}"
+        selector = bytes.fromhex(ERC20_APPROVE_SELECTOR[2:])
+        encoded_args = encode(["address", "uint256"], [spender, amount])
+        return "0x" + (selector + encoded_args).hex()
 
     @staticmethod
     def _encode_onramp_wrap(asset: str, to: str, amount: int) -> str:

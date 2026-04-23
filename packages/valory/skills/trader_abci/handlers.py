@@ -478,8 +478,8 @@ class HttpHandler(BaseHttpHandler):
 
         return funds_status
 
-    @staticmethod
     def _merge_usdc_e_into_pusd(
+        self,
         safe_balances: AccountRequirements,
         chain_config: Dict[str, Any],
     ) -> None:
@@ -489,8 +489,10 @@ class HttpHandler(BaseHttpHandler):
         threshold/topup. USDC.e is transitional (bridged, pre-wrap); its
         balance is folded into pUSD so bridged-but-not-yet-wrapped capital
         counts against the pUSD threshold. The resulting pUSD entry drives
-        the agent's top-up request via /funds-status. Silently no-ops if
-        either entry is missing.
+        the agent's top-up request via /funds-status. No-ops if either
+        entry is missing; a USDC.e entry without a matching pUSD entry is
+        logged as a warning, since that combination means wrappable
+        collateral will not count toward any threshold.
 
         :param safe_balances: the Safe's token requirements; mutated in place.
         :param chain_config: chain configuration providing the pUSD/USDC.e addresses.
@@ -498,10 +500,16 @@ class HttpHandler(BaseHttpHandler):
         usdc_e_addr = chain_config["usdc_e_address"]
         pusd_addr = chain_config["pusd_address"]
 
-        if (
-            usdc_e_addr not in safe_balances.tokens
-            or pusd_addr not in safe_balances.tokens
-        ):
+        usdc_e_present = usdc_e_addr in safe_balances.tokens
+        pusd_present = pusd_addr in safe_balances.tokens
+
+        if not usdc_e_present or not pusd_present:
+            if usdc_e_present and not pusd_present:
+                self.context.logger.warning(
+                    "USDC.e balance present but pUSD entry missing from "
+                    "funds status; check FUND_REQUIREMENTS config — "
+                    "USDC.e balance will not count toward pUSD threshold."
+                )
             return
 
         usdc_e = safe_balances.tokens[usdc_e_addr]

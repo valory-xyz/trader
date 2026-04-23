@@ -1120,6 +1120,60 @@ class TestGetAdjustedFundsStatus:
         assert pusd_token.balance == 40_000_000
         assert pusd_token.deficit == 25_000_000
 
+    def test_merge_warns_when_pusd_missing_but_usdc_e_present(self) -> None:
+        """Misconfigured v2 deployment (USDC.e entry but no pUSD) must surface a warning.
+
+        This is the dangerous case: the agent holds wrappable collateral but
+        has nothing to fold it into, so without logging it looks fully
+        funded when the Safe is effectively empty for v2 purposes.
+        """
+        handler = self._setup_handler(is_polymarket=True)
+        fund_status = self._make_polymarket_funds_status_with_pusd(
+            usdc_e_balance=50_000_000,
+            pusd_balance=0,
+        )
+        safe_balances = fund_status["polygon"].accounts["0xSafe"]
+        del safe_balances.tokens[POLYGON_PUSD_ADDRESS]
+        chain_config = handler._get_chain_config()
+
+        handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
+
+        handler.context.logger.warning.assert_called_once()
+        warning_msg = handler.context.logger.warning.call_args[0][0]
+        assert "pUSD" in warning_msg
+        assert "USDC.e" in warning_msg
+
+    def test_merge_no_warning_when_both_entries_missing(self) -> None:
+        """Neither entry present: normal pre-v2 or non-polymarket shape, stay quiet."""
+        handler = self._setup_handler(is_polymarket=True)
+        fund_status = self._make_polymarket_funds_status_with_pusd(
+            usdc_e_balance=0,
+            pusd_balance=0,
+        )
+        safe_balances = fund_status["polygon"].accounts["0xSafe"]
+        del safe_balances.tokens[POLYGON_PUSD_ADDRESS]
+        del safe_balances.tokens[POLYGON_USDC_E_ADDRESS]
+        chain_config = handler._get_chain_config()
+
+        handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
+
+        handler.context.logger.warning.assert_not_called()
+
+    def test_merge_no_warning_when_only_pusd_present(self) -> None:
+        """Post-cutover shape (pUSD only, no USDC.e) is the expected steady state; no warning."""
+        handler = self._setup_handler(is_polymarket=True)
+        fund_status = self._make_polymarket_funds_status_with_pusd(
+            usdc_e_balance=0,
+            pusd_balance=40_000_000,
+        )
+        safe_balances = fund_status["polygon"].accounts["0xSafe"]
+        del safe_balances.tokens[POLYGON_USDC_E_ADDRESS]
+        chain_config = handler._get_chain_config()
+
+        handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
+
+        handler.context.logger.warning.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # _get_pol_to_usdc_rate tests

@@ -2232,6 +2232,84 @@ class TestFetchOrderBook:
 
 
 # ---------------------------------------------------------------------------
+# SignedOrderV2 serialize / deserialize
+# ---------------------------------------------------------------------------
+
+
+class TestSignedOrderV2RoundTrip:
+    """Round-trip serialize/deserialize must preserve IntEnum field types."""
+
+    @staticmethod
+    def _fresh_signed_order() -> Any:
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        return SignedOrderV2(
+            salt="1",
+            maker="0x0000000000000000000000000000000000000001",
+            signer="0x0000000000000000000000000000000000000002",
+            tokenId="tok",
+            makerAmount="10",
+            takerAmount="5",
+            side=Side.BUY,
+            signatureType=SignatureTypeV2.POLY_GNOSIS_SAFE,
+            timestamp="1700000000000",
+            metadata="0x" + "00" * 32,
+            builder="0x" + "00" * 32,
+            expiration="0",
+            signature="0xdeadbeef",
+        )
+
+    def test_deserialize_restores_side_enum(self) -> None:
+        """Side field must be a Side instance after round-trip, not a raw int."""
+        from py_clob_client_v2.order_utils import Side
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert isinstance(rehydrated.side, Side)
+        assert rehydrated.side is Side.BUY
+
+    def test_deserialize_restores_signature_type_enum(self) -> None:
+        """The signatureType field must be a SignatureTypeV2 instance after round-trip."""
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert isinstance(rehydrated.signatureType, SignatureTypeV2)
+        assert rehydrated.signatureType is SignatureTypeV2.POLY_GNOSIS_SAFE
+
+    def test_deserialize_preserves_non_enum_fields(self) -> None:
+        """Non-enum fields must survive the round-trip unchanged."""
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert rehydrated.salt == fresh.salt
+        assert rehydrated.tokenId == fresh.tokenId
+        assert rehydrated.makerAmount == fresh.makerAmount
+        assert rehydrated.takerAmount == fresh.takerAmount
+        assert rehydrated.signature == fresh.signature
+
+
+# ---------------------------------------------------------------------------
 # Module-level constants
 # ---------------------------------------------------------------------------
 
