@@ -213,11 +213,12 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - sell outcome tokens done: 5.
             - redeeming done: 8.
             - swap done: 9.
-            - staking done: 10.
+            - wrap collateral done: 10.
+            - staking done: 11.
             - subscription done: 6.
             - set approval done: 7.
             - round timeout: 1.
-            - unrecognized: 11.
+            - unrecognized: 12.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
@@ -226,10 +227,11 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         7. FinishedSetApprovalTxRound
         8. FinishedRedeemingTxRound
         9. FinishedPolymarketSwapTxRound
-        10. FinishedStakingTxRound
-        11. FailedMultiplexerRound
+        10. FinishedPolymarketWrapCollateralTxRound
+        11. FinishedStakingTxRound
+        12. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedPolymarketSwapTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedPolymarketSwapTxRound, FinishedPolymarketWrapCollateralTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0
