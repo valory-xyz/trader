@@ -990,10 +990,20 @@ class TestGetAdjustedFundsStatus:
     def _make_polymarket_funds_status_with_pusd(
         usdc_e_balance: int,
         pusd_balance: int,
-        usdc_e_threshold: int = 16_000_000,
-        usdc_e_topup: int = 65_000_000,
+        pusd_threshold: int = 16_000_000,
+        pusd_topup: int = 65_000_000,
     ) -> FundRequirements:
-        """Build a polygon fund_status with both USDC.e and pUSD entries on the Safe."""
+        """Build a polygon fund_status with both USDC.e and pUSD entries on the Safe.
+
+        pUSD is the primary tracked asset (carries threshold/topup); USDC.e
+        is transitional with zero requirements.
+
+        :param usdc_e_balance: USDC.e balance to seed on the Safe (6 decimals).
+        :param pusd_balance: pUSD balance to seed on the Safe (6 decimals).
+        :param pusd_threshold: pUSD threshold below which a deficit is raised.
+        :param pusd_topup: pUSD topup target used when a deficit is raised.
+        :return: a FundRequirements snapshot matching the v2 schema.
+        """
         tokens = {
             POLYGON_NATIVE_TOKEN_ADDRESS: TokenRequirement(
                 topup=1000,
@@ -1010,15 +1020,15 @@ class TestGetAdjustedFundsStatus:
                 decimals=6,
             ),
             POLYGON_USDC_E_ADDRESS: TokenRequirement(
-                topup=usdc_e_topup,
-                threshold=usdc_e_threshold,
+                topup=0,
+                threshold=0,
                 is_native=False,
                 balance=usdc_e_balance,
                 decimals=6,
             ),
             POLYGON_PUSD_ADDRESS: TokenRequirement(
-                topup=0,
-                threshold=0,
+                topup=pusd_topup,
+                threshold=pusd_threshold,
                 is_native=False,
                 balance=pusd_balance,
                 decimals=6,
@@ -1051,13 +1061,14 @@ class TestGetAdjustedFundsStatus:
             mock_sd.return_value = mock_synced
             return handler._get_adjusted_funds_status()
 
-    def test_polygon_sums_pusd_into_usdc_e_bucket(self) -> None:
-        """On Polymarket, pUSD balance is added to the USDC.e bucket and the pUSD entry is dropped.
+    def test_polygon_sums_usdc_e_into_pusd_bucket(self) -> None:
+        """On Polymarket, USDC.e balance is added to the pUSD bucket and the USDC.e entry is dropped.
 
-        Rationale: the v2 migration wraps USDC.e → pUSD on-demand, so the
-        "betting capital" figure is the sum of both holdings across the wrap
-        boundary. Downstream consumers keyed on USDC.e keep working and see
-        the true total.
+        Rationale: pUSD is the v2 primary tracked asset and the only one
+        carrying threshold/topup. USDC.e is transitional (bridged, pre-wrap)
+        and gets folded in so bridged-but-not-yet-wrapped capital counts
+        against the pUSD threshold. Downstream sees "need pUSD" via the
+        pUSD entry's deficit.
         """
         handler = self._setup_handler(is_polymarket=True)
         fund_status = self._make_polymarket_funds_status_with_pusd(
@@ -1068,14 +1079,14 @@ class TestGetAdjustedFundsStatus:
         result = self._run_adjusted_funds_status(handler, fund_status)
 
         safe_tokens = result["polygon"].accounts["0xSafe"].tokens
-        assert safe_tokens[POLYGON_USDC_E_ADDRESS].balance == 112_000_000
+        assert safe_tokens[POLYGON_PUSD_ADDRESS].balance == 112_000_000
         # Combined balance (112M) >= threshold (16M) → no deficit.
-        assert safe_tokens[POLYGON_USDC_E_ADDRESS].deficit == 0
-        # pUSD entry is collapsed into USDC.e and removed from the response.
-        assert POLYGON_PUSD_ADDRESS not in safe_tokens
+        assert safe_tokens[POLYGON_PUSD_ADDRESS].deficit == 0
+        # USDC.e entry is collapsed into pUSD and removed from the response.
+        assert POLYGON_USDC_E_ADDRESS not in safe_tokens
 
     def test_polygon_combined_under_threshold_shows_deficit(self) -> None:
-        """When USDC.e + pUSD < threshold, the USDC.e bucket shows a deficit against topup."""
+        """When USDC.e + pUSD < threshold, the pUSD bucket shows a deficit against topup."""
         handler = self._setup_handler(is_polymarket=True)
         fund_status = self._make_polymarket_funds_status_with_pusd(
             usdc_e_balance=5_000_000,  # 5 USDC.e
@@ -1084,34 +1095,30 @@ class TestGetAdjustedFundsStatus:
 
         result = self._run_adjusted_funds_status(handler, fund_status)
 
-        usdc_e_token = (
-            result["polygon"].accounts["0xSafe"].tokens[POLYGON_USDC_E_ADDRESS]
-        )
-        assert usdc_e_token.balance == 10_000_000
+        pusd_token = result["polygon"].accounts["0xSafe"].tokens[POLYGON_PUSD_ADDRESS]
+        assert pusd_token.balance == 10_000_000
         # deficit = topup (65M) - combined (10M) = 55M
-        assert usdc_e_token.deficit == 55_000_000
+        assert pusd_token.deficit == 55_000_000
 
-    def test_polygon_missing_pusd_entry_leaves_usdc_e_untouched(self) -> None:
-        """If pUSD isn't in the fund_requirements (e.g. operator didn't update env), the merge no-ops."""
+    def test_polygon_missing_usdc_e_entry_leaves_pusd_untouched(self) -> None:
+        """If USDC.e isn't in the fund_requirements, the merge no-ops and pUSD passes through."""
         handler = self._setup_handler(is_polymarket=True)
         fund_status = self._make_polymarket_funds_status_with_pusd(
-            usdc_e_balance=40_000_000,
-            pusd_balance=0,
+            usdc_e_balance=0,
+            pusd_balance=40_000_000,
         )
-        # Simulate the operator not having added pUSD to fund_requirements yet.
-        del fund_status["polygon"].accounts["0xSafe"].tokens[POLYGON_PUSD_ADDRESS]
+        # Simulate the operator having dropped USDC.e entirely post-cutover.
+        del fund_status["polygon"].accounts["0xSafe"].tokens[POLYGON_USDC_E_ADDRESS]
         # Seed a funds_manager-like deficit; the merge must not overwrite it.
         fund_status["polygon"].accounts["0xSafe"].tokens[
-            POLYGON_USDC_E_ADDRESS
+            POLYGON_PUSD_ADDRESS
         ].deficit = 25_000_000
 
         result = self._run_adjusted_funds_status(handler, fund_status)
 
-        usdc_e_token = (
-            result["polygon"].accounts["0xSafe"].tokens[POLYGON_USDC_E_ADDRESS]
-        )
-        assert usdc_e_token.balance == 40_000_000
-        assert usdc_e_token.deficit == 25_000_000
+        pusd_token = result["polygon"].accounts["0xSafe"].tokens[POLYGON_PUSD_ADDRESS]
+        assert pusd_token.balance == 40_000_000
+        assert pusd_token.deficit == 25_000_000
 
 
 # ---------------------------------------------------------------------------

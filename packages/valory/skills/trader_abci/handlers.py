@@ -395,7 +395,7 @@ class HttpHandler(BaseHttpHandler):
 
         - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
         - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
-          and fold pUSD balance into the USDC.e bucket (v2 post-wrap collateral)
+          and fold USDC.e balance into the pUSD bucket (v2 primary collateral)
 
         :return: The adjusted fund requirements.
         """
@@ -410,7 +410,7 @@ class HttpHandler(BaseHttpHandler):
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
 
             if self.params.is_running_on_polymarket:
-                self._merge_pusd_into_usdc_e(safe_balances, chain_config)
+                self._merge_usdc_e_into_pusd(safe_balances, chain_config)
                 # On Polygon: USDC balance needs to be converted to POL equivalent
                 # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
@@ -479,17 +479,17 @@ class HttpHandler(BaseHttpHandler):
         return funds_status
 
     @staticmethod
-    def _merge_pusd_into_usdc_e(
+    def _merge_usdc_e_into_pusd(
         safe_balances: AccountRequirements,
         chain_config: Dict[str, Any],
     ) -> None:
-        """Collapse pUSD into the USDC.e bucket on Polymarket.
+        """Collapse USDC.e into the pUSD bucket on Polymarket.
 
-        On v2, USDC.e is the transitional bridge collateral and pUSD is the
-        post-wrap betting collateral. Across the wrap boundary the true
-        betting capital is ``USDC.e + pUSD``. We report the sum under the
-        USDC.e key so downstream consumers need no schema change and recompute
-        USDC.e's deficit against the combined balance. Silently no-ops if
+        pUSD is the primary tracked asset on v2 and the only one carrying
+        threshold/topup. USDC.e is transitional (bridged, pre-wrap); its
+        balance is folded into pUSD so bridged-but-not-yet-wrapped capital
+        counts against the pUSD threshold. The resulting pUSD entry drives
+        the agent's top-up request via /funds-status. Silently no-ops if
         either entry is missing.
 
         :param safe_balances: the Safe's token requirements; mutated in place.
@@ -508,12 +508,12 @@ class HttpHandler(BaseHttpHandler):
         pusd = safe_balances.tokens[pusd_addr]
 
         combined = int(usdc_e.balance or 0) + int(pusd.balance or 0)
-        usdc_e.balance = combined
+        pusd.balance = combined
 
-        deficit = max(usdc_e.topup - combined, 0) if combined < usdc_e.threshold else 0
-        usdc_e.deficit = deficit
+        deficit = max(pusd.topup - combined, 0) if combined < pusd.threshold else 0
+        pusd.deficit = deficit
 
-        del safe_balances.tokens[pusd_addr]
+        del safe_balances.tokens[usdc_e_addr]
 
     def _get_pol_to_usdc_rate(self, chain_config: Dict[str, Any]) -> Optional[float]:
         """
