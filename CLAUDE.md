@@ -75,7 +75,6 @@ packages/valory/
 │   ├── chatui_abci/                    # Web interface
 │   └── mech_interact_abci/            # Mech communication (external dependency)
 └── protocols/           # Message protocols
-scripts/                 # Build and deployment utilities
 ```
 
 ## Architecture

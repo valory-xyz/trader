@@ -2,7 +2,6 @@
 *private_key.txt
 packages/fetchai/
 packages/open_aea/
-packages/dvilela/
 packages/valory/connections/abci/
 packages/valory/connections/http_client/
 packages/valory/connections/ipfs/
@@ -10,6 +9,7 @@ packages/valory/connections/ledger/
 packages/valory/connections/p2p_libp2p_client/
 packages/valory/connections/http_server/
 packages/valory/connections/x402/
+packages/valory/connections/genai/
 
 packages/valory/skills/abstract_abci/
 packages/valory/skills/abstract_round_abci/
