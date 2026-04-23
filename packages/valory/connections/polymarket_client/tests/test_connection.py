@@ -464,7 +464,7 @@ class TestPlaceBet:
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
     def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
-        """PolyApiException with dict error_msg returns error in response.
+        """Check that a PolyApiException with dict error_msg returns error in response.
 
         The response must also contain 'signed_order_json' so the caller can
         retry the submission with the same order (even though order creation
@@ -483,7 +483,7 @@ class TestPlaceBet:
         assert "signed_order_json" in response
 
     def test_place_bet_poly_api_exception_non_dict_error(self) -> None:
-        """PolyApiException with non-dict error_msg falls to the generic branch."""
+        """Check that a PolyApiException with non-dict error_msg falls to the generic branch."""
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()

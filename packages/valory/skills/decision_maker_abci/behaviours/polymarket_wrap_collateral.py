@@ -28,7 +28,7 @@ has the v2 collateral token to spend.
 from typing import Any, Generator, Optional
 
 from eth_abi import encode
-from eth_utils import keccak
+from eth_utils import keccak  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
@@ -191,6 +191,11 @@ class PolymarketWrapCollateralBehaviour(DecisionMakerBaseBehaviour):
         """Encode CollateralOnramp.wrap(address,address,uint256) calldata.
 
         The onramp enforces ``asset == USDC.e``; native USDC is rejected.
+
+        :param asset: the token being wrapped (must be USDC.e on Polygon).
+        :param to: the recipient of the wrapped pUSD.
+        :param amount: the amount to wrap, in USDC.e wei (6 decimals).
+        :return: the 0x-prefixed hex calldata string.
         """
         selector = keccak(text="wrap(address,address,uint256)")[:4]
         encoded_args = encode(["address", "address", "uint256"], [asset, to, amount])

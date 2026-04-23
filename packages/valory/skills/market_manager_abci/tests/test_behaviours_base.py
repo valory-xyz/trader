@@ -542,6 +542,8 @@ class TestReadBets:
         Covers the migration case where cached v1 bets carry USDC.e and
         transitional v2 bets carry pUSD — both become meaningless once the
         param is the single source of truth.
+
+        :param tmp_path: pytest-provided temporary directory fixture.
         """
         b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
         b.context.params.is_running_on_polymarket = True
@@ -561,7 +563,10 @@ class TestReadBets:
         assert [bet.collateralToken for bet in b.bets] == ["", ""]
 
     def test_read_bets_omen_collateral_token_unchanged(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """On Omen, collateralToken on loaded bets is preserved (per-market truth)."""
+        """On Omen, collateralToken on loaded bets is preserved (per-market truth).
+
+        :param tmp_path: pytest-provided temporary directory fixture.
+        """
         b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
         b.context.params.is_running_on_polymarket = False
 

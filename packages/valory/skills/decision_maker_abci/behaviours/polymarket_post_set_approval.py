@@ -130,6 +130,9 @@ class PolymarketPostSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         The ``clob_version`` stamp lets the check-benchmarking round ignore
         a file that was written under a retired CLOB version (e.g. a v1
         ``allowances_set: true`` left behind across the v2 cutover).
+
+        :param allowances_set: whether all required Polymarket allowances
+            have been set.
         """
         from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (  # noqa: WPS433
             POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,

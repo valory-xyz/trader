@@ -142,7 +142,7 @@ class TestConstants:
         assert USDC_E_POLYGON == "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 
     def test_pusd_polygon(self) -> None:
-        """pUSD is the v2 collateral."""
+        """Check pUSD is the v2 collateral."""
         assert PUSD_POLYGON == "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 
     def test_zero_address(self) -> None:

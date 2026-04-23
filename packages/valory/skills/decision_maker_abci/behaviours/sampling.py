@@ -202,13 +202,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # TEMP: CLOB v2 dry-run — force one of the two Polymarket test
         # markets that carry v2 orderbook depth. Gated on POLYMARKET_DRY_RUN_HARDCODE
         # env var; delete this block after the 2026-04-28 cutover.
-        if os.environ.get("POLYMARKET_DRY_RUN_HARDCODE") and self.params.is_running_on_polymarket:
-            for idx, bet in enumerate(self.bets):
-                if bet.id in ("665325", "678407"):
+        if (
+            os.environ.get("POLYMARKET_DRY_RUN_HARDCODE")
+            and self.params.is_running_on_polymarket
+        ):
+            for dry_run_idx, dry_run_bet in enumerate(self.bets):
+                if dry_run_bet.id in ("665325", "678407"):
                     self.context.logger.info(
-                        f"[DRY-RUN] Forcing CLOB v2 test market {bet.id}"
+                        f"[DRY-RUN] Forcing CLOB v2 test market {dry_run_bet.id}"
                     )
-                    return idx
+                    return dry_run_idx
             self.context.logger.warning(
                 "[DRY-RUN] No CLOB v2 test market in bet pool yet."
             )

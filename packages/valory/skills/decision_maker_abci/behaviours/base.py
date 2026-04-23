@@ -289,6 +289,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         On Polymarket v2 collateral is a protocol-level invariant (pUSD) — the
         param is the single source of truth. On Omen collateral is per-market,
         so it is read from the sampled bet.
+
+        :return: the contract address of the collateral token.
         """
         if self.params.is_running_on_polymarket:
             return self.params.polymarket_collateral_address
@@ -303,6 +305,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Get whether the collateral address is a USD-pegged Polygon token.
 
         Treats pUSD as USDC-equivalent since it is 1:1 backed and 6-decimal.
+
+        :param collateral_token: the collateral token contract address to check.
+        :return: True if the address is one of USDC, USDC.e, or pUSD on Polygon.
         """
         return collateral_token.lower() in [
             USDC_POLYGON.lower(),
