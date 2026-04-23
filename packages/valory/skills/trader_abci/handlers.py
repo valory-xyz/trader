@@ -63,7 +63,10 @@ from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
 from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
-from packages.valory.skills.funds_manager.models import FundRequirements
+from packages.valory.skills.funds_manager.models import (
+    AccountRequirements,
+    FundRequirements,
+)
 from packages.valory.skills.mech_interact_abci.handlers import (
     AcnHandler as BaseAcnHandler,
 )
@@ -104,6 +107,7 @@ POLYGON_NATIVE_TOKEN_ADDRESS = (
 POLYGON_WRAPPED_NATIVE_ADDRESS = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
 POLYGON_USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 POLYGON_USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+POLYGON_PUSD_ADDRESS = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 POLYGON_POL_ADDRESS = "0x0000000000000000000000000000000000001010"
 
 TRADING_STRATEGY_EXPLANATION = {
@@ -170,6 +174,7 @@ class HttpHandler(BaseHttpHandler):
                 "wrapped_native_address": POLYGON_WRAPPED_NATIVE_ADDRESS,
                 "usdc_e_address": POLYGON_USDC_E_ADDRESS,
                 "usdc_address": POLYGON_USDC_ADDRESS,
+                "pusd_address": POLYGON_PUSD_ADDRESS,
             }
 
         return {
@@ -390,6 +395,7 @@ class HttpHandler(BaseHttpHandler):
 
         - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
         - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
+          and fold pUSD balance into the USDC.e bucket (v2 post-wrap collateral)
 
         :return: The adjusted fund requirements.
         """
@@ -404,6 +410,7 @@ class HttpHandler(BaseHttpHandler):
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
 
             if self.params.is_running_on_polymarket:
+                self._merge_pusd_into_usdc_e(safe_balances, chain_config)
                 # On Polygon: USDC balance needs to be converted to POL equivalent
                 # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
@@ -470,6 +477,43 @@ class HttpHandler(BaseHttpHandler):
         native_status.deficit = actual_deficit
 
         return funds_status
+
+    @staticmethod
+    def _merge_pusd_into_usdc_e(
+        safe_balances: AccountRequirements,
+        chain_config: Dict[str, Any],
+    ) -> None:
+        """Collapse pUSD into the USDC.e bucket on Polymarket.
+
+        On v2, USDC.e is the transitional bridge collateral and pUSD is the
+        post-wrap betting collateral. Across the wrap boundary the true
+        betting capital is ``USDC.e + pUSD``. We report the sum under the
+        USDC.e key so downstream consumers need no schema change and recompute
+        USDC.e's deficit against the combined balance. Silently no-ops if
+        either entry is missing.
+
+        :param safe_balances: the Safe's token requirements; mutated in place.
+        :param chain_config: chain configuration providing the pUSD/USDC.e addresses.
+        """
+        usdc_e_addr = chain_config["usdc_e_address"]
+        pusd_addr = chain_config["pusd_address"]
+
+        if (
+            usdc_e_addr not in safe_balances.tokens
+            or pusd_addr not in safe_balances.tokens
+        ):
+            return
+
+        usdc_e = safe_balances.tokens[usdc_e_addr]
+        pusd = safe_balances.tokens[pusd_addr]
+
+        combined = int(usdc_e.balance or 0) + int(pusd.balance or 0)
+        usdc_e.balance = combined
+
+        deficit = max(usdc_e.topup - combined, 0) if combined < usdc_e.threshold else 0
+        usdc_e.deficit = deficit
+
+        del safe_balances.tokens[pusd_addr]
 
     def _get_pol_to_usdc_rate(self, chain_config: Dict[str, Any]) -> Optional[float]:
         """
