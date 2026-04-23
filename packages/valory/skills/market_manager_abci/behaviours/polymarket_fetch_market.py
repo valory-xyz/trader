@@ -460,7 +460,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "title": market.get("question"),
                         "category": category,
                         "condition_id": market.get("conditionId"),
-                        "collateralToken": PUSD_POLYGON,  # Polymarket v2 uses pUSD on Polygon
+                        # Polymarket v2 collateral is protocol-level (pUSD); the param
+                        # `polymarket_collateral_address` is the source of truth. The
+                        # per-bet field is Omen-only and left blank here on purpose.
+                        "collateralToken": "",
                         "creator": market.get("submitted_by", ZERO_ADDRESS),
                         "fee": 0,  # Polymarket fee is typically 0 or handled differently
                         "openingTimestamp": opening_timestamp,

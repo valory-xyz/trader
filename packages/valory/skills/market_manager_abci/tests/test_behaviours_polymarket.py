@@ -1466,7 +1466,9 @@ class TestFetchMarketsFromPolymarket:
         assert result is not None
         assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["id"] == "market1"
-        assert result[0]["collateralToken"] == PUSD_POLYGON
+        # Polymarket v2: per-bet collateralToken is intentionally blank — the
+        # protocol invariant lives in `params.polymarket_collateral_address`.
+        assert result[0]["collateralToken"] == ""
 
     def test_market_missing_outcomes(self) -> None:
         """Test market with empty outcomes is skipped."""
@@ -1681,7 +1683,7 @@ class TestFetchMarketsFromPolymarket:
         assert bet_dict["title"] == "Will Tesla stock go up?"
         assert bet_dict["category"] == "technology"
         assert bet_dict["condition_id"] == "0xcond"
-        assert bet_dict["collateralToken"] == PUSD_POLYGON
+        assert bet_dict["collateralToken"] == ""
         assert bet_dict["creator"] == "0xsubmitter"
         assert bet_dict["fee"] == 0
         assert bet_dict["market_spread"] is None

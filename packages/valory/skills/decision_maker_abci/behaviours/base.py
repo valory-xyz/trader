@@ -284,7 +284,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @property
     def collateral_token(self) -> str:
-        """Get the contract address of the token that the market maker supports."""
+        """Get the contract address of the collateral token.
+
+        On Polymarket v2 collateral is a protocol-level invariant (pUSD) — the
+        param is the single source of truth. On Omen collateral is per-market,
+        so it is read from the sampled bet.
+        """
+        if self.params.is_running_on_polymarket:
+            return self.params.polymarket_collateral_address
         return self.sampled_bet.collateralToken
 
     @property

@@ -484,12 +484,20 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                         ):
                             min_order_shares = float(ob_no["min_order_size"])
 
+        # Live mode: route through the property so Polymarket reads pUSD from
+        # the param (single source of truth). Benchmarking keeps the bet
+        # fixture's field since bets are mocked and `sampled_bet` isn't wired.
+        collateral_for_sizing = (
+            bet.collateralToken
+            if self.benchmarking_mode.enabled
+            else self.collateral_token
+        )
         bet_amount = yield from self.get_bet_amount(
             prediction_response.p_yes,
             prediction_response.confidence,
             bet.outcomeTokenAmounts,
             bet.fee,
-            bet.collateralToken,
+            collateral_for_sizing,
             market_type=market_type,
             price_yes=price_yes,
             price_no=price_no,
