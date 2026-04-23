@@ -475,7 +475,7 @@ class TestGetUsdcEBalance:
         behaviour = _make_behaviour()
         response = MagicMock()
         response.performative = ContractApiMessage.Performative.RAW_TRANSACTION
-        response.raw_transaction.body = {"token": "123456789"}
+        response.raw_transaction.body = {"token": "123456789"}  # nosec B105
 
         with self._patch_params(behaviour):
             result = self._run(behaviour, response)
