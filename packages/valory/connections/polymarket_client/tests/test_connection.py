@@ -287,6 +287,29 @@ class TestRouteRequest:
         assert response == {"error": "some error from API"}
         assert error == "some error from API"
 
+    def test_handler_error_preserves_response_dict_keys(self) -> None:
+        """A handler-returned response dict is not clobbered by the error wrap.
+
+        ``_place_bet`` returns ``signed_order_json`` in its error response so the
+        caller can cache the signed order and retry without re-signing. The
+        router must preserve those extra keys rather than overwriting the dict.
+        """
+        conn = _make_connection()
+        handler_response = {
+            "error": "duplicate order",
+            "signed_order_json": '{"cached": "order"}',
+        }
+        conn._place_bet = MagicMock(return_value=(handler_response, "duplicate order"))
+        response, error = conn._route_request(
+            {
+                "request_type": RequestType.PLACE_BET.value,
+                "params": {"token_id": "t", "amount": 1.0},
+            }
+        )
+        assert error == "duplicate order"
+        assert response["error"] == "duplicate order"
+        assert response["signed_order_json"] == '{"cached": "order"}'
+
     def test_type_error_in_handler_returns_error(self) -> None:
         """Test that TypeError from handler (bad params) is caught and returned."""
         conn = _make_connection()
@@ -2231,6 +2254,39 @@ class TestFetchOrderBook:
         assert result is None
         assert "API timeout" in error
 
+    def test_v2_dict_response(self) -> None:
+        """v2 ``get_order_book`` returns a plain dict with dict levels.
+
+        Post-cutover this is the live path; the v1-attribute branch exists
+        only for compatibility. Both the outer-dict branch and the nested
+        ``_level_to_dict`` dict branch must handle it.
+        """
+        conn = _make_connection()
+        conn.client.get_order_book.return_value = {
+            "asks": [{"price": "0.55", "size": "100"}],
+            "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
+        }
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {
+            "asks": [{"price": "0.55", "size": "100"}],
+            "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
+        }
+
+    def test_v2_dict_response_missing_keys(self) -> None:
+        """v2 dict response with absent keys falls back to empty/None."""
+        conn = _make_connection()
+        conn.client.get_order_book.return_value = {}
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
+
 
 # ---------------------------------------------------------------------------
 # _validate_builder_code
@@ -2284,6 +2340,32 @@ class TestValidateBuilderCode:
         code = "0x" + "a" * 80
         assert _validate_builder_code(code, logger) == ""
         logger.warning.assert_called_once()
+
+    def test_non_hex_chars_after_0x_blanks_and_warns(self) -> None:
+        """0x-prefixed, right length, but non-hex body must be rejected.
+
+        Without a hex-content check, a misconfigured env var like
+        ``0xZZ…`` (or an accidental substitution) would pass the shape
+        gate and silently produce orders with bad attribution.
+        """
+        logger = MagicMock()
+        code = "0x" + "Z" * 64
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_whitespace_stripped_before_validation(self) -> None:
+        """Leading/trailing whitespace is tolerated (paste-from-UI case)."""
+        logger = MagicMock()
+        inner = "0x" + "ab" * 32
+        assert _validate_builder_code(f"  {inner}\n", logger) == inner
+        logger.warning.assert_not_called()
+
+    def test_mixed_case_hex_passes(self) -> None:
+        """Mixed-case hex (e.g. checksummed) passes without forcing lowercase."""
+        logger = MagicMock()
+        code = "0x" + "AbCd" * 16
+        assert _validate_builder_code(code, logger) == code
+        logger.warning.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

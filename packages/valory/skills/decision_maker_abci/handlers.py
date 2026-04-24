@@ -169,6 +169,10 @@ class HttpHandler(BaseHttpHandler):
                     "name": "Preparing for next step",
                     "description": "Checks and prepares before continuing.",
                 },
+                "polymarket_wrap_collateral_round": {
+                    "name": "Preparing for next step",
+                    "description": "Checks and prepares before continuing.",
+                },
                 "polymarket_bet_placement_round": {
                     "name": "Opening a trade",
                     "description": "Attempts to open a trade on a prediction market.",

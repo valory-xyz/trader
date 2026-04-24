@@ -306,7 +306,7 @@ class TestGetTxHash:
         assert behaviour.multisend_batches == []
 
     def test_returns_none_when_balance_at_or_below_dust(self) -> None:
-        """Balance == dust must skip the wrap (strictly-greater guard)."""
+        """Balance == dust must skip the wrap; only strictly-greater balances wrap."""
         behaviour = _make_behaviour(dust=10_000)
         behaviour._get_usdc_e_balance = lambda _safe: _return_gen(10_000)  # type: ignore[method-assign, assignment]
 

@@ -207,12 +207,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
     # Wrap is prepared by the decision_maker_abci, settled by the multiplexer,
-    # and re-enters at PolymarketPostSetApprovalRound. The approval check is
-    # idempotent (file is v2-stamped), wrap re-runs with a now-zero USDC.e
-    # balance and short-circuits via DONE → BenchmarkingModeDisabledRound →
-    # FetchMarketsRouterRound, and the trading cycle proceeds with pUSD.
+    # and enters the trading cycle directly. Safe multisend is atomic so the
+    # settlement terminal implies balance→0; CLOB-exchange approvals are
+    # untouched by the wrap, so a post-wrap approval re-check would burn 1
+    # SRR + 6 chain reads for no observable safety.
     FinishedPolymarketWrapCollateralTxPreparationRound: PreTxSettlementRound,
-    FinishedPolymarketWrapCollateralTxRound: PolymarketPostSetApprovalRound,
+    FinishedPolymarketWrapCollateralTxRound: FetchMarketsRouterRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,

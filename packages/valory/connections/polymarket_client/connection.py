@@ -117,9 +117,10 @@ def _validate_builder_code(code: Optional[str], logger: Any) -> str:
     The SDK may silently accept a malformed code and produce orders with
     wrong / zero builder attribution — so a misconfigured operator env
     would route revenue share to the wrong (or no) account. Accept only
-    ``0x``-prefixed 66-char bytes32. Blank out and log a WARNING otherwise;
-    an empty/None input is the documented "disabled" case and is tolerated
-    silently.
+    ``0x``-prefixed 64-hex-char bytes32 (leading/trailing whitespace is
+    stripped for copy-paste tolerance). Blank out and log a WARNING
+    otherwise; an empty/None input is the documented "disabled" case and
+    is tolerated silently.
 
     :param code: the raw value from the connection config.
     :param logger: logger to emit the warning through.
@@ -127,14 +128,20 @@ def _validate_builder_code(code: Optional[str], logger: Any) -> str:
     """
     if not code:
         return ""
-    if not (code.startswith("0x") and len(code) == 66):
-        logger.warning(
-            f"POLYMARKET_BUILDER_CODE has unexpected shape (len={len(code)}, "
-            f"starts_with_0x={code.startswith('0x')}); orders will be "
-            "posted without attribution."
-        )
-        return ""
-    return code
+    code = code.strip()
+    if code.startswith("0x") and len(code) == 66:
+        try:
+            bytes.fromhex(code[2:])
+        except ValueError:
+            pass
+        else:
+            return code
+    logger.warning(
+        f"POLYMARKET_BUILDER_CODE has unexpected shape (len={len(code)}, "
+        f"starts_with_0x={code.startswith('0x')}); orders will be "
+        "posted without attribution."
+    )
+    return ""
 
 
 def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
@@ -252,6 +259,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         # Load contract addresses. In v2 the collateral token is pUSD; USDC.e
         # is kept only as a wrap-source. The onramp contract exposes
         # wrap()/unwrap() to convert between the two.
+        # Future-proof scaffold: env chain (CLOB_VERSION → service.yaml →
+        # aea-config.yaml → here) plumbed so the next CLOB migration only
+        # wires new reads. The ``"v2"`` stamps elsewhere (signed-order tag,
+        # cache-key prefix, allowances-file stamp) are code-shape tags tied
+        # to the SDK / file formats, not runtime-switchable.
         self.clob_version = self.configuration.config.get("clob_version", "v2")
         self.collateral_address = to_checksum_address(
             self.configuration.config.get("collateral_address")
@@ -416,7 +428,13 @@ class PolymarketClientConnection(BaseSyncConnection):
             response, error_msg = request_function_map[request_type](**params)
             if error_msg:
                 error_msg = str(error_msg)
-                response = {"error": error_msg}
+                # Preserve any extra keys the handler set on its response dict
+                # (e.g. ``_place_bet`` attaches ``signed_order_json`` so the
+                # caller can cache and retry without re-signing).
+                if not isinstance(response, dict):
+                    response = {"error": error_msg}
+                else:
+                    response.setdefault("error", error_msg)
                 return response, error_msg
 
             error_msg = ""

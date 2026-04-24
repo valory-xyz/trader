@@ -293,7 +293,7 @@ transition_func:
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound
     (PostTxSettlementRound, SWAP_DONE): DecisionRequestRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
-    (PostTxSettlementRound, WRAP_COLLATERAL_DONE): PolymarketPostSetApprovalRound
+    (PostTxSettlementRound, WRAP_COLLATERAL_DONE): FetchMarketsRouterRound
     (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
     (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
