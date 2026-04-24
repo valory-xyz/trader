@@ -201,8 +201,12 @@ check-agent-runner:
 	# for the skill's store_path, so a single STORE_PATH override drives it.
 	# Path-based env vars like SKILL_..._STORE_PATH are the fallback when the
 	# template lacks an explicit var name and are silently ignored here.
+	# Use a repo-local scratch dir under ./dist/ rather than ``/tmp`` — the
+	# latter doesn't exist on Windows and trips staking_abci's store-path
+	# ``isdir`` check during the binary's boot sequence.
+	mkdir -p ./dist/.runner-check-store
 	uv run aea-helpers check-binary ./dist/agent_runner_bin$(EXE_SUFFIX) ./agent \
-	--env-var STORE_PATH=/tmp
+	--env-var STORE_PATH=./dist/.runner-check-store
 
 .PHONY: ci-linter-checks
 ci-linter-checks:
