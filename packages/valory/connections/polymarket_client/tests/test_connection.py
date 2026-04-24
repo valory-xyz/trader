@@ -303,7 +303,7 @@ class TestRouteRequest:
         response, error = conn._route_request(
             {
                 "request_type": RequestType.PLACE_BET.value,
-                "params": {"token_id": "t", "amount": 1.0},
+                "params": {"token_id": "t", "amount": 1.0},  # nosec B105
             }
         )
         assert error == "duplicate order"
