@@ -2249,6 +2249,17 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             result = behaviour._collateral_amount_info(10**6)
         assert "USDC.e" in result
 
+    def test_collateral_amount_info_pusd(self) -> None:
+        """Test `_collateral_amount_info` with pUSD token (v2 Polymarket collateral)."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.params.polymarket_collateral_address = PUSD_POLYGON
+        with mock.patch.object(behaviour, "read_bets"):
+            behaviour.bets = [MagicMock(collateralToken=PUSD_POLYGON)]
+            result = behaviour._collateral_amount_info(10**6)
+        assert "pUSD" in result
+
     def test_get_bet_amount_with_fallback_strategy(self) -> None:
         """Test `get_bet_amount` using a fallback strategy."""
         behaviour = self.behaviour

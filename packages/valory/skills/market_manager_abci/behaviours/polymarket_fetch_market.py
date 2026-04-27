@@ -20,7 +20,6 @@
 """This module contains the Polymarket fetch market behaviour for the MarketManager ABCI app."""
 
 import json
-import os
 import sys
 from collections import defaultdict
 from copy import deepcopy
@@ -49,22 +48,6 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 USDC_DECIMALS = 10**6
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
-
-
-def _polymarket_dry_run_enabled() -> bool:
-    """Whether the CLOB v2 dry-run hardcode gate is active.
-
-    Strict truthy check: only ``"1"`` / ``"true"`` (case-insensitive). Plain
-    ``bool(os.environ.get(X))`` would activate on ``"0"`` / ``"false"`` too.
-    Must stay in sync with the sibling gate in
-    ``decision_maker_abci.behaviours.sampling``.
-
-    :return: True when the env var is set to a strictly-truthy value.
-    """
-    return os.environ.get("POLYMARKET_DRY_RUN_HARDCODE", "").lower() in (
-        "1",
-        "true",
-    )
 
 
 # Polymarket category keywords for validation
@@ -548,46 +531,6 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             f"Constructed {len(all_bets)} bet_dicts from {total_markets} total markets "
             f"({total_skipped} skipped, {blacklisted_count} blacklisted due to category validation)"
         )
-
-        # TEMP: CLOB v2 dry-run — inject a hardcoded test market that has
-        # real v2 orderbook depth so the sampler has something to pick.
-        # Snapshot taken from gamma-api.polymarket.com/events/73106 on
-        # 2026-04-23. Gated on POLYMARKET_DRY_RUN_HARDCODE env var. Matching
-        # force-select lives in sampling._sample(). Delete both blocks after
-        # the 2026-04-28 v2 cutover.
-        if _polymarket_dry_run_enabled():
-            all_bets.append(
-                {
-                    "id": "665325",
-                    "title": "US-Iran nuclear deal before 2027?",
-                    "category": "politics",
-                    "condition_id": "0x182390641d3b1b47cc64274b9da290efd04221c586651ba190880713da6347d9",
-                    "collateralToken": "",
-                    "creator": "0x91430CaD2d3975766499717fA0D66A78D814E5c5",
-                    "fee": 0,
-                    "openingTimestamp": 1798761600,  # 2026-12-31T00:00:00Z
-                    "outcomeSlotCount": 2,
-                    "outcomeTokenAmounts": [0, 0],
-                    "outcomeTokenMarginalPrices": [0.665, 0.335],
-                    "outcomes": ["Yes", "No"],
-                    "scaledLiquidityMeasure": 82114.8519,
-                    "processed_timestamp": 0,
-                    "position_liquidity": 0,
-                    "potential_net_profit": 0,
-                    "queue_status": QueueStatus.FRESH,
-                    "investments": {},
-                    "outcome_token_ids": {
-                        "Yes": "102936224134271070189104847090829839924697394514566827387181305960175107677216",
-                        "No": "45763018441764333771124945243746174684578244015331389396782339063349542289693",
-                    },
-                    "market_spread": 0.01,
-                    "neg_risk": False,
-                    "poly_tags": [],
-                }
-            )
-            self.context.logger.info(
-                "[DRY-RUN] Injected CLOB v2 test market 665325 into fetch result"
-            )
 
         return all_bets
 
