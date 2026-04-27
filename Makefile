@@ -112,6 +112,19 @@ AUTONOMY_VERSION := v$(shell autonomy --version | grep -oP '(?<=version\s)\S+')
 AEA_VERSION := v$(shell aea --version | grep -oP '(?<=version\s)\S+')
 MECH_INTERACT_VERSION := $(shell git ls-remote --tags --sort="v:refname" https://github.com/valory-xyz/mech-interact.git | tail -n1 | sed 's|.*refs/tags/||')
 
+# PyInstaller appends ``.exe`` to ``--name`` on Windows; on Linux/macOS the
+# output is extension-less. ``$(OS)`` is set to ``Windows_NT`` by Windows
+# itself (visible in cmd.exe and Git Bash) and is unset elsewhere, so this
+# keeps the path references consistent across platforms.
+EXE_SUFFIX := $(if $(filter Windows_NT,$(OS)),.exe,)
+
+# Dummy STORE_PATH for the ``check-agent-runner`` binary smoke test.
+# ``aea-helpers check-binary`` chdirs into ``./agent`` before spawning the
+# binary, so a relative path wouldn't resolve from the subprocess cwd. Use
+# ``/tmp`` on Linux/macOS and ``%TEMP%`` (inherited as ``$(TEMP)``) on
+# Windows — both are absolute, writable, and guaranteed to exist.
+STORE_PATH_VALUE := $(if $(filter Windows_NT,$(OS)),$(TEMP),/tmp)
+
 .PHONY: sync-packages
 sync-packages:
 	@echo "Syncing packages with versions:"
@@ -145,7 +158,7 @@ build-agent-runner: uv-install  agent
 	$(shell uv run aea-helpers build-binary-deps ./agent) \
 	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
 	--name agent_runner_bin
-	./dist/agent_runner_bin --version
+	./dist/agent_runner_bin$(EXE_SUFFIX) --version
 
 
 .PHONY: build-agent-runner-mac
@@ -164,7 +177,7 @@ build-agent-runner-mac: uv-install  agent
 	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
-	./dist/agent_runner_bin --version
+	./dist/agent_runner_bin$(EXE_SUFFIX) --version
 
 
 ./hash_id: ./packages/packages.json
@@ -195,8 +208,8 @@ check-agent-runner:
 	# for the skill's store_path, so a single STORE_PATH override drives it.
 	# Path-based env vars like SKILL_..._STORE_PATH are the fallback when the
 	# template lacks an explicit var name and are silently ignored here.
-	uv run aea-helpers check-binary ./dist/agent_runner_bin ./agent \
-	--env-var STORE_PATH=/tmp
+	uv run aea-helpers check-binary ./dist/agent_runner_bin$(EXE_SUFFIX) ./agent \
+	--env-var STORE_PATH=$(STORE_PATH_VALUE)
 
 .PHONY: ci-linter-checks
 ci-linter-checks:
