@@ -367,7 +367,7 @@ class FetchPerformanceSummaryBehaviour(
             trader_agent is None
             or trader_agent.get("serviceId") is None
             or trader_agent.get("totalTraded") is None
-            or trader_agent.get("totalPayout") is None
+            or trader_agent.get("totalExpectedPayout") is None
         ):
             self.context.logger.warning(
                 f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
@@ -406,13 +406,13 @@ class FetchPerformanceSummaryBehaviour(
         # Get raw values from subgraph (in smallest units)
         total_traded_settled_raw = int(trader_agent.get("totalTradedSettled", 0))
         total_fees_settled_raw = int(trader_agent.get("totalFeesSettled", 0))
-        total_market_payout_raw = int(trader_agent.get("totalPayout", 0))
+        total_market_payout_raw = int(trader_agent.get("totalExpectedPayout", 0))
 
         self.context.logger.info(
             f"[ROI Calculation] Raw values from subgraph: "
             f"totalTradedSettled={total_traded_settled_raw}, "
             f"totalFeesSettled={total_fees_settled_raw}, "
-            f"totalPayout={total_market_payout_raw}"
+            f"totalExpectedPayout={total_market_payout_raw}"
         )
 
         # Convert market values to USD
@@ -722,7 +722,7 @@ class FetchPerformanceSummaryBehaviour(
         total_fees = int(trader_agent.get("totalFees", 0))
         total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
         total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
-        total_payout = int(trader_agent.get("totalPayout", 0))
+        total_payout = int(trader_agent.get("totalExpectedPayout", 0))
 
         settled_mech_requests = self._settled_mech_requests_count
 
