@@ -487,6 +487,21 @@ class TestPlaceBet:
         assert error is None
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
+    def test_place_bet_unparseable_cache_resigns(self) -> None:
+        """Garbage cache JSON: warn and fall through to fresh signing."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        response, error = conn._place_bet(
+            token_id="tok123",
+            amount=10.0,
+            cached_signed_order_json="not-json{{",  # nosec B106
+        )
+        conn.client.create_market_order.assert_called_once()
+        assert error is None
+        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
+
     def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
         """Check that a PolyApiException with dict error_msg returns error in response.
 
@@ -2444,6 +2459,26 @@ class TestSignedOrderV2RoundTrip:
         assert rehydrated.makerAmount == fresh.makerAmount
         assert rehydrated.takerAmount == fresh.takerAmount
         assert rehydrated.signature == fresh.signature
+
+    def test_deserialize_skips_already_typed_enums(self) -> None:
+        """Idempotent on already-typed enums — no double conversion."""
+        import dataclasses
+
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+        )
+
+        payload = dataclasses.asdict(self._fresh_signed_order())
+        payload["side"] = Side.BUY
+        payload["signatureType"] = SignatureTypeV2.POLY_GNOSIS_SAFE
+        rehydrated = _deserialize_signed_order_v2(payload)
+        assert rehydrated.side is Side.BUY
+        assert rehydrated.signatureType is SignatureTypeV2.POLY_GNOSIS_SAFE
 
 
 # ---------------------------------------------------------------------------
