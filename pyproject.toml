@@ -30,8 +30,9 @@ dependencies = [
     "google-generativeai==0.8.2",
     "py-clob-client==0.34.5",
     "py-builder-relayer-client==0.0.1",
-    # Pre-existing legitimate ranges (mirrors mech-interact's aea-config / pyproject;
-    # widening these would tip the agent into resolver instability).
+    # Bounded ranges — strict upper bound on every entry per David's #436 rule
+    # (https://github.com/valory-xyz/mech/pull/436#discussion_r3148...) so a
+    # major-version bump cannot silently land via a supply-chain attack.
     "requests<2.33.0,>=2.28.1",
     "aiohttp<4.0.0,>=3.8.5",
     "asn1crypto<1.5.0,>=1.4.0",
@@ -40,17 +41,17 @@ dependencies = [
     "jsonschema<5.0.0,>=4.23.0",
     "openapi-spec-validator<0.8.0,>=0.7.0",
     "typing_extensions<=4.15.0,>=3.10.0.2",
-    "ecdsa>=0.15",
-    # Other deps with legitimate ranges (kept as-is from prior pyproject).
+    "ecdsa<0.20,>=0.19.2",
     "pydantic<3,>=2.11.9",
     "httpx<1,>=0.23.0",
-    "py-builder-signing-sdk",
-    "certifi",
-    "multidict",
-    "eth_typing",
-    "w3multicall>=0.3.1",
+    "certifi<2027,>=2026.2.25",
+    "multidict<7,>=6.7.1",
+    "eth_typing<7,>=6",
+    "w3multicall<0.4,>=0.3.1",
     "setuptools<=81.0.0",
-    "pip>=24.0",
+    # `py-builder-signing-sdk`: sourced from a git rev pin via [tool.uv.sources]
+    # below — the rev is an immutable commit SHA, equivalent to an exact pin.
+    "py-builder-signing-sdk",
 ]
 
 [project.urls]

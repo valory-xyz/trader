@@ -2226,15 +2226,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pip"
-version = "26.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/48/83/0d7d4e9efe3344b8e2fe25d93be44f64b65364d3c8d7bc6dc90198d5422e/pip-26.0.1.tar.gz", hash = "sha256:c4037d8a277c89b320abe636d59f91e6d0922d08a05b60e85e53b296613346d8", size = 1812747, upload-time = "2026-02-05T02:20:18.702Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/f0/c81e05b613866b76d2d1066490adf1a3dbc4ee9d9c839961c3fc8a6997af/pip-26.0.1-py3-none-any.whl", hash = "sha256:bdb1b08f4274833d62c1aa29e20907365a2ceb950410df15fc9521bad440122b", size = 1787723, upload-time = "2026-02-05T02:20:16.416Z" },
-]
-
-[[package]]
 name = "platformdirs"
 version = "4.9.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3447,7 +3438,6 @@ dependencies = [
     { name = "open-autonomy", extra = ["cli"] },
     { name = "openapi-core" },
     { name = "openapi-spec-validator" },
-    { name = "pip" },
     { name = "protobuf" },
     { name = "py-builder-relayer-client" },
     { name = "py-builder-signing-sdk" },
@@ -3472,10 +3462,10 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.5,<4.0.0" },
     { name = "asn1crypto", specifier = ">=1.4.0,<1.5.0" },
-    { name = "certifi" },
-    { name = "ecdsa", specifier = ">=0.15" },
+    { name = "certifi", specifier = ">=2026.2.25,<2027" },
+    { name = "ecdsa", specifier = ">=0.19.2,<0.20" },
     { name = "eth-abi", specifier = "==5.2.0" },
-    { name = "eth-typing" },
+    { name = "eth-typing", specifier = ">=6,<7" },
     { name = "eth-utils", specifier = "==5.3.0" },
     { name = "google-generativeai", specifier = "==0.8.2" },
     { name = "grpcio", specifier = "==1.78.0" },
@@ -3483,7 +3473,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.23.0,<1" },
     { name = "hypothesis", specifier = "==6.21.6" },
     { name = "jsonschema", specifier = ">=4.23.0,<5.0.0" },
-    { name = "multidict" },
+    { name = "multidict", specifier = ">=6.7.1,<7" },
     { name = "open-aea-cli-ipfs", specifier = "==2.2.1" },
     { name = "open-aea-helpers", specifier = "==0.21.19" },
     { name = "open-aea-ledger-cosmos", specifier = "==2.2.1" },
@@ -3492,7 +3482,6 @@ requires-dist = [
     { name = "open-autonomy", extras = ["cli"], specifier = "==0.21.19" },
     { name = "openapi-core", specifier = "==0.22.0" },
     { name = "openapi-spec-validator", specifier = ">=0.7.0,<0.8.0" },
-    { name = "pip", specifier = ">=24.0" },
     { name = "protobuf", specifier = ">=5,<6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
     { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
@@ -3504,7 +3493,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.28.1,<2.33.0" },
     { name = "setuptools", specifier = "<=81.0.0" },
     { name = "typing-extensions", specifier = ">=3.10.0.2,<=4.15.0" },
-    { name = "w3multicall", specifier = ">=0.3.1" },
+    { name = "w3multicall", specifier = ">=0.3.1,<0.4" },
     { name = "web3", specifier = ">=7.0.0,<8" },
 ]
 
