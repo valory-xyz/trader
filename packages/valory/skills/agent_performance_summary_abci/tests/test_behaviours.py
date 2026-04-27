@@ -2045,7 +2045,7 @@ class TestCalculateRoi:
         """Returns (None, None) when serviceId is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        agent = {"serviceId": None, "totalTraded": "100", "totalPayout": "50"}
+        agent = {"serviceId": None, "totalTraded": "100", "totalExpectedPayout": "50"}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2058,7 +2058,7 @@ class TestCalculateRoi:
         """Returns (None, None) when totalTraded is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        agent = {"serviceId": "1", "totalTraded": None, "totalPayout": "50"}
+        agent = {"serviceId": "1", "totalTraded": None, "totalExpectedPayout": "50"}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2067,11 +2067,11 @@ class TestCalculateRoi:
             result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
 
-    def test_trader_agent_missing_totalPayout(self) -> None:
-        """Returns (None, None) when totalPayout is None."""
+    def test_trader_agent_missing_totalExpectedPayout(self) -> None:
+        """Returns (None, None) when totalExpectedPayout is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        agent = {"serviceId": "1", "totalTraded": "100", "totalPayout": None}
+        agent = {"serviceId": "1", "totalTraded": "100", "totalExpectedPayout": None}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2084,7 +2084,7 @@ class TestCalculateRoi:
         """Returns (None, None) when staking service is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        agent = {"serviceId": "1", "totalTraded": "100", "totalPayout": "50"}
+        agent = {"serviceId": "1", "totalTraded": "100", "totalExpectedPayout": "50"}
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -2098,7 +2098,7 @@ class TestCalculateRoi:
         """Returns (None, None) when OLAS price is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context()
-        agent = {"serviceId": "1", "totalTraded": "100", "totalPayout": "50"}
+        agent = {"serviceId": "1", "totalTraded": "100", "totalExpectedPayout": "50"}
         staking = {"olasRewardsEarned": "0"}
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2117,7 +2117,7 @@ class TestCalculateRoi:
         agent = {
             "serviceId": "1",
             "totalTraded": "0",
-            "totalPayout": "0",
+            "totalExpectedPayout": "0",
             "totalTradedSettled": "0",
             "totalFeesSettled": "0",
         }
@@ -2140,11 +2140,11 @@ class TestCalculateRoi:
         """Calculates ROI successfully on Gnosis."""
         b = _make_fetch_behaviour(_settled_mech_requests_count=2)
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
-        # totalTradedSettled = 1 ETH, totalFeesSettled = 0, totalPayout = 1.5 ETH
+        # totalTradedSettled = 1 ETH, totalFeesSettled = 0, totalExpectedPayout = 1.5 ETH
         agent = {
             "serviceId": "1",
             "totalTraded": str(WEI_IN_ETH),
-            "totalPayout": str(int(1.5 * WEI_IN_ETH)),
+            "totalExpectedPayout": str(int(1.5 * WEI_IN_ETH)),
             "totalTradedSettled": str(WEI_IN_ETH),
             "totalFeesSettled": "0",
         }
@@ -2172,7 +2172,7 @@ class TestCalculateRoi:
         agent = {
             "serviceId": "1",
             "totalTraded": str(USDC_DECIMALS_DIVISOR),
-            "totalPayout": str(int(2 * USDC_DECIMALS_DIVISOR)),
+            "totalExpectedPayout": str(int(2 * USDC_DECIMALS_DIVISOR)),
             "totalTradedSettled": str(USDC_DECIMALS_DIVISOR),
             "totalFeesSettled": "0",
         }
@@ -2286,7 +2286,7 @@ class TestFetchAgentPerformanceData:
             "totalFees": "0",
             "totalTradedSettled": str(WEI_IN_ETH),
             "totalFeesSettled": "0",
-            "totalPayout": str(int(1.5 * WEI_IN_ETH)),
+            "totalExpectedPayout": str(int(1.5 * WEI_IN_ETH)),
             "totalBets": "10",
         }
         with (
@@ -2796,7 +2796,7 @@ class TestCalculatePerformanceMetrics:
             "totalFees": str(int(0.1 * WEI_IN_ETH)),
             "totalTradedSettled": str(WEI_IN_ETH),
             "totalFeesSettled": "0",
-            "totalPayout": str(int(1.5 * WEI_IN_ETH)),
+            "totalExpectedPayout": str(int(1.5 * WEI_IN_ETH)),
         }
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2823,7 +2823,7 @@ class TestCalculatePerformanceMetrics:
             "totalFees": "0",
             "totalTradedSettled": "0",
             "totalFeesSettled": "0",
-            "totalPayout": "0",
+            "totalExpectedPayout": "0",
         }
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2850,7 +2850,7 @@ class TestCalculatePerformanceMetrics:
             "totalFees": "0",
             "totalTradedSettled": "0",
             "totalFeesSettled": "0",
-            "totalPayout": "0",
+            "totalExpectedPayout": "0",
         }
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2890,7 +2890,7 @@ class TestCalculatePerformanceMetrics:
             "totalFees": "0",
             "totalTradedSettled": str(WEI_IN_ETH),
             "totalFeesSettled": "0",
-            "totalPayout": str(WEI_IN_ETH),
+            "totalExpectedPayout": str(WEI_IN_ETH),
         }
         with (
             _patch_context(b, ctx, synced_data)[0],
