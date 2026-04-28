@@ -179,3 +179,10 @@ class PolymarketSwapPayload(MultisigTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction for swapping."""
 
     should_swap: Optional[bool] = None
+
+
+@dataclass(frozen=True)
+class PolymarketWrapCollateralPayload(MultisigTxPayload):
+    """Payload for wrapping USDC.e → pUSD via the Polymarket Collateral Onramp."""
+
+    should_wrap: Optional[bool] = None

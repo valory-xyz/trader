@@ -28,8 +28,9 @@ dependencies = [
     "openapi-core==0.22.0",
     "pyinstaller==6.19.0",
     "google-generativeai==0.8.2",
-    "py-clob-client==0.34.5",
+    "py_clob_client_v2==1.0.0",
     "py-builder-relayer-client==0.0.1",
+    "multiaddr==0.0.9",
     # Bounded ranges — strict upper bound on every entry per David's #436 rule
     # (https://github.com/valory-xyz/mech/pull/436#discussion_r3148...) so a
     # major-version bump cannot silently land via a supply-chain attack.
@@ -48,6 +49,8 @@ dependencies = [
     "multidict<7,>=6.7.1",
     "eth_typing<7,>=6",
     "w3multicall<0.4,>=0.3.1",
+    "filelock<4,>=3.20.1",
+    "poly_eip712_structs<0.1,>=0.0.1",
     "setuptools<=81.0.0",
     # `py-builder-signing-sdk`: sourced from a git rev pin via [tool.uv.sources]
     # below — the rev is an immutable commit SHA, equivalent to an exact pin.

@@ -222,6 +222,15 @@ wheels = [
 ]
 
 [[package]]
+name = "base58"
+version = "2.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/45/8ae61209bb9015f516102fa559a2914178da1d5868428bd86a1b4421141d/base58-2.1.1.tar.gz", hash = "sha256:c5d0cb3f5b6e81e8e35da5754388ddcc6d0d14b6c6a132cb93d69ed580a7278c", size = 6528, upload-time = "2021-10-30T22:12:17.858Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/45/ec96b29162a402fc4c1c5512d114d7b3787b9d1c2ec241d9568b4816ee23/base58-2.1.1-py3-none-any.whl", hash = "sha256:11a36f4d3ce51dfc1043f3218591ac4eb1ceb172919cebe05b52a5bcc8d245c2", size = 5621, upload-time = "2021-10-30T22:12:16.658Z" },
+]
+
+[[package]]
 name = "bcrypt"
 version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1874,6 +1883,21 @@ wheels = [
 ]
 
 [[package]]
+name = "multiaddr"
+version = "0.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "base58" },
+    { name = "netaddr" },
+    { name = "six" },
+    { name = "varint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/12/f4/fa5353022ad8e0fd364bfa8b474f9562c36ce1305fad31fe52b849e30795/multiaddr-0.0.9.tar.gz", hash = "sha256:30b2695189edc3d5b90f1c303abb8f02d963a3a4edf2e7178b975eb417ab0ecf", size = 24726, upload-time = "2019-12-23T07:06:21.146Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/59/df732566d951c33f00a4022fc5bf9c5d1661b1c2cdaf56e75a1a5fa8f829/multiaddr-0.0.9-py2.py3-none-any.whl", hash = "sha256:5c0f862cbcf19aada2a899f80ef896ddb2e85614e0c8f04dd287c06c69dac95b", size = 16281, upload-time = "2019-12-23T07:06:18.915Z" },
+]
+
+[[package]]
 name = "multidict"
 version = "6.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2009,6 +2033,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/f7/addf1087b860ac60e6f382240f64fb99f8bfb532bb06f7c542b83c29ca61/multidict-6.7.1-cp314-cp314t-win_amd64.whl", hash = "sha256:497bde6223c212ba11d462853cfa4f0ae6ef97465033e7dc9940cdb3ab5b48e5", size = 53542, upload-time = "2026-01-26T02:46:08.809Z" },
     { url = "https://files.pythonhosted.org/packages/4c/81/4629d0aa32302ef7b2ec65c75a728cc5ff4fa410c50096174c1632e70b3e/multidict-6.7.1-cp314-cp314t-win_arm64.whl", hash = "sha256:2bbd113e0d4af5db41d5ebfe9ccaff89de2120578164f86a5d17d5a576d1e5b2", size = 44719, upload-time = "2026-01-26T02:46:11.146Z" },
     { url = "https://files.pythonhosted.org/packages/81/08/7036c080d7117f28a4af526d794aab6a84463126db031b007717c1a6676e/multidict-6.7.1-py3-none-any.whl", hash = "sha256:55d97cc6dae627efa6a6e548885712d4864b81110ac76fa4e534c03819fa4a56", size = 12319, upload-time = "2026-01-26T02:46:44.004Z" },
+]
+
+[[package]]
+name = "netaddr"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/90/188b2a69654f27b221fba92fda7217778208532c962509e959a9cee5229d/netaddr-1.3.0.tar.gz", hash = "sha256:5c3c3d9895b551b763779ba7db7a03487dc1f8e3b385af819af341ae9ef6e48a", size = 2260504, upload-time = "2024-05-28T21:30:37.743Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/cc/f4fe2c7ce68b92cbf5b2d379ca366e1edae38cccaad00f69f529b460c3ef/netaddr-1.3.0-py3-none-any.whl", hash = "sha256:c2c6a8ebe5554ce33b7d5b3a306b71bbb373e000bbbf2350dd5213cc56e3dbbe", size = 2262023, upload-time = "2024-05-28T21:30:34.191Z" },
 ]
 
 [[package]]
@@ -2421,21 +2454,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "py-clob-client"
-version = "0.34.5"
+name = "py-clob-client-v2"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eth-account" },
     { name = "eth-utils" },
     { name = "httpx", extra = ["http2"] },
     { name = "poly-eip712-structs" },
-    { name = "py-builder-signing-sdk" },
     { name = "py-order-utils" },
-    { name = "python-dotenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/a4/64f81cd2ba674f575cb53a46be3fb14adc2ba92dd229ac0eb2c4a0456662/py_clob_client-0.34.5.tar.gz", hash = "sha256:fdc3907e3dae8e2e8bcc93a7c97780493a8d97e0e40247c84d2291ccb2d4e026", size = 38164, upload-time = "2026-01-13T17:13:32.037Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/3a/62b7a1d8476023b09d48dc3edd0557fe2d5e450c2242219b7da1b2419bd2/py_clob_client_v2-1.0.0.tar.gz", hash = "sha256:ccbba4fbd0b4beba03dac1265421fe52aeb0141809fce7aabc03df9879313a66", size = 40426, upload-time = "2026-04-17T15:02:55.768Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/64/1d5a1ecc0a95f1552da62ebd01d4b6bae63505c6ccba36632250d313445e/py_clob_client-0.34.5-py3-none-any.whl", hash = "sha256:31b7b57d522164f3eeab6bfdd78c42d8b313ff3d4469e0966fa2296121fbfb12", size = 43788, upload-time = "2026-01-13T17:13:30.877Z" },
+    { url = "https://files.pythonhosted.org/packages/13/42/1822c6a6a540bd12e4b41cdb27e17f6850f97a06c08460e43789b887661d/py_clob_client_v2-1.0.0-py3-none-any.whl", hash = "sha256:f9fa3315f154ceeb9e3084284a1bfc792df74f12b9441612e545a2480f603453", size = 46700, upload-time = "2026-04-17T15:02:53.641Z" },
 ]
 
 [[package]]
@@ -3423,12 +3454,14 @@ dependencies = [
     { name = "eth-abi" },
     { name = "eth-typing" },
     { name = "eth-utils" },
+    { name = "filelock" },
     { name = "google-generativeai" },
     { name = "grpcio" },
     { name = "hexbytes" },
     { name = "httpx" },
     { name = "hypothesis" },
     { name = "jsonschema" },
+    { name = "multiaddr" },
     { name = "multidict" },
     { name = "open-aea-cli-ipfs" },
     { name = "open-aea-helpers" },
@@ -3438,10 +3471,11 @@ dependencies = [
     { name = "open-autonomy", extra = ["cli"] },
     { name = "openapi-core" },
     { name = "openapi-spec-validator" },
+    { name = "poly-eip712-structs" },
     { name = "protobuf" },
     { name = "py-builder-relayer-client" },
     { name = "py-builder-signing-sdk" },
-    { name = "py-clob-client" },
+    { name = "py-clob-client-v2" },
     { name = "pydantic" },
     { name = "pyinstaller" },
     { name = "pytest" },
@@ -3467,12 +3501,14 @@ requires-dist = [
     { name = "eth-abi", specifier = "==5.2.0" },
     { name = "eth-typing", specifier = ">=6,<7" },
     { name = "eth-utils", specifier = "==5.3.0" },
+    { name = "filelock", specifier = ">=3.20.1,<4" },
     { name = "google-generativeai", specifier = "==0.8.2" },
     { name = "grpcio", specifier = "==1.78.0" },
     { name = "hexbytes", specifier = "==1.3.0" },
     { name = "httpx", specifier = ">=0.23.0,<1" },
     { name = "hypothesis", specifier = "==6.21.6" },
     { name = "jsonschema", specifier = ">=4.23.0,<5.0.0" },
+    { name = "multiaddr", specifier = "==0.0.9" },
     { name = "multidict", specifier = ">=6.7.1,<7" },
     { name = "open-aea-cli-ipfs", specifier = "==2.2.1" },
     { name = "open-aea-helpers", specifier = "==0.21.19" },
@@ -3482,10 +3518,11 @@ requires-dist = [
     { name = "open-autonomy", extras = ["cli"], specifier = "==0.21.19" },
     { name = "openapi-core", specifier = "==0.22.0" },
     { name = "openapi-spec-validator", specifier = ">=0.7.0,<0.8.0" },
+    { name = "poly-eip712-structs", specifier = ">=0.0.1,<0.1" },
     { name = "protobuf", specifier = ">=5,<6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
     { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
-    { name = "py-clob-client", specifier = "==0.34.5" },
+    { name = "py-clob-client-v2", specifier = "==1.0.0" },
     { name = "pydantic", specifier = ">=2.11.9,<3" },
     { name = "pyinstaller", specifier = "==6.19.0" },
     { name = "pytest", specifier = "==8.4.2" },
@@ -3550,6 +3587,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
 ]
+
+[[package]]
+name = "varint"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/fe/1ea0ba0896dfa47186692655b86db3214c4b7c9e0e76c7b1dc257d101ab1/varint-1.0.2.tar.gz", hash = "sha256:a6ecc02377ac5ee9d65a6a8ad45c9ff1dac8ccee19400a5950fb51d594214ca5", size = 1886, upload-time = "2016-02-24T20:42:38.5Z" }
 
 [[package]]
 name = "virtualenv"

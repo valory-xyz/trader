@@ -161,6 +161,7 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             with open(read_path, READ_MODE) as bets_file:
                 try:
                     self.bets = json.load(bets_file, cls=BetsDecoder)
+                    self._normalize_polymarket_collateral()
                     return
                 except (JSONDecodeError, TypeError):
                     err = f"Error decoding file {read_path!r} to a list of bets!"
@@ -168,6 +169,21 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             err = f"Error opening file {read_path!r} in read mode!"
 
         self.context.logger.error(err)
+
+    def _normalize_polymarket_collateral(self) -> None:
+        """Blank any populated `collateralToken` on Polymarket bets in memory.
+
+        On Polymarket v2 the collateral is a protocol-level invariant (pUSD)
+        tracked via `polymarket_collateral_address`; the per-bet field is
+        meaningless and a residual v1 value there would silently mis-drive
+        balance/bankroll reads. Normalize on every load — cheap, idempotent,
+        and Omen bets are untouched.
+        """
+        if not getattr(self.params, "is_running_on_polymarket", False):
+            return
+        for bet in self.bets:
+            if getattr(bet, "collateralToken", ""):
+                bet.collateralToken = ""
 
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""

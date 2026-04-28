@@ -35,6 +35,11 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     SynchronizedData,
 )
 
+# Stamp on the local allowances-persistence file. Bumping this invalidates a
+# prior v1 file so the agent re-issues approvals against v2 addresses after
+# the 2026-04-28 cutover.
+POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v2"
+
 
 class CheckBenchmarkingModeRound(VotingRound):
     """A round for checking whether the benchmarking mode is enabled."""
@@ -61,12 +66,26 @@ class CheckBenchmarkingModeRound(VotingRound):
                 with open(allowances_path, "r") as f:
                     allowances_data = json.load(f)
                     allowances_set = allowances_data.get("allowances_set", False)
+                    file_version = allowances_data.get("clob_version")
 
-                    if allowances_set:
+                    # A stored "already set" is only trustworthy if the file
+                    # was written under the current CLOB version. v1 files
+                    # (no marker) must be ignored so v2 approvals run.
+                    if (
+                        allowances_set
+                        and file_version == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
+                    ):
                         self.context.logger.info(
                             "Polymarket allowances already set. Skipping approval round."
                         )
                         return self.synchronized_data, Event.BENCHMARKING_DISABLED
+                    elif allowances_set:
+                        self.context.logger.info(
+                            f"Polymarket allowances file was stamped with "
+                            f"{file_version!r} but current CLOB version is "
+                            f"{POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION!r}; "
+                            f"re-issuing approvals."
+                        )
                     else:
                         self.context.logger.info(
                             "Polymarket allowances not set. Proceeding to SET_APPROVAL."

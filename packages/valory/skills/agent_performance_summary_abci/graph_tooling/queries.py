@@ -26,7 +26,7 @@ query GetOlasTraderAgent($id: ID!) {
     serviceId
     totalTraded
     totalTradedSettled
-    totalPayout
+    totalExpectedPayout
     totalFees
     totalFeesSettled
   }
@@ -98,7 +98,7 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
     id
     totalTraded
     totalTradedSettled
-    totalPayout
+    totalExpectedPayout
     totalFees
     totalFeesSettled
     totalBets
@@ -302,7 +302,7 @@ query GetPolymarketTraderAgentPerformance($id: ID!) {
   traderAgent(id: $id) {
     serviceId
     totalBets
-    totalPayout
+    totalExpectedPayout
     totalTraded
     totalTradedSettled
   }
@@ -319,7 +319,7 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
     skip: $skip
   ) {
     totalPayout
-    bets {
+    bets(where: { isBuy: true }) {
       id
       outcomeIndex
       amount
@@ -464,7 +464,7 @@ query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
     where: {traderAgent_: {id: $id}}
   ) {
     totalPayout
-    bets(where: {id: $betId}) {
+    bets(where: {id: $betId, isBuy: true}) {
       id
       outcomeIndex
       amount

@@ -55,8 +55,12 @@ def test_check_benchmarking_mode_round_events() -> None:
     assert round_instance.negative_event == Event.BENCHMARKING_DISABLED
 
 
-def test_end_block_polymarket_allowances_set() -> None:
-    """Test end_block on Polymarket with allowances already set."""
+def test_end_block_polymarket_allowances_set_current_version() -> None:
+    """A file stamped with the current CLOB version skips approval."""
+    from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+        POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+    )
+
     mock_context = MagicMock()
     mock_context.params.is_running_on_polymarket = True
     mock_synced_data = MagicMock(spec=SynchronizedData)
@@ -65,7 +69,13 @@ def test_end_block_polymarket_allowances_set() -> None:
         mock_context.params.store_path = tmpdir
         allowances_path = Path(tmpdir) / "polymarket.json"
         with open(allowances_path, "w") as f:
-            json.dump({"allowances_set": True}, f)
+            json.dump(
+                {
+                    "allowances_set": True,
+                    "clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+                },
+                f,
+            )
 
         round_instance = CheckBenchmarkingModeRound(
             synchronized_data=mock_synced_data, context=mock_context
@@ -75,6 +85,36 @@ def test_end_block_polymarket_allowances_set() -> None:
     assert result is not None
     _, event = result
     assert event == Event.BENCHMARKING_DISABLED
+
+
+def test_end_block_polymarket_stale_v1_allowances_file_reapproves() -> None:
+    """A legacy v1 file (no ``clob_version``) must trigger re-approval.
+
+    This guards the v2-cutover invariant: an agent carrying a v1-era
+    ``allowances_set: true`` file must not bypass the approval round,
+    because the v1 allowances point at retired exchange contracts.
+    """
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            json.dump({"allowances_set": True}, f)  # no clob_version
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    # With a stale (unversioned) file, the round must NOT short-circuit
+    # to BENCHMARKING_DISABLED — it falls through to SET_APPROVAL so the
+    # agent re-issues approvals against v2 addresses.
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
 
 
 def test_end_block_polymarket_allowances_not_set() -> None:

@@ -41,12 +41,14 @@ from packages.valory.skills.market_manager_abci.states.polymarket_fetch_market i
     PolymarketFetchMarketRound,
 )
 
-USCDE_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_E_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+PUSD_POLYGON = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 # USDC has 6 decimals on Polymarket
 USDC_DECIMALS = 10**6
 # Threshold for extreme outcome prices indicating resolved/over markets
 EXTREME_PRICE_THRESHOLD = 0.99
+
 
 # Polymarket category keywords for validation
 # fmt: off
@@ -459,7 +461,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "title": market.get("question"),
                         "category": category,
                         "condition_id": market.get("conditionId"),
-                        "collateralToken": USCDE_POLYGON,  # Polymarket uses USDC.e on Polygon
+                        # Polymarket v2 collateral is protocol-level (pUSD); the param
+                        # `polymarket_collateral_address` is the source of truth. The
+                        # per-bet field is Omen-only and left blank here on purpose.
+                        "collateralToken": "",
                         "creator": market.get("submitted_by", ZERO_ADDRESS),
                         "fee": 0,  # Polymarket fee is typically 0 or handled differently
                         "openingTimestamp": opening_timestamp,

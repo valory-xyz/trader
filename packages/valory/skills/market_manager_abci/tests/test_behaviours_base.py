@@ -536,6 +536,50 @@ class TestReadBets:
         b.context.logger.error.assert_called_once()
         assert "Error opening" in b.context.logger.error.call_args[0][0]
 
+    def test_read_bets_polymarket_blanks_collateral_token(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """On Polymarket, nonempty collateralToken on loaded bets is blanked in memory.
+
+        Covers the migration case where cached v1 bets carry USDC.e and
+        transitional v2 bets carry pUSD — both become meaningless once the
+        param is the single source of truth.
+
+        :param tmp_path: pytest-provided temporary directory fixture.
+        """
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
+        b.context.params.is_running_on_polymarket = True
+
+        usdc_e = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+        pusd = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
+        loaded = [
+            MagicMock(collateralToken=usdc_e),
+            MagicMock(collateralToken=pusd),
+        ]
+        multi_path = tmp_path / MULTI_BETS_FILENAME
+        multi_path.write_text("[]")
+
+        with patch("json.load", return_value=loaded):
+            b.read_bets()
+
+        assert [bet.collateralToken for bet in b.bets] == ["", ""]
+
+    def test_read_bets_omen_collateral_token_unchanged(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """On Omen, collateralToken on loaded bets is preserved (per-market truth).
+
+        :param tmp_path: pytest-provided temporary directory fixture.
+        """
+        b = _make_behaviour(tmp_path=tmp_path)  # type: ignore[no-untyped-def]
+        b.context.params.is_running_on_polymarket = False
+
+        wxdai = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+        loaded = [MagicMock(collateralToken=wxdai)]
+        multi_path = tmp_path / MULTI_BETS_FILENAME
+        multi_path.write_text("[]")
+
+        with patch("json.load", return_value=loaded):
+            b.read_bets()
+
+        assert b.bets[0].collateralToken == wxdai
+
 
 # ===========================================================================
 # Tests for hash_stored_bets

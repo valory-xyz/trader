@@ -64,6 +64,7 @@ alphabet_in:
 - V1
 - V2
 - VALIDATE_TIMEOUT
+- WRAP_COLLATERAL_DONE
 default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
@@ -103,6 +104,7 @@ states:
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PolymarketWrapCollateralRound
 - PostBetUpdateRound
 - PostTxSettlementRound
 - PreTxSettlementRound
@@ -153,7 +155,7 @@ transition_func:
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound
-    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): FetchMarketsRouterRound
+    (CheckBenchmarkingModeRound, BENCHMARKING_DISABLED): PolymarketWrapCollateralRound
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
@@ -248,7 +250,7 @@ transition_func:
     (PolymarketFetchMarketRound, NO_MAJORITY): PolymarketFetchMarketRound
     (PolymarketFetchMarketRound, ROUND_TIMEOUT): PolymarketFetchMarketRound
     (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
-    (PolymarketPostSetApprovalRound, DONE): FetchMarketsRouterRound
+    (PolymarketPostSetApprovalRound, DONE): PolymarketWrapCollateralRound
     (PolymarketPostSetApprovalRound, NONE): ImpossibleRound
     (PolymarketPostSetApprovalRound, NO_MAJORITY): PolymarketPostSetApprovalRound
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
@@ -271,6 +273,12 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PolymarketWrapCollateralRound, DONE): FetchMarketsRouterRound
+    (PolymarketWrapCollateralRound, MOCK_TX): FetchMarketsRouterRound
+    (PolymarketWrapCollateralRound, NONE): FetchMarketsRouterRound
+    (PolymarketWrapCollateralRound, NO_MAJORITY): PolymarketWrapCollateralRound
+    (PolymarketWrapCollateralRound, PREPARE_TX): PreTxSettlementRound
+    (PolymarketWrapCollateralRound, ROUND_TIMEOUT): PolymarketWrapCollateralRound
     (PostBetUpdateRound, DONE): CallCheckpointRound
     (PostBetUpdateRound, NONE): PostBetUpdateRound
     (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
@@ -285,6 +293,7 @@ transition_func:
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound
     (PostTxSettlementRound, SWAP_DONE): DecisionRequestRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+    (PostTxSettlementRound, WRAP_COLLATERAL_DONE): FetchMarketsRouterRound
     (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
     (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeid4ltdslzl6szj7uz7wrz5mf2pbseemnn3z3w3samekmyd37ji4se
+agent: valory/trader:0.1.0:bafybeigp6uvus2fjijqsijm3qzcffiwm57wjartqihgnrd2tr37f66zlnu
 number_of_agents: 1
 deployment:
   agent:
@@ -281,7 +281,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${OPEN_MARKETS_SUBGRAPH_RETRIES:int:5}
-      url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket}
   olas_agents_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -292,7 +292,7 @@ models:
       error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
-      url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://predict-agents.subgraph.autonolas.tech}
+      url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket}
   olas_mech_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
@@ -379,7 +379,7 @@ type: skill
 models:
   params:
     args:
-      fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":30000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":10000000000000000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":65000000,"threshold":16000000},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":30000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":10000000000000000000},"0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB":{"topup":65000000,"threshold":16000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":0,"threshold":0},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
@@ -390,7 +390,15 @@ config:
   host: https://clob.polymarket.com
   chain_id: 137
   safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
-  remote_builder_url: ${REMOTE_BUILDER_URL:str:http://localhost:5001/sign}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+  builder_code: ${POLYMARKET_BUILDER_CODE:str:}
+  clob_version: ${CLOB_VERSION:str:v2}
+  collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+  usdc_e_address: ${POLYMARKET_USDC_E_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+  collateral_onramp_address: ${POLYMARKET_COLLATERAL_ONRAMP_ADDRESS:str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+  ctf_address: ${POLYMARKET_CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+  ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
+  neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
+  neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}

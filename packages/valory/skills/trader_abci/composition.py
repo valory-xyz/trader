@@ -59,6 +59,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
@@ -137,6 +138,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedPolymarketSwapTxRound,
+    FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
     FinishedSetApprovalTxRound,
@@ -204,6 +206,13 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedWithoutRedeemingRound: CheckStopTradingRound,
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
+    # Wrap is prepared by the decision_maker_abci, settled by the multiplexer,
+    # and enters the trading cycle directly. Safe multisend is atomic so the
+    # settlement terminal implies balance→0; CLOB-exchange approvals are
+    # untouched by the wrap, so a post-wrap approval re-check would burn 1
+    # SRR + 6 chain reads for no observable safety.
+    FinishedPolymarketWrapCollateralTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketWrapCollateralTxRound: FetchMarketsRouterRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,

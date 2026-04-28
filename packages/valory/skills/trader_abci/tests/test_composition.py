@@ -34,6 +34,7 @@ from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
 )
 from packages.valory.skills.market_manager_abci.rounds import (
+    FetchMarketsRouterRound,
     FinishedMarketManagerRound,
     FinishedPolymarketFetchMarketRound,
 )
@@ -50,11 +51,12 @@ from packages.valory.skills.trader_abci.composition import (
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
+    FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 46
+EXPECTED_TRANSITION_MAPPING_LENGTH = 48
 
 # Transitions introduced or rewired by the always-redeem-first /
 # `PostBetUpdateRound` FSM restructure (PR #904). Each pair must hold
@@ -89,6 +91,20 @@ def test_restructure_transition(src: type, dst: type) -> None:
     assert abci_app_transition_mapping[src] is dst, (
         f"{src.__name__} -> {abci_app_transition_mapping[src].__name__}, "
         f"expected {dst.__name__}"
+    )
+
+
+def test_wrap_tx_terminal_skips_to_trading_cycle() -> None:
+    """Wrap tx settlement routes directly into the trading cycle.
+
+    Safe multisend is atomic and the wrap doesn't touch CLOB-exchange
+    approvals, so the legacy post-wrap ``PolymarketPostSetApprovalRound``
+    hop (1 SRR + 6 chain reads) added no observable safety. The
+    settlement terminal now targets ``FetchMarketsRouterRound`` directly.
+    """
+    assert (
+        abci_app_transition_mapping[FinishedPolymarketWrapCollateralTxRound]
+        is FetchMarketsRouterRound
     )
 
 
