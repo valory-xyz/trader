@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidwqu3boiae74b3ntd3sc54mdii5ajmei4qkj3ur4467qci3onfeu
+agent: valory/trader:0.1.0:bafybeickrqlwu24rhdas7ccnb6ael67vestf54o6mkkzlk3jxpun7whlcm
 number_of_agents: 1
 deployment:
   agent:
@@ -387,7 +387,7 @@ models:
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  host: https://clob-v2.polymarket.com
+  host: https://clob.polymarket.com
   chain_id: 137
   safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}

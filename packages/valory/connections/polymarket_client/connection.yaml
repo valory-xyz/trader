@@ -18,7 +18,7 @@ protocols:
 - valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
 class_name: PolymarketClientConnection
 config:
-  host: https://clob-v2.polymarket.com
+  host: https://clob.polymarket.com
   chain_id: 137
   safe_contract_addresses:
     polygon: 0x
