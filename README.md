@@ -70,7 +70,7 @@ cat > keys.json << EOF
 EOF
 ```
 
-For end users, the Safe is created and registered automatically through Pearl. If you are setting up the service manually for development, follow the [Olas service registration flow](https://docs.autonolas.network/protocol/service_minting/) and use the relevant `service/...` hash from [`packages/packages.json`](./packages/packages.json):
+For end users, the Safe is created and registered automatically through Pearl. If you are setting up the service manually for development, follow the [Olas Protocol service registration flow](https://stack.olas.network/open-autonomy/) and use the relevant `service/...` hash from [`packages/packages.json`](./packages/packages.json):
 
 - `service/valory/trader_pearl/0.1.0`
 - `service/valory/polymarket_trader/0.1.0`
@@ -321,4 +321,4 @@ If you add or remove a dependency:
 - Architecture and conventions: [`CLAUDE.md`](./CLAUDE.md).
 - Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Security policy: [`SECURITY.md`](./SECURITY.md).
-- Open Autonomy framework: <https://stack.olas.network/open-autonomy/>.
+- [Open Autonomy framework](https://stack.olas.network/open-autonomy/)
