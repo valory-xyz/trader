@@ -1,232 +1,324 @@
-## Trader service
+# Trader
 
-Trader is an autonomous service that performs **bets on existing prediction markets**. The service interacts with an [AI Mech](https://github.com/valory-xyz/mech) (a service that executes AI tasks), and its workflow is as follows:
+The **Trader** repo hosts the [Olas](https://olas.network/) prediction-market agents. A single agent package — `valory/trader` — is shipped as two separate services, each pinned to a different chain and market venue:
 
-1. Retrieve information on existing prediction markets (for example, markets created by a given address).
-2. Select one of these markets for betting.
-3. Send a request to an [AI Mech](https://github.com/valory-xyz/mech) to estimate the probability of the event referenced by the prediction market question, and what confidence the AI Mech has on that prediction.
-    - The service will typically bet higher amounts for higher confidence predictions coming from the AI Mech.
-    - These parameters are configurable.
-4. If the response from the [AI Mech](https://github.com/valory-xyz/mech) meets certain criteria indicating profitability, the service will place a bet on that market. The betting amount can be adjusted based on the confidence level provided by the AI Mech.
-5. In case the bet is deemed unprofitable, the market will be blacklisted for a configurable duration.
-6. Repeat these steps continuously.
+| Service | Stack name | Chain | Market venue | Collateral |
+|---|---|---|---|---|
+| `valory/trader_pearl` | **Omenstrat** | Gnosis (`chain_id=100`) | [Omen](https://aiomen.eth.limo/) | xDAI / wxDAI |
+| `valory/polymarket_trader` | **Polystrat** | Polygon (`chain_id=137`) | [Polymarket](https://polymarket.com/) (CLOB v2) | pUSD (wraps from USDC.e) |
 
-The Trader service is an [agent service](https://stack.olas.network/open-autonomy/get_started/what_is_an_agent_service/) (or autonomous service) based on the [Open Autonomy framework](https://stack.olas.network/open-autonomy/). Below we show you how to prepare your environment, how to prepare the agent keys, and how to configure and run the service.
+Both services run as **single-agent (sovereign) deployments** distributed via [Pearl](https://olas.network/operate). The agent queries an [AI Mech](https://github.com/valory-xyz/mech) for probability estimates, evaluates profitability, and executes on-chain via a Safe multisig.
+
+The high-level loop is the same in both flavors:
+
+1. Retrieve open prediction markets.
+2. Pick a market to investigate.
+3. Ask an AI Mech for `p_yes` / `p_no` and a confidence score.
+4. If the bet clears the configured profitability threshold, place it; otherwise temporarily blacklist the market.
+5. Settle / redeem winning positions.
+6. Repeat.
+
+The Trader is built on the [Open Autonomy framework](https://stack.olas.network/open-autonomy/) (ABCI skills, FSMs, content-addressed packages).
+
+---
 
 ## Prepare the environment
 
-- System requirements:
+System requirements:
 
-  - Python `== 3.10`
-  - [uv](https://docs.astral.sh/uv/)
-  - [Docker Engine](https://docs.docker.com/engine/install/)
-  - [Docker Compose](https://docs.docker.com/compose/install/)
+- Python `>=3.10, <3.15`
+- [uv](https://docs.astral.sh/uv/)
+- [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/) (only needed for `autonomy deploy` style runs)
+- Linux or macOS (Windows is supported for the agent runner binary, see `Makefile`)
 
-- Clone this repository:
+Clone and install:
 
-      git clone https://github.com/valory-xyz/trader.git
+```bash
+git clone https://github.com/valory-xyz/trader.git
+cd trader
+uv sync --all-groups
+```
 
-- Create a development environment:
+Configure the Open Autonomy framework and pull the package set:
 
-      uv sync --all-groups
+```bash
+uv run autonomy init --reset --author valory --remote --ipfs --ipfs-node "/dns/registry.autonolas.tech/tcp/443/https"
+uv run autonomy packages sync --update-packages
+```
 
-- Configure the Open Autonomy framework:
+> Always run `autonomy`, `aea`, `aea-helpers`, `pytest` and friends through `uv run` — the tools come from the `uv`-managed venv, not the system Python.
 
-      autonomy init --reset --author valory --remote --ipfs --ipfs-node "/dns/registry.autonolas.tech/tcp/443/https"
-
-- Pull packages required to run the service:
-
-      autonomy packages sync --update-packages
+---
 
 ## Prepare the keys and the Safe
 
-You need a **Gnosis keypair** and a **[Safe](https://safe.global/) address** to run the service.
+You need an EOA keypair for the agent and a Safe multisig that the agent will operate. The chain depends on which service you're running:
 
-First, prepare the `keys.json` file with the Gnosis keypair of your agent. (Replace the uppercase placeholders below):
+- **Omenstrat (`trader_pearl`)** → Gnosis Safe, EOA funded with xDAI for gas.
+- **Polystrat (`polymarket_trader`)** → Polygon Safe; The Safe needs USDC.e (auto-wrapped to pUSD) or pUSD for betting capital and POL for the mech-payment swap stream.
 
-    cat > keys.json << EOF
-    [
-    {
-        "address": "YOUR_AGENT_ADDRESS",
-        "private_key": "YOUR_AGENT_PRIVATE_KEY"
-    }
-    ]
-    EOF
+Create `keys.json` in the repo root:
 
-Next, prepare the [Safe](https://safe.global/). The trader agent runs as part of a **trader service**, 
-which is an [autonomous service](https://stack.olas.network/open-autonomy/get_started/what_is_an_agent_service/) 
-represented on-chain in the [Autonolas Protocol](https://stack.olas.network/protocol/) by a [Safe](https://safe.global/) multisig. Follow the next steps to obtain a **Safe address** corresponding to your agent address:
+```bash
+cat > keys.json << EOF
+[
+  {
+    "address": "YOUR_AGENT_ADDRESS",
+    "private_key": "YOUR_AGENT_PRIVATE_KEY"
+  }
+]
+EOF
+```
 
-1. Visit https://marketplace.olas.network/gnosis/ai-agents/mint and connect to the Gnosis network. We recommend connecting using a wallet with a Gnosis EOA account that you own.
-2. Fill in the following fields:
-    - *"Owner address"*: a Gnosis address for which you will be able to sign later using a supported wallet. If you want to use the address you are connected to, click on *"Prefill Address"*.
-    - Click on *"Generate Hash & File"* and enter the value corresponding to the `service/valory/trader/0.1.0` key in [`packages.json`](./packages/packages.json)
-    - *"Canonical agent Ids"*: enter the number `12`
-    - *"No. of slots to canonical agent Ids"*: enter the number `1`
-    - *"Cost of agent instance bond (wei)"*: enter the number `10000000000000000`
-    - *"Threshold"*: enter the number `1`
-3. Press the *"Submit"* button. Your wallet will ask you to approve the transaction. Once the transaction is settled, you should see a message indicating that the service NFT has been minted successfully. You should also see that the service is in _Pre-Registration_ state.
-4. Next, you can navigate to https://registry.olas.network/services#my-services, select your service and go through the steps:
-    1. Activate registration
-    2. Register agents: **here, you must use your agent address**.
-    3. This is the last step. A transaction for the Safe deployment is already prepared and needs to be executed.
-5. After completing the process you should see that your service is **Deployed**, and you will be able to retrieve your **Safe contract address**.
+For end users, the Safe is created and registered automatically through Pearl. If you are setting up the service manually for development, follow the [Olas service registration flow](https://docs.autonolas.network/protocol/service_minting/) and use the relevant `service/...` hash from [`packages/packages.json`](./packages/packages.json):
 
-**You need to provide some funds (XDAI) both to your agent address and to the Safe address in order to place bets on prediction markets.**
+- `service/valory/trader_pearl/0.1.0`
+- `service/valory/polymarket_trader/0.1.0`
+
+---
 
 ## Configure the service
 
-Set up the following environment variables, which will modify the performance of the trading agent. **Please read their description below**. We provide some defaults, but feel free to experiment with different values. Note that you need to provide `YOUR_AGENT_ADDRESS` and `YOUR_SAFE_ADDRESS` from the section above.
+The two services share most variables (Open Autonomy plumbing, Mech interaction, staking, agent performance summary) and differ in the chain / market parameters. The full list lives in each service's `service.yaml`:
+
+- [`packages/valory/services/trader_pearl/service.yaml`](./packages/valory/services/trader_pearl/service.yaml)
+- [`packages/valory/services/polymarket_trader/service.yaml`](./packages/valory/services/polymarket_trader/service.yaml)
+
+The minimum every deployment needs:
 
 ```bash
-export RPC_0=INSERT_YOUR_RPC
-export CHAIN_ID=100
-
 export ALL_PARTICIPANTS='["YOUR_AGENT_ADDRESS"]'
 export SAFE_CONTRACT_ADDRESS="YOUR_SAFE_ADDRESS"
-export OMEN_CREATORS='["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]'
-
-export BET_AMOUNT_PER_THRESHOLD_000=0
-export BET_AMOUNT_PER_THRESHOLD_010=0
-export BET_AMOUNT_PER_THRESHOLD_020=0
-export BET_AMOUNT_PER_THRESHOLD_030=0
-export BET_AMOUNT_PER_THRESHOLD_040=0
-export BET_AMOUNT_PER_THRESHOLD_050=0
-export BET_AMOUNT_PER_THRESHOLD_060=30000000000000000
-export BET_AMOUNT_PER_THRESHOLD_070=40000000000000000
-export BET_AMOUNT_PER_THRESHOLD_080=60000000000000000
-export BET_AMOUNT_PER_THRESHOLD_090=80000000000000000
-export BET_AMOUNT_PER_THRESHOLD_100=100000000000000000
-
-export BET_THRESHOLD=5000000000000000
-
-export PROMPT_TEMPLATE='With the given question "@{question}" and the `yes` option represented by `@{yes}` and the `no` option represented by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?'
 ```
 
-These are the description of the variables used by the Trader service:
+### Omenstrat (`trader_pearl`) — Gnosis / Omen
 
-- `RPC_0`: RPC endpoint for the agent (you can get an RPC endpoint, e.g. [here](https://getblock.io/)).
-- `CHAIN_ID`: identifier of the chain on which the service is running (Gnosis=100).
-- `ALL_PARTICIPANTS`: list of all the agent addresses participating in the service. In this example we only are using a single agent.
-- `SAFE_CONTRACT_ADDRESS`: address of the agents multisig wallet created [in the previous section](#prepare-the-keys-and-the-safe).
-- `OMEN_CREATORS`: addresses of the market creator(s) that the service will track
-  for placing bets on Omen. The address `0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec` corresponds to the Market creator agent for the Hackathon.
-- `BET_AMOUNT_PER_THRESHOLD_X`: amount (wei) to bet when the prediction returned by the AI Mech surpasses a threshold of `X`% confidence for a given prediction market. In the values provided above the amounts vary between 0.03 xDAI (60% confidence) and 0.1 xDAI (100% confidence).
-- `BET_THRESHOLD`: threshold (wei) for placing a bet. A bet will only be placed if `potential_net_profit - BET_THRESHOLD >= 0`. [See below](#some-notes-on-the-service).
-- `PROMPT_TEMPLATE`: prompt to be used with the prediction AI Mech. Please keep it as a single line including the placeholders `@{question}`, `@{yes}` and `@{no}`.
+```bash
+export GNOSIS_LEDGER_RPC="https://rpc-gate.autonolas.tech/gnosis-rpc/"
+export RPC_URLS='{"gnosis":"https://rpc-gate.autonolas.tech/gnosis-rpc/"}'
 
+# Strategy + sizing knobs (see "Strategy configuration" below)
+export TRADING_STRATEGY=kelly_criterion
+export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}'
+
+# Optional: override the default Omen market creator(s) the agent tracks
+export CREATOR_PER_SUBGRAPH='{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA596E7D23f557"]}'
+```
+
+### Polystrat (`polymarket_trader`) — Polygon / Polymarket CLOB v2
+
+> **Local-dev gotcha.** The agent-level [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) defaults are **Omen-flavored** (`is_running_on_polymarket=false`, `mech_chain_id=gnosis`, `default_chain_id=gnosis`, Omen-scaled `strategies_kwargs`, Omen `tools_accuracy_hash`, `use_multi_bets_mode=true`, etc.). Service-level overrides only apply when you run via `autonomy deploy` against `valory/polymarket_trader`. If you run the agent directly with `make run-agent` / `aea-helpers run-agent`, you **must** pass the full Polystrat override set below — otherwise the agent will start in Omenstrat mode against Polygon RPCs and behave incorrectly.
+
+```bash
+# REQUIRED — flips the agent into Polystrat mode
+export IS_RUNNING_ON_POLYMARKET=true
+export MECH_CHAIN_ID=polygon
+export DEFAULT_CHAIN_ID=polygon
+
+export POLYGON_LEDGER_RPC="https://rpc-gate.autonolas.tech/polygon-rpc/"
+export RPC_URLS='{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}'
+
+# Strategy + sizing knobs — pUSD (6 decimals), so values are scaled accordingly
+export TRADING_STRATEGY=kelly_criterion
+export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}'
+
+# Polystrat market-filter defaults differ from agent-level aea-config defaults
+export USE_MULTI_BETS_MODE=false
+export IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED=true
+export EXCLUDE_NEG_RISK_MARKETS=true
+export POLYMARKET_BUILDER_PROGRAM_ENABLED=false
+
+# Polystrat-specific Mech accuracy hash
+export TOOLS_ACCURACY_HASH=QmdNF1cidJASsVKSnbvSSmZLLaYfBPixBzpT4Pw3ZvmYTu
+```
+
+The full set of Polystrat overrides lives in [`polymarket_trader/service.yaml`](./packages/valory/services/polymarket_trader/service.yaml) — diff it against [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) if you suspect drift.
+
+The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). The agent accepts USDC.e in the Safe and wraps it to pUSD on demand via the Polymarket Collateral Onramp.
+
+### Common variables
+
+| Variable | Description |
+|---|---|
+| `GNOSIS_LEDGER_RPC` / `POLYGON_LEDGER_RPC` | RPC endpoint per chain. We use `https://rpc-gate.autonolas.tech/{gnosis,polygon}-rpc/` in production. Also flows into the per-skill `ledger` connection. |
+| `RPC_URLS` | Dict of `{chain: url}` consumed by `funds_manager` for balance / multicall reads. Pearl sets this to e.g. `{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}` (or the gnosis equivalent). Keep in sync with the per-chain `*_LEDGER_RPC`. |
+| `IS_RUNNING_ON_POLYMARKET` | Master switch between Polystrat (`true`) and Omenstrat (`false`). The service-level YAMLs default this correctly, but **`aea-config.yaml` defaults to `false`** — so any local-dev run that goes through `aea-helpers run-agent` must set this explicitly to run Polystrat. See the Polystrat section above for the full override set. |
+| `ALL_PARTICIPANTS` | List of agent EOAs participating in the service. Single-agent deployments pass a one-element list. |
+| `SAFE_CONTRACT_ADDRESS` / `SAFE_CONTRACT_ADDRESSES` | The agent's Safe multisig (the dict form is `{"gnosis":"0x..."}` or `{"polygon":"0x..."}`). |
+| `TRADING_STRATEGY` | Bet-sizing strategy name. Defaults to `kelly_criterion`; `fixed_bet` is the other shipped option. |
+| `STRATEGIES_KWARGS` | Dict of strategy parameters (`min_edge`, `default_max_bet_size`, `absolute_min/max_bet_size`, `fee_per_trade`, `n_bets`, `min_oracle_prob`, `floor_balance`, `grid_points`). Replaces the old `BET_AMOUNT_PER_THRESHOLD_*` / `BET_THRESHOLD` env vars. |
+| `FILE_HASH_TO_STRATEGIES` | Maps the IPFS hash of a `customs/` package to the strategy names it provides. Defaulted; only override if you ship a new strategy. |
+| `CREATOR_PER_SUBGRAPH` | Dict mapping market-spec subgraph name to creator addresses to track (Omen-only by default). |
+| `PROMPT_TEMPLATE` | Single-line prompt for the prediction Mech, with `@{question}`, `@{yes}`, `@{no}` placeholders. |
+
+`POLYGON_LEDGER_CHAIN_ID` / `GNOSIS_LEDGER_CHAIN_ID` exist too but default to the right values (137 / 100), so you don't normally need to set them.
+
+---
 
 ## Run the service
-Once you have configured (exported) the environment variables, you are in position to run the service.
 
-- Fetch the service:
+### Local development — `aea-helpers run-agent`
 
-    ```bash
-    autonomy fetch --local --service valory/trader && cd trader
-    ```
+This is the day-to-day developer loop. It runs the agent directly out of the working tree without Docker.
 
-- Build the Docker image:
-
-    ```bash
-    autonomy build-image
-    ```
-
-- Copy your `keys.json` file prepared [in the previous section](#prepare-the-keys-and-the-safe) in the same directory:
-
-    ```bash
-    cp path/to/keys.json .
-    ```
-
-- Build the deployment with a single agent and run:
-
-    ```bash
-    autonomy deploy build --n 1 -ltm
-    build_dir=$(ls -d abci_build_????/ 2>/dev/null || echo "abci_build")
-    autonomy deploy run --build-dir $build_dir
-    ```
-
-## Some notes on the service
-
-Please take into consideration the following:
-
-- If the service does not have enough funds for placing a bet, you will see an `Event.INSUFICIENT_FUNDS` in the service logs.
-- If the service determines that a bet is not profitable 
- (i.e., `potential_net_profit - BET_THRESHOLD < 0`), you will see an `Event.UNPROFITABLE` in the service logs, 
- and the service will transition into the blacklisting round. 
-- For simplicity, 
- the current implementation considers `potential_net_profit = num_shares - net_bet_amount - mech_price - BET_THRESHOLD`, 
- although this calculation might be refined. 
- The `net_bet_amount` is the bet amount minus the FPMM's fees.
-- When assigning `BET_THRESHOLD` take into consideration that fees (at the time of writing this guide) are in the range of 0.02 xDAI. You can query the Omen subgraph on [The Graph's decentralized network](https://thegraph.com/explorer) to check current fees. We urge you to keep an eye on these fees, as they might vary.
-
-## For advanced users
-
-The trader service can be run as a multi-agent system. If you want to explore this option,
-you need, for the case of 4 agents:
-
-  - One `keys.json` file containing 4 addresses and keys.
-  - Register these 4 keys in your service Safe as explained [in this section](#prepare-the-keys-and-the-safe).
-  - Prepare extra environment variables need to be defined, including
-    ```bash
-    export RPC_0=INSERT_YOUR_RPC
-    export RPC_1=INSERT_YOUR_RPC
-    export RPC_2=INSERT_YOUR_RPC
-    export RPC_3=INSERT_YOUR_RPC
-    export ALL_PARTICIPANTS='["AGENT_ADDRESS_0,AGENT_ADDRESS_1,AGENT_ADDRESS_2,AGENT_ADDRESS_3"]'
-    ```
-
-    where   `RPC_i` is the RPC endpoint for agent `AGENT_ADDRESS_i`.
-
-You can also explore the [`service.yaml`](./packages/valory/services/trader/service.yaml) file, which contains all the possible configuration variables for the service.
-
-Finally, if you are experienced with the [Open Autonomy](https://stack.olas.network/) framework, you can also modify the internal business logic of the service yourself.
-
-## Running the agent
-
-### Prerequisites
-
-```bash
-pip install aea-helpers
-```
-
-### Run as a local agent (development)
-
-1. Set up your `.env` file with required environment variables (RPC endpoints, API keys, etc.)
-2. Place your `ethereum_private_key.txt` in the repo root
+1. Populate `.env` with the variables above (or `export` them in your shell).
+2. Place your `ethereum_private_key.txt` in the repo root (or generate with `uv run autonomy generate-key ethereum`).
 3. Run:
 
+   ```bash
+   make run-agent
+   ```
+
+   which is a wrapper for:
+
+   ```bash
+   uv run aea-helpers run-agent --name valory/trader --connection-key
+   ```
+
+   Logs are tee'd to `./logs/agent_log_latest.log` and a timestamped file in `./logs/`.
+
+To run multiple agents on the same machine without port conflicts, add `--free-ports`.
+
+### Service deployment — `autonomy deploy`
+
+For a containerized run that mirrors the Pearl-distributed deployment:
+
 ```bash
-aea-helpers run-agent \
-  --name valory/trader \
-  --connection-key
+# Pick the service flavor you want
+uv run autonomy fetch --local --service valory/trader_pearl       # Omenstrat
+# or
+uv run autonomy fetch --local --service valory/polymarket_trader  # Polystrat
+
+cd trader_pearl   # or polymarket_trader
+uv run autonomy build-image
+cp ../keys.json .
+uv run autonomy deploy build --n 1 -ltm
+build_dir=$(ls -d abci_build_????/ 2>/dev/null || echo "abci_build")
+uv run autonomy deploy run --build-dir $build_dir
 ```
 
-To run multiple agents on the same machine, use `--free-ports` to auto-assign non-conflicting ports:
+### Pearl-distributed binary
 
-```bash
-aea-helpers run-agent \
-  --name valory/trader \
-  --connection-key \
-  --free-ports
-```
-
-### Run as a service (Docker deployment)
-
-```bash
-aea-helpers run-service --name valory/trader --env-file .env
-```
+Production agents run as a PyInstaller-packaged single-file binary built by `make build-agent-runner` (Linux/Windows) or `make build-agent-runner-mac` (macOS, with codesign). The output `dist/agent_runner_bin` is what Pearl ships to end users. `make check-agent-runner` smoke-tests the resulting binary.
 
 ### Create a release
 
 ```bash
-aea-helpers make-release --version <VERSION> --env <ENV> --description "<DESCRIPTION>"
+uv run aea-helpers make-release --version <VERSION> --env <ENV> --description "<DESCRIPTION>"
 ```
 
-## Included strategies
+---
 
-| Strategies |
-|---|
-| packages/jhehemann/customs/kelly_criterion |
-| packages/valory/customs/bet_amount_per_threshold |
-| packages/valory/customs/mike_strat |
-| packages/w1kke/customs/always_blue |
+## Repo layout
+
+```
+packages/valory/
+├── agents/trader/                       # The single agent definition
+├── connections/
+│   ├── polymarket_client/               # Polystrat: CLOB v2 client + Safe relayer
+│   └── ...                              # http_client, http_server, ipfs, ledger, x402, genai, ...
+├── contracts/                           # FPMM, Conditional Tokens, Realitio, Safe, ERC-20/1155, ...
+├── customs/                             # Pluggable bet-sizing strategies (see below)
+├── services/
+│   ├── trader_pearl/                    # Omenstrat service definition
+│   └── polymarket_trader/               # Polystrat service definition
+└── skills/
+    ├── trader_abci/                     # Top-level FSM composition
+    ├── decision_maker_abci/             # Bet evaluation + placement (largest skill)
+    ├── market_manager_abci/             # Market discovery (Omen + Polymarket variants)
+    ├── mech_interact_abci/              # Mech request/response
+    ├── staking_abci/                    # Staking management
+    ├── tx_settlement_multiplexer_abci/  # Routes settlement transactions
+    ├── check_stop_trading_abci/         # Pause/stop conditions
+    ├── agent_performance_summary_abci/  # Performance + payout tracking
+    ├── chatui_abci/                     # Web UI hooks
+    └── funds_manager/                   # Funds bookkeeping
+```
+
+### Strategy configuration
+
+Bet-sizing strategies are pluggable [Open Autonomy `customs/`](./packages/valory/customs/) packages, loaded from IPFS by hash and dispatched at runtime:
+
+| Strategy | Notes |
+|---|---|
+| [`kelly_criterion`](./packages/valory/customs/kelly_criterion) | Execution-aware Kelly sizing for both CLOB (Polymarket) and FPMM (Omen) markets. **Default.** |
+| [`fixed_bet`](./packages/valory/customs/fixed_bet) | Constant bet size regardless of confidence. Useful for benchmarking and as a fallback. |
+
+The active strategy is picked by `TRADING_STRATEGY`. All sizing knobs are passed to it via the `STRATEGIES_KWARGS` dict. The shipped Omen / Polymarket defaults differ only in scale (Omen values are 18-decimal wxDAI; Polymarket values are 6-decimal pUSD). Tunable keys:
+
+| Key | Meaning |
+|---|---|
+| `min_edge` | Minimum AI-Mech edge over market price to consider a bet profitable. Replaces the old `BET_THRESHOLD`. |
+| `default_max_bet_size`, `absolute_min_bet_size`, `absolute_max_bet_size` | Per-bet size bounds in collateral units (chain-native wei). |
+| `n_bets` | How many bets to consider per round. |
+| `min_oracle_prob` | Minimum Mech confidence required to enter a position. |
+| `fee_per_trade` | Expected fee deduction in collateral units, used in profitability math. |
+| `floor_balance` | Don't trade if Safe balance would drop below this. |
+| `grid_points` | Resolution of the Kelly search grid. |
+
+To ship a new strategy:
+
+1. Drop a new package under `packages/<author>/customs/<name>/` and lock it (`uv run autonomy packages lock`).
+2. Add its IPFS hash → name mapping to `FILE_HASH_TO_STRATEGIES`.
+3. Set `TRADING_STRATEGY=<name>`.
+
+---
+
+## Development workflow
+
+After modifying any package:
+
+1. **Lint and format**: `uv run tomte format-code` and `uv run tomte check-code` (or `make format` / `make code-checks`).
+2. **Update FSM specs** (only the trader-owned skills, never `make generators`):
+
+   ```bash
+   make fix-abci-app-specs
+   ```
+
+3. **Lock package hashes**:
+
+   ```bash
+   uv run autonomy packages lock
+   ```
+
+4. **Run the relevant tests**:
+
+   ```bash
+   uv run pytest packages/valory/skills/<skill_name>/tests/ -v
+   ```
+
+   or the full suite via `tox`:
+
+   ```bash
+   uv run tox -e py3.10-linux   # 3.11/3.12/3.13/3.14 also supported
+   ```
+
+5. **Run the CI lint suite** before pushing: `make ci-linter-checks`.
+
+CI enforces 100% coverage on touched modules — see `CLAUDE.md` for the per-module `--cov` pattern.
+
+### Dependency changes
+
+If you add or remove a dependency:
+
+1. Edit `pyproject.toml` and the `[deps-packages]` / `[extra-deps]` blocks in `tox.ini`.
+2. `uv lock && uv sync --all-groups`.
+3. `uv run tox -e check-dependencies`.
+
+---
+
+## Notes on profitability
+
+- If the agent does not have enough funds to place a bet, you'll see `Event.INSUFICIENT_FUNDS` in the logs.
+- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE` and the market is blacklisted for a configurable duration.
+- For Omen, fees are queryable via the [Omen subgraph on The Graph](https://thegraph.com/explorer); they have historically sat around 0.02 xDAI but should be re-checked.
+- For Polymarket CLOB v2, fee math is delegated to the protocol — see `client.get_clob_market_info(condition_id)["fd"]`.
+
+---
+
+## Further reading
+
+- Architecture and conventions: [`CLAUDE.md`](./CLAUDE.md).
+- Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+- Security policy: [`SECURITY.md`](./SECURITY.md).
+- Open Autonomy framework: <https://stack.olas.network/open-autonomy/>.

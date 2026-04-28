@@ -12,21 +12,21 @@
 
 Also mention potential effects on other branches/code might have from your changes.
 
-For a clean workflow, run checks in the following order before making a PR or pushing the code
+For a clean workflow, run checks in the following order before making a PR or pushing the code. Prefix each command with `uv run` (the toolchain lives in the uv-managed venv, not on the system path).
 
 - tomte format-code
 - tomte check-code
 - make security
 
 **Run only if you've modified an AbciApp definition**
-- make abci-docstrings
+- make fix-abci-app-specs
 
 **Only run following if you have modified a file in `packages/`**
 - make generators
 - make common-checks-1
 
-**else run**
-- make copyright
+**else run** (copyright headers only — `make generators` already includes this step)
+- tomte format-copyright --author valory   # or `tox -e copyright-check` to verify only
 
 **run this after making a commit**
 - make common-checks-2
