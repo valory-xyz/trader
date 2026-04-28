@@ -479,8 +479,17 @@ class DecisionMakerParams(
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool
         )
-        self.polymarket_usdc_address: str = self._ensure(
-            "polymarket_usdc_address", kwargs, str
+        self.polymarket_collateral_address: str = self._ensure(
+            "polymarket_collateral_address", kwargs, str
+        )
+        self.polymarket_usdc_e_address: str = self._ensure(
+            "polymarket_usdc_e_address", kwargs, str
+        )
+        self.polymarket_collateral_onramp_address: str = self._ensure(
+            "polymarket_collateral_onramp_address", kwargs, str
+        )
+        self.polymarket_usdc_e_wrap_dust_threshold: int = self._ensure(
+            "polymarket_usdc_e_wrap_dust_threshold", kwargs, int
         )
         self.polymarket_ctf_address: str = self._ensure(
             "polymarket_ctf_address", kwargs, str

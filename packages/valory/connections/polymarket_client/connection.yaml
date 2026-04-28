@@ -8,10 +8,10 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeifz7ync4cn4nvu3ryommemwqmw6eu7k4sliuwmp2c3izl3gzfbuo4
+  connection.py: bafybeiebczmvqxg7ujlsh3d36lzr67baj7f6bszdaiv3szjuuy3rej5ija
   request_types.py: bafybeieob4hsf7ld37diyrw72oaifayylgpgzbeth2v25imwwrfju5ovaq
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeibg4zgmgvflqt5tqtdn5nqgwczv4hoql5n56kimug2whjjvcvuq3q
+  tests/test_connection.py: bafybeiaetyylnyskkizbhon2psgb4npj6m45fesdj5s6kuiql7j73nrswi
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
@@ -22,12 +22,15 @@ config:
   chain_id: 137
   safe_contract_addresses:
     polygon: 0x
-  remote_builder_url: http://localhost:5001/sign
   polymarket_builder_program_enabled: true
-  usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+  builder_code: ${POLYMARKET_BUILDER_CODE:str:}
+  clob_version: v2
+  collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'
+  usdc_e_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+  collateral_onramp_address: '0x93070a847efEf7F70739046A929D47a521F5B8ee'
   ctf_address: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045'
-  ctf_exchange: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
-  neg_risk_ctf_exchange: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
+  ctf_exchange: '0xE111180000d2663C0091e4f400237545B87B996B'
+  neg_risk_ctf_exchange: '0xe2222d279d744050d28e00520010520000310F59'
   neg_risk_adapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
   polygon_ledger_rpc: https://polygon-rpc.com
   is_running_on_polymarket: true
@@ -42,13 +45,13 @@ dependencies:
     version: <2.33.0,>=2.32.5
   eth-utils:
     version: ==5.3.0
-  py-clob-client:
-    version: ==0.34.5
+  py_clob_client_v2:
+    version: ==1.0.0
   py-order-utils:
     version: ==0.3.2
   py-builder-relayer-client:
     version: ==0.0.1
-  py_builder_signing_sdk:
-    version: <1,>=0.0.1
+  poly_eip712_structs:
+    version: '>=0.0.1'
 is_abstract: false
 cert_requests: []

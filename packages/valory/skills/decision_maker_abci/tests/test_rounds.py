@@ -57,6 +57,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
+    PolymarketWrapCollateralRound,
+)
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
 )
@@ -103,10 +106,12 @@ def test_check_benchmarking_transition(setup_app: DecisionMakerAbciApp) -> None:
         transition_function[Event.BENCHMARKING_ENABLED] == BenchmarkingRandomnessRound
     )
 
-    # Transition on benchmarking disabled
+    # Transition on benchmarking disabled routes through the wrap round so
+    # any USDC.e in the Safe is converted to pUSD before the trading cycle
+    # checks bankroll.
     assert (
         transition_function[Event.BENCHMARKING_DISABLED]
-        == BenchmarkingModeDisabledRound
+        == PolymarketWrapCollateralRound
     )
 
     # Test no majority

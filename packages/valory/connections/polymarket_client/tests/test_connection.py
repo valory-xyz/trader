@@ -35,6 +35,7 @@ from packages.valory.connections.polymarket_client.connection import (
     POLYMARKET_CATEGORY_TAGS,
     PolymarketClientConnection,
     SrrDialogues,
+    _validate_builder_code,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
 
@@ -43,10 +44,12 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 # ---------------------------------------------------------------------------
 
 SAFE_ADDRESS = "0x0000000000000000000000000000000000000001"
-USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+COLLATERAL_ADDRESS = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"  # pUSD (v2)
+USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # legacy wrap source
+COLLATERAL_ONRAMP_ADDRESS = "0x93070a847efEf7F70739046A929D47a521F5B8ee"
 CTF_ADDRESS = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
-CTF_EXCHANGE = "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E"
-NEG_RISK_CTF_EXCHANGE = "0xC5d563A36AE78145C45a50134d48A1215220f80a"
+CTF_EXCHANGE = "0xE111180000d2663C0091e4f400237545B87B996B"  # v2
+NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"  # v2
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
 
 
@@ -68,11 +71,14 @@ def _make_connection() -> _TestableConnection:
     conn.client = MagicMock()
     conn.relayer_client = MagicMock()
     conn.w3 = MagicMock()
-    conn.usdc_address = USDC_ADDRESS
+    conn.collateral_address = COLLATERAL_ADDRESS
+    conn.usdc_e_address = USDC_E_ADDRESS
+    conn.collateral_onramp_address = COLLATERAL_ONRAMP_ADDRESS
     conn.ctf_address = CTF_ADDRESS
     conn.ctf_exchange = CTF_EXCHANGE
     conn.neg_risk_ctf_exchange = NEG_RISK_CTF_EXCHANGE
     conn.neg_risk_adapter = NEG_RISK_ADAPTER
+    conn.clob_version = "v2"
     conn.dialogues = MagicMock()
     configuration_mock = MagicMock()
     safe_contract_addresses = {"polygon": SAFE_ADDRESS}
@@ -281,6 +287,29 @@ class TestRouteRequest:
         assert response == {"error": "some error from API"}
         assert error == "some error from API"
 
+    def test_handler_error_preserves_response_dict_keys(self) -> None:
+        """A handler-returned response dict is not clobbered by the error wrap.
+
+        ``_place_bet`` returns ``signed_order_json`` in its error response so the
+        caller can cache the signed order and retry without re-signing. The
+        router must preserve those extra keys rather than overwriting the dict.
+        """
+        conn = _make_connection()
+        handler_response = {
+            "error": "duplicate order",
+            "signed_order_json": '{"cached": "order"}',
+        }
+        conn._place_bet = MagicMock(return_value=(handler_response, "duplicate order"))
+        response, error = conn._route_request(
+            {
+                "request_type": RequestType.PLACE_BET.value,
+                "params": {"token_id": "t", "amount": 1.0},  # nosec B105
+            }
+        )
+        assert error == "duplicate order"
+        assert response["error"] == "duplicate order"
+        assert response["signed_order_json"] == '{"cached": "order"}'
+
     def test_type_error_in_handler_returns_error(self) -> None:
         """Test that TypeError from handler (bad params) is caught and returned."""
         conn = _make_connection()
@@ -359,78 +388,128 @@ class TestTestConnection:
 class TestPlaceBet:
     """Tests for _place_bet."""
 
+    @staticmethod
+    def _make_signed_order_v2() -> "object":
+        """Build a real SignedOrderV2 instance for serialization round-trips."""
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        return SignedOrderV2(
+            salt="1",
+            maker="0x0000000000000000000000000000000000000001",
+            signer="0x0000000000000000000000000000000000000002",
+            tokenId="tok",
+            makerAmount="10",
+            takerAmount="5",
+            side=Side.BUY,
+            signatureType=SignatureTypeV2.POLY_GNOSIS_SAFE,
+            timestamp="1700000000000",
+            metadata="0x" + "00" * 32,
+            builder="0x" + "00" * 32,
+            expiration="0",
+            signature="0xdeadbeef",
+        )
+
     def test_place_bet_success_no_cache(self) -> None:
         """Places bet from scratch (no cached order) and returns response.
 
-        The response must include 'signed_order_json' so the caller can retry
-        with the same order if the submission fails later.
+        The response must include 'signed_order_json' with the v2 cache marker
+        so the caller can retry with the same order if the submission fails.
         """
         conn = _make_connection()
-        signed_mock = MagicMock()
-        order_dict = {"order": "data"}
-        signed_mock.dict.return_value = order_dict
-        conn.client.create_market_order.return_value = signed_mock
+        signed = self._make_signed_order_v2()
+        conn.client.create_market_order.return_value = signed
         conn.client.post_order.return_value = {"status": "matched"}
 
         response, error = conn._place_bet(token_id="tok123", amount=10.0)  # nosec B106
         assert error is None
         conn.client.create_market_order.assert_called_once()
         conn.client.post_order.assert_called_once()
-        # The signed order JSON must be embedded in the response for potential retries
+        # Signed-order JSON must be embedded and marked as v2 for the
+        # cache-invalidation guard in _place_bet.
         assert "signed_order_json" in response
-        assert json.loads(response["signed_order_json"]) == order_dict
+        cached_dict = json.loads(response["signed_order_json"])
+        assert cached_dict["clob_version"] == "v2"
+        assert cached_dict["timestamp"] == "1700000000000"
 
-    def test_place_bet_with_cached_order(self) -> None:
-        """Uses cached signed order instead of creating a new one.
-
-        When a cached order is provided the CLOB client must not create a fresh
-        market order, and the cached JSON must be echoed back in the response so
-        the caller can reconstruct the order if needed.
-        """
+    def test_place_bet_with_cached_v2_order(self) -> None:
+        """Uses cached v2 signed order instead of creating a new one."""
         conn = _make_connection()
-        cached = {
-            "salt": "1",
-            "maker": "0x0",
-            "signer": "0x0",
-            "taker": "0x0",
-            "tokenId": "tok",
-            "makerAmount": "10",
-            "takerAmount": "5",
-            "expiration": "0",
-            "nonce": "0",
-            "feeRateBps": "0",
-            "side": "0",
-            "signatureType": "2",
-            "signature": "0xdeadbeef",
-        }
+        from packages.valory.connections.polymarket_client.connection import (
+            _serialize_signed_order_v2,
+        )
+
+        cached = _serialize_signed_order_v2(self._make_signed_order_v2())
         cached_json = json.dumps(cached)
         conn.client.post_order.return_value = {"status": "matched"}
 
-        with patch(
-            "packages.valory.connections.polymarket_client.connection.UtilsSignedOrder",
-            MagicMock(return_value=MagicMock()),
-        ):
-            response, error = conn._place_bet(
-                token_id="tok123",
-                amount=10.0,
-                cached_signed_order_json=cached_json,  # nosec B106
-            )
-        # Must reuse the cached order - no new order creation
+        response, error = conn._place_bet(
+            token_id="tok123",
+            amount=10.0,
+            cached_signed_order_json=cached_json,  # nosec B106
+        )
+        # Must reuse the cached order — no resign.
         conn.client.create_market_order.assert_not_called()
         assert error is None
-        # The cached JSON must be propagated back in the response
         assert response is not None
-        assert "signed_order_json" in response
         assert response["signed_order_json"] == cached_json
 
+    def test_place_bet_drops_v1_cache_and_resigns(self) -> None:
+        """v1-shaped cache (no ``clob_version`` marker) is dropped; order resigned."""
+        conn = _make_connection()
+        v1_cached = {
+            "salt": "1",
+            "maker": "0x0",
+            "tokenId": "tok",
+            "makerAmount": "10",
+            "takerAmount": "5",
+            "side": 0,
+            "signatureType": 2,
+            "nonce": "0",
+            "expiration": "0",
+            "taker": "0x0",
+            "feeRateBps": "0",
+            "signature": "0xdeadbeef",
+        }
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        response, error = conn._place_bet(
+            token_id="tok123",
+            amount=10.0,
+            cached_signed_order_json=json.dumps(v1_cached),  # nosec B106
+        )
+        # The v1 entry must be discarded and a fresh v2 order signed.
+        conn.client.create_market_order.assert_called_once()
+        assert error is None
+        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
+
+    def test_place_bet_unparseable_cache_resigns(self) -> None:
+        """Garbage cache JSON: warn and fall through to fresh signing."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        response, error = conn._place_bet(
+            token_id="tok123",
+            amount=10.0,
+            cached_signed_order_json="not-json{{",  # nosec B106
+        )
+        conn.client.create_market_order.assert_called_once()
+        assert error is None
+        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
+
     def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
-        """Test that PolyApiException with dict error_msg returns error in response.
+        """Check that a PolyApiException with dict error_msg returns error in response.
 
         The response must also contain 'signed_order_json' so the caller can
         retry the submission with the same order (even though order creation
         failed before posting).
         """
-        from py_clob_client.exceptions import PolyApiException
+        from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
         exc = PolyApiException(error_msg={"error": "duplicate order"})
@@ -443,15 +522,14 @@ class TestPlaceBet:
         assert "signed_order_json" in response
 
     def test_place_bet_poly_api_exception_non_dict_error(self) -> None:
-        """Test that PolyApiException with non-dict error_msg is formatted as 'Error placing bet: ...'."""
-        from py_clob_client.exceptions import PolyApiException
+        """Check that a PolyApiException with non-dict error_msg falls to the generic branch."""
+        from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
         exc = PolyApiException(error_msg="plain string error")
         conn.client.create_market_order.side_effect = exc
 
         response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
-        # Non-dict error falls through to the f"Error placing bet: {e}" branch
         assert error is not None
         assert error.startswith("Error placing bet:")
         assert "error" in response
@@ -459,9 +537,7 @@ class TestPlaceBet:
     def test_place_bet_post_order_none_response(self) -> None:
         """When post_order returns None, response is None but no crash."""
         conn = _make_connection()
-        signed_mock = MagicMock()
-        signed_mock.dict.return_value = {}
-        conn.client.create_market_order.return_value = signed_mock
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
         conn.client.post_order.return_value = None
 
         response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
@@ -1478,7 +1554,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="0x" + "ab" * 32,
             index_sets=[1, 2],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=False,
         )
         assert result == tx_data
@@ -1496,7 +1572,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[2],  # 2 = 1 << 1 -> outcome_index=1
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
             size=100.0,
         )
@@ -1513,7 +1589,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],  # 1 = 1 << 0 -> outcome_index=0
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
             size=50.0,
         )
@@ -1529,7 +1605,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
             size=50.0,
         )
@@ -1543,7 +1619,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
         )
         assert result is None
         assert "not initialized" in error
@@ -1556,7 +1632,7 @@ class TestRedeemPositions:
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
         )
         assert result is None
         assert "Error redeeming positions" in error
@@ -1577,7 +1653,7 @@ class TestRedeemPositions:
         conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=False,
         )
 
@@ -1604,7 +1680,7 @@ class TestRedeemPositions:
         conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
             size=10.0,
         )
@@ -1629,7 +1705,7 @@ class TestRedeemPositions:
         conn._redeem_positions(
             condition_id="0x" + "ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=False,
         )
         tx_with_prefix = conn.relayer_client.execute.call_args[1]["transactions"][0]
@@ -1638,7 +1714,7 @@ class TestRedeemPositions:
         conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[1],
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=False,
         )
         tx_without_prefix = conn.relayer_client.execute.call_args[1]["transactions"][0]
@@ -1662,7 +1738,7 @@ class TestRedeemPositions:
         conn._redeem_positions(
             condition_id="ab" * 32,
             index_sets=[2],  # 2 = 1 << 1 → outcome_index = 1
-            collateral_token=USDC_ADDRESS,
+            collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
             size=50.0,
         )
@@ -1794,7 +1870,7 @@ class TestSetApproval:
 
         txns = conn.relayer_client.execute.call_args[1]["transactions"]
         for idx in [0, 2, 4]:
-            assert txns[idx].to == USDC_ADDRESS, f"txns[{idx}].to should be USDC"
+            assert txns[idx].to == COLLATERAL_ADDRESS, f"txns[{idx}].to should be pUSD"
 
     def test_ctf_approval_transactions_target_ctf_contract(self) -> None:
         """ERC-1155 setApprovalForAll transactions (indices 1, 3, 5) all target the CTF contract.
@@ -1828,10 +1904,12 @@ class TestOnChainChecks:
         # Return 32 bytes representing uint256 = 1000
         allowance_bytes = (1000).to_bytes(32, byteorder="big")
         conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
-        conn.w3.to_checksum_address.return_value = USDC_ADDRESS
+        conn.w3.to_checksum_address.return_value = COLLATERAL_ADDRESS
         conn.w3.eth.call.return_value = allowance_bytes
 
-        result = conn._check_erc20_allowance(USDC_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
+        result = conn._check_erc20_allowance(
+            COLLATERAL_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE
+        )
         assert result == 1000
 
     def test_check_erc1155_approval_true(self) -> None:
@@ -1864,10 +1942,10 @@ class TestOnChainChecks:
         """
         conn = _make_connection()
         conn.w3.keccak.return_value = b"\x12\x34\x56\x78" + b"\x00" * 28
-        conn.w3.to_checksum_address.return_value = USDC_ADDRESS
+        conn.w3.to_checksum_address.return_value = COLLATERAL_ADDRESS
         conn.w3.eth.call.return_value = (1000).to_bytes(32, byteorder="big")
 
-        conn._check_erc20_allowance(USDC_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
+        conn._check_erc20_allowance(COLLATERAL_ADDRESS, SAFE_ADDRESS, CTF_EXCHANGE)
 
         conn.w3.keccak.assert_called_once_with(text="allowance(address,address)")
 
@@ -2190,6 +2268,217 @@ class TestFetchOrderBook:
 
         assert result is None
         assert "API timeout" in error
+
+    def test_v2_dict_response(self) -> None:
+        """v2 ``get_order_book`` returns a plain dict with dict levels.
+
+        Post-cutover this is the live path; the v1-attribute branch exists
+        only for compatibility. Both the outer-dict branch and the nested
+        ``_level_to_dict`` dict branch must handle it.
+        """
+        conn = _make_connection()
+        conn.client.get_order_book.return_value = {
+            "asks": [{"price": "0.55", "size": "100"}],
+            "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
+        }
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {
+            "asks": [{"price": "0.55", "size": "100"}],
+            "bids": [{"price": "0.45", "size": "50"}],
+            "min_order_size": "5",
+        }
+
+    def test_v2_dict_response_missing_keys(self) -> None:
+        """v2 dict response with absent keys falls back to empty/None."""
+        conn = _make_connection()
+        conn.client.get_order_book.return_value = {}
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
+
+
+# ---------------------------------------------------------------------------
+# _validate_builder_code
+# ---------------------------------------------------------------------------
+
+
+class TestValidateBuilderCode:
+    """Shape-check for the operator-supplied builder_code.
+
+    A silently-accepted malformed builder_code misattributes every order's
+    revenue share, so the shape check must reject anything that isn't a
+    ``0x``-prefixed 66-char bytes32 and blank it out with a WARNING.
+    """
+
+    def test_empty_string_returns_empty_no_warning(self) -> None:
+        """Empty input is the 'disabled' case — no validation, no warning."""
+        logger = MagicMock()
+        assert _validate_builder_code("", logger) == ""
+        logger.warning.assert_not_called()
+
+    def test_none_returns_empty_no_warning(self) -> None:
+        """None is also the 'disabled' case — tolerated silently."""
+        logger = MagicMock()
+        assert _validate_builder_code(None, logger) == ""
+        logger.warning.assert_not_called()
+
+    def test_well_formed_bytes32_passes(self) -> None:
+        """0x-prefixed 66-char input is returned unchanged with no warning."""
+        logger = MagicMock()
+        code = "0x" + "a" * 64
+        assert _validate_builder_code(code, logger) == code
+        logger.warning.assert_not_called()
+
+    def test_missing_0x_prefix_blanks_and_warns(self) -> None:
+        """A 66-char string without the 0x prefix must be rejected."""
+        logger = MagicMock()
+        code = "a" * 66
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_truncated_bytes32_blanks_and_warns(self) -> None:
+        """A 0x-prefixed but short (<66 chars) string must be rejected."""
+        logger = MagicMock()
+        code = "0x" + "a" * 32
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_too_long_bytes32_blanks_and_warns(self) -> None:
+        """A 0x-prefixed but over-length (>66 chars) string must be rejected."""
+        logger = MagicMock()
+        code = "0x" + "a" * 80
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_non_hex_chars_after_0x_blanks_and_warns(self) -> None:
+        """0x-prefixed, right length, but non-hex body must be rejected.
+
+        Without a hex-content check, a misconfigured env var like
+        ``0xZZ…`` (or an accidental substitution) would pass the shape
+        gate and silently produce orders with bad attribution.
+        """
+        logger = MagicMock()
+        code = "0x" + "Z" * 64
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_called_once()
+
+    def test_whitespace_stripped_before_validation(self) -> None:
+        """Leading/trailing whitespace is tolerated (paste-from-UI case)."""
+        logger = MagicMock()
+        inner = "0x" + "ab" * 32
+        assert _validate_builder_code(f"  {inner}\n", logger) == inner
+        logger.warning.assert_not_called()
+
+    def test_mixed_case_hex_passes(self) -> None:
+        """Mixed-case hex (e.g. checksummed) passes without forcing lowercase."""
+        logger = MagicMock()
+        code = "0x" + "AbCd" * 16
+        assert _validate_builder_code(code, logger) == code
+        logger.warning.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# SignedOrderV2 serialize / deserialize
+# ---------------------------------------------------------------------------
+
+
+class TestSignedOrderV2RoundTrip:
+    """Round-trip serialize/deserialize must preserve IntEnum field types."""
+
+    @staticmethod
+    def _fresh_signed_order() -> Any:
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        return SignedOrderV2(
+            salt="1",
+            maker="0x0000000000000000000000000000000000000001",
+            signer="0x0000000000000000000000000000000000000002",
+            tokenId="tok",
+            makerAmount="10",
+            takerAmount="5",
+            side=Side.BUY,
+            signatureType=SignatureTypeV2.POLY_GNOSIS_SAFE,
+            timestamp="1700000000000",
+            metadata="0x" + "00" * 32,
+            builder="0x" + "00" * 32,
+            expiration="0",
+            signature="0xdeadbeef",
+        )
+
+    def test_deserialize_restores_side_enum(self) -> None:
+        """Side field must be a Side instance after round-trip, not a raw int."""
+        from py_clob_client_v2.order_utils import Side
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert isinstance(rehydrated.side, Side)
+        assert rehydrated.side is Side.BUY
+
+    def test_deserialize_restores_signature_type_enum(self) -> None:
+        """The signatureType field must be a SignatureTypeV2 instance after round-trip."""
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert isinstance(rehydrated.signatureType, SignatureTypeV2)
+        assert rehydrated.signatureType is SignatureTypeV2.POLY_GNOSIS_SAFE
+
+    def test_deserialize_preserves_non_enum_fields(self) -> None:
+        """Non-enum fields must survive the round-trip unchanged."""
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+            _serialize_signed_order_v2,
+        )
+
+        fresh = self._fresh_signed_order()
+        rehydrated = _deserialize_signed_order_v2(_serialize_signed_order_v2(fresh))
+        assert rehydrated.salt == fresh.salt
+        assert rehydrated.tokenId == fresh.tokenId
+        assert rehydrated.makerAmount == fresh.makerAmount
+        assert rehydrated.takerAmount == fresh.takerAmount
+        assert rehydrated.signature == fresh.signature
+
+    def test_deserialize_skips_already_typed_enums(self) -> None:
+        """Idempotent on already-typed enums — no double conversion."""
+        import dataclasses
+
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        from packages.valory.connections.polymarket_client.connection import (
+            _deserialize_signed_order_v2,
+        )
+
+        payload = dataclasses.asdict(self._fresh_signed_order())
+        payload["side"] = Side.BUY
+        payload["signatureType"] = SignatureTypeV2.POLY_GNOSIS_SAFE
+        rehydrated = _deserialize_signed_order_v2(payload)
+        assert rehydrated.side is Side.BUY
+        assert rehydrated.signatureType is SignatureTypeV2.POLY_GNOSIS_SAFE
 
 
 # ---------------------------------------------------------------------------

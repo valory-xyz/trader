@@ -276,6 +276,11 @@ ROUNDS_INFO = {
         "description": "Swaps POL tokens to USDC tokens",
         "transitions": {},
     },
+    "polymarket_wrap_collateral_round": {
+        "name": "Wrapping USDC.e to pUSD for Polymarket v2 betting",
+        "description": "Wraps the Safe's USDC.e into pUSD via the Polymarket Collateral Onramp so the subsequent bet has v2 collateral to spend.",
+        "transitions": {},
+    },
     "update_achievements_round": {
         "name": "Updating agent achievements",
         "description": "Updates the achievements earned by the agent based on its performance.",

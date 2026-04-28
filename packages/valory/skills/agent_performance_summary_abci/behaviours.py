@@ -77,8 +77,10 @@ DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
-USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e on Polygon
-USDC_DECIMALS_DIVISOR = 10**6  # USDC.e has 6 decimals
+PUSD_ADDRESS = (
+    "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"  # pUSD on Polygon (v2 collateral)
+)
+USDC_DECIMALS_DIVISOR = 10**6  # pUSD has 6 decimals, same as USDC.e
 POLYGON_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000001010"  # POL on Polygon  # nosec B105
 )
@@ -365,7 +367,7 @@ class FetchPerformanceSummaryBehaviour(
             trader_agent is None
             or trader_agent.get("serviceId") is None
             or trader_agent.get("totalTraded") is None
-            or trader_agent.get("totalPayout") is None
+            or trader_agent.get("totalExpectedPayout") is None
         ):
             self.context.logger.warning(
                 f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
@@ -404,13 +406,13 @@ class FetchPerformanceSummaryBehaviour(
         # Get raw values from subgraph (in smallest units)
         total_traded_settled_raw = int(trader_agent.get("totalTradedSettled", 0))
         total_fees_settled_raw = int(trader_agent.get("totalFeesSettled", 0))
-        total_market_payout_raw = int(trader_agent.get("totalPayout", 0))
+        total_market_payout_raw = int(trader_agent.get("totalExpectedPayout", 0))
 
         self.context.logger.info(
             f"[ROI Calculation] Raw values from subgraph: "
             f"totalTradedSettled={total_traded_settled_raw}, "
             f"totalFeesSettled={total_fees_settled_raw}, "
-            f"totalPayout={total_market_payout_raw}"
+            f"totalExpectedPayout={total_market_payout_raw}"
         )
 
         # Convert market values to USD
@@ -720,7 +722,7 @@ class FetchPerformanceSummaryBehaviour(
         total_fees = int(trader_agent.get("totalFees", 0))
         total_traded_settled = int(trader_agent.get("totalTradedSettled", 0))
         total_fees_settled = int(trader_agent.get("totalFeesSettled", 0))
-        total_payout = int(trader_agent.get("totalPayout", 0))
+        total_payout = int(trader_agent.get("totalExpectedPayout", 0))
 
         settled_mech_requests = self._settled_mech_requests_count
 
@@ -831,7 +833,7 @@ class FetchPerformanceSummaryBehaviour(
                 "fromChain": str(POLYGON_CHAIN_ID),
                 "toChain": str(POLYGON_CHAIN_ID),
                 "fromToken": POLYGON_NATIVE_TOKEN_ADDRESS,
-                "toToken": USDC_E_ADDRESS,
+                "toToken": PUSD_ADDRESS,
                 "fromAmount": str(RATE_CALC_BASE_AMOUNT),  # 1 POL in wei
                 "fromAddress": safe_address,
                 "toAddress": safe_address,
@@ -921,7 +923,7 @@ class FetchPerformanceSummaryBehaviour(
 
         # Use appropriate token address based on platform
         token_address = (
-            USDC_E_ADDRESS if self.params.is_running_on_polymarket else WXDAI_ADDRESS
+            PUSD_ADDRESS if self.params.is_running_on_polymarket else WXDAI_ADDRESS
         )
 
         self.context.logger.info(

@@ -87,3 +87,7 @@ class FinishedPostBetUpdateRound(DegenerateRound):
 
 class FinishedPolymarketSwapTxPreparationRound(DegenerateRound):
     """A round representing that Polymarket swap has finished and needs to go to tx settlement."""
+
+
+class FinishedPolymarketWrapCollateralTxPreparationRound(DegenerateRound):
+    """A round representing that a USDC.e → pUSD wrap has been prepared and needs tx settlement."""

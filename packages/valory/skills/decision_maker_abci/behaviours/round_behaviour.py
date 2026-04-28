@@ -58,6 +58,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approv
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     PolymarketSwapUsdcBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_wrap_collateral import (
+    PolymarketWrapCollateralBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.post_bet_update import (
     PostBetUpdateBehaviour,
 )
@@ -106,4 +109,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketSetApprovalBehaviour,  # type: ignore
         PolymarketPostSetApprovalBehaviour,  # type: ignore
         PolymarketSwapUsdcBehaviour,  # type: ignore
+        PolymarketWrapCollateralBehaviour,  # type: ignore
     }

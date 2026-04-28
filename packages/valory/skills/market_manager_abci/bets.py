@@ -150,6 +150,9 @@ class Bet:
     id: str
     market: str
     title: str
+    # Omen-only per-market collateral. Empty string on Polymarket v2 where the
+    # protocol invariant pUSD is the source of truth — read via the behaviour's
+    # `collateral_token` property (which routes per `is_running_on_polymarket`).
     collateralToken: str
     creator: str
     fee: int

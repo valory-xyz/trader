@@ -44,8 +44,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
     DecisionMakerBaseBehaviour,
     MultisendBatch,
+    PUSD_POLYGON,
     TradingOperation,
-    USCDE_POLYGON,
+    USDC_E_POLYGON,
     USDC_POLYGON,
     WXDAI,
     remove_fraction_wei,
@@ -221,6 +222,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         context_mock.state.synchronized_data.db.get_strict = lambda _: 0
         self.round_sequence_mock.block_stall_deadline_expired = False
         self.behaviour = BlacklistingBehaviour(name="", skill_context=context_mock)
+        # Default to Omen — Polymarket-specific tests set this to True explicitly.
+        # Without this, the truthy MagicMock default routes `collateral_token`
+        # through the Polymarket branch and returns a MagicMock instead of the
+        # bet's field.
+        self.behaviour.params.is_running_on_polymarket = False
         self.benchmark_dir = MagicMock()
 
     @given(strategy_executables())
@@ -293,6 +299,33 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         result = DecisionMakerBaseBehaviour.wei_to_native(wei)
         assert isinstance(result, float)
         assert result == wei / 10**18
+
+    def test_collateral_token_polymarket_uses_param(self) -> None:
+        """On Polymarket, collateral_token returns the configured pUSD param and ignores any bet.collateralToken value."""
+        behaviour = self.behaviour
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.params.polymarket_collateral_address = PUSD_POLYGON
+        with mock.patch.object(behaviour, "read_bets"):
+            # Stale v1-era bet with USDC.e — must be ignored.
+            behaviour.bets = [MagicMock(collateralToken=USDC_E_POLYGON)]
+            assert behaviour.collateral_token == PUSD_POLYGON
+
+    def test_collateral_token_omen_uses_bet(self) -> None:
+        """On Omen, collateral_token returns the sampled bet's collateralToken (per-market)."""
+        behaviour = self.behaviour
+        behaviour.params.is_running_on_polymarket = False
+        with mock.patch.object(behaviour, "read_bets"):
+            behaviour.bets = [MagicMock(collateralToken=WXDAI)]
+            assert behaviour.collateral_token == WXDAI
+
+    def test_collateral_token_polymarket_no_bets(self) -> None:
+        """On Polymarket, collateral_token resolves from the param without needing a sampled bet."""
+        behaviour = self.behaviour
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.params.polymarket_collateral_address = PUSD_POLYGON
+        with mock.patch.object(behaviour, "read_bets"):
+            behaviour.bets = []
+            assert behaviour.collateral_token == PUSD_POLYGON
 
     @given(st.integers(), st.booleans(), st.booleans())
     def test_collateral_amount_info(
@@ -1069,7 +1102,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_get_decimals_for_token` for USDC."""
         behaviour = self.behaviour
         assert behaviour._get_decimals_for_token(USDC_POLYGON) == 6
-        assert behaviour._get_decimals_for_token(USCDE_POLYGON) == 6
+        assert behaviour._get_decimals_for_token(USDC_E_POLYGON) == 6
 
     def test_get_decimals_for_token_wxdai(self) -> None:
         """Test `_get_decimals_for_token` for wxDAI."""
@@ -2208,13 +2241,24 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.context.logger.info.assert_called()
 
     def test_collateral_amount_info_usdc(self) -> None:
-        """Test `_collateral_amount_info` with USDC token."""
+        """Test `_collateral_amount_info` with USDC.e token (v1 Polymarket collateral)."""
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         with mock.patch.object(behaviour, "read_bets"):
-            behaviour.bets = [MagicMock(collateralToken=USDC_POLYGON)]
+            behaviour.bets = [MagicMock(collateralToken=USDC_E_POLYGON)]
             result = behaviour._collateral_amount_info(10**6)
         assert "USDC.e" in result
+
+    def test_collateral_amount_info_pusd(self) -> None:
+        """Test `_collateral_amount_info` with pUSD token (v2 Polymarket collateral)."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.params.polymarket_collateral_address = PUSD_POLYGON
+        with mock.patch.object(behaviour, "read_bets"):
+            behaviour.bets = [MagicMock(collateralToken=PUSD_POLYGON)]
+            result = behaviour._collateral_amount_info(10**6)
+        assert "pUSD" in result
 
     def test_get_bet_amount_with_fallback_strategy(self) -> None:
         """Test `get_bet_amount` using a fallback strategy."""
@@ -2328,7 +2372,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Test `_is_usdc` for USDC Polygon addresses."""
         behaviour = self.behaviour
         assert behaviour._is_usdc(USDC_POLYGON) is True
-        assert behaviour._is_usdc(USCDE_POLYGON) is True
+        assert behaviour._is_usdc(USDC_E_POLYGON) is True
         assert behaviour._is_usdc(WXDAI) is False
         assert behaviour._is_usdc("0xrandom") is False
 

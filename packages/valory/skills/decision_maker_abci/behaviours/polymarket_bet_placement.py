@@ -35,6 +35,11 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
     PolymarketBetPlacementRound,
 )
 
+# Prefixes the signed-order cache key so that entries from a prior CLOB version
+# (v1, signed against the retired CTF exchange) naturally orphan after cutover
+# rather than being replayed and rejected by the server.
+CLOB_VERSION = "v2"
+
 
 class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents blacklist the sampled bet."""
@@ -80,9 +85,11 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
             yield from self.finish_behaviour(payload)
             return
 
-        # Generate cache key and check for cached order
+        # Generate cache key and check for cached order. The CLOB_VERSION
+        # prefix guarantees v1 cache entries orphan on cutover.
         cache_key = (
-            f"{self.synchronized_data.period_count}_{self.sampled_bet.id}_{token_id}"
+            f"{CLOB_VERSION}_{self.synchronized_data.period_count}_"
+            f"{self.sampled_bet.id}_{token_id}"
         )
         cached_orders = self.synchronized_data.cached_signed_orders
         cached_signed_order_json = cached_orders.get(cache_key)

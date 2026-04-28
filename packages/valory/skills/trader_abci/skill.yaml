@@ -9,16 +9,16 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  composition.py: bafybeic6tl5rjcjqeyntpko57eykmrn5x3nb2aflhn53fxhm5uvxjq7n54
+  composition.py: bafybeifchvppo6lngfzjdambsu4vf4fnm7xwygwxwimu3lxf6zwobo2ywq
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeidkksdzkgluuknl3yrhoo5ft57kocapafswkndaennm23fipxdk7y
-  handlers.py: bafybeibgqokqbdc3idco33nty4jqjrn2mqsf5sir65toj5grbrgmh52rri
+  fsm_specification.yaml: bafybeide6ixaz5a3yc37mj6byvrpyxuebjbgyhsfqvy3d7d32bxcafxpwu
+  handlers.py: bafybeiauhbn7dcodqk4kickanzbrul6qklhjno2yzzyecnb254eeccoymq
   models.py: bafybeifir6ffdwmszi32tvvdxxs6dpiqatk272lpzupulmnn2nnpkli2om
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeice6emetkmyzxd7lggc4b7thaieudiybxrp5ydjaxcvpsl57glrdm
+  tests/test_composition.py: bafybeihpgwqlzvyqj4ta4llfh2chjk3rapmlcvbnva4imolu5miwfhq4x4
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeig6ifwp5u5s2nz6x5sxlidy4exscx73vdqfxe3dchjma7ty2uoy4a
+  tests/test_handlers.py: bafybeidyqjgi4a7jfs6v66hzp7bbqmthjcn6jh74ww3ea5qyucwxigjlke
   tests/test_models.py: bafybeibrllyk347rcxawc2rwc6ed447ayckngva3qs6f6e6vc6xpqjraky
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezqq76bdcrlgshyo2e544sm3u57amerpwla3sacosle5zivaij24
 - valory/transaction_settlement_abci:0.1.0:bafybeic6f4ujckiutqxueagohb5iv7kgzpamhuhiq7shn6fmiwbkt3cqny
 - valory/termination_abci:0.1.0:bafybeigp6mrueymod7a7arxn2p5mvvz2klvhhda3pls32z4fyxibqjisqu
-- valory/market_manager_abci:0.1.0:bafybeifs3nuqofzzx5cenuz7qujgmtp46gihfhiq7sscncfqy3mn2mbtni
-- valory/decision_maker_abci:0.1.0:bafybeiegjj7nhqljz5pvxjecupqrshk7zmoszhnhahxi7dthkjwlban6dq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicqqcr2727jlk6efiwlszpkin7oncnoum7f324x4rdp3j2rqmz6yy
+- valory/market_manager_abci:0.1.0:bafybeicffcpdyih5nzh4ojlasfjwqypdv5vgdle5wwzypd26cfs4v2f2d4
+- valory/decision_maker_abci:0.1.0:bafybeiccd26lil2xzrkd543nuiylrbzdc7yxkpqsa4wpxjy6t2lxwrbrlm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie63qjd5wx6n2tqgmaihcdmzygtagmo5cbhnv67hhinxwyq3ewojy
 - valory/staking_abci:0.1.0:bafybeigib6bggysnsxsyxu7kbucemunpmjy7y3xuwjakapur4do2cvfvpu
 - valory/check_stop_trading_abci:0.1.0:bafybeic3afldd5ktf5s27anddxdnulb6xwnm7y7pgyxifers4msvig62gu
 - valory/mech_interact_abci:0.1.0:bafybeicxqsip4uer3o4dnocumvwctplnurlyzsxyzyg6wr4yqwxgnicmca
-- valory/chatui_abci:0.1.0:bafybeihflyobugabpmodptvjfzvy3hzp535s6phae76pymctrowbfbpypm
-- valory/agent_performance_summary_abci:0.1.0:bafybeig4je7lfg3555r42gsp7y26k2u2b647ywvzhru6hwp3vbbhqat4m4
+- valory/chatui_abci:0.1.0:bafybeiftap5qs527l5gdsecebcg3dwgeji5nmzo7nvtakngklusmk2n5xu
+- valory/agent_performance_summary_abci:0.1.0:bafybeifox7o267c7zhrv2fdlc4lkv3b5zbw4nhfmwesq2xbtsub2c7jp44
 - valory/funds_manager:0.1.0:bafybeignvgpt36ph6bui47qmygwad6ii7qz6cdfz5ungy2egg4iicj7ym4
 behaviours:
   main:
@@ -322,10 +322,13 @@ models:
       is_achievement_checker_enabled: true
       is_running_on_polymarket: false
       polymarket_builder_program_enabled: true
-      polymarket_usdc_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+      polymarket_collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'
+      polymarket_usdc_e_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+      polymarket_collateral_onramp_address: '0x93070a847efEf7F70739046A929D47a521F5B8ee'
+      polymarket_usdc_e_wrap_dust_threshold: 1000000
       polymarket_ctf_address: '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045'
-      polymarket_ctf_exchange_address: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E'
-      polymarket_neg_risk_ctf_exchange_address: '0xC5d563A36AE78145C45a50134d48A1215220f80a'
+      polymarket_ctf_exchange_address: '0xE111180000d2663C0091e4f400237545B87B996B'
+      polymarket_neg_risk_ctf_exchange_address: '0xe2222d279d744050d28e00520010520000310F59'
       polymarket_neg_risk_adapter_address: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
       ignored_mechs: []
       penalize_mech_time_window: 1800
@@ -496,7 +499,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
+      url: https://api.subgraph.autonolas.tech/api/proxy/predict-omen
     class_name: OpenMarketsSubgraph
   olas_agents_subgraph:
     args:
@@ -511,7 +514,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.staging.autonolas.tech/api/proxy/predict-omen
+      url: https://api.subgraph.autonolas.tech/api/proxy/predict-omen
     class_name: OlasAgentsSubgraph
   olas_mech_subgraph:
     args:
@@ -599,7 +602,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
+      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
@@ -614,7 +617,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://predict-polymarket-agents.subgraph.autonolas.tech/
+      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
     class_name: PolymarketBetsSubgraph
   polygon_mech_subgraph:
     args:
