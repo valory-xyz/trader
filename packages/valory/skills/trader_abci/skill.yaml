@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiezqq76bdcrlgshyo2e544sm3u57amerpwla3sacosle5zivaij24
 - valory/transaction_settlement_abci:0.1.0:bafybeic6f4ujckiutqxueagohb5iv7kgzpamhuhiq7shn6fmiwbkt3cqny
 - valory/termination_abci:0.1.0:bafybeigp6mrueymod7a7arxn2p5mvvz2klvhhda3pls32z4fyxibqjisqu
-- valory/market_manager_abci:0.1.0:bafybeicwm3pm6nqkplst6h6tkpe5jpgrzhitzrioolnfqfu666vdgt4suy
-- valory/decision_maker_abci:0.1.0:bafybeiebpkrpbmmdbb5waoo4gg67lb3dkjpemnqmcyc2qriqyspqzjael4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicjfrtviteznmptb2esihjkeo2flbepzinagpvw4vxcxnzgxcihau
+- valory/market_manager_abci:0.1.0:bafybeicffcpdyih5nzh4ojlasfjwqypdv5vgdle5wwzypd26cfs4v2f2d4
+- valory/decision_maker_abci:0.1.0:bafybeiccd26lil2xzrkd543nuiylrbzdc7yxkpqsa4wpxjy6t2lxwrbrlm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie63qjd5wx6n2tqgmaihcdmzygtagmo5cbhnv67hhinxwyq3ewojy
 - valory/staking_abci:0.1.0:bafybeigib6bggysnsxsyxu7kbucemunpmjy7y3xuwjakapur4do2cvfvpu
 - valory/check_stop_trading_abci:0.1.0:bafybeic3afldd5ktf5s27anddxdnulb6xwnm7y7pgyxifers4msvig62gu
 - valory/mech_interact_abci:0.1.0:bafybeicxqsip4uer3o4dnocumvwctplnurlyzsxyzyg6wr4yqwxgnicmca
-- valory/chatui_abci:0.1.0:bafybeibubm2c4vxhubvayg4n7yyxrwjrmfm2o6hgcbinblzrqywaodmv7m
-- valory/agent_performance_summary_abci:0.1.0:bafybeihb6hdlyehg6ivo3pbo2w2tzmunv26gohx4xtz7lfbecky6u2xiey
+- valory/chatui_abci:0.1.0:bafybeiftap5qs527l5gdsecebcg3dwgeji5nmzo7nvtakngklusmk2n5xu
+- valory/agent_performance_summary_abci:0.1.0:bafybeifox7o267c7zhrv2fdlc4lkv3b5zbw4nhfmwesq2xbtsub2c7jp44
 - valory/funds_manager:0.1.0:bafybeignvgpt36ph6bui47qmygwad6ii7qz6cdfz5ungy2egg4iicj7ym4
 behaviours:
   main:
