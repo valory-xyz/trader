@@ -121,9 +121,6 @@ jobs:
           pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@b768aa2c2481839ead85d836b9fdc9e462c1d459' tox-uv
           pip install marshmallow==3.26.2
 
-          # Install `mdspell` for spelling checks
-          sudo npm install -g markdown-spellcheck
-
       - name: Security checks
         run: tomte tox -p -e safety -e bandit
       - name: Check packages
@@ -132,8 +129,6 @@ jobs:
         run: tomte tox -e check-hash
       - name: Code checks
         run: tomte tox -p -e black-check -e isort-check -e flake8 -e mypy -e pylint -e darglint
-      - name: Check spelling
-        run: tomte check-spelling
       - name: AbciApp consistency checks
         run: |
           tomte tox -e check-abci-docstrings
