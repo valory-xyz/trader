@@ -117,6 +117,50 @@ def test_end_block_polymarket_stale_v1_allowances_file_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
+def test_end_block_polymarket_stale_v2_allowances_file_reapproves() -> None:
+    """A v2 file must trigger re-approval after the v3 collateral-adapter cutover.
+
+    Bumping ``POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION`` to ``v3`` invalidates
+    every Safe's prior ``allowances_set: true`` stamped under v2, so the
+    agent re-issues the expanded approval set that includes
+    ``setApprovalForAll`` for the new ``CtfCollateralAdapter`` /
+    ``NegRiskCtfCollateralAdapter``. Without that bump, redeem would target
+    the new adapters with stale operator approvals and silently no-op.
+    """
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            json.dump({"allowances_set": True, "clob_version": "v2"}, f)
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
+
+
+def test_clob_version_constant_is_v3() -> None:
+    """The CLOB-version stamp must be ``v3``.
+
+    Tying the constant down ensures the v2→v3 migration trigger lands; a
+    silent revert to ``v2`` would let stale persisted files short-circuit
+    the approval round.
+    """
+    from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+        POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+    )
+
+    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v3"
+
+
 def test_end_block_polymarket_allowances_not_set() -> None:
     """Test end_block on Polymarket with allowances not set."""
     mock_context = MagicMock()

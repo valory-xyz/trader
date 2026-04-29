@@ -450,16 +450,21 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                     condition_id=condition_id,
                     redeem_amounts=redeem_amounts,
                 )
-                target_address = self.params.polymarket_neg_risk_adapter_address
+                target_address = (
+                    self.params.polymarket_neg_risk_ctf_collateral_adapter_address
+                )
             else:
-                # For standard markets, use CTF contract
+                # Route via CtfCollateralAdapter so the USDC.e payout from CTF
+                # is unwrapped to pUSD before reaching the Safe. The adapter
+                # exposes the same redeemPositions selector as the raw CTF, so
+                # the calldata shape is unchanged.
                 index_sets = [outcome_index + 1]
                 redeem_data = self._build_redeem_positions_data(
                     collateral_token=self.params.polymarket_collateral_address,
                     condition_id=condition_id,
                     index_sets=index_sets,
                 )
-                target_address = self.params.polymarket_ctf_address
+                target_address = self.params.polymarket_ctf_collateral_adapter_address
 
             # Add to multisend batch
             redeem_batch = MultisendBatch(

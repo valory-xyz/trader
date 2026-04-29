@@ -27,7 +27,6 @@ import pytest
 import requests
 
 from packages.valory.connections.polymarket_client.connection import (
-    CONDITIONAL_TOKENS_CONTRACT,
     DATA_API_BASE_URL,
     GAMMA_API_BASE_URL,
     MAX_UINT256,
@@ -51,6 +50,8 @@ CTF_ADDRESS = "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
 CTF_EXCHANGE = "0xE111180000d2663C0091e4f400237545B87B996B"  # v2
 NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"  # v2
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
+CTF_COLLATERAL_ADAPTER = "0xADa100874d00e3331D00F2007a9c336a65009718"
+NEG_RISK_CTF_COLLATERAL_ADAPTER = "0xAdA200001000ef00D07553cEE7006808F895c6F1"
 
 
 class _TestableConnection(PolymarketClientConnection):
@@ -78,6 +79,8 @@ def _make_connection() -> _TestableConnection:
     conn.ctf_exchange = CTF_EXCHANGE
     conn.neg_risk_ctf_exchange = NEG_RISK_CTF_EXCHANGE
     conn.neg_risk_adapter = NEG_RISK_ADAPTER
+    conn.ctf_collateral_adapter = CTF_COLLATERAL_ADAPTER
+    conn.neg_risk_ctf_collateral_adapter = NEG_RISK_CTF_COLLATERAL_ADAPTER
     conn.clob_version = "v2"
     conn.dialogues = MagicMock()
     configuration_mock = MagicMock()
@@ -1721,6 +1724,45 @@ class TestRedeemPositions:
 
         assert tx_with_prefix.data == tx_without_prefix.data
 
+    def test_standard_market_targets_ctf_collateral_adapter(self) -> None:
+        """Standard market redeem must target CtfCollateralAdapter, not raw CTF.
+
+        Routing through the adapter unwraps USDC.e to pUSD inside the same
+        transaction, so the Safe receives pUSD directly.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=False,
+        )
+
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        assert tx.to == CTF_COLLATERAL_ADAPTER
+
+    def test_neg_risk_targets_neg_risk_ctf_collateral_adapter(self) -> None:
+        """Neg-risk redeem must target NegRiskCtfCollateralAdapter, not raw NegRiskAdapter."""
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=True,
+            size=10.0,
+        )
+
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        assert tx.to == NEG_RISK_CTF_COLLATERAL_ADAPTER
+
     def test_neg_risk_correct_redeem_amounts_for_outcome_1(self) -> None:
         """index_sets=[2] (1<<1) maps to outcome_index=1, yielding redeem_amounts=[0, size].
 
@@ -1822,7 +1864,7 @@ class TestSetApproval:
     """Tests for _set_approval."""
 
     def test_success(self) -> None:
-        """Executes 6 approval transactions and returns transaction data."""
+        """Executes 10 approval transactions and returns transaction data."""
         conn = _make_connection()
         tx_data = {"hash": "0xabc"}
         result_mock = MagicMock()
@@ -1833,9 +1875,11 @@ class TestSetApproval:
         assert result == tx_data
         assert error is None
 
-        # 6 transactions should be passed
+        # 10 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
+        # NegRisk Exchange, NegRiskAdapter) plus 4 new ones for the
+        # CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair.
         call_kwargs = conn.relayer_client.execute.call_args[1]
-        assert len(call_kwargs["transactions"]) == 6
+        assert len(call_kwargs["transactions"]) == 10
 
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""
@@ -1856,9 +1900,11 @@ class TestSetApproval:
         assert "Error setting approvals" in error
 
     def test_usdc_approve_transactions_target_usdc_contract(self) -> None:
-        """ERC-20 approve transactions (indices 0, 2, 4) all target the USDC contract.
+        """ERC-20 approve transactions (even indices) all target the collateral contract.
 
-        These are the three `approve(ctf_exchange, MAX_UINT256)` calls. Targeting
+        These are the `approve(spender, MAX_UINT256)` calls — 5 in total, one
+        per spender (CTF Exchange, NegRisk Exchange, NegRiskAdapter,
+        CtfCollateralAdapter, NegRiskCtfCollateralAdapter). Targeting
         the wrong contract would grant allowances to the wrong token address.
         """
         conn = _make_connection()
@@ -1869,14 +1915,16 @@ class TestSetApproval:
         conn._set_approval()
 
         txns = conn.relayer_client.execute.call_args[1]["transactions"]
-        for idx in [0, 2, 4]:
+        for idx in [0, 2, 4, 6, 8]:
             assert txns[idx].to == COLLATERAL_ADDRESS, f"txns[{idx}].to should be pUSD"
 
     def test_ctf_approval_transactions_target_ctf_contract(self) -> None:
-        """ERC-1155 setApprovalForAll transactions (indices 1, 3, 5) all target the CTF contract.
+        """ERC-1155 setApprovalForAll transactions (odd indices) all target the CTF contract.
 
-        These are the three `setApprovalForAll(spender, True)` calls. Targeting
-        the wrong contract would grant operator access on the wrong token.
+        Five `setApprovalForAll(operator, True)` calls — one per operator
+        (CTF Exchange, NegRisk Exchange, NegRiskAdapter, CtfCollateralAdapter,
+        NegRiskCtfCollateralAdapter). Targeting the wrong contract would grant
+        operator access on the wrong token.
         """
         conn = _make_connection()
         result_mock = MagicMock()
@@ -1886,8 +1934,39 @@ class TestSetApproval:
         conn._set_approval()
 
         txns = conn.relayer_client.execute.call_args[1]["transactions"]
-        for idx in [1, 3, 5]:
+        for idx in [1, 3, 5, 7, 9]:
             assert txns[idx].to == CTF_ADDRESS, f"txns[{idx}].to should be CTF"
+
+    def test_includes_collateral_adapter_setapprovalforall(self) -> None:
+        """The redeem-critical CTF.setApprovalForAll(adapter, true) is included for both adapters.
+
+        Without ERC-1155 operator rights for the collateral adapters on the
+        CTF, the adapters can't burn the Safe's position tokens during redeem
+        and the call silently emits PayoutRedemption with payout=0.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._set_approval()
+
+        txns = conn.relayer_client.execute.call_args[1]["transactions"]
+        ctf_setApprovalForAll_selector = "0xa22cb465"
+        ctf_op_targets = {
+            t.data
+            for t in txns
+            if t.to == CTF_ADDRESS and t.data.startswith(ctf_setApprovalForAll_selector)
+        }
+        # Each setApprovalForAll(operator, true) calldata embeds the operator
+        # address in the second 32-byte arg; check both adapters appear.
+        assert any(
+            CTF_COLLATERAL_ADAPTER[2:].lower() in d.lower() for d in ctf_op_targets
+        ), "CtfCollateralAdapter setApprovalForAll missing"
+        assert any(
+            NEG_RISK_CTF_COLLATERAL_ADAPTER[2:].lower() in d.lower()
+            for d in ctf_op_targets
+        ), "NegRiskCtfCollateralAdapter setApprovalForAll missing"
 
 
 # ---------------------------------------------------------------------------
@@ -2014,17 +2093,23 @@ class TestCheckApproval:
         """Returns partial approval status correctly."""
         conn = _make_connection()
         conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        # USDC allowances: first set, second and third not
+        # USDC allowances: first set, second not, third set
         conn._check_erc20_allowance = MagicMock(
             side_effect=[MAX_UINT256, 0, MAX_UINT256]
         )
-        conn._check_erc1155_approval = MagicMock(side_effect=[True, False, True])
+        # 5 ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
+        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
+        conn._check_erc1155_approval = MagicMock(
+            side_effect=[True, False, True, True, True]
+        )
 
         result, error = conn._check_approval()
         assert error is None
         assert result["all_approvals_set"] is False
         assert result["usdc_allowances"]["ctf_exchange"] == MAX_UINT256
         assert result["usdc_allowances"]["neg_risk_ctf_exchange"] == 0
+        assert result["ctf_approvals"]["ctf_collateral_adapter"] is True
+        assert result["ctf_approvals"]["neg_risk_ctf_collateral_adapter"] is True
 
     def test_exception_returns_error(self) -> None:
         """Returns (None, error) on generic exception."""
@@ -2052,6 +2137,8 @@ class TestCheckApproval:
         assert "ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_adapter" in result["ctf_approvals"]
+        assert "ctf_collateral_adapter" in result["ctf_approvals"]
+        assert "neg_risk_ctf_collateral_adapter" in result["ctf_approvals"]
 
     def test_allowance_of_1_passes_approval_check(self) -> None:
         """An allowance of exactly 1 satisfies the > 0 threshold for all_approvals_set.
@@ -2497,8 +2584,3 @@ class TestModuleConstants:
         """PARENT_COLLECTION_ID is 32 zero bytes."""
         assert PARENT_COLLECTION_ID == b"\x00" * 32
         assert len(PARENT_COLLECTION_ID) == 32
-
-    def test_conditional_tokens_contract_is_checksummed(self) -> None:
-        """CONDITIONAL_TOKENS_CONTRACT is a non-empty string."""
-        assert isinstance(CONDITIONAL_TOKENS_CONTRACT, str)
-        assert CONDITIONAL_TOKENS_CONTRACT.startswith("0x")
