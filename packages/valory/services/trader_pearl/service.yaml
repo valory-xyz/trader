@@ -152,7 +152,7 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
-      ignored_mechs: ${IGNORED_MECHS:list:["0x33ca1e117c4254b2ee8cd7ef1621739431a37396"]}
+      ignored_mechs: ${IGNORED_MECHS:list:["0x33ca1e117c4254b2ee8cd7ef1621739431a37396","0x2ebd2237e5db798e36a2fa67afa74effb17c5ebb"]}
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
