@@ -60,15 +60,34 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install tomte[tox,cli]==0.6.5 tox-uv
+        run: pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
       - name: Check copyright headers
-        run: tox -e copyright-check
+        run: |
+          tomte check-copyright \
+            --author valory \
+            --exclude-part acn_data_share --exclude-part signing --exclude-part contract_api --exclude-part http \
+            --exclude-part ledger_api --exclude-part acn --exclude-part srr --exclude-part abci \
+            --exclude-part tendermint --exclude-part ipfs --exclude-part complementary_service_metadata \
+            --exclude-part multisend --exclude-part mech_marketplace_legacy --exclude-part mech \
+            --exclude-part mech_mm --exclude-part ierc1155 --exclude-part nvm_balance_tracker_token \
+            --exclude-part nvm_balance_tracker_native --exclude-part escrow_payment_condition \
+            --exclude-part did_registry --exclude-part nft_sales --exclude-part lock_payment_condition \
+            --exclude-part agreement_store_manager --exclude-part transfer_nft_condition \
+            --exclude-part subscription_provider --exclude-part gnosis_safe_proxy_factory \
+            --exclude-part service_registry --exclude-part gnosis_safe --exclude-part agent_registry \
+            --exclude-part erc20 --exclude-part mech_marketplace --exclude-part http_client \
+            --exclude-part ledger --exclude-part p2p_libp2p_client --exclude-part http_server \
+            --exclude-part genai --exclude-part x402 --exclude-part funds_manager \
+            --exclude-part abstract_abci --exclude-part abstract_round_abci \
+            --exclude-part transaction_settlement_abci --exclude-part registration_abci \
+            --exclude-part reset_pause_abci --exclude-part termination_abci \
+            --exclude-part mech_interact_abci
       - name: License compatibility check
-        run: tox -e liccheck
+        run: tomte tox -e liccheck
       - name: Check dependencies
-        run: tox -e check-dependencies
+        run: tomte tox -e check-dependencies
       - name: Check third-party package hashes against upstreams
-        run: tox -e check-third-party-hashes
+        run: tomte tox -e check-third-party-hashes
       - name: Check doc links
         run: |
           tomte check-doc-links \
@@ -79,7 +98,7 @@ jobs:
             --url-skips "https://1rpc.io/matic" \
             --url-skips "https://omen.subgraph.autonolas.tech"
       - name: Check doc IPFS hashes
-        run: tox -e check-doc-hashes
+        run: tomte tox -e check-doc-hashes
 
   linter_checks:
     continue-on-error: False
@@ -99,7 +118,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install tomte[tox,cli]==0.6.5 tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
           pip install marshmallow==3.26.2
 
           # Install `mdspell` for spelling checks
@@ -108,19 +127,19 @@ jobs:
       - name: Security checks
         run: tomte check-security
       - name: Check packages
-        run: tox -e check-packages
+        run: tomte tox -e check-packages
       - name: Check hash
-        run: tox -e check-hash
+        run: tomte tox -e check-hash
       - name: Code checks
-        run: tomte check-code
+        run: tomte tox -p -e black-check -e isort-check -e flake8 -e mypy -e pylint -e darglint
       - name: Check spelling
         run: tomte check-spelling
       - name: AbciApp consistency checks
         run: |
-          tox -e check-abci-docstrings
-          tox -e check-abciapp-specs
-          tox -e check-handlers
-          # tox -e analyse-service # analyse-service checks do not work properly as it is checking funds manager skill which is not an ABCI skill
+          tomte tox -e check-abci-docstrings
+          tomte tox -e check-abciapp-specs
+          tomte tox -e check-handlers
+          # tomte tox -e analyse-service # analyse-service checks do not work properly as it is checking funds manager skill which is not an ABCI skill
 
   scan:
     name: gitleaks
@@ -168,7 +187,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install tomte[tox]==0.6.5 tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
           pip install --user --upgrade setuptools
 
           # install Protobuf compiler
@@ -184,12 +203,12 @@ jobs:
       - if: matrix.os == 'ubuntu-24.04'
         name: Packages unit tests ubuntu-24.04
         run: |
-          tox -e py${{ matrix.python-version }}-linux
+          tomte tox -e py${{ matrix.python-version }}-linux
 
       - if: matrix.os == 'macos-15'
         name: Install dependencies (macos-15)
         run: |
-          pip install tomte[tox]==0.6.5 tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
           brew install gcc
           # brew install protobuf
           # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/72457f0166d5619a83f508f2345b22d0617b5021/Formula/protobuf.rb
@@ -202,7 +221,7 @@ jobs:
       - if: matrix.os == 'macos-15'
         name: Packages unit tests macos-15
         run: |
-          tox -e py${{ matrix.python-version }}-darwin
+          tomte tox -e py${{ matrix.python-version }}-darwin
 
       - if: matrix.os == 'windows-2025'
         name: Install dependencies (windows-2025)
@@ -217,12 +236,12 @@ jobs:
           choco install make -y
           # to check make was installed
           make --version
-          pip install tomte[tox]==0.6.5 tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
 
       - if: matrix.os == 'windows-2025'
         name: Packages unit tests windows-2025
         run: |
-          tox -e py${{ matrix.python-version }}-win
+          tomte tox -e py${{ matrix.python-version }}-win
 
   coverage:
     continue-on-error: False
@@ -242,10 +261,10 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install tomte[tox]==0.6.5 tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9' tox-uv
           pip install --user --upgrade setuptools
       - name: Check coverage
-        run: tox -e coverage
+        run: tomte tox -e coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:

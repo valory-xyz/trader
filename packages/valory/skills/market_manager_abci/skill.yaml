@@ -26,8 +26,8 @@ fingerprint:
   graph_tooling/queries/trades.py: bafybeialr7u7cpfauc56hjyas3nh7htw5qoa52ypgbrnhaueudwc5ahcia
   graph_tooling/requests.py: bafybeibzzmzh7jg3i6vgcu4qv2fm3kupbw55ugpc7vgjrpcrr6cgeyiuby
   graph_tooling/utils.py: bafybeigf3fq3s6y6trubrwdhfr3jizsuk4enn4yiaucycexgban2nliykm
-  handlers.py: bafybeidlrg2lh3iigg4dvf6wcakeljt7r7diaw5b3hxzevm32kkav2nik4
-  models.py: bafybeiag6zrta2tp7fwfb2qsfzn2a275w22quncxiepddantzciauwpffy
+  handlers.py: bafybeic7o2zjg2wkmtfbgzvivuwsktgneevwjcisgmji5upmtxqc5xuoui
+  models.py: bafybeidenff2ca7zdt2cya53ght2atnh6jblfyig3kvyxg7islf5tfp5de
   payloads.py: bafybeiduptsixzxaut2zvak3htjmhkm2jgvprlvkaiiwjjtel7w5cwhw2y
   rounds.py: bafybeigdtdskkaxkf5ov74mnvq65koajwfbm77n6dxcp273l3bxknecd3u
   states/__init__.py: bafybeiawiqqbn667kpne23y5fvq3tgo3lyd5hho44zm6zh66bplwxpqgqa
@@ -45,7 +45,7 @@ fingerprint:
   tests/test_disabled_tags_invariant.py: bafybeihw2elbgoitd6cpnwzs5odj6l5otdatdsjknjnpdjj3jsivp54fba
   tests/test_graph_queries.py: bafybeifrh723g6jbu2yvikz74eyfjwdbo4sz7ockecliia5zfqe5vu3ed4
   tests/test_graph_requests.py: bafybeiaimscyjth3qqumfhczrnuydaja4qb6w2ggjf35e7cllao3bqpyzm
-  tests/test_handlers.py: bafybeibcgtc22bzdzh33zqkxux52rd2vdmui4tvaaztbpxgoioxo632wra
+  tests/test_handlers.py: bafybeifycpkwhixtdvdoolsdq5rvfbfbt6mxen4h7vjnhnrn7dpslk4rru
   tests/test_models.py: bafybeiglirbwvyeh3hdyd37cc2j6qptmxnwthjxuexvwjyxfc73xcum6la
   tests/test_payloads.py: bafybeidvld43p5c4wpwi7m6rfzontkheqqgxdchjnme5b54wmldojc5dmm
   tests/test_rounds.py: bafybeiaiozpmj6sqywzc3xf7zvadaupchtquaeuv3lq2us5svrlvmmvmw4

@@ -9,7 +9,7 @@ fingerprint:
   __init__.py: bafybeihcto4ekkxngcw3me4v42b4aikluhivgf6lnxenho545mq3jz27gi
   behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
-  handlers.py: bafybeidmlov54heq2f5ukpnrtzntcfemmtoh5mqznk5ttzuciwrhigmbqa
+  handlers.py: bafybeih5dsz4cp2tgi7c5nnlzw464gwv4jctphkwr6ccf5e534ukoxseii
   models.py: bafybeidsdrprwtrgvmrahou4lz3z53v2puupolidiuhbctw22hrpxbcvhy
   payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
   prompts.py: bafybeib5dc2e67z2qh4fnfezyrnsqbuexwjvxp2czndqsiht3ul5beoiae
@@ -31,7 +31,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/agent_performance_summary_abci:0.1.0:bafybeifvlmqwzjwvrefv2dbgqraiosaw2zm6lgeotajm3phh5kjq37ao6y
+- valory/agent_performance_summary_abci:0.1.0:bafybeicr4ohpd7h7hxwkq3ybc24kkiqn6cb33uakumoastimxydmol4zc4
 handlers:
   abci:
     args: {}

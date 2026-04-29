@@ -35,7 +35,9 @@ from eth_account import Account
 from web3 import Web3
 
 from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
+from packages.valory.skills.abstract_round_abci.handlers import (
+    ABCIRoundHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -58,7 +60,9 @@ from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
-from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
+from packages.valory.skills.decision_maker_abci.handlers import (
+    HttpMethod,
+)
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )

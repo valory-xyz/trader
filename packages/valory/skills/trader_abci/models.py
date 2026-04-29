@@ -21,7 +21,9 @@
 
 from typing import Any, Callable, Dict, Type, Union, cast
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -64,7 +66,9 @@ from packages.valory.skills.decision_maker_abci.models import (
 from packages.valory.skills.decision_maker_abci.models import (
     ConditionalTokensSubgraph as DecisionMakerConditionalTokensSubgraph,
 )
-from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
+from packages.valory.skills.decision_maker_abci.models import (
+    DecisionMakerParams,
+)
 from packages.valory.skills.decision_maker_abci.models import (
     RealitioSubgraph as DecisionMakerRealitioSubgraph,
 )

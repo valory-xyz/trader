@@ -3379,17 +3379,14 @@ wheels = [
 
 [[package]]
 name = "tomte"
-version = "0.6.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/67/f1/1af29384666f8e6b07ab47515fe4c25ba1fc176505e3966c177a842f1e20/tomte-0.6.5.tar.gz", hash = "sha256:f19c1b57d74394b91cfe001eac4445c3163d956b16a599f9b6de20873de0e777", size = 15867, upload-time = "2026-04-10T17:13:33.338Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/5c/7ee5488c095b7ed6d3ae1dce1924e04d2a267873901cbfb043f2d2e0326a/tomte-0.6.5-py3-none-any.whl", hash = "sha256:7a89379b640fced037d6ea367d6ae7167f50b1088d7ed9cb6bec3d51341ce45c", size = 18657, upload-time = "2026-04-10T17:13:32.447Z" },
-]
+version = "0.7.0"
+source = { git = "https://github.com/valory-xyz/tomte.git?rev=7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9#7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9" }
 
 [package.optional-dependencies]
 cli = [
     { name = "click" },
     { name = "requests" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "tox" },
 ]
 tests = [
@@ -3535,7 +3532,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "tomte", extras = ["cli", "tests"], specifier = ">=0.6.5" }]
+dev = [{ name = "tomte", extras = ["cli", "tests"], git = "https://github.com/valory-xyz/tomte.git?rev=7c4eafbadec4e9cadfcf2f5dee4b201f17f69cb9" }]
 
 [[package]]
 name = "types-requests"

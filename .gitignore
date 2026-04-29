@@ -79,3 +79,4 @@ benchmarks/
 coverage.xml
 .hypothesis/
 .claude/
+.tomte-tox.ini
