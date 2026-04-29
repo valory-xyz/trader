@@ -125,7 +125,7 @@ jobs:
           sudo npm install -g markdown-spellcheck
 
       - name: Security checks
-        run: tomte check-security
+        run: tomte tox -p -e safety -e bandit
       - name: Check packages
         run: tomte tox -e check-packages
       - name: Check hash
