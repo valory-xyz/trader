@@ -1339,6 +1339,19 @@ class PolymarketClientConnection(BaseSyncConnection):
             usdc_adapter_allowance = self._check_erc20_allowance(
                 self.collateral_address, self.safe_address, self.neg_risk_adapter
             )
+            # The pUSD allowances to the new collateral adapters are issued in
+            # ``_set_approval`` for split-flow future-proofing (mirrors the
+            # Polymarket UI batch). Verify them here too — issuing without
+            # checking would let a silent partial revert pass the
+            # ``all_approvals_set`` gate and stamp the cache file as healthy.
+            usdc_collateral_adapter_allowance = self._check_erc20_allowance(
+                self.collateral_address, self.safe_address, self.ctf_collateral_adapter
+            )
+            usdc_neg_risk_collateral_adapter_allowance = self._check_erc20_allowance(
+                self.collateral_address,
+                self.safe_address,
+                self.neg_risk_ctf_collateral_adapter,
+            )
 
             # Check CTF approvals
             ctf_ctf_exchange_approved = self._check_erc1155_approval(
@@ -1366,6 +1379,10 @@ class PolymarketClientConnection(BaseSyncConnection):
                     "ctf_exchange": usdc_ctf_exchange_allowance,
                     "neg_risk_ctf_exchange": usdc_neg_risk_allowance,
                     "neg_risk_adapter": usdc_adapter_allowance,
+                    "ctf_collateral_adapter": usdc_collateral_adapter_allowance,
+                    "neg_risk_ctf_collateral_adapter": (
+                        usdc_neg_risk_collateral_adapter_allowance
+                    ),
                 },
                 "ctf_approvals": {
                     "ctf_exchange": ctf_ctf_exchange_approved,
@@ -1381,6 +1398,8 @@ class PolymarketClientConnection(BaseSyncConnection):
                         usdc_ctf_exchange_allowance > 0,
                         usdc_neg_risk_allowance > 0,
                         usdc_adapter_allowance > 0,
+                        usdc_collateral_adapter_allowance > 0,
+                        usdc_neg_risk_collateral_adapter_allowance > 0,
                         ctf_ctf_exchange_approved,
                         ctf_neg_risk_approved,
                         ctf_adapter_approved,

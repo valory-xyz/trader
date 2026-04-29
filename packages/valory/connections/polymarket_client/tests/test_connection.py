@@ -2093,12 +2093,12 @@ class TestCheckApproval:
         """Returns partial approval status correctly."""
         conn = _make_connection()
         conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        # USDC allowances: first set, second not, third set
-        conn._check_erc20_allowance = MagicMock(
-            side_effect=[MAX_UINT256, 0, MAX_UINT256]
-        )
-        # 5 ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
+        # 5 USDC allowance checks: CTF Exchange, NegRisk Exchange,
         # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
+        conn._check_erc20_allowance = MagicMock(
+            side_effect=[MAX_UINT256, 0, MAX_UINT256, MAX_UINT256, MAX_UINT256]
+        )
+        # 5 ERC-1155 approval checks: same operator order.
         conn._check_erc1155_approval = MagicMock(
             side_effect=[True, False, True, True, True]
         )
@@ -2108,8 +2108,35 @@ class TestCheckApproval:
         assert result["all_approvals_set"] is False
         assert result["usdc_allowances"]["ctf_exchange"] == MAX_UINT256
         assert result["usdc_allowances"]["neg_risk_ctf_exchange"] == 0
+        assert result["usdc_allowances"]["ctf_collateral_adapter"] == MAX_UINT256
+        assert (
+            result["usdc_allowances"]["neg_risk_ctf_collateral_adapter"] == MAX_UINT256
+        )
         assert result["ctf_approvals"]["ctf_collateral_adapter"] is True
         assert result["ctf_approvals"]["neg_risk_ctf_collateral_adapter"] is True
+
+    def test_collateral_adapter_pusd_allowance_zero_marks_all_approvals_unset(
+        self,
+    ) -> None:
+        """Flip all_approvals_set False on a zero adapter pUSD allowance.
+
+        Regression guard for the set/check asymmetry: ``_set_approval``
+        issues these allowances, so the verify path must catch silent
+        failures — otherwise the cache file gets stamped ``v3 OK`` and the
+        agent never re-issues.
+        """
+        conn = _make_connection()
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        # 5 USDC allowance checks; entry 4 (CtfCollateralAdapter) is zero.
+        conn._check_erc20_allowance = MagicMock(
+            side_effect=[MAX_UINT256, MAX_UINT256, MAX_UINT256, 0, MAX_UINT256]
+        )
+        conn._check_erc1155_approval = MagicMock(return_value=True)
+
+        result, error = conn._check_approval()
+        assert error is None
+        assert result["all_approvals_set"] is False
+        assert result["usdc_allowances"]["ctf_collateral_adapter"] == 0
 
     def test_exception_returns_error(self) -> None:
         """Returns (None, error) on generic exception."""
@@ -2134,6 +2161,8 @@ class TestCheckApproval:
         assert "ctf_exchange" in result["usdc_allowances"]
         assert "neg_risk_ctf_exchange" in result["usdc_allowances"]
         assert "neg_risk_adapter" in result["usdc_allowances"]
+        assert "ctf_collateral_adapter" in result["usdc_allowances"]
+        assert "neg_risk_ctf_collateral_adapter" in result["usdc_allowances"]
         assert "ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_adapter" in result["ctf_approvals"]

@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
 - valory/x402:0.1.0:bafybeibg4a4drxliwba6ortn5xvqpgnhf6e5e5ji35gufaeg5jx55yrrci
-- valory/polymarket_client:0.1.0:bafybeie6mrzza2fwdjw2mv336vkyv6en7j37rquikf7y432rq3gdw6ag3q
+- valory/polymarket_client:0.1.0:bafybeiealxtz7g7bpn3p3hyepihabqbn5ngw5bn5wy2a67hmpjcvhqxrfe
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihljnuo6jiyqfvow4vgxy5ih4eha2pjtguh7o6pabe24lbd6mwjaa
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeihpzvi2rxvdzujrqivnynsoqezklval6j3qeoxaitquktvwscqgra
@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiemrhjebwsundqvm6gvsbtbsds4hy56lmxlpbnra5onkqp5lq7l7y
-- valory/market_manager_abci:0.1.0:bafybeigrfrfcshhnlap4n2dnplygvzczil62qsmj6w3t2h6f6aj63k7ewq
-- valory/decision_maker_abci:0.1.0:bafybeif6slzixnbkziw6gs7bc4dfnpilzf3mj2shne4xydelxhpkdggtyi
-- valory/trader_abci:0.1.0:bafybeigxl6pz6rrpu4d5pozvc5jzzie2pdmfm4hivrcnqobvmdzhhtvpii
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaare64bpvcjzgjrhzkgmcdzeqpzfeqlewqujjsevqwmzivtvuo7e
+- valory/market_manager_abci:0.1.0:bafybeiedifkqcneovgihnaol5rzanafd75irlqdhjpkuc4ffdincjaoh74
+- valory/decision_maker_abci:0.1.0:bafybeigjkdwyojl65u6okmpt42cmkq43pmbb44jpavgdbnzzdt26vrseju
+- valory/trader_abci:0.1.0:bafybeiblxclelrghsbimkeclnkutluafbvchooqkh5q4tuvdhvfobixalu
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
 - valory/check_stop_trading_abci:0.1.0:bafybeifogrr4xor4pgtdnvs4vgqcqtlqt2r7tkuke7j4tvhv74wlckw7cm
 - valory/mech_interact_abci:0.1.0:bafybeidq4vfhz5hvixmzor4epnnh2xzhhzedcxhxfoa6nqgqjp3yqhktdu
-- valory/chatui_abci:0.1.0:bafybeibwwg2iaygc5kx3imosarmdgrzap5bl5o4rwlifmoj7ubo3asqota
-- valory/agent_performance_summary_abci:0.1.0:bafybeigcz5kows3fr2ew4y4pouglgc6x3lltcxqu2xmc2o4npuldhpn34u
+- valory/chatui_abci:0.1.0:bafybeifoa3qpreqvcuw5w6bypns76q7mlrqm62lrz7zzfwt2fvrafgnwzi
+- valory/agent_performance_summary_abci:0.1.0:bafybeihz2y4y3r7ka63meufhc7afktamgeytbe3wzalmdixdcyfttlyrxe
 - valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
 customs:
 - valory/kelly_criterion:0.1.0:bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa
