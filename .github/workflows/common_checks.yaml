@@ -152,7 +152,7 @@ jobs:
           sudo install gitleaks /usr/bin
           pip install 'tomte[cli] @ git+https://github.com/valory-xyz/tomte.git@b768aa2c2481839ead85d836b9fdc9e462c1d459'
           GITLEAKS_CONFIG=$(python -c "from tomte.configs import GITLEAKS_TOML; print(GITLEAKS_TOML)")
-          gitleaks detect --config="$GITLEAKS_CONFIG" --report-format json --report-path leak_report -v
+          gitleaks detect --config="$GITLEAKS_CONFIG" --report-format json --report-path leak_report --log-opts="HEAD" -v
 
   test:
     continue-on-error: False
