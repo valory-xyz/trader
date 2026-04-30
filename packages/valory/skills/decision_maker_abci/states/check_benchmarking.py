@@ -35,10 +35,12 @@ from packages.valory.skills.decision_maker_abci.states.base import (
     SynchronizedData,
 )
 
-# Stamp on the local allowances-persistence file. Bumping this invalidates a
-# prior v1 file so the agent re-issues approvals against v2 addresses after
-# the 2026-04-28 cutover.
-POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v2"
+# Stamp on the local allowances-persistence file. Bumping this invalidates an
+# older file so the agent re-issues approvals after a contract-set change.
+# Bumped to "v3" when the redeem path moved from raw CTF / NegRiskAdapter to
+# CtfCollateralAdapter / NegRiskCtfCollateralAdapter (which require their own
+# setApprovalForAll on the CTF).
+POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v3"
 
 
 class CheckBenchmarkingModeRound(VotingRound):
