@@ -323,7 +323,7 @@ class TestPolymarketSetApprovalBehaviour:
         ctx.logger.error.assert_called()
 
     def test_prepare_approval_tx_success(self) -> None:
-        """_prepare_approval_tx should build 6 batches and return tx_hex on success."""
+        """_prepare_approval_tx should build 8 batches and return tx_hex on success."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
@@ -349,6 +349,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -364,8 +366,143 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # Should have 6 batches: 3 USDC approves + 3 CTF setApprovalForAll
-        assert len(behaviour.multisend_batches) == 6
+        # 8 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
+        # CTF Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the
+        # same, plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
+        # receive no pUSD allowance — their redeem path doesn't pull
+        # ERC-20 from the Safe.
+        assert len(behaviour.multisend_batches) == 8
+
+    def test_prepare_approval_tx_includes_ctf_collateral_adapter_approval(self) -> None:
+        """The redeem-critical CTF setApprovalForAll(CtfCollateralAdapter, true) must be in the batch."""
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        ctf = "0x2234567890123456789012345678901234567890"
+        ctf_collateral_adapter = "0x6234567890123456789012345678901234567890"
+        neg_risk_ctf_collateral_adapter = "0x7234567890123456789012345678901234567890"
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
+                polymarket_ctf_address=ctf,
+                polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
+                polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
+                polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_approval_tx()
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        # Find the CTF setApprovalForAll(CtfCollateralAdapter) entry. Selector
+        # 0xa22cb465 is setApprovalForAll(address,bool); the operator address
+        # appears in the second parameter slot.
+        ctf_approve_adapter_entries = [
+            b
+            for b in behaviour.multisend_batches
+            if b.to.lower() == ctf.lower()
+            and b.data.hex().startswith("a22cb465")
+            and ctf_collateral_adapter[2:].lower() in b.data.hex().lower()
+        ]
+        assert len(ctf_approve_adapter_entries) == 1
+
+        ctf_approve_neg_risk_adapter_entries = [
+            b
+            for b in behaviour.multisend_batches
+            if b.to.lower() == ctf.lower()
+            and b.data.hex().startswith("a22cb465")
+            and neg_risk_ctf_collateral_adapter[2:].lower() in b.data.hex().lower()
+        ]
+        assert len(ctf_approve_neg_risk_adapter_entries) == 1
+
+    def test_prepare_approval_tx_excludes_collateral_allowance_for_adapters(
+        self,
+    ) -> None:
+        """No ERC-20 approve(adapter, *) is included for either collateral adapter.
+
+        The collateral adapters' redeem path doesn't pull ERC-20 from the
+        Safe, so granting them a pUSD allowance is a needless
+        attack-surface expansion. This test guards against the prior
+        behaviour creeping back in.
+        """
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        collateral = "0x1234567890123456789012345678901234567890"
+        ctf_collateral_adapter = "0x6234567890123456789012345678901234567890"
+        neg_risk_ctf_collateral_adapter = "0x7234567890123456789012345678901234567890"
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address=collateral,
+                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
+                polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
+                polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_approval_tx()
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        # ERC20 approve selector is 0x095ea7b3.
+        for adapter in (ctf_collateral_adapter, neg_risk_ctf_collateral_adapter):
+            entries = [
+                b
+                for b in behaviour.multisend_batches
+                if b.to.lower() == collateral.lower()
+                and b.data.hex().startswith("095ea7b3")
+                and adapter[2:].lower() in b.data.hex().lower()
+            ]
+            assert (
+                len(entries) == 0
+            ), f"unexpected ERC20 approve(adapter={adapter}) on collateral"
 
     def test_prepare_approval_tx_multisend_data_fails(self) -> None:
         """_prepare_approval_tx should return empty string when _build_multisend_data fails."""
@@ -388,6 +525,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()
@@ -427,6 +566,8 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_ctf_exchange_address="0x3234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_exchange_address="0x4234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()

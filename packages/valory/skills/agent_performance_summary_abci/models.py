@@ -39,6 +39,11 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
+# Bump when on-disk profit_over_time must be rebuilt against the current
+# subgraph endpoint/schema. Files with a lower version are rebuilt once on
+# first run via _perform_initial_backfill.
+PROFIT_OVER_TIME_SCHEMA_VERSION = 1
+
 
 @dataclass
 class AgentPerformanceMetrics:
@@ -142,6 +147,7 @@ class ProfitOverTimeData:
     last_mech_timestamp: int = (
         0  # Watermark: max blockTimestamp of processed mech requests
     )
+    schema_version: int = 0  # Bumped to trigger one-shot rebuild on cutovers
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
