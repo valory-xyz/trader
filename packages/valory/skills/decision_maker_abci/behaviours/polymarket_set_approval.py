@@ -159,8 +159,9 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
 
         # Build approval transactions and add to multisend_batches (must match
         # polymarket_client _check_approval: 3 collateral allowances + 5 CTF
-        # setApprovalForAll + 2 collateral allowances for the new collateral
-        # adapters; 10 entries total).
+        # setApprovalForAll; 8 entries total). The collateral adapters
+        # intentionally receive only ERC-1155 operator rights — their redeem
+        # path doesn't pull ERC-20 from the Safe, so no pUSD allowance.
         # 1. Collateral approve for CTF Exchange
         collateral_approve_batch = MultisendBatch(
             to=collateral_address,
@@ -225,19 +226,7 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve3_batch)
 
-        # 7. Collateral approve for CtfCollateralAdapter
-        collateral_approve_collateral_adapter_batch = MultisendBatch(
-            to=collateral_address,
-            data=HexBytes(
-                self._build_erc20_approve_data(
-                    ctf_collateral_adapter_address, 2**256 - 1
-                )
-            ),
-            value=0,
-        )
-        self.multisend_batches.append(collateral_approve_collateral_adapter_batch)
-
-        # 8. CTF setApprovalForAll for CtfCollateralAdapter (redeem-critical:
+        # 7. CTF setApprovalForAll for CtfCollateralAdapter (redeem-critical:
         # without this the adapter cannot burn the Safe's position tokens).
         ctf_approve_collateral_adapter_batch = MultisendBatch(
             to=ctf_address,
@@ -250,21 +239,7 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
         )
         self.multisend_batches.append(ctf_approve_collateral_adapter_batch)
 
-        # 9. Collateral approve for NegRiskCtfCollateralAdapter
-        collateral_approve_neg_risk_collateral_adapter_batch = MultisendBatch(
-            to=collateral_address,
-            data=HexBytes(
-                self._build_erc20_approve_data(
-                    neg_risk_ctf_collateral_adapter_address, 2**256 - 1
-                )
-            ),
-            value=0,
-        )
-        self.multisend_batches.append(
-            collateral_approve_neg_risk_collateral_adapter_batch
-        )
-
-        # 10. CTF setApprovalForAll for NegRiskCtfCollateralAdapter (redeem-
+        # 8. CTF setApprovalForAll for NegRiskCtfCollateralAdapter (redeem-
         # critical for neg-risk markets).
         ctf_approve_neg_risk_collateral_adapter_batch = MultisendBatch(
             to=ctf_address,

@@ -1145,6 +1145,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         - CTF for Neg Risk CTF Exchange
         - USDC for Neg Risk Adapter
         - CTF for Neg Risk Adapter
+        - CTF for CtfCollateralAdapter (redeem)
+        - CTF for NegRiskCtfCollateralAdapter (redeem)
 
         :return: Tuple of (transaction_result, error_message)
         """
@@ -1207,32 +1209,16 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
 
             # Approvals for CtfCollateralAdapter / NegRiskCtfCollateralAdapter.
-            # These adapters route redemption (and split/merge) through the
-            # CTF while unwrapping USDC.e ↔ pUSD on the Safe's behalf, so the
-            # adapter needs (a) ERC1155 operator rights on CTF positions to
-            # burn them on redeem, and (b) ERC20 allowance on pUSD for split
-            # flows. Mirrors the empirically-confirmed Polymarket UI batch.
-            collateral_approve_collateral_adapter = SafeTransaction(
-                to=self.collateral_address,
-                operation=OperationType.Call,
-                data=self._encode_approve(self.ctf_collateral_adapter, MAX_UINT256),
-                value="0",
-            )
-
+            # These adapters route redemption through the CTF while unwrapping
+            # USDC.e → pUSD on the Safe's behalf. The redeem path receives
+            # USDC.e from CTF and pushes pUSD to the Safe — it never pulls any
+            # ERC20 from the Safe — so only ERC1155 operator rights on CTF
+            # positions are needed.
             ctf_approve_collateral_adapter = SafeTransaction(
                 to=self.ctf_address,
                 operation=OperationType.Call,
                 data=self._encode_set_approval_for_all(
                     self.ctf_collateral_adapter, True
-                ),
-                value="0",
-            )
-
-            collateral_approve_neg_risk_collateral_adapter = SafeTransaction(
-                to=self.collateral_address,
-                operation=OperationType.Call,
-                data=self._encode_approve(
-                    self.neg_risk_ctf_collateral_adapter, MAX_UINT256
                 ),
                 value="0",
             )
@@ -1254,9 +1240,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ctf_approve_neg_risk,
                 usdc_approve_adapter,
                 ctf_approve_adapter,
-                collateral_approve_collateral_adapter,
                 ctf_approve_collateral_adapter,
-                collateral_approve_neg_risk_collateral_adapter,
                 ctf_approve_neg_risk_collateral_adapter,
             ]
 
@@ -1320,7 +1304,8 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         Checks:
         - USDC allowances for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
-        - CTF approvals for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
+        - CTF approvals for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter,
+          CtfCollateralAdapter, NegRiskCtfCollateralAdapter
 
         :return: Tuple of (approval_status_dict, error_message)
         """
@@ -1338,19 +1323,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
             usdc_adapter_allowance = self._check_erc20_allowance(
                 self.collateral_address, self.safe_address, self.neg_risk_adapter
-            )
-            # The pUSD allowances to the new collateral adapters are issued in
-            # ``_set_approval`` for split-flow future-proofing (mirrors the
-            # Polymarket UI batch). Verify them here too — issuing without
-            # checking would let a silent partial revert pass the
-            # ``all_approvals_set`` gate and stamp the cache file as healthy.
-            usdc_collateral_adapter_allowance = self._check_erc20_allowance(
-                self.collateral_address, self.safe_address, self.ctf_collateral_adapter
-            )
-            usdc_neg_risk_collateral_adapter_allowance = self._check_erc20_allowance(
-                self.collateral_address,
-                self.safe_address,
-                self.neg_risk_ctf_collateral_adapter,
             )
 
             # Check CTF approvals
@@ -1379,10 +1351,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                     "ctf_exchange": usdc_ctf_exchange_allowance,
                     "neg_risk_ctf_exchange": usdc_neg_risk_allowance,
                     "neg_risk_adapter": usdc_adapter_allowance,
-                    "ctf_collateral_adapter": usdc_collateral_adapter_allowance,
-                    "neg_risk_ctf_collateral_adapter": (
-                        usdc_neg_risk_collateral_adapter_allowance
-                    ),
                 },
                 "ctf_approvals": {
                     "ctf_exchange": ctf_ctf_exchange_approved,
@@ -1398,8 +1366,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                         usdc_ctf_exchange_allowance > 0,
                         usdc_neg_risk_allowance > 0,
                         usdc_adapter_allowance > 0,
-                        usdc_collateral_adapter_allowance > 0,
-                        usdc_neg_risk_collateral_adapter_allowance > 0,
                         ctf_ctf_exchange_approved,
                         ctf_neg_risk_approved,
                         ctf_adapter_approved,
