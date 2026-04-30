@@ -28,7 +28,6 @@ from packages.valory.contracts.service_staking_token.contract import (
     ServiceStakingTokenContract,
 )
 
-
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 
 
@@ -52,7 +51,9 @@ class TestServiceStakingTokenContract:
 
     def test_get_service_staking_state(self) -> None:
         """Test retrieving service staking state."""
-        self.mock_contract.functions.getServiceStakingState.return_value.call.return_value = 1
+        self.mock_contract.functions.getServiceStakingState.return_value.call.return_value = (
+            1
+        )
         result = ServiceStakingTokenContract.get_service_staking_state(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,
@@ -106,7 +107,9 @@ class TestServiceStakingTokenContract:
 
     def test_get_staking_rewards(self) -> None:
         """Test retrieving staking rewards for a service."""
-        self.mock_contract.functions.calculateServiceStakingReward.return_value.call.return_value = 500
+        self.mock_contract.functions.calculateServiceStakingReward.return_value.call.return_value = (
+            500
+        )
         result = ServiceStakingTokenContract.get_staking_rewards(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,
@@ -116,7 +119,9 @@ class TestServiceStakingTokenContract:
 
     def test_get_next_checkpoint_ts(self) -> None:
         """Test retrieving next checkpoint timestamp."""
-        self.mock_contract.functions.getNextRewardCheckpointTimestamp.return_value.call.return_value = 1700000000
+        self.mock_contract.functions.getNextRewardCheckpointTimestamp.return_value.call.return_value = (
+            1700000000
+        )
         result = ServiceStakingTokenContract.get_next_checkpoint_ts(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,
@@ -191,7 +196,9 @@ class TestServiceStakingTokenContract:
 
     def test_get_min_staking_duration(self) -> None:
         """Test retrieving minimum staking duration."""
-        self.mock_contract.functions.minStakingDuration.return_value.call.return_value = 3600
+        self.mock_contract.functions.minStakingDuration.return_value.call.return_value = (
+            3600
+        )
         result = ServiceStakingTokenContract.get_min_staking_duration(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,
@@ -254,15 +261,15 @@ class TestABIConsistency:
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
         missing = referenced_functions - abi_functions
-        assert not missing, (
-            f"Functions used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Functions used in contract.py but missing from ABI: {missing}"
 
     def test_events_present_in_abi(self) -> None:
         """All contract events referenced in contract.py must exist in the ABI."""
         _, abi_events = self._get_abi_names()
         _, referenced_events = self._get_contract_references()
         missing = referenced_events - abi_events
-        assert not missing, (
-            f"Events used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Events used in contract.py but missing from ABI: {missing}"

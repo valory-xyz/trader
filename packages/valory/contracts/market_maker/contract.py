@@ -124,6 +124,7 @@ class FixedProductMarketMakerContract(Contract):
         :param investment_amount: the amount the user is willing to invest for an answer
         :param outcome_index: the index of the answer's outcome that the user wants to vote for
         :param min_outcome_tokens_to_buy: the output of the `calcBuyAmount` contract method
+        :return: the encoded transaction arguments
         """
         return cls._encode_abi(
             ledger_api,
@@ -142,8 +143,8 @@ class FixedProductMarketMakerContract(Contract):
         return_amount: int,
         outcome_index: int,
     ) -> JSONLike:
-        """
-        Calculate the sell amount.
+        """Calculate the sell amount.
+
         :param ledger_api: the ledger API object
         :param contract_address: the contract address
         :param return_amount: the amount the user will have returned
@@ -169,11 +170,13 @@ class FixedProductMarketMakerContract(Contract):
         max_outcome_tokens_to_sell: int,
     ) -> Dict[str, bytes]:
         """Gets the encoded arguments for a sell tx, which should only be called via the multisig.
+
         :param ledger_api: the ledger API object
         :param contract_address: the contract address
         :param return_amount: the amount the user have returned
         :param outcome_index: the index of the answer's outcome that the user wants to sell tokens for
         :param max_outcome_tokens_to_sell: the output of the `calcSellAmount` contract method
+        :return: the encoded transaction arguments
         """
         return cls._encode_abi(
             ledger_api,
@@ -182,4 +185,4 @@ class FixedProductMarketMakerContract(Contract):
             returnAmount=return_amount,
             outcomeIndex=outcome_index,
             maxOutcomeTokensToSell=max_outcome_tokens_to_sell,
-        )    
+        )

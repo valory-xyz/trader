@@ -60,7 +60,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+        run: pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
       - name: Check copyright headers
         run: tomte check-copyright --author valory
       - name: License compatibility check
@@ -99,7 +99,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
           pip install marshmallow==3.26.2
 
       - name: Security checks
@@ -131,22 +131,8 @@ jobs:
           wget https://github.com/zricethezav/gitleaks/releases/download/v8.10.1/gitleaks_8.10.1_linux_x64.tar.gz
           tar -xzf gitleaks_8.10.1_linux_x64.tar.gz
           sudo install gitleaks /usr/bin
-          pip install 'tomte[cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e'
-          GITLEAKS_BASE=$(python -c "from tomte.configs import GITLEAKS_TOML; print(GITLEAKS_TOML)")
-          # Extend canonical config with repo-local path allowlist for UI build
-          # outputs. Vite hash-suffixed bundles (predict-ui-build/, ui-build/)
-          # are entropy noise that triggers `generic-api-key` on every rebuild.
-          cat > .gitleaks-merged.toml <<EOF
-          [extend]
-          useDefault = false
-          path = "$GITLEAKS_BASE"
-          [allowlist]
-          description = "trader build outputs"
-          paths = [
-              '''.*ui-build/.*''',
-          ]
-          EOF
-          gitleaks detect --config=.gitleaks-merged.toml --report-format json --report-path leak_report -v
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
+          tomte tox -e gitleaks
 
   test:
     continue-on-error: False
@@ -181,7 +167,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
           pip install --user --upgrade setuptools
 
           # install Protobuf compiler
@@ -202,7 +188,7 @@ jobs:
       - if: matrix.os == 'macos-15'
         name: Install dependencies (macos-15)
         run: |
-          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
           brew install gcc
           # brew install protobuf
           # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/72457f0166d5619a83f508f2345b22d0617b5021/Formula/protobuf.rb
@@ -230,7 +216,7 @@ jobs:
           choco install make -y
           # to check make was installed
           make --version
-          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
 
       - if: matrix.os == 'windows-2025'
         name: Packages unit tests windows-2025
@@ -255,7 +241,7 @@ jobs:
           sudo apt-get update --fix-missing
           sudo apt-get autoremove
           sudo apt-get autoclean
-          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e' tox-uv
+          pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7' tox-uv
           pip install --user --upgrade setuptools
       - name: Check coverage
         run: tomte tox -e coverage

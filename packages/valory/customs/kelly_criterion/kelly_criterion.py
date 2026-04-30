@@ -20,8 +20,7 @@
 """Execution-aware Kelly criterion bet sizing for CLOB and FPMM markets."""
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # --- Required / optional field contracts ---
 
@@ -72,9 +71,7 @@ DEFAULT_TOKEN_DECIMALS = 18
 # --- Execution models ---
 
 
-def walk_book(
-    asks: List[Dict[str, str]], spend: float
-) -> Tuple[float, float]:
+def walk_book(asks: List[Dict[str, str]], spend: float) -> Tuple[float, float]:
     """Walk CLOB ask-side orderbook to simulate a market buy.
 
     :param asks: ask levels from CLOB, each {"price": str, "size": str}.
@@ -109,9 +106,7 @@ def walk_book(
     return cost, shares
 
 
-def fpmm_execution(
-    b: float, x: float, y: float, alpha: float
-) -> Tuple[float, float]:
+def fpmm_execution(b: float, x: float, y: float, alpha: float) -> Tuple[float, float]:
     """FPMM constant-product AMM execution model.
 
     cost(b) = b
@@ -265,7 +260,9 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     )
 
     default_fee = (
-        DEFAULT_FEE_PER_TRADE_USDC if token_decimals == 6 else DEFAULT_FEE_PER_TRADE_XDAI
+        DEFAULT_FEE_PER_TRADE_USDC
+        if token_decimals == 6
+        else DEFAULT_FEE_PER_TRADE_XDAI
     )
 
     max_bet_wei: int = kwargs.get("max_bet", default_max_bet)
@@ -291,9 +288,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     # 3. Compute effective wealth
     w = w_total - floor
     if w <= 0:
-        return _no_trade(
-            info, error, f"Bankroll ({w_total}) <= floor ({floor})"
-        )
+        return _no_trade(info, error, f"Bankroll ({w_total}) <= floor ({floor})")
 
     # Per-bet bankroll
     w_bet = min(n_bets * max_bet, w)
@@ -317,10 +312,13 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     for side in sides:
         label = side["label"]
-        p = side["p"]
-        price = side["price"]
+        # Side dicts mix str/int/float values, so mypy infers `object` for
+        # the value type; cast each numeric field at the access site so the
+        # arithmetic below type-checks.
+        p = cast(float, side["p"])
+        price = cast(float, side["price"])
 
-        # Filter: min_oracle_prob
+        # Filter on min_oracle_prob — skip sides whose oracle prob is below the threshold.
         if min_oracle_prob > 0 and p < min_oracle_prob:
             msg = f"{label}: oracle prob {p:.3f} < min_oracle_prob {min_oracle_prob}"
             info.append(msg)
@@ -430,8 +428,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
         if best_spend > 0 and g_improvement > 0:
             if (  # pragma: no branch — first side always sets best_result
-                best_result is None
-                or g_improvement > best_result["g_improvement"]
+                best_result is None or g_improvement > best_result["g_improvement"]
             ):
                 best_result = {
                     "spend": best_spend,
@@ -455,9 +452,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     bet_amount_wei = int(best_result["spend"] * scale)
     expected_profit = (
-        best_result["p"] * best_result["shares"]
-        - best_result["spend"]
-        - fee_per_trade
+        best_result["p"] * best_result["shares"] - best_result["spend"] - fee_per_trade
     )
     expected_profit_wei = int(expected_profit * scale)
 

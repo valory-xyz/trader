@@ -27,14 +27,13 @@ from unittest.mock import MagicMock, patch
 from hexbytes import HexBytes
 
 from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
     TOPIC_BYTEORDER,
     TOPIC_BYTES,
-    ConditionalTokensContract,
     get_logs,
     pad_int_for_topic,
     update_from_event,
 )
-
 
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 CONDITION_ID = HexBytes(b"\xaa" * 32)
@@ -132,9 +131,7 @@ class TestGetLogs:
             "packages.valory.contracts.conditional_tokens.contract.event_abi_to_log_topic",
             return_value=b"\x01" * 32,
         ):
-            result = get_logs(
-                mock_eth, mock_contract, mock_event_abi, [b"\x02" * 32]
-            )
+            result = get_logs(mock_eth, mock_contract, mock_event_abi, [b"\x02" * 32])
 
         assert result == [mock_log]
 
@@ -202,12 +199,15 @@ class TestConditionalTokensContract:
             }
         }
 
-        with patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_logs",
-            return_value=[MagicMock()],
-        ), patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_event_data",
-            return_value=mock_event,
+        with (
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_logs",
+                return_value=[MagicMock()],
+            ),
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_event_data",
+                return_value=mock_event,
+            ),
         ):
             result = ConditionalTokensContract.check_redeemed(
                 ledger_api=self.mock_ledger_api,
@@ -430,12 +430,15 @@ class TestConditionalTokensContract:
         }
         mock_entry["transactionHash"].to_0x_hex.return_value = "0xabc"
 
-        with patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_logs",
-            return_value=[mock_log],
-        ), patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_event_data",
-            return_value=mock_entry,
+        with (
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_logs",
+                return_value=[mock_log],
+            ),
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_event_data",
+                return_value=mock_entry,
+            ),
         ):
             result = ConditionalTokensContract.get_condition_preparation_events(
                 ledger_api=self.mock_ledger_api,
@@ -550,15 +553,15 @@ class TestABIConsistency:
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
         missing = referenced_functions - abi_functions
-        assert not missing, (
-            f"Functions used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Functions used in contract.py but missing from ABI: {missing}"
 
     def test_events_present_in_abi(self) -> None:
         """All contract events referenced in contract.py must exist in the ABI."""
         _, abi_events = self._get_abi_names()
         _, referenced_events = self._get_contract_references()
         missing = referenced_events - abi_events
-        assert not missing, (
-            f"Events used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Events used in contract.py but missing from ABI: {missing}"

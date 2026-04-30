@@ -24,7 +24,6 @@ import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 from web3.exceptions import ContractLogicError, Web3RPCError
 
 from packages.valory.contracts.realitio.contract import (

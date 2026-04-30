@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
-- valory/market_manager_abci:0.1.0:bafybeihaei45wygbagxy7v63327kf3kudqkv5ed23gjsflkryoykd2qe24
-- valory/decision_maker_abci:0.1.0:bafybeicmvc2ujibhhc5cyhgcitxqxgk7wo6c4kvrnfwmhogmib43l6xlhu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeieqcvjhkk6u2odqru5gxhtml6rebzlv3q3efuzqfa2wojx4ym3p24
-- valory/staking_abci:0.1.0:bafybeigubkeu2keffkrv7awigljxzdwsxvi3jjo7myo5n2mivxzazxr6wa
-- valory/check_stop_trading_abci:0.1.0:bafybeiak3u63yqmeh765qxrblr3vlqcpostc7j3d44riovqaeefpi45tli
+- valory/market_manager_abci:0.1.0:bafybeibxppvaryuyeiztjsyr3irobjfmytmja2rkmepcs7pb2uq2olpzo4
+- valory/decision_maker_abci:0.1.0:bafybeifhlecvpboebhguni223jrpkt2datsfxvkj5eryrjtc4gkpjhlbdq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggxpcm4we4e7enso4bulw27qwi3msud3z6zaukkmvj32tbb2adoa
+- valory/staking_abci:0.1.0:bafybeiahi2lrcax7n66rh4sxvpcqti4g5ykijhha22zz6ewaxasnxnpccy
+- valory/check_stop_trading_abci:0.1.0:bafybeigae6qsms5rofsp7tqtmc2t36k2hbjowky3d5rdd3kqsq5iasgpfm
 - valory/mech_interact_abci:0.1.0:bafybeidq4vfhz5hvixmzor4epnnh2xzhhzedcxhxfoa6nqgqjp3yqhktdu
-- valory/chatui_abci:0.1.0:bafybeigfk2yjtjrvhuwxaftrdfvaguwszczmp674vgo3ncehaa5dyslcwq
-- valory/agent_performance_summary_abci:0.1.0:bafybeicr4ohpd7h7hxwkq3ybc24kkiqn6cb33uakumoastimxydmol4zc4
+- valory/chatui_abci:0.1.0:bafybeihvjy4nld2sa2zp74jhlgis5qhryb3osleeseanxiftenoodqmjp4
+- valory/agent_performance_summary_abci:0.1.0:bafybeigi4nulj26dnnxrozczk3zcwqoukvsulv7wc7oqpm47kcn6j4hb7e
 - valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
 behaviours:
   main:

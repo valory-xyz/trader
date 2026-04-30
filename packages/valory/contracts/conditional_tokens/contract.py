@@ -41,7 +41,6 @@ from web3.types import (
     _Hash32,
 )
 
-
 FIVE_MINUTES = 300.0
 DEFAULT_OUTCOME_SLOT = 2
 TOPIC_BYTES = 32
@@ -477,14 +476,11 @@ class ConditionalTokensContract(Contract):
     ) -> JSONLike:
         """Get the balance of a position for a given owner.
 
-        Args:
-            ledger_api: The ledger API instance.
-            contract_address: The contract address.
-            owner: The address of the token holder.
-            position_id: The ID of the position/token.
-
-        Returns:
-            A dictionary containing the balance.
+        :param ledger_api: the ledger API instance
+        :param contract_address: the contract address
+        :param owner: address of the token holder
+        :param position_id: ID of the position/token
+        :return: dict containing the balance
         """
         instance = cls.get_instance(ledger_api, contract_address)
         balance = instance.functions.balanceOf(

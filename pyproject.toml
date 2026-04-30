@@ -56,7 +56,7 @@ Repository = "https://github.com/valory-xyz/trader"
 
 [dependency-groups]
 dev = [
-    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e",
+    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7",
 ]
 
 [tool.uv]
@@ -67,23 +67,25 @@ prerelease = "allow"
 py-builder-signing-sdk = { git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git", rev = "487579780479676d20867ead63db968bf460ea38" }
 
 [tool.tomte]
-packages_paths = "packages/valory"
-service_specific_packages = [
-    "packages/valory/skills/staking_abci",
-    "packages/valory/skills/market_manager_abci",
-    "packages/valory/skills/decision_maker_abci",
-    "packages/valory/skills/trader_abci",
-    "packages/valory/skills/tx_settlement_multiplexer_abci",
-    "packages/valory/skills/chatui_abci",
-    "packages/valory/skills/check_stop_trading_abci",
-    "packages/valory/skills/agent_performance_summary_abci",
-    "packages/valory/connections/polymarket_client",
+check_dependencies_extra_excludes = [
+    "eth-account",
+    "typing-extensions",
+    "py-order-utils",
+    "py_builder_signing_sdk",
+    "py-ecc",
+    "werkzeug",
+    "attrs",
+    "python-dateutil",
+    "urllib3",
 ]
-check_handlers_ignores = "-i abstract_abci -i contract_subscription -i funds_manager"
-check_dependencies_extra_excludes = "--exclude eth-account --exclude typing-extensions --exclude py-order-utils --exclude py_builder_signing_sdk --exclude py-ecc --exclude werkzeug --exclude attrs --exclude python-dateutil --exclude urllib3"
-upstream_pins = "--upstream valory-xyz/open-autonomy@0.21.19 --upstream valory-xyz/open-aea@2.2.1 --upstream valory-xyz/mech-interact@0.28.0 --upstream valory-xyz/genai@6.1.0 --upstream valory-xyz/kv-store@0.4.0 --upstream valory-xyz/funds-manager@2.3.0"
-local_extensions = "tox.ini"
-tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e"
+upstream_pins = [
+    "valory-xyz/mech-interact@0.28.0",
+    "valory-xyz/genai@6.1.0",
+    "valory-xyz/kv-store@0.4.0",
+    "valory-xyz/funds-manager@2.3.0",
+]
+gitleaks_extra_paths = ["ui-build/.*"]
+tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@960e201727c0f269562b9b7901f18fa2f182c2a7"
 
 [tool.uv.build-backend]
 module-name = ["packages"]

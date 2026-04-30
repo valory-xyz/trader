@@ -177,6 +177,15 @@ class RealitioContract(Contract):
         (default ``DEFAULT_GETLOGS_CHUNK_SIZE``) to stay within RPC
         ``eth_getLogs`` limits. Pass ``chunk_size=None`` or ``<=0`` to
         disable chunking. Returns ``{"error": ...}`` on RPC failure.
+
+        :param ledger_api: the ledger API object
+        :param contract_address: the contract address
+        :param from_block: starting block to scan from
+        :param to_block: ending block to scan to
+        :param question_id: 32-byte realitio question id
+        :param timeout: per-window RPC timeout
+        :param chunk_size: blocks per ``eth_getLogs`` window; None/<=0 disables chunking
+        :return: claim params dict, or ``{"error": ...}`` on failure
         """
         eth = ledger_api.api.eth
         contract_instance = cls.get_instance(ledger_api, contract_address)

@@ -65,6 +65,8 @@ def _make_connection() -> _TestableConnection:
     We bypass __init__ (which is marked pragma: no cover) and directly set instance
     attributes needed for testing. Shadowing the read-only AEA 'configuration'
     property at class level allows direct assignment on the instance.
+
+    :return: a fully-stubbed connection instance ready for unit tests
     """
     conn = object.__new__(_TestableConnection)
     conn.logger = MagicMock()

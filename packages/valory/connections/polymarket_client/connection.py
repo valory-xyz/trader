@@ -151,6 +151,9 @@ def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
     carries `side` and `signatureType` as IntEnums, which json.dumps refuses.
     We convert enums to their int values here and include the ``clob_version``
     marker so the cache-invalidation check in W5 can distinguish v1 entries.
+
+    :param signed: a v2 signed order from the polymarket SDK
+    :return: a JSON-serializable dict representing the order
     """
     data = dataclasses.asdict(signed)
     for key, value in list(data.items()):
@@ -166,6 +169,9 @@ def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
     The ``clob_version`` marker, if present, is ignored here; cache-invalidation
     logic is expected to reject entries without the v2 marker before calling
     this.
+
+    :param payload: previously-serialized v2 order dict
+    :return: a SignedOrderV2 with enum fields rehydrated
     """
     payload = {k: v for k, v in payload.items() if k != "clob_version"}
     if "side" in payload and not isinstance(payload["side"], Side):
