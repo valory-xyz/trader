@@ -3393,7 +3393,7 @@ wheels = [
 [[package]]
 name = "tomte"
 version = "0.7.0"
-source = { git = "https://github.com/valory-xyz/tomte.git?rev=960e201727c0f269562b9b7901f18fa2f182c2a7#960e201727c0f269562b9b7901f18fa2f182c2a7" }
+source = { git = "https://github.com/valory-xyz/tomte.git?rev=102f5e99f3a688725d0497e0bd520bab959fd28c#102f5e99f3a688725d0497e0bd520bab959fd28c" }
 
 [package.optional-dependencies]
 cli = [
@@ -3545,7 +3545,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "tomte", extras = ["cli", "tests"], git = "https://github.com/valory-xyz/tomte.git?rev=960e201727c0f269562b9b7901f18fa2f182c2a7" }]
+dev = [{ name = "tomte", extras = ["cli", "tests"], git = "https://github.com/valory-xyz/tomte.git?rev=102f5e99f3a688725d0497e0bd520bab959fd28c" }]
 
 [[package]]
 name = "types-requests"
