@@ -287,10 +287,3 @@ a993f12c7af0c834ac57f071ca63dfbb8d7686bd:packages/valory/skills/trader_abci/pred
 9a5b6a2cadb3b17989d4d724edc76d29081fe418:packages/valory/skills/trader_abci/predict-ui-build/assets/index-QBJ_BSQP.js:generic-api-key:595
 9a5b6a2cadb3b17989d4d724edc76d29081fe418:packages/valory/skills/trader_abci/predict-ui-build/assets/index-QBJ_BSQP.js:generic-api-key:595
 3e5ef6aa1b0744197003d57591c7f2fde0990428:packages/valory/skills/agent_performance_summary_abci/tests/graph_tooling/test_requests.py:generic-api-key:151
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:RSA-PK:51
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:SSH-DSA-PK:76
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:OPENSSH-PK:56
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:PKCS8-PK:46
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:SSH-EC-PK:81
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:PGP-PK:61
-e6d2bfd3d44c4434ee101a707ed664cd0f2123a7:.gitleaks.toml:discord-client-secret:13
