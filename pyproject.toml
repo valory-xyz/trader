@@ -56,7 +56,7 @@ Repository = "https://github.com/valory-xyz/trader"
 
 [dependency-groups]
 dev = [
-    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@102f5e99f3a688725d0497e0bd520bab959fd28c",
+    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@92cb14f4696bf3eba3ceec36e1a915961d5c7992",
 ]
 
 [tool.uv]
@@ -85,19 +85,7 @@ upstream_pins = [
     "valory-xyz/funds-manager@2.3.0",
 ]
 gitleaks_extra_paths = ["ui-build/.*"]
-tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@102f5e99f3a688725d0497e0bd520bab959fd28c"
-
-[tool.pytest.ini_options]
-log_cli = true
-log_cli_level = "DEBUG"
-log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-asyncio_mode = "strict"
-markers = [
-    "integration: marks integration tests which require other network services",
-    "e2e: marks end-to-end agent tests",
-]
-filterwarnings = ["ignore::DeprecationWarning:aea.*:"]
+tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@92cb14f4696bf3eba3ceec36e1a915961d5c7992"
 
 [tool.uv.build-backend]
 module-name = ["packages"]
