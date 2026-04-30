@@ -3380,7 +3380,7 @@ wheels = [
 [[package]]
 name = "tomte"
 version = "0.7.0"
-source = { git = "https://github.com/valory-xyz/tomte.git?rev=b768aa2c2481839ead85d836b9fdc9e462c1d459#b768aa2c2481839ead85d836b9fdc9e462c1d459" }
+source = { git = "https://github.com/valory-xyz/tomte.git?rev=e3dcda641f4add9fe36bc8f5127b7a8863d7711e#e3dcda641f4add9fe36bc8f5127b7a8863d7711e" }
 
 [package.optional-dependencies]
 cli = [
@@ -3491,22 +3491,22 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", specifier = ">=3.8.5,<4.0.0" },
-    { name = "asn1crypto", specifier = ">=1.4.0,<1.5.0" },
-    { name = "certifi", specifier = ">=2026.2.25,<2027" },
-    { name = "ecdsa", specifier = ">=0.19.2,<0.20" },
+    { name = "aiohttp", specifier = "==3.13.4" },
+    { name = "asn1crypto", specifier = "==1.4.0" },
+    { name = "certifi", specifier = "==2026.2.25" },
+    { name = "ecdsa", specifier = "==0.19.2" },
     { name = "eth-abi", specifier = "==5.2.0" },
-    { name = "eth-typing", specifier = ">=6,<7" },
+    { name = "eth-typing", specifier = "==6.0.0" },
     { name = "eth-utils", specifier = "==5.3.0" },
-    { name = "filelock", specifier = ">=3.20.1,<4" },
+    { name = "filelock", specifier = "==3.25.2" },
     { name = "google-generativeai", specifier = "==0.8.2" },
     { name = "grpcio", specifier = "==1.78.0" },
     { name = "hexbytes", specifier = "==1.3.0" },
-    { name = "httpx", specifier = ">=0.23.0,<1" },
+    { name = "httpx", specifier = "==0.28.1" },
     { name = "hypothesis", specifier = "==6.21.6" },
-    { name = "jsonschema", specifier = ">=4.23.0,<5.0.0" },
+    { name = "jsonschema", specifier = "==4.23.0" },
     { name = "multiaddr", specifier = "==0.0.9" },
-    { name = "multidict", specifier = ">=6.7.1,<7" },
+    { name = "multidict", specifier = "==6.7.1" },
     { name = "open-aea-cli-ipfs", specifier = "==2.2.1" },
     { name = "open-aea-helpers", specifier = "==0.21.19" },
     { name = "open-aea-ledger-cosmos", specifier = "==2.2.1" },
@@ -3514,25 +3514,25 @@ requires-dist = [
     { name = "open-aea-test-autonomy", specifier = "==0.21.19" },
     { name = "open-autonomy", extras = ["cli"], specifier = "==0.21.19" },
     { name = "openapi-core", specifier = "==0.22.0" },
-    { name = "openapi-spec-validator", specifier = ">=0.7.0,<0.8.0" },
-    { name = "poly-eip712-structs", specifier = ">=0.0.1,<0.1" },
-    { name = "protobuf", specifier = ">=5,<6" },
+    { name = "openapi-spec-validator", specifier = "==0.7.2" },
+    { name = "poly-eip712-structs", specifier = "==0.0.1" },
+    { name = "protobuf", specifier = "==5.29.6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
     { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
     { name = "py-clob-client-v2", specifier = "==1.0.0" },
-    { name = "pydantic", specifier = ">=2.11.9,<3" },
+    { name = "pydantic", specifier = "==2.12.5" },
     { name = "pyinstaller", specifier = "==6.19.0" },
     { name = "pytest", specifier = "==8.4.2" },
     { name = "pytest-asyncio", specifier = "==1.3.0" },
-    { name = "requests", specifier = ">=2.28.1,<2.33.0" },
-    { name = "setuptools", specifier = "<=81.0.0" },
-    { name = "typing-extensions", specifier = ">=3.10.0.2,<=4.15.0" },
-    { name = "w3multicall", specifier = ">=0.3.1,<0.4" },
-    { name = "web3", specifier = ">=7.0.0,<8" },
+    { name = "requests", specifier = "==2.32.5" },
+    { name = "setuptools", specifier = "==81.0.0" },
+    { name = "typing-extensions", specifier = "==4.15.0" },
+    { name = "w3multicall", specifier = "==0.3.1" },
+    { name = "web3", specifier = "==7.14.1" },
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "tomte", extras = ["cli", "tests"], git = "https://github.com/valory-xyz/tomte.git?rev=b768aa2c2481839ead85d836b9fdc9e462c1d459" }]
+dev = [{ name = "tomte", extras = ["cli", "tests"], git = "https://github.com/valory-xyz/tomte.git?rev=e3dcda641f4add9fe36bc8f5127b7a8863d7711e" }]
 
 [[package]]
 name = "types-requests"

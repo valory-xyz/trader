@@ -29,24 +29,24 @@ dependencies = [
     "py_clob_client_v2==1.0.0",
     "py-builder-relayer-client==0.0.1",
     "multiaddr==0.0.9",
-    "requests<2.33.0,>=2.28.1",
-    "aiohttp<4.0.0,>=3.8.5",
-    "asn1crypto<1.5.0,>=1.4.0",
-    "web3<8,>=7.0.0",
-    "protobuf<6,>=5",
-    "jsonschema<5.0.0,>=4.23.0",
-    "openapi-spec-validator<0.8.0,>=0.7.0",
-    "typing_extensions<=4.15.0,>=3.10.0.2",
-    "ecdsa<0.20,>=0.19.2",
-    "pydantic<3,>=2.11.9",
-    "httpx<1,>=0.23.0",
-    "certifi<2027,>=2026.2.25",
-    "multidict<7,>=6.7.1",
-    "eth_typing<7,>=6",
-    "w3multicall<0.4,>=0.3.1",
-    "filelock<4,>=3.20.1",
-    "poly_eip712_structs<0.1,>=0.0.1",
-    "setuptools<=81.0.0",
+    "requests==2.32.5",
+    "aiohttp==3.13.4",
+    "asn1crypto==1.4.0",
+    "web3==7.14.1",
+    "protobuf==5.29.6",
+    "jsonschema==4.23.0",
+    "openapi-spec-validator==0.7.2",
+    "typing_extensions==4.15.0",
+    "ecdsa==0.19.2",
+    "pydantic==2.12.5",
+    "httpx==0.28.1",
+    "certifi==2026.2.25",
+    "multidict==6.7.1",
+    "eth_typing==6.0.0",
+    "w3multicall==0.3.1",
+    "filelock==3.25.2",
+    "poly_eip712_structs==0.0.1",
+    "setuptools==81.0.0",
     # Pinned via git rev in [tool.uv.sources].
     "py-builder-signing-sdk",
 ]
@@ -56,7 +56,7 @@ Repository = "https://github.com/valory-xyz/trader"
 
 [dependency-groups]
 dev = [
-    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@b768aa2c2481839ead85d836b9fdc9e462c1d459",
+    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e",
 ]
 
 [tool.uv]
@@ -68,26 +68,6 @@ py-builder-signing-sdk = { git = "https://github.com/LOCKhart07/py-builder-signi
 
 [tool.tomte]
 packages_paths = "packages/valory"
-pytest_targets = [
-    "packages/valory/skills/decision_maker_abci/tests",
-    "packages/valory/skills/check_stop_trading_abci/tests",
-    "packages/valory/skills/market_manager_abci/tests",
-    "packages/valory/skills/staking_abci/tests",
-    "packages/valory/skills/trader_abci/tests",
-    "packages/valory/skills/tx_settlement_multiplexer_abci/tests",
-    "packages/valory/skills/agent_performance_summary_abci/tests",
-    "packages/valory/skills/chatui_abci/tests",
-    "packages/valory/connections/polymarket_client/tests",
-    "packages/valory/customs/kelly_criterion/test_kelly_criterion.py",
-    "packages/valory/customs/fixed_bet/test_fixed_bet.py",
-    "packages/valory/contracts/mech_activity/tests",
-    "packages/valory/contracts/relayer/tests",
-    "packages/valory/contracts/realitio_proxy/tests",
-    "packages/valory/contracts/realitio/tests",
-    "packages/valory/contracts/conditional_tokens/tests",
-    "packages/valory/contracts/market_maker/tests",
-    "packages/valory/contracts/service_staking_token/tests",
-]
 service_specific_packages = [
     "packages/valory/skills/staking_abci",
     "packages/valory/skills/market_manager_abci",
@@ -99,15 +79,11 @@ service_specific_packages = [
     "packages/valory/skills/agent_performance_summary_abci",
     "packages/valory/connections/polymarket_client",
 ]
-service_public_id = "valory/trader"
-known_first_party = "autonomy"
-open_autonomy_version = "0.21.19"
-open_aea_version = "2.2.1"
 check_handlers_ignores = "-i abstract_abci -i contract_subscription -i funds_manager"
 check_dependencies_extra_excludes = "--exclude eth-account --exclude typing-extensions --exclude py-order-utils --exclude py_builder_signing_sdk --exclude py-ecc --exclude werkzeug --exclude attrs --exclude python-dateutil --exclude urllib3"
 upstream_pins = "--upstream valory-xyz/open-autonomy@0.21.19 --upstream valory-xyz/open-aea@2.2.1 --upstream valory-xyz/mech-interact@0.28.0 --upstream valory-xyz/genai@6.1.0 --upstream valory-xyz/kv-store@0.4.0 --upstream valory-xyz/funds-manager@2.3.0"
 local_extensions = "tox.ini"
-tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@b768aa2c2481839ead85d836b9fdc9e462c1d459"
+tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@e3dcda641f4add9fe36bc8f5127b7a8863d7711e"
 
 [tool.uv.build-backend]
 module-name = ["packages"]
