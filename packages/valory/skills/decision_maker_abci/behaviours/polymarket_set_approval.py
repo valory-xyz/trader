@@ -159,8 +159,9 @@ class PolymarketSetApprovalBehaviour(DecisionMakerBaseBehaviour):
 
         # Build approval transactions and add to multisend_batches (must match
         # polymarket_client _check_approval: 3 collateral allowances + 5 CTF
-        # setApprovalForAll + 2 collateral allowances for the new collateral
-        # adapters; 10 entries total).
+        # setApprovalForAll; 8 entries total). The collateral adapters
+        # intentionally receive only ERC-1155 operator rights — their redeem
+        # path doesn't pull ERC-20 from the Safe, so no pUSD allowance.
         # 1. Collateral approve for CTF Exchange
         collateral_approve_batch = MultisendBatch(
             to=collateral_address,
