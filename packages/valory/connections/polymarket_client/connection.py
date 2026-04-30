@@ -297,7 +297,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         self.w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={"timeout": 30}))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
-    # TODO:
     @property
     def safe_address(self) -> Address:
         """Return the safe address."""
@@ -570,27 +569,27 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param end_date_max: Maximum end date filter
         :return: Tuple of (markets_list, error_message)
         """
-        offset = 0
+        after_cursor: Optional[str] = None
         all_markets: list = []
 
         while True:
-            params = {
+            params: Dict[str, Any] = {
                 "tag_slug": tag_slug,
                 "end_date_max": end_date_max,
                 "end_date_min": end_date_min,
                 "limit": EVENTS_LIMIT,
-                "offset": offset,
             }
+            if after_cursor:
+                params["after_cursor"] = after_cursor
 
-            events_data, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/events", params=params
+            response, error = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/events/keyset", params=params
             )
 
             if error:
                 return None, error
 
-            if not events_data:
-                break
+            events_data = response.get("events") or []
 
             markets_this_page = 0
             for event in events_data:
@@ -607,10 +606,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 f"→ {markets_this_page} markets (total: {len(all_markets)})"
             )
 
-            if len(events_data) < EVENTS_LIMIT:
+            after_cursor = response.get("next_cursor")
+            if not after_cursor:
                 break
-
-            offset += len(events_data)
 
         return all_markets, None
 
