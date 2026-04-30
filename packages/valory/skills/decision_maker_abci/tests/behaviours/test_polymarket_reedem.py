@@ -935,6 +935,8 @@ class TestPrepareRedeemTx:
             mock_params.return_value = MagicMock(
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -989,6 +991,8 @@ class TestPrepareRedeemTx:
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -1042,6 +1046,8 @@ class TestPrepareRedeemTx:
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -1087,6 +1093,8 @@ class TestPrepareRedeemTx:
             mock_params.return_value = MagicMock(
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_redeem_tx(positions)
@@ -1133,6 +1141,8 @@ class TestPrepareRedeemTx:
             mock_params.return_value = MagicMock(
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_redeem_tx(positions)
@@ -1182,6 +1192,8 @@ class TestPrepareRedeemTx:
                 polymarket_collateral_address="0x1234567890123456789012345678901234567890",
                 polymarket_ctf_address="0x2234567890123456789012345678901234567890",
                 polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -1198,6 +1210,120 @@ class TestPrepareRedeemTx:
 
         # Should still complete, but no batch was added for zero balance
         assert len(behaviour.multisend_batches) == 0
+
+    def test_standard_position_targets_ctf_collateral_adapter(self) -> None:
+        """Standard-market redeem must route through CtfCollateralAdapter, not raw CTF.
+
+        Why: redeeming via the raw CTF returns USDC.e to the Safe, requiring a
+        separate wrap step. Routing through the CtfCollateralAdapter unwraps
+        USDC.e to pUSD inside the same transaction.
+        """
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        positions = [
+            {
+                "conditionId": "0xaabbccdd",
+                "outcomeIndex": 0,
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            }
+        ]
+        ctf_collateral_adapter = "0x6234567890123456789012345678901234567890"
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
+                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_redeem_tx(positions)
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        assert len(behaviour.multisend_batches) == 1
+        assert behaviour.multisend_batches[0].to == ctf_collateral_adapter
+
+    def test_neg_risk_position_targets_neg_risk_ctf_collateral_adapter(self) -> None:
+        """Neg-risk redeem must route through NegRiskCtfCollateralAdapter.
+
+        Why: same reason as standard markets — route through the wrapper that
+        unwraps USDC.e to pUSD on the way back to the Safe.
+        """
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        positions = [
+            {
+                "conditionId": "0xaabbccdd",
+                "outcomeIndex": 0,
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": True,
+                "asset": "12345",
+            }
+        ]
+        neg_risk_ctf_collateral_adapter = "0x7234567890123456789012345678901234567890"
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
+                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_redeem_tx(positions)
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        assert len(behaviour.multisend_batches) == 1
+        assert behaviour.multisend_batches[0].to == neg_risk_ctf_collateral_adapter
 
 
 # ---------------------------------------------------------------------------

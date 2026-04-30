@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
-- valory/market_manager_abci:0.1.0:bafybeibxppvaryuyeiztjsyr3irobjfmytmja2rkmepcs7pb2uq2olpzo4
-- valory/decision_maker_abci:0.1.0:bafybeifhlecvpboebhguni223jrpkt2datsfxvkj5eryrjtc4gkpjhlbdq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggxpcm4we4e7enso4bulw27qwi3msud3z6zaukkmvj32tbb2adoa
+- valory/market_manager_abci:0.1.0:bafybeicbtigvfu2e3u6pza2e3irqqmm6s3c26j7jcqswaziviaeg5su6wi
+- valory/decision_maker_abci:0.1.0:bafybeifvkaheov5qecwyx4gtet53kr2knxgsg3f76dtmcs3lbylwk46ic4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifjj5o2oyjos7mqfdlpvkh2bkkjaplhzxt2aqjnw2v6wiujlnwiv4
 - valory/staking_abci:0.1.0:bafybeiahi2lrcax7n66rh4sxvpcqti4g5ykijhha22zz6ewaxasnxnpccy
 - valory/check_stop_trading_abci:0.1.0:bafybeigae6qsms5rofsp7tqtmc2t36k2hbjowky3d5rdd3kqsq5iasgpfm
 - valory/mech_interact_abci:0.1.0:bafybeidq4vfhz5hvixmzor4epnnh2xzhhzedcxhxfoa6nqgqjp3yqhktdu
-- valory/chatui_abci:0.1.0:bafybeihvjy4nld2sa2zp74jhlgis5qhryb3osleeseanxiftenoodqmjp4
-- valory/agent_performance_summary_abci:0.1.0:bafybeigi4nulj26dnnxrozczk3zcwqoukvsulv7wc7oqpm47kcn6j4hb7e
+- valory/chatui_abci:0.1.0:bafybeicyvv25xq7zutq6incqolxpv4ajd66cmvcailgaetqz2vm7zoz3gi
+- valory/agent_performance_summary_abci:0.1.0:bafybeif5smvfmsn5cguf4jntrfsaagxbxdfro5jhyls6kruqip3ry77ggu
 - valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
 behaviours:
   main:
@@ -330,6 +330,8 @@ models:
       polymarket_ctf_exchange_address: '0xE111180000d2663C0091e4f400237545B87B996B'
       polymarket_neg_risk_ctf_exchange_address: '0xe2222d279d744050d28e00520010520000310F59'
       polymarket_neg_risk_adapter_address: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296'
+      polymarket_ctf_collateral_adapter_address: '0xADa100874d00e3331D00F2007a9c336a65009718'
+      polymarket_neg_risk_ctf_collateral_adapter_address: '0xAdA200001000ef00D07553cEE7006808F895c6F1'
       ignored_mechs: []
       penalize_mech_time_window: 1800
       pol_threshold_for_swap: 2000000000000000000

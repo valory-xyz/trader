@@ -507,6 +507,12 @@ class DecisionMakerParams(
         self.polymarket_neg_risk_adapter_address: str = self._ensure(
             "polymarket_neg_risk_adapter_address", kwargs, str
         )
+        self.polymarket_ctf_collateral_adapter_address: str = self._ensure(
+            "polymarket_ctf_collateral_adapter_address", kwargs, str
+        )
+        self.polymarket_neg_risk_ctf_collateral_adapter_address: str = self._ensure(
+            "polymarket_neg_risk_ctf_collateral_adapter_address", kwargs, str
+        )
         self.pol_threshold_for_swap: int = self._ensure(
             "pol_threshold_for_swap", kwargs, int
         )
