@@ -59,6 +59,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PredictionHistory,
     ProfitDataPoint,
@@ -2984,6 +2985,7 @@ class TestBuildProfitOverTimeData:
             ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
         )
         summary.profit_over_time = existing_profit
         summary.agent_performance = MagicMock()
@@ -3090,6 +3092,44 @@ class TestBuildProfitOverTimeData:
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
 
+    def test_old_schema_version_triggers_backfill(self) -> None:
+        """Routes to backfill when stored schema_version is below current."""
+        b = _make_fetch_behaviour(_settled_mech_requests_count=5)
+        ctx, _, synced_data, state = _mock_context()
+        summary = _default_summary()
+        existing_profit = ProfitOverTimeData(
+            last_updated=1700000000,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                )
+            ],
+            settled_mech_requests_count=5,
+            includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION - 1,
+        )
+        summary.profit_over_time = existing_profit
+        summary.agent_performance = MagicMock()
+        summary.agent_performance.metrics = MagicMock()
+        summary.agent_performance.metrics.settled_mech_request_count = 5
+        state.read_existing_performance_summary.return_value = summary
+        backfill_result = ProfitOverTimeData(
+            last_updated=1700000000, total_days=0, data_points=[]
+        )
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
+            ),
+        ):
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+        assert result is backfill_result
+
     def test_incremental_update_path(self) -> None:
         """Routes to incremental update when all conditions met."""
         b = _make_fetch_behaviour(_settled_mech_requests_count=5)
@@ -3108,6 +3148,7 @@ class TestBuildProfitOverTimeData:
             ],
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
         )
         summary.profit_over_time = existing_profit
         summary.agent_performance = MagicMock()
