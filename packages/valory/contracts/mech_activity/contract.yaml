@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeid4hg5rx75ltdjmekmxdddwqzbvblygmvlhws5samjxfirnkp666i
   build/MechActivity.json: bafybeiagrufcoljrlo2zklc7kxwh7eyrf67usos2bqnf7hss47hgm6low4
-  contract.py: bafybeifjymmgps3riofbpyx63xu4624m2eifwhtn2py3asgx4pinho7xnm
+  contract.py: bafybeidcqkjkb3klhosofsrcm5tarx2oj7cr723hmyvy2zy2lbkn3nqgim
   tests/__init__.py: bafybeigwx4nxux6pd4bi5yhwdpjo3gy3rbljmgj55lih4dhwmwzoqk4lh4
   tests/test_contract.py: bafybeigytxjsvcatrsxjhageibdrudohmztgzjw3u66yyr367xdcuvwqru
 fingerprint_ignore_patterns: []

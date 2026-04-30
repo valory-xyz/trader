@@ -131,7 +131,7 @@ connections:
 - valory/polymarket_client:0.1.0:bafybeiemrk6r4krr7zygrjjxp6ekzyk7j72n3s2k5j7fegh2tyolshagzq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihljnuo6jiyqfvow4vgxy5ih4eha2pjtguh7o6pabe24lbd6mwjaa
-- valory/market_maker:0.1.0:bafybeiev5ibgzfoxznc4pw4e47j2ghbuvc6qjncxhcra7fstz6b5k57wmq
+- valory/market_maker:0.1.0:bafybeig2f56vxxsheie63hfzdx7cxwp5kug3pkyefni64u7nrevuzeovq4
 - valory/erc20:0.1.0:bafybeigjxwhx4li5hmyv3hrtatwq65gl4wihqysaq5pqlpmw5o4lymfv6y
 - valory/multisend:0.1.0:bafybeic4534fd4axozjmykpstgjynxzpkpfvnvyjt7hz32ajfe3fmwhn7m
 - valory/mech:0.1.0:bafybeiedil4txl33ot7lfqf2j3w25lzickfruquh37s2bzbdby4eewysty
@@ -150,7 +150,7 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeicbtigvfu2e3u6pza2e3irqqmm6s3c26j7jcqswaziviaeg5su6wi
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
 - valory/mech_interact_abci:0.1.0:bafybeidq4vfhz5hvixmzor4epnnh2xzhhzedcxhxfoa6nqgqjp3yqhktdu
-- valory/staking_abci:0.1.0:bafybeiahi2lrcax7n66rh4sxvpcqti4g5ykijhha22zz6ewaxasnxnpccy
+- valory/staking_abci:0.1.0:bafybeia3dm5ozpqxfdnx2k32t2kc5rqf232myinbkfwq543hremgn56jjm
 - valory/agent_performance_summary_abci:0.1.0:bafybeif5smvfmsn5cguf4jntrfsaagxbxdfro5jhyls6kruqip3ry77ggu
 - valory/chatui_abci:0.1.0:bafybeicyvv25xq7zutq6incqolxpv4ajd66cmvcailgaetqz2vm7zoz3gi
 behaviours:
