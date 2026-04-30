@@ -149,10 +149,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
 - valory/market_manager_abci:0.1.0:bafybeigmv27zf6hvti5zgnp5yy7dkm4jrlcixpr7m3c2ujjfmqb7jeaeei
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
-- valory/mech_interact_abci:0.1.0:bafybeihazofcrox6qvvxojxm4t7ezic4llxwvleoalfk67vqdevukwy3zi
+- valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
-- valory/agent_performance_summary_abci:0.1.0:bafybeib3dxgak55skiktewuzmh5y5qmf2vkbh3lhebz6ysfm4fhfj5dlgq
-- valory/chatui_abci:0.1.0:bafybeih4mhecrgpnwhhfbs2fvyulgufalhxtglyp7ocbkur2vtwvzuvnqi
+- valory/agent_performance_summary_abci:0.1.0:bafybeid3r2xfckr6flf766a45ktbxmgaf7ccisrwtoplryhsv3v24huuvy
+- valory/chatui_abci:0.1.0:bafybeifdcvjl273ecxvnqoqtxfalejmavnaqav4eao2zikx5px23uudbhm
 behaviours:
   main:
     args: {}
