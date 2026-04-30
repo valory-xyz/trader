@@ -323,7 +323,7 @@ class TestPolymarketSetApprovalBehaviour:
         ctx.logger.error.assert_called()
 
     def test_prepare_approval_tx_success(self) -> None:
-        """_prepare_approval_tx should build 10 batches and return tx_hex on success."""
+        """_prepare_approval_tx should build 8 batches and return tx_hex on success."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
@@ -366,12 +366,13 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # 10 batches: 3 collateral approves for the v1 CLOB Exchange + NegRisk
+        # 8 batches: 3 collateral approves for the v1 CLOB Exchange + NegRisk
         # Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the same,
-        # plus the 4 collateral-adapter additions (2 collateral approves +
-        # 2 CTF setApprovalForAll for CtfCollateralAdapter and
-        # NegRiskCtfCollateralAdapter).
-        assert len(behaviour.multisend_batches) == 10
+        # plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
+        # receive no pUSD allowance — their redeem path doesn't pull
+        # ERC-20 from the Safe.
+        assert len(behaviour.multisend_batches) == 8
 
     def test_prepare_approval_tx_includes_ctf_collateral_adapter_approval(self) -> None:
         """The redeem-critical CTF setApprovalForAll(CtfCollateralAdapter, true) must be in the batch."""
@@ -438,10 +439,16 @@ class TestPolymarketSetApprovalBehaviour:
         ]
         assert len(ctf_approve_neg_risk_adapter_entries) == 1
 
-    def test_prepare_approval_tx_includes_collateral_allowance_for_adapters(
+    def test_prepare_approval_tx_excludes_collateral_allowance_for_adapters(
         self,
     ) -> None:
-        """Both collateral adapters get an unlimited pUSD allowance entry."""
+        """No ERC-20 approve(adapter, *) is included for either collateral adapter.
+
+        The collateral adapters' redeem path doesn't pull ERC-20 from the
+        Safe, so granting them a pUSD allowance is a needless
+        attack-surface expansion. This test guards against the prior
+        behaviour creeping back in.
+        """
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
@@ -494,8 +501,8 @@ class TestPolymarketSetApprovalBehaviour:
                 and adapter[2:].lower() in b.data.hex().lower()
             ]
             assert (
-                len(entries) == 1
-            ), f"missing ERC20 approve(adapter={adapter}) on collateral"
+                len(entries) == 0
+            ), f"unexpected ERC20 approve(adapter={adapter}) on collateral"
 
     def test_prepare_approval_tx_multisend_data_fails(self) -> None:
         """_prepare_approval_tx should return empty string when _build_multisend_data fails."""

@@ -1864,7 +1864,7 @@ class TestSetApproval:
     """Tests for _set_approval."""
 
     def test_success(self) -> None:
-        """Executes 10 approval transactions and returns transaction data."""
+        """Executes 8 approval transactions and returns transaction data."""
         conn = _make_connection()
         tx_data = {"hash": "0xabc"}
         result_mock = MagicMock()
@@ -1875,11 +1875,13 @@ class TestSetApproval:
         assert result == tx_data
         assert error is None
 
-        # 10 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
-        # NegRisk Exchange, NegRiskAdapter) plus 4 new ones for the
-        # CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair.
+        # 8 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
+        # NegRisk Exchange, NegRiskAdapter) plus 2 ERC-1155 setApprovalForAll
+        # for the CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair.
+        # No pUSD allowances are granted to the collateral adapters: their
+        # redeem path doesn't pull ERC-20 from the Safe.
         call_kwargs = conn.relayer_client.execute.call_args[1]
-        assert len(call_kwargs["transactions"]) == 10
+        assert len(call_kwargs["transactions"]) == 8
 
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""
@@ -1900,12 +1902,13 @@ class TestSetApproval:
         assert "Error setting approvals" in error
 
     def test_usdc_approve_transactions_target_usdc_contract(self) -> None:
-        """ERC-20 approve transactions (even indices) all target the collateral contract.
+        """ERC-20 approve transactions all target the collateral contract.
 
-        These are the `approve(spender, MAX_UINT256)` calls — 5 in total, one
-        per spender (CTF Exchange, NegRisk Exchange, NegRiskAdapter,
-        CtfCollateralAdapter, NegRiskCtfCollateralAdapter). Targeting
-        the wrong contract would grant allowances to the wrong token address.
+        These are the `approve(spender, MAX_UINT256)` calls — 3 in total, one
+        per spender (CTF Exchange, NegRisk Exchange, NegRiskAdapter).
+        Targeting the wrong contract would grant allowances to the wrong
+        token address. The collateral adapters intentionally receive no
+        ERC-20 allowance — only ERC-1155 operator rights.
         """
         conn = _make_connection()
         result_mock = MagicMock()
@@ -1915,11 +1918,11 @@ class TestSetApproval:
         conn._set_approval()
 
         txns = conn.relayer_client.execute.call_args[1]["transactions"]
-        for idx in [0, 2, 4, 6, 8]:
+        for idx in [0, 2, 4]:
             assert txns[idx].to == COLLATERAL_ADDRESS, f"txns[{idx}].to should be pUSD"
 
     def test_ctf_approval_transactions_target_ctf_contract(self) -> None:
-        """ERC-1155 setApprovalForAll transactions (odd indices) all target the CTF contract.
+        """ERC-1155 setApprovalForAll transactions all target the CTF contract.
 
         Five `setApprovalForAll(operator, True)` calls — one per operator
         (CTF Exchange, NegRisk Exchange, NegRiskAdapter, CtfCollateralAdapter,
@@ -1934,7 +1937,7 @@ class TestSetApproval:
         conn._set_approval()
 
         txns = conn.relayer_client.execute.call_args[1]["transactions"]
-        for idx in [1, 3, 5, 7, 9]:
+        for idx in [1, 3, 5, 6, 7]:
             assert txns[idx].to == CTF_ADDRESS, f"txns[{idx}].to should be CTF"
 
     def test_includes_collateral_adapter_setapprovalforall(self) -> None:
@@ -2093,12 +2096,12 @@ class TestCheckApproval:
         """Returns partial approval status correctly."""
         conn = _make_connection()
         conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        # 5 USDC allowance checks: CTF Exchange, NegRisk Exchange,
-        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
+        # 3 USDC allowance checks: CTF Exchange, NegRisk Exchange, NegRiskAdapter.
         conn._check_erc20_allowance = MagicMock(
-            side_effect=[MAX_UINT256, 0, MAX_UINT256, MAX_UINT256, MAX_UINT256]
+            side_effect=[MAX_UINT256, 0, MAX_UINT256]
         )
-        # 5 ERC-1155 approval checks: same operator order.
+        # 5 ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
+        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
         conn._check_erc1155_approval = MagicMock(
             side_effect=[True, False, True, True, True]
         )
@@ -2108,35 +2111,8 @@ class TestCheckApproval:
         assert result["all_approvals_set"] is False
         assert result["usdc_allowances"]["ctf_exchange"] == MAX_UINT256
         assert result["usdc_allowances"]["neg_risk_ctf_exchange"] == 0
-        assert result["usdc_allowances"]["ctf_collateral_adapter"] == MAX_UINT256
-        assert (
-            result["usdc_allowances"]["neg_risk_ctf_collateral_adapter"] == MAX_UINT256
-        )
         assert result["ctf_approvals"]["ctf_collateral_adapter"] is True
         assert result["ctf_approvals"]["neg_risk_ctf_collateral_adapter"] is True
-
-    def test_collateral_adapter_pusd_allowance_zero_marks_all_approvals_unset(
-        self,
-    ) -> None:
-        """Flip all_approvals_set False on a zero adapter pUSD allowance.
-
-        Regression guard for the set/check asymmetry: ``_set_approval``
-        issues these allowances, so the verify path must catch silent
-        failures — otherwise the cache file gets stamped ``v3 OK`` and the
-        agent never re-issues.
-        """
-        conn = _make_connection()
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        # 5 USDC allowance checks; entry 4 (CtfCollateralAdapter) is zero.
-        conn._check_erc20_allowance = MagicMock(
-            side_effect=[MAX_UINT256, MAX_UINT256, MAX_UINT256, 0, MAX_UINT256]
-        )
-        conn._check_erc1155_approval = MagicMock(return_value=True)
-
-        result, error = conn._check_approval()
-        assert error is None
-        assert result["all_approvals_set"] is False
-        assert result["usdc_allowances"]["ctf_collateral_adapter"] == 0
 
     def test_exception_returns_error(self) -> None:
         """Returns (None, error) on generic exception."""
@@ -2161,8 +2137,10 @@ class TestCheckApproval:
         assert "ctf_exchange" in result["usdc_allowances"]
         assert "neg_risk_ctf_exchange" in result["usdc_allowances"]
         assert "neg_risk_adapter" in result["usdc_allowances"]
-        assert "ctf_collateral_adapter" in result["usdc_allowances"]
-        assert "neg_risk_ctf_collateral_adapter" in result["usdc_allowances"]
+        # Collateral adapters intentionally absent from usdc_allowances —
+        # they receive only ERC-1155 operator rights.
+        assert "ctf_collateral_adapter" not in result["usdc_allowances"]
+        assert "neg_risk_ctf_collateral_adapter" not in result["usdc_allowances"]
         assert "ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_ctf_exchange" in result["ctf_approvals"]
         assert "neg_risk_adapter" in result["ctf_approvals"]
