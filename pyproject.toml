@@ -56,7 +56,7 @@ Repository = "https://github.com/valory-xyz/trader"
 
 [dependency-groups]
 dev = [
-    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@92cb14f4696bf3eba3ceec36e1a915961d5c7992",
+    "tomte[cli, tests] @ git+https://github.com/valory-xyz/tomte.git@54780e1e34d4a5bd908f4ece1fae86437bded2c1",
 ]
 
 [tool.uv]
@@ -85,7 +85,7 @@ upstream_pins = [
     "valory-xyz/funds-manager@2.3.0",
 ]
 gitleaks_extra_paths = ["ui-build/.*"]
-tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@92cb14f4696bf3eba3ceec36e1a915961d5c7992"
+tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@54780e1e34d4a5bd908f4ece1fae86437bded2c1"
 
 [tool.uv.build-backend]
 module-name = ["packages"]
