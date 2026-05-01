@@ -39,8 +39,11 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 # older file so the agent re-issues approvals after a contract-set change.
 # Bumped to "v3" when the redeem path moved from raw CTF / NegRiskAdapter to
 # CtfCollateralAdapter / NegRiskCtfCollateralAdapter (which require their own
-# setApprovalForAll on the CTF).
-POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v3"
+# setApprovalForAll on the CTF). Bumped to "v4" when both collateral-adapter
+# addresses were swapped (deadline 2026-05-01 15:00 UTC); pre-existing v3
+# stamps must be invalidated so setApprovalForAll runs against the new
+# adapter addresses.
+POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v4"
 
 
 class CheckBenchmarkingModeRound(VotingRound):
