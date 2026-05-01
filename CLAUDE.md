@@ -68,6 +68,8 @@ uv run autonomy fetch --local --service valory/polymarket_trader  # Polystrat
 
 ## Project Structure
 
+After `autonomy packages sync`, the layout looks like:
+
 ```
 packages/valory/
 ├── agents/trader/                      # The single agent definition (used by both services)

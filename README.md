@@ -211,6 +211,8 @@ uv run aea-helpers make-release --version <VERSION> --env <ENV> --description "<
 
 ## Repo layout
 
+After `autonomy packages sync`, the layout looks like:
+
 ```
 packages/valory/
 ├── agents/trader/                       # The single agent definition

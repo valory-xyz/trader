@@ -25,8 +25,8 @@ For a clean workflow, run checks in the following order before making a PR or pu
 - make generators
 - make common-checks-1
 
-**else run** (copyright headers only — `make generators` already includes this step)
-- tomte format-copyright --author valory   # or `tox -e copyright-check` to verify only
+**else run** (copyright headers only — `make generators` already covers this when you've edited `packages/`)
+- tox -e copyright-check
 
 **run this after making a commit**
 - make common-checks-2
