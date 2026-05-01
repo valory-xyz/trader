@@ -4,29 +4,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The **Trader** is an autonomous agent service built on the [Open Autonomy](https://stack.olas.network/) framework. It places bets on prediction markets (Omen, Polymarket) by querying an AI Mech for probability estimates, evaluating profitability, and executing on-chain transactions via a Safe multisig wallet. Runs on Gnosis chain with Tendermint-based consensus for multi-agent operation.
+The **Trader** repo hosts the Olas prediction-market agents. A single agent package (`valory/trader`) is shipped as two services:
+
+| Service | Stack name | Chain | Venue |
+|---|---|---|---|
+| `valory/trader_pearl` | **Omenstrat** | Gnosis | [Omen](https://aiomen.eth.limo/) |
+| `valory/polymarket_trader` | **Polystrat** | Polygon | [Polymarket](https://polymarket.com/) (CLOB v2) |
+
+Both run as **single-agent (sovereign) deployments** distributed via Pearl. The agent queries an AI Mech for probability estimates, evaluates profitability, and executes on-chain via a Safe multisig. Built on [Open Autonomy](https://stack.olas.network/) (ABCI skills, FSMs, content-addressed packages); Tendermint is framework plumbing, not the deployment shape.
+
+When working locally with `make run-agent` / `aea-helpers run-agent`, the agent-level [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) defaults are **Omen-flavored** — service-level `polymarket_trader/service.yaml` overrides only apply under `autonomy deploy`. Local Polystrat dev requires explicit overrides (`IS_RUNNING_ON_POLYMARKET=true`, `MECH_CHAIN_ID=polygon`, `DEFAULT_CHAIN_ID=polygon`, pUSD-scaled `STRATEGIES_KWARGS`, the Polymarket `TOOLS_ACCURACY_HASH`, and the chain-specific market-filter flags). See `README.md` for the full set.
 
 ## Tech Stack
 
-- **Language**: Python 3.10–3.11
-- **Package Manager**: uv
-- **Framework**: Open Autonomy 0.21.8
-- **Key Libraries**: Web3 (>=7), Pydantic 2.11.9, aiohttp, py-clob-client (Polymarket)
-- **Testing**: Pytest 7.4.4, tox, hypothesis
-- **Linting/Formatting**: tomte (wraps black, isort, flake8, mypy, pylint, darglint, bandit)
+- **Framework**: Open Autonomy
+- **Package management**: `uv` (versions pinned in `pyproject.toml` — check there for the current Python range and dependencies; do not duplicate them here)
+- **Task running**: `Makefile` + `tox`
+- **Lint / format**: `tomte` (wraps black, isort, flake8, mypy, pylint, darglint, bandit)
+- **Tests**: `pytest` + `hypothesis`
 
 ## Common Commands
 
 ### Testing
 ```bash
-# Run all skill tests
-tox -e py3.10-linux     # or py3.11-linux, py3.10-darwin, etc.
+# Run all skill tests (pick the env that matches your interpreter; 3.10–3.14 supported)
+uv run tox -e py3.10-linux     # or py3.11/3.12/3.13/3.14-linux, *-darwin, etc.
 
 # Run a single skill's tests
-pytest packages/valory/skills/<skill_name>/tests/ -v
+uv run pytest packages/valory/skills/<skill_name>/tests/ -v
 
 # Run a specific test
-pytest packages/valory/skills/<skill_name>/tests/test_behaviours.py::TestClassName::test_method -v
+uv run pytest packages/valory/skills/<skill_name>/tests/test_behaviours.py::TestClassName::test_method -v
 ```
 
 ### Linting & Formatting
@@ -50,31 +58,38 @@ autonomy analyse fsm-specs --update --app-class <AppClass> --package packages/va
 
 ### Running
 ```bash
-make run-agent           # Run agent with Tendermint node
-./run_agent.sh           # Shell script alternative
-./run_service.sh         # Run as a service
+# Local single-agent dev loop (wraps `uv run aea-helpers run-agent --name valory/trader --connection-key`)
+make run-agent
+
+# Containerized service deployment (pick the flavor)
+uv run autonomy fetch --local --service valory/trader_pearl       # Omenstrat
+uv run autonomy fetch --local --service valory/polymarket_trader  # Polystrat
 ```
 
 ## Project Structure
 
+After `autonomy packages sync`, the layout looks like:
+
 ```
 packages/valory/
-├── agents/              # Agent definitions (trader)
-├── connections/         # Network connections (polymarket_client)
-├── contracts/           # Smart contract interfaces (Realitio, Conditional Tokens, etc.)
-├── customs/             # Trading strategies (kelly_criterion, bet_amount_per_threshold, etc.)
-├── services/            # Service definitions (trader, trader_pearl, polymarket_trader)
-├── skills/              # ABCI skills (main business logic)
-│   ├── trader_abci/                    # Main orchestrator / composed app
-│   ├── decision_maker_abci/            # Bet decision logic
-│   ├── market_manager_abci/            # Market retrieval and management
-│   ├── staking_abci/                   # Staking logic
-│   ├── tx_settlement_multiplexer_abci/ # Transaction routing
-│   ├── check_stop_trading_abci/        # Pause/stop logic
-│   ├── agent_performance_summary_abci/ # Performance tracking
-│   ├── chatui_abci/                    # Web interface
-│   └── mech_interact_abci/            # Mech communication (external dependency)
-└── protocols/           # Message protocols
+├── agents/trader/                      # The single agent definition (used by both services)
+├── connections/                        # polymarket_client (Polystrat CLOB v2), genai, x402, http_*, ipfs, ledger, ...
+├── contracts/                          # Smart contract interfaces (FPMM, Conditional Tokens, Realitio, Safe, ERC-20/1155, ...)
+├── customs/                            # Pluggable bet-sizing strategies: fixed_bet, kelly_criterion
+├── services/
+│   ├── trader_pearl/                   # Omenstrat service (Gnosis / Omen)
+│   └── polymarket_trader/              # Polystrat service (Polygon / Polymarket CLOB v2)
+└── skills/
+    ├── trader_abci/                    # Main orchestrator / composed app
+    ├── decision_maker_abci/            # Bet evaluation + placement (largest skill)
+    ├── market_manager_abci/            # Market discovery (Omen + Polymarket variants)
+    ├── mech_interact_abci/             # Mech communication
+    ├── staking_abci/                   # Staking management
+    ├── tx_settlement_multiplexer_abci/ # Routes settlement transactions
+    ├── check_stop_trading_abci/        # Pause/stop conditions
+    ├── agent_performance_summary_abci/ # Performance + payout tracking
+    ├── chatui_abci/                    # Web UI hooks
+    └── funds_manager/                  # Funds bookkeeping (uses RPC_URLS)
 ```
 
 ## Architecture
@@ -107,7 +122,7 @@ Skills are composed via `chain()` in `trader_abci/composition.py`, which wires F
 
 ### Custom Strategies (pluggable)
 
-Trading strategies in `packages/*/customs/` are pluggable modules that determine bet sizing. Examples: `bet_amount_per_threshold`, `kelly_criterion`, `kelly_criterion_no_conf`.
+Trading strategies in `packages/valory/customs/` are pluggable modules that determine bet sizing. Currently shipped: `kelly_criterion` (default) and `fixed_bet`. The active strategy is picked by the `TRADING_STRATEGY` env var; sizing parameters flow through `STRATEGIES_KWARGS`. Strategies are loaded by IPFS hash via the `FILE_HASH_TO_STRATEGIES` map.
 
 ### Contracts
 
@@ -115,7 +130,7 @@ Interfaces to on-chain contracts (FPMM market maker, conditional tokens, Realiti
 
 ## Coding Conventions
 
-- **Python 3.10+** (compatible with 3.11, not 3.12)
+- **Python**: range pinned in `pyproject.toml` (currently 3.10–3.14)
 - **Black** formatting, 88-char line length
 - **isort** with 3-line output mode and trailing commas
 - **Sphinx-style** docstrings (enforced by darglint)
