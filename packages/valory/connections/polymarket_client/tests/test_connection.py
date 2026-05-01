@@ -1068,7 +1068,7 @@ class TestFetchMarketsByTagSlug:
                 "markets": [{"id": "m3"}],
             },
         ]
-        conn._request_with_retries = MagicMock(return_value=(events, None))
+        conn._request_with_retries = MagicMock(return_value=({"events": events}, None))
 
         result, error = conn._fetch_markets_by_tag_slug(
             "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
@@ -1082,8 +1082,8 @@ class TestFetchMarketsByTagSlug:
         assert result[1]["_poly_tags"] == ["politics", "elections"]
         assert result[2]["_poly_tags"] == ["world"]
 
-    def test_paginates_until_short_page(self) -> None:
-        """Paginates /events until a page smaller than EVENTS_LIMIT is returned."""
+    def test_paginates_until_next_cursor_absent(self) -> None:
+        """Paginates /events/keyset until a response omits next_cursor."""
         from packages.valory.connections.polymarket_client.connection import (
             EVENTS_LIMIT,
         )
@@ -1098,7 +1098,10 @@ class TestFetchMarketsByTagSlug:
         ]
         conn = _make_connection()
         conn._request_with_retries = MagicMock(
-            side_effect=[(page1, None), (page2, None)]
+            side_effect=[
+                ({"events": page1, "next_cursor": "cursor-1"}, None),
+                ({"events": page2}, None),
+            ]
         )
 
         result, error = conn._fetch_markets_by_tag_slug(
@@ -1106,11 +1109,14 @@ class TestFetchMarketsByTagSlug:
         )
         assert error is None
         assert len(result) == EVENTS_LIMIT + 3
+        # Second call must forward the cursor from page 1.
+        second_call_params = conn._request_with_retries.call_args_list[1][1]["params"]
+        assert second_call_params["after_cursor"] == "cursor-1"
 
     def test_empty_response_stops_pagination(self) -> None:
         """Empty events list stops pagination."""
         conn = _make_connection()
-        conn._request_with_retries = MagicMock(return_value=([], None))
+        conn._request_with_retries = MagicMock(return_value=({"events": []}, None))
         result, error = conn._fetch_markets_by_tag_slug(
             "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
         )
@@ -1128,13 +1134,13 @@ class TestFetchMarketsByTagSlug:
         assert error == "boom"
 
     def test_sends_correct_params_to_events_endpoint(self) -> None:
-        """Hits /events with tag_slug, date window, limit, and offset=0."""
+        """Hits /events/keyset with tag_slug, date window, limit, and no cursor on first call."""
         from packages.valory.connections.polymarket_client.connection import (
             EVENTS_LIMIT,
         )
 
         conn = _make_connection()
-        conn._request_with_retries = MagicMock(return_value=([], None))
+        conn._request_with_retries = MagicMock(return_value=({"events": []}, None))
 
         conn._fetch_markets_by_tag_slug(
             "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
@@ -1144,18 +1150,19 @@ class TestFetchMarketsByTagSlug:
         actual_url = call_args[0][0]
         actual_params = call_args[1]["params"]
 
-        assert f"{GAMMA_API_BASE_URL}/events" in actual_url
+        assert actual_url == f"{GAMMA_API_BASE_URL}/events/keyset"
         assert actual_params["tag_slug"] == "politics"
         assert actual_params["end_date_min"] == "2025-01-01T00:00:00Z"
         assert actual_params["end_date_max"] == "2025-01-05T00:00:00Z"
         assert actual_params["limit"] == EVENTS_LIMIT
-        assert actual_params["offset"] == 0
+        assert "offset" not in actual_params
+        assert "after_cursor" not in actual_params
 
     def test_event_with_no_tags_yields_empty_poly_tags(self) -> None:
         """Markets under an event with no tags get _poly_tags=[] (not missing)."""
         conn = _make_connection()
         events = [{"id": "e1", "markets": [{"id": "m1"}]}]
-        conn._request_with_retries = MagicMock(return_value=(events, None))
+        conn._request_with_retries = MagicMock(return_value=({"events": events}, None))
 
         result, error = conn._fetch_markets_by_tag_slug(
             "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
@@ -1170,7 +1177,7 @@ class TestFetchMarketsByTagSlug:
             {"id": "e1", "tags": [{"slug": "x"}]},
             {"id": "e2", "tags": [{"slug": "y"}], "markets": [{"id": "m1"}]},
         ]
-        conn._request_with_retries = MagicMock(return_value=(events, None))
+        conn._request_with_retries = MagicMock(return_value=({"events": events}, None))
 
         result, error = conn._fetch_markets_by_tag_slug(
             "politics", "2025-01-01T00:00:00Z", "2025-01-05T00:00:00Z"
