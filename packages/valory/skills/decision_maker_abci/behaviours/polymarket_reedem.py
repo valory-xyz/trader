@@ -411,7 +411,6 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         # Build redemption transactions and add to multisend_batches
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
-            outcome_index = position.get("outcomeIndex")
             outcome = position.get("outcome")
             size = position.get("size", 0)
             is_neg_risk = position.get("negativeRisk", False)
@@ -421,49 +420,21 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 f"Preparing redeem tx for {market_type} position: {condition_id} - {outcome} (size: {size})"
             )
 
-            # Build the redemption data based on market type
+            # Both adapters expose the same 4-arg redeemPositions(
+            # IERC20, bytes32, bytes32, uint256[]) signature; only the
+            # destination contract differs. The adapter discovers the Safe's
+            # ERC1155 balances itself, so passing indexSets=[1, 2] redeems
+            # both sides — the losing side pays nothing.
+            redeem_data = self._build_redeem_positions_data(
+                collateral_token=self.params.polymarket_collateral_address,
+                condition_id=condition_id,
+                index_sets=[1, 2],
+            )
             if is_neg_risk:
-                # For negative risk markets, query actual token balances from chain
-                token_id = position.get("asset")
-                if not token_id:
-                    self.context.logger.error(
-                        f"Missing asset (token ID) for position {condition_id}"
-                    )
-                    continue
-
-                balance = yield from self._get_token_balance_from_chain(int(token_id))
-
-                if balance is None or balance == 0:
-                    self.context.logger.info(
-                        f"Skipping redemption for {condition_id} due to zero balance"
-                    )
-                    continue
-
-                # For neg risk, we need to query both Yes and No tokens
-                # The outcome_index tells us which one this position is
-                # We need to build amounts array [yes_amount, no_amount]
-                redeem_amounts = [0, 0]
-                redeem_amounts[outcome_index] = int(balance)
-
-                redeem_data = self._build_redeem_neg_risk_data(
-                    collateral_token=self.params.polymarket_collateral_address,
-                    condition_id=condition_id,
-                    redeem_amounts=redeem_amounts,
-                )
                 target_address = (
                     self.params.polymarket_neg_risk_ctf_collateral_adapter_address
                 )
             else:
-                # Route via CtfCollateralAdapter so the USDC.e payout from CTF
-                # is unwrapped to pUSD before reaching the Safe. The adapter
-                # exposes the same redeemPositions selector as the raw CTF, so
-                # the calldata shape is unchanged.
-                index_sets = [outcome_index + 1]
-                redeem_data = self._build_redeem_positions_data(
-                    collateral_token=self.params.polymarket_collateral_address,
-                    condition_id=condition_id,
-                    index_sets=index_sets,
-                )
                 target_address = self.params.polymarket_ctf_collateral_adapter_address
 
             # Add to multisend batch
@@ -516,41 +487,3 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         array_elements = "".join([hex(idx)[2:].zfill(64) for idx in index_sets])
 
         return f"{function_signature}{collateral_padded}{parent_collection}{condition_id_padded}{array_offset}{array_length}{array_elements}"
-
-    def _build_redeem_neg_risk_data(
-        self, collateral_token: str, condition_id: str, redeem_amounts: list
-    ) -> str:
-        """Build redeemPositions function data for negative risk adapter.
-
-        :param collateral_token: The collateral token address (USDC) - unused but kept for API compatibility
-        :param condition_id: The condition ID for the market
-        :param redeem_amounts: Array of [yes_amount, no_amount] to redeem
-        :return: Encoded function call data
-        """
-        # redeemPositions(bytes32,uint256[])
-        # Note: neg risk adapter does NOT take collateral token as parameter
-        function_signature = (
-            "0xdbeccb23"  # keccak256("redeemPositions(bytes32,uint256[])")[:4]
-        )
-
-        # Encode parameters
-        condition_id_clean = condition_id.removeprefix("0x")
-        condition_id_padded = condition_id_clean.zfill(64).lower()
-
-        # redeemAmounts (uint256[])
-        array_offset = (
-            "0000000000000000000000000000000000000000000000000000000000000040"
-        )
-
-        # Array length (always 2 for binary outcomes)
-        array_length = (
-            "0000000000000000000000000000000000000000000000000000000000000002"
-        )
-
-        # Array elements (yes_amount, no_amount)
-        # Convert to int to handle both int and string inputs
-        array_elements = "".join(
-            [hex(int(amt))[2:].zfill(64) for amt in redeem_amounts]
-        )
-
-        return f"{function_signature}{condition_id_padded}{array_offset}{array_length}{array_elements}"
