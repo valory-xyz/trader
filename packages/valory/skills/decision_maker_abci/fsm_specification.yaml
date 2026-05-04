@@ -115,7 +115,6 @@ transition_func:
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, PREPARE_TX): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (DecisionReceiveRound, DONE): BetPlacementRound
