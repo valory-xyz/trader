@@ -75,6 +75,27 @@ handlers:
     class_name: TendermintHandler
 behaviours: {}
 models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
   state:
     args: {}
     class_name: SharedState
