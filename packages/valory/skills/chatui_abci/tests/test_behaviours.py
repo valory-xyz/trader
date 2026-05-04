@@ -81,7 +81,7 @@ class TestAsyncAct:
 
         mock_shared_state = MagicMock(spec=SharedState)
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
-        mock_shared_state._chatui_config = mock_chatui_config  # type: ignore[attr-defined]
+        mock_shared_state.chatui_config = mock_chatui_config
 
         mock_set_done = MagicMock()
 
@@ -112,18 +112,23 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
 
-            mock_shared_state._ensure_chatui_store.assert_called_once()  # type: ignore[attr-defined]
-            mock_context.logger.info.assert_called_once()
+            mock_context.logger.info.assert_called_once_with(
+                f"Loaded chat UI parameters: {mock_chatui_config}"
+            )
             mock_set_done.assert_called_once()
 
     def test_async_act_config_is_none_raises(self) -> None:
-        """async_act raises ValueError when _chatui_config is None."""
+        """async_act propagates ValueError raised by chatui_config."""
         behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
         mock_context = MagicMock()
         mock_context.agent_address = "agent_0"
 
-        mock_shared_state = MagicMock(spec=SharedState)
-        mock_shared_state._chatui_config = None  # type: ignore[attr-defined]
+        class _RaisingSharedState:
+            @property
+            def chatui_config(self) -> ChatuiConfig:
+                raise ValueError("The chat UI config has not been set!")
+
+        mock_shared_state = _RaisingSharedState()
 
         with (
             patch.object(
