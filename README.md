@@ -324,3 +324,5 @@ If you add or remove a dependency:
 - Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Security policy: [`SECURITY.md`](./SECURITY.md).
 - [Open Autonomy framework](https://stack.olas.network/open-autonomy/)
+
+- [EventTrader](https://cymetica.com) — AI prediction market platform on Base L2 with pre-launch TGE token price predictions and 10 autonomous trading agents. [A2A Protocol](https://cymetica.com/.well-known/agent.json) | [Markets](https://cymetica.com/tge-launch)
