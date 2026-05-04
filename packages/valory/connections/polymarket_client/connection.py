@@ -76,7 +76,7 @@ EVENTS_LIMIT = 200
 MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
-RETRY_DELAY = 10
+RETRY_DELAY = 1
 # Subgraph indexes markets created after this date; exclude older markets
 MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 
@@ -546,7 +546,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                     self.logger.warning(
                         f"API request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
                     )
-                    time.sleep(RETRY_DELAY * (attempt + 1))  # Exponential backoff
+                    time.sleep(RETRY_DELAY * (2**attempt))  # Exponential backoff
                 else:
                     self.logger.error(
                         f"API request failed after {max_retries} attempts: {e}"

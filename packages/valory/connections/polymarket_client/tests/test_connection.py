@@ -33,6 +33,7 @@ from packages.valory.connections.polymarket_client.connection import (
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
     PolymarketClientConnection,
+    RETRY_DELAY,
     SrrDialogues,
     _validate_builder_code,
 )
@@ -612,6 +613,41 @@ class TestRequestWithRetries:
 
         call_kwargs = mock_get.call_args[1]
         assert call_kwargs["params"] == params
+
+    def test_backoff_is_exponential_not_linear(self) -> None:
+        """Sleep durations follow exponential backoff (RETRY_DELAY * 2**attempt).
+
+        The previous implementation used a linear `RETRY_DELAY * (attempt + 1)`
+        despite a comment claiming exponential. We probe with max_retries=4 so
+        the third sleep distinguishes exponential (4x) from linear (3x).
+        """
+        conn = _make_connection()
+        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+            mock_get.side_effect = requests.exceptions.RequestException("boom")
+            conn._request_with_retries("https://example.com/api", max_retries=4)
+
+        # 4 attempts → 3 sleeps (no sleep after the final attempt).
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [
+            RETRY_DELAY * 1,
+            RETRY_DELAY * 2,
+            RETRY_DELAY * 4,
+        ]
+
+    def test_backoff_total_budget_is_bounded(self) -> None:
+        """Total blocking sleep across all retries must stay under 10 seconds.
+
+        The previous 10s base produced 30s of blocking sleep on a single-thread
+        connection pool; the fix reduces RETRY_DELAY so the cumulative budget
+        fits well within any realistic round timeout.
+        """
+        conn = _make_connection()
+        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+            mock_get.side_effect = requests.exceptions.RequestException("boom")
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        total = sum(call.args[0] for call in mock_sleep.call_args_list)
+        assert total < 10
 
 
 # ---------------------------------------------------------------------------
