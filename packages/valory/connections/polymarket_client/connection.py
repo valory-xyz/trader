@@ -1014,7 +1014,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         index_sets: list[int],
         collateral_token: str,
         is_neg_risk: bool = False,
-        size: float = 0,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
 
@@ -1022,7 +1021,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :param size: The size of the position to redeem (for neg risk markets)
         :return: Tuple of (transaction_result, error_message)
         """
         try:
@@ -1036,54 +1034,27 @@ class PolymarketClientConnection(BaseSyncConnection):
             condition_id_clean = condition_id.removeprefix("0x")
             condition_id_bytes = bytes.fromhex(condition_id_clean)
 
-            # Build transaction based on market type
+            # Both CtfCollateralAdapter and NegRiskCtfCollateralAdapter expose
+            # the same 4-arg redeemPositions(address,bytes32,bytes32,uint256[])
+            # signature; only the destination contract differs. Under CLOB v2,
+            # neg-risk markets are plain CTF binary conditions and the v1
+            # 2-arg overload (0xdbeccb23) reverts with GS013.
+            selector = bytes.fromhex("01b7037c")
+            encoded_args = encode(
+                ["address", "bytes32", "bytes32", "uint256[]"],
+                [
+                    collateral_token,
+                    PARENT_COLLECTION_ID,
+                    condition_id_bytes,
+                    index_sets,
+                ],
+            )
+            calldata = selector + encoded_args
+
             if is_neg_risk:
-                # For negative risk markets, use neg risk adapter
-                # redeemPositions(bytes32,uint256[])
-                selector = bytes.fromhex(
-                    "dbeccb23"
-                )  # redeemPositions(bytes32,uint256[])
-
-                # For neg risk, index_sets contains bit-shifted outcome_index (1 << outcome_index)
-                # We need to build redeem_amounts array [yes_amount, no_amount]
-                # The size parameter tells us the amount to redeem
-                redeem_amounts = [0, 0]
-                if index_sets:
-                    # Extract outcome_index from bit-shifted value
-                    # index_sets[0] = 1 << outcome_index # noqa: E800
-                    # So: 1 (0b01) -> outcome_index = 0, 2 (0b10) -> outcome_index = 1
-                    index_set = index_sets[0]
-                    outcome_index = 0
-                    while index_set > 1:
-                        index_set >>= 1
-                        outcome_index += 1
-                    redeem_amounts[outcome_index] = int(size)
-
-                encoded_args = encode(
-                    ["bytes32", "uint256[]"],
-                    [condition_id_bytes, redeem_amounts],
-                )
-                calldata = selector + encoded_args
                 target_address = self.neg_risk_ctf_collateral_adapter
                 market_type = "negative risk (via NegRiskCtfCollateralAdapter)"
             else:
-                # Standard markets are redeemed via CtfCollateralAdapter so the
-                # USDC.e payout is unwrapped to pUSD before reaching the Safe.
-                # The adapter exposes the same redeemPositions selector as the
-                # raw CTF, so the calldata shape is unchanged.
-                selector = bytes.fromhex(
-                    "01b7037c"
-                )  # redeemPositions(address,bytes32,bytes32,uint256[])
-                encoded_args = encode(
-                    ["address", "bytes32", "bytes32", "uint256[]"],
-                    [
-                        collateral_token,
-                        PARENT_COLLECTION_ID,
-                        condition_id_bytes,
-                        index_sets,
-                    ],
-                )
-                calldata = selector + encoded_args
                 target_address = self.ctf_collateral_adapter
                 market_type = "standard (via CtfCollateralAdapter)"
 
