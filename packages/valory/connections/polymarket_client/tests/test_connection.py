@@ -1773,9 +1773,10 @@ class TestRedeemPositions:
     def test_neg_risk_calldata_encodes_4arg_payload_correctly(self) -> None:
         """Neg-risk redeem encodes (collateral, parentCollectionId, conditionId, indexSets).
 
-        Why: the agent passes the held outcome's bitmask via index_sets and the
-        adapter discovers the Safe's ERC1155 balance itself. A regression to the
-        old 2-arg shape would shift the offsets and submit malformed calldata.
+        Why: a regression to the old 2-arg shape would shift the offsets and
+        submit malformed calldata. The adapter itself ignores the indexSets
+        argument and reads both balances on-chain, but pinning the encoded
+        shape catches a wire-format regression.
         """
         from eth_abi import decode as abi_decode
 

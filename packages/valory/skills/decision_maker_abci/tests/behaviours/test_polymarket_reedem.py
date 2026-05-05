@@ -663,7 +663,7 @@ class TestPrepareRedeemTx:
 
         assert result == "0xfinalHash"
         assert len(behaviour.multisend_batches) == 1
-        # 4-arg redeemPositions selector + indexSets=[1] (held outcome only).
+        # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
         calldata = behaviour.multisend_batches[0].data.hex()
         assert calldata.startswith("01b7037c")
         index_set_held = (
@@ -673,20 +673,23 @@ class TestPrepareRedeemTx:
             "0000000000000000000000000000000000000000000000000000000000000002"
         )
         assert index_set_held in calldata
-        # Losing side must NOT be redeemed — wastes gas on zero-payout reads.
+        # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
+        # functionally identical on-chain. Pin the encoded shape anyway as a
+        # regression check on what the agent puts on the wire.
         assert index_set_other not in calldata
         # ConditionId and collateral address must appear in the encoded args.
         assert "aabbccdd" in calldata
         assert "1234567890123456789012345678901234567890" in calldata
 
     def test_neg_risk_position_builds_batch(self) -> None:
-        """Neg-risk redeem builds a 4-arg redeemPositions batch for the held side only.
+        """Neg-risk redeem builds a 4-arg redeemPositions batch.
 
         Why: under CLOB v2, the NegRiskCtfCollateralAdapter accepts the standard
         4-arg redeemPositions(IERC20, bytes32, bytes32, uint256[]) overload. The
         v1 2-arg overload reverts with GS013 for v2-resolved markets flagged
-        negativeRisk. The agent passes only the held outcome's bitmask
-        (1 << outcomeIndex) to avoid wasting gas on the zero-payout side.
+        negativeRisk. The adapter ignores the uint256[] argument internally and
+        redeems both sides via balanceOf — passing [1 << outcomeIndex] is a
+        calldata-size choice, not a redemption-scope control.
         """
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
@@ -744,7 +747,7 @@ class TestPrepareRedeemTx:
             behaviour.multisend_batches[0].to
             == "0x7234567890123456789012345678901234567890"
         )
-        # 4-arg redeemPositions selector + indexSets=[1] (held outcome only).
+        # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
         calldata = behaviour.multisend_batches[0].data.hex()
         assert calldata.startswith("01b7037c")
         index_set_held = (
@@ -754,7 +757,9 @@ class TestPrepareRedeemTx:
             "0000000000000000000000000000000000000000000000000000000000000002"
         )
         assert index_set_held in calldata
-        # Losing side must NOT be redeemed — wastes gas on zero-payout reads.
+        # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
+        # functionally identical on-chain. Pin the encoded shape anyway as a
+        # regression check on what the agent puts on the wire.
         assert index_set_other not in calldata
         # ConditionId and collateral address must appear in the encoded args.
         assert "aabbccdd" in calldata

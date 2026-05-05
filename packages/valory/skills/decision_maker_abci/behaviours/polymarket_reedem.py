@@ -136,8 +136,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         :return: Redemption result
         :yield: None
         """
-        # The collateral adapter discovers the Safe's ERC1155 balance itself,
-        # so we only need the held outcome's bitmask (1 << outcomeIndex).
+        # The deployed Polymarket collateral adapters ignore the uint256[]
+        # argument — they read both position balances and call the internal
+        # partition themselves. Passing [1 << outcomeIndex] is a calldata-size
+        # choice that documents agent intent; it does not limit on-chain work.
         index_sets = [1 << outcome_index]
 
         polymarket_redeem_payload = {
@@ -310,11 +312,12 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 f"Preparing redeem tx for {market_type} position: {condition_id} - {outcome} (size: {size})"
             )
 
-            # Both adapters expose the same 4-arg redeemPositions(
-            # IERC20, bytes32, bytes32, uint256[]) signature; only the
-            # destination contract differs. Redeem only the held outcome's
-            # index set (1 << outcomeIndex) — including the losing side
-            # would still pay 0 but burn extra gas on balance/payout reads.
+            # Both adapters expose the same 4-arg redeemPositions(IERC20,
+            # bytes32, bytes32, uint256[]) signature; only the destination
+            # contract differs. The deployed adapters ignore the uint256[]
+            # argument — they redeem both sides via CTFHelpers.partition() /
+            # balanceOf regardless. Passing [1 << outcomeIndex] is a
+            # calldata-size choice; it does not limit on-chain redemption.
             redeem_data = self._build_redeem_positions_data(
                 collateral_token=self.params.polymarket_collateral_address,
                 condition_id=condition_id,
