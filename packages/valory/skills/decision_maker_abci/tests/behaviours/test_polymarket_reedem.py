@@ -22,6 +22,8 @@
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from eth_abi import decode as abi_decode
+
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
@@ -805,20 +807,23 @@ class TestPrepareRedeemTx:
         # encoded calldata, even alongside the v2 selector. Catches a
         # regression that resurrects the broken overload from git history.
         assert "dbeccb23" not in calldata
-        index_set_held = (
-            "0000000000000000000000000000000000000000000000000000000000000001"
+        # ABI-decode the args (skip 4-byte selector) so we assert on typed
+        # values rather than zero-padded substrings, which can match offsets
+        # or lengths in any zero-heavy payload by accident.
+        collateral, parent, condition_id, index_sets = abi_decode(
+            ["address", "bytes32", "bytes32", "uint256[]"],
+            bytes.fromhex(calldata[8:]),
         )
-        index_set_other = (
-            "0000000000000000000000000000000000000000000000000000000000000002"
+        assert collateral.lower() == "0x1234567890123456789012345678901234567890"
+        assert parent == bytes(32)
+        assert (
+            condition_id.hex()
+            == "00000000000000000000000000000000000000000000000000000000aabbccdd"
         )
-        assert index_set_held in calldata
         # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
         # functionally identical on-chain. Pin the encoded shape anyway as a
         # regression check on what the agent puts on the wire.
-        assert index_set_other not in calldata
-        # ConditionId and collateral address must appear in the encoded args.
-        assert "aabbccdd" in calldata
-        assert "1234567890123456789012345678901234567890" in calldata
+        assert list(index_sets) == [1]
 
     def test_neg_risk_position_builds_batch(self) -> None:
         """Neg-risk redeem builds a 4-arg redeemPositions batch.
@@ -893,20 +898,23 @@ class TestPrepareRedeemTx:
         # encoded calldata, even alongside the v2 selector. Catches a
         # regression that resurrects the broken overload from git history.
         assert "dbeccb23" not in calldata
-        index_set_held = (
-            "0000000000000000000000000000000000000000000000000000000000000001"
+        # ABI-decode the args (skip 4-byte selector) so we assert on typed
+        # values rather than zero-padded substrings, which can match offsets
+        # or lengths in any zero-heavy payload by accident.
+        collateral, parent, condition_id, index_sets = abi_decode(
+            ["address", "bytes32", "bytes32", "uint256[]"],
+            bytes.fromhex(calldata[8:]),
         )
-        index_set_other = (
-            "0000000000000000000000000000000000000000000000000000000000000002"
+        assert collateral.lower() == "0x1234567890123456789012345678901234567890"
+        assert parent == bytes(32)
+        assert (
+            condition_id.hex()
+            == "00000000000000000000000000000000000000000000000000000000aabbccdd"
         )
-        assert index_set_held in calldata
         # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
         # functionally identical on-chain. Pin the encoded shape anyway as a
         # regression check on what the agent puts on the wire.
-        assert index_set_other not in calldata
-        # ConditionId and collateral address must appear in the encoded args.
-        assert "aabbccdd" in calldata
-        assert "1234567890123456789012345678901234567890" in calldata
+        assert list(index_sets) == [1]
 
     def test_multisend_data_failure(self) -> None:
         """Should return empty string when _build_multisend_data fails."""
