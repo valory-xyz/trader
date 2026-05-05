@@ -119,7 +119,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - benchmarking enabled: 1.
             - benchmarking disabled: 8.
             - set approval: 12.
-            - prepare tx: 12.
             - no majority: 0.
             - round timeout: 0.
             - none: 32.
@@ -294,7 +293,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # is_running_on_polymarket guard makes it a cheap no-op.
             Event.BENCHMARKING_DISABLED: PolymarketWrapCollateralRound,
             Event.SET_APPROVAL: PolymarketSetApprovalRound,
-            Event.PREPARE_TX: PolymarketSetApprovalRound,
             Event.NO_MAJORITY: CheckBenchmarkingModeRound,
             Event.ROUND_TIMEOUT: CheckBenchmarkingModeRound,
             # added because of `autonomy analyse fsm-specs`

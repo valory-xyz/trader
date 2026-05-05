@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -51,12 +51,8 @@ class ChatuiLoadBehaviour(BaseBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             payload = ChatuiPayload(sender=self.context.agent_address, vote=True)
-            self.shared_state._ensure_chatui_store()
-            if self.shared_state._chatui_config is None:
-                raise ValueError("The chat UI config has not been set!")
-            self.context.logger.info(
-                f"Loaded chat UI parameters: {self.shared_state._chatui_config}"
-            )
+            chatui_config = self.shared_state.chatui_config
+            self.context.logger.info(f"Loaded chat UI parameters: {chatui_config}")
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)
