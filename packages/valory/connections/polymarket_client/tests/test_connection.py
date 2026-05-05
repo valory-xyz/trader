@@ -1581,16 +1581,15 @@ class TestRedeemPositions:
 
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
-            index_sets=[2],  # 2 = 1 << 1 -> outcome_index=1
+            index_sets=[2],
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=100.0,
         )
         assert result == tx_data
         assert error is None
 
-    def test_neg_risk_index_set_1_outcome_0(self) -> None:
-        """index_sets=[1] maps to outcome_index=0 for neg risk."""
+    def test_neg_risk_single_held_index_set(self) -> None:
+        """A single held bitmask in index_sets is encoded straight through."""
         conn = _make_connection()
         result_mock = MagicMock()
         result_mock.get_transaction.return_value = {}
@@ -1598,10 +1597,9 @@ class TestRedeemPositions:
 
         result, error = conn._redeem_positions(
             condition_id="ab" * 32,
-            index_sets=[1],  # 1 = 1 << 0 -> outcome_index=0
+            index_sets=[1],
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=50.0,
         )
         assert error is None
 
@@ -1617,7 +1615,6 @@ class TestRedeemPositions:
             index_sets=[],
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=50.0,
         )
         assert error is None
 
@@ -1673,12 +1670,19 @@ class TestRedeemPositions:
         assert expected == "01b7037c"
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.data[2:10] == expected
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata. Catches a regression that re-introduces the
+        # broken overload alongside the v2 one.
+        assert "dbeccb23" not in tx.data
 
-    def test_neg_risk_calldata_uses_adapter_selector(self) -> None:
-        """Neg-risk market uses 4-byte selector dbeccb23 (redeemPositions(bytes32,uint256[])).
+    def test_neg_risk_calldata_uses_4arg_selector(self) -> None:
+        """Neg-risk market uses the same 4-arg selector 01b7037c as standard markets.
 
-        The neg-risk adapter takes different arguments than the standard CTF contract.
-        Using the wrong selector would silently fail on-chain.
+        Why: under CLOB v2, NegRiskCtfCollateralAdapter accepts the standard
+        redeemPositions(address,bytes32,bytes32,uint256[]) overload. The v1
+        2-arg overload (0xdbeccb23) reverts with GS013 for v2-resolved markets
+        flagged negativeRisk because they're plain CTF binary conditions, not
+        registered with the NegRiskAdapter.
         """
         from eth_hash.auto import keccak
 
@@ -1692,13 +1696,18 @@ class TestRedeemPositions:
             index_sets=[1],
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=10.0,
         )
 
-        expected = keccak(b"redeemPositions(bytes32,uint256[])")[:4].hex()
-        assert expected == "dbeccb23"
+        expected = keccak(b"redeemPositions(address,bytes32,bytes32,uint256[])")[
+            :4
+        ].hex()
+        assert expected == "01b7037c"
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.data[2:10] == expected
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata. Catches a regression that re-introduces the
+        # broken overload alongside the v2 one.
+        assert "dbeccb23" not in tx.data
 
     def test_condition_id_0x_prefix_stripped(self) -> None:
         """A 0x-prefixed and non-prefixed condition_id produce identical calldata.
@@ -1764,18 +1773,18 @@ class TestRedeemPositions:
             index_sets=[1],
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=10.0,
         )
 
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.to == NEG_RISK_CTF_COLLATERAL_ADAPTER
 
-    def test_neg_risk_correct_redeem_amounts_for_outcome_1(self) -> None:
-        """index_sets=[2] (1<<1) maps to outcome_index=1, yielding redeem_amounts=[0, size].
+    def test_neg_risk_calldata_encodes_4arg_payload_correctly(self) -> None:
+        """Neg-risk redeem encodes (collateral, parentCollectionId, conditionId, indexSets).
 
-        The ABI encoding must place the amount at position 1 (the No outcome),
-        not position 0. A bit-shift calculation error would silently redeem the
-        wrong outcome.
+        Why: a regression to the old 2-arg shape would shift the offsets and
+        submit malformed calldata. The adapter itself ignores the indexSets
+        argument and reads both balances on-chain, but pinning the encoded
+        shape catches a wire-format regression.
         """
         from eth_abi import decode as abi_decode
 
@@ -1786,18 +1795,54 @@ class TestRedeemPositions:
 
         conn._redeem_positions(
             condition_id="ab" * 32,
-            index_sets=[2],  # 2 = 1 << 1 → outcome_index = 1
+            index_sets=[2],  # held outcome = 1 -> bitmask 1<<1
             collateral_token=COLLATERAL_ADDRESS,
             is_neg_risk=True,
-            size=50.0,
         )
 
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
-        # Skip "0x" and 4-byte selector, then ABI-decode the remaining args
         calldata_bytes = bytes.fromhex(tx.data[2:])
         args_bytes = calldata_bytes[4:]  # skip 4-byte selector
-        _condition_id, redeem_amounts = abi_decode(["bytes32", "uint256[]"], args_bytes)
-        assert list(redeem_amounts) == [0, 50]
+        collateral, _parent, condition_id, index_sets = abi_decode(
+            ["address", "bytes32", "bytes32", "uint256[]"], args_bytes
+        )
+        assert collateral.lower() == COLLATERAL_ADDRESS.lower()
+        assert condition_id.hex() == "ab" * 32
+        assert list(index_sets) == [2]
+
+    def test_neg_risk_and_standard_produce_identical_calldata(self) -> None:
+        """Both branches submit byte-identical calldata; only tx.to differs.
+
+        Why: after the CLOB v2 fix, neg-risk and standard redeems share the
+        same 4-arg redeemPositions overload. A divergence would mean one
+        branch regressed to a different selector or argument layout.
+        """
+        conn = _make_connection()
+        result_mock = MagicMock()
+        result_mock.get_transaction.return_value = {}
+        conn.relayer_client.execute.return_value = result_mock
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=False,
+        )
+        standard_tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+
+        conn.relayer_client.reset_mock()
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[1],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=True,
+        )
+        neg_risk_tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+
+        assert standard_tx.data == neg_risk_tx.data
+        assert standard_tx.to != neg_risk_tx.to
+        assert standard_tx.to == CTF_COLLATERAL_ADAPTER
+        assert neg_risk_tx.to == NEG_RISK_CTF_COLLATERAL_ADAPTER
 
 
 # ---------------------------------------------------------------------------
