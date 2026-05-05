@@ -894,14 +894,30 @@ class TestPrepareRedeemTx:
 
         assert result == "0xfinalHash"
         assert len(behaviour.multisend_batches) == 1
+        # 4-arg redeemPositions selector + indexSets=[1] (held outcome only).
+        calldata = behaviour.multisend_batches[0].data.hex()
+        assert calldata.startswith("01b7037c")
+        index_set_held = (
+            "0000000000000000000000000000000000000000000000000000000000000001"
+        )
+        index_set_other = (
+            "0000000000000000000000000000000000000000000000000000000000000002"
+        )
+        assert index_set_held in calldata
+        # Losing side must NOT be redeemed — wastes gas on zero-payout reads.
+        assert index_set_other not in calldata
+        # ConditionId and collateral address must appear in the encoded args.
+        assert "aabbccdd" in calldata
+        assert "1234567890123456789012345678901234567890" in calldata
 
     def test_neg_risk_position_builds_batch(self) -> None:
-        """Neg-risk redeem builds a 4-arg redeemPositions batch with indexSets=[1, 2].
+        """Neg-risk redeem builds a 4-arg redeemPositions batch for the held side only.
 
-        Why: under CLOB v2, the NegRiskCtfCollateralAdapter discovers position
-        balances itself via balanceOf and only requires conditionId + indexSets.
-        The agent must not pre-compute redeemAmounts; the v1 2-arg overload
-        reverts with GS013 for v2-resolved markets flagged negativeRisk.
+        Why: under CLOB v2, the NegRiskCtfCollateralAdapter accepts the standard
+        4-arg redeemPositions(IERC20, bytes32, bytes32, uint256[]) overload. The
+        v1 2-arg overload reverts with GS013 for v2-resolved markets flagged
+        negativeRisk. The agent passes only the held outcome's bitmask
+        (1 << outcomeIndex) to avoid wasting gas on the zero-payout side.
         """
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
@@ -954,17 +970,26 @@ class TestPrepareRedeemTx:
 
         assert result == "0xfinalHash"
         assert len(behaviour.multisend_batches) == 1
-        # 4-arg redeemPositions selector + indexSets=[1, 2] (both bitmasks).
+        # Routes to the neg-risk adapter, not the standard one.
+        assert (
+            behaviour.multisend_batches[0].to
+            == "0x7234567890123456789012345678901234567890"
+        )
+        # 4-arg redeemPositions selector + indexSets=[1] (held outcome only).
         calldata = behaviour.multisend_batches[0].data.hex()
         assert calldata.startswith("01b7037c")
-        index_set_yes = (
+        index_set_held = (
             "0000000000000000000000000000000000000000000000000000000000000001"
         )
-        index_set_no = (
+        index_set_other = (
             "0000000000000000000000000000000000000000000000000000000000000002"
         )
-        assert index_set_yes in calldata
-        assert index_set_no in calldata
+        assert index_set_held in calldata
+        # Losing side must NOT be redeemed — wastes gas on zero-payout reads.
+        assert index_set_other not in calldata
+        # ConditionId and collateral address must appear in the encoded args.
+        assert "aabbccdd" in calldata
+        assert "1234567890123456789012345678901234567890" in calldata
 
     def test_multisend_data_failure(self) -> None:
         """Should return empty string when _build_multisend_data fails."""

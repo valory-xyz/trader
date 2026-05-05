@@ -411,6 +411,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         # Build redemption transactions and add to multisend_batches
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
+            outcome_index = position.get("outcomeIndex")
             outcome = position.get("outcome")
             size = position.get("size", 0)
             is_neg_risk = position.get("negativeRisk", False)
@@ -422,13 +423,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
 
             # Both adapters expose the same 4-arg redeemPositions(
             # IERC20, bytes32, bytes32, uint256[]) signature; only the
-            # destination contract differs. The adapter discovers the Safe's
-            # ERC1155 balances itself, so passing indexSets=[1, 2] redeems
-            # both sides — the losing side pays nothing.
+            # destination contract differs. Redeem only the held outcome's
+            # index set (1 << outcomeIndex) — including the losing side
+            # would still pay 0 but burn extra gas on balance/payout reads.
             redeem_data = self._build_redeem_positions_data(
                 collateral_token=self.params.polymarket_collateral_address,
                 condition_id=condition_id,
-                index_sets=[1, 2],
+                index_sets=[1 << outcome_index],
             )
             if is_neg_risk:
                 target_address = (
