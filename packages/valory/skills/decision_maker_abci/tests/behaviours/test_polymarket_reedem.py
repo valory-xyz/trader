@@ -801,6 +801,10 @@ class TestPrepareRedeemTx:
         # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
         calldata = behaviour.multisend_batches[0].data.hex()
         assert calldata.startswith("01b7037c")
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata, even alongside the v2 selector. Catches a
+        # regression that resurrects the broken overload from git history.
+        assert "dbeccb23" not in calldata
         index_set_held = (
             "0000000000000000000000000000000000000000000000000000000000000001"
         )
@@ -885,6 +889,10 @@ class TestPrepareRedeemTx:
         # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
         calldata = behaviour.multisend_batches[0].data.hex()
         assert calldata.startswith("01b7037c")
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata, even alongside the v2 selector. Catches a
+        # regression that resurrects the broken overload from git history.
+        assert "dbeccb23" not in calldata
         index_set_held = (
             "0000000000000000000000000000000000000000000000000000000000000001"
         )

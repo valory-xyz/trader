@@ -1670,6 +1670,10 @@ class TestRedeemPositions:
         assert expected == "01b7037c"
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.data[2:10] == expected
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata. Catches a regression that re-introduces the
+        # broken overload alongside the v2 one.
+        assert "dbeccb23" not in tx.data
 
     def test_neg_risk_calldata_uses_4arg_selector(self) -> None:
         """Neg-risk market uses the same 4-arg selector 01b7037c as standard markets.
@@ -1700,6 +1704,10 @@ class TestRedeemPositions:
         assert expected == "01b7037c"
         tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
         assert tx.data[2:10] == expected
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata. Catches a regression that re-introduces the
+        # broken overload alongside the v2 one.
+        assert "dbeccb23" not in tx.data
 
     def test_condition_id_0x_prefix_stripped(self) -> None:
         """A 0x-prefixed and non-prefixed condition_id produce identical calldata.
