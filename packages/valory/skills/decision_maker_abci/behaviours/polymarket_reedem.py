@@ -266,6 +266,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             size = position.get("size", 0)
             is_neg_risk = position.get("negativeRisk", False)
 
+            if condition_id is None or outcome_index is None:
+                self.context.logger.error(
+                    f"Skipping malformed position (missing conditionId or "
+                    f"outcomeIndex): {position}"
+                )
+                continue
+
             market_type = "negative risk" if is_neg_risk else "standard"
             self.context.logger.info(
                 f"Redeeming {market_type} position: {condition_id} - {outcome} (size: {size})"
@@ -306,6 +313,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             outcome = position.get("outcome")
             size = position.get("size", 0)
             is_neg_risk = position.get("negativeRisk", False)
+
+            if condition_id is None or outcome_index is None:
+                self.context.logger.error(
+                    f"Skipping malformed position (missing conditionId or "
+                    f"outcomeIndex): {position}"
+                )
+                continue
 
             market_type = "negative risk" if is_neg_risk else "standard"
             self.context.logger.info(

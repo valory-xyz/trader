@@ -589,6 +589,72 @@ class TestRedeemViaBuilder:
             {"condition_id": "0xcond1", "outcome_index": 1, "is_neg_risk": True}
         ]
 
+    def test_malformed_position_skipped_others_processed(self) -> None:
+        """Position missing outcomeIndex is skipped; remaining valid positions still routed.
+
+        Why: without a guard, the downstream ``1 << None`` raises TypeError and
+        aborts the loop, dropping all subsequent positions on the floor. A
+        defensive log+continue keeps one bad dict from poisoning the batch.
+        """
+        behaviour = _make_behaviour()
+
+        redeem_calls = []
+
+        def mock_redeem(  # type: ignore[no-untyped-def]
+            condition_id, outcome_index, collateral_token, is_neg_risk=False
+        ):
+            """Mock redeem position."""
+            redeem_calls.append(
+                {
+                    "condition_id": condition_id,
+                    "outcome_index": outcome_index,
+                    "is_neg_risk": is_neg_risk,
+                }
+            )
+            yield
+            return {"success": True}
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+
+        positions = [
+            {
+                "conditionId": "0xmalformed",
+                # outcomeIndex deliberately missing
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": True,
+            },
+            {
+                "conditionId": "0xcond1",
+                "outcomeIndex": 0,
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            },
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+
+            gen = behaviour._redeem_via_builder(
+                positions,
+                current_mech_tools="[]",
+                current_policy=None,
+                current_utilized_tools="{}",
+            )
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
+
+        # Only the valid position was forwarded to _redeem_position.
+        assert redeem_calls == [
+            {"condition_id": "0xcond1", "outcome_index": 0, "is_neg_risk": False}
+        ]
+
 
 # ---------------------------------------------------------------------------
 # Tests for prepare_redeem_tx
@@ -610,6 +676,75 @@ class TestPrepareRedeemTx:
             result = e.value
 
         assert result == ""
+
+    def test_malformed_position_skipped_others_processed(self) -> None:
+        """Position missing outcomeIndex is skipped; remaining valid positions still build batches.
+
+        Why: without a guard, ``1 << None`` raises TypeError mid-loop and aborts
+        the entire multisend, killing all queued redemptions. The Polymarket API
+        is contract-bound to provide outcomeIndex, but a defensive log+continue
+        keeps one bad dict from poisoning the whole batch.
+        """
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock build multisend data."""
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock build multisend safe tx hash."""
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        positions = [
+            {
+                "conditionId": "0xmalformed",
+                # outcomeIndex deliberately missing
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            },
+            {
+                "conditionId": "0xaabbccdd",
+                "outcomeIndex": 0,
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            },
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
+                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_redeem_tx(positions)
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        # Only the valid position produced a batch.
+        assert len(behaviour.multisend_batches) == 1
+        # The encoded calldata is for the valid conditionId, not the malformed.
+        calldata = behaviour.multisend_batches[0].data.hex()
+        assert "aabbccdd" in calldata
+        assert "malformed" not in calldata
 
     def test_standard_position_builds_batch(self) -> None:
         """Should build multisend batch for standard positions."""
