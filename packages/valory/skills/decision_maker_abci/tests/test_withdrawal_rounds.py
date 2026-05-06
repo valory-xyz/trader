@@ -603,12 +603,13 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert fill["fill_price"] == pytest.approx(0.45)
         assert store["withdrawal_errors"] == []
 
-    def test_signed_order_cache_invalidated_after_partial_fill(
-        self, tmp_path: Path
-    ) -> None:
-        """Any non-zero filled_shares drops the cached signed order on the next attempt.
+    def test_no_cached_signed_order_is_ever_forwarded(self, tmp_path: Path) -> None:
+        """No SELL_POSITION request carries a ``cached_signed_order_json`` param.
 
-        Rationale: residual changes, so the next sign needs a fresh amount.
+        The behaviour deliberately re-signs every retry: the CLOB rejects
+        resubmissions of an already-acknowledged signed order with
+        ``order ... is invalid. Duplicated.``, so caching is actively
+        harmful for FAK kills.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -619,52 +620,24 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         positions = [_make_position(TOK_A, size=100.0)]
-        # Attempt 1: partial fill 60 → cache cleared
-        # Attempt 2: error (no fill) → cache populated for retry
-        # Attempt 3: complete the residual
-        sell_responses: List[Optional[Dict[str, Any]]] = [
-            {
-                "order_id": "o-1",
-                "status": "matched",
-                "filled_shares": 60.0,
-                "filled_usdc": 24.0,
-                "fill_price": 0.40,
-                "raw": {},
-                "signed_order_json": "s-from-attempt-1",
-            },
-            {
-                "error": "transient backend",
-                "signed_order_json": "s-from-attempt-2",
-            },
-            {
-                "order_id": "o-3",
-                "status": "matched",
-                "filled_shares": 40.0,
-                "filled_usdc": 20.0,
-                "fill_price": 0.50,
-                "raw": {},
-                "signed_order_json": "s-from-attempt-3",
-            },
+        # Three error responses force three sell attempts.
+        err_responses: List[Optional[Dict[str, Any]]] = [
+            {"error": "transient 1"},
+            {"error": "transient 2"},
+            {"error": "transient 3"},
         ]
         router, sent = _make_request_router(
             fetch_responses=[positions],
-            sell_responses=sell_responses,
+            sell_responses=err_responses,
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
         sell_payloads = [p for p in sent if p["request_type"] == "sell_position"]
-        # Attempt 1: no cache provided.
-        assert "cached_signed_order_json" not in sell_payloads[0]["params"]
-        # Attempt 2: cache should be CLEARED (not "s-from-attempt-1") because
-        # of the partial fill in attempt 1.
-        assert "cached_signed_order_json" not in sell_payloads[1]["params"]
-        # Attempt 3: error in attempt 2 carries cache forward, so cache IS sent.
-        assert (
-            sell_payloads[2]["params"].get("cached_signed_order_json")
-            == "s-from-attempt-2"
-        )
+        assert len(sell_payloads) == 3
+        for payload in sell_payloads:
+            assert "cached_signed_order_json" not in payload["params"]
 
     def test_residual_after_max_attempts_records_error(self, tmp_path: Path) -> None:
         """Three failed FAKs (no fill) → one error record with full residual."""

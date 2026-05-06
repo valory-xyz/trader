@@ -529,51 +529,33 @@ class PolymarketClientConnection(BaseSyncConnection):
         self,
         token_id: str,
         amount: float,
-        cached_signed_order_json: str = None,
     ) -> Tuple[Any, Any]:
         """Submit a market SELL against the CLOB.
 
-        Mirrors ``_place_bet`` exactly — same caching pattern, same error
-        translation. The differences are ``Side.SELL`` instead of ``BUY``,
-        ``OrderType.FAK`` instead of ``FOK``, and the meaning of ``amount``:
-        for SELL it is **shares** (CTF token units), not USDC collateral.
+        Sign + post a fresh FAK order on every call. The buy-side
+        ``signed_order_json`` cache pattern was deliberately NOT replicated
+        here: once the CLOB has acknowledged a signed order (whether it
+        matched, killed, or rejected it) the orderID is indexed server-side,
+        and resubmitting yields ``order ... is invalid. Duplicated.`` On a
+        zero-fill kill ("no orders found to match with FAK order") this
+        means cache reuse is guaranteed to fail. Re-signing on every retry
+        is a single ECDSA op — cheap.
+
+        ``amount`` is **shares** (CTF token units) for SELL, not USDC.
 
         ``PartialCreateOrderOptions`` is omitted: the SDK auto-resolves
         ``tick_size`` (via ``__resolve_tick_size``) and ``neg_risk`` (via
         ``get_neg_risk``) from the cached market info. This matches the
         buy path.
         """
-        signed_order_json = None
-
         try:
-            signed = None
-            if cached_signed_order_json:
-                try:
-                    signed_dict = json.loads(cached_signed_order_json)
-                    if (
-                        signed_dict.get("clob_version") == "v2"
-                        and "timestamp" in signed_dict
-                    ):
-                        signed = _deserialize_signed_order_v2(signed_dict)
-                        signed_order_json = cached_signed_order_json
-                    else:
-                        self.logger.warning(
-                            "Dropping stale (non-v2) cached signed order; resigning."
-                        )
-                except (ValueError, TypeError) as e:
-                    self.logger.warning(
-                        f"Cached signed order could not be parsed ({e}); resigning."
-                    )
-
-            if signed is None:
-                mo = MarketOrderArgs(
-                    token_id=token_id,
-                    amount=amount,
-                    side=Side.SELL,
-                    order_type=OrderType.FAK,
-                )
-                signed = self.client.create_market_order(mo)
-                signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
+            mo = MarketOrderArgs(
+                token_id=token_id,
+                amount=amount,
+                side=Side.SELL,
+                order_type=OrderType.FAK,
+            )
+            signed = self.client.create_market_order(mo)
 
             resp: Dict = self.client.post_order(signed, OrderType.FAK)
 
@@ -587,8 +569,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             # actually got filled, and ``takingAmount`` is the USDC we took
             # back. (Verified against a live partial fill on Polygon mainnet
             # where ``balance`` = 11596040, ``sum of matched orders`` =
-            # 11590000 confirmed that ``makingAmount: 11.59`` was shares —
-            # closing Q2 from the impl spec.)
+            # 11590000 confirmed that ``makingAmount: 11.59`` was shares.)
             taking_amount_raw = resp.get("takingAmount") or 0.0
             making_amount_raw = resp.get("makingAmount") or 0.0
             filled_shares = float(making_amount_raw) if making_amount_raw else 0.0
@@ -603,7 +584,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                     "filled_usdc": filled_usdc,
                     "fill_price": fill_price,
                     "raw": resp,
-                    "signed_order_json": signed_order_json,
                 },
                 None,
             )
@@ -615,8 +595,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 else f"Error selling position: {e}"
             )
             self.logger.error(error_msg)
-            response = {"error": error_msg, "signed_order_json": signed_order_json}
-            return response, error_msg
+            return {"error": error_msg}, error_msg
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES

@@ -162,12 +162,16 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         self,
         token_id: str,
         amount: float,
-        cached_signed_order_json: Optional[str],
     ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Send SELL_POSITION; return the normalized ``(response, error)`` tuple."""
+        """Send SELL_POSITION; return the normalized ``(response, error)`` tuple.
+
+        :param token_id: the CTF token id to sell.
+        :param amount: shares to sell on this attempt (may be the full size or
+            a residual after a partial fill).
+        :yield: framework yields between dispatch and response.
+        :return: normalized ``(payload_dict, error_or_none)``.
+        """
         params: Dict[str, Any] = {"token_id": token_id, "amount": amount}
-        if cached_signed_order_json:
-            params["cached_signed_order_json"] = cached_signed_order_json
         payload = {
             "request_type": RequestType.SELL_POSITION.value,
             "params": params,
@@ -234,26 +238,29 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     # ------------------------------------------------------------------ #
 
     def _sell_one_position_with_retry(self, position: Dict[str, Any]) -> Generator:
-        """Retry FAK sells until residual is gone or the schedule is exhausted."""
+        """Retry FAK sells until residual is gone or the schedule is exhausted.
+
+        Each attempt re-signs a fresh order (no signed-order cache); the CLOB
+        rejects resubmissions of an already-acknowledged signed order with
+        ``order ... is invalid. Duplicated.``, so caching across retries is
+        actively harmful for FAK kills.
+
+        :param position: a single Polymarket position record (asset, size, ...).
+        :yield: framework yields between FAK attempts and inter-attempt sleeps.
+        """
         token_id = position["asset"]
         shares = float(position["size"])
         residual = shares
         total_filled = 0.0
         total_usdc = 0.0
-        cached_signed_order_json: Optional[str] = None
         last_error: Optional[str] = None
 
         backoff = self._retry_schedule()
         self.context.logger.info(f"withdrawal: selling {token_id} size={shares}")
 
         for attempt, sleep_s in enumerate(backoff):
-            response, error = yield from self._request_sell(
-                token_id, residual, cached_signed_order_json
-            )
+            response, error = yield from self._request_sell(token_id, residual)
             if error is not None:
-                # Carry the signed order forward so we don't re-sign the same
-                # amount on the next attempt.
-                cached_signed_order_json = (response or {}).get("signed_order_json")
                 last_error = error
             else:
                 resp = response or {}
@@ -262,10 +269,6 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                     total_filled += filled
                     total_usdc += float(resp.get("filled_usdc") or 0.0)
                     residual -= filled
-                    # Any partial fill changes the residual amount, so the
-                    # cached order (signed for the previous residual) is no
-                    # longer reusable.
-                    cached_signed_order_json = None
                 if residual <= DUST_EPSILON:
                     fill_price = total_usdc / total_filled if total_filled > 0 else 0.0
                     self.context.logger.info(

@@ -661,66 +661,27 @@ class TestSellPosition:
         # post_order(signed, order_type) — second positional must be FAK.
         assert post_args[1] == OrderType.FAK
 
-    def test_uses_cached_signed_order_when_v2_marker_present(self) -> None:
-        """A v2-marked cached order is reused; no resign."""
-        from packages.valory.connections.polymarket_client.connection import (
-            _serialize_signed_order_v2,
-        )
+    def test_resigns_on_every_call(self) -> None:
+        """Every ``_sell_position`` call signs a fresh order — no cache.
 
+        The CLOB poisons signed-order ids on the first acknowledgement, so
+        retries with the same signed order get rejected as ``Duplicated``.
+        See the docstring on ``_sell_position`` for the rationale.
+        """
         conn = _make_connection()
-        cached = _serialize_signed_order_v2(self._make_signed_order_v2())
-        cached_json = json.dumps(cached)
-        conn.client.post_order.return_value = {
-            "success": True,
-            "status": "matched",
-            "orderID": "o-4",
-            "takingAmount": "100",
-            "makingAmount": "43",
-        }
-
-        response, error = conn._sell_position(
-            token_id="tok123",
-            amount=100.0,
-            cached_signed_order_json=cached_json,  # nosec B106
-        )
-        conn.client.create_market_order.assert_not_called()
-        assert error is None
-        assert response["signed_order_json"] == cached_json
-
-    def test_drops_v1_cache_and_resigns(self) -> None:
-        """A non-v2 cache entry is dropped and a fresh v2 order is signed."""
-        conn = _make_connection()
-        v1_cached = {
-            "salt": "1",
-            "maker": "0x0",
-            "tokenId": "tok",
-            "makerAmount": "10",
-            "takerAmount": "5",
-            "side": 1,
-            "signatureType": 2,
-            "nonce": "0",
-            "expiration": "0",
-            "taker": "0x0",
-            "feeRateBps": "0",
-            "signature": "0xdeadbeef",
-        }
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
         conn.client.post_order.return_value = {
             "success": True,
             "status": "matched",
-            "orderID": "o-5",
-            "takingAmount": "10",
-            "makingAmount": "5",
+            "orderID": "o-x",
+            "makingAmount": "10",
+            "takingAmount": "5",
         }
 
-        response, error = conn._sell_position(
-            token_id="tok123",
-            amount=10.0,
-            cached_signed_order_json=json.dumps(v1_cached),  # nosec B106
-        )
-        conn.client.create_market_order.assert_called_once()
-        assert error is None
-        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
+        conn._sell_position(token_id="tok123", amount=10.0)
+        conn._sell_position(token_id="tok123", amount=10.0)
+        # Each call hits the signer; no caching short-circuit.
+        assert conn.client.create_market_order.call_count == 2
 
     def test_translates_polyapi_exception(self) -> None:
         """Catch PolyApiException; return the (error_dict, error_msg) tuple shape."""
@@ -733,8 +694,6 @@ class TestSellPosition:
         response, error = conn._sell_position(token_id="tok123", amount=100.0)
         assert error == "insufficient liquidity"
         assert response["error"] == "insufficient liquidity"
-        # signed_order_json key is present so the behaviour can cache+retry.
-        assert "signed_order_json" in response
 
     def test_normalizes_response_fields(self) -> None:
         """Response normalizes makingAmount→filled_shares, takingAmount→filled_usdc.
@@ -766,7 +725,7 @@ class TestSellPosition:
         assert response["filled_usdc"] == 25.8
         assert response["fill_price"] == pytest.approx(0.43)
         assert response["raw"]["transactionsHashes"] == ["0xtx1"]
-        assert "signed_order_json" in response
+        assert "signed_order_json" not in response
 
     def test_normalizes_unfilled_live_response(self) -> None:
         """A 'live' response (empty amounts) yields zero fills and no division error."""
@@ -787,27 +746,6 @@ class TestSellPosition:
         assert response["filled_shares"] == 0.0
         assert response["filled_usdc"] == 0.0
         assert response["fill_price"] == 0.0
-
-    def test_unparseable_cache_resigns(self) -> None:
-        """Garbage cache JSON: warn and fall through to fresh signing."""
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = {
-            "success": True,
-            "status": "matched",
-            "orderID": "o-6",
-            "takingAmount": "10",
-            "makingAmount": "5",
-        }
-
-        response, error = conn._sell_position(
-            token_id="tok123",
-            amount=10.0,
-            cached_signed_order_json="not-json{{",  # nosec B106
-        )
-        conn.client.create_market_order.assert_called_once()
-        assert error is None
-        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
     def test_post_order_none_response(self) -> None:
         """When post_order returns None, _sell_position returns None without crashing."""
