@@ -234,11 +234,15 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             - no majority: 0.
             - skip trading: 2.
             - review bets: 3.
+            - withdraw polymarket: 4.
+            - withdraw omen: 5.
         1. FinishedCheckStopTradingRound
         2. FinishedWithSkipTradingRound
         3. FinishedWithReviewBetsRound
+        4. FinishedWithWithdrawalPolymarketRound
+        5. FinishedWithWithdrawalOmenRound
 
-    Final states: {FinishedCheckStopTradingRound, FinishedWithReviewBetsRound, FinishedWithSkipTradingRound}
+    Final states: {FinishedCheckStopTradingRound, FinishedWithReviewBetsRound, FinishedWithSkipTradingRound, FinishedWithWithdrawalOmenRound, FinishedWithWithdrawalPolymarketRound}
 
     Timeouts:
         round timeout: 30.0

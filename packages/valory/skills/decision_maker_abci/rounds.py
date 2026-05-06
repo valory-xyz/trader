@@ -121,7 +121,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, PostBetUpdateRound, RandomnessRound, RedeemRouterRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, OmenWithdrawRound, PolymarketPostSetApprovalRound, PolymarketWithdrawRound, PostBetUpdateRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
@@ -274,12 +274,24 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 34.
             - round timeout: 34.
             - none: 32.
+        35. PolymarketWithdrawRound
+            - withdrawal done: 37.
+            - withdrawal round timeout: 37.
+            - no majority: 35.
+            - none: 35.
+        36. OmenWithdrawRound
+            - withdrawal done: 37.
+            - withdrawal round timeout: 37.
+            - no majority: 36.
+            - none: 36.
+        37. WithdrawalIdleRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
 
     Timeouts:
         round timeout: 30.0
         redeem round timeout: 3600.0
+        withdrawal round timeout: 1800.0
     """
 
     initial_round_cls: AppState = CheckBenchmarkingModeRound
