@@ -486,6 +486,56 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert fill["fill_price"] == pytest.approx(0.43)
         assert store["withdrawal_errors"] == []
 
+    def test_sub_one_percent_residual_treated_as_dust(self, tmp_path: Path) -> None:
+        """Tiny float residuals from a near-full FAK match → recorded as complete.
+
+        Verified against a live partial fill on Polygon mainnet: a 9.6956
+        position filled at 9.69 (residual 0.0056) made the next FAK attempt
+        round its maker/taker amounts to zero, which the CLOB rejects with
+        ``invalid amounts, maker and taker amount must be higher than 0``.
+        At <0.01 shares of any realistic CTF price the residual is sub-cent
+        of stuck value; treat the position as fully sold and record one fill.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=9.6956)]
+        # First attempt fills 9.69; residual = 0.0056 (well under 1% but
+        # well over the previous 1e-6 dust epsilon).
+        first_attempt: Dict[str, Any] = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 9.69,
+            "filled_usdc": 0.39729,
+            "fill_price": 0.041,
+            "raw": {},
+            "signed_order_json": "s",
+        }
+        router, sent = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[first_attempt],  # NO second attempt should occur
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Only one SELL was issued — the dust residual short-circuited the loop.
+        sell_payloads = [p for p in sent if p["request_type"] == "sell_position"]
+        assert len(sell_payloads) == 1
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_COMPLETE
+        assert len(store["withdrawal_fills"]) == 1
+        assert store["withdrawal_errors"] == []
+        fill = store["withdrawal_fills"][0]
+        assert fill["shares_sold"] == 9.69
+        assert fill["fill_price"] == pytest.approx(0.041)
+
     def test_partial_fills_aggregated_volume_weighted(self, tmp_path: Path) -> None:
         """Three FAK attempts, partial each time, completing the residual.
 

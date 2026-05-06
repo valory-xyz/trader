@@ -39,8 +39,13 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw impor
     PolymarketWithdrawRound,
 )
 
-# Filter out dust positions to avoid wasting an FAK call on near-zero shares.
-DUST_EPSILON = 1e-6
+# Dust threshold for both whole-position filtering and per-position residual
+# completion. 0.01 CTF shares is at most ~1¢ of stuck value at any realistic
+# CTF price (0 < p < 1 USDC/share), and below this the SDK's 6-decimal-fixed
+# maker/taker amount calc can round to 0 — the CLOB rejects such orders with
+# "invalid amounts, maker and taker amount must be higher than 0". Treating
+# such residuals as fully sold avoids a guaranteed-failing retry burn.
+DUST_EPSILON = 1e-2
 TOP_LEVEL_ERROR_TOKEN_ID = ""
 
 
