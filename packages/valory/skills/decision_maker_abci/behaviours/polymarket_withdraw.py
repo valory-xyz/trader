@@ -68,6 +68,13 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     def async_act(self) -> Generator:
         """Run the sell-off."""
         self._set_state(WITHDRAWAL_STATE_SELLING)
+        # Reset per-session records so the GET endpoint and end-of-sweep
+        # state reflect THIS sweep only. Without this, an automatic
+        # re-entry (flag still True after a prior errored sweep) would
+        # carry forward stale errors and force every subsequent sweep to
+        # end ``errored`` regardless of its actual outcome. Mirrors the
+        # POST handler's idle → armed reset.
+        self._reset_session_records()
 
         positions = yield from self._with_top_level_retry(
             "fetch_positions",
@@ -341,6 +348,13 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         store["withdrawal_state"] = state
         self._write_store(store)
         self.context.logger.info(f"withdrawal: state -> {state}")
+
+    def _reset_session_records(self) -> None:
+        """Clear ``withdrawal_fills`` and ``withdrawal_errors`` on disk."""
+        store = self._read_store()
+        store["withdrawal_fills"] = []
+        store["withdrawal_errors"] = []
+        self._write_store(store)
 
     def _record_fill(self, token_id: str, shares: float, fill_price: float) -> None:
         """Append a fill record to ``withdrawal_fills`` on disk."""

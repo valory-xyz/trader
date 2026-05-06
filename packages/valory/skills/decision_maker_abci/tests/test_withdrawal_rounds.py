@@ -366,6 +366,60 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         # No backoffs needed.
         assert captured_sleep == []
 
+    def test_pre_existing_errors_dont_taint_clean_sweep(self, tmp_path: Path) -> None:
+        """Stale errors from a prior sweep must not flip a clean sweep to errored.
+
+        When the agent re-enters the withdraw round automatically (because
+        flag stays True after an ``errored`` sweep), prior fills/errors
+        persist on disk. The behaviour should reset those at session start
+        so the end-of-sweep state reflects only this session's outcome.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        # Seed with pre-existing errors and fills from a "prior" sweep.
+        _seed_store(
+            tmp_path,
+            withdrawal_fills=[
+                {"token_id": "old-x", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}
+            ],
+            withdrawal_errors=[
+                {"token_id": "old-y", "shares_remaining": 2.0, "reason": "old", "ts": 2}
+            ],
+        )
+        behaviour = _make_behaviour(tmp_path)
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        # This sweep: one position, fills cleanly, no errors added.
+        positions = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.4,
+            "raw": {},
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        # Final state reflects THIS sweep — no errors → complete.
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_COMPLETE
+        # Stale fills/errors from the prior sweep are gone.
+        assert all(f["token_id"] != "old-x" for f in store["withdrawal_fills"])
+        assert all(e["token_id"] != "old-y" for e in store["withdrawal_errors"])
+        # This sweep's fill is recorded.
+        assert len(store["withdrawal_fills"]) == 1
+        assert store["withdrawal_fills"][0]["token_id"] == TOK_A
+        assert store["withdrawal_errors"] == []
+
     def test_filters_out_redeemable_and_zero_size(self, tmp_path: Path) -> None:
         """Redeemable positions and dust (<=0) are dropped; only the real ones sell."""
         _seed_store(tmp_path)
