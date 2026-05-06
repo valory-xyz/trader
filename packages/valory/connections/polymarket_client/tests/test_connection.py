@@ -849,6 +849,24 @@ class TestRefreshBalanceAllowance:
         conn._refresh_balance_allowance()
         assert conn.client.update_balance_allowance.call_count == 2
 
+    def test_passes_conditional_asset_type(self) -> None:
+        """The SDK call must include ``asset_type=CONDITIONAL`` for sells.
+
+        Without it the CLOB rejects with ``400 Invalid asset type``. We refresh
+        the CTF (CONDITIONAL) allowance because that's what the sweep moves;
+        COLLATERAL refresh is unused for selling.
+        """
+        from py_clob_client_v2.clob_types import AssetType
+
+        conn = _make_connection()
+        conn.client.update_balance_allowance.return_value = {"updated": True}
+
+        conn._refresh_balance_allowance()
+
+        args, _ = conn.client.update_balance_allowance.call_args
+        params = args[0]
+        assert params.asset_type == AssetType.CONDITIONAL
+
     def test_translates_polyapi_exception(self) -> None:
         """Catch PolyApiException; return ``(None, error_str)``."""
         from py_clob_client_v2.exceptions import PolyApiException

@@ -44,6 +44,7 @@ from py_clob_client_v2 import (
     MarketOrderArgs,
     OrderType,
 )
+from py_clob_client_v2.clob_types import AssetType
 from py_clob_client_v2.exceptions import PolyApiException
 from py_clob_client_v2.order_builder.constants import BUY
 from py_clob_client_v2.order_utils.model.order_data_v2 import Side, SignedOrderV2
@@ -617,15 +618,22 @@ class PolymarketClientConnection(BaseSyncConnection):
             return response, error_msg
 
     def _refresh_balance_allowance(self) -> Tuple[Any, Any]:
-        """Refresh the CLOB-backend balance/allowance state.
+        """Refresh the CLOB-backend balance/allowance state for CTF positions.
 
         The SDK call is idempotent and only talks to the CLOB backend (no
         on-chain transactions). Run once at withdrawal-behaviour entry — the
         buy-side ``setApprovalForAll`` grants vest the on-chain rights, but
         the CLOB-side cache may be stale after a long quiescent period.
+
+        ``asset_type=CONDITIONAL`` because the sweep moves CTF tokens out;
+        COLLATERAL refresh is for buys and unused on the sell path. The CLOB
+        rejects (``400 Invalid asset type``) if the field is omitted, so we
+        cannot fall back to a ``BalanceAllowanceParams()`` no-op.
         """
         try:
-            resp = self.client.update_balance_allowance(BalanceAllowanceParams())
+            resp = self.client.update_balance_allowance(
+                BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
+            )
             return resp, None
         except PolyApiException as e:
             error_msg = f"Error refreshing balance/allowance: {e}"
