@@ -80,9 +80,12 @@ RETRY_DELAY = 10
 # Backoffs for polling get_order after a post_order ``delayed`` response.
 # CLOB defers async matching for FAK orders; the post reply returns before the
 # matching engine resolves. Polling client.get_order(order_id) reads the
-# authoritative on-CLOB state. Total wait ≈ 32s before falling through to the
-# zero-fill path. Empirically, async matches resolve within a few seconds.
-DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0)
+# authoritative on-CLOB state. Total wait ≈ 122s before declaring the order
+# in-flight. Live trace observed a match completing ~43s after post_order, so
+# the cap was bumped from 32s to give ~3× headroom; on genuine exhaustion the
+# connection signals ``in_flight`` and the behaviour defers the position to
+# the next sweep cycle rather than racing the in-flight match.
+DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 60.0)
 # get_order returns ORDER_STATUS_* enum strings (different vocabulary than
 # post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
 # only non-terminal value; everything else means we can stop polling.
@@ -591,6 +594,23 @@ class PolymarketClientConnection(BaseSyncConnection):
                 terminal = self._poll_order_until_terminal(order_id)
                 if terminal is not None:
                     return self._fill_from_terminal_get_order(terminal, order_id), None
+                # Poll exhausted while still LIVE: the order has neither
+                # matched nor canceled within the cap. Surfacing ``delayed``
+                # here would let the behaviour FAK-retry race the in-flight
+                # match. Use a distinct ``in_flight`` status instead so the
+                # behaviour can break out of the per-position loop and let
+                # the next sweep cycle re-fetch positions and resolve.
+                return (
+                    {
+                        "order_id": order_id,
+                        "status": "in_flight",
+                        "filled_shares": 0.0,
+                        "filled_usdc": 0.0,
+                        "fill_price": 0.0,
+                        "raw": resp,
+                    },
+                    None,
+                )
 
             # Synchronous path (status in {"matched", "live", "unmatched"} or
             # poll exhausted). Field mapping is role-based: for a SELL we

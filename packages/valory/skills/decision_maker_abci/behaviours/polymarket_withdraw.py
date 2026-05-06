@@ -271,6 +271,27 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                 last_error = error
             else:
                 resp = response or {}
+                # ``in_flight`` = the connection's get_order poll exhausted
+                # while the order was still LIVE on the CLOB. Retrying with
+                # the full residual would race the in-flight match and hit
+                # ``not enough balance`` once it lands. Defer this position
+                # to the next sweep cycle (which re-fetches positions and
+                # acts on the actual residual). Record a deferred error so
+                # the sweep ends ``errored`` and operator restart does NOT
+                # auto-resume betting before the in-flight order resolves.
+                if resp.get("status") == "in_flight":
+                    order_id = resp.get("order_id") or ""
+                    self.context.logger.info(
+                        f"withdrawal: order {order_id} in-flight after poll "
+                        f"exhausted; deferring {token_id} to next sweep cycle"
+                    )
+                    self._record_error(
+                        token_id,
+                        residual,
+                        "in-flight after CLOB delayed-poll exhausted; "
+                        "will resolve next sweep cycle",
+                    )
+                    return
                 filled = float(resp.get("filled_shares") or 0.0)
                 if filled > 0:
                     total_filled += filled

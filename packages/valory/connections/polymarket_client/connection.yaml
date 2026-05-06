@@ -8,10 +8,10 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeicpu43ml5goa4dbgcruqcjuqm7twtx2jinrqq56pf3e34j27qdgq4
+  connection.py: bafybeia7bkycgi7iqlbbdtbt5yc2e4vmbuv45cdjo5waljggva2cw7gpsq
   request_types.py: bafybeibm7jv5ath3gu7cgcqaf2mv5wqwcwfykhauw7dhescs65cex44f6a
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeie7jn72b3sjphyyuf3bdlgu47sxfssba2w3yfnejdhlhwh2tvb4l4
+  tests/test_connection.py: bafybeicio4jyu2fhktas4mpxdbwnjb25qoufg5ozm3vff32i2yjg3bgs3q
 fingerprint_ignore_patterns: []
 connections: []
 protocols:

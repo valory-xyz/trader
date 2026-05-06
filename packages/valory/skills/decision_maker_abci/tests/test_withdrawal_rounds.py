@@ -995,6 +995,164 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         assert observed_states[0] == WITHDRAWAL_STATE_SELLING
 
+    def test_in_flight_response_defers_no_fill_records_deferred_error(
+        self, tmp_path: Path
+    ) -> None:
+        """``status=in_flight`` from the connection breaks the FAK loop early.
+
+        Connection signals ``in_flight`` when the post_order ``delayed`` poll
+        cap is exhausted with the order still LIVE on the CLOB. The behaviour
+        must NOT retry within this sweep — the order is in-flight, retrying
+        with the full residual would race the in-flight match. Instead,
+        record a deferred error and break out so the next sweep cycle picks
+        up the actual residual once the order resolves.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=2.4381)]
+        in_flight_resp = {
+            "order_id": "0xpending",
+            "status": "in_flight",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        # Provide three sell responses, but only ONE should be consumed
+        # because in_flight breaks the FAK loop after the first attempt.
+        router, sent_payloads = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[in_flight_resp, in_flight_resp, in_flight_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Only one sell request — no FAK retry triggered.
+        sell_payloads = [
+            p
+            for p in sent_payloads
+            if p.get("request_type") == RequestType.SELL_POSITION.value
+        ]
+        assert len(sell_payloads) == 1
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert store["withdrawal_fills"] == []
+        assert len(store["withdrawal_errors"]) == 1
+        err = store["withdrawal_errors"][0]
+        assert err["token_id"] == TOK_A
+        assert err["shares_remaining"] == 2.4381
+        assert "in-flight" in err["reason"].lower()
+        # No inter-attempt sleep — loop broke out before scheduling one.
+        assert captured_sleep == []
+
+    def test_in_flight_position_does_not_block_other_positions(
+        self, tmp_path: Path
+    ) -> None:
+        """In-flight on one position must not abort the sweep for the rest.
+
+        Three positions in order: A (matched), B (in_flight), C (matched).
+        Expected: two fills (A, C) + one deferred error (B), state errored.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [
+            _make_position(TOK_A, size=10.0),
+            _make_position(TOK_B, size=5.0),
+            _make_position(TOK_C, size=2.0),
+        ]
+        sell_responses = [
+            {
+                "order_id": "o-A",
+                "status": "matched",
+                "filled_shares": 10.0,
+                "filled_usdc": 4.0,
+                "fill_price": 0.40,
+                "raw": {},
+            },
+            {
+                "order_id": "0xpending-B",
+                "status": "in_flight",
+                "filled_shares": 0.0,
+                "filled_usdc": 0.0,
+                "fill_price": 0.0,
+                "raw": {},
+            },
+            {
+                "order_id": "o-C",
+                "status": "matched",
+                "filled_shares": 2.0,
+                "filled_usdc": 1.6,
+                "fill_price": 0.80,
+                "raw": {},
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=sell_responses,
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        fill_token_ids = {f["token_id"] for f in store["withdrawal_fills"]}
+        assert fill_token_ids == {TOK_A, TOK_C}
+        assert len(store["withdrawal_errors"]) == 1
+        assert store["withdrawal_errors"][0]["token_id"] == TOK_B
+        assert "in-flight" in store["withdrawal_errors"][0]["reason"].lower()
+
+    def test_sweep_with_only_in_flight_ends_errored(self, tmp_path: Path) -> None:
+        """A sweep where every position ends in-flight is still ``errored``.
+
+        ``errored`` is the conservative end-state: it prevents the boot-time
+        auto-clear from firing on operator restart, so the agent stays in
+        withdrawal mode until the next cycle resolves the in-flight orders.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=3.0)]
+        in_flight_resp = {
+            "order_id": "0xpending",
+            "status": "in_flight",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[in_flight_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert store["withdrawal_fills"] == []
+        assert len(store["withdrawal_errors"]) == 1
+
 
 class TestOmenWithdrawBehaviourStub:
     """Tests for the defensive Omen stub behaviour."""

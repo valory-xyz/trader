@@ -891,16 +891,20 @@ class TestSellPosition:
             for call in conn.logger.warning.call_args_list
         )
 
-    def test_delayed_poll_exhausted_returns_zero_fill_with_warning(self) -> None:
-        """If the order stays LIVE past the cap, fall through to zero-fill mapping.
+    def test_delayed_poll_exhausted_returns_in_flight_status(self) -> None:
+        """Poll-cap exhaustion signals ``in_flight`` so the behaviour can defer.
 
-        The behaviour-side FAK-retry loop then handles residuals; this is the
-        safe-rollback path matching today's behaviour, just gated behind a
-        real attempt to resolve the order.
+        If the connection fell through to the original delayed envelope (zero
+        fill, status=delayed), the behaviour's FAK-retry loop would race the
+        still-in-flight match on the CLOB and hit ``not enough balance`` on
+        every retry. Instead, surface a distinct ``in_flight`` status so the
+        behaviour can break out of the loop and defer the position to the
+        next sweep cycle.
         """
         conn = _make_connection()
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
+        post_resp = self._delayed_post_resp()
+        conn.client.post_order.return_value = post_resp
         conn.client.get_order.return_value = {
             "id": "0xpending",
             "status": "ORDER_STATUS_LIVE",
@@ -913,12 +917,13 @@ class TestSellPosition:
             response, error = conn._sell_position(token_id="tok123", amount=20.4)
 
         assert error is None
-        # Fall-through uses the original delayed post_order envelope, so
-        # makingAmount/takingAmount are empty -> zero fill.
+        assert response["status"] == "in_flight"
+        assert response["order_id"] == "0xpending"
         assert response["filled_shares"] == 0.0
         assert response["filled_usdc"] == 0.0
         assert response["fill_price"] == 0.0
-        # Poll cap exhausted warning.
+        assert response["raw"] is post_resp
+        # Poll cap exhausted warning still emitted.
         assert any(
             "still delayed" in str(call.args[0]).lower()
             or "poll exhausted" in str(call.args[0]).lower()
