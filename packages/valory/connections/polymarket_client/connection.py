@@ -580,10 +580,19 @@ class PolymarketClientConnection(BaseSyncConnection):
             if not resp:
                 return resp, None
 
+            # Response field mapping for a SELL is role-based, mirroring the
+            # outgoing order: we (the maker) sent ``makerAmount`` shares
+            # expecting ``takerAmount`` USDC. So in the response,
+            # ``makingAmount`` is the shares we (the maker) made/provided that
+            # actually got filled, and ``takingAmount`` is the USDC we took
+            # back. (Verified against a live partial fill on Polygon mainnet
+            # where ``balance`` = 11596040, ``sum of matched orders`` =
+            # 11590000 confirmed that ``makingAmount: 11.59`` was shares —
+            # closing Q2 from the impl spec.)
             taking_amount_raw = resp.get("takingAmount") or 0.0
             making_amount_raw = resp.get("makingAmount") or 0.0
-            filled_shares = float(taking_amount_raw) if taking_amount_raw else 0.0
-            filled_usdc = float(making_amount_raw) if making_amount_raw else 0.0
+            filled_shares = float(making_amount_raw) if making_amount_raw else 0.0
+            filled_usdc = float(taking_amount_raw) if taking_amount_raw else 0.0
             fill_price = filled_usdc / filled_shares if filled_shares > 0 else 0.0
 
             return (

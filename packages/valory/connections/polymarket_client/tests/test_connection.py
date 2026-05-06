@@ -737,18 +737,25 @@ class TestSellPosition:
         assert "signed_order_json" in response
 
     def test_normalizes_response_fields(self) -> None:
-        """Response is normalized: takingAmount→filled_shares, makingAmount→filled_usdc."""
+        """Response normalizes makingAmount→filled_shares, takingAmount→filled_usdc.
+
+        The mapping is role-based: for a SELL we (the maker) provided shares
+        and took USDC, so ``makingAmount`` is the share count and
+        ``takingAmount`` is the USDC count. Verified against a live partial
+        fill on Polygon mainnet.
+        """
         conn = _make_connection()
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        # Partial fill: 60 of 100 shares, received 25.8 USDC, ratio = 0.43.
+        # Partial fill: 60 of 100 shares filled, received 25.8 USDC,
+        # implied price = 25.8 / 60 = 0.43.
         conn.client.post_order.return_value = {
             "success": True,
             "errorMsg": "",
             "orderID": "0xabc",
             "transactionsHashes": ["0xtx1"],
             "status": "matched",
-            "takingAmount": "60",
-            "makingAmount": "25.8",
+            "makingAmount": "60",
+            "takingAmount": "25.8",
         }
 
         response, error = conn._sell_position(token_id="tok123", amount=100.0)
