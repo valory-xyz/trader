@@ -162,6 +162,32 @@ class CheckStopTradingRound(VotingRound):
         is_staking_kpi_met = self.positive_vote_threshold_reached
         self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
 
+        synchronized_data, event = res
+
+        # No-consensus events flow through unchanged — withdrawal cannot
+        # override NONE / NO_MAJORITY because the round needs to retry to
+        # reach consensus before any decision branches.
+        if event in (Event.NONE, Event.NO_MAJORITY):
+            return res
+
+        # Operator-armed withdrawal trumps both SKIP_TRADING and REVIEW_BETS.
+        # Without this, a KPI-met agent emits SKIP_TRADING every cycle and
+        # the withdrawal flag is never consulted — operator POSTs the
+        # endpoint and observes nothing happening. The withdraw intent is
+        # "halt and unwind", strictly stronger than "skip because KPI is
+        # met" or "review for selling". Once armed, the agent stays in
+        # withdrawal mode for the lifetime of the process; only a restart
+        # with state==complete triggers the boot-time auto-clear.
+        withdrawal_mode, _ = self._read_withdrawal_flag(self.context.params.store_path)
+        if withdrawal_mode:
+            self.synchronized_data.update(review_bets_for_selling=False)
+            withdrawal_event = (
+                Event.WITHDRAW_POLYMARKET
+                if self.context.params.is_running_on_polymarket
+                else Event.WITHDRAW_OMEN
+            )
+            return synchronized_data, withdrawal_event
+
         if self.should_review_bets(is_staking_kpi_met):
             self.context.logger.info(
                 "Updating synchronized data to review bets for selling"
@@ -170,29 +196,6 @@ class CheckStopTradingRound(VotingRound):
             return self.synchronized_data, Event.REVIEW_BETS
 
         self.synchronized_data.update(review_bets_for_selling=False)
-
-        # Withdrawal gate: once the operator arms withdrawal, the agent
-        # stays in withdrawal mode for the lifetime of the process —
-        # normal trading does not resume even after a sweep ends
-        # ``complete``. The gate diverts every cycle until a process
-        # restart triggers the boot-time auto-clear (which only fires
-        # when state==complete). This intentionally also keeps the agent
-        # halted across restarts when the latest sweep ended ``errored``,
-        # so the operator must investigate before betting resumes.
-        # SKIP_TRADING and REVIEW_BETS still take priority above.
-        synchronized_data, event = res
-        if event == Event.DONE:
-            withdrawal_mode, _ = self._read_withdrawal_flag(
-                self.context.params.store_path
-            )
-            if withdrawal_mode:
-                withdrawal_event = (
-                    Event.WITHDRAW_POLYMARKET
-                    if self.context.params.is_running_on_polymarket
-                    else Event.WITHDRAW_OMEN
-                )
-                return synchronized_data, withdrawal_event
-
         return res
 
 

@@ -639,8 +639,14 @@ class TestEndBlockWithdrawalBranching:
         _, event = result
         assert event == Event.WITHDRAW_POLYMARKET
 
-    def test_skip_trading_takes_priority_over_withdrawal(self) -> None:
-        """flag=True + super=SKIP_TRADING → SKIP_TRADING (skip trumps withdraw)."""
+    def test_withdrawal_trumps_skip_trading(self) -> None:
+        """flag=True + super=SKIP_TRADING (KPI met) → WITHDRAW_POLYMARKET.
+
+        The operator-armed withdrawal intent is "halt and unwind"; if the
+        agent has reached its staking KPI it would otherwise skip trading
+        and never enter the sweep — operator presses POST, sees ``armed``,
+        and observes nothing happening. Withdrawal must override.
+        """
         round_ = _make_round_with_disk_flag(
             is_polymarket=True,
             withdrawal_mode=True,
@@ -650,7 +656,57 @@ class TestEndBlockWithdrawalBranching:
 
         assert result is not None
         _, event = result
-        assert event == Event.SKIP_TRADING
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_withdrawal_trumps_review_bets(self) -> None:
+        """flag=True + KPI met + review window elapsed → WITHDRAW_POLYMARKET.
+
+        Review-for-selling is also a normal-trading concern; the operator's
+        withdraw signal supersedes it.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        # Force should_review_bets to return True so the REVIEW_BETS branch
+        # would otherwise fire.
+        round_.should_review_bets = MagicMock(return_value=True)  # type: ignore[method-assign]
+        result = self._run_end_block(round_, Event.SKIP_TRADING, kpi_met=True)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_withdrawal_does_not_override_none_event(self) -> None:
+        """super=NONE + flag=True → NONE passthrough (no consensus, retry).
+
+        Withdrawal must NOT divert on a no-consensus event — the round needs
+        to retry to reach consensus before any decision branches.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.NONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.NONE
+
+    def test_withdrawal_does_not_override_no_majority(self) -> None:
+        """super=NO_MAJORITY + flag=True → NO_MAJORITY passthrough."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.NO_MAJORITY)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY
 
     def test_super_returns_none_returns_none(self) -> None:
         """If super().end_block returns None (no consensus), pass through None."""
