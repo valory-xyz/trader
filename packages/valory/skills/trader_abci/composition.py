@@ -88,6 +88,9 @@ from packages.valory.skills.decision_maker_abci.states.randomness import Randomn
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
 )
+from packages.valory.skills.decision_maker_abci.states.withdrawal_idle import (
+    WithdrawalIdleRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
     FetchMarketsRouterRound,
@@ -218,6 +221,15 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     # place so the FSM is symmetric across services.
     FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawRound,
     FinishedWithWithdrawalOmenRound: OmenWithdrawRound,
+    # WithdrawalIdleRound is a DegenerateRound — it must map onward in the
+    # composed app or the framework hits NotImplementedError on end_block.
+    # Pause-then-cycle matches the established pattern for halt-like
+    # terminals like FinishedStakingRound and RefillRequiredRound. The
+    # withdrawal gate (CheckStopTradingRound) re-evaluates the flag on each
+    # cycle: state=complete leaves the gate open and resumes normal trading;
+    # state=errored re-diverts into another sweep (auto-retry), so a
+    # transient liquidity outage self-heals once the book refills.
+    WithdrawalIdleRound: ResetAndPauseRound,
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
     # Wrap is prepared by the decision_maker_abci, settled by the multiplexer,

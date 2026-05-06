@@ -1057,3 +1057,25 @@ class TestComposition:
             abci_app_transition_mapping[FinishedWithWithdrawalOmenRound]
             is OmenWithdrawRound
         )
+
+    def test_withdrawal_idle_routes_to_reset_and_pause(self) -> None:
+        """Verify WithdrawalIdleRound exits to ResetAndPauseRound.
+
+        DegenerateRound terminals MUST be mapped to an entry round of another
+        sub-app in a composed AbciApp; otherwise the framework calls
+        ``end_block`` on the bare base class and crashes the agent. Mapping
+        to ResetAndPauseRound matches the pattern used by other halt-like
+        terminals (``FinishedStakingRound``, ``RefillRequiredRound``,
+        ``BenchmarkingDoneRound``).
+
+        After the pause, ``FinishedResetAndPauseRound`` cycles back through
+        FetchPerformanceDataRound → ... → CheckStopTradingRound, where the
+        withdrawal gate decides whether to re-divert (errored: yes; complete
+        or unflagged: no).
+        """
+        from packages.valory.skills.reset_pause_abci.rounds import ResetAndPauseRound
+        from packages.valory.skills.trader_abci.composition import (
+            abci_app_transition_mapping,
+        )
+
+        assert abci_app_transition_mapping[WithdrawalIdleRound] is ResetAndPauseRound

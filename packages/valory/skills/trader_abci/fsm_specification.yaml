@@ -74,7 +74,6 @@ final_states:
 - FailedMultiplexerRound
 - ImpossibleRound
 - ServiceEvictedRound
-- WithdrawalIdleRound
 label: TraderAbciApp
 start_states:
 - RegistrationRound
@@ -134,7 +133,6 @@ states:
 - UpdateAchievementsRound
 - UpdateBetsRound
 - ValidateTransactionRound
-- WithdrawalIdleRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -247,8 +245,8 @@ transition_func:
     (MechVersionDetectionRound, V2): MechInformationRound
     (OmenWithdrawRound, NONE): OmenWithdrawRound
     (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
-    (OmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
-    (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
+    (OmenWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
+    (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): CallCheckpointRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
@@ -288,8 +286,8 @@ transition_func:
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
     (PolymarketWithdrawRound, NONE): PolymarketWithdrawRound
     (PolymarketWithdrawRound, NO_MAJORITY): PolymarketWithdrawRound
-    (PolymarketWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
-    (PolymarketWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
+    (PolymarketWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
+    (PolymarketWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PolymarketWrapCollateralRound, DONE): FetchMarketsRouterRound
     (PolymarketWrapCollateralRound, MOCK_TX): FetchMarketsRouterRound
     (PolymarketWrapCollateralRound, NONE): FetchMarketsRouterRound
