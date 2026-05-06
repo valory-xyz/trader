@@ -37,14 +37,7 @@ from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
-from py_clob_client_v2 import (
-    BalanceAllowanceParams,
-    BuilderConfig,
-    ClobClient,
-    MarketOrderArgs,
-    OrderType,
-)
-from py_clob_client_v2.clob_types import AssetType
+from py_clob_client_v2 import BuilderConfig, ClobClient, MarketOrderArgs, OrderType
 from py_clob_client_v2.exceptions import PolyApiException
 from py_clob_client_v2.order_builder.constants import BUY
 from py_clob_client_v2.order_utils.model.order_data_v2 import Side, SignedOrderV2
@@ -431,7 +424,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.CHECK_APPROVAL: self._check_approval,
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
             RequestType.SELL_POSITION: self._sell_position,
-            RequestType.REFRESH_BALANCE_ALLOWANCE: self._refresh_balance_allowance,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -616,29 +608,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(error_msg)
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
-
-    def _refresh_balance_allowance(self) -> Tuple[Any, Any]:
-        """Refresh the CLOB-backend balance/allowance state for CTF positions.
-
-        The SDK call is idempotent and only talks to the CLOB backend (no
-        on-chain transactions). Run once at withdrawal-behaviour entry — the
-        buy-side ``setApprovalForAll`` grants vest the on-chain rights, but
-        the CLOB-side cache may be stale after a long quiescent period.
-
-        ``asset_type=CONDITIONAL`` because the sweep moves CTF tokens out;
-        COLLATERAL refresh is for buys and unused on the sell path. The CLOB
-        rejects (``400 Invalid asset type``) if the field is omitted, so we
-        cannot fall back to a ``BalanceAllowanceParams()`` no-op.
-        """
-        try:
-            resp = self.client.update_balance_allowance(
-                BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
-            )
-            return resp, None
-        except PolyApiException as e:
-            error_msg = f"Error refreshing balance/allowance: {e}"
-            self.logger.error(error_msg)
-            return None, error_msg
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES

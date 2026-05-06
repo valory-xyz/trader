@@ -354,7 +354,6 @@ class TestRouteRequest:
             "_check_approval",
             "_fetch_order_book",
             "_sell_position",
-            "_refresh_balance_allowance",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -812,73 +811,6 @@ class TestSellPosition:
         response, error = conn._sell_position(token_id="tok123", amount=10.0)
         assert error is None
         assert response is None
-
-
-# ---------------------------------------------------------------------------
-# _refresh_balance_allowance
-# ---------------------------------------------------------------------------
-
-
-class TestRefreshBalanceAllowance:
-    """Tests for _refresh_balance_allowance (phase 2)."""
-
-    def test_dispatches_to_refresh_balance_allowance(self) -> None:
-        """RequestType.REFRESH_BALANCE_ALLOWANCE routes to the helper."""
-        conn = _make_connection()
-        conn._refresh_balance_allowance = MagicMock(return_value=({"ok": True}, None))
-        response, error = conn._route_request(
-            {
-                "request_type": RequestType.REFRESH_BALANCE_ALLOWANCE.value,
-                "params": {},
-            }
-        )
-        conn._refresh_balance_allowance.assert_called_once_with()
-        assert error == ""
-
-    def test_calls_update_balance_allowance_once(self) -> None:
-        """One SDK call, idempotent on re-invocation."""
-        conn = _make_connection()
-        conn.client.update_balance_allowance.return_value = {"updated": True}
-
-        response, error = conn._refresh_balance_allowance()
-        assert error is None
-        assert response == {"updated": True}
-        conn.client.update_balance_allowance.assert_called_once()
-
-        # Re-invocation makes a fresh SDK call (idempotent — no caching here).
-        conn._refresh_balance_allowance()
-        assert conn.client.update_balance_allowance.call_count == 2
-
-    def test_passes_conditional_asset_type(self) -> None:
-        """The SDK call must include ``asset_type=CONDITIONAL`` for sells.
-
-        Without it the CLOB rejects with ``400 Invalid asset type``. We refresh
-        the CTF (CONDITIONAL) allowance because that's what the sweep moves;
-        COLLATERAL refresh is unused for selling.
-        """
-        from py_clob_client_v2.clob_types import AssetType
-
-        conn = _make_connection()
-        conn.client.update_balance_allowance.return_value = {"updated": True}
-
-        conn._refresh_balance_allowance()
-
-        args, _ = conn.client.update_balance_allowance.call_args
-        params = args[0]
-        assert params.asset_type == AssetType.CONDITIONAL
-
-    def test_translates_polyapi_exception(self) -> None:
-        """Catch PolyApiException; return ``(None, error_str)``."""
-        from py_clob_client_v2.exceptions import PolyApiException
-
-        conn = _make_connection()
-        conn.client.update_balance_allowance.side_effect = PolyApiException(
-            error_msg="backend down"
-        )
-        response, error = conn._refresh_balance_allowance()
-        assert response is None
-        assert error is not None
-        assert "backend down" in error
 
 
 # ---------------------------------------------------------------------------

@@ -308,7 +308,6 @@ def _wire_helpers(
 
 def _make_request_router(
     *,
-    refresh_responses: Optional[List[Any]] = None,
     fetch_responses: Optional[List[Any]] = None,
     sell_responses: Optional[List[Any]] = None,
 ) -> "tuple[Callable[[Dict[str, Any]], Generator[None, None, Any]], List[Dict[str, Any]]]":  # noqa: E501
@@ -317,12 +316,10 @@ def _make_request_router(
     Each kw list is a queue: the request handler pops the head per call. ``None``
     in a queue means "the connection returned None" (timeout / dispatch failure).
 
-    :param refresh_responses: queue of REFRESH_BALANCE_ALLOWANCE responses.
     :param fetch_responses: queue of FETCH_ALL_POSITIONS responses.
     :param sell_responses: queue of SELL_POSITION responses.
     :return: a `(router_fn, sent_payloads_list)` tuple.
     """
-    refresh = list(refresh_responses or [])
     fetch = list(fetch_responses or [])
     sell = list(sell_responses or [])
     sent_payloads: List[Dict[str, Any]] = []
@@ -330,8 +327,6 @@ def _make_request_router(
     def _router(payload: Dict[str, Any]) -> Any:
         sent_payloads.append(payload)
         rt = payload.get("request_type")
-        if rt == RequestType.REFRESH_BALANCE_ALLOWANCE.value:
-            return refresh.pop(0) if refresh else None
         if rt == RequestType.FETCH_ALL_POSITIONS.value:
             return fetch.pop(0) if fetch else None
         if rt == RequestType.SELL_POSITION.value:
@@ -357,7 +352,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[[]],  # empty list of positions
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -395,7 +389,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             "signed_order_json": None,
         }
         router, sent = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
@@ -437,7 +430,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             "signed_order_json": None,
         }
         router, sent = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
@@ -472,7 +464,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             "signed_order_json": "abc",
         }
         router, sent = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
@@ -542,7 +533,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             },
         ]
         router, sent = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
@@ -607,7 +597,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             },
         ]
         router, sent = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
@@ -647,7 +636,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             "signed_order_json": "s",
         }
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=[zero_resp, zero_resp, zero_resp],
         )
@@ -713,7 +701,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             },
         ]
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
@@ -744,7 +731,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         # All three fetch attempts return an error dict.
         err = {"error": "502 bad gateway"}
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[err, err, err],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -759,35 +745,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert rec["token_id"] == ""  # top-level error sentinel
         assert "fetch_positions" in rec["reason"].lower()
 
-    def test_top_level_allowance_failure_short_circuits(self, tmp_path: Path) -> None:
-        """Refresh fails 3x → state errored, fetch_positions never called."""
-        _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
-        captured_payload: Dict[str, Any] = {}
-        captured_sleep: List[int] = []
-        _wire_helpers(behaviour, captured_payload, captured_sleep)
-
-        err = {"error": "backend down"}
-        router, sent = _make_request_router(
-            refresh_responses=[err, err, err],
-            fetch_responses=[],  # never reached
-        )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
-
-        list(behaviour.async_act())
-
-        # No fetch_positions request was issued.
-        assert all(
-            p["request_type"] != RequestType.FETCH_ALL_POSITIONS.value for p in sent
-        )
-
-        store = _read_store(tmp_path)
-        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
-        assert len(store["withdrawal_errors"]) == 1
-        rec = store["withdrawal_errors"][0]
-        assert rec["token_id"] == ""
-        assert "refresh" in rec["reason"].lower()
-
     def test_only_malformed_positions_yields_errored_state(
         self, tmp_path: Path
     ) -> None:
@@ -800,7 +757,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         positions = [{"size": 50.0, "redeemable": False}]  # missing asset
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -824,7 +780,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             {"asset": TOK_A, "size": "not-a-number", "redeemable": False},
         ]
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -848,7 +803,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[None, None, None],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -861,16 +815,21 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             "fetch_positions" in e["reason"].lower() for e in store["withdrawal_errors"]
         )
 
-    def test_refresh_none_response_treated_as_error(self, tmp_path: Path) -> None:
-        """Connection returning ``None`` from REFRESH_BALANCE_ALLOWANCE → error."""
+    def test_sell_none_response_treated_as_error(self, tmp_path: Path) -> None:
+        """Connection returning ``None`` from SELL_POSITION → per-position error.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
         _seed_store(tmp_path)
         behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
+        positions = [_make_position(TOK_A, size=100.0)]
         router, _ = _make_request_router(
-            refresh_responses=[None, None, None],
+            fetch_responses=[positions],
+            sell_responses=[None, None, None],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
@@ -878,7 +837,10 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         store = _read_store(tmp_path)
         assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
-        assert any("refresh" in e["reason"].lower() for e in store["withdrawal_errors"])
+        assert any(
+            e["token_id"] == TOK_A and "no response" in e["reason"]
+            for e in store["withdrawal_errors"]
+        )
 
     def test_stuck_reason_distinguishes_sdk_error(self, tmp_path: Path) -> None:
         """When the last attempt errored, the stuck reason quotes the SDK message."""
@@ -896,7 +858,6 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             {"error": "circuit broken"},
         ]
         router, _ = _make_request_router(
-            refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
             sell_responses=err_responses,
         )
@@ -947,9 +908,9 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             yield
             # Snapshot the on-disk state at the moment of the first request.
             observed_states.append(_read_store(tmp_path)["withdrawal_state"])
-            if payload["request_type"] == RequestType.REFRESH_BALANCE_ALLOWANCE.value:
-                return {"updated": True}
-            return []
+            if payload["request_type"] == RequestType.FETCH_ALL_POSITIONS.value:
+                return []  # empty positions → behaviour completes cleanly
+            raise AssertionError(f"unexpected request_type: {payload['request_type']}")
 
         behaviour.send_polymarket_connection_request = gen_router  # type: ignore[method-assign,assignment]
 

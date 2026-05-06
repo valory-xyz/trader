@@ -64,15 +64,6 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         """Run the sell-off."""
         self._set_state(WITHDRAWAL_STATE_SELLING)
 
-        refresh = yield from self._with_top_level_retry(
-            "refresh_balance_allowance",
-            self._request_refresh_allowance,
-        )
-        if refresh is None:
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
-            yield from self._finish()
-            return
-
         positions = yield from self._with_top_level_retry(
             "fetch_positions",
             self._request_fetch_positions,
@@ -144,17 +135,6 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     # ------------------------------------------------------------------ #
     # Connection-side requests                                           #
     # ------------------------------------------------------------------ #
-
-    def _request_refresh_allowance(
-        self,
-    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Send REFRESH_BALANCE_ALLOWANCE; return ``(response, error)``."""
-        payload = {
-            "request_type": RequestType.REFRESH_BALANCE_ALLOWANCE.value,
-            "params": {},
-        }
-        response = yield from self.send_polymarket_connection_request(payload)
-        return self._extract_response_or_error(response)
 
     def _request_fetch_positions(
         self,
