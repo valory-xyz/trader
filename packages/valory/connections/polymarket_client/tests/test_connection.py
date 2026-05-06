@@ -592,7 +592,9 @@ class TestSellPosition:
                 "params": {"token_id": "t", "amount": 100.0},  # nosec B105
             }
         )
-        conn._sell_position.assert_called_once_with(token_id="t", amount=100.0)
+        conn._sell_position.assert_called_once_with(
+            token_id="t", amount=100.0
+        )  # nosec B106
         assert error == ""
 
     def test_creates_sell_fak_order(self) -> None:
@@ -610,12 +612,14 @@ class TestSellPosition:
             "makingAmount": "43",
         }
 
-        response, error = conn._sell_position(token_id="tok123", amount=100.0)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0
+        )  # nosec B106
         assert error is None
         # Inspect the MarketOrderArgs passed to create_market_order.
         args, _ = conn.client.create_market_order.call_args
         mo = args[0]
-        assert mo.token_id == "tok123"
+        assert mo.token_id == "tok123"  # nosec B105
         assert mo.amount == 100.0
         assert mo.side == Side.SELL
         assert mo.order_type == OrderType.FAK
@@ -636,7 +640,7 @@ class TestSellPosition:
             "makingAmount": "5",
         }
 
-        conn._sell_position(token_id="tok123", amount=10.0)
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
         args, kwargs = conn.client.create_market_order.call_args
         # Only one positional (the args object) and no second positional or kwarg.
         assert len(args) == 1
@@ -656,7 +660,7 @@ class TestSellPosition:
             "makingAmount": "2",
         }
 
-        conn._sell_position(token_id="tok123", amount=5.0)
+        conn._sell_position(token_id="tok123", amount=5.0)  # nosec B106
         post_args, _ = conn.client.post_order.call_args
         # post_order(signed, order_type) — second positional must be FAK.
         assert post_args[1] == OrderType.FAK
@@ -678,8 +682,8 @@ class TestSellPosition:
             "takingAmount": "5",
         }
 
-        conn._sell_position(token_id="tok123", amount=10.0)
-        conn._sell_position(token_id="tok123", amount=10.0)
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
         # Each call hits the signer; no caching short-circuit.
         assert conn.client.create_market_order.call_count == 2
 
@@ -691,7 +695,9 @@ class TestSellPosition:
         exc = PolyApiException(error_msg={"error": "insufficient liquidity"})
         conn.client.create_market_order.side_effect = exc
 
-        response, error = conn._sell_position(token_id="tok123", amount=100.0)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
         assert error == "insufficient liquidity"
         assert response["error"] == "insufficient liquidity"
 
@@ -717,7 +723,9 @@ class TestSellPosition:
             "takingAmount": "25.8",
         }
 
-        response, error = conn._sell_position(token_id="tok123", amount=100.0)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
         assert error is None
         assert response["order_id"] == "0xabc"
         assert response["status"] == "matched"
@@ -741,7 +749,9 @@ class TestSellPosition:
             "makingAmount": "",
         }
 
-        response, error = conn._sell_position(token_id="tok123", amount=100.0)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
         assert error is None
         assert response["filled_shares"] == 0.0
         assert response["filled_usdc"] == 0.0
@@ -753,7 +763,9 @@ class TestSellPosition:
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
         conn.client.post_order.return_value = None
 
-        response, error = conn._sell_position(token_id="tok123", amount=10.0)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=10.0
+        )  # nosec B106
         assert error is None
         assert response is None
 
@@ -791,7 +803,9 @@ class TestSellPosition:
         }
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=20.4  # nosec B106
+            )
 
         assert error is None
         assert response["order_id"] == "0xpending"
@@ -821,7 +835,9 @@ class TestSellPosition:
         }
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=20.4  # nosec B106
+            )
 
         assert error is None
         assert response["status"] == "unmatched"
@@ -851,7 +867,9 @@ class TestSellPosition:
         conn.client.get_order.side_effect = [live_resp, live_resp, terminal_resp]
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=20.4
+            )  # nosec B106
 
         assert error is None
         assert response["status"] == "matched"
@@ -880,7 +898,9 @@ class TestSellPosition:
         ]
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=5.88)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=5.88  # nosec B106
+            )
 
         assert error is None
         assert response["status"] == "matched"
@@ -914,7 +934,9 @@ class TestSellPosition:
         }
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=20.4  # nosec B106
+            )
 
         assert error is None
         assert response["status"] == "in_flight"
@@ -952,7 +974,9 @@ class TestSellPosition:
         ]
 
         with patch("time.sleep"):
-            response, error = conn._sell_position(token_id="tok123", amount=5.88)
+            response, error = conn._sell_position(
+                token_id="tok123", amount=5.88  # nosec B106
+            )
 
         assert error is None
         assert response["status"] == "matched"
@@ -976,7 +1000,9 @@ class TestSellPosition:
             "takingAmount": "0.8772",
         }
 
-        response, error = conn._sell_position(token_id="tok123", amount=20.4)
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
+        )
 
         assert error is None
         assert response["filled_shares"] == pytest.approx(20.4)

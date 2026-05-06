@@ -46,7 +46,7 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw impor
 # "invalid amounts, maker and taker amount must be higher than 0". Treating
 # such residuals as fully sold avoids a guaranteed-failing retry burn.
 DUST_EPSILON = 1e-2
-TOP_LEVEL_ERROR_TOKEN_ID = ""
+TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 
 
 class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):

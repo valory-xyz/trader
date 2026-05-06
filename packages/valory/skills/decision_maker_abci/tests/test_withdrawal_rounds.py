@@ -393,10 +393,20 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _seed_store(
             tmp_path,
             withdrawal_fills=[
-                {"token_id": "old-x", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}
+                {
+                    "token_id": "old-x",
+                    "shares_sold": 1.0,
+                    "fill_price": 0.5,
+                    "ts": 1,
+                }  # nosec B105
             ],
             withdrawal_errors=[
-                {"token_id": "old-y", "shares_remaining": 2.0, "reason": "old", "ts": 2}
+                {
+                    "token_id": "old-y",
+                    "shares_remaining": 2.0,
+                    "reason": "old",
+                    "ts": 2,
+                }  # nosec B105
             ],
         )
         behaviour = _make_behaviour(tmp_path)

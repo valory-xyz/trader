@@ -357,9 +357,21 @@ class TestChatuiConfig:
 
     def test_withdrawal_fields_accept_custom_values(self) -> None:
         """Withdrawal fields must accept and store custom values."""
-        fills = [{"token_id": "0xabc", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}]
+        fills = [
+            {
+                "token_id": "0xabc",
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            }  # nosec B105
+        ]
         errors = [
-            {"token_id": "0xdef", "shares_remaining": 2.0, "reason": "x", "ts": 2}
+            {
+                "token_id": "0xdef",
+                "shares_remaining": 2.0,
+                "reason": "x",
+                "ts": 2,
+            }  # nosec B105
         ]
         config = ChatuiConfig(
             withdrawal_mode=True,
@@ -671,7 +683,7 @@ class TestWithdrawalFieldsMigration:
                 "withdrawal_state": WITHDRAWAL_STATE_SELLING,
                 "withdrawal_fills": [
                     {
-                        "token_id": "0xabc",
+                        "token_id": "0xabc",  # nosec B105
                         "shares_sold": 10.0,
                         "fill_price": 0.4,
                         "ts": 100,
@@ -686,7 +698,12 @@ class TestWithdrawalFieldsMigration:
         assert state._chatui_config.withdrawal_mode is True
         assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_SELLING
         assert state._chatui_config.withdrawal_fills == [
-            {"token_id": "0xabc", "shares_sold": 10.0, "fill_price": 0.4, "ts": 100}
+            {
+                "token_id": "0xabc",
+                "shares_sold": 10.0,
+                "fill_price": 0.4,
+                "ts": 100,
+            }  # nosec B105
         ]
         assert state._chatui_config.withdrawal_errors == []
 

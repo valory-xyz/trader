@@ -1339,10 +1339,20 @@ class TestHandlePostWithdrawalPolymarket:
             withdrawal_mode=False,
             withdrawal_state=WITHDRAWAL_STATE_IDLE,
             withdrawal_fills=[
-                {"token_id": "x", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}
+                {
+                    "token_id": "x",
+                    "shares_sold": 1.0,
+                    "fill_price": 0.5,
+                    "ts": 1,
+                }  # nosec B105
             ],
             withdrawal_errors=[
-                {"token_id": "y", "shares_remaining": 2.0, "reason": "old", "ts": 2}
+                {
+                    "token_id": "y",
+                    "shares_remaining": 2.0,
+                    "reason": "old",
+                    "ts": 2,
+                }  # nosec B105
             ],
         )
         handler = _make_withdrawal_handler(config=starting_cfg)
@@ -1534,11 +1544,26 @@ class TestHandleGetWithdrawal:
     def test_get_counts_derived_from_fills_and_errors(self) -> None:
         """positions_total = len(fills)+len(errors); _sold = len(fills); _stuck = len(errors)."""
         fills = [
-            {"token_id": "a", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1},
-            {"token_id": "b", "shares_sold": 2.0, "fill_price": 0.6, "ts": 2},
+            {
+                "token_id": "a",
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            },  # nosec B105
+            {
+                "token_id": "b",
+                "shares_sold": 2.0,
+                "fill_price": 0.6,
+                "ts": 2,
+            },  # nosec B105
         ]
         errors = [
-            {"token_id": "c", "shares_remaining": 3.0, "reason": "x", "ts": 3},
+            {
+                "token_id": "c",
+                "shares_remaining": 3.0,
+                "reason": "x",
+                "ts": 3,
+            },  # nosec B105
         ]
         handler = _make_withdrawal_handler(
             config=ChatuiConfig(
