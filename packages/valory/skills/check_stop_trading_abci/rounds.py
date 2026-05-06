@@ -140,6 +140,9 @@ class CheckStopTradingRound(VotingRound):
         Defensive: returns ``(False, "idle")`` if the file is missing, unreadable,
         or contains invalid JSON. The on-disk schema is owned by
         ``chatui_abci/models.py``; this skill only reads it.
+
+        :param store_path: directory containing ``chatui_param_store.json``.
+        :return: a ``(withdrawal_mode, withdrawal_state)`` tuple.
         """
         store_file = Path(store_path) / CHATUI_PARAM_STORE_FILENAME
         try:

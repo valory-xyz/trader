@@ -20,7 +20,7 @@
 """Tests for chatui_abci/handlers.py."""
 
 import json
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -71,9 +71,14 @@ AVAILABLE_TOOLS = {"prediction-online", "prediction-offline", "claude-prediction
 class _TestableHttpHandler(HttpHandler):
     """Shadows read-only AEA properties with plain attributes for testing."""
 
-    context = None  # type: ignore[assignment]
-    shared_state = None  # type: ignore[assignment]
-    synchronized_data = None  # type: ignore[assignment]
+    context: Any = None  # type: ignore[assignment]
+    shared_state: Any = None  # type: ignore[assignment]
+    synchronized_data: Any = None  # type: ignore[assignment]
+    # Re-declared as Any so tests can replace them with MagicMock and read
+    # call_args / assert_called* without mypy chasing the parent signature.
+    _store_chatui_param_to_json: Any = None  # type: ignore[assignment]
+    _send_ok_response: Any = None  # type: ignore[assignment]
+    _send_http_response: Any = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

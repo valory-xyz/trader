@@ -445,14 +445,14 @@ class TestWithdrawalDegenerateRounds:
     def test_finished_with_withdrawal_polymarket_round_initialization(
         self,
     ) -> None:
-        """FinishedWithWithdrawalPolymarketRound is constructable."""
+        """Verify FinishedWithWithdrawalPolymarketRound is constructable."""
         round_ = FinishedWithWithdrawalPolymarketRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
         assert isinstance(round_, FinishedWithWithdrawalPolymarketRound)
 
     def test_finished_with_withdrawal_omen_round_initialization(self) -> None:
-        """FinishedWithWithdrawalOmenRound is constructable."""
+        """Verify FinishedWithWithdrawalOmenRound is constructable."""
         round_ = FinishedWithWithdrawalOmenRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
@@ -505,6 +505,11 @@ def _make_round_with_disk_flag(
     The super().end_block() return value is controlled by patching
     VotingRound.end_block in the test itself; this helper only sets up the
     context params and the disk-flag helper.
+
+    :param is_polymarket: ``params.is_running_on_polymarket`` to inject.
+    :param withdrawal_mode: ``withdrawal_mode`` returned by the patched disk read.
+    :param withdrawal_state: ``withdrawal_state`` returned by the patched disk read.
+    :return: a ``CheckStopTradingRound`` ready for ``end_block`` calls.
     """
     sync_data = MagicMock()
     context = MagicMock()

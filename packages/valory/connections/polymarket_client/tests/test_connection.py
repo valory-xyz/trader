@@ -724,7 +724,7 @@ class TestSellPosition:
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
     def test_translates_polyapi_exception(self) -> None:
-        """PolyApiException returns the (error_dict, error_msg) tuple shape."""
+        """Catch PolyApiException; return the (error_dict, error_msg) tuple shape."""
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
@@ -850,7 +850,7 @@ class TestRefreshBalanceAllowance:
         assert conn.client.update_balance_allowance.call_count == 2
 
     def test_translates_polyapi_exception(self) -> None:
-        """PolyApiException returns (None, error_str)."""
+        """Catch PolyApiException; return ``(None, error_str)``."""
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()

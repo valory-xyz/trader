@@ -119,6 +119,11 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
 
         Returns the result on success; on exhaustion records a top-level
         error and returns ``None``.
+
+        :param op_name: human-readable label written to the error record.
+        :param request_fn: generator yielding ``(result, error)`` tuples.
+        :yield: framework yields between attempts (sleep + nested generator).
+        :return: the result on success; ``None`` once retries are exhausted.
         """
         backoff = self._retry_schedule()
         last_error: Optional[str] = "unknown"
@@ -194,6 +199,9 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         The connection returns ``{"error": "..."}`` on failure (preserving
         any extra keys like ``signed_order_json``) and a normal dict on
         success. ``None`` means dispatch / timeout failure.
+
+        :param response: raw response from the polymarket connection layer.
+        :return: a normalized ``(payload_dict_or_none, error_or_none)`` tuple.
         """
         if response is None:
             return None, "no response from connection"

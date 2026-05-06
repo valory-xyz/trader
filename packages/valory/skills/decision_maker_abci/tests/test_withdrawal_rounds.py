@@ -21,13 +21,14 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import (
+    BaseTxPayload,
     CollectSameUntilThresholdRound,
     DegenerateRound,
 )
@@ -67,31 +68,31 @@ class TestRoundClasses:
     """The new round classes must inherit from the right framework types."""
 
     def test_polymarket_withdraw_inherits_collect_same_until_threshold(self) -> None:
-        """PolymarketWithdrawRound is a CollectSameUntilThresholdRound subclass."""
+        """Verify PolymarketWithdrawRound subclasses CollectSameUntilThresholdRound."""
         assert issubclass(PolymarketWithdrawRound, CollectSameUntilThresholdRound)
 
     def test_omen_withdraw_inherits_collect_same_until_threshold(self) -> None:
-        """OmenWithdrawRound is a CollectSameUntilThresholdRound subclass."""
+        """Verify OmenWithdrawRound subclasses CollectSameUntilThresholdRound."""
         assert issubclass(OmenWithdrawRound, CollectSameUntilThresholdRound)
 
     def test_withdrawal_idle_is_degenerate(self) -> None:
-        """WithdrawalIdleRound is a DegenerateRound subclass (terminal halt)."""
+        """Verify WithdrawalIdleRound subclasses DegenerateRound (terminal halt)."""
         assert issubclass(WithdrawalIdleRound, DegenerateRound)
 
     def test_polymarket_withdraw_uses_withdrawal_payload(self) -> None:
-        """PolymarketWithdrawRound posts WithdrawalPayload values."""
+        """Verify PolymarketWithdrawRound posts WithdrawalPayload values."""
         assert PolymarketWithdrawRound.payload_class is WithdrawalPayload
 
     def test_omen_withdraw_uses_withdrawal_payload(self) -> None:
-        """OmenWithdrawRound posts WithdrawalPayload values."""
+        """Verify OmenWithdrawRound posts WithdrawalPayload values."""
         assert OmenWithdrawRound.payload_class is WithdrawalPayload
 
     def test_polymarket_withdraw_done_event(self) -> None:
-        """PolymarketWithdrawRound emits WITHDRAWAL_DONE on consensus."""
+        """Verify PolymarketWithdrawRound emits WITHDRAWAL_DONE on consensus."""
         assert PolymarketWithdrawRound.done_event == Event.WITHDRAWAL_DONE
 
     def test_omen_withdraw_done_event(self) -> None:
-        """OmenWithdrawRound emits WITHDRAWAL_DONE on consensus."""
+        """Verify OmenWithdrawRound emits WITHDRAWAL_DONE on consensus."""
         assert OmenWithdrawRound.done_event == Event.WITHDRAWAL_DONE
 
 
@@ -145,12 +146,12 @@ class TestAbciAppWithdrawalWiring:
         assert DecisionMakerAbciApp.event_to_timeout[Event.WITHDRAWAL_ROUND_TIMEOUT] > 0
 
     def test_idle_round_has_no_outgoing_transitions(self) -> None:
-        """WithdrawalIdleRound is terminal — empty transition map (DegenerateRound)."""
+        """Verify WithdrawalIdleRound is terminal — empty transition map."""
         tx = DecisionMakerAbciApp.transition_function
         assert tx[WithdrawalIdleRound] == {}
 
     def test_idle_round_in_final_states(self) -> None:
-        """WithdrawalIdleRound is registered as a final state of the AbciApp."""
+        """Verify WithdrawalIdleRound is registered as a final state of the AbciApp."""
         assert WithdrawalIdleRound in DecisionMakerAbciApp.final_states
 
     def test_withdraw_rounds_in_initial_states(self) -> None:
@@ -165,7 +166,7 @@ class TestAbciAppWithdrawalWiring:
         assert pre[OmenWithdrawRound] == set()
 
     def test_idle_round_has_empty_db_post_conditions(self) -> None:
-        """WithdrawalIdleRound is terminal with no DB-key post-conditions."""
+        """Verify WithdrawalIdleRound is terminal with no DB-key post-conditions."""
         post = DecisionMakerAbciApp.db_post_conditions
         assert WithdrawalIdleRound in post
         assert post[WithdrawalIdleRound] == set()
@@ -180,13 +181,13 @@ class TestRoundBehaviourRegistration:
     """The new behaviours must be registered with the round behaviour."""
 
     def test_polymarket_withdraw_behaviour_registered(self) -> None:
-        """PolymarketWithdrawBehaviour appears in the registered behaviour set."""
+        """Ensure PolymarketWithdrawBehaviour is in the registered behaviour set."""
         assert (
             PolymarketWithdrawBehaviour in AgentDecisionMakerRoundBehaviour.behaviours
         )
 
     def test_omen_withdraw_behaviour_registered(self) -> None:
-        """OmenWithdrawBehaviour appears in the registered behaviour set."""
+        """Ensure OmenWithdrawBehaviour is in the registered behaviour set."""
         assert OmenWithdrawBehaviour in AgentDecisionMakerRoundBehaviour.behaviours
 
     def test_polymarket_withdraw_behaviour_matches_polymarket_withdraw_round(
@@ -208,13 +209,13 @@ class TestRoundBehaviourRegistration:
 class _TestablePolymarketWithdraw(PolymarketWithdrawBehaviour):
     """Shadows read-only AEA properties for testing."""
 
-    context = None  # type: ignore[assignment]
+    context: Any = None  # type: ignore[assignment]
 
 
 class _TestableOmenWithdraw(OmenWithdrawBehaviour):
     """Shadows read-only AEA properties for testing."""
 
-    context = None  # type: ignore[assignment]
+    context: Any = None  # type: ignore[assignment]
 
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
@@ -286,37 +287,47 @@ def _wire_helpers(
     captured_payload: Dict[str, Any],
     captured_sleep: List[int],
 ) -> None:
-    """Stub finish_behaviour + sleep so async_act can be exhausted in-process."""
+    """Stub finish_behaviour + sleep so async_act can be exhausted in-process.
 
-    def fake_finish(payload: WithdrawalPayload):  # type: ignore[no-untyped-def]
+    :param behaviour: the testable behaviour instance to patch in place.
+    :param captured_payload: mutable dict the fake finish writes the payload into.
+    :param captured_sleep: mutable list the fake sleep appends backoff seconds to.
+    """
+
+    def fake_finish(payload: BaseTxPayload) -> Generator[Any, None, None]:
         captured_payload["payload"] = payload
         yield
 
-    def fake_sleep(s):  # type: ignore[no-untyped-def]
-        captured_sleep.append(s)
+    def fake_sleep(s: float) -> Generator[Any, None, None]:
+        captured_sleep.append(int(s))
         yield
 
-    behaviour.finish_behaviour = fake_finish  # type: ignore[method-assign]
-    behaviour.sleep = fake_sleep  # type: ignore[method-assign]
+    behaviour.finish_behaviour = fake_finish  # type: ignore[method-assign,assignment]
+    behaviour.sleep = fake_sleep  # type: ignore[method-assign,assignment]
 
 
 def _make_request_router(
     *,
-    refresh_responses: Optional[List[Optional[Dict[str, Any]]]] = None,
+    refresh_responses: Optional[List[Any]] = None,
     fetch_responses: Optional[List[Any]] = None,
-    sell_responses: Optional[List[Optional[Dict[str, Any]]]] = None,
-):  # type: ignore[no-untyped-def]
+    sell_responses: Optional[List[Any]] = None,
+) -> "tuple[Callable[[Dict[str, Any]], Generator[None, None, Any]], List[Dict[str, Any]]]":  # noqa: E501
     """Build a fake send_polymarket_connection_request that pops by request_type.
 
     Each kw list is a queue: the request handler pops the head per call. ``None``
     in a queue means "the connection returned None" (timeout / dispatch failure).
+
+    :param refresh_responses: queue of REFRESH_BALANCE_ALLOWANCE responses.
+    :param fetch_responses: queue of FETCH_ALL_POSITIONS responses.
+    :param sell_responses: queue of SELL_POSITION responses.
+    :return: a `(router_fn, sent_payloads_list)` tuple.
     """
     refresh = list(refresh_responses or [])
     fetch = list(fetch_responses or [])
     sell = list(sell_responses or [])
     sent_payloads: List[Dict[str, Any]] = []
 
-    def _router(payload: Dict[str, Any]):  # type: ignore[no-untyped-def]
+    def _router(payload: Dict[str, Any]) -> Any:
         sent_payloads.append(payload)
         rt = payload.get("request_type")
         if rt == RequestType.REFRESH_BALANCE_ALLOWANCE.value:
@@ -327,7 +338,7 @@ def _make_request_router(
             return sell.pop(0) if sell else None
         raise AssertionError(f"unexpected request_type: {rt}")
 
-    def gen_router(payload: Dict[str, Any]):  # type: ignore[no-untyped-def]
+    def gen_router(payload: Dict[str, Any]) -> Generator[None, None, Any]:
         yield
         return _router(payload)
 
@@ -349,7 +360,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[{"updated": True}],
             fetch_responses=[[]],  # empty list of positions
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -388,7 +399,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -430,7 +441,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -465,7 +476,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=[sell_resp],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -489,6 +500,8 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         One fill record with volume-weighted price is emitted; partial fills
         are NOT recorded individually (per §4.1).
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
         behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
@@ -533,7 +546,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -556,6 +569,8 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         """Any non-zero filled_shares drops the cached signed order on the next attempt.
 
         Rationale: residual changes, so the next sign needs a fresh amount.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
         behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
@@ -596,7 +611,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -636,7 +651,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=[zero_resp, zero_resp, zero_resp],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -658,6 +673,8 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         Per §4.1: partials are NOT split between fills + errors. The on-chain
         record (via get_trades) is the audit trail for what filled.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
         behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
@@ -700,7 +717,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=sell_responses,
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -730,7 +747,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[{"updated": True}],
             fetch_responses=[err, err, err],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -755,7 +772,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[err, err, err],
             fetch_responses=[],  # never reached
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -786,7 +803,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -810,7 +827,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[{"updated": True}],
             fetch_responses=[positions],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -834,7 +851,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             refresh_responses=[{"updated": True}],
             fetch_responses=[None, None, None],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -855,7 +872,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         router, _ = _make_request_router(
             refresh_responses=[None, None, None],
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -883,7 +900,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             fetch_responses=[positions],
             sell_responses=err_responses,
         )
-        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -926,7 +943,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         observed_states: List[str] = []
 
-        def gen_router(payload: Dict[str, Any]):  # type: ignore[no-untyped-def]
+        def gen_router(payload: Dict[str, Any]) -> Generator[None, None, Any]:
             yield
             # Snapshot the on-disk state at the moment of the first request.
             observed_states.append(_read_store(tmp_path)["withdrawal_state"])
@@ -934,7 +951,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
                 return {"updated": True}
             return []
 
-        behaviour.send_polymarket_connection_request = gen_router  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = gen_router  # type: ignore[method-assign,assignment]
 
         list(behaviour.async_act())
 
@@ -952,11 +969,11 @@ class TestOmenWithdrawBehaviourStub:
 
         captured_payload: Dict[str, Any] = {}
 
-        def fake_finish(payload: WithdrawalPayload):  # type: ignore[no-untyped-def]
+        def fake_finish(payload: BaseTxPayload) -> Generator[Any, None, None]:
             captured_payload["payload"] = payload
             yield
 
-        behaviour.finish_behaviour = fake_finish  # type: ignore[method-assign]
+        behaviour.finish_behaviour = fake_finish  # type: ignore[method-assign,assignment]
         list(behaviour.async_act())
 
         behaviour.context.logger.warning.assert_called_once()
@@ -976,7 +993,7 @@ class TestComposition:
     def test_withdrawal_polymarket_routes_to_polymarket_withdraw_round(
         self,
     ) -> None:
-        """FinishedWithWithdrawalPolymarketRound enters PolymarketWithdrawRound."""
+        """Verify FinishedWithWithdrawalPolymarketRound enters PolymarketWithdrawRound."""
         from packages.valory.skills.check_stop_trading_abci.rounds import (
             FinishedWithWithdrawalPolymarketRound,
         )
@@ -990,7 +1007,7 @@ class TestComposition:
         )
 
     def test_withdrawal_omen_routes_to_omen_withdraw_round(self) -> None:
-        """FinishedWithWithdrawalOmenRound enters OmenWithdrawRound."""
+        """Verify FinishedWithWithdrawalOmenRound enters OmenWithdrawRound."""
         from packages.valory.skills.check_stop_trading_abci.rounds import (
             FinishedWithWithdrawalOmenRound,
         )
