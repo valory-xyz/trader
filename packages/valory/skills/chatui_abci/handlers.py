@@ -21,6 +21,7 @@
 
 import copy
 import json
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
@@ -61,7 +62,12 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
-from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
+from packages.valory.skills.chatui_abci.models import (
+    SharedState,
+    TradingStrategyUI,
+    WITHDRAWAL_STATE_ARMED,
+    WITHDRAWAL_STATE_IDLE,
+)
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
@@ -118,12 +124,14 @@ class HttpHandler(BaseHttpHandler):
         chatui_prompt_url = rf"{self.hostname_regex}\/chatui-prompt"
         configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
         is_enabled_url = rf"{self.hostname_regex}\/features"
+        withdrawal_url = rf"{self.hostname_regex}\/api\/v1\/withdrawal"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value,): [
                 *(self.routes.get((HttpMethod.GET.value,), [])),
                 (is_enabled_url, self._handle_get_features),
+                (withdrawal_url, self._handle_get_withdrawal),
             ],
             (HttpMethod.HEAD.value,): [
                 *(self.routes.get((HttpMethod.HEAD.value,), [])),
@@ -134,6 +142,7 @@ class HttpHandler(BaseHttpHandler):
                 (chatui_prompt_url, self._handle_chatui_prompt),
                 # correct name according to fe spec
                 (configure_strategies_url, self._handle_chatui_prompt),
+                (withdrawal_url, self._handle_post_withdrawal),
             ],
         }
 
@@ -586,6 +595,58 @@ class HttpHandler(BaseHttpHandler):
         """Store the allowed tools list."""
         self.shared_state.chatui_config.allowed_tools = tools
         self._store_chatui_param_to_json(ALLOWED_TOOLS_FIELD, tools)
+
+    def _build_withdrawal_status(self) -> Dict[str, Any]:
+        """Return the GET payload describing current withdrawal state."""
+        cfg = self.shared_state.chatui_config
+        venue = "polymarket" if self.context.params.is_running_on_polymarket else "omen"
+        return {
+            "mode": cfg.withdrawal_state,
+            "venue": venue,
+            "positions_total": (len(cfg.withdrawal_fills) + len(cfg.withdrawal_errors)),
+            "positions_sold": len(cfg.withdrawal_fills),
+            "positions_stuck": len(cfg.withdrawal_errors),
+            "fills": cfg.withdrawal_fills,
+            "errors": cfg.withdrawal_errors,
+        }
+
+    def _handle_post_withdrawal(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle POST /api/v1/withdrawal — arm withdrawal mode (idempotent)."""
+        if not self.context.params.is_running_on_polymarket:
+            # D27: reject on Omenstrat — withdrawal not yet implemented for Omen.
+            self._send_http_response(
+                http_msg,
+                http_dialogue,
+                {
+                    "error": (
+                        "Withdrawal mode is not yet supported on Omenstrat. "
+                        "Polymarket-only feature in the current release."
+                    )
+                },
+                HTTPStatus.NOT_IMPLEMENTED.value,
+                HTTPStatus.NOT_IMPLEMENTED.phrase,
+            )
+            return
+
+        cfg = self.shared_state.chatui_config
+        if cfg.withdrawal_state == WITHDRAWAL_STATE_IDLE:
+            cfg.withdrawal_mode = True
+            cfg.withdrawal_state = WITHDRAWAL_STATE_ARMED
+            cfg.withdrawal_fills = []
+            cfg.withdrawal_errors = []
+            self._store_chatui_param_to_json("withdrawal_mode", True)
+            self._store_chatui_param_to_json("withdrawal_state", WITHDRAWAL_STATE_ARMED)
+            self._store_chatui_param_to_json("withdrawal_fills", [])
+            self._store_chatui_param_to_json("withdrawal_errors", [])
+        self._send_ok_response(http_msg, http_dialogue, self._build_withdrawal_status())
+
+    def _handle_get_withdrawal(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/withdrawal — return current status."""
+        self._send_ok_response(http_msg, http_dialogue, self._build_withdrawal_status())
 
 
 class SrrHandler(AbstractResponseHandler):

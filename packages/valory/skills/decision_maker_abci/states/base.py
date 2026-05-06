@@ -84,6 +84,7 @@ class Event(Enum):
     BET_PLACEMENT_DONE = "bet_placement_done"
     SET_APPROVAL = "set_approval"
     PREPARE_TX = "prepare_tx"
+    WITHDRAWAL_DONE = "withdrawal_done"
 
 
 class SynchronizedData(

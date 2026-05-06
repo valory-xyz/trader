@@ -66,6 +66,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
+    OmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
@@ -80,6 +83,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval i
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
+    PolymarketWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
     PolymarketWrapCollateralRound,
@@ -101,6 +107,9 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 )
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
+)
+from packages.valory.skills.decision_maker_abci.states.withdrawal_idle import (
+    WithdrawalIdleRound,
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
@@ -283,6 +292,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PolymarketPostSetApprovalRound,
         DecisionRequestRound,
         PostBetUpdateRound,
+        PolymarketWithdrawRound,
+        OmenWithdrawRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -515,6 +526,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        PolymarketWithdrawRound: {
+            Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
+            Event.ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.NO_MAJORITY: PolymarketWithdrawRound,
+            Event.NONE: PolymarketWithdrawRound,
+        },
+        OmenWithdrawRound: {
+            Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
+            Event.ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.NO_MAJORITY: OmenWithdrawRound,
+            Event.NONE: OmenWithdrawRound,
+        },
+        WithdrawalIdleRound: {},
     }
     cross_period_persisted_keys = frozenset(
         {
@@ -545,6 +569,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RefillRequiredRound,
         ImpossibleRound,
         BenchmarkingDoneRound,
+        WithdrawalIdleRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -561,6 +586,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PolymarketPostSetApprovalRound: set(),
         DecisionRequestRound: set(),
         PostBetUpdateRound: set(),
+        # Reached via cross-skill mapping from check_stop_trading_abci.
+        PolymarketWithdrawRound: set(),
+        OmenWithdrawRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -597,4 +625,5 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.mocking_mode),
             get_name(SynchronizedData.next_mock_data_row),
         },
+        WithdrawalIdleRound: set(),
     }

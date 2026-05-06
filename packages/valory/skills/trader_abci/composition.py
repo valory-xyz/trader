@@ -40,6 +40,8 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedCheckStopTradingRound,
     FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
+    FinishedWithWithdrawalOmenRound,
+    FinishedWithWithdrawalPolymarketRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
@@ -70,8 +72,14 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
+    OmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
+    PolymarketWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
@@ -204,6 +212,12 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRedeemingTxRound: CheckStopTradingRound,
     FinishedPolymarketRedeemRound: CheckStopTradingRound,
     FinishedWithoutRedeemingRound: CheckStopTradingRound,
+    # Withdrawal gate (CheckStopTradingRound) routes to per-venue withdrawal
+    # rounds in decision_maker_abci. The Omen branch is a stub today (D27 —
+    # POST /api/v1/withdrawal returns 501 on Omenstrat), but the wiring is in
+    # place so the FSM is symmetric across services.
+    FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawRound,
+    FinishedWithWithdrawalOmenRound: OmenWithdrawRound,
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
     # Wrap is prepared by the decision_maker_abci, settled by the multiplexer,

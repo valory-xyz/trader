@@ -19,8 +19,10 @@
 
 """This module contains the rounds for the check stop trading ABCI application."""
 
+import json
 from abc import ABC
 from enum import Enum
+from pathlib import Path
 from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
@@ -39,6 +41,13 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
     CheckStopTradingPayload,
 )
 
+# Keep these in sync with chatui_abci/models.py — repeated here so this skill
+# does not take a runtime import dependency on chatui_abci just to read the
+# on-disk withdrawal flag.
+CHATUI_PARAM_STORE_FILENAME = "chatui_param_store.json"
+WITHDRAWAL_STATE_IDLE = "idle"
+WITHDRAWAL_STATE_COMPLETE = "complete"
+
 
 class Event(Enum):
     """Event enumeration for the check stop trading skill."""
@@ -49,6 +58,8 @@ class Event(Enum):
     NO_MAJORITY = "no_majority"
     SKIP_TRADING = "skip_trading"
     REVIEW_BETS = "review_bets"
+    WITHDRAW_POLYMARKET = "withdraw_polymarket"
+    WITHDRAW_OMEN = "withdraw_omen"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -122,6 +133,25 @@ class CheckStopTradingRound(VotingRound):
             > self.context.params.review_period_seconds
         )
 
+    @staticmethod
+    def _read_withdrawal_flag(store_path: Path) -> Tuple[bool, str]:
+        """Read the persisted withdrawal flag and state from the chat-UI JSON store.
+
+        Defensive: returns ``(False, "idle")`` if the file is missing, unreadable,
+        or contains invalid JSON. The on-disk schema is owned by
+        ``chatui_abci/models.py``; this skill only reads it.
+        """
+        store_file = Path(store_path) / CHATUI_PARAM_STORE_FILENAME
+        try:
+            with open(store_file, "r") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return False, WITHDRAWAL_STATE_IDLE
+        return (
+            bool(data.get("withdrawal_mode", False)),
+            str(data.get("withdrawal_state", WITHDRAWAL_STATE_IDLE)),
+        )
+
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
         res = super().end_block()
@@ -141,6 +171,22 @@ class CheckStopTradingRound(VotingRound):
 
         self.synchronized_data.update(review_bets_for_selling=False)
 
+        # Withdrawal gate: only consider withdrawal when the cycle would
+        # otherwise resume normal trading (DONE). SKIP_TRADING and REVIEW_BETS
+        # take priority — those flows are evaluated above.
+        synchronized_data, event = res
+        if event == Event.DONE:
+            withdrawal_mode, withdrawal_state = self._read_withdrawal_flag(
+                self.context.params.store_path
+            )
+            if withdrawal_mode and withdrawal_state != WITHDRAWAL_STATE_COMPLETE:
+                withdrawal_event = (
+                    Event.WITHDRAW_POLYMARKET
+                    if self.context.params.is_running_on_polymarket
+                    else Event.WITHDRAW_OMEN
+                )
+                return synchronized_data, withdrawal_event
+
         return res
 
 
@@ -154,6 +200,14 @@ class FinishedWithSkipTradingRound(DegenerateRound, ABC):
 
 class FinishedWithReviewBetsRound(DegenerateRound, ABC):
     """A round that represents check stop trading has finished with review bets."""
+
+
+class FinishedWithWithdrawalPolymarketRound(DegenerateRound, ABC):
+    """A round that represents check stop trading is routing to Polymarket withdrawal."""
+
+
+class FinishedWithWithdrawalOmenRound(DegenerateRound, ABC):
+    """A round that represents check stop trading is routing to Omen withdrawal."""
 
 
 class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
@@ -190,15 +244,21 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
             Event.NO_MAJORITY: CheckStopTradingRound,
             Event.SKIP_TRADING: FinishedWithSkipTradingRound,
             Event.REVIEW_BETS: FinishedWithReviewBetsRound,
+            Event.WITHDRAW_POLYMARKET: FinishedWithWithdrawalPolymarketRound,
+            Event.WITHDRAW_OMEN: FinishedWithWithdrawalOmenRound,
         },
         FinishedCheckStopTradingRound: {},
         FinishedWithSkipTradingRound: {},
         FinishedWithReviewBetsRound: {},
+        FinishedWithWithdrawalPolymarketRound: {},
+        FinishedWithWithdrawalOmenRound: {},
     }
     final_states: Set[AppState] = {
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
         FinishedWithReviewBetsRound,
+        FinishedWithWithdrawalPolymarketRound,
+        FinishedWithWithdrawalOmenRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -208,4 +268,6 @@ class CheckStopTradingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
         FinishedWithReviewBetsRound: set(),
+        FinishedWithWithdrawalPolymarketRound: set(),
+        FinishedWithWithdrawalOmenRound: set(),
     }

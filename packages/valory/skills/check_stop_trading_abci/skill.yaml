@@ -138,6 +138,7 @@ models:
       stop_trading_if_staking_kpi_met: true
       enable_position_review: false
       review_period_seconds: 86400
+      is_running_on_polymarket: false
     class_name: CheckStopTradingParams
   requests:
     args: {}
