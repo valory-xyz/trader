@@ -12,15 +12,15 @@
         "connection/valory/polymarket_client/0.1.0": "bafybeif5u27xqde4epm4b7pxi2yloq6x7uloczwgmky6srzgfgicko2xei",
         "skill/valory/market_manager_abci/0.1.0": "bafybeidqef2n6cce4ga6cwyu2frgrykf4my5reofsvw4pxo7tquizxh3wq",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeifwz6qklwk2e2trbk2jbb5umaasfplb5hcdchmgpxb3wqys4tjini",
-        "skill/valory/trader_abci/0.1.0": "bafybeiad4pt5nmryyhcturut7akr75et56lk3lhz4kuvnktmrm3e6m2ola",
+        "skill/valory/trader_abci/0.1.0": "bafybeigw323zbigkc6srwl2zkpf23fntii2lumhvsq62yqagn3hdv5r5vm",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeify7kkphrrkqowndlrqniskvm6yrqt3ehuxwxrwsma2tahwwzseqm",
         "skill/valory/staking_abci/0.1.0": "bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeiapw7qbboaorsfj5c32q2yrqzkpuy2brf4ywzldfktyy3s4tu6pq4",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiey2ainn4xa6c35fwwlwne7si4axwdleajgmbk3sazyuix5wwnk74",
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeic2jvb2b5cy4mxyyssadmivhjfrle7hhyinsp64txwvvzpg5jvmrq",
         "skill/valory/chatui_abci/0.1.0": "bafybeif4djzjg47xndouojk53c6yzyqljtnvqq7eqn6dx6xbfmorbntefu",
-        "agent/valory/trader/0.1.0": "bafybeiga3x4n2qm5bwkwmkolfbt32a3jxo7r454vvrdrrc25w3suf7bimy",
-        "service/valory/trader_pearl/0.1.0": "bafybeiabcti5e5okgqxhcdpw53ol7tp2m5bkbuopdixr7sthsw76z6y5ou",
-        "service/valory/polymarket_trader/0.1.0": "bafybeiaxfobfu5dmhfe4jfgtzozeipvfzag7kzvisj3uf5zqnhlw5lrtny"
+        "agent/valory/trader/0.1.0": "bafybeigsiaenbjgampw5qdxu62cjti4nsmosghzvfagsh45tevuhhujqha",
+        "service/valory/trader_pearl/0.1.0": "bafybeihd4xmr5ozulj3lm6salow347dx7w5iisc7m34qfp4x72y7lyn424",
+        "service/valory/polymarket_trader/0.1.0": "bafybeiaul3ijdbsl2zogq5mpeatavrnjgw2umhbpm3fr256bqyyhs7mbqy"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
