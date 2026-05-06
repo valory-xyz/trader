@@ -589,6 +589,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "max_filtering_retries": 3,
         "redeeming_batch_size": 5,
         "redeem_round_timeout": 30.0,
+        "withdrawal_round_timeout": 1800.0,
         "slippage": 0.1,
         "policy_epsilon": 0.2,
         "tool_punishment_multiplier": 2,
@@ -670,6 +671,7 @@ class TestDecisionMakerParams:
         assert params.max_filtering_retries == 3
         assert params.redeeming_batch_size == 5
         assert params.redeem_round_timeout == 30.0
+        assert params.withdrawal_round_timeout == 1800.0
         assert params.tool_punishment_multiplier == 2
         assert params.contract_timeout == 10.0
         assert params.use_subgraph_for_redeeming is True

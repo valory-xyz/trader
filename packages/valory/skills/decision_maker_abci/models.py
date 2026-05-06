@@ -430,6 +430,9 @@ class DecisionMakerParams(
         self.redeem_round_timeout: float = self._ensure(
             "redeem_round_timeout", kwargs, float
         )
+        self.withdrawal_round_timeout: float = self._ensure(
+            "withdrawal_round_timeout", kwargs, float
+        )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)

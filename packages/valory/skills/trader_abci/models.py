@@ -222,6 +222,9 @@ class SharedState(BaseSharedState):
             TSEvent.FINALIZE_TIMEOUT: params.finalize_timeout,
             TSEvent.CHECK_TIMEOUT: params.history_check_timeout,
             DecisionMakerEvent.REDEEM_ROUND_TIMEOUT: params.redeem_round_timeout,
+            DecisionMakerEvent.WITHDRAWAL_ROUND_TIMEOUT: (
+                params.withdrawal_round_timeout
+            ),
             ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT: reset_pause_timeout,
         }
 

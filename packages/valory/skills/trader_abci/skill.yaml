@@ -11,15 +11,15 @@ fingerprint:
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
   composition.py: bafybeidnnbjpescsgocboh4amhas47bqelzmb6zxjp7vu7654uvhv5xcxq
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeibdd4rcbu6cygpml2cfkh2gvha5wrmyjhztf7zms42eummeg2gmau
+  fsm_specification.yaml: bafybeiddlgzzlj2jumytc4sqjoku4ri3kkjfxhhq3pepeqw2uatgqqksdq
   handlers.py: bafybeiauhbn7dcodqk4kickanzbrul6qklhjno2yzzyecnb254eeccoymq
-  models.py: bafybeifir6ffdwmszi32tvvdxxs6dpiqatk272lpzupulmnn2nnpkli2om
+  models.py: bafybeia257xdpckbx2bhfcvpuetilqtoiytq332ykozpqv3z3wwkblbzze
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeia3lyaw5keuj7lasatrck5jzrb7zrsyv6mvzhehjqh3sig5lara54
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
   tests/test_handlers.py: bafybeidyqjgi4a7jfs6v66hzp7bbqmthjcn6jh74ww3ea5qyucwxigjlke
-  tests/test_models.py: bafybeibrllyk347rcxawc2rwc6ed447ayckngva3qs6f6e6vc6xpqjraky
+  tests/test_models.py: bafybeianja6z3rspswf4cag3pnq2hgtsbc3hq7ndggyr2p3q6ye34wnoqq
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/omenstrat/assets/index-B-dBrp1a.js: bafybeibxpzd4bdfy2drteylk5vftq67mayohufevwht53wtzqhbzqdkuge
@@ -56,8 +56,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
 - valory/market_manager_abci:0.1.0:bafybeifjjakr4kamqpkun3iilguvhpbixvx62lz4zt7nk7xbi3d4kv44ai
-- valory/decision_maker_abci:0.1.0:bafybeibao3rkleq7hokl3kfsrwneildev3ncdbzedodw4fpy6tmhyvv4vq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibh7soi6e2zukeke7twcujrjp2b5ss2kag3qnt6zqjoonkhbwhjcm
+- valory/decision_maker_abci:0.1.0:bafybeid4wketoiqo3u2u6dqgakzj2ua24fxzrmbos5bckhyxfescspwmei
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaw5lqr5edity36olle2xim4ndz7zcyp644obqxqwlc3hf3mnx6qq
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
 - valory/check_stop_trading_abci:0.1.0:bafybeibotjret475vzmgkl4jzznqifgh4blmw7u2a2t6cggwgh4q4pompq
 - valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
@@ -275,6 +275,7 @@ models:
       refill_check_interval: 10
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
+      withdrawal_round_timeout: 1800.0
       tool_punishment_multiplier: 1
       contract_timeout: 300.0
       file_hash_to_strategies: {}

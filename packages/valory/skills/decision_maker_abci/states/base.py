@@ -76,6 +76,7 @@ class Event(Enum):
     NO_OP = "no_op"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
+    WITHDRAWAL_ROUND_TIMEOUT = "withdrawal_round_timeout"
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
     POLYMARKET_DONE = "polymarket_done"

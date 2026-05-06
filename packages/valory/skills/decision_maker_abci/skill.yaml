@@ -37,18 +37,18 @@ fingerprint:
   behaviours/storage_manager.py: bafybeifuthllbvup2ox2nqotpzpsg7tq53vvbjy4lfcdjlhojeawm57cda
   behaviours/tool_selection.py: bafybeih7s7lvhquocztakzsvpbzy4z7tbvxswztr73q2nzopc2qrbdrlki
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
-  fsm_specification.yaml: bafybeifc3kvjxq2yy4biu6nvwdxbgyscugebvfttyowexskduy64lfrw5q
+  fsm_specification.yaml: bafybeigiluabfpujqbdsp7xrkerfp3ptai4cngqik4h33xfwesg7gajwea
   handlers.py: bafybeicxbqs224rmfqpmzqfbms4ohhcev2gtyz5iayrkvkkkqbcp3ruhvi
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeieawmb6yw5ktwcsvcgtehvcdryt6s6js46fnvs6mega7sv2t7lkci
+  models.py: bafybeibqzrja5evne4basyi56ftjhgnqqttmbxw3vz27gwj66ykrazb5ai
   payloads.py: bafybeif6zapl4jwugup2i3raenmtm7yj52mz4ggjokypixqrxgwbqrbmzu
   policy.py: bafybeici2ywdlwzpftbibv2uyzymdlraj6wovjana37ujkdwn5wna6bbvq
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
-  rounds.py: bafybeic6uyagi23ii6gs6ylxw6qx4bhccgpybhicgf7wq5kje5mb4qd3i4
-  rounds_info.py: bafybeifeliiia2lhraerf3hny2ybimec3ugyam6lx2asdko3qmuwu3t4hy
+  rounds.py: bafybeiaxo2fdge2bvs7rdvhfigwvficinmzyfupn632pvxav4fc7y4bphu
+  rounds_info.py: bafybeifaqhs42talx7zftr7wozz7bjmkie5odck37dx3dnqfpbbduwwcoq
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeieybmim2ungy5evxjjrve7lqugks5zmbc6ozicvt2vo7bofyccqaa
+  states/base.py: bafybeihkyviqhhpr2dcxxoguwe5j3hc5765corrlnvw2dlidgfysahibza
   states/bet_placement.py: bafybeigxqet2qc7ocnkglhdylx63z5puiolwcl2g4vfksfdf6qoxveej4a
   states/blacklisting.py: bafybeic4y6m5uyf25qzsdbjcwrfjil3tj77lr7wxjdhwtps7p2hzxw53fm
   states/check_benchmarking.py: bafybeihu4bipaes2gl54u5shrldp4z7zehe2mrcdxgqpl37624pdxqib7e
@@ -118,13 +118,13 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeif2iygll3b53ouy4mnkzxwdemfoj3dw3zrj267b225musrgfuuyhq
-  tests/test_models.py: bafybeidqi65kppl5hcp445tpf6p7ehdivfpbfbbf7cr7767boqtliot5uy
+  tests/test_models.py: bafybeidmujyn5hjn2eaqoow6gia76lqpt3lfjle2t7ozvj6y2d7g4mz6vq
   tests/test_payloads.py: bafybeibazknxgyyqoh3f3iszr2qqdafgge4uasb3fyvngs3nos5u7ts6ca
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeiet3bl24f7lzdn3guxdso4igaiuqxzx3tn3bsnji6ise7ifpxio3e
-  tests/test_withdrawal_rounds.py: bafybeib3w2lj4f4jks34fma7lqnjcyjqla2nmsvmp2s2liqah64erwplxm
+  tests/test_withdrawal_rounds.py: bafybeih5hplsubd5sdvkxcjpftfnm6b3xof744ehylyhxaiawtm4vflwo4
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
@@ -327,6 +327,7 @@ models:
       realitio_proxy_address: '0xAB16D643bA051C11962DA645f74632d3130c81E2'
       realitio_address: '0x79e32aE03fb27B07C89c0c568F80287C01ca2E57'
       redeem_round_timeout: 3600.0
+      withdrawal_round_timeout: 1800.0
       event_filtering_batch_size: 5000
       reduce_factor: 0.25
       max_filtering_retries: 6

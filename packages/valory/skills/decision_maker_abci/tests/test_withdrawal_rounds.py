@@ -109,14 +109,40 @@ class TestAbciAppWithdrawalWiring:
         assert tx[PolymarketWithdrawRound][Event.WITHDRAWAL_DONE] is WithdrawalIdleRound
 
     def test_polymarket_withdraw_routes_to_idle_on_round_timeout(self) -> None:
-        """ROUND_TIMEOUT from PolymarketWithdrawRound enters WithdrawalIdleRound (D26)."""
+        """WITHDRAWAL_ROUND_TIMEOUT from PolymarketWithdrawRound → WithdrawalIdleRound."""
         tx = DecisionMakerAbciApp.transition_function
-        assert tx[PolymarketWithdrawRound][Event.ROUND_TIMEOUT] is WithdrawalIdleRound
+        assert (
+            tx[PolymarketWithdrawRound][Event.WITHDRAWAL_ROUND_TIMEOUT]
+            is WithdrawalIdleRound
+        )
 
     def test_omen_withdraw_routes_to_idle_on_done(self) -> None:
         """WITHDRAWAL_DONE from OmenWithdrawRound enters WithdrawalIdleRound."""
         tx = DecisionMakerAbciApp.transition_function
         assert tx[OmenWithdrawRound][Event.WITHDRAWAL_DONE] is WithdrawalIdleRound
+
+    def test_omen_withdraw_routes_to_idle_on_round_timeout(self) -> None:
+        """WITHDRAWAL_ROUND_TIMEOUT from OmenWithdrawRound → WithdrawalIdleRound."""
+        tx = DecisionMakerAbciApp.transition_function
+        assert (
+            tx[OmenWithdrawRound][Event.WITHDRAWAL_ROUND_TIMEOUT] is WithdrawalIdleRound
+        )
+
+    def test_withdraw_rounds_use_dedicated_timeout_event(self) -> None:
+        """Withdraw rounds emit WITHDRAWAL_ROUND_TIMEOUT, not the generic 30s ROUND_TIMEOUT.
+
+        Sharing ROUND_TIMEOUT would mean the global 30s timer applies to a
+        sweep that may legitimately take minutes; the dedicated event lets
+        operators tune `withdrawal_round_timeout` independently.
+        """
+        tx = DecisionMakerAbciApp.transition_function
+        assert Event.ROUND_TIMEOUT not in tx[PolymarketWithdrawRound]
+        assert Event.ROUND_TIMEOUT not in tx[OmenWithdrawRound]
+
+    def test_withdrawal_round_timeout_default_in_event_to_timeout(self) -> None:
+        """The new event has a default seconds value in the AbciApp's timeout map."""
+        assert Event.WITHDRAWAL_ROUND_TIMEOUT in DecisionMakerAbciApp.event_to_timeout
+        assert DecisionMakerAbciApp.event_to_timeout[Event.WITHDRAWAL_ROUND_TIMEOUT] > 0
 
     def test_idle_round_has_no_outgoing_transitions(self) -> None:
         """WithdrawalIdleRound is terminal — empty transition map (DegenerateRound)."""

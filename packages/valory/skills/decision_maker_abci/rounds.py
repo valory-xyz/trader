@@ -528,13 +528,13 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         PolymarketWithdrawRound: {
             Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
-            Event.ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
             Event.NO_MAJORITY: PolymarketWithdrawRound,
             Event.NONE: PolymarketWithdrawRound,
         },
         OmenWithdrawRound: {
             Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
-            Event.ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
             Event.NO_MAJORITY: OmenWithdrawRound,
             Event.NONE: OmenWithdrawRound,
         },
@@ -574,6 +574,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
         Event.REDEEM_ROUND_TIMEOUT: 3600.0,
+        Event.WITHDRAWAL_ROUND_TIMEOUT: 1800.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRouterRound: set(),

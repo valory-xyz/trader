@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigggxocs2rmlbs2j62ny4cgnb74kfzh7cqqbjy37ax2aq3hp2542e
+agent: valory/trader:0.1.0:bafybeibqfqw2lhmloke72lbivl6uiuzgvq5y4lgj5megh7fy6m4jc5hv4y
 number_of_agents: 1
 deployment:
   agent:
@@ -127,6 +127,7 @@ models:
       refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
       tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
+      withdrawal_round_timeout: ${WITHDRAWAL_ROUND_TIMEOUT:float:1800.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
       strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}}
