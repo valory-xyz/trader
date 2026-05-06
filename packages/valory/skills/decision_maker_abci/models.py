@@ -475,6 +475,18 @@ class DecisionMakerParams(
         self.review_period_seconds: int = self._ensure(
             "review_period_seconds", kwargs, int
         )
+        self.withdrawal_max_fak_attempts: int = self._ensure(
+            "withdrawal_max_fak_attempts", kwargs, int
+        )
+        self.withdrawal_fak_backoff_s: List[int] = self._ensure(
+            "withdrawal_fak_backoff_s", kwargs, List[int]
+        )
+        if len(self.withdrawal_fak_backoff_s) != self.withdrawal_max_fak_attempts:
+            raise ValueError(
+                "withdrawal_fak_backoff_s length "
+                f"({len(self.withdrawal_fak_backoff_s)}) must equal "
+                f"withdrawal_max_fak_attempts ({self.withdrawal_max_fak_attempts})"
+            )
         self.min_confidence_for_selling: float = 0.5
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool

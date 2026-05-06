@@ -9,14 +9,14 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  composition.py: bafybeifchvppo6lngfzjdambsu4vf4fnm7xwygwxwimu3lxf6zwobo2ywq
+  composition.py: bafybeidnnbjpescsgocboh4amhas47bqelzmb6zxjp7vu7654uvhv5xcxq
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeibdd4rcbu6cygpml2cfkh2gvha5wrmyjhztf7zms42eummeg2gmau
   handlers.py: bafybeiauhbn7dcodqk4kickanzbrul6qklhjno2yzzyecnb254eeccoymq
   models.py: bafybeifir6ffdwmszi32tvvdxxs6dpiqatk272lpzupulmnn2nnpkli2om
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeihpgwqlzvyqj4ta4llfh2chjk3rapmlcvbnva4imolu5miwfhq4x4
+  tests/test_composition.py: bafybeia3lyaw5keuj7lasatrck5jzrb7zrsyv6mvzhehjqh3sig5lara54
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
   tests/test_handlers.py: bafybeidyqjgi4a7jfs6v66hzp7bbqmthjcn6jh74ww3ea5qyucwxigjlke
   tests/test_models.py: bafybeibrllyk347rcxawc2rwc6ed447ayckngva3qs6f6e6vc6xpqjraky
@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
-- valory/market_manager_abci:0.1.0:bafybeiein7pjauwy7heufoynqzjquolrxbsfavcshxnbfyyrhputko4sky
-- valory/decision_maker_abci:0.1.0:bafybeibn23c72lxur45dvzwfeuaxd3c2vuig35dsduxgtjw43gd7tyem3u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicnccecytfkd6dh3xaaigzfq7e6ddmvbdynjlnf4thm6j6ml3jxh4
+- valory/market_manager_abci:0.1.0:bafybeifjjakr4kamqpkun3iilguvhpbixvx62lz4zt7nk7xbi3d4kv44ai
+- valory/decision_maker_abci:0.1.0:bafybeibao3rkleq7hokl3kfsrwneildev3ncdbzedodw4fpy6tmhyvv4vq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibh7soi6e2zukeke7twcujrjp2b5ss2kag3qnt6zqjoonkhbwhjcm
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
-- valory/check_stop_trading_abci:0.1.0:bafybeigkx3zumwsl3sziadjxkyof4yjv45mfvnhccf7sbogyha2rmlf2hq
+- valory/check_stop_trading_abci:0.1.0:bafybeibotjret475vzmgkl4jzznqifgh4blmw7u2a2t6cggwgh4q4pompq
 - valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
-- valory/chatui_abci:0.1.0:bafybeidm7h57mpoyvotddheomgn3t7nehozllii3u5hx5buwkkrz3fhm2y
-- valory/agent_performance_summary_abci:0.1.0:bafybeichiiet6mb6j2xwnxzfws3gzirwbav6qbt3hix7y5ucshn3que2gy
+- valory/chatui_abci:0.1.0:bafybeibs4d75mv3kvydctb2fq4x4k63u3yafdrhjcue7qqjwwdomr65224
+- valory/agent_performance_summary_abci:0.1.0:bafybeihaonux4n2n23xix5xtpgteladn2xzkz67pwhcwmupwwgm4h6yzdu
 - valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
 behaviours:
   main:
@@ -311,6 +311,11 @@ models:
       enable_multi_bets_fallback: false
       enable_position_review: false
       review_period_seconds: 86400
+      withdrawal_max_fak_attempts: 3
+      withdrawal_fak_backoff_s:
+      - 10
+      - 30
+      - 60
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       coingecko_pol_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd
       x402_payment_requirements: {}

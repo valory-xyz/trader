@@ -37,7 +37,13 @@ from eth_abi import encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
-from py_clob_client_v2 import BuilderConfig, ClobClient, MarketOrderArgs, OrderType
+from py_clob_client_v2 import (
+    BalanceAllowanceParams,
+    BuilderConfig,
+    ClobClient,
+    MarketOrderArgs,
+    OrderType,
+)
 from py_clob_client_v2.exceptions import PolyApiException
 from py_clob_client_v2.order_builder.constants import BUY
 from py_clob_client_v2.order_utils.model.order_data_v2 import Side, SignedOrderV2
@@ -423,6 +429,8 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
+            RequestType.SELL_POSITION: self._sell_position,
+            RequestType.REFRESH_BALANCE_ALLOWANCE: self._refresh_balance_allowance,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -523,6 +531,106 @@ class PolymarketClientConnection(BaseSyncConnection):
             # Return error with signed order for retry
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
+
+    def _sell_position(
+        self,
+        token_id: str,
+        amount: float,
+        cached_signed_order_json: str = None,
+    ) -> Tuple[Any, Any]:
+        """Submit a market SELL against the CLOB.
+
+        Mirrors ``_place_bet`` exactly — same caching pattern, same error
+        translation. The differences are ``Side.SELL`` instead of ``BUY``,
+        ``OrderType.FAK`` instead of ``FOK``, and the meaning of ``amount``:
+        for SELL it is **shares** (CTF token units), not USDC collateral.
+
+        ``PartialCreateOrderOptions`` is omitted: the SDK auto-resolves
+        ``tick_size`` (via ``__resolve_tick_size``) and ``neg_risk`` (via
+        ``get_neg_risk``) from the cached market info. This matches the
+        buy path.
+        """
+        signed_order_json = None
+
+        try:
+            signed = None
+            if cached_signed_order_json:
+                try:
+                    signed_dict = json.loads(cached_signed_order_json)
+                    if (
+                        signed_dict.get("clob_version") == "v2"
+                        and "timestamp" in signed_dict
+                    ):
+                        signed = _deserialize_signed_order_v2(signed_dict)
+                        signed_order_json = cached_signed_order_json
+                    else:
+                        self.logger.warning(
+                            "Dropping stale (non-v2) cached signed order; resigning."
+                        )
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(
+                        f"Cached signed order could not be parsed ({e}); resigning."
+                    )
+
+            if signed is None:
+                mo = MarketOrderArgs(
+                    token_id=token_id,
+                    amount=amount,
+                    side=Side.SELL,
+                    order_type=OrderType.FAK,
+                )
+                signed = self.client.create_market_order(mo)
+                signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
+
+            resp: Dict = self.client.post_order(signed, OrderType.FAK)
+
+            if not resp:
+                return resp, None
+
+            taking_amount_raw = resp.get("takingAmount") or 0.0
+            making_amount_raw = resp.get("makingAmount") or 0.0
+            filled_shares = float(taking_amount_raw) if taking_amount_raw else 0.0
+            filled_usdc = float(making_amount_raw) if making_amount_raw else 0.0
+            fill_price = filled_usdc / filled_shares if filled_shares > 0 else 0.0
+
+            return (
+                {
+                    "order_id": resp.get("orderID") or "",
+                    "status": resp.get("status") or "",
+                    "filled_shares": filled_shares,
+                    "filled_usdc": filled_usdc,
+                    "fill_price": fill_price,
+                    "raw": resp,
+                    "signed_order_json": signed_order_json,
+                },
+                None,
+            )
+
+        except PolyApiException as e:
+            error_msg = (
+                e.error_msg.get("error")
+                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
+                else f"Error selling position: {e}"
+            )
+            self.logger.error(error_msg)
+            response = {"error": error_msg, "signed_order_json": signed_order_json}
+            return response, error_msg
+
+    def _refresh_balance_allowance(self) -> Tuple[Any, Any]:
+        """Refresh the CLOB-backend balance/allowance state.
+
+        The SDK call is idempotent and only talks to the CLOB backend (no
+        on-chain transactions). Run once at withdrawal-behaviour entry — the
+        buy-side ``setApprovalForAll`` grants vest the on-chain rights, but
+        the CLOB-side cache may be stale after a long quiescent period.
+        """
+        try:
+            resp = self.client.update_balance_allowance(BalanceAllowanceParams())
+            return resp, None
+        except PolyApiException as e:
+            error_msg = f"Error refreshing balance/allowance: {e}"
+            self.logger.error(error_msg)
+            return None, error_msg
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES
