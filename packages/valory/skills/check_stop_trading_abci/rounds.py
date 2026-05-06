@@ -46,7 +46,6 @@ from packages.valory.skills.check_stop_trading_abci.payloads import (
 # on-disk withdrawal flag.
 CHATUI_PARAM_STORE_FILENAME = "chatui_param_store.json"
 WITHDRAWAL_STATE_IDLE = "idle"
-WITHDRAWAL_STATE_COMPLETE = "complete"
 
 
 class Event(Enum):
@@ -174,15 +173,21 @@ class CheckStopTradingRound(VotingRound):
 
         self.synchronized_data.update(review_bets_for_selling=False)
 
-        # Withdrawal gate: only consider withdrawal when the cycle would
-        # otherwise resume normal trading (DONE). SKIP_TRADING and REVIEW_BETS
-        # take priority — those flows are evaluated above.
+        # Withdrawal gate: once the operator arms withdrawal, the agent
+        # stays in withdrawal mode for the lifetime of the process —
+        # normal trading does not resume even after a sweep ends
+        # ``complete``. The gate diverts every cycle until a process
+        # restart triggers the boot-time auto-clear (which only fires
+        # when state==complete). This intentionally also keeps the agent
+        # halted across restarts when the latest sweep ended ``errored``,
+        # so the operator must investigate before betting resumes.
+        # SKIP_TRADING and REVIEW_BETS still take priority above.
         synchronized_data, event = res
         if event == Event.DONE:
-            withdrawal_mode, withdrawal_state = self._read_withdrawal_flag(
+            withdrawal_mode, _ = self._read_withdrawal_flag(
                 self.context.params.store_path
             )
-            if withdrawal_mode and withdrawal_state != WITHDRAWAL_STATE_COMPLETE:
+            if withdrawal_mode:
                 withdrawal_event = (
                     Event.WITHDRAW_POLYMARKET
                     if self.context.params.is_running_on_polymarket

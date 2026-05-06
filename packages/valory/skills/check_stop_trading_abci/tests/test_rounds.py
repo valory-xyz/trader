@@ -594,8 +594,14 @@ class TestEndBlockWithdrawalBranching:
         _, event = result
         assert event == Event.DONE
 
-    def test_complete_state_does_not_re_enter_withdrawal(self) -> None:
-        """flag=True + state=complete → DONE (don't re-trigger after completion)."""
+    def test_complete_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=complete → still diverts.
+
+        Once armed, the agent stays in withdrawal mode for the lifetime of
+        the process (no normal trading) until a restart with state==complete
+        triggers the boot-time auto-clear. So the gate diverts on every
+        cycle regardless of the latest sweep's outcome.
+        """
         round_ = _make_round_with_disk_flag(
             is_polymarket=True,
             withdrawal_mode=True,
@@ -605,7 +611,33 @@ class TestEndBlockWithdrawalBranching:
 
         assert result is not None
         _, event = result
-        assert event == Event.DONE
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_errored_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=errored → still diverts (auto-retry semantics)."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="errored",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_selling_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=selling → diverts (resume mid-sweep on restart)."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="selling",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
 
     def test_skip_trading_takes_priority_over_withdrawal(self) -> None:
         """flag=True + super=SKIP_TRADING → SKIP_TRADING (skip trumps withdraw)."""
