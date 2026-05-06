@@ -262,10 +262,11 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         total_usdc = 0.0
         last_error: Optional[str] = None
 
-        backoff = self._retry_schedule()
+        max_attempts = self.context.params.withdrawal_max_fak_attempts
+        backoff = self._retry_schedule()  # length == max_attempts - 1
         self.context.logger.info(f"withdrawal: selling {token_id} size={shares}")
 
-        for attempt, sleep_s in enumerate(backoff):
+        for attempt in range(max_attempts):
             response, error = yield from self._request_sell(token_id, residual)
             if error is not None:
                 last_error = error
@@ -307,12 +308,14 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                     return
                 last_error = f"partial fill, residual={residual}"
 
-            if attempt < len(backoff) - 1:
+            # ``backoff[attempt]`` is the gap AFTER attempt ``attempt``. No
+            # sleep after the final attempt — the loop is exiting anyway.
+            if attempt < max_attempts - 1:
                 self.context.logger.info(
-                    f"withdrawal: FAK retry {attempt + 2}/{len(backoff)} "
+                    f"withdrawal: FAK retry {attempt + 2}/{max_attempts} "
                     f"for {token_id} residual={residual}"
                 )
-                yield from self.sleep(sleep_s)
+                yield from self.sleep(backoff[attempt])
 
         # Retries exhausted. Record the residual as an error; the on-chain
         # record (via get_trades) is the audit trail for what filled.

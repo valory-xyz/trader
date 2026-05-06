@@ -269,15 +269,28 @@ def _make_position(
 def _make_behaviour(
     tmp_path: Path,
     backoff: Optional[List[int]] = None,
+    max_attempts: Optional[int] = None,
 ) -> "_TestablePolymarketWithdraw":
-    """Build a behaviour with mocked context / params and a tmp store path."""
+    """Build a behaviour with mocked context / params and a tmp store path.
+
+    The schedule contract is ``len(backoff) == max_attempts - 1`` (one sleep
+    per inter-attempt gap). When ``max_attempts`` is omitted it's derived as
+    ``len(backoff) + 1``, matching the production validation.
+
+    :param tmp_path: pytest-supplied tmp directory used as the store path.
+    :param backoff: inter-attempt sleep schedule.
+    :param max_attempts: total FAK attempts; defaults to ``len(backoff) + 1``.
+    :return: a fresh testable behaviour instance.
+    """
     if backoff is None:
-        backoff = [10, 30, 60]
+        backoff = [10, 30]
+    if max_attempts is None:
+        max_attempts = len(backoff) + 1
     behaviour = object.__new__(_TestablePolymarketWithdraw)
     behaviour.context = MagicMock()  # type: ignore[assignment]
     behaviour.context.agent_address = "agent_x"
     behaviour.context.params.store_path = tmp_path
-    behaviour.context.params.withdrawal_max_fak_attempts = len(backoff)
+    behaviour.context.params.withdrawal_max_fak_attempts = max_attempts
     behaviour.context.params.withdrawal_fak_backoff_s = backoff
     return behaviour
 
@@ -553,7 +566,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -599,14 +612,14 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         positions = [_make_position(TOK_A, size=100.0)]
-        # 60 @ 0.40 + 30 @ 0.50 + 10 @ 0.60 = 100 shares total, $50 total
-        # → vw price = 50 / 100 = 0.50
+        # 60 @ 0.40 + 30 @ 0.50 + 10 @ 0.60 = 100 shares total, $45 total
+        # → vw price = 45 / 100 = 0.45
         sell_responses = [
             {
                 "order_id": "o-1",
@@ -668,7 +681,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -696,7 +709,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
     def test_residual_after_max_attempts_records_error(self, tmp_path: Path) -> None:
         """Three failed FAKs (no fill) → one error record with full residual."""
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -742,7 +755,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -800,7 +813,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
     ) -> None:
         """Refresh OK but positions API fails 3x → one top-level error, state errored."""
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -874,7 +887,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
     ) -> None:
         """Connection returning ``None`` from FETCH_ALL_POSITIONS → top-level error."""
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -898,7 +911,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -922,7 +935,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
     def test_stuck_reason_distinguishes_sdk_error(self, tmp_path: Path) -> None:
         """When the last attempt errored, the stuck reason quotes the SDK message."""
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -1010,7 +1023,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -1064,7 +1077,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
@@ -1126,7 +1139,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
         _seed_store(tmp_path)
-        behaviour = _make_behaviour(tmp_path, backoff=[1, 1, 1])
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
         captured_payload: Dict[str, Any] = {}
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)

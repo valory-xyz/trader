@@ -37,15 +37,13 @@ from packages.valory.skills.abstract_round_abci.base import (
     VotingRound,
     get_name,
 )
+from packages.valory.skills.chatui_abci.models import (
+    CHATUI_PARAM_STORE,
+    WITHDRAWAL_STATE_IDLE,
+)
 from packages.valory.skills.check_stop_trading_abci.payloads import (
     CheckStopTradingPayload,
 )
-
-# Keep these in sync with chatui_abci/models.py — repeated here so this skill
-# does not take a runtime import dependency on chatui_abci just to read the
-# on-disk withdrawal flag.
-CHATUI_PARAM_STORE_FILENAME = "chatui_param_store.json"
-WITHDRAWAL_STATE_IDLE = "idle"
 
 
 class Event(Enum):
@@ -143,7 +141,7 @@ class CheckStopTradingRound(VotingRound):
         :param store_path: directory containing ``chatui_param_store.json``.
         :return: a ``(withdrawal_mode, withdrawal_state)`` tuple.
         """
-        store_file = Path(store_path) / CHATUI_PARAM_STORE_FILENAME
+        store_file = Path(store_path) / CHATUI_PARAM_STORE
         try:
             with open(store_file, "r") as f:
                 data = json.load(f)

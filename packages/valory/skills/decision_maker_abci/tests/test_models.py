@@ -609,7 +609,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "enable_position_review": False,
         "review_period_seconds": 3600,
         "withdrawal_max_fak_attempts": 3,
-        "withdrawal_fak_backoff_s": [10, 30, 60],
+        "withdrawal_fak_backoff_s": [10, 30],
         "polymarket_builder_program_enabled": False,
         "polymarket_collateral_address": "0xpusd",
         "polymarket_usdc_e_address": "0xusdce",
@@ -687,7 +687,7 @@ class TestDecisionMakerParams:
         assert params.enable_position_review is False
         assert params.review_period_seconds == 3600
         assert params.withdrawal_max_fak_attempts == 3
-        assert params.withdrawal_fak_backoff_s == [10, 30, 60]
+        assert params.withdrawal_fak_backoff_s == [10, 30]
         assert params.min_confidence_for_selling == 0.5
         assert params.polymarket_builder_program_enabled is False
         assert params.polymarket_collateral_address == "0xpusd"
@@ -718,15 +718,31 @@ class TestDecisionMakerParams:
         assert result.template == "@{yes} @{no} @{question}"
 
     def test_withdrawal_backoff_length_mismatch_raises(self) -> None:
-        """Length mismatch between attempts count and backoff list raises ValueError."""
+        """Length mismatch between attempts count and backoff list raises ValueError.
+
+        Contract: ``len(backoff) == max_attempts - 1`` because the schedule
+        represents inter-attempt sleeps (no sleep after the final attempt).
+        """
         kwargs = _build_decision_maker_params_kwargs()
         kwargs["withdrawal_max_fak_attempts"] = 3
-        kwargs["withdrawal_fak_backoff_s"] = [10, 30]  # off-by-one short
+        kwargs["withdrawal_fak_backoff_s"] = [10, 30, 60]  # one entry too many
         with (
             patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
             pytest.raises(ValueError, match="withdrawal_fak_backoff_s length"),
         ):
             DecisionMakerParams(**kwargs)
+
+    def test_withdrawal_backoff_length_n_minus_one_accepted(self) -> None:
+        """``len(backoff) == max_attempts - 1`` is the canonical accepted length."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["withdrawal_max_fak_attempts"] = 3
+        kwargs["withdrawal_fak_backoff_s"] = [10, 30]
+        with patch.object(
+            DecisionMakerParams.__mro__[1], "__init__", return_value=None
+        ):
+            params = DecisionMakerParams(**kwargs)
+        assert params.withdrawal_fak_backoff_s == [10, 30]
+        assert params.withdrawal_max_fak_attempts == 3
 
     def test_slippage_getter(self) -> None:
         """Test slippage getter returns the private _slippage value."""

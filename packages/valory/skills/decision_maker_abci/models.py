@@ -484,11 +484,16 @@ class DecisionMakerParams(
         self.withdrawal_fak_backoff_s: List[int] = self._ensure(
             "withdrawal_fak_backoff_s", kwargs, List[int]
         )
-        if len(self.withdrawal_fak_backoff_s) != self.withdrawal_max_fak_attempts:
+        # ``withdrawal_fak_backoff_s`` is the schedule of inter-attempt
+        # sleeps, so it has one fewer entry than the attempt count: with
+        # ``max_attempts=3`` and ``backoff=[10, 30]``, the loop tries,
+        # sleeps 10s, retries, sleeps 30s, retries — 3 attempts, 2 gaps.
+        expected = self.withdrawal_max_fak_attempts - 1
+        if len(self.withdrawal_fak_backoff_s) != expected:
             raise ValueError(
                 "withdrawal_fak_backoff_s length "
                 f"({len(self.withdrawal_fak_backoff_s)}) must equal "
-                f"withdrawal_max_fak_attempts ({self.withdrawal_max_fak_attempts})"
+                f"withdrawal_max_fak_attempts - 1 ({expected})"
             )
         self.min_confidence_for_selling: float = 0.5
         self.polymarket_builder_program_enabled: bool = self._ensure(

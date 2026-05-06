@@ -25,7 +25,7 @@ fingerprint:
   behaviours/polymarket_reedem.py: bafybeieefb5eee5h3qx7pl7twcfairvwwliojw7h2dkmtzx2eqbak5vavy
   behaviours/polymarket_set_approval.py: bafybeieq6s2v63wcmmpzb3u65xbr6lg4ob4fftvr75qcwglqf2o36v5ag4
   behaviours/polymarket_swap.py: bafybeiack4epupksyvpm5hj6hot2cwtbvme2dqmogxdgzjn6v5mseg2m24
-  behaviours/polymarket_withdraw.py: bafybeied2ueyta5she777mjiak5u5u5t2e5tvxetjtvsk25lxbmi422tz4
+  behaviours/polymarket_withdraw.py: bafybeihhpd46bmcmp5elxuth4ugj5aywt24lblqbcetyvthrpgfkqlfcba
   behaviours/polymarket_wrap_collateral.py: bafybeicyolkipi4nmhxeativei23nxz7ylyeda5uraelh4ig5hzl3tyshi
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
@@ -41,7 +41,7 @@ fingerprint:
   handlers.py: bafybeicxbqs224rmfqpmzqfbms4ohhcev2gtyz5iayrkvkkkqbcp3ruhvi
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeibqzrja5evne4basyi56ftjhgnqqttmbxw3vz27gwj66ykrazb5ai
+  models.py: bafybeib7dae7gyljikdvqiaurs7rtawgijqst4r54kmq7fuyxhtoosonlm
   payloads.py: bafybeif6zapl4jwugup2i3raenmtm7yj52mz4ggjokypixqrxgwbqrbmzu
   policy.py: bafybeici2ywdlwzpftbibv2uyzymdlraj6wovjana37ujkdwn5wna6bbvq
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
@@ -118,13 +118,13 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeif2iygll3b53ouy4mnkzxwdemfoj3dw3zrj267b225musrgfuuyhq
-  tests/test_models.py: bafybeidmujyn5hjn2eaqoow6gia76lqpt3lfjle2t7ozvj6y2d7g4mz6vq
+  tests/test_models.py: bafybeihf66xcysyd64is645a5gqnjrg46aar4erls2d6izak4kdf36gu3m
   tests/test_payloads.py: bafybeibazknxgyyqoh3f3iszr2qqdafgge4uasb3fyvngs3nos5u7ts6ca
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeiet3bl24f7lzdn3guxdso4igaiuqxzx3tn3bsnji6ise7ifpxio3e
-  tests/test_withdrawal_rounds.py: bafybeiem3i7t7e3zlyfjj3kqhu4y2c27lcylde6w2m7t3ellzhrvcqwm2m
+  tests/test_withdrawal_rounds.py: bafybeifivql6yrkltnfi6s7pdmsapeiien2twexvoa24ek5hpppocoxqie
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
@@ -375,7 +375,6 @@ models:
       withdrawal_fak_backoff_s:
       - 10
       - 30
-      - 60
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       coingecko_pol_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd
       is_agent_performance_summary_enabled: true

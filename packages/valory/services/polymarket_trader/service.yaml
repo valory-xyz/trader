@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeia76zs7tlhtzwcjlxtmwb5cugu5xkiep6kka6xirb7l476o5agm3u
+agent: valory/trader:0.1.0:bafybeihoidrkz73us45qmyt6c7jfcdfapb46wxsyvagz2vjxucimbm3qwu
 number_of_agents: 1
 deployment:
   agent:
@@ -122,7 +122,7 @@ models:
       enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
       review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
       withdrawal_max_fak_attempts: ${WITHDRAWAL_MAX_FAK_ATTEMPTS:int:3}
-      withdrawal_fak_backoff_s: ${WITHDRAWAL_FAK_BACKOFF_S:list:[10,30,60]}
+      withdrawal_fak_backoff_s: ${WITHDRAWAL_FAK_BACKOFF_S:list:[10,30]}
       agent_balance_threshold: ${AGENT_BALANCE_THRESHOLD:int:10000000000000000}
       refill_check_interval: ${REFILL_CHECK_INTERVAL:int:10}
       tool_punishment_multiplier: ${TOOL_PUNISHMENT_MULTIPLIER:int:1}
