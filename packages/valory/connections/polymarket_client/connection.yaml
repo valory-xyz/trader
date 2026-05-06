@@ -11,7 +11,7 @@ fingerprint:
   connection.py: bafybeia7bkycgi7iqlbbdtbt5yc2e4vmbuv45cdjo5waljggva2cw7gpsq
   request_types.py: bafybeibm7jv5ath3gu7cgcqaf2mv5wqwcwfykhauw7dhescs65cex44f6a
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeicio4jyu2fhktas4mpxdbwnjb25qoufg5ozm3vff32i2yjg3bgs3q
+  tests/test_connection.py: bafybeigmd5qciy2x4mz6r7amisogmueqp7r63zlutxdstj7ljxc34qieg4
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
