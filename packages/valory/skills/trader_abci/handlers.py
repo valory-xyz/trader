@@ -223,6 +223,7 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
         is_enabled_url = rf"{hostname_regex}\/features"
+        withdrawal_url = rf"{hostname_regex}\/api\/v1\/withdrawal"
         position_details_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
@@ -245,6 +246,13 @@ class HttpHandler(BaseHttpHandler):
                 (agent_predictions_url_regex, self._handle_get_predictions),
                 (trading_details_url_regex, self._handle_get_trading_details),
                 (is_enabled_url, self._handle_get_features),
+                # The withdrawal handler lives in chatui_abci.HttpHandler but is
+                # only registered there under the (GET,) key, which sits AFTER
+                # this (GET, HEAD) entry in iteration order — so the
+                # static-files catch-all below shadows it. Re-register here so
+                # it resolves before the catch-all (matches how /features is
+                # handled).
+                (withdrawal_url, self._handle_get_withdrawal),
                 (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
                 (
                     position_details_url_regex,
