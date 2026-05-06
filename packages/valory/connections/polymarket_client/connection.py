@@ -77,6 +77,23 @@ MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 10
+# Backoffs for polling get_order after a post_order ``delayed`` response.
+# CLOB defers async matching for FAK orders; the post reply returns before the
+# matching engine resolves. Polling client.get_order(order_id) reads the
+# authoritative on-CLOB state. Total wait ≈ 32s before falling through to the
+# zero-fill path. Empirically, async matches resolve within a few seconds.
+DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0)
+# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
+# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
+# only non-terminal value; everything else means we can stop polling.
+GET_ORDER_TERMINAL_STATUSES = frozenset(
+    {
+        "ORDER_STATUS_MATCHED",
+        "ORDER_STATUS_CANCELED",
+        "ORDER_STATUS_INVALID",
+        "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
+    }
+)
 # Subgraph indexes markets created after this date; exclude older markets
 MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 
@@ -562,14 +579,27 @@ class PolymarketClientConnection(BaseSyncConnection):
             if not resp:
                 return resp, None
 
-            # Response field mapping for a SELL is role-based, mirroring the
-            # outgoing order: we (the maker) sent ``makerAmount`` shares
-            # expecting ``takerAmount`` USDC. So in the response,
-            # ``makingAmount`` is the shares we (the maker) made/provided that
-            # actually got filled, and ``takingAmount`` is the USDC we took
-            # back. (Verified against a live partial fill on Polygon mainnet
-            # where ``balance`` = 11596040, ``sum of matched orders`` =
-            # 11590000 confirmed that ``makingAmount: 11.59`` was shares.)
+            order_id = resp.get("orderID") or ""
+            status = (resp.get("status") or "").lower()
+
+            # Async-match path: the matching engine deferred resolution. Poll
+            # client.get_order(order_id) for the authoritative terminal state
+            # before deciding what to report. Without this, treating
+            # ``delayed`` as a kill triggers a retry that races the in-flight
+            # match and gets rejected with ``not enough balance``.
+            if status == "delayed" and order_id:
+                terminal = self._poll_order_until_terminal(order_id)
+                if terminal is not None:
+                    return self._fill_from_terminal_get_order(terminal, order_id), None
+
+            # Synchronous path (status in {"matched", "live", "unmatched"} or
+            # poll exhausted). Field mapping is role-based: for a SELL we
+            # (the maker) sent ``makerAmount`` shares expecting
+            # ``takerAmount`` USDC, so ``makingAmount`` is the shares filled
+            # and ``takingAmount`` is the USDC received. (Verified against a
+            # live partial fill on Polygon mainnet where ``balance`` =
+            # 11596040, ``sum of matched orders`` = 11590000 confirmed that
+            # ``makingAmount: 11.59`` was shares.)
             taking_amount_raw = resp.get("takingAmount") or 0.0
             making_amount_raw = resp.get("makingAmount") or 0.0
             filled_shares = float(making_amount_raw) if making_amount_raw else 0.0
@@ -578,7 +608,7 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             return (
                 {
-                    "order_id": resp.get("orderID") or "",
+                    "order_id": order_id,
                     "status": resp.get("status") or "",
                     "filled_shares": filled_shares,
                     "filled_usdc": filled_usdc,
@@ -596,6 +626,61 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
             self.logger.error(error_msg)
             return {"error": error_msg}, error_msg
+
+    def _poll_order_until_terminal(self, order_id: str) -> Optional[Dict]:
+        """Poll ``client.get_order`` until terminal status, or cap exhausted.
+
+        :param order_id: CLOB order id to look up.
+        :return: terminal ``get_order`` payload, or ``None`` if the cap was
+            exhausted while still ``ORDER_STATUS_LIVE``.
+        """
+        for backoff_s in DELAYED_ORDER_POLL_BACKOFFS_S:
+            time.sleep(backoff_s)
+            try:
+                order = self.client.get_order(order_id)
+            except Exception as exc:  # pylint: disable=broad-except
+                self.logger.warning(
+                    f"withdrawal: get_order failed for {order_id}: {exc}"
+                )
+                continue
+            status = order.get("status") or ""
+            if status in GET_ORDER_TERMINAL_STATUSES:
+                return order
+        self.logger.warning(
+            f"withdrawal: order {order_id} still delayed after poll exhausted"
+        )
+        return None
+
+    def _fill_from_terminal_get_order(
+        self, order: Dict, order_id: str
+    ) -> Dict[str, Any]:
+        """Compute fill response fields from a terminal ``get_order`` payload.
+
+        ``size_matched`` is fixed-math 6-decimal shares; ``price`` is decimal
+        USDC/share (the order's price field, used as an approximation of the
+        fill price — for a multi-level fill this may diverge from VWAP, but
+        the value is operator-reporting-only and not used in any decision
+        logic).
+
+        :param order: terminal ``get_order`` payload.
+        :param order_id: order id (passthrough; ``order['id']`` may be unset).
+        :return: response dict matching ``_sell_position``'s return shape.
+        """
+        size_matched_raw = order.get("size_matched") or "0"
+        price_str = order.get("price") or "0"
+        filled_shares = int(size_matched_raw) / 1e6
+        fill_price = float(price_str)
+        filled_usdc = filled_shares * fill_price
+        status_raw = order.get("status") or ""
+        status_norm = "matched" if status_raw == "ORDER_STATUS_MATCHED" else "unmatched"
+        return {
+            "order_id": order_id,
+            "status": status_norm,
+            "filled_shares": filled_shares,
+            "filled_usdc": filled_usdc,
+            "fill_price": fill_price,
+            "raw": order,
+        }
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES

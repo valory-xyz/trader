@@ -757,6 +757,198 @@ class TestSellPosition:
         assert error is None
         assert response is None
 
+    # --- delayed-status polling -----------------------------------------
+
+    @staticmethod
+    def _delayed_post_resp() -> dict:
+        """Live post_order response shape when CLOB defers async matching."""
+        return {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xpending",
+            "transactionsHashes": [],
+            "status": "delayed",
+            "takingAmount": "",
+            "makingAmount": "",
+        }
+
+    def test_delayed_polls_get_order_until_matched(self) -> None:
+        """``status=delayed`` triggers get_order polling; MATCHED yields the fill.
+
+        ``size_matched`` is fixed-math 6-decimals: 20400000 → 20.4 shares.
+        ``price`` is decimal USDC/share — used directly as the (approximate)
+        fill price; ``filled_usdc`` is reconstructed as shares × price.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        conn.client.get_order.return_value = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+
+        assert error is None
+        assert response["order_id"] == "0xpending"
+        assert response["status"] == "matched"
+        assert response["filled_shares"] == pytest.approx(20.4)
+        assert response["fill_price"] == pytest.approx(0.043)
+        assert response["filled_usdc"] == pytest.approx(20.4 * 0.043)
+        conn.client.get_order.assert_called_with("0xpending")
+
+    def test_delayed_polls_get_order_until_canceled_records_zero_fill(self) -> None:
+        """CANCELED terminal (FAK kill after delay) yields zero fill, status=unmatched.
+
+        Behaviour-side residual logic then re-fetches positions and either
+        retries on the next FAK attempt (residual unchanged) or moves on if
+        truly stuck. We must NOT inflate fills when the CLOB tells us nothing
+        matched.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        conn.client.get_order.return_value = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_CANCELED",
+            "size_matched": "0",
+            "original_size": "20400000",
+            "price": "0",
+        }
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+
+        assert error is None
+        assert response["status"] == "unmatched"
+        assert response["filled_shares"] == 0.0
+        assert response["filled_usdc"] == 0.0
+        assert response["fill_price"] == 0.0
+
+    def test_delayed_poll_continues_through_live_states(self) -> None:
+        """``ORDER_STATUS_LIVE`` is non-terminal — keep polling until terminal."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        live_resp = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        terminal_resp = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        conn.client.get_order.side_effect = [live_resp, live_resp, terminal_resp]
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+
+        assert error is None
+        assert response["status"] == "matched"
+        assert response["filled_shares"] == pytest.approx(20.4)
+        assert conn.client.get_order.call_count == 3
+
+    def test_delayed_poll_swallows_get_order_exceptions(self) -> None:
+        """Transient ``get_order`` failures don't abort polling.
+
+        A network blip on one poll attempt should be logged and the loop
+        should continue to the next backoff. Authoritative fill data is
+        still recorded once a terminal status is reached.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        conn.client.get_order.side_effect = [
+            Exception("transient network blip"),
+            {
+                "id": "0xpending",
+                "status": "ORDER_STATUS_MATCHED",
+                "size_matched": "5880000",
+                "original_size": "5880000",
+                "price": "0.16",
+            },
+        ]
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=5.88)
+
+        assert error is None
+        assert response["status"] == "matched"
+        assert response["filled_shares"] == pytest.approx(5.88)
+        # Warning logged for the swallowed exception.
+        assert any(
+            "get_order" in str(call.args[0])
+            for call in conn.logger.warning.call_args_list
+        )
+
+    def test_delayed_poll_exhausted_returns_zero_fill_with_warning(self) -> None:
+        """If the order stays LIVE past the cap, fall through to zero-fill mapping.
+
+        The behaviour-side FAK-retry loop then handles residuals; this is the
+        safe-rollback path matching today's behaviour, just gated behind a
+        real attempt to resolve the order.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        conn.client.get_order.return_value = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=20.4)
+
+        assert error is None
+        # Fall-through uses the original delayed post_order envelope, so
+        # makingAmount/takingAmount are empty -> zero fill.
+        assert response["filled_shares"] == 0.0
+        assert response["filled_usdc"] == 0.0
+        assert response["fill_price"] == 0.0
+        # Poll cap exhausted warning.
+        assert any(
+            "still delayed" in str(call.args[0]).lower()
+            or "poll exhausted" in str(call.args[0]).lower()
+            for call in conn.logger.warning.call_args_list
+        )
+
+    def test_matched_response_skips_polling(self) -> None:
+        """A synchronous ``matched`` reply uses post_order fields directly.
+
+        ``get_order`` must not be called when there's nothing to resolve.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xdone",
+            "transactionsHashes": ["0xtx1"],
+            "status": "matched",
+            "makingAmount": "20.4",
+            "takingAmount": "0.8772",
+        }
+
+        response, error = conn._sell_position(token_id="tok123", amount=20.4)
+
+        assert error is None
+        assert response["filled_shares"] == pytest.approx(20.4)
+        assert response["filled_usdc"] == pytest.approx(0.8772)
+        conn.client.get_order.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # _request_with_retries
