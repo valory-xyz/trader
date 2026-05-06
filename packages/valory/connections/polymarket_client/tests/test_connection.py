@@ -925,6 +925,35 @@ class TestSellPosition:
             for call in conn.logger.warning.call_args_list
         )
 
+    def test_delayed_poll_skips_none_returns(self) -> None:
+        """``client.get_order`` may return ``None`` (data API not indexed yet).
+
+        Live trace: the first poll attempt 2s after a ``delayed`` post sometimes
+        returns a falsy/None body (the order hasn't been indexed by the data
+        API yet). The loop must keep polling, not crash on ``.get()``.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = self._delayed_post_resp()
+        conn.client.get_order.side_effect = [
+            None,
+            {
+                "id": "0xpending",
+                "status": "ORDER_STATUS_MATCHED",
+                "size_matched": "5880000",
+                "original_size": "5880000",
+                "price": "0.16",
+            },
+        ]
+
+        with patch("time.sleep"):
+            response, error = conn._sell_position(token_id="tok123", amount=5.88)
+
+        assert error is None
+        assert response["status"] == "matched"
+        assert response["filled_shares"] == pytest.approx(5.88)
+        assert conn.client.get_order.call_count == 2
+
     def test_matched_response_skips_polling(self) -> None:
         """A synchronous ``matched`` reply uses post_order fields directly.
 

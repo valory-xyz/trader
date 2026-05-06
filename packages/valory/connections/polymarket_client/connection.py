@@ -643,6 +643,11 @@ class PolymarketClientConnection(BaseSyncConnection):
                     f"withdrawal: get_order failed for {order_id}: {exc}"
                 )
                 continue
+            # The SDK can return ``None`` shortly after ``post_order`` — the
+            # data API hasn't indexed the new order yet. Keep polling rather
+            # than crash on ``.get()``.
+            if not order:
+                continue
             status = order.get("status") or ""
             if status in GET_ORDER_TERMINAL_STATUSES:
                 return order
