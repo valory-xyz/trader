@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeigtz4r7yc2gnuzbqsaeepwwfpeckfqabkktwxh4vpwtelhwsyxaza
   graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
   handlers.py: bafybeih2hp2naz4ki6udzc72hoyomoxs3w5vl3ou35snzaezd2uq2kw7di
-  models.py: bafybeidac2mllnuia37hh3j666zemmi7amat3r3rsgr3niemxigc5gkxbu
+  models.py: bafybeifxmh5ufbi76hrygyrfv4gnr6u3bn5oxkcaojztgkikxaloftaks4
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
 connections:
-- valory/polymarket_client:0.1.0:bafybeihl3aq2jjnehzqihitpeldkm3r6up3d2iy4x3vl6xxuvdy6q563ru
+- valory/polymarket_client:0.1.0:bafybeieostsdrgxhagqhw7qsvdlu3ewibqh7yj75hnbzndpmpda53ot35i
 handlers:
   abci:
     args: {}
