@@ -71,7 +71,7 @@ fingerprint:
   states/sampling.py: bafybeiex74dgizzqhtmm5sgcczucawrhpgvvwjgkua4ervuqqov5lc3dtu
   states/sell_outcome_tokens.py: bafybeianxfxufjlf2xbi2qcvomiisl2o42t53mox2qw2fequtkknayd3li
   states/tool_selection.py: bafybeiak5ihuie4nxh3sguiea6pcdgyxr4k4xyzvq6o2uj5xpf7urocawy
-  states/withdrawal_idle.py: bafybeiaclcwnp3ao4bf5jptaki7mzxeee7ixz67kx4ixfjafehedkgz4rq
+  states/withdrawal_idle.py: bafybeifrchfvspth5elb42c6nguudu5okezyygvdk6fbcmvhywkvuw4tym
   tests/__init__.py: bafybeidnfwol6t2vgxsyvavijrd5amtwb7gcvmdshmuzkdghlnuwzxt3rm
   tests/behaviours/__init__.py: bafybeibeo7ir6p4o3zcv6wsot3hr34bl5kb3ofcrtlaslsdr7gy2n7sdcu
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
@@ -158,7 +158,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
 - valory/agent_performance_summary_abci:0.1.0:bafybeiapw7qbboaorsfj5c32q2yrqzkpuy2brf4ywzldfktyy3s4tu6pq4
-- valory/chatui_abci:0.1.0:bafybeif4djzjg47xndouojk53c6yzyqljtnvqq7eqn6dx6xbfmorbntefu
+- valory/chatui_abci:0.1.0:bafybeiaqp5qujk23lqlm5ffye6pz6kpwtlxjdqukzirmew3mnrtkdgt7ca
 behaviours:
   main:
     args: {}

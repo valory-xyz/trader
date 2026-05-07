@@ -21,8 +21,10 @@
 
 Both venue branches (Polymarket / Omen) converge here. The agent process
 stays alive — Tendermint keeps producing blocks — but the FSM does not
-transition out. A deliberate restart (with `withdrawal_state == complete`)
-is what triggers the boot auto-clear and resumes normal trading (D19).
+transition out. Restart is the one and only way out of withdrawal mode:
+boot unconditionally clears the flag regardless of the persisted state, so
+any restart resumes normal trading (D19). To retry a partial sweep, the
+user re-arms via POST /api/v1/withdrawal after restarting.
 """
 
 from abc import ABC

@@ -834,15 +834,34 @@ class TestSetupBootAutoClear:
             WITHDRAWAL_STATE_ERRORED,
         ],
     )
-    def test_non_complete_states_do_not_clear_flag(self, live_state: str) -> None:
-        """Boot with (true, armed/selling/errored) must NOT clear the flag."""
-        state = _make_shared_state(self._initial_store(True, live_state))
+    def test_non_idle_states_with_flag_clear_on_boot(self, live_state: str) -> None:
+        """Boot with (true, armed/selling/errored) must reset to (false, idle).
+
+        Restart is the one and only way out of withdrawal mode; whatever state
+        the previous run left behind, boot returns the agent to trading mode.
+        Fills/errors arrays are preserved so the FE can still surface the last
+        sweep's results until the user re-arms via POST.
+
+        :param live_state: the persisted ``withdrawal_state`` to load on boot.
+        """
+        fills = [
+            {"token_id": "0xabc", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}
+        ]  # nosec B105
+        errors = [
+            {"token_id": "0xdef", "shares_remaining": 2.0, "reason": "x", "ts": 1}
+        ]  # nosec B105
+        store = self._initial_store(True, live_state)
+        store["withdrawal_fills"] = fills
+        store["withdrawal_errors"] = errors
+        state = _make_shared_state(store)
         with patch.object(BaseSharedState, "setup", return_value=None):
             state.setup()
 
         assert state._chatui_config is not None
-        assert state._chatui_config.withdrawal_mode is True
-        assert state._chatui_config.withdrawal_state == live_state
+        assert state._chatui_config.withdrawal_mode is False
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+        assert state._chatui_config.withdrawal_fills == fills
+        assert state._chatui_config.withdrawal_errors == errors
 
     def test_idle_state_with_flag_off_is_noop(self) -> None:
         """Boot with (false, idle) must leave the flag and state untouched."""
@@ -875,9 +894,25 @@ class TestSetupBootAutoClear:
             state.setup()
         mock_super.assert_called_once()
 
-    def test_complete_state_logs_clearing_message(self) -> None:
-        """Boot auto-clear must log an INFO-level message announcing the clear."""
-        state = _make_shared_state(self._initial_store(True, WITHDRAWAL_STATE_COMPLETE))
+    @pytest.mark.parametrize(
+        "live_state",
+        [
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_COMPLETE,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_boot_clear_logs_message_with_prior_state(self, live_state: str) -> None:
+        """Boot auto-clear must log an INFO message naming the prior state.
+
+        The state name in the log lets operators distinguish a clean exit
+        (state=complete) from a crash mid-sweep (state=selling) when
+        debugging from container logs.
+
+        :param live_state: the persisted ``withdrawal_state`` to load on boot.
+        """
+        state = _make_shared_state(self._initial_store(True, live_state))
         with patch.object(BaseSharedState, "setup", return_value=None):
             state.setup()
         state.context.logger.info.assert_called()  # type: ignore[attr-defined]
@@ -885,4 +920,4 @@ class TestSetupBootAutoClear:
             str(call_args)
             for call_args in state.context.logger.info.call_args_list  # type: ignore[attr-defined]
         ]
-        assert any("withdrawal" in m.lower() for m in info_msgs)
+        assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)

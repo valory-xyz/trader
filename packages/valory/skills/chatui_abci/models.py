@@ -91,12 +91,18 @@ class SharedState(BaseSharedState):
         self._chatui_config: Optional[ChatuiConfig] = None
 
     def setup(self) -> None:
-        """Set up the shared state and apply boot-time withdrawal flag auto-clear."""
+        """Set up the shared state and apply boot-time withdrawal flag auto-clear.
+
+        Restart is the only way out of withdrawal mode: any boot with the flag
+        set returns the agent to trading mode regardless of the persisted
+        state. The fills/errors arrays are left intact so the FE can still
+        surface the previous sweep's results until the user re-arms via POST.
+        """
         super().setup()
         cfg = self.chatui_config
-        if cfg.withdrawal_mode and cfg.withdrawal_state == WITHDRAWAL_STATE_COMPLETE:
+        if cfg.withdrawal_mode:
             self.context.logger.info(
-                "withdrawal: clearing flag on boot (state was complete)"
+                f"withdrawal: clearing flag on boot (state was {cfg.withdrawal_state})"
             )
             cfg.withdrawal_mode = False
             cfg.withdrawal_state = WITHDRAWAL_STATE_IDLE
