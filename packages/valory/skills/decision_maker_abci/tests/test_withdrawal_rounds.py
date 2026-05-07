@@ -1673,6 +1673,55 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert "in-flight" in reason
         assert "polymarket api unreachable" not in reason
 
+    def test_poll_empty_then_terminal_keeps_polling(self, tmp_path: Path) -> None:
+        """Falsy GET_ORDER body (not-yet-indexed) must not short-circuit.
+
+        Shortly after ``post_order`` the data API can return an empty
+        body before the order is indexed. The poll loop must treat that
+        as "keep polling" — not as an error, not as a terminal status —
+        so a subsequent terminal match still records the fill.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        terminal_match = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "10000000",
+            "original_size": "10000000",
+            "price": "0.50",
+        }
+        # First GET_ORDER returns an empty (falsy) body — not yet indexed;
+        # second poll returns terminal match. Loop must reach the match.
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[{}, terminal_match],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_COMPLETE
+        assert len(store["withdrawal_fills"]) == 1
+        assert store["withdrawal_fills"][0]["shares_sold"] == pytest.approx(10.0)
+        assert store["withdrawal_errors"] == []
+
     def test_in_flight_after_partial_emits_fill_then_error(
         self, tmp_path: Path
     ) -> None:
