@@ -695,6 +695,47 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     # ------------------------------------------------------------------ #
 
     def _finish(self) -> Generator:
-        """Emit the consensus payload and route to the idle round."""
+        """Emit the consensus payload and route to the idle round.
+
+        Snapshots the current locked-funds value into the agent
+        performance summary so ``GET /api/v1/agent/performance``
+        reflects the post-sweep state without waiting for the next
+        normal performance refresh round (which could take minutes via
+        the subgraph cycle). This is the only code path that knows
+        ``I just changed on-chain positions; the cached value is now
+        stale``, so the behaviour is the natural trigger.
+
+        :yield: framework yields between snapshot dispatch and the
+            consensus payload emission.
+        """
+        yield from self._snapshot_locked_funds()
         payload = WithdrawalPayload(sender=self.context.agent_address, vote=True)
         yield from self.finish_behaviour(payload)
+
+    def _snapshot_locked_funds(self) -> Generator:
+        """Best-effort: fetch current positions and update the perf summary.
+
+        Failure to fetch (transient API issue, persistent outage) is
+        non-fatal — log a warning and skip; the performance summary
+        keeps its previous value, which gets overwritten by the next
+        normal performance-summary round. The sweep terminal state is
+        still emitted via the regular ``finish_behaviour`` payload.
+
+        :yield: framework yields between dispatch and response.
+        """
+        positions, error = yield from self._request_fetch_positions()
+        if error is not None or positions is None:
+            self.context.logger.warning(
+                f"withdrawal: skipping locked-funds snapshot "
+                f"(fetch failed: {error})"
+            )
+            return
+        locked = sum(
+            float(p.get("size") or 0) * float(p.get("curPrice") or 0)
+            for p in positions
+            if not p.get("redeemable", False)
+        )
+        self.context.logger.info(
+            f"withdrawal: snapshotting funds_locked_in_markets={locked}"
+        )
+        self.context.state.update_funds_locked_in_markets(locked)
