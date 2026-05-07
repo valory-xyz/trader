@@ -2113,6 +2113,358 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert fill["fill_price"] == pytest.approx(0.043)
         assert store["withdrawal_errors"] == []
 
+    # --- locked-funds snapshot ----------------------------------------------
+
+    def test_finish_snapshots_locked_funds_on_clean_complete(
+        self, tmp_path: Path
+    ) -> None:
+        """Clean sweep terminal state triggers a fresh locked-funds snapshot.
+
+        Sweep sells one position cleanly, then ``_finish()`` re-fetches
+        positions (returning two unredeemable leftovers) and sums
+        ``initialValue`` (cost basis) across them to update
+        ``funds_locked_in_markets``. Cost basis matches the formula
+        used by the normal performance-summary round, avoiding a
+        non-monotonic jump on the FE when the next normal round
+        overwrites this value.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        # Post-sweep snapshot: two locked positions remain.
+        positions_post_sweep = [
+            {
+                "asset": TOK_B,
+                "size": 20.0,
+                "initialValue": "10.0",
+                "redeemable": False,
+            },
+            {
+                "asset": TOK_C,
+                "size": 5.0,
+                "initialValue": "4.0",
+                "redeemable": False,
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, positions_post_sweep],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # initialValue 10.0 + 4.0 = 14.0
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            14.0
+        )
+
+    def test_finish_snapshot_excludes_redeemable_positions(
+        self, tmp_path: Path
+    ) -> None:
+        """Redeemable positions don't contribute to locked-value sum.
+
+        Redeemable positions are settled and waiting for redemption —
+        their value isn't ``locked``. Only unredeemable positions count.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        positions_post_sweep = [
+            {  # included
+                "asset": TOK_B,
+                "size": 20.0,
+                "initialValue": "10.0",
+                "redeemable": False,
+            },
+            {  # excluded — redeemable
+                "asset": TOK_C,
+                "size": 100.0,
+                "initialValue": "100.0",
+                "redeemable": True,
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, positions_post_sweep],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Only TOK_B contributes: 10.0. TOK_C is redeemable.
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            10.0
+        )
+
+    def test_finish_snapshot_handles_missing_initial_value(
+        self, tmp_path: Path
+    ) -> None:
+        """A missing or null ``initialValue`` contributes 0 to the sum.
+
+        Defensive against partial position records returned by the data
+        API; the snapshot must not crash on missing cost-basis data.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        positions_post_sweep = [
+            {
+                "asset": TOK_B,
+                "size": 20.0,
+                "initialValue": "10.0",
+                "redeemable": False,
+            },
+            {  # missing initialValue
+                "asset": TOK_C,
+                "size": 100.0,
+                "redeemable": False,
+            },
+            {  # null initialValue
+                "asset": "0xd1",
+                "size": 50.0,
+                "initialValue": None,
+                "redeemable": False,
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, positions_post_sweep],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Only TOK_B contributes a known cost basis: 10.0.
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            10.0
+        )
+
+    def test_finish_snapshot_handles_unparseable_value(self, tmp_path: Path) -> None:
+        """Unparseable ``initialValue`` skips the snapshot without stalling FSM.
+
+        ``float("N/A")`` raises ``ValueError`` mid-sum. Without the
+        broad except in ``_snapshot_locked_funds`` this would escape
+        ``_finish`` and block ``finish_behaviour(payload)`` from
+        emitting → FSM stall. The fix is best-effort: log + skip,
+        then continue to payload emission.
+
+        Falsifiable against a regression that drops the broad except.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        positions_post_sweep = [
+            {
+                "asset": TOK_B,
+                "size": 20.0,
+                "initialValue": "N/A",  # unparseable
+                "redeemable": False,
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, positions_post_sweep],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Update was NOT called (whole compute skipped on unparseable value).
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Compute/write warning was logged.
+        warnings = [
+            str(call.args[0])
+            for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any(
+            "compute/write failed" in w for w in warnings
+        ), f"expected 'compute/write failed' warning; got: {warnings}"
+        # Critically: payload still emitted — FSM did not stall.
+        assert "payload" in captured_payload
+
+    def test_finish_snapshot_zero_positions_records_zero(self, tmp_path: Path) -> None:
+        """Empty post-sweep positions list records ``funds_locked_in_markets=0.0``.
+
+        After a clean sweep that closed every unredeemable position,
+        the operator should see locked funds drop to zero immediately.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        # Post-sweep: nothing left.
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, []],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            0.0
+        )
+
+    def test_finish_snapshot_on_fetch_failure_logs_and_skips(
+        self, tmp_path: Path
+    ) -> None:
+        """Post-sweep fetch failure logs warning, doesn't update perf summary.
+
+        The snapshot is best-effort: a transient API issue must NOT
+        propagate out of ``_finish()`` (which would prevent payload
+        emission and stall the FSM). Instead, log + skip; performance
+        summary keeps its previous value, refreshed on next normal round.
+
+        Falsifiable against a regression that propagates the fetch
+        error and crashes ``_finish()``.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        # Post-sweep fetch returns the connection-error envelope.
+        fetch_error = {"error": "Polymarket API timeout"}
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, fetch_error],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Update was NOT called.
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Warning was logged.
+        warnings = [
+            str(call.args[0])
+            for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any(
+            "skipping locked-funds snapshot" in w for w in warnings
+        ), f"expected 'skipping locked-funds snapshot' warning; got: {warnings}"
+
+    def test_finish_snapshot_on_initial_fetch_failure_path(
+        self, tmp_path: Path
+    ) -> None:
+        """Top-level fetch failure path also runs the snapshot, also skips cleanly.
+
+        The very first ``_request_fetch_positions`` (at the top of
+        ``async_act``) fails with retries exhausted → the behaviour
+        records a top-level error and routes to ``_finish()``. The
+        snapshot's own fetch is also likely to fail in this scenario,
+        so it must skip cleanly without crashing the consensus payload.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        # Both fetches return an error (top-level + snapshot).
+        # The first fetch retry loop runs (max_attempts=2); the snapshot
+        # is one more fetch on top of that.
+        fetch_error = {"error": "Polymarket API timeout"}
+        router, _ = _make_request_router(
+            fetch_responses=[fetch_error, fetch_error, fetch_error],
+            sell_responses=[],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Snapshot's own fetch fails → update NOT called, no crash.
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Sweep ended ``errored`` because positions fetch failed.
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        # Consensus payload was still emitted via the regular finish flow.
+        assert "payload" in captured_payload
+
 
 class TestOmenWithdrawBehaviourStub:
     """Tests for the defensive Omen stub behaviour."""

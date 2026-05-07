@@ -695,6 +695,66 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     # ------------------------------------------------------------------ #
 
     def _finish(self) -> Generator:
-        """Emit the consensus payload and route to the idle round."""
+        """Emit the consensus payload and route to the idle round.
+
+        Snapshots the current locked-funds value into the agent
+        performance summary so ``GET /api/v1/agent/performance``
+        reflects the post-sweep state without waiting for the next
+        normal performance refresh round (which could take minutes via
+        the subgraph cycle). This is the only code path that knows
+        ``I just changed on-chain positions; the cached value is now
+        stale``, so the behaviour is the natural trigger.
+
+        :yield: framework yields between snapshot dispatch and the
+            consensus payload emission.
+        """
+        yield from self._snapshot_locked_funds()
         payload = WithdrawalPayload(sender=self.context.agent_address, vote=True)
         yield from self.finish_behaviour(payload)
+
+    def _snapshot_locked_funds(self) -> Generator:
+        """Best-effort: fetch current positions and update the perf summary.
+
+        Sums ``initialValue`` (per-position cost basis = current shares
+        held at average buy price) across unredeemable positions, then
+        rounds to 2dp. This matches the cost-basis formula used by the
+        normal performance round
+        (``(total_traded - total_traded_settled) / token_divisor``) so
+        the FE doesn't see a non-monotonic jump when the next normal
+        round overwrites this value.
+
+        Failure to fetch is non-fatal — log a warning and skip; the
+        performance summary keeps its previous value, which gets
+        overwritten by the next normal performance-summary round. The
+        sweep terminal state is still emitted via the regular
+        ``finish_behaviour`` payload. Compute / write failures are
+        likewise swallowed so a malformed position record or transient
+        disk error cannot stall ``_finish``.
+
+        :yield: framework yields between dispatch and response.
+        """
+        positions, error = yield from self._request_fetch_positions()
+        if error is not None or positions is None:
+            self.context.logger.warning(
+                f"withdrawal: skipping locked-funds snapshot "
+                f"(fetch failed: {error})"
+            )
+            return
+        try:
+            locked = round(
+                sum(
+                    float(p.get("initialValue") or 0)
+                    for p in positions
+                    if not p.get("redeemable", False)
+                ),
+                2,
+            )
+            self.context.logger.info(
+                f"withdrawal: snapshotting funds_locked_in_markets={locked}"
+            )
+            self.context.state.update_funds_locked_in_markets(locked)
+        except Exception as e:  # noqa: BLE001 — best-effort by design
+            self.context.logger.warning(
+                f"withdrawal: skipping locked-funds snapshot "
+                f"(compute/write failed: {e!r})"
+            )
