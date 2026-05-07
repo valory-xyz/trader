@@ -1,0 +1,19 @@
+alphabet_in:
+- DONE
+- NONE
+- NO_MAJORITY
+- ROUND_TIMEOUT
+default_start_state: ChatuiLoadRound
+final_states:
+- FinishedChatuiLoadRound
+label: ChatuiAbciApp
+start_states:
+- ChatuiLoadRound
+states:
+- ChatuiLoadRound
+- FinishedChatuiLoadRound
+transition_func:
+    (ChatuiLoadRound, DONE): FinishedChatuiLoadRound
+    (ChatuiLoadRound, NONE): ChatuiLoadRound
+    (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
+    (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound

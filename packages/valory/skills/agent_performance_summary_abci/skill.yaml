@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeicinegfwaayhvh2km4alolybovn6oy7q2gtfxukzryongxeim2iyq
-  behaviours.py: bafybeiell2tfc7jvticspv4s4ublrnbbmyokj2wh5liznsuhwg37mhlhs4
+  behaviours.py: bafybeihk6mglprrccijdstkn2ahu4pihaveoe6fzmjgyqfou5qqeenvlj4
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeigtz4r7yc2gnuzbqsaeepwwfpeckfqabkktwxh4vpwtelhwsyxaza
   graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
   handlers.py: bafybeih2hp2naz4ki6udzc72hoyomoxs3w5vl3ou35snzaezd2uq2kw7di
-  models.py: bafybeibudhzyc62d4ijx7drr5rfcluy6tjlfbxt6nttouymekiipb6emzm
+  models.py: bafybeidac2mllnuia37hh3j666zemmi7amat3r3rsgr3niemxigc5gkxbu
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -33,7 +33,7 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeiexjvh4yx4wx7i4oj5ltgxisnldbcgklejbg45cgfwqvk5zkk2c4e
   tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
   tests/graph_tooling/test_requests.py: bafybeiez2icgxoz5khs3itvmpaypgokkfdn6zbsoafiecb3hvrpzqrg2ia
-  tests/test_behaviours.py: bafybeifyjsa5wzfckylu7fb52j5df4hk5fjwal2qxmg72qrtonfrcp7t5u
+  tests/test_behaviours.py: bafybeie4p3dercizhahbrm23dngsky4qb7hqcdieco3ry76rcclhivyoia
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_handlers.py: bafybeih5fpmtk3jr4pjw63wmy3g3ys536xlbe527uelzv5vlsl6wnhwmqa
   tests/test_models.py: bafybeiaccjetj3nbpstm3ee25kjiug2wzusnlysxdk53ybu5wavekjtwy4
@@ -50,7 +50,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
 connections:
-- valory/polymarket_client:0.1.0:bafybeibnguxihipivzlo7uy7tvuy2nlq2aifxf32p2r26bjponqppgu7yq
+- valory/polymarket_client:0.1.0:bafybeihl3aq2jjnehzqihitpeldkm3r6up3d2iy4x3vl6xxuvdy6q563ru
 handlers:
   abci:
     args: {}
@@ -75,6 +75,27 @@ handlers:
     class_name: TendermintHandler
 behaviours: {}
 models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
   state:
     args: {}
     class_name: SharedState

@@ -147,18 +147,50 @@ def test_end_block_polymarket_stale_v2_allowances_file_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
-def test_clob_version_constant_is_v3() -> None:
-    """The CLOB-version stamp must be ``v3``.
+def test_clob_version_constant_is_v4() -> None:
+    """The CLOB-version stamp must be ``v4``.
 
-    Tying the constant down ensures the v2→v3 migration trigger lands; a
-    silent revert to ``v2`` would let stale persisted files short-circuit
-    the approval round.
+    Tying the constant down ensures the v3→v4 migration trigger lands; a
+    silent revert to ``v3`` would let stale persisted files short-circuit
+    the approval round and skip ``setApprovalForAll`` against the new
+    collateral-adapter addresses.
     """
     from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
         POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
     )
 
-    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v3"
+    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v4"
+
+
+def test_end_block_polymarket_stale_v3_allowances_file_reapproves() -> None:
+    """A v3 file must trigger re-approval after the v4 collateral-adapter swap.
+
+    Bumping ``POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION`` to ``v4`` invalidates
+    every Safe's prior ``allowances_set: true`` stamped under v3 (the
+    original ``CtfCollateralAdapter`` / ``NegRiskCtfCollateralAdapter``
+    addresses). Without that bump, the round short-circuits to
+    ``BENCHMARKING_DISABLED`` and the agent never grants
+    ``setApprovalForAll`` to the new adapter addresses — so the first
+    ``redeemPositions`` call against them reverts.
+    """
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        allowances_path = Path(tmpdir) / "polymarket.json"
+        with open(allowances_path, "w") as f:
+            json.dump({"allowances_set": True, "clob_version": "v3"}, f)
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
 
 
 def test_end_block_polymarket_allowances_not_set() -> None:

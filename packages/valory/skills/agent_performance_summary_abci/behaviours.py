@@ -56,6 +56,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PerformanceStatsData,
     PredictionHistory,
@@ -1224,6 +1225,23 @@ class FetchPerformanceSummaryBehaviour(
                     agent_safe_address, current_timestamp
                 )
             )
+        elif (
+            getattr(existing_profit_data, "schema_version", 0)
+            < PROFIT_OVER_TIME_SCHEMA_VERSION
+        ):
+            # INITIAL BACKFILL - Schema cutover (e.g. subgraph endpoint change).
+            # Pre-cutover days were attributed under prior endpoint semantics and
+            # don't reconcile with new days; full rebuild restores consistency.
+            self.context.logger.info(
+                "Performing initial profit over time backfill due to schema version "
+                f"upgrade ({getattr(existing_profit_data, 'schema_version', 0)} -> "
+                f"{PROFIT_OVER_TIME_SCHEMA_VERSION})..."
+            )
+            return (
+                yield from self._perform_initial_backfill(
+                    agent_safe_address, current_timestamp
+                )
+            )
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
             # M5: Log mismatch between series-attributed and snapshot counts as
@@ -1272,6 +1290,7 @@ class FetchPerformanceSummaryBehaviour(
                 data_points=[],
                 settled_mech_requests_count=0,
                 includes_unplaced_mech_fees=True,
+                schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
             )
 
         self.context.logger.info(
@@ -1389,6 +1408,7 @@ class FetchPerformanceSummaryBehaviour(
             placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
             last_mech_timestamp=last_mech_timestamp,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
         )
 
     def _perform_incremental_update(
@@ -1693,6 +1713,7 @@ class FetchPerformanceSummaryBehaviour(
             placed_mech_requests_count=self._placed_mech_requests_count,
             includes_unplaced_mech_fees=True,
             last_mech_timestamp=last_mech_timestamp,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:

@@ -7,15 +7,16 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeihcto4ekkxngcw3me4v42b4aikluhivgf6lnxenho545mq3jz27gi
-  behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau
+  behaviours.py: bafybeibihjnznjegn7v3kiqldfus5srfrogyd2vtf2iikyupw4dxhyy6r4
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
+  fsm_specification.yaml: bafybeib5lq7w4baxak3avy44ktbhgbrmqtrk7ml5mtcfm4zhougcc6vgua
   handlers.py: bafybeih5dsz4cp2tgi7c5nnlzw464gwv4jctphkwr6ccf5e534ukoxseii
   models.py: bafybeidsdrprwtrgvmrahou4lz3z53v2puupolidiuhbctw22hrpxbcvhy
   payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
   prompts.py: bafybeib5dc2e67z2qh4fnfezyrnsqbuexwjvxp2czndqsiht3ul5beoiae
   rounds.py: bafybeigegrvtuktu6ytvvjf5yh4s7ynvnurksdy6uilylvp2imi3ovgjh4
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
-  tests/test_behaviours.py: bafybeib6sil5x6xgwxpe6tyuqk22avfz54s4kwlj5vdhkjfcjh54tphm3q
+  tests/test_behaviours.py: bafybeiay6njysztm7uoiv2s23knoeob27xnwbfqufwmz6gpn3e74ovmqga
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
   tests/test_handlers.py: bafybeifbtpcmmbvh7frmh5ejyvwwsztg6jqdybc7a3em7fqwfyxtnmrpem
   tests/test_models.py: bafybeiffmqu7auyuuuvfp36ghvl5zi746awe5g6gobhoowvxj7sn2oa6cu
@@ -31,7 +32,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
-- valory/agent_performance_summary_abci:0.1.0:bafybeibtjka63qzfu33ududm5njml3gwg6pb7ys3si3bd67oudu2dunq34
+- valory/agent_performance_summary_abci:0.1.0:bafybeidy2xjliuztvvxrj3z4fpd24h3xmgj52huj6rr6unl5e4e2kg7k6y
 handlers:
   abci:
     args: {}
@@ -59,16 +60,37 @@ handlers:
     class_name: SrrHandler
 behaviours: {}
 models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
   params:
     args:
       service_endpoint: trader.autonolas.tech/
     class_name: ChatUIParams
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
   state:
     args: {}
     class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
 dependencies:
   pydantic:
     version: <3,>=2.11.9
