@@ -41,7 +41,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import 
     OmenWithdrawBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
+    CTF_DECIMAL_FACTOR,
     PolymarketWithdrawBehaviour,
+    TERMINAL_STATUS_MAP,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.round_behaviour import (
     AgentDecisionMakerRoundBehaviour,
@@ -323,6 +325,7 @@ def _make_request_router(
     *,
     fetch_responses: Optional[List[Any]] = None,
     sell_responses: Optional[List[Any]] = None,
+    get_order_responses: Optional[List[Any]] = None,
 ) -> "tuple[Callable[[Dict[str, Any]], Generator[None, None, Any]], List[Dict[str, Any]]]":  # noqa: E501
     """Build a fake send_polymarket_connection_request that pops by request_type.
 
@@ -331,10 +334,13 @@ def _make_request_router(
 
     :param fetch_responses: queue of FETCH_ALL_POSITIONS responses.
     :param sell_responses: queue of SELL_POSITION responses.
+    :param get_order_responses: queue of GET_ORDER responses (for cooperative
+        poll loops driven by the behaviour after a ``delayed`` sell response).
     :return: a `(router_fn, sent_payloads_list)` tuple.
     """
     fetch = list(fetch_responses or [])
     sell = list(sell_responses or [])
+    get_order = list(get_order_responses or [])
     sent_payloads: List[Dict[str, Any]] = []
 
     def _router(payload: Dict[str, Any]) -> Any:
@@ -344,6 +350,8 @@ def _make_request_router(
             return fetch.pop(0) if fetch else None
         if rt == RequestType.SELL_POSITION.value:
             return sell.pop(0) if sell else None
+        if rt == RequestType.GET_ORDER.value:
+            return get_order.pop(0) if get_order else None
         raise AssertionError(f"unexpected request_type: {rt}")
 
     def gen_router(payload: Dict[str, Any]) -> Generator[None, None, Any]:
@@ -442,6 +450,129 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert len(store["withdrawal_fills"]) == 1
         assert store["withdrawal_fills"][0]["token_id"] == TOK_A
         assert store["withdrawal_errors"] == []
+
+    @pytest.mark.parametrize(
+        "size,expected_outcome",
+        [
+            (0.009, "filtered"),  # below DUST_EPSILON=0.01 → drop
+            (0.01, "filtered"),  # exactly at boundary, `<=` includes
+            (0.011, "kept"),  # just above boundary → sell
+        ],
+    )
+    def test_filter_sellable_dust_boundary(
+        self, tmp_path: Path, size: float, expected_outcome: str
+    ) -> None:
+        """``DUST_EPSILON=0.01`` boundary check on the position filter.
+
+        Falsifiable against a flipped comparator (`<` vs `<=`) or a moved
+        threshold value: the ``0.01`` case would change buckets.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param size: the position size to filter.
+        :param expected_outcome: ``"filtered"`` or ``"kept"``.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path)
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=size)]
+        # The sell response is only consumed if the position passes the filter.
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": size,
+            "filled_usdc": size * 0.5,
+            "fill_price": 0.5,
+            "raw": {},
+        }
+        router, sent = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        sell_payloads = [p for p in sent if p["request_type"] == "sell_position"]
+        if expected_outcome == "filtered":
+            assert len(sell_payloads) == 0
+        else:
+            assert len(sell_payloads) == 1
+
+    @pytest.mark.parametrize(
+        "residual_after_partial,expected_outcome",
+        [
+            (0.005, "success"),  # well below dust → success path
+            (0.015, "retry"),  # well above dust → continue to next attempt
+        ],
+    )
+    def test_residual_dust_boundary(
+        self,
+        tmp_path: Path,
+        residual_after_partial: float,
+        expected_outcome: str,
+    ) -> None:
+        """``DUST_EPSILON=0.01`` boundary check on the per-position success path.
+
+        The first sell fills `(size - residual_after_partial)` shares; the
+        success-path check ``residual <= DUST_EPSILON`` decides whether to
+        record the fill or continue to a second FAK attempt. Tested with
+        values clearly above and below the threshold rather than exactly
+        at it, since ``size - filled`` is subject to float drift (e.g.
+        ``1.0 - 0.99 = 0.010000000000000009``) which makes the exact-0.01
+        boundary case unreliable to reproduce in a black-box behaviour test.
+        Falsifiable against a flipped comparator at obviously-above /
+        obviously-below values.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param residual_after_partial: the residual the test contrives.
+        :param expected_outcome: ``"success"`` or ``"retry"``.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        size = 1.0
+        partial_filled = size - residual_after_partial
+        partial_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": partial_filled,
+            "filled_usdc": partial_filled * 0.5,
+            "fill_price": 0.5,
+            "raw": {},
+        }
+        # Second response only consumed on retry path.
+        no_match = {
+            "order_id": "o-2",
+            "status": "unmatched",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        positions = [_make_position(TOK_A, size=size)]
+        router, sent = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[partial_resp, no_match],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        sell_payloads = [p for p in sent if p["request_type"] == "sell_position"]
+        if expected_outcome == "success":
+            # Success path → only one SELL, no retry.
+            assert len(sell_payloads) == 1
+            store = _read_store(tmp_path)
+            assert len(store["withdrawal_fills"]) == 1
+        else:
+            # Retry path → two SELLs (initial + retry).
+            assert len(sell_payloads) == 2
 
     def test_filters_out_redeemable_and_zero_size(self, tmp_path: Path) -> None:
         """Redeemable positions and dust (<=0) are dropped; only the real ones sell."""
@@ -754,13 +885,16 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         # Two backoff sleeps between three attempts.
         assert captured_sleep == [1, 1]
 
-    def test_partial_then_stuck_records_error_with_residual_only(
+    def test_partial_then_stuck_records_fill_and_residual_error(
         self, tmp_path: Path
     ) -> None:
-        """Partial filled, then stuck — one error record with the residual share count.
+        """Partial filled then stuck — one fill row AND one residual error row.
 
-        Per §4.1: partials are NOT split between fills + errors. The on-chain
-        record (via get_trades) is the audit trail for what filled.
+        Per Issue #2 (`_flush_position_records`), every per-position exit path
+        emits the accumulated partial fill (when ``total_filled > 0``) plus
+        the residual as an error. The on-chain record (via ``get_trades``)
+        remains the authoritative audit trail; the fill row makes the
+        operator-facing summary symmetric with on-chain reality.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -810,8 +944,12 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         store = _read_store(tmp_path)
         assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
-        # No fill records (partial-then-stuck does NOT show in fills).
-        assert store["withdrawal_fills"] == []
+        # Both rows present: 40-share fill, 60-share residual error.
+        assert len(store["withdrawal_fills"]) == 1
+        fill = store["withdrawal_fills"][0]
+        assert fill["token_id"] == TOK_A
+        assert fill["shares_sold"] == pytest.approx(40.0)
+        assert fill["fill_price"] == pytest.approx(0.40)
         assert len(store["withdrawal_errors"]) == 1
         err = store["withdrawal_errors"][0]
         assert err["token_id"] == TOK_A
@@ -1021,14 +1159,13 @@ class TestPolymarketWithdrawBehaviourSellLoop:
     def test_in_flight_response_defers_no_fill_records_deferred_error(
         self, tmp_path: Path
     ) -> None:
-        """``status=in_flight`` from the connection breaks the FAK loop early.
+        """Cooperative poll exhaustion records in-flight error; no FAK retry.
 
-        Connection signals ``in_flight`` when the post_order ``delayed`` poll
-        cap is exhausted with the order still LIVE on the CLOB. The behaviour
-        must NOT retry within this sweep — the order is in-flight, retrying
-        with the full residual would race the in-flight match. Instead,
-        record a deferred error and break out so the next sweep cycle picks
-        up the actual residual once the order resolves.
+        Connection returns ``delayed`` immediately on post_order; behaviour
+        drives the cooperative GET_ORDER poll loop. When every poll returns
+        a non-terminal LIVE status the loop exhausts and records a deferred
+        in-flight error. The behaviour must NOT FAK-retry within this sweep
+        — retrying with the full residual would race the in-flight match.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -1039,19 +1176,28 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         positions = [_make_position(TOK_A, size=2.4381)]
-        in_flight_resp = {
+        delayed_resp = {
             "order_id": "0xpending",
-            "status": "in_flight",
+            "status": "delayed",
             "filled_shares": 0.0,
             "filled_usdc": 0.0,
             "fill_price": 0.0,
             "raw": {},
         }
-        # Provide three sell responses, but only ONE should be consumed
-        # because in_flight breaks the FAK loop after the first attempt.
+        # Provide three sell responses but only one should be consumed:
+        # the cooperative poll exhausts → in-flight error → no FAK retry.
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "2438100",
+            "price": "0.043",
+        }
+        # The poll schedule has 6 backoffs; every one returns LIVE.
         router, sent_payloads = _make_request_router(
             fetch_responses=[positions],
-            sell_responses=[in_flight_resp, in_flight_resp, in_flight_resp],
+            sell_responses=[delayed_resp, delayed_resp, delayed_resp],
+            get_order_responses=[live_get_order] * 6,
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
@@ -1073,16 +1219,18 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert err["token_id"] == TOK_A
         assert err["shares_remaining"] == 2.4381
         assert "in-flight" in err["reason"].lower()
-        # No inter-attempt sleep — loop broke out before scheduling one.
-        assert captured_sleep == []
+        # No FAK inter-attempt sleep — the only sleeps were the cooperative
+        # poll schedule (6 entries summing to 122s).
+        assert captured_sleep == [2, 5, 10, 15, 30, 60]
 
     def test_in_flight_position_does_not_block_other_positions(
         self, tmp_path: Path
     ) -> None:
         """In-flight on one position must not abort the sweep for the rest.
 
-        Three positions in order: A (matched), B (in_flight), C (matched).
-        Expected: two fills (A, C) + one deferred error (B), state errored.
+        Three positions in order: A (matched), B (delayed-then-poll-exhausts),
+        C (matched). Expected: two fills (A, C) + one deferred error (B),
+        state errored.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -1108,7 +1256,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             },
             {
                 "order_id": "0xpending-B",
-                "status": "in_flight",
+                "status": "delayed",
                 "filled_shares": 0.0,
                 "filled_usdc": 0.0,
                 "fill_price": 0.0,
@@ -1123,9 +1271,18 @@ class TestPolymarketWithdrawBehaviourSellLoop:
                 "raw": {},
             },
         ]
+        live_get_order = {
+            "id": "0xpending-B",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "5000000",
+            "price": "0.50",
+        }
+        # Position B's delayed sell triggers 6 GET_ORDER calls (all LIVE).
         router, _ = _make_request_router(
             fetch_responses=[positions],
             sell_responses=sell_responses,
+            get_order_responses=[live_get_order] * 6,
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
@@ -1155,17 +1312,25 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
         positions = [_make_position(TOK_A, size=3.0)]
-        in_flight_resp = {
+        delayed_resp = {
             "order_id": "0xpending",
-            "status": "in_flight",
+            "status": "delayed",
             "filled_shares": 0.0,
             "filled_usdc": 0.0,
             "fill_price": 0.0,
             "raw": {},
         }
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "3000000",
+            "price": "0.50",
+        }
         router, _ = _make_request_router(
             fetch_responses=[positions],
-            sell_responses=[in_flight_resp],
+            sell_responses=[delayed_resp],
+            get_order_responses=[live_get_order] * 6,
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
 
@@ -1175,6 +1340,778 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
         assert store["withdrawal_fills"] == []
         assert len(store["withdrawal_errors"]) == 1
+
+    @pytest.mark.parametrize(
+        "raw_status,expected_norm",
+        [
+            ("ORDER_STATUS_MATCHED", "matched"),
+            ("ORDER_STATUS_CANCELED", "canceled"),
+            ("ORDER_STATUS_INVALID", "invalid"),
+            ("ORDER_STATUS_CANCELED_MARKET_RESOLVED", "market_resolved"),
+        ],
+    )
+    def test_fill_from_terminal_maps_known_statuses(
+        self, tmp_path: Path, raw_status: str, expected_norm: str
+    ) -> None:
+        """Each known terminal ``ORDER_STATUS_*`` maps to its normalized name.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param raw_status: raw ``ORDER_STATUS_*`` value from get_order.
+        :param expected_norm: the expected normalized ``status`` field value.
+        """
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        order = {
+            "id": "0xpending",
+            "status": raw_status,
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+
+        result = behaviour._fill_from_terminal_get_order(order, "0xpending")
+
+        assert result["status"] == expected_norm
+
+    def test_fill_from_terminal_unknown_status_falls_back_to_unmatched(
+        self, tmp_path: Path
+    ) -> None:
+        """An unmapped ``ORDER_STATUS_*`` falls back to ``unmatched`` + warning.
+
+        Defensive against SDK contract changes: a new terminal status
+        introduced upstream gets the retryable-bucket treatment without
+        crashing the sweep, and a warning is logged so the new value can
+        be added to the map deliberately.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_FUTURE_NEW_VALUE",
+            "size_matched": "0",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+
+        result = behaviour._fill_from_terminal_get_order(order, "0xpending")
+
+        assert result["status"] == "unmatched"
+        # Warning logged about the unknown status.
+        warnings = [
+            str(call.args[0])
+            for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any(
+            "ORDER_STATUS_FUTURE_NEW_VALUE" in w and "unrecognized" in w.lower()
+            for w in warnings
+        )
+
+    @pytest.mark.parametrize(
+        "raw_status",
+        ["ORDER_STATUS_INVALID", "ORDER_STATUS_CANCELED_MARKET_RESOLVED"],
+    )
+    def test_permanent_failure_short_circuits_retry_loop(
+        self, tmp_path: Path, raw_status: str
+    ) -> None:
+        """``invalid`` and ``market_resolved`` terminal statuses bail the FAK loop.
+
+        Retrying these is mathematically guaranteed to fail (signer mismatch
+        will reproduce; market_resolved means liquidity is permanently gone).
+        After exactly one SELL_POSITION attempt the loop must short-circuit
+        with a deferred error and skip remaining FAK retries.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param raw_status: the permanent-failure raw status to mock.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=5.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        terminal_resp = {
+            "id": "0xpending",
+            "status": raw_status,
+            "size_matched": "0",
+            "original_size": "5000000",
+            "price": "0.50",
+        }
+        # Provide three sell responses but only the first should be consumed.
+        router, sent_payloads = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp, delayed_resp, delayed_resp],
+            get_order_responses=[terminal_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Exactly one SELL_POSITION — short-circuit prevented further retries.
+        sell_payloads = [
+            p
+            for p in sent_payloads
+            if p.get("request_type") == RequestType.SELL_POSITION.value
+        ]
+        assert len(sell_payloads) == 1
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert store["withdrawal_fills"] == []
+        assert len(store["withdrawal_errors"]) == 1
+        err = store["withdrawal_errors"][0]
+        assert err["token_id"] == TOK_A
+        assert err["shares_remaining"] == 5.0
+        # Reason text cites the permanent terminal status.
+        expected_norm = TERMINAL_STATUS_MAP[raw_status]
+        assert expected_norm in err["reason"]
+
+    def test_empty_post_order_response_records_sdk_error_not_no_liquidity(
+        self, tmp_path: Path
+    ) -> None:
+        """Connection's empty-post_order error surfaces as ``sdk error:`` reason.
+
+        Falsifies a regression to the old ``return resp, None`` shape: that
+        would surface every iteration as a no-fill, exhaust the FAK retry
+        schedule, and record ``"no liquidity after FAK attempts"`` —
+        masking a real protocol-layer bug as a market condition.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        # Connection-side error envelope, the same shape _sell_position
+        # now returns when post_order yields a falsy response.
+        error_envelope = {"error": "post_order returned empty response"}
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[error_envelope, error_envelope],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert len(store["withdrawal_errors"]) == 1
+        reason = store["withdrawal_errors"][0]["reason"]
+        assert reason.startswith("sdk error:")
+        assert "no liquidity" not in reason.lower()
+
+    def test_poll_all_errors_records_api_unreachable_reason(
+        self, tmp_path: Path
+    ) -> None:
+        """Every GET_ORDER errors → distinct "API unreachable" error reason.
+
+        Distinguishes a sustained polymarket API outage from a genuine
+        in-flight match. Without this, the operator can't tell from the
+        error trail whether to wait for the in-flight match to resolve
+        (transient deferral) or escalate (API actually down).
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        # Every poll returns an error envelope (connection-layer error).
+        error_envelope = {"error": "Unauthorized"}
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[error_envelope] * 6,
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert len(store["withdrawal_errors"]) == 1
+        reason = store["withdrawal_errors"][0]["reason"].lower()
+        # Distinct from in_flight reason: cites API unreachable.
+        assert "polymarket api unreachable" in reason
+        assert "in-flight" not in reason
+
+    def test_poll_partial_errors_then_terminal_records_fill(
+        self, tmp_path: Path
+    ) -> None:
+        """Mixed errors + a successful terminal poll → fill recorded normally.
+
+        Regression guard against the temptation to early-bail on a few
+        consecutive errors. A 4th poll that matches must record the fill,
+        not get short-circuited.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=20.4)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        error_envelope = {"error": "transient"}
+        terminal_match = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        # 3 errors then a terminal match. Loop must NOT short-circuit
+        # before the success poll.
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[
+                error_envelope,
+                error_envelope,
+                error_envelope,
+                terminal_match,
+            ],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_COMPLETE
+        assert len(store["withdrawal_fills"]) == 1
+        assert store["withdrawal_fills"][0]["shares_sold"] == pytest.approx(20.4)
+        assert store["withdrawal_errors"] == []
+
+    def test_poll_partial_errors_then_exhaustion_returns_in_flight(
+        self, tmp_path: Path
+    ) -> None:
+        """Some polls error, others LIVE → exhaustion → in-flight reason.
+
+        Regression guard: the "all errored" reason must only fire when
+        EVERY poll erred. A single successful poll (LIVE or otherwise)
+        means the connection is reachable; exhaustion-with-LIVE is the
+        in-flight defer path.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        error_envelope = {"error": "transient"}
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "10000000",
+            "price": "0.50",
+        }
+        # 2 errors, 4 LIVE — never reaches terminal but at least one poll
+        # succeeded. Must surface as in-flight defer, not API unreachable.
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[
+                error_envelope,
+                error_envelope,
+                live_get_order,
+                live_get_order,
+                live_get_order,
+                live_get_order,
+            ],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert len(store["withdrawal_errors"]) == 1
+        reason = store["withdrawal_errors"][0]["reason"].lower()
+        assert "in-flight" in reason
+        assert "polymarket api unreachable" not in reason
+
+    def test_in_flight_after_partial_emits_fill_then_error(
+        self, tmp_path: Path
+    ) -> None:
+        """Partial fill followed by in-flight defer must emit BOTH rows.
+
+        Concrete scenario: 100-share position; attempt 1 fills 60
+        synchronously (residual=40); attempt 2 returns delayed → poll
+        exhausts → in_flight defer for the 40-share residual. The 60-share
+        partial must appear in ``withdrawal_fills`` (not silently dropped),
+        and the 40-share residual must appear in ``withdrawal_errors``.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=100.0)]
+        partial_fill = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 60.0,
+            "filled_usdc": 24.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "40000000",
+            "price": "0.40",
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[partial_fill, delayed_resp],
+            get_order_responses=[live_get_order] * 6,
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        # Both rows must exist for this position.
+        fills_for_a = [f for f in store["withdrawal_fills"] if f["token_id"] == TOK_A]
+        errors_for_a = [e for e in store["withdrawal_errors"] if e["token_id"] == TOK_A]
+        assert len(fills_for_a) == 1
+        assert fills_for_a[0]["shares_sold"] == pytest.approx(60.0)
+        assert fills_for_a[0]["fill_price"] == pytest.approx(0.40)
+        assert len(errors_for_a) == 1
+        assert errors_for_a[0]["shares_remaining"] == pytest.approx(40.0)
+        assert "in-flight" in errors_for_a[0]["reason"].lower()
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+
+    def test_retry_exhaustion_after_partial_emits_fill_then_error(
+        self, tmp_path: Path
+    ) -> None:
+        """Partial fill followed by exhausted retries must also emit BOTH rows.
+
+        Same root concern as the in-flight case: the loop exit at retry
+        exhaustion previously dropped accumulated partial fills. With the
+        ``_flush_position_records`` helper at every exit, the audit trail
+        is symmetric.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=100.0)]
+        partial_fill = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 60.0,
+            "filled_usdc": 24.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        no_match = {
+            "order_id": "o-2",
+            "status": "unmatched",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        # 2 attempts: first partial, second no-match → exhaustion.
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[partial_fill, no_match],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        fills_for_a = [f for f in store["withdrawal_fills"] if f["token_id"] == TOK_A]
+        errors_for_a = [e for e in store["withdrawal_errors"] if e["token_id"] == TOK_A]
+        assert len(fills_for_a) == 1
+        assert fills_for_a[0]["shares_sold"] == pytest.approx(60.0)
+        assert len(errors_for_a) == 1
+        assert errors_for_a[0]["shares_remaining"] == pytest.approx(40.0)
+
+    def test_in_flight_with_zero_prior_fills_records_error_only(
+        self, tmp_path: Path
+    ) -> None:
+        """No spurious empty-fill rows when in-flight fires with no prior fill.
+
+        Regression guard for the helper: ``total_filled == 0`` must yield
+        ZERO fill rows, not a phantom 0-share row.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "10000000",
+            "price": "0.50",
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[live_get_order] * 6,
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        # Exactly one error row, NO fill rows.
+        assert store["withdrawal_fills"] == []
+        assert len(store["withdrawal_errors"]) == 1
+
+    def test_decimal_factor_constant_value(self) -> None:
+        """``CTF_DECIMAL_FACTOR`` must remain 10**6 (6-decimal fixed-point).
+
+        Regression guard against accidentally changing the scaling, which
+        would silently inflate or deflate every fill record.
+        """
+        assert CTF_DECIMAL_FACTOR == 10**6
+
+    def test_size_matched_valid_int_string_parses_correctly(
+        self, tmp_path: Path
+    ) -> None:
+        """Regression: a valid 6-decimal fixed-point integer string parses cleanly.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+
+        result = behaviour._fill_from_terminal_get_order(order, "0xpending")
+
+        assert "error" not in result
+        assert result["filled_shares"] == pytest.approx(20.4)
+        assert result["fill_price"] == pytest.approx(0.043)
+
+    @pytest.mark.parametrize(
+        "size_matched_value,reason_token",
+        [
+            ("20.4", "size_matched"),
+            ("garbage", "size_matched"),
+            ("12.0e3", "size_matched"),
+        ],
+    )
+    def test_size_matched_unparseable_records_sdk_error(
+        self,
+        tmp_path: Path,
+        size_matched_value: str,
+        reason_token: str,
+    ) -> None:
+        """Non-conforming ``size_matched`` records SDK error; sweep continues.
+
+        Without the parse-safety wrap, a single SDK contract change would
+        ``ValueError`` out of the sweep generator and skip every remaining
+        position. The fix records the parse failure as an error row and
+        the sweep continues to the next position.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param size_matched_value: the malformed size_matched string to inject.
+        :param reason_token: substring that must appear in the recorded reason.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        # Two positions so we can verify the second is reached after the
+        # first hits the parse failure.
+        positions = [
+            _make_position(TOK_A, size=10.0),
+            _make_position(TOK_B, size=5.0),
+        ]
+        delayed_resp = {
+            "order_id": "0xpending-A",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        malformed_terminal = {
+            "id": "0xpending-A",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": size_matched_value,
+            "original_size": "10000000",
+            "price": "0.5",
+        }
+        sync_match_b = {
+            "order_id": "o-B",
+            "status": "matched",
+            "filled_shares": 5.0,
+            "filled_usdc": 2.5,
+            "fill_price": 0.5,
+            "raw": {},
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp, sync_match_b],
+            get_order_responses=[malformed_terminal],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        # Position A errored due to parse failure; position B succeeded.
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        fill_token_ids = {f["token_id"] for f in store["withdrawal_fills"]}
+        assert fill_token_ids == {TOK_B}
+        error_rows = [e for e in store["withdrawal_errors"] if e["token_id"] == TOK_A]
+        assert len(error_rows) == 1
+        assert reason_token in error_rows[0]["reason"]
+        assert "sdk error" in error_rows[0]["reason"].lower()
+
+    def test_price_unparseable_records_sdk_error(self, tmp_path: Path) -> None:
+        """Non-conforming ``price`` records SDK error without crashing the sweep.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=10.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        malformed_terminal = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "10000000",
+            "original_size": "10000000",
+            "price": "abc",
+        }
+        router, _ = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[malformed_terminal],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert len(store["withdrawal_errors"]) == 1
+        assert "price" in store["withdrawal_errors"][0]["reason"]
+
+    def test_canceled_status_does_not_short_circuit(self, tmp_path: Path) -> None:
+        """``ORDER_STATUS_CANCELED`` stays in the retryable bucket.
+
+        Without production data we cannot distinguish FAK kills from
+        external cancels; treating it as retryable matches today's behaviour
+        and avoids regressions on FAK-kill recovery paths.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=5.0)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        canceled_terminal = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_CANCELED",
+            "size_matched": "0",
+            "original_size": "5000000",
+            "price": "0",
+        }
+        # Two attempts: first delayed→canceled (retryable), second also
+        # delayed→canceled. Loop runs to exhaustion.
+        router, sent_payloads = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp, delayed_resp],
+            get_order_responses=[canceled_terminal, canceled_terminal],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        sell_payloads = [
+            p
+            for p in sent_payloads
+            if p.get("request_type") == RequestType.SELL_POSITION.value
+        ]
+        # Both attempts ran — no short-circuit.
+        assert len(sell_payloads) == 2
+
+    def test_delayed_response_drives_cooperative_poll_loop_to_match(
+        self, tmp_path: Path
+    ) -> None:
+        """``status=delayed`` triggers behaviour-side cooperative poll until matched.
+
+        Position posts ``delayed``; the behaviour issues GET_ORDER calls with
+        cooperative sleeps. After two LIVE polls the third returns
+        ``ORDER_STATUS_MATCHED``; the resulting fill is recorded as if the
+        sell had been synchronous.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1, 1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions = [_make_position(TOK_A, size=20.4)]
+        delayed_resp = {
+            "order_id": "0xpending",
+            "status": "delayed",
+            "filled_shares": 0.0,
+            "filled_usdc": 0.0,
+            "fill_price": 0.0,
+            "raw": {},
+        }
+        live_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_LIVE",
+            "size_matched": "0",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        terminal_get_order = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        router, sent_payloads = _make_request_router(
+            fetch_responses=[positions],
+            sell_responses=[delayed_resp],
+            get_order_responses=[live_get_order, live_get_order, terminal_get_order],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Three GET_ORDER requests issued; SELL_POSITION called exactly once.
+        get_order_payloads = [
+            p
+            for p in sent_payloads
+            if p.get("request_type") == RequestType.GET_ORDER.value
+        ]
+        sell_payloads = [
+            p
+            for p in sent_payloads
+            if p.get("request_type") == RequestType.SELL_POSITION.value
+        ]
+        assert len(get_order_payloads) == 3
+        assert len(sell_payloads) == 1
+
+        # Cooperative sleeps from the poll schedule were observed.
+        # First three entries of DELAYED_ORDER_POLL_BACKOFFS_S = (2, 5, 10).
+        assert captured_sleep[:3] == [2, 5, 10]
+
+        # Fill recorded; sweep ends complete (no errors).
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_COMPLETE
+        assert len(store["withdrawal_fills"]) == 1
+        fill = store["withdrawal_fills"][0]
+        assert fill["token_id"] == TOK_A
+        assert fill["shares_sold"] == pytest.approx(20.4)
+        assert fill["fill_price"] == pytest.approx(0.043)
+        assert store["withdrawal_errors"] == []
 
 
 class TestOmenWithdrawBehaviourStub:

@@ -354,6 +354,7 @@ class TestRouteRequest:
             "_check_approval",
             "_fetch_order_book",
             "_sell_position",
+            "_get_order",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -757,19 +758,12 @@ class TestSellPosition:
         assert response["filled_usdc"] == 0.0
         assert response["fill_price"] == 0.0
 
-    def test_post_order_none_response(self) -> None:
-        """When post_order returns None, _sell_position returns None without crashing."""
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = None
+    # Old test ``test_post_order_none_response`` (which asserted the broken
+    # ``return resp, None`` shape on falsy post_order) was replaced by
+    # ``test_sell_position_returns_error_on_none_post_order`` further down,
+    # which asserts the explicit-error envelope per Issue #3.
 
-        response, error = conn._sell_position(
-            token_id="tok123", amount=10.0
-        )  # nosec B106
-        assert error is None
-        assert response is None
-
-    # --- delayed-status polling -----------------------------------------
+    # --- delayed-status returns immediately (polling moved to behaviour) -
 
     @staticmethod
     def _delayed_post_resp() -> dict:
@@ -784,204 +778,82 @@ class TestSellPosition:
             "makingAmount": "",
         }
 
-    def test_delayed_polls_get_order_until_matched(self) -> None:
-        """``status=delayed`` triggers get_order polling; MATCHED yields the fill.
+    def test_sell_position_returns_error_on_none_post_order(self) -> None:
+        """A falsy ``None`` ``post_order`` reply must surface as an SDK error.
 
-        ``size_matched`` is fixed-math 6-decimals: 20400000 → 20.4 shares.
-        ``price`` is decimal USDC/share — used directly as the (approximate)
-        fill price; ``filled_usdc`` is reconstructed as shares × price.
+        Without this, a protocol-layer regression (SDK contract change,
+        HTTP 5xx with empty body) is silently mapped to "no liquidity" via
+        the behaviour-side per-position retry exhaustion path. The fix
+        makes the connection return an explicit ``{"error": ...}`` envelope
+        so the behaviour records ``"sdk error: ..."``, which is
+        distinguishable in logs from a genuine empty-bid-book outcome.
         """
         conn = _make_connection()
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
-        conn.client.get_order.return_value = {
-            "id": "0xpending",
-            "status": "ORDER_STATUS_MATCHED",
-            "size_matched": "20400000",
-            "original_size": "20400000",
-            "price": "0.043",
-        }
+        conn.client.post_order.return_value = None
 
-        with patch("time.sleep"):
-            response, error = conn._sell_position(
-                token_id="tok123", amount=20.4  # nosec B106
-            )
-
-        assert error is None
-        assert response["order_id"] == "0xpending"
-        assert response["status"] == "matched"
-        assert response["filled_shares"] == pytest.approx(20.4)
-        assert response["fill_price"] == pytest.approx(0.043)
-        assert response["filled_usdc"] == pytest.approx(20.4 * 0.043)
-        conn.client.get_order.assert_called_with("0xpending")
-
-    def test_delayed_polls_get_order_until_canceled_records_zero_fill(self) -> None:
-        """CANCELED terminal (FAK kill after delay) yields zero fill, status=unmatched.
-
-        Behaviour-side residual logic then re-fetches positions and either
-        retries on the next FAK attempt (residual unchanged) or moves on if
-        truly stuck. We must NOT inflate fills when the CLOB tells us nothing
-        matched.
-        """
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
-        conn.client.get_order.return_value = {
-            "id": "0xpending",
-            "status": "ORDER_STATUS_CANCELED",
-            "size_matched": "0",
-            "original_size": "20400000",
-            "price": "0",
-        }
-
-        with patch("time.sleep"):
-            response, error = conn._sell_position(
-                token_id="tok123", amount=20.4  # nosec B106
-            )
-
-        assert error is None
-        assert response["status"] == "unmatched"
-        assert response["filled_shares"] == 0.0
-        assert response["filled_usdc"] == 0.0
-        assert response["fill_price"] == 0.0
-
-    def test_delayed_poll_continues_through_live_states(self) -> None:
-        """``ORDER_STATUS_LIVE`` is non-terminal — keep polling until terminal."""
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
-        live_resp = {
-            "id": "0xpending",
-            "status": "ORDER_STATUS_LIVE",
-            "size_matched": "0",
-            "original_size": "20400000",
-            "price": "0.043",
-        }
-        terminal_resp = {
-            "id": "0xpending",
-            "status": "ORDER_STATUS_MATCHED",
-            "size_matched": "20400000",
-            "original_size": "20400000",
-            "price": "0.043",
-        }
-        conn.client.get_order.side_effect = [live_resp, live_resp, terminal_resp]
-
-        with patch("time.sleep"):
-            response, error = conn._sell_position(
-                token_id="tok123", amount=20.4
-            )  # nosec B106
-
-        assert error is None
-        assert response["status"] == "matched"
-        assert response["filled_shares"] == pytest.approx(20.4)
-        assert conn.client.get_order.call_count == 3
-
-    def test_delayed_poll_swallows_get_order_exceptions(self) -> None:
-        """Transient ``get_order`` failures don't abort polling.
-
-        A network blip on one poll attempt should be logged and the loop
-        should continue to the next backoff. Authoritative fill data is
-        still recorded once a terminal status is reached.
-        """
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
-        conn.client.get_order.side_effect = [
-            Exception("transient network blip"),
-            {
-                "id": "0xpending",
-                "status": "ORDER_STATUS_MATCHED",
-                "size_matched": "5880000",
-                "original_size": "5880000",
-                "price": "0.16",
-            },
-        ]
-
-        with patch("time.sleep"):
-            response, error = conn._sell_position(
-                token_id="tok123", amount=5.88  # nosec B106
-            )
-
-        assert error is None
-        assert response["status"] == "matched"
-        assert response["filled_shares"] == pytest.approx(5.88)
-        # Warning logged for the swallowed exception.
-        assert any(
-            "get_order" in str(call.args[0])
-            for call in conn.logger.warning.call_args_list
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
         )
 
-    def test_delayed_poll_exhausted_returns_in_flight_status(self) -> None:
-        """Poll-cap exhaustion signals ``in_flight`` so the behaviour can defer.
+        assert error == "post_order returned empty response"
+        assert isinstance(response, dict)
+        assert response.get("error") == "post_order returned empty response"
 
-        If the connection fell through to the original delayed envelope (zero
-        fill, status=delayed), the behaviour's FAK-retry loop would race the
-        still-in-flight match on the CLOB and hit ``not enough balance`` on
-        every retry. Instead, surface a distinct ``in_flight`` status so the
-        behaviour can break out of the loop and defer the position to the
-        next sweep cycle.
+    def test_sell_position_returns_error_on_empty_dict_post_order(self) -> None:
+        """An empty-dict ``post_order`` reply has the same SDK-error treatment."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {}
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
+        )
+
+        assert error == "post_order returned empty response"
+        assert isinstance(response, dict)
+        assert response.get("error") == "post_order returned empty response"
+
+    def test_sell_position_logs_error_on_falsy_response(self) -> None:
+        """The connection must log the empty-response error at error level."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = None
+
+        conn._sell_position(token_id="tok123", amount=20.4)  # nosec B106
+
+        assert any(
+            "post_order returned empty response" in str(call.args[0])
+            for call in conn.logger.error.call_args_list
+        )
+
+    def test_sell_position_delayed_returns_immediately_no_poll(self) -> None:
+        """``status=delayed`` returns immediately; polling lives behaviour-side.
+
+        Polling was migrated out of the connection so the AEA worker thread
+        is not blocked on ``time.sleep``. The behaviour drives the
+        cooperative poll via ``RequestType.GET_ORDER`` instead.
         """
         conn = _make_connection()
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
         post_resp = self._delayed_post_resp()
         conn.client.post_order.return_value = post_resp
-        conn.client.get_order.return_value = {
-            "id": "0xpending",
-            "status": "ORDER_STATUS_LIVE",
-            "size_matched": "0",
-            "original_size": "20400000",
-            "price": "0.043",
-        }
 
-        with patch("time.sleep"):
+        with patch("time.sleep") as sleep_mock:
             response, error = conn._sell_position(
                 token_id="tok123", amount=20.4  # nosec B106
             )
 
         assert error is None
-        assert response["status"] == "in_flight"
         assert response["order_id"] == "0xpending"
+        assert response["status"] == "delayed"
         assert response["filled_shares"] == 0.0
         assert response["filled_usdc"] == 0.0
         assert response["fill_price"] == 0.0
         assert response["raw"] is post_resp
-        # Poll cap exhausted warning still emitted.
-        assert any(
-            "still delayed" in str(call.args[0]).lower()
-            or "poll exhausted" in str(call.args[0]).lower()
-            for call in conn.logger.warning.call_args_list
-        )
-
-    def test_delayed_poll_skips_none_returns(self) -> None:
-        """``client.get_order`` may return ``None`` (data API not indexed yet).
-
-        Live trace: the first poll attempt 2s after a ``delayed`` post sometimes
-        returns a falsy/None body (the order hasn't been indexed by the data
-        API yet). The loop must keep polling, not crash on ``.get()``.
-        """
-        conn = _make_connection()
-        conn.client.create_market_order.return_value = self._make_signed_order_v2()
-        conn.client.post_order.return_value = self._delayed_post_resp()
-        conn.client.get_order.side_effect = [
-            None,
-            {
-                "id": "0xpending",
-                "status": "ORDER_STATUS_MATCHED",
-                "size_matched": "5880000",
-                "original_size": "5880000",
-                "price": "0.16",
-            },
-        ]
-
-        with patch("time.sleep"):
-            response, error = conn._sell_position(
-                token_id="tok123", amount=5.88  # nosec B106
-            )
-
-        assert error is None
-        assert response["status"] == "matched"
-        assert response["filled_shares"] == pytest.approx(5.88)
-        assert conn.client.get_order.call_count == 2
+        # Connection must NOT poll get_order or sleep on this path.
+        conn.client.get_order.assert_not_called()
+        sleep_mock.assert_not_called()
 
     def test_matched_response_skips_polling(self) -> None:
         """A synchronous ``matched`` reply uses post_order fields directly.
@@ -1008,6 +880,62 @@ class TestSellPosition:
         assert response["filled_shares"] == pytest.approx(20.4)
         assert response["filled_usdc"] == pytest.approx(0.8772)
         conn.client.get_order.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _get_order
+# ---------------------------------------------------------------------------
+
+
+class TestGetOrder:
+    """Tests for the GET_ORDER handler (single-shot order lookup).
+
+    The behaviour drives the polling loop; the connection just dispatches a
+    single call to ``client.get_order`` and returns the raw response.
+    """
+
+    def test_get_order_returns_raw_response(self) -> None:
+        """``_get_order`` returns the raw ``client.get_order`` payload."""
+        conn = _make_connection()
+        terminal_payload = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        conn.client.get_order.return_value = terminal_payload
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is None
+        assert response is terminal_payload
+        conn.client.get_order.assert_called_once_with("0xpending")
+
+    def test_get_order_passes_through_none(self) -> None:
+        """The SDK can return None before indexing; we forward as-is."""
+        conn = _make_connection()
+        conn.client.get_order.return_value = None
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is None
+        assert response is None
+
+    def test_get_order_propagates_poly_api_exception(self) -> None:
+        """``PolyApiException`` is mapped to the standard error tuple shape."""
+        from py_clob_client_v2.exceptions import PolyApiException
+
+        conn = _make_connection()
+        conn.client.get_order.side_effect = PolyApiException(
+            error_msg={"error": "Unauthorized"}
+        )
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is not None
+        assert "Unauthorized" in error
+        assert isinstance(response, dict) and "error" in response
 
 
 # ---------------------------------------------------------------------------

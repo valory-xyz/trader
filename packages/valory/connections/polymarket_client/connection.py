@@ -77,26 +77,6 @@ MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 10
-# Backoffs for polling get_order after a post_order ``delayed`` response.
-# CLOB defers async matching for FAK orders; the post reply returns before the
-# matching engine resolves. Polling client.get_order(order_id) reads the
-# authoritative on-CLOB state. Total wait ≈ 122s before declaring the order
-# in-flight. Live trace observed a match completing ~43s after post_order, so
-# the cap was bumped from 32s to give ~3× headroom; on genuine exhaustion the
-# connection signals ``in_flight`` and the behaviour defers the position to
-# the next sweep cycle rather than racing the in-flight match.
-DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 60.0)
-# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
-# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
-# only non-terminal value; everything else means we can stop polling.
-GET_ORDER_TERMINAL_STATUSES = frozenset(
-    {
-        "ORDER_STATUS_MATCHED",
-        "ORDER_STATUS_CANCELED",
-        "ORDER_STATUS_INVALID",
-        "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
-    }
-)
 # Subgraph indexes markets created after this date; exclude older markets
 MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 
@@ -444,6 +424,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.CHECK_APPROVAL: self._check_approval,
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
             RequestType.SELL_POSITION: self._sell_position,
+            RequestType.GET_ORDER: self._get_order,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -580,30 +561,25 @@ class PolymarketClientConnection(BaseSyncConnection):
             resp: Dict = self.client.post_order(signed, OrderType.FAK)
 
             if not resp:
-                return resp, None
+                error_msg = "post_order returned empty response"
+                self.logger.error(error_msg)
+                return {"error": error_msg}, error_msg
 
             order_id = resp.get("orderID") or ""
             status = (resp.get("status") or "").lower()
 
-            # Async-match path: the matching engine deferred resolution. Poll
-            # client.get_order(order_id) for the authoritative terminal state
-            # before deciding what to report. Without this, treating
-            # ``delayed`` as a kill triggers a retry that races the in-flight
-            # match and gets rejected with ``not enough balance``.
+            # Async-match path: the matching engine deferred resolution.
+            # Return immediately with the ``delayed`` envelope. The
+            # behaviour drives the cooperative get_order poll loop (see
+            # ``polymarket_withdraw._poll_order_until_terminal_cooperative``)
+            # rather than blocking the connection's worker thread on
+            # ``time.sleep``. Behaviour-side polling lets other connection
+            # consumers continue to be served during the wait.
             if status == "delayed" and order_id:
-                terminal = self._poll_order_until_terminal(order_id)
-                if terminal is not None:
-                    return self._fill_from_terminal_get_order(terminal, order_id), None
-                # Poll exhausted while still LIVE: the order has neither
-                # matched nor canceled within the cap. Surfacing ``delayed``
-                # here would let the behaviour FAK-retry race the in-flight
-                # match. Use a distinct ``in_flight`` status instead so the
-                # behaviour can break out of the per-position loop and let
-                # the next sweep cycle re-fetch positions and resolve.
                 return (
                     {
                         "order_id": order_id,
-                        "status": "in_flight",
+                        "status": "delayed",
                         "filled_shares": 0.0,
                         "filled_usdc": 0.0,
                         "fill_price": 0.0,
@@ -612,8 +588,8 @@ class PolymarketClientConnection(BaseSyncConnection):
                     None,
                 )
 
-            # Synchronous path (status in {"matched", "live", "unmatched"} or
-            # poll exhausted). Field mapping is role-based: for a SELL we
+            # Synchronous path (status in {"matched", "live", "unmatched"}).
+            # Field mapping is role-based: for a SELL we
             # (the maker) sent ``makerAmount`` shares expecting
             # ``takerAmount`` USDC, so ``makingAmount`` is the shares filled
             # and ``takingAmount`` is the USDC received. (Verified against a
@@ -647,65 +623,30 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(error_msg)
             return {"error": error_msg}, error_msg
 
-    def _poll_order_until_terminal(self, order_id: str) -> Optional[Dict]:
-        """Poll ``client.get_order`` until terminal status, or cap exhausted.
+    def _get_order(self, order_id: str) -> Tuple[Any, Any]:
+        """Look up a single order via ``client.get_order``.
+
+        Thin wrapper used by the behaviour-side cooperative poll loop:
+        the behaviour drives backoff/retry/terminal-status decisions, and
+        each iteration issues one ``GET_ORDER`` request that lands here.
 
         :param order_id: CLOB order id to look up.
-        :return: terminal ``get_order`` payload, or ``None`` if the cap was
-            exhausted while still ``ORDER_STATUS_LIVE``.
+        :return: ``(order_payload, error_or_none)``. The payload is the
+            raw ``client.get_order`` response (may be ``None`` if the data
+            API hasn't indexed the order yet). On ``PolyApiException`` the
+            tuple shape mirrors the rest of this connection's handlers.
         """
-        for backoff_s in DELAYED_ORDER_POLL_BACKOFFS_S:
-            time.sleep(backoff_s)
-            try:
-                order = self.client.get_order(order_id)
-            except Exception as exc:  # pylint: disable=broad-except
-                self.logger.warning(
-                    f"withdrawal: get_order failed for {order_id}: {exc}"
-                )
-                continue
-            # The SDK can return ``None`` shortly after ``post_order`` — the
-            # data API hasn't indexed the new order yet. Keep polling rather
-            # than crash on ``.get()``.
-            if not order:
-                continue
-            status = order.get("status") or ""
-            if status in GET_ORDER_TERMINAL_STATUSES:
-                return order
-        self.logger.warning(
-            f"withdrawal: order {order_id} still delayed after poll exhausted"
-        )
-        return None
-
-    def _fill_from_terminal_get_order(
-        self, order: Dict, order_id: str
-    ) -> Dict[str, Any]:
-        """Compute fill response fields from a terminal ``get_order`` payload.
-
-        ``size_matched`` is fixed-math 6-decimal shares; ``price`` is decimal
-        USDC/share (the order's price field, used as an approximation of the
-        fill price — for a multi-level fill this may diverge from VWAP, but
-        the value is operator-reporting-only and not used in any decision
-        logic).
-
-        :param order: terminal ``get_order`` payload.
-        :param order_id: order id (passthrough; ``order['id']`` may be unset).
-        :return: response dict matching ``_sell_position``'s return shape.
-        """
-        size_matched_raw = order.get("size_matched") or "0"
-        price_str = order.get("price") or "0"
-        filled_shares = int(size_matched_raw) / 1e6
-        fill_price = float(price_str)
-        filled_usdc = filled_shares * fill_price
-        status_raw = order.get("status") or ""
-        status_norm = "matched" if status_raw == "ORDER_STATUS_MATCHED" else "unmatched"
-        return {
-            "order_id": order_id,
-            "status": status_norm,
-            "filled_shares": filled_shares,
-            "filled_usdc": filled_usdc,
-            "fill_price": fill_price,
-            "raw": order,
-        }
+        try:
+            order = self.client.get_order(order_id)
+            return order, None
+        except PolyApiException as e:
+            error_msg = (
+                e.error_msg.get("error")
+                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
+                else f"Error fetching order {order_id}: {e}"
+            )
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES

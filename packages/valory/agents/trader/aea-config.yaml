@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
 - valory/x402:0.1.0:bafybeibg4a4drxliwba6ortn5xvqpgnhf6e5e5ji35gufaeg5jx55yrrci
-- valory/polymarket_client:0.1.0:bafybeif5u27xqde4epm4b7pxi2yloq6x7uloczwgmky6srzgfgicko2xei
+- valory/polymarket_client:0.1.0:bafybeig3tichorfb25sxhkhbjwgacvknjrnmras7bhiklabeeak2p2qn5a
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeihljnuo6jiyqfvow4vgxy5ih4eha2pjtguh7o6pabe24lbd6mwjaa
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeihpzvi2rxvdzujrqivnynsoqezklval6j3qeoxaitquktvwscqgra
@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
 - valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
 - valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidbh4bhvvyu3b4bwmbskzpv5njg3vg34dlyisyc4p7f34rdz6eu7m
-- valory/market_manager_abci:0.1.0:bafybeidqef2n6cce4ga6cwyu2frgrykf4my5reofsvw4pxo7tquizxh3wq
-- valory/decision_maker_abci:0.1.0:bafybeic4b3hhfhjx6x43srrkc2dvognbmlpylk64v3j4iqsz6cki7iticu
-- valory/trader_abci:0.1.0:bafybeiceahzjvgmkbu53rbxirqaotc7m7mwbq3nssaziwzkshbgxfavxjy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihrdvpnfulvcir5pi5zxvk7b4lwsylyuo5onaldviucmkx2lcevri
+- valory/market_manager_abci:0.1.0:bafybeigzmtei4jswy4stzijdboqzdp6bnkgaknbxyadgydmp3zs7emfqvy
+- valory/decision_maker_abci:0.1.0:bafybeiaegf5vcxnfcsfkc3mrphltgtcqgsbt34ill3lbznx4gfe5ulil5u
+- valory/trader_abci:0.1.0:bafybeiclwnug4lh2zhr3dic6tg72c7atiutu5i3h2dqrsgnp56xvmo2s2a
 - valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
-- valory/check_stop_trading_abci:0.1.0:bafybeidbxif3h5zgf5qydhsuk5wqnalvptfm4iufhflbwwnvkn5w3bh4m4
+- valory/check_stop_trading_abci:0.1.0:bafybeihsdu6dgyfxz62nv63t3mtob2q7mdwlhvua7gslpapaxjqpk4powu
 - valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
-- valory/chatui_abci:0.1.0:bafybeiaqp5qujk23lqlm5ffye6pz6kpwtlxjdqukzirmew3mnrtkdgt7ca
-- valory/agent_performance_summary_abci:0.1.0:bafybeiapw7qbboaorsfj5c32q2yrqzkpuy2brf4ywzldfktyy3s4tu6pq4
+- valory/chatui_abci:0.1.0:bafybeielfejxuu7muetawptyolpgd6foflwwa72aquhqxaqxrotxh3ikya
+- valory/agent_performance_summary_abci:0.1.0:bafybeigje2eojoloyoush777xkpf3fvkidb3ylxqxw25wwwv77v7ess24e
 - valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
 customs:
 - valory/kelly_criterion:0.1.0:bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa

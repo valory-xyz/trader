@@ -48,6 +48,43 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw impor
 DUST_EPSILON = 1e-2
 TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 
+# Backoffs for polling get_order after a post_order ``delayed`` response.
+# CLOB defers async matching for FAK orders; the post reply returns before
+# the matching engine resolves. Polling client.get_order(order_id) reads the
+# authoritative on-CLOB state. Total wait ≈ 122s before declaring the order
+# in-flight. Live trace observed a match completing ~43s after post_order, so
+# the cap was bumped from 32s to give ~3× headroom; on genuine exhaustion the
+# behaviour signals ``in_flight`` and defers the position to the next sweep
+# cycle rather than racing the in-flight match.
+DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 60.0)
+# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
+# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
+# only non-terminal value; everything else means we can stop polling.
+GET_ORDER_TERMINAL_STATUSES = frozenset(
+    {
+        "ORDER_STATUS_MATCHED",
+        "ORDER_STATUS_CANCELED",
+        "ORDER_STATUS_INVALID",
+        "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
+    }
+)
+# Terminal status vocabulary observed empirically from get_order responses.
+# Permanent-failure values (``invalid``, ``market_resolved``) short-circuit
+# the per-position retry loop because retrying them is mathematically
+# guaranteed to fail. ``canceled`` stays in the retryable bucket — without
+# production data we cannot distinguish FAK kills from external cancels.
+# Unrecognized values fall through to ``unmatched`` (retryable) defensively.
+TERMINAL_STATUS_MAP = {
+    "ORDER_STATUS_MATCHED": "matched",
+    "ORDER_STATUS_CANCELED": "canceled",
+    "ORDER_STATUS_INVALID": "invalid",
+    "ORDER_STATUS_CANCELED_MARKET_RESOLVED": "market_resolved",
+}
+PERMANENT_FAILURE_STATUSES = frozenset({"invalid", "market_resolved"})
+# Polymarket CTF tokens use 6-decimal fixed-point scaling for share amounts
+# in the get_order payload's ``size_matched`` field.
+CTF_DECIMAL_FACTOR = 10**6
+
 
 class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     """Sells every unredeemable Polymarket position via market FAK orders.
@@ -186,6 +223,134 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         response = yield from self.send_polymarket_connection_request(payload)
         return self._extract_response_or_error(response)
 
+    def _request_get_order(
+        self,
+        order_id: str,
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
+        """Issue a single GET_ORDER lookup against the connection.
+
+        :param order_id: CLOB order id to look up.
+        :yield: framework yields between dispatch and response.
+        :return: ``(order_payload_or_none, error_or_none)``. The payload is
+            the raw ``client.get_order`` response (may be a falsy/None body
+            if the data API hasn't indexed the order yet).
+        """
+        payload = {
+            "request_type": RequestType.GET_ORDER.value,
+            "params": {"order_id": order_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        return self._extract_response_or_error(response)
+
+    def _poll_order_until_terminal_cooperative(
+        self,
+        order_id: str,
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
+        """Drive the cooperative poll loop for a delayed order.
+
+        Uses ``yield from self.sleep(...)`` between polls so the connection's
+        worker thread is free to serve other consumers during the wait.
+
+        Three return shapes distinguish the outcome:
+
+        - ``(terminal_payload, None)`` — terminal status reached.
+        - ``(None, None)`` — cap exhausted while still LIVE (in_flight defer).
+        - ``(None, error_string)`` — every poll attempt errored, distinct
+          from a LIVE-exhausted in_flight. Lets the caller record the
+          parent position with a "polymarket API unreachable" reason
+          rather than the misleading in-flight defer reason.
+
+        :param order_id: CLOB order id to look up.
+        :yield: framework yields between cooperative sleeps and dispatch.
+        :return: tuple of ``(terminal_payload_or_none, error_string_or_none)``.
+        """
+        error_count = 0
+        last_error: Optional[str] = None
+        for backoff_s in DELAYED_ORDER_POLL_BACKOFFS_S:
+            yield from self.sleep(backoff_s)
+            order, error = yield from self._request_get_order(order_id)
+            if error is not None:
+                error_count += 1
+                last_error = error
+                self.context.logger.warning(
+                    f"withdrawal: get_order failed for {order_id}: {error}"
+                )
+                continue
+            # The SDK can return ``None`` shortly after ``post_order`` —
+            # the data API hasn't indexed the new order yet. Keep polling
+            # rather than crash on ``.get()``.
+            if not order:
+                continue
+            status = order.get("status") or ""
+            if status in GET_ORDER_TERMINAL_STATUSES:
+                return order, None
+        # exhausted
+        if error_count == len(DELAYED_ORDER_POLL_BACKOFFS_S):
+            return None, (
+                f"all {error_count} poll attempts errored " f"(last: {last_error})"
+            )
+        self.context.logger.warning(
+            f"withdrawal: order {order_id} still delayed after poll exhausted"
+        )
+        return None, None
+
+    def _fill_from_terminal_get_order(
+        self, order: Dict[str, Any], order_id: str
+    ) -> Dict[str, Any]:
+        """Compute fill response fields from a terminal ``get_order`` payload.
+
+        ``size_matched`` is fixed-math 6-decimal shares; ``price`` is decimal
+        USDC/share (the order's price field, used as an approximation of the
+        fill price — for a multi-level fill this may diverge from VWAP, but
+        the value is operator-reporting-only and not used in any decision
+        logic).
+
+        Maps the raw ``ORDER_STATUS_*`` value to a normalized status the
+        per-position retry loop can branch on. Unmapped values fall through
+        to ``"unmatched"`` (retryable) so an SDK contract change introducing
+        a new status doesn't crash the sweep — instead a warning is logged
+        so the new status can be added to the map deliberately.
+
+        :param order: terminal ``get_order`` payload.
+        :param order_id: order id (passthrough; ``order['id']`` may be unset).
+        :return: response dict matching ``_request_sell``'s return shape.
+        """
+        size_matched_raw = order.get("size_matched") or "0"
+        price_str = order.get("price") or "0"
+        try:
+            filled_shares = int(size_matched_raw) / CTF_DECIMAL_FACTOR
+        except (ValueError, TypeError) as e:
+            error_msg = (
+                f"size_matched={size_matched_raw!r} not parseable as "
+                f"6-decimal fixed-point int: {e}"
+            )
+            self.context.logger.error(error_msg)
+            return {"error": error_msg}
+        try:
+            fill_price = float(price_str)
+        except (ValueError, TypeError) as e:
+            error_msg = f"price={price_str!r} not parseable as float: {e}"
+            self.context.logger.error(error_msg)
+            return {"error": error_msg}
+        filled_usdc = filled_shares * fill_price
+        status_raw = order.get("status") or ""
+        status_norm = TERMINAL_STATUS_MAP.get(status_raw)
+        if status_norm is None:
+            self.context.logger.warning(
+                f"withdrawal: unrecognized terminal status {status_raw!r}; "
+                "treating as unmatched (retryable). Possibly an SDK contract "
+                "change — verify against current Polymarket CLOB behaviour."
+            )
+            status_norm = "unmatched"
+        return {
+            "order_id": order_id,
+            "status": status_norm,
+            "filled_shares": filled_shares,
+            "filled_usdc": filled_usdc,
+            "fill_price": fill_price,
+            "raw": order,
+        }
+
     @staticmethod
     def _extract_response_or_error(
         response: Any,
@@ -272,27 +437,95 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                 last_error = error
             else:
                 resp = response or {}
-                # ``in_flight`` = the connection's get_order poll exhausted
-                # while the order was still LIVE on the CLOB. Retrying with
-                # the full residual would race the in-flight match and hit
-                # ``not enough balance`` once it lands. Defer this position
-                # to the next sweep cycle (which re-fetches positions and
-                # acts on the actual residual). Record a deferred error so
-                # the sweep ends ``errored`` and operator restart does NOT
-                # auto-resume betting before the in-flight order resolves.
-                if resp.get("status") == "in_flight":
-                    order_id = resp.get("order_id") or ""
-                    self.context.logger.info(
-                        f"withdrawal: order {order_id} in-flight after poll "
-                        f"exhausted; deferring {token_id} to next sweep cycle"
+                # Async-match path: post_order returned ``delayed``. Drive
+                # the cooperative poll loop here (rather than blocking the
+                # connection's worker thread); transform the terminal
+                # payload into the same shape the synchronous path would
+                # return so the rest of the loop body is unaware of which
+                # path produced ``resp``.
+                if resp.get("status") == "delayed" and resp.get("order_id"):
+                    order_id = resp["order_id"]
+                    terminal, poll_error = (
+                        yield from self._poll_order_until_terminal_cooperative(order_id)
                     )
-                    self._record_error(
-                        token_id,
-                        residual,
-                        "in-flight after CLOB delayed-poll exhausted; "
-                        "will resolve next sweep cycle",
-                    )
-                    return
+                    if poll_error is not None:
+                        # Every poll attempt errored — distinct from an
+                        # in-flight defer. The Polymarket API was unreachable
+                        # for the entire poll window, so retrying the SELL
+                        # would race whatever the chain settled. Record a
+                        # distinct reason so the diagnostic doesn't masquerade
+                        # as an in-flight match.
+                        self._flush_position_records(
+                            token_id,
+                            total_filled,
+                            total_usdc,
+                            residual,
+                            error_reason=(
+                                f"polymarket API unreachable during poll: {poll_error}"
+                            ),
+                        )
+                        return
+                    if terminal is None:
+                        # Poll exhausted while still LIVE: retrying with the
+                        # full residual would race the in-flight match and
+                        # hit ``not enough balance`` once it lands. Defer
+                        # this position to the next sweep cycle. Record a
+                        # deferred error so the sweep ends ``errored`` and
+                        # operator restart does NOT auto-resume betting
+                        # before the in-flight order resolves.
+                        self.context.logger.info(
+                            f"withdrawal: order {order_id} in-flight after poll "
+                            f"exhausted; deferring {token_id} to next sweep cycle"
+                        )
+                        self._flush_position_records(
+                            token_id,
+                            total_filled,
+                            total_usdc,
+                            residual,
+                            error_reason=(
+                                "in-flight after CLOB delayed-poll exhausted; "
+                                "will resolve next sweep cycle"
+                            ),
+                        )
+                        return
+                    resp = self._fill_from_terminal_get_order(terminal, order_id)
+                    # Parse failure on the terminal payload: surface as a
+                    # position-level error rather than silently dropping
+                    # to a "no fill" iteration. The on-chain state is now
+                    # ambiguous (we received a payload but couldn't read
+                    # it), so retrying with the full residual would risk
+                    # racing whatever the chain settled. Record and move on.
+                    if resp.get("error"):
+                        self._flush_position_records(
+                            token_id,
+                            total_filled,
+                            total_usdc,
+                            residual,
+                            error_reason=f"sdk error: {resp['error']}",
+                        )
+                        return
+                    # Permanent-failure terminal statuses: retrying is
+                    # mathematically guaranteed to fail. INVALID = signer
+                    # mismatch (re-signing produces an identical payload,
+                    # same rejection). MARKET_RESOLVED = market settled,
+                    # liquidity is gone forever. Short-circuit the FAK
+                    # retry loop and record an error for the residual.
+                    if resp.get("status") in PERMANENT_FAILURE_STATUSES:
+                        permanent_status = resp.get("status")
+                        self.context.logger.info(
+                            f"withdrawal: terminal status={permanent_status} "
+                            f"for {token_id}; short-circuiting retry loop"
+                        )
+                        self._flush_position_records(
+                            token_id,
+                            total_filled,
+                            total_usdc,
+                            residual,
+                            error_reason=(
+                                f"permanent terminal status: {permanent_status}"
+                            ),
+                        )
+                        return
                 filled = float(resp.get("filled_shares") or 0.0)
                 if filled > 0:
                     total_filled += filled
@@ -304,7 +537,13 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                         f"withdrawal: sold {total_filled} of {token_id} "
                         f"@ {fill_price} (residual=0.0)"
                     )
-                    self._record_fill(token_id, total_filled, fill_price)
+                    self._flush_position_records(
+                        token_id,
+                        total_filled,
+                        total_usdc,
+                        residual,
+                        error_reason=None,
+                    )
                     return
                 last_error = f"partial fill, residual={residual}"
 
@@ -317,13 +556,17 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                 )
                 yield from self.sleep(backoff[attempt])
 
-        # Retries exhausted. Record the residual as an error; the on-chain
-        # record (via get_trades) is the audit trail for what filled.
+        # Retries exhausted. Record the residual (and any partial fills) so
+        # the operator-facing audit trail is symmetric across exit paths.
+        # The on-chain record (via get_trades) is the authoritative source
+        # for what filled.
         reason = self._stuck_reason(last_error)
         self.context.logger.warning(
             f"withdrawal: stuck {residual} of {token_id} reason={reason!r}"
         )
-        self._record_error(token_id, residual, reason)
+        self._flush_position_records(
+            token_id, total_filled, total_usdc, residual, error_reason=reason
+        )
 
     @staticmethod
     def _stuck_reason(last_error: Optional[str]) -> str:
@@ -332,11 +575,41 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
             return "no liquidity after FAK attempts"
         return f"sdk error: {last_error}"
 
+    def _flush_position_records(
+        self,
+        token_id: str,
+        total_filled: float,
+        total_usdc: float,
+        residual: float,
+        error_reason: Optional[str],
+    ) -> None:
+        """Emit fill + residual-error records at any per-position loop exit.
+
+        Normalizes the per-position exit paths (clean success / in_flight
+        defer / retries exhausted / permanent-status short-circuit / parse
+        failure) so a partial fill is always written when ``total_filled > 0``,
+        independent of whether the residual sold or stuck. Without this,
+        the in_flight and exhaustion paths would silently drop accumulated
+        partial fills from prior FAK attempts.
+
+        :param token_id: the CTF token id this loop iteration targeted.
+        :param total_filled: accumulated filled shares across all attempts.
+        :param total_usdc: accumulated USDC received across all attempts.
+        :param residual: shares still unsold after the loop's final attempt.
+        :param error_reason: human-readable reason for the residual; ``None``
+            on clean success (``residual <= DUST_EPSILON``).
+        """
+        if total_filled > 0:
+            fill_price = total_usdc / total_filled
+            self._record_fill(token_id, total_filled, fill_price)
+        if error_reason is not None and residual > DUST_EPSILON:
+            self._record_error(token_id, residual, error_reason)
+
     # ------------------------------------------------------------------ #
     # Configuration accessors                                            #
     # ------------------------------------------------------------------ #
 
-    def _retry_schedule(self) -> List[int]:
+    def _retry_schedule(self) -> List[float]:
         """Return the FAK backoff schedule from params."""
         return list(self.context.params.withdrawal_fak_backoff_s)
 

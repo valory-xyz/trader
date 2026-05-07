@@ -597,17 +597,28 @@ class HttpHandler(BaseHttpHandler):
         self._store_chatui_param_to_json(ALLOWED_TOOLS_FIELD, tools)
 
     def _build_withdrawal_status(self) -> Dict[str, Any]:
-        """Return the GET payload describing current withdrawal state."""
-        cfg = self.shared_state.chatui_config
+        """Return the GET payload describing current withdrawal state.
+
+        Reads from disk rather than the in-memory ``chatui_config`` cache:
+        the withdrawal fields are written by ``decision_maker_abci`` directly
+        to ``chatui_param_store.json`` and never propagated back into this
+        skill's in-memory cfg. Reading disk on every GET keeps the FE
+        polling loop in lock-step with the behaviour-side state machine.
+
+        :return: payload dict matching the documented withdrawal-status shape.
+        """
+        store = self.shared_state._get_current_json_store()
+        fills = store.get("withdrawal_fills", []) or []
+        errors = store.get("withdrawal_errors", []) or []
         venue = "polymarket" if self.context.params.is_running_on_polymarket else "omen"
         return {
-            "mode": cfg.withdrawal_state,
+            "mode": store.get("withdrawal_state", WITHDRAWAL_STATE_IDLE),
             "venue": venue,
-            "positions_total": (len(cfg.withdrawal_fills) + len(cfg.withdrawal_errors)),
-            "positions_sold": len(cfg.withdrawal_fills),
-            "positions_stuck": len(cfg.withdrawal_errors),
-            "fills": cfg.withdrawal_fills,
-            "errors": cfg.withdrawal_errors,
+            "positions_total": len(fills) + len(errors),
+            "positions_sold": len(fills),
+            "positions_stuck": len(errors),
+            "fills": fills,
+            "errors": errors,
         }
 
     def _handle_post_withdrawal(

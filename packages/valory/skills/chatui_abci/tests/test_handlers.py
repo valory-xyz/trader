@@ -20,6 +20,7 @@
 """Tests for chatui_abci/handlers.py."""
 
 import json
+from dataclasses import asdict
 from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
@@ -1307,10 +1308,27 @@ def _make_withdrawal_handler(
     handler.context = context  # type: ignore[assignment]
 
     shared_state = MagicMock()
-    shared_state.chatui_config = config or ChatuiConfig()
+    cfg = config or ChatuiConfig()
+    shared_state.chatui_config = cfg
+    # Model the disk view as a mutable dict that mirrors the in-memory cfg
+    # at handler creation. This lets GET (which now reads from disk) see
+    # the same state existing tests previously asserted on cfg directly.
+    # Tests that exercise cfg/disk divergence overwrite ``return_value``
+    # on the mock directly.
+    disk_view: Dict[str, Any] = asdict(cfg)
+    shared_state._get_current_json_store.return_value = disk_view
     handler.shared_state = shared_state  # type: ignore[assignment]
 
-    handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
+    # Wire the per-field persist mock so writes to "disk" are visible to
+    # subsequent reads. Mirrors production: _store_chatui_param_to_json
+    # does read-modify-write on the JSON store, so subsequent GETs see
+    # the updated state.
+    def _persist_to_disk_view(param_name: str, value: Any) -> None:
+        disk_view[param_name] = value
+
+    handler._store_chatui_param_to_json = MagicMock(  # type: ignore[method-assign]
+        side_effect=_persist_to_disk_view
+    )
     handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
     handler._send_http_response = MagicMock()  # type: ignore[method-assign]
     return handler
@@ -1595,6 +1613,51 @@ class TestHandleGetWithdrawal:
 
         payload = handler._send_ok_response.call_args.args[2]
         assert payload["mode"] == WITHDRAWAL_STATE_COMPLETE
+
+    def test_get_reflects_disk_writes_made_outside_post_handler(self) -> None:
+        """GET must surface state and fills written to disk by another skill.
+
+        Simulates the production hot path: POST arms the flag (cfg + disk),
+        then ``decision_maker_abci`` writes ``withdrawal_state=selling`` and
+        a fill record directly to ``chatui_param_store.json`` (bypassing
+        chatui_abci's in-memory cfg, since it's a different skill). The next
+        GET must return the disk values, not the cached cfg.
+        """
+        # In-memory cfg simulates the post-POST state: armed, no fills yet.
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=True,
+                withdrawal_state=WITHDRAWAL_STATE_ARMED,
+                withdrawal_fills=[],
+                withdrawal_errors=[],
+            )
+        )
+        # Simulate decision_maker_abci writing to disk after the sweep started:
+        # state advanced to selling and one fill recorded. The chatui in-memory
+        # cfg does NOT see these writes because the behaviour writes to disk
+        # directly, not through chatui's SharedState.
+        disk_fill = {
+            "token_id": "0xabc",  # nosec B105
+            "shares_sold": 60.0,
+            "fill_price": 0.5,
+            "ts": 100,
+        }
+        handler.shared_state._get_current_json_store.return_value = {
+            "withdrawal_mode": True,
+            "withdrawal_state": WITHDRAWAL_STATE_SELLING,
+            "withdrawal_fills": [disk_fill],
+            "withdrawal_errors": [],
+        }
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        # disk wins: the response reflects the behaviour's writes, not the
+        # stale in-memory cfg.
+        assert payload["mode"] == WITHDRAWAL_STATE_SELLING
+        assert payload["fills"] == [disk_fill]
+        assert payload["positions_sold"] == 1
+        assert payload["positions_total"] == 1
 
 
 # ---------------------------------------------------------------------------
