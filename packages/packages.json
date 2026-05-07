@@ -1,6 +1,6 @@
 {
     "dev": {
-        "custom/valory/kelly_criterion/0.1.0": "bafybeigb2gpqp42wrvdjoppn4jkuygaxwixjvfjz4ip74zcalsmqp3f3ja",
+        "custom/valory/kelly_criterion/0.1.0": "bafybeibio4ynwl4ovejwgsxdkbdeyrefygam6juneuatkduzek3egnp4ay",
         "custom/valory/fixed_bet/0.1.0": "bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim",
         "contract/valory/realitio/0.1.0": "bafybeiarurcrcgcel4y64dk5e3b3mfzqjxj2aecvt7zzduyw34jpnvw76u",
         "contract/valory/realitio_proxy/0.1.0": "bafybeie7haukqfqv6smrno5w7jt5sfd35ra3cpn3dmihoyttwlz7gdieha",
@@ -18,9 +18,9 @@
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeidy2xjliuztvvxrj3z4fpd24h3xmgj52huj6rr6unl5e4e2kg7k6y",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeianlghtbj26s4grywam342dft2pxnibrcktnlct6fwor5bvnecbya",
         "skill/valory/chatui_abci/0.1.0": "bafybeig7bmgyp5t4f6sqlkumxuzf5a5yoq3au4wzlgwfs4ae5tovyxe7ri",
-        "agent/valory/trader/0.1.0": "bafybeidkaq3nygdoxazpx3tjarpawue2blanoxiizfalabi7ls3xkoe5ia",
-        "service/valory/trader_pearl/0.1.0": "bafybeiakndqwejqce2bc3hfcuobzoh6pj7tvt6lllzx472pxcqim4lzbzi",
-        "service/valory/polymarket_trader/0.1.0": "bafybeiey3rk65ba2izwv5mssf7jrhtsotg2ncnuyvgn7ohxagafbhlva4q"
+        "agent/valory/trader/0.1.0": "bafybeiack4yjhvzohjn6wuofrkbndaqhwn2y3twrlkgf5k2ix2wbg5jc44",
+        "service/valory/trader_pearl/0.1.0": "bafybeigwba6sfsbh2attwuqq3eqfa3xqkngh2u7tceiimvj7ylcm77s5am",
+        "service/valory/polymarket_trader/0.1.0": "bafybeigaqzryii6fcjpklezvv4sf3hn7cqvmmxkxdnkzrbsyd6ximla5fi"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
