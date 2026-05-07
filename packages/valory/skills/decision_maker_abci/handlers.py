@@ -36,7 +36,9 @@ from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
-from packages.valory.skills.abstract_round_abci.handlers import AbstractResponseHandler
+from packages.valory.skills.abstract_round_abci.handlers import (
+    AbstractResponseHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )

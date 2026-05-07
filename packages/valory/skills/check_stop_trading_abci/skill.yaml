@@ -10,29 +10,28 @@ fingerprint:
   __init__.py: bafybeicssvt4i6baftftxesv3k5ylc33mpinpyexsmvvgm7d2yyl425n5y
   behaviours.py: bafybeiez6ikh2obzmsbgjc5m676pvyb5hhzxea3ad47a6z6snizzogo7we
   dialogues.py: bafybeidoayetmxsxmgdncfsmx4wx66nfmkgayxmbd4tenvu2wu2mj7egny
-  fsm_specification.yaml: bafybeia36i2fptxs2db5fesccflue4wmpxztbfp2ec5bot5r776cgwrlpe
-  handlers.py: bafybeidrwfwvwshd3mn6txjqanu6dojiry6ccz5mpxrvhys5feabrzn2n4
-  models.py: bafybeicrkt34zj3abpd6qt2fqbj5vyzl7xded6lav73trcs2nr2upqf2qy
+  fsm_specification.yaml: bafybeiegu65yhpob736fjlt75r23ag7u6y5p36kwurqi7hk5ycwlmcpuby
+  handlers.py: bafybeihazdnlbsh4nt7z4ddffmoewa6hyzcmgdyu3jpjiauihqf4p6iz44
+  models.py: bafybeicqt36ccth2cgc4sdxovb3hd6etg352bufx73fqwuyuuv4ahyokoe
   payloads.py: bafybeicoiu2eadu2dithddz2u22ygdo3gj3dodxvbjenol23esn4nj3zz4
   rounds.py: bafybeic4rpwx3m7g3cqvtcoh525puk2xs4seppqwsqcp2kxu4entvbr4q4
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
   tests/test_behaviours.py: bafybeifdsy5yesl3fuktkkhseb33mhcbqzvitrszzqmhdd5rycrtc2tcpm
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
-  tests/test_handlers.py: bafybeigpmtx2hyunzn6nxk2x4bvvybek7jvuhbk34fqlj7fgfsszcoqhxy
+  tests/test_handlers.py: bafybeifbyuut7gzyblee7l34sw3m4nru7fbrrrdkahjb5son27zfvpus7y
   tests/test_models.py: bafybeigjj3gkdlfb4o2zfv5pmvundqrad2o2cmwv6ikefrtfnyd5pf7lia
   tests/test_payloads.py: bafybeid34tim55u7bn45idojx5vznk7j63bx7pg2blpk2zaudryc6katyu
   tests/test_rounds.py: bafybeiexl7jfvkkdkxbxttzbgcgfex7mikdrkgjheupns56lphwpbka76i
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/mech:0.1.0:bafybeiedil4txl33ot7lfqf2j3w25lzickfruquh37s2bzbdby4eewysty
-- valory/agent_mech:0.1.0:bafybeieehgxkc3mosiramapon4u7qkhihxa52actku4wlykypovgcjsjde
+- valory/mech:0.1.0:bafybeih5furyu6czdccbudkfgnotlewxfp7o6qtjxlnkd7z6llazyjxd7q
+- valory/agent_mech:0.1.0:bafybeibdig2phm4hmquta6msnuhpb5y6btcvikpjzlmbz76bqxhsboppqm
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/chatui_abci:0.1.0:bafybeifwk27fdhallw7mgwaudx2w6mzttu77pdywmf6olip367jo6gwuh4
-- valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
-- valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
+- valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
+- valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
+- valory/staking_abci:0.1.0:bafybeib2jehmgv2ygc65o7iq6myicypnj7j4fyv2btxr2i54dv2frkofki
 behaviours:
   main:
     args: {}

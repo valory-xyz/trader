@@ -28,7 +28,6 @@ from packages.valory.customs.kelly_criterion.kelly_criterion import (
     walk_book,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ CLOB_KWARGS = {
     "floor_balance": 0,
     "price_yes": 0.55,
     "price_no": 0.45,
-    "token_decimals": 6,
+    "token_decimals": 6,  # nosec B105 — not a password, USDC decimal places
     "max_bet": 5_000_000,  # 5 USDC
     "n_bets": 1,
     "min_edge": 0.03,
@@ -67,7 +66,7 @@ FPMM_KWARGS = {
     "floor_balance": int(0.5e18),
     "price_yes": 0.50,
     "price_no": 0.50,
-    "token_decimals": 18,
+    "token_decimals": 18,  # nosec B105 — not a password, ERC-20 decimal places
     "tokens_yes": int(100e18),
     "tokens_no": int(100e18),
     "bet_fee": int(0.02e18),  # 2% fee
@@ -168,7 +167,7 @@ class TestFpmmExecution:
 
     def test_basic_calculation(self) -> None:
         """Known inputs produce correct shares via the formula."""
-        # shares = alpha*b + x - x*y/(y + alpha*b)
+        # Reference: shares is alpha*b plus x minus x*y over (y plus alpha*b).
         b, x, y, alpha = 1.0, 100.0, 100.0, 0.98
         cost, shares = fpmm_execution(b, x, y, alpha)
         assert cost == pytest.approx(1.0)
@@ -362,7 +361,9 @@ class TestRunValidation:
 
     def test_bankroll_below_floor(self) -> None:
         """Bankroll <= floor_balance returns no trade."""
-        result = run(**{**CLOB_KWARGS, "bankroll": 1_000_000, "floor_balance": 2_000_000})
+        result = run(
+            **{**CLOB_KWARGS, "bankroll": 1_000_000, "floor_balance": 2_000_000}
+        )
         assert result["bet_amount"] == 0
 
     def test_zero_bankroll(self) -> None:
@@ -557,7 +558,7 @@ class TestRunFpmm:
             "tokens_no": 100_000_000,
             "bet_fee": 20_000,
             "max_bet": 5_000_000,
-            "token_decimals": 6,
+            "token_decimals": 6,  # nosec B105 — token decimal places, not a password
         }
         result = run(**kwargs)
         assert any("USDC" in msg for msg in result.get("info", []))

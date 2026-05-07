@@ -10,8 +10,8 @@ fingerprint:
   behaviours.py: bafybeibihjnznjegn7v3kiqldfus5srfrogyd2vtf2iikyupw4dxhyy6r4
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeib5lq7w4baxak3avy44ktbhgbrmqtrk7ml5mtcfm4zhougcc6vgua
-  handlers.py: bafybeiha25ouv6pmxm3hhcxzyp6vgvzkixccyzxau5cmqznayamnpc2w7q
-  models.py: bafybeidhvmmtuxkayz7r6d4vcc7ajjf2mb4kbdx5uvi7onkzlqrne6m2lq
+  handlers.py: bafybeih5dsz4cp2tgi7c5nnlzw464gwv4jctphkwr6ccf5e534ukoxseii
+  models.py: bafybeidsdrprwtrgvmrahou4lz3z53v2puupolidiuhbctw22hrpxbcvhy
   payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
   prompts.py: bafybeib5dc2e67z2qh4fnfezyrnsqbuexwjvxp2czndqsiht3ul5beoiae
   rounds.py: bafybeigegrvtuktu6ytvvjf5yh4s7ynvnurksdy6uilylvp2imi3ovgjh4
@@ -25,14 +25,14 @@ fingerprint:
   tests/test_rounds.py: bafybeigj6j2nrhdtw4tjkxzqwodqwdmzo2slczveajwwj3ifjmuwy2kk7e
 fingerprint_ignore_patterns: []
 connections:
-- valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
+- valory/genai:0.1.0:bafybeiaojqgrxeiwzmhqhbhz5evwjljm3chuwey4olt4snwwxwhufpeoum
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
-- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
+- valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/agent_performance_summary_abci:0.1.0:bafybeidwswumhfbxz2jfemt7ub5tcakfoubxfr6vtyz4ajznhkifjgegbe
+- valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
+- valory/agent_performance_summary_abci:0.1.0:bafybeidy2xjliuztvvxrj3z4fpd24h3xmgj52huj6rr6unl5e4e2kg7k6y
 handlers:
   abci:
     args: {}

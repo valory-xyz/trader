@@ -29,7 +29,10 @@ from typing import Any, Dict, List, Optional, Type, cast
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+    BaseParams,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
