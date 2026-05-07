@@ -845,11 +845,21 @@ class TestSetupBootAutoClear:
         :param live_state: the persisted ``withdrawal_state`` to load on boot.
         """
         fills = [
-            {"token_id": "0xabc", "shares_sold": 1.0, "fill_price": 0.5, "ts": 1}
-        ]  # nosec B105
+            {
+                "token_id": "0xabc",  # nosec B105
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            }
+        ]
         errors = [
-            {"token_id": "0xdef", "shares_remaining": 2.0, "reason": "x", "ts": 1}
-        ]  # nosec B105
+            {
+                "token_id": "0xdef",  # nosec B105
+                "shares_remaining": 2.0,
+                "reason": "x",
+                "ts": 1,
+            }
+        ]
         store = self._initial_store(True, live_state)
         store["withdrawal_fills"] = fills
         store["withdrawal_errors"] = errors
