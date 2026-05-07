@@ -312,9 +312,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     for side in sides:
         label = side["label"]
-        # Side dicts mix str/int/float values, so mypy infers `object` for
-        # the value type; cast each numeric field at the access site so the
-        # arithmetic below type-checks.
+        # Side dict mixes value types; cast at access site for arithmetic.
         p = cast(float, side["p"])
         price = cast(float, side["price"])
 
