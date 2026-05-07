@@ -554,6 +554,10 @@ class PolymarketClientConnection(BaseSyncConnection):
         ``tick_size`` (via ``__resolve_tick_size``) and ``neg_risk`` (via
         ``get_neg_risk``) from the cached market info. This matches the
         buy path.
+
+        :param token_id: CTF token id of the outcome to sell.
+        :param amount: shares (CTF token units) to sell, not USDC.
+        :return: ``(response_payload, error_or_none)``.
         """
         try:
             mo = MarketOrderArgs(
