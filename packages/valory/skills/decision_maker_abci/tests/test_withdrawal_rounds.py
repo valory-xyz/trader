@@ -2121,10 +2121,12 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         """Clean sweep terminal state triggers a fresh locked-funds snapshot.
 
         Sweep sells one position cleanly, then ``_finish()`` re-fetches
-        positions (returning two unredeemable leftovers) and computes
-        ``size * curPrice`` per position to update
-        ``funds_locked_in_markets``. Bridges the cache-staleness gap
-        between sweep end and the next normal performance round.
+        positions (returning two unredeemable leftovers) and sums
+        ``initialValue`` (cost basis) across them to update
+        ``funds_locked_in_markets``. Cost basis matches the formula
+        used by the normal performance-summary round, avoiding a
+        non-monotonic jump on the FE when the next normal round
+        overwrites this value.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -2148,13 +2150,13 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             {
                 "asset": TOK_B,
                 "size": 20.0,
-                "curPrice": "0.5",
+                "initialValue": "10.0",
                 "redeemable": False,
             },
             {
                 "asset": TOK_C,
                 "size": 5.0,
-                "curPrice": "0.8",
+                "initialValue": "4.0",
                 "redeemable": False,
             },
         ]
@@ -2166,7 +2168,7 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         list(behaviour.async_act())
 
-        # 20*0.5 + 5*0.8 = 10.0 + 4.0 = 14.0
+        # initialValue 10.0 + 4.0 = 14.0
         behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
             14.0
         )
@@ -2200,13 +2202,13 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             {  # included
                 "asset": TOK_B,
                 "size": 20.0,
-                "curPrice": "0.5",
+                "initialValue": "10.0",
                 "redeemable": False,
             },
             {  # excluded — redeemable
                 "asset": TOK_C,
                 "size": 100.0,
-                "curPrice": "1.0",
+                "initialValue": "100.0",
                 "redeemable": True,
             },
         ]
@@ -2218,16 +2220,18 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         list(behaviour.async_act())
 
-        # Only TOK_B contributes: 20 * 0.5 = 10.0. TOK_C is redeemable.
+        # Only TOK_B contributes: 10.0. TOK_C is redeemable.
         behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
             10.0
         )
 
-    def test_finish_snapshot_handles_missing_curprice(self, tmp_path: Path) -> None:
-        """A missing or null ``curPrice`` contributes 0 to the sum.
+    def test_finish_snapshot_handles_missing_initial_value(
+        self, tmp_path: Path
+    ) -> None:
+        """A missing or null ``initialValue`` contributes 0 to the sum.
 
         Defensive against partial position records returned by the data
-        API; the snapshot must not crash on missing pricing data.
+        API; the snapshot must not crash on missing cost-basis data.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
@@ -2250,18 +2254,18 @@ class TestPolymarketWithdrawBehaviourSellLoop:
             {
                 "asset": TOK_B,
                 "size": 20.0,
-                "curPrice": "0.5",
+                "initialValue": "10.0",
                 "redeemable": False,
             },
-            {  # missing curPrice
+            {  # missing initialValue
                 "asset": TOK_C,
                 "size": 100.0,
                 "redeemable": False,
             },
-            {  # null curPrice
+            {  # null initialValue
                 "asset": "0xd1",
                 "size": 50.0,
-                "curPrice": None,
+                "initialValue": None,
                 "redeemable": False,
             },
         ]
@@ -2273,10 +2277,67 @@ class TestPolymarketWithdrawBehaviourSellLoop:
 
         list(behaviour.async_act())
 
-        # Only TOK_B contributes a known price: 20 * 0.5 = 10.0.
+        # Only TOK_B contributes a known cost basis: 10.0.
         behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
             10.0
         )
+
+    def test_finish_snapshot_handles_unparseable_value(self, tmp_path: Path) -> None:
+        """Unparseable ``initialValue`` skips the snapshot without stalling FSM.
+
+        ``float("N/A")`` raises ``ValueError`` mid-sum. Without the
+        broad except in ``_snapshot_locked_funds`` this would escape
+        ``_finish`` and block ``finish_behaviour(payload)`` from
+        emitting → FSM stall. The fix is best-effort: log + skip,
+        then continue to payload emission.
+
+        Falsifiable against a regression that drops the broad except.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        _seed_store(tmp_path)
+        behaviour = _make_behaviour(tmp_path, backoff=[1])
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        positions_initial = [_make_position(TOK_A, size=10.0)]
+        sell_resp = {
+            "order_id": "o-1",
+            "status": "matched",
+            "filled_shares": 10.0,
+            "filled_usdc": 4.0,
+            "fill_price": 0.40,
+            "raw": {},
+        }
+        positions_post_sweep = [
+            {
+                "asset": TOK_B,
+                "size": 20.0,
+                "initialValue": "N/A",  # unparseable
+                "redeemable": False,
+            },
+        ]
+        router, _ = _make_request_router(
+            fetch_responses=[positions_initial, positions_post_sweep],
+            sell_responses=[sell_resp],
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        # Update was NOT called (whole compute skipped on unparseable value).
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Compute/write warning was logged.
+        warnings = [
+            str(call.args[0])
+            for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any(
+            "compute/write failed" in w for w in warnings
+        ), f"expected 'compute/write failed' warning; got: {warnings}"
+        # Critically: payload still emitted — FSM did not stall.
+        assert "payload" in captured_payload
 
     def test_finish_snapshot_zero_positions_records_zero(self, tmp_path: Path) -> None:
         """Empty post-sweep positions list records ``funds_locked_in_markets=0.0``.

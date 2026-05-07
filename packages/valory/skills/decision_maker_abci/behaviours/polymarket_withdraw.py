@@ -715,11 +715,21 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     def _snapshot_locked_funds(self) -> Generator:
         """Best-effort: fetch current positions and update the perf summary.
 
-        Failure to fetch (transient API issue, persistent outage) is
-        non-fatal — log a warning and skip; the performance summary
-        keeps its previous value, which gets overwritten by the next
-        normal performance-summary round. The sweep terminal state is
-        still emitted via the regular ``finish_behaviour`` payload.
+        Sums ``initialValue`` (per-position cost basis = current shares
+        held at average buy price) across unredeemable positions, then
+        rounds to 2dp. This matches the cost-basis formula used by the
+        normal performance round
+        (``(total_traded - total_traded_settled) / token_divisor``) so
+        the FE doesn't see a non-monotonic jump when the next normal
+        round overwrites this value.
+
+        Failure to fetch is non-fatal — log a warning and skip; the
+        performance summary keeps its previous value, which gets
+        overwritten by the next normal performance-summary round. The
+        sweep terminal state is still emitted via the regular
+        ``finish_behaviour`` payload. Compute / write failures are
+        likewise swallowed so a malformed position record or transient
+        disk error cannot stall ``_finish``.
 
         :yield: framework yields between dispatch and response.
         """
@@ -730,12 +740,21 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                 f"(fetch failed: {error})"
             )
             return
-        locked = sum(
-            float(p.get("size") or 0) * float(p.get("curPrice") or 0)
-            for p in positions
-            if not p.get("redeemable", False)
-        )
-        self.context.logger.info(
-            f"withdrawal: snapshotting funds_locked_in_markets={locked}"
-        )
-        self.context.state.update_funds_locked_in_markets(locked)
+        try:
+            locked = round(
+                sum(
+                    float(p.get("initialValue") or 0)
+                    for p in positions
+                    if not p.get("redeemable", False)
+                ),
+                2,
+            )
+            self.context.logger.info(
+                f"withdrawal: snapshotting funds_locked_in_markets={locked}"
+            )
+            self.context.state.update_funds_locked_in_markets(locked)
+        except Exception as e:  # noqa: BLE001 — best-effort by design
+            self.context.logger.warning(
+                f"withdrawal: skipping locked-funds snapshot "
+                f"(compute/write failed: {e!r})"
+            )
