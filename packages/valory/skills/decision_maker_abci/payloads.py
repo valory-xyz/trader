@@ -158,6 +158,11 @@ class RedeemRouterPayload(VotingPayload):
 
 
 @dataclass(frozen=True)
+class WithdrawalPayload(VotingPayload):
+    """Represents a payload for the withdrawal rounds (Polymarket / Omen / Idle)."""
+
+
+@dataclass(frozen=True)
 class PostBetUpdatePayload(VotingPayload):
     """Represents a payload for the post-bet bookkeeping round."""
 

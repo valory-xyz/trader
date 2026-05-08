@@ -434,6 +434,9 @@ class DecisionMakerParams(
         self.redeem_round_timeout: float = self._ensure(
             "redeem_round_timeout", kwargs, float
         )
+        self.withdrawal_round_timeout: float = self._ensure(
+            "withdrawal_round_timeout", kwargs, float
+        )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
@@ -479,6 +482,23 @@ class DecisionMakerParams(
         self.review_period_seconds: int = self._ensure(
             "review_period_seconds", kwargs, int
         )
+        self.withdrawal_max_fak_attempts: int = self._ensure(
+            "withdrawal_max_fak_attempts", kwargs, int
+        )
+        self.withdrawal_fak_backoff_s: List[int] = self._ensure(
+            "withdrawal_fak_backoff_s", kwargs, List[int]
+        )
+        # ``withdrawal_fak_backoff_s`` is the schedule of inter-attempt
+        # sleeps, so it has one fewer entry than the attempt count: with
+        # ``max_attempts=3`` and ``backoff=[10, 30]``, the loop tries,
+        # sleeps 10s, retries, sleeps 30s, retries — 3 attempts, 2 gaps.
+        expected = self.withdrawal_max_fak_attempts - 1
+        if len(self.withdrawal_fak_backoff_s) != expected:
+            raise ValueError(
+                "withdrawal_fak_backoff_s length "
+                f"({len(self.withdrawal_fak_backoff_s)}) must equal "
+                f"withdrawal_max_fak_attempts - 1 ({expected})"
+            )
         self.min_confidence_for_selling: float = 0.5
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool

@@ -286,6 +286,21 @@ ROUNDS_INFO = {
         "description": "Updates the achievements earned by the agent based on its performance.",
         "transitions": {},
     },
+    "polymarket_withdraw_round": {
+        "name": "Selling all Polymarket positions",
+        "description": "Sells every unredeemable position the Safe holds on Polymarket via market FAK orders, retrying per-position on partial fills.",
+        "transitions": {},
+    },
+    "omen_withdraw_round": {
+        "name": "Withdrawing from Omen (defensive halt)",
+        "description": "Defensive stub: Omen withdrawal is not implemented; this round logs a warning and routes to the idle round so the agent halts cleanly.",
+        "transitions": {},
+    },
+    "withdrawal_idle_round": {
+        "name": "Withdrawal complete — agent paused",
+        "description": "Terminal round entered after the sell-off finishes. The agent stops trading until the operator clears withdrawal mode.",
+        "transitions": {},
+    },
 }
 
 

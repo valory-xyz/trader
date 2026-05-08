@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
@@ -18,24 +17,20 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Request types for Polymarket connection."""
+"""Terminal idle round entered after withdrawal completes (D9).
 
-from enum import Enum
+Both venue branches (Polymarket / Omen) converge here. The agent process
+stays alive — Tendermint keeps producing blocks — but the FSM does not
+transition out. Restart is the one and only way out of withdrawal mode:
+boot unconditionally clears the flag regardless of the persisted state, so
+any restart resumes normal trading (D19). To retry a partial sweep, the
+user re-arms via POST /api/v1/withdrawal after restarting.
+"""
+
+from abc import ABC
+
+from packages.valory.skills.abstract_round_abci.base import DegenerateRound
 
 
-class RequestType(Enum):
-    """Enum for supported Polymarket request types."""
-
-    PLACE_BET = "place_bet"
-    FETCH_MARKETS = "fetch_markets"
-    FETCH_MARKET = "fetch_market"
-    GET_POSITIONS = "get_positions"
-    FETCH_ALL_POSITIONS = "fetch_all_positions"
-    GET_TRADES = "get_trades"
-    FETCH_ALL_TRADES = "fetch_all_trades"
-    REDEEM_POSITIONS = "redeem_positions"
-    SET_APPROVAL = "set_approval"
-    CHECK_APPROVAL = "check_approval"
-    FETCH_ORDER_BOOK = "fetch_order_book"
-    SELL_POSITION = "sell_position"
-    GET_ORDER = "get_order"
+class WithdrawalIdleRound(DegenerateRound, ABC):
+    """Terminal halt round reached after withdrawal completes."""

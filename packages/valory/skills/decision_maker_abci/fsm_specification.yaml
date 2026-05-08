@@ -30,6 +30,8 @@ alphabet_in:
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
 - UNPROFITABLE
+- WITHDRAWAL_DONE
+- WITHDRAWAL_ROUND_TIMEOUT
 default_start_state: CheckBenchmarkingModeRound
 final_states:
 - BenchmarkingDoneRound
@@ -47,13 +49,16 @@ final_states:
 - FinishedWithoutRedeemingRound
 - ImpossibleRound
 - RefillRequiredRound
+- WithdrawalIdleRound
 label: DecisionMakerAbciApp
 start_states:
 - CheckBenchmarkingModeRound
 - DecisionReceiveRound
 - DecisionRequestRound
 - HandleFailedTxRound
+- OmenWithdrawRound
 - PolymarketPostSetApprovalRound
+- PolymarketWithdrawRound
 - PostBetUpdateRound
 - RandomnessRound
 - RedeemRouterRound
@@ -79,11 +84,13 @@ states:
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
 - ImpossibleRound
+- OmenWithdrawRound
 - PolymarketBetPlacementRound
 - PolymarketPostSetApprovalRound
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PolymarketWithdrawRound
 - PolymarketWrapCollateralRound
 - PostBetUpdateRound
 - RandomnessRound
@@ -93,6 +100,7 @@ states:
 - SamplingRound
 - SellOutcomeTokensRound
 - ToolSelectionRound
+- WithdrawalIdleRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -134,6 +142,10 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (OmenWithdrawRound, NONE): OmenWithdrawRound
+    (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
+    (OmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): FinishedPolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
@@ -167,6 +179,10 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PolymarketWithdrawRound, NONE): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, NO_MAJORITY): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (PolymarketWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
     (PolymarketWrapCollateralRound, DONE): BenchmarkingModeDisabledRound
     (PolymarketWrapCollateralRound, MOCK_TX): BenchmarkingModeDisabledRound
     (PolymarketWrapCollateralRound, NONE): BenchmarkingModeDisabledRound

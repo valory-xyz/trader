@@ -35,6 +35,12 @@ from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
     ChatuiParams,
     SharedState,
+    WITHDRAWAL_STATES,
+    WITHDRAWAL_STATE_ARMED,
+    WITHDRAWAL_STATE_COMPLETE,
+    WITHDRAWAL_STATE_ERRORED,
+    WITHDRAWAL_STATE_IDLE,
+    WITHDRAWAL_STATE_SELLING,
 )
 
 # ---------------------------------------------------------------------------
@@ -332,6 +338,81 @@ class TestChatuiConfig:
         assert config.fixed_bet_size == 100
         assert config.max_bet_size == 999
 
+    def test_withdrawal_fields_default_to_idle_off(self) -> None:
+        """Withdrawal fields must default to (False, 'idle', [], [])."""
+        config = ChatuiConfig()
+        assert config.withdrawal_mode is False
+        assert config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+        assert config.withdrawal_fills == []
+        assert config.withdrawal_errors == []
+
+    def test_withdrawal_array_defaults_are_independent_instances(self) -> None:
+        """Each ChatuiConfig must get its own list instances (no shared default)."""
+        a = ChatuiConfig()
+        b = ChatuiConfig()
+        a.withdrawal_fills.append({"sentinel": True})
+        a.withdrawal_errors.append({"sentinel": True})
+        assert b.withdrawal_fills == []
+        assert b.withdrawal_errors == []
+
+    def test_withdrawal_fields_accept_custom_values(self) -> None:
+        """Withdrawal fields must accept and store custom values."""
+        fills = [
+            {
+                "token_id": "0xabc",
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            }  # nosec B105
+        ]
+        errors = [
+            {
+                "token_id": "0xdef",
+                "shares_remaining": 2.0,
+                "reason": "x",
+                "ts": 2,
+            }  # nosec B105
+        ]
+        config = ChatuiConfig(
+            withdrawal_mode=True,
+            withdrawal_state=WITHDRAWAL_STATE_SELLING,
+            withdrawal_fills=fills,
+            withdrawal_errors=errors,
+        )
+        assert config.withdrawal_mode is True
+        assert config.withdrawal_state == WITHDRAWAL_STATE_SELLING
+        assert config.withdrawal_fills == fills
+        assert config.withdrawal_errors == errors
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal state constants tests
+# ---------------------------------------------------------------------------
+
+
+class TestWithdrawalStateConstants:
+    """Tests for the withdrawal-state constant set."""
+
+    def test_all_five_states_present(self) -> None:
+        """WITHDRAWAL_STATES must contain exactly the five legal values."""
+        assert WITHDRAWAL_STATES == frozenset(
+            {
+                WITHDRAWAL_STATE_IDLE,
+                WITHDRAWAL_STATE_ARMED,
+                WITHDRAWAL_STATE_SELLING,
+                WITHDRAWAL_STATE_COMPLETE,
+                WITHDRAWAL_STATE_ERRORED,
+            }
+        )
+
+    def test_state_values_are_canonical_strings(self) -> None:
+        """The constant values must be the exact strings persisted on disk."""
+        assert WITHDRAWAL_STATE_IDLE == "idle"
+        assert WITHDRAWAL_STATE_ARMED == "armed"
+        assert WITHDRAWAL_STATE_SELLING == "selling"
+        assert WITHDRAWAL_STATE_COMPLETE == "complete"
+        assert WITHDRAWAL_STATE_ERRORED == "errored"
+
 
 # ---------------------------------------------------------------------------
 # SharedState.__init__ tests
@@ -554,3 +635,299 @@ class TestEnsureChatuiStoreBranches:
 
         assert state._chatui_config is not None
         assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal-fields migration & validation tests
+# ---------------------------------------------------------------------------
+
+
+class TestWithdrawalFieldsMigration:
+    """Tests for loading the withdrawal fields from disk (§20)."""
+
+    def test_legacy_store_without_withdrawal_keys_takes_defaults(self) -> None:
+        """An older JSON store without the withdrawal keys must load with safe defaults."""
+        state = _make_shared_state(
+            {
+                "trading_strategy": DEFAULT_TRADING_STRATEGY,
+                "initial_trading_strategy": DEFAULT_TRADING_STRATEGY,
+                "allowed_tools": ["tool-a"],
+                "fixed_bet_size": DEFAULT_MIN_BET_SIZE,
+                "max_bet_size": DEFAULT_MAX_BET_SIZE,
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is False
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+        assert state._chatui_config.withdrawal_fills == []
+        assert state._chatui_config.withdrawal_errors == []
+
+    def test_first_persist_writes_withdrawal_keys(self) -> None:
+        """After load with no withdrawal keys, the persisted JSON includes them."""
+        state = _make_shared_state({})
+        state._ensure_chatui_store()
+
+        persisted: dict = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
+        assert persisted["withdrawal_mode"] is False
+        assert persisted["withdrawal_state"] == WITHDRAWAL_STATE_IDLE
+        assert persisted["withdrawal_fills"] == []
+        assert persisted["withdrawal_errors"] == []
+
+    def test_existing_withdrawal_state_preserved_when_valid(self) -> None:
+        """A valid withdrawal_state on disk must be preserved (resume path)."""
+        state = _make_shared_state(
+            {
+                "withdrawal_mode": True,
+                "withdrawal_state": WITHDRAWAL_STATE_SELLING,
+                "withdrawal_fills": [
+                    {
+                        "token_id": "0xabc",  # nosec B105
+                        "shares_sold": 10.0,
+                        "fill_price": 0.4,
+                        "ts": 100,
+                    }
+                ],
+                "withdrawal_errors": [],
+            }
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is True
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_SELLING
+        assert state._chatui_config.withdrawal_fills == [
+            {
+                "token_id": "0xabc",
+                "shares_sold": 10.0,
+                "fill_price": 0.4,
+                "ts": 100,
+            }  # nosec B105
+        ]
+        assert state._chatui_config.withdrawal_errors == []
+
+    @pytest.mark.parametrize(
+        "valid_state",
+        [
+            WITHDRAWAL_STATE_IDLE,
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_COMPLETE,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_each_legal_state_is_preserved(self, valid_state: str) -> None:
+        """Every legal withdrawal_state value must round-trip without being reset."""
+        state = _make_shared_state(
+            {"withdrawal_mode": True, "withdrawal_state": valid_state}
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_state == valid_state
+        assert state._chatui_config.withdrawal_mode is True
+
+
+class TestWithdrawalStateLoadValidation:
+    """Tests for §20 load-time validation of withdrawal_state."""
+
+    def test_invalid_state_resets_to_idle(self) -> None:
+        """An invalid withdrawal_state on disk must be reset to 'idle'."""
+        state = _make_shared_state(
+            {"withdrawal_mode": True, "withdrawal_state": "garbage"}
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+
+    def test_invalid_state_also_clears_withdrawal_mode(self) -> None:
+        """An invalid state must also force withdrawal_mode=False to avoid (true, idle)."""
+        state = _make_shared_state(
+            {"withdrawal_mode": True, "withdrawal_state": "typo"}
+        )
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is False
+
+    def test_invalid_state_logs_warning(self) -> None:
+        """A warning must be logged when an invalid state is reset."""
+        state = _make_shared_state(
+            {"withdrawal_mode": True, "withdrawal_state": "garbage"}
+        )
+        state._ensure_chatui_store()
+
+        state.context.logger.warning.assert_called()  # type: ignore[attr-defined]
+        # Sanity: at least one warning call mentions the invalid value or 'withdrawal'.
+        warning_msgs = [
+            str(call_args)
+            for call_args in state.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("withdrawal_state" in m or "withdrawal" in m for m in warning_msgs)
+
+    def test_valid_state_does_not_log_warning(self) -> None:
+        """A valid state must not trigger the invalid-value warning."""
+        state = _make_shared_state(
+            {
+                "withdrawal_mode": True,
+                "withdrawal_state": WITHDRAWAL_STATE_SELLING,
+            }
+        )
+        state._ensure_chatui_store()
+
+        warning_msgs = [
+            str(call_args)
+            for call_args in state.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert not any("invalid withdrawal_state" in m for m in warning_msgs)
+
+
+# ---------------------------------------------------------------------------
+# Boot auto-clear tests (D19, §8)
+# ---------------------------------------------------------------------------
+
+
+class TestSetupBootAutoClear:
+    """Tests for SharedState.setup() boot auto-clear behaviour (D19)."""
+
+    @staticmethod
+    def _initial_store(mode: bool, state_value: str) -> Dict[str, Any]:
+        """Build a JSON store dict with the given withdrawal flag/state."""
+        return {
+            "trading_strategy": DEFAULT_TRADING_STRATEGY,
+            "initial_trading_strategy": DEFAULT_TRADING_STRATEGY,
+            "withdrawal_mode": mode,
+            "withdrawal_state": state_value,
+            "withdrawal_fills": [],
+            "withdrawal_errors": [],
+        }
+
+    def test_complete_state_with_flag_clears_flag(self) -> None:
+        """Boot with (true, complete) must reset flag to (false, idle)."""
+        state = _make_shared_state(self._initial_store(True, WITHDRAWAL_STATE_COMPLETE))
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is False
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+
+    def test_complete_state_with_flag_persists_cleared_state(self) -> None:
+        """Boot auto-clear must write the new (false, idle) values to the store."""
+        state = _make_shared_state(self._initial_store(True, WITHDRAWAL_STATE_COMPLETE))
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+
+        # _set_json_store is called once by _ensure_chatui_store and again by
+        # the auto-clear; the final call must reflect the cleared values.
+        last_call: dict = state._set_json_store.call_args_list[-1][0][0]  # type: ignore[attr-defined]
+        assert last_call["withdrawal_mode"] is False
+        assert last_call["withdrawal_state"] == WITHDRAWAL_STATE_IDLE
+
+    @pytest.mark.parametrize(
+        "live_state",
+        [
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_non_idle_states_with_flag_clear_on_boot(self, live_state: str) -> None:
+        """Boot with (true, armed/selling/errored) must reset to (false, idle).
+
+        Restart is the one and only way out of withdrawal mode; whatever state
+        the previous run left behind, boot returns the agent to trading mode.
+        Fills/errors arrays are preserved so the FE can still surface the last
+        sweep's results until the user re-arms via POST.
+
+        :param live_state: the persisted ``withdrawal_state`` to load on boot.
+        """
+        fills = [
+            {
+                "token_id": "0xabc",  # nosec B105
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            }
+        ]
+        errors = [
+            {
+                "token_id": "0xdef",  # nosec B105
+                "shares_remaining": 2.0,
+                "reason": "x",
+                "ts": 1,
+            }
+        ]
+        store = self._initial_store(True, live_state)
+        store["withdrawal_fills"] = fills
+        store["withdrawal_errors"] = errors
+        state = _make_shared_state(store)
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is False
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+        assert state._chatui_config.withdrawal_fills == fills
+        assert state._chatui_config.withdrawal_errors == errors
+
+    def test_idle_state_with_flag_off_is_noop(self) -> None:
+        """Boot with (false, idle) must leave the flag and state untouched."""
+        state = _make_shared_state(self._initial_store(False, WITHDRAWAL_STATE_IDLE))
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.withdrawal_mode is False
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_IDLE
+
+    def test_complete_state_without_flag_is_noop(self) -> None:
+        """Boot with (false, complete) must NOT trip the auto-clear (defensive)."""
+        # mode=False with state=complete is an inconsistent on-disk shape; the
+        # auto-clear guard requires BOTH conditions, so it must not fire here.
+        state = _make_shared_state(
+            self._initial_store(False, WITHDRAWAL_STATE_COMPLETE)
+        )
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+
+        assert state._chatui_config is not None
+        # state stays as it was — no spurious mutation when mode is already off.
+        assert state._chatui_config.withdrawal_state == WITHDRAWAL_STATE_COMPLETE
+
+    def test_setup_calls_super(self) -> None:
+        """setup() must call BaseSharedState.setup() before running the auto-clear."""
+        state = _make_shared_state(self._initial_store(True, WITHDRAWAL_STATE_COMPLETE))
+        with patch.object(BaseSharedState, "setup", return_value=None) as mock_super:
+            state.setup()
+        mock_super.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "live_state",
+        [
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_COMPLETE,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_boot_clear_logs_message_with_prior_state(self, live_state: str) -> None:
+        """Boot auto-clear must log an INFO message naming the prior state.
+
+        The state name in the log lets operators distinguish a clean exit
+        (state=complete) from a crash mid-sweep (state=selling) when
+        debugging from container logs.
+
+        :param live_state: the persisted ``withdrawal_state`` to load on boot.
+        """
+        state = _make_shared_state(self._initial_store(True, live_state))
+        with patch.object(BaseSharedState, "setup", return_value=None):
+            state.setup()
+        state.context.logger.info.assert_called()  # type: ignore[attr-defined]
+        info_msgs = [
+            str(call_args)
+            for call_args in state.context.logger.info.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)

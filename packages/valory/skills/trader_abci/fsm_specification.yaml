@@ -64,6 +64,10 @@ alphabet_in:
 - V1
 - V2
 - VALIDATE_TIMEOUT
+- WITHDRAWAL_DONE
+- WITHDRAWAL_ROUND_TIMEOUT
+- WITHDRAW_OMEN
+- WITHDRAW_POLYMARKET
 - WRAP_COLLATERAL_DONE
 default_start_state: RegistrationStartupRound
 final_states:
@@ -98,12 +102,14 @@ states:
 - MechRequestRound
 - MechResponseRound
 - MechVersionDetectionRound
+- OmenWithdrawRound
 - PolymarketBetPlacementRound
 - PolymarketFetchMarketRound
 - PolymarketPostSetApprovalRound
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PolymarketWithdrawRound
 - PolymarketWrapCollateralRound
 - PostBetUpdateRound
 - PostTxSettlementRound
@@ -173,6 +179,8 @@ transition_func:
     (CheckStopTradingRound, REVIEW_BETS): RandomnessRound
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
     (CheckStopTradingRound, SKIP_TRADING): CallCheckpointRound
+    (CheckStopTradingRound, WITHDRAW_OMEN): OmenWithdrawRound
+    (CheckStopTradingRound, WITHDRAW_POLYMARKET): PolymarketWithdrawRound
     (CheckTransactionHistoryRound, CHECK_LATE_ARRIVING_MESSAGE): SynchronizeLateMessagesRound
     (CheckTransactionHistoryRound, CHECK_TIMEOUT): CheckTransactionHistoryRound
     (CheckTransactionHistoryRound, DONE): PostTxSettlementRound
@@ -235,6 +243,10 @@ transition_func:
     (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
     (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
     (MechVersionDetectionRound, V2): MechInformationRound
+    (OmenWithdrawRound, NONE): OmenWithdrawRound
+    (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
+    (OmenWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
+    (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): CallCheckpointRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
@@ -272,6 +284,10 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): PreTxSettlementRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PolymarketWithdrawRound, NONE): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, NO_MAJORITY): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
+    (PolymarketWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PolymarketWrapCollateralRound, DONE): FetchMarketsRouterRound
     (PolymarketWrapCollateralRound, MOCK_TX): FetchMarketsRouterRound
     (PolymarketWrapCollateralRound, NONE): FetchMarketsRouterRound

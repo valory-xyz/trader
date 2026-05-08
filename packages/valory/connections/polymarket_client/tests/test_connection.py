@@ -355,6 +355,8 @@ class TestRouteRequest:
             "_set_approval",
             "_check_approval",
             "_fetch_order_book",
+            "_sell_position",
+            "_get_order",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -548,6 +550,394 @@ class TestPlaceBet:
         response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
         assert error is None
         assert response is None
+
+
+# ---------------------------------------------------------------------------
+# _sell_position
+# ---------------------------------------------------------------------------
+
+
+class TestSellPosition:
+    """Tests for _sell_position (phase 2 of withdrawal mode)."""
+
+    @staticmethod
+    def _make_signed_order_v2() -> "object":
+        """Build a real SignedOrderV2 with side=SELL for serialization round-trips."""
+        from py_clob_client_v2.order_utils import Side
+        from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
+        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
+            SignatureTypeV2,
+        )
+
+        return SignedOrderV2(
+            salt="2",
+            maker="0x0000000000000000000000000000000000000001",
+            signer="0x0000000000000000000000000000000000000002",
+            tokenId="tok",
+            makerAmount="100",
+            takerAmount="43",
+            side=Side.SELL,
+            signatureType=SignatureTypeV2.POLY_GNOSIS_SAFE,
+            timestamp="1700000000000",
+            metadata="0x" + "00" * 32,
+            builder="0x" + "00" * 32,
+            expiration="0",
+            signature="0xdeadbeef",
+        )
+
+    def test_dispatches_to_sell_position(self) -> None:
+        """RequestType.SELL_POSITION routes to the _sell_position handler."""
+        conn = _make_connection()
+        conn._sell_position = MagicMock(return_value=({"order_id": "x"}, None))
+        response, error = conn._route_request(
+            {
+                "request_type": RequestType.SELL_POSITION.value,
+                "params": {"token_id": "t", "amount": 100.0},  # nosec B105
+            }
+        )
+        conn._sell_position.assert_called_once_with(
+            token_id="t", amount=100.0
+        )  # nosec B106
+        assert error == ""
+
+    def test_creates_sell_fak_order(self) -> None:
+        """``MarketOrderArgs`` carries side=SELL, order_type=FAK, amount=shares."""
+        from py_clob_client_v2 import OrderType
+        from py_clob_client_v2.order_utils import Side
+
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "status": "matched",
+            "orderID": "o-1",
+            "takingAmount": "100",
+            "makingAmount": "43",
+        }
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0
+        )  # nosec B106
+        assert error is None
+        # Inspect the MarketOrderArgs passed to create_market_order.
+        args, _ = conn.client.create_market_order.call_args
+        mo = args[0]
+        assert mo.token_id == "tok123"  # nosec B105
+        assert mo.amount == 100.0
+        assert mo.side == Side.SELL
+        assert mo.order_type == OrderType.FAK
+
+    def test_does_not_pass_options(self) -> None:
+        """``create_market_order`` is invoked with no PartialCreateOrderOptions.
+
+        The SDK auto-resolves tick_size and neg_risk via market-info cache
+        when options is omitted. Mirrors _place_bet.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "status": "matched",
+            "orderID": "o-2",
+            "takingAmount": "10",
+            "makingAmount": "5",
+        }
+
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
+        args, kwargs = conn.client.create_market_order.call_args
+        # Only one positional (the args object) and no second positional or kwarg.
+        assert len(args) == 1
+        assert "options" not in kwargs
+
+    def test_uses_fak_for_post_order_kwarg(self) -> None:
+        """Both args.order_type AND post_order's order-type kwarg are FAK (D16)."""
+        from py_clob_client_v2 import OrderType
+
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "status": "matched",
+            "orderID": "o-3",
+            "takingAmount": "5",
+            "makingAmount": "2",
+        }
+
+        conn._sell_position(token_id="tok123", amount=5.0)  # nosec B106
+        post_args, _ = conn.client.post_order.call_args
+        # post_order(signed, order_type) — second positional must be FAK.
+        assert post_args[1] == OrderType.FAK
+
+    def test_resigns_on_every_call(self) -> None:
+        """Every ``_sell_position`` call signs a fresh order — no cache.
+
+        The CLOB poisons signed-order ids on the first acknowledgement, so
+        retries with the same signed order get rejected as ``Duplicated``.
+        See the docstring on ``_sell_position`` for the rationale.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "status": "matched",
+            "orderID": "o-x",
+            "makingAmount": "10",
+            "takingAmount": "5",
+        }
+
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
+        conn._sell_position(token_id="tok123", amount=10.0)  # nosec B106
+        # Each call hits the signer; no caching short-circuit.
+        assert conn.client.create_market_order.call_count == 2
+
+    def test_translates_polyapi_exception(self) -> None:
+        """Catch PolyApiException; return the (error_dict, error_msg) tuple shape."""
+        from py_clob_client_v2.exceptions import PolyApiException
+
+        conn = _make_connection()
+        exc = PolyApiException(error_msg={"error": "insufficient liquidity"})
+        conn.client.create_market_order.side_effect = exc
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
+        assert error == "insufficient liquidity"
+        assert response["error"] == "insufficient liquidity"
+
+    def test_normalizes_response_fields(self) -> None:
+        """Response normalizes makingAmount→filled_shares, takingAmount→filled_usdc.
+
+        The mapping is role-based: for a SELL we (the maker) provided shares
+        and took USDC, so ``makingAmount`` is the share count and
+        ``takingAmount`` is the USDC count. Verified against a live partial
+        fill on Polygon mainnet.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        # Partial fill: 60 of 100 shares filled, received 25.8 USDC,
+        # implied price = 25.8 / 60 = 0.43.
+        conn.client.post_order.return_value = {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xabc",
+            "transactionsHashes": ["0xtx1"],
+            "status": "matched",
+            "makingAmount": "60",
+            "takingAmount": "25.8",
+        }
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
+        assert error is None
+        assert response["order_id"] == "0xabc"
+        assert response["status"] == "matched"
+        assert response["filled_shares"] == 60.0
+        assert response["filled_usdc"] == 25.8
+        assert response["fill_price"] == pytest.approx(0.43)
+        assert response["raw"]["transactionsHashes"] == ["0xtx1"]
+        assert "signed_order_json" not in response
+
+    def test_normalizes_unfilled_live_response(self) -> None:
+        """A 'live' response (empty amounts) yields zero fills and no division error."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xdef",
+            "transactionsHashes": [],
+            "status": "live",
+            "takingAmount": "",
+            "makingAmount": "",
+        }
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=100.0  # nosec B106
+        )
+        assert error is None
+        assert response["filled_shares"] == 0.0
+        assert response["filled_usdc"] == 0.0
+        assert response["fill_price"] == 0.0
+
+    # Old test ``test_post_order_none_response`` (which asserted the broken
+    # ``return resp, None`` shape on falsy post_order) was replaced by
+    # ``test_sell_position_returns_error_on_none_post_order`` further down,
+    # which asserts the explicit-error envelope per Issue #3.
+
+    # --- delayed-status returns immediately (polling moved to behaviour) -
+
+    @staticmethod
+    def _delayed_post_resp() -> dict:
+        """Live post_order response shape when CLOB defers async matching."""
+        return {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xpending",
+            "transactionsHashes": [],
+            "status": "delayed",
+            "takingAmount": "",
+            "makingAmount": "",
+        }
+
+    def test_sell_position_returns_error_on_none_post_order(self) -> None:
+        """A falsy ``None`` ``post_order`` reply must surface as an SDK error.
+
+        Without this, a protocol-layer regression (SDK contract change,
+        HTTP 5xx with empty body) is silently mapped to "no liquidity" via
+        the behaviour-side per-position retry exhaustion path. The fix
+        makes the connection return an explicit ``{"error": ...}`` envelope
+        so the behaviour records ``"sdk error: ..."``, which is
+        distinguishable in logs from a genuine empty-bid-book outcome.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = None
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
+        )
+
+        assert error == "post_order returned empty response"
+        assert isinstance(response, dict)
+        assert response.get("error") == "post_order returned empty response"
+
+    def test_sell_position_returns_error_on_empty_dict_post_order(self) -> None:
+        """An empty-dict ``post_order`` reply has the same SDK-error treatment."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {}
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
+        )
+
+        assert error == "post_order returned empty response"
+        assert isinstance(response, dict)
+        assert response.get("error") == "post_order returned empty response"
+
+    def test_sell_position_logs_error_on_falsy_response(self) -> None:
+        """The connection must log the empty-response error at error level."""
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = None
+
+        conn._sell_position(token_id="tok123", amount=20.4)  # nosec B106
+
+        assert any(
+            "post_order returned empty response" in str(call.args[0])
+            for call in conn.logger.error.call_args_list
+        )
+
+    def test_sell_position_delayed_returns_immediately_no_poll(self) -> None:
+        """``status=delayed`` returns immediately; polling lives behaviour-side.
+
+        Polling was migrated out of the connection so the AEA worker thread
+        is not blocked on ``time.sleep``. The behaviour drives the
+        cooperative poll via ``RequestType.GET_ORDER`` instead.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        post_resp = self._delayed_post_resp()
+        conn.client.post_order.return_value = post_resp
+
+        with patch("time.sleep") as sleep_mock:
+            response, error = conn._sell_position(
+                token_id="tok123", amount=20.4  # nosec B106
+            )
+
+        assert error is None
+        assert response["order_id"] == "0xpending"
+        assert response["status"] == "delayed"
+        assert response["filled_shares"] == 0.0
+        assert response["filled_usdc"] == 0.0
+        assert response["fill_price"] == 0.0
+        assert response["raw"] is post_resp
+        # Connection must NOT poll get_order or sleep on this path.
+        conn.client.get_order.assert_not_called()
+        sleep_mock.assert_not_called()
+
+    def test_matched_response_skips_polling(self) -> None:
+        """A synchronous ``matched`` reply uses post_order fields directly.
+
+        ``get_order`` must not be called when there's nothing to resolve.
+        """
+        conn = _make_connection()
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {
+            "success": True,
+            "errorMsg": "",
+            "orderID": "0xdone",
+            "transactionsHashes": ["0xtx1"],
+            "status": "matched",
+            "makingAmount": "20.4",
+            "takingAmount": "0.8772",
+        }
+
+        response, error = conn._sell_position(
+            token_id="tok123", amount=20.4  # nosec B106
+        )
+
+        assert error is None
+        assert response["filled_shares"] == pytest.approx(20.4)
+        assert response["filled_usdc"] == pytest.approx(0.8772)
+        conn.client.get_order.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _get_order
+# ---------------------------------------------------------------------------
+
+
+class TestGetOrder:
+    """Tests for the GET_ORDER handler (single-shot order lookup).
+
+    The behaviour drives the polling loop; the connection just dispatches a
+    single call to ``client.get_order`` and returns the raw response.
+    """
+
+    def test_get_order_returns_raw_response(self) -> None:
+        """``_get_order`` returns the raw ``client.get_order`` payload."""
+        conn = _make_connection()
+        terminal_payload = {
+            "id": "0xpending",
+            "status": "ORDER_STATUS_MATCHED",
+            "size_matched": "20400000",
+            "original_size": "20400000",
+            "price": "0.043",
+        }
+        conn.client.get_order.return_value = terminal_payload
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is None
+        assert response is terminal_payload
+        conn.client.get_order.assert_called_once_with("0xpending")
+
+    def test_get_order_passes_through_none(self) -> None:
+        """The SDK can return None before indexing; we forward as-is."""
+        conn = _make_connection()
+        conn.client.get_order.return_value = None
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is None
+        assert response is None
+
+    def test_get_order_propagates_poly_api_exception(self) -> None:
+        """``PolyApiException`` is mapped to the standard error tuple shape."""
+        from py_clob_client_v2.exceptions import PolyApiException
+
+        conn = _make_connection()
+        conn.client.get_order.side_effect = PolyApiException(
+            error_msg={"error": "Unauthorized"}
+        )
+
+        response, error = conn._get_order(order_id="0xpending")  # nosec B106
+
+        assert error is not None
+        assert "Unauthorized" in error
+        assert isinstance(response, dict) and "error" in response
 
 
 # ---------------------------------------------------------------------------

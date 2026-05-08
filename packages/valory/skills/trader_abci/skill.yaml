@@ -9,17 +9,17 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  composition.py: bafybeifchvppo6lngfzjdambsu4vf4fnm7xwygwxwimu3lxf6zwobo2ywq
+  composition.py: bafybeiaju677sopibibts2mm7lafl3qql3svq75fbxg4i5uve7qshr7dfm
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeibdd4rcbu6cygpml2cfkh2gvha5wrmyjhztf7zms42eummeg2gmau
-  handlers.py: bafybeig4hdgumebozdvhkaxjozqj44boqpmuhboqgdpkusykphckyxgewa
-  models.py: bafybeiaixgdlfifhrfrd4jy5lm23r7bt3rm2sofyofyp4hzyim2abebnve
+  fsm_specification.yaml: bafybeihma5a7bw4pgdy2tro2hh3ijvhofkc6ww4zmox2ea44ymztjiejia
+  handlers.py: bafybeibn6727ukcuh6yez4wdiaqbcvaqaau5amzibz75ycrkvssuhgnno4
+  models.py: bafybeiai3vxuyl2ydfxocaygnhbno2ef3lw4ag63turmd7fqpaleixc2xy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeihpgwqlzvyqj4ta4llfh2chjk3rapmlcvbnva4imolu5miwfhq4x4
+  tests/test_composition.py: bafybeifjcacyux5r6knfycdllht7kuojarxuyivhithitvc64fv2kijs6a
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
   tests/test_handlers.py: bafybeihripx7irjcgu7i2mkqm3jdpcnv5kkuieezqng5l33xqv7rrlfh6i
-  tests/test_models.py: bafybeibrllyk347rcxawc2rwc6ed447ayckngva3qs6f6e6vc6xpqjraky
+  tests/test_models.py: bafybeianja6z3rspswf4cag3pnq2hgtsbc3hq7ndggyr2p3q6ye34wnoqq
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/omenstrat/assets/index-B-dBrp1a.js: bafybeibxpzd4bdfy2drteylk5vftq67mayohufevwht53wtzqhbzqdkuge
@@ -33,7 +33,7 @@ fingerprint:
   ui-build/omenstrat/index.html: bafybeigqgoyxsrbtjb7q4atrsbmca7evsg4wdffsndpbhuncw65uwhnr3q
   ui-build/polystrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/polystrat/assets/index-th4N8cfd.js: bafybeicrvjx6dugb3tnbftrgkfjdca65buhm33iacdhqpj3atsmgxkb34y
+  ui-build/polystrat/assets/index-S1nCmdeD.js: bafybeig5whxewcvlpkmzk5fbnglog4b2j62iqtobexqqj233r37tasj5qq
   ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -41,7 +41,7 @@ fingerprint:
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeicu5bsun2slz37jc44tmby273ijmuhyxqywljjb7xaiiammo3zsbq
+  ui-build/polystrat/index.html: bafybeif6ozzpb3jubn2veqolx3ehqi4gi5gwotwdsrnwszvbrt67oqng6y
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
-- valory/market_manager_abci:0.1.0:bafybeieodyhhxaga3aly2roav3ve2ol3kcd3bkoqcf424kwi5ynpbfxf7m
-- valory/decision_maker_abci:0.1.0:bafybeidrzbtexuicrksy6x4iw4mdbepn7hgfzdny2ey4iodhnch26tyu5y
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifv7hlos2wu352qrhobydnjq2s34c76sfpqkupxl4teqxgrm4zoly
+- valory/market_manager_abci:0.1.0:bafybeidvkhfd7dl5fngq2pf7a3cp7ay5sai2pppedcsbndu4fgfy7r6cam
+- valory/decision_maker_abci:0.1.0:bafybeic2pajpocj3icf7pl24msk46zeugju54ax6wbs3f72ckatdm6nvy4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib5dufwbuaqig3xkm3id2cl26npzeiij4axrtmcxmi4f2kbxgfhsy
 - valory/staking_abci:0.1.0:bafybeiatxt2buyyr4lf5ijms6eibxz3d6c53ahhyeoqsdr7436hfas7xba
-- valory/check_stop_trading_abci:0.1.0:bafybeihuxvwjlab5swniydkmdshsz5ma3jt2o2fknnxdgyqqm5sepghygy
+- valory/check_stop_trading_abci:0.1.0:bafybeiar2ksoxq7oto6vsmg457dybywq23rddehjqerzlvxrrz23uh6awy
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeig7bmgyp5t4f6sqlkumxuzf5a5yoq3au4wzlgwfs4ae5tovyxe7ri
-- valory/agent_performance_summary_abci:0.1.0:bafybeidy2xjliuztvvxrj3z4fpd24h3xmgj52huj6rr6unl5e4e2kg7k6y
+- valory/chatui_abci:0.1.0:bafybeifzajfhonztoobq4hdtzhakjl63ro3634qek2dg3psormbeeup5h4
+- valory/agent_performance_summary_abci:0.1.0:bafybeieayadjemkpk7irjzql3xhsignuw454uwjv6zhk7emukyxjmd6qie
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 behaviours:
   main:
@@ -275,6 +275,7 @@ models:
       refill_check_interval: 10
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
       redeem_round_timeout: 3600.0
+      withdrawal_round_timeout: 1800.0
       tool_punishment_multiplier: 1
       contract_timeout: 300.0
       file_hash_to_strategies: {}
@@ -311,6 +312,10 @@ models:
       enable_multi_bets_fallback: false
       enable_position_review: false
       review_period_seconds: 86400
+      withdrawal_max_fak_attempts: 3
+      withdrawal_fak_backoff_s:
+      - 10
+      - 30
       coingecko_olas_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd
       coingecko_pol_in_usd_price_url: https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd
       x402_payment_requirements: {}

@@ -66,6 +66,9 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
+    OmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
     PolymarketBetPlacementRound,
 )
@@ -80,6 +83,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval i
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
+    PolymarketWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
     PolymarketWrapCollateralRound,
@@ -102,6 +108,9 @@ from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens impor
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )
+from packages.valory.skills.decision_maker_abci.states.withdrawal_idle import (
+    WithdrawalIdleRound,
+)
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
@@ -112,7 +121,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, PolymarketPostSetApprovalRound, PostBetUpdateRound, RandomnessRound, RedeemRouterRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, OmenWithdrawRound, PolymarketPostSetApprovalRound, PolymarketWithdrawRound, PostBetUpdateRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
@@ -265,12 +274,24 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no majority: 34.
             - round timeout: 34.
             - none: 32.
+        35. PolymarketWithdrawRound
+            - withdrawal done: 37.
+            - withdrawal round timeout: 37.
+            - no majority: 35.
+            - none: 35.
+        36. OmenWithdrawRound
+            - withdrawal done: 37.
+            - withdrawal round timeout: 37.
+            - no majority: 36.
+            - none: 36.
+        37. WithdrawalIdleRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
 
     Timeouts:
         round timeout: 30.0
         redeem round timeout: 3600.0
+        withdrawal round timeout: 1800.0
     """
 
     initial_round_cls: AppState = CheckBenchmarkingModeRound
@@ -283,6 +304,8 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PolymarketPostSetApprovalRound,
         DecisionRequestRound,
         PostBetUpdateRound,
+        PolymarketWithdrawRound,
+        OmenWithdrawRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -515,6 +538,19 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # reporting it as missing from the transition
             Event.NONE: ImpossibleRound,
         },
+        PolymarketWithdrawRound: {
+            Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
+            Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.NO_MAJORITY: PolymarketWithdrawRound,
+            Event.NONE: PolymarketWithdrawRound,
+        },
+        OmenWithdrawRound: {
+            Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
+            Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
+            Event.NO_MAJORITY: OmenWithdrawRound,
+            Event.NONE: OmenWithdrawRound,
+        },
+        WithdrawalIdleRound: {},
     }
     cross_period_persisted_keys = frozenset(
         {
@@ -545,10 +581,12 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         RefillRequiredRound,
         ImpossibleRound,
         BenchmarkingDoneRound,
+        WithdrawalIdleRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
         Event.REDEEM_ROUND_TIMEOUT: 3600.0,
+        Event.WITHDRAWAL_ROUND_TIMEOUT: 1800.0,
     }
     db_pre_conditions: Dict[AppState, Set[str]] = {
         RedeemRouterRound: set(),
@@ -561,6 +599,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PolymarketPostSetApprovalRound: set(),
         DecisionRequestRound: set(),
         PostBetUpdateRound: set(),
+        # Reached via cross-skill mapping from check_stop_trading_abci.
+        PolymarketWithdrawRound: set(),
+        OmenWithdrawRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -597,4 +638,5 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.mocking_mode),
             get_name(SynchronizedData.next_mock_data_row),
         },
+        WithdrawalIdleRound: set(),
     }

@@ -333,6 +333,33 @@ class SharedState(BaseSharedState):
         existing_data.timestamp = self.synced_timestamp
         self.overwrite_performance_summary(existing_data)
 
+    def update_funds_locked_in_markets(self, value: float) -> None:
+        """Update only the ``funds_locked_in_markets`` field in the summary.
+
+        Lets external skills (e.g. the withdrawal behaviour at sweep
+        end) bridge the cache-staleness gap between an event that
+        changes on-chain locked value and the next normal performance
+        summary round. The field is overwritten on the next normal
+        round; this is an interim refresh.
+
+        Lazily builds the nested ``AgentPerformanceData`` →
+        ``PerformanceMetricsData`` chain when the file doesn't exist
+        yet (first-ever run) or has only partially-populated nested
+        fields.
+
+        :param value: USD-equivalent value of currently locked positions.
+        """
+        existing = self.read_existing_performance_summary()
+        if existing.agent_performance is None:
+            existing.agent_performance = AgentPerformanceData(
+                metrics=PerformanceMetricsData()
+            )
+        if existing.agent_performance.metrics is None:
+            existing.agent_performance.metrics = PerformanceMetricsData()
+        existing.agent_performance.metrics.funds_locked_in_markets = value
+        existing.timestamp = self.synced_timestamp
+        self.overwrite_performance_summary(existing)
+
 
 class Subgraph(ApiSpecs):
     """Specifies `ApiSpecs` with common functionality for subgraphs."""

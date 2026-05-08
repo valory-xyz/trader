@@ -62,6 +62,7 @@ class CheckStopTradingParams(StakingParams):
         self.use_mech_marketplace: bool = bool(kwargs["use_mech_marketplace"])
         self.enable_position_review: bool = bool(kwargs["enable_position_review"])
         self.review_period_seconds: int = int(kwargs["review_period_seconds"])
+        self._read_polymarket_flag(kwargs)
 
         # Default KPI request address is the mech contract
         self.staking_kpi_mech_count_request_address: str = self.mech_contract_address
@@ -71,6 +72,12 @@ class CheckStopTradingParams(StakingParams):
             self._configure_marketplace(kwargs)
 
         super().__init__(*args, **kwargs)
+
+    def _read_polymarket_flag(self, kwargs: Dict[str, Any]) -> None:
+        """Set the venue flag used by the withdrawal gate at the end of each cycle."""
+        self.is_running_on_polymarket: bool = bool(
+            kwargs.get("is_running_on_polymarket", False)
+        )
 
     def _validate_required_params(self, kwargs: Dict[str, Any]) -> None:
         """Validate that required parameters are present."""
