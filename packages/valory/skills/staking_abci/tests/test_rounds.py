@@ -270,6 +270,17 @@ class TestServiceEvictedRound:
         round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
         assert isinstance(round_, ServiceEvictedRound)
 
+    def test_end_block_raises_for_final_state(self) -> None:
+        """Calling `end_block` on a final state must raise NotImplementedError.
+
+        DegenerateRound's `end_block` is a defensive guard — final states are
+        never advanced past, so any attempt to call this surfaces a framework
+        misuse rather than silently returning None.
+        """
+        round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
+        with pytest.raises(NotImplementedError):
+            round_.end_block()
+
 
 def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
     """Test the initialization of StakingAbciApp."""

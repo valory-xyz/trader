@@ -94,7 +94,19 @@ def test_abci_app_transition_function(abci_app: ChatuiAbciApp) -> None:
     assert ChatuiLoadRound in tf
     assert FinishedChatuiLoadRound in tf
     assert tf[ChatuiLoadRound][Event.DONE] == FinishedChatuiLoadRound
+    assert tf[ChatuiLoadRound][Event.FAIL] == ChatuiLoadRound
     assert tf[ChatuiLoadRound][Event.NONE] == ChatuiLoadRound
     assert tf[ChatuiLoadRound][Event.ROUND_TIMEOUT] == ChatuiLoadRound
     assert tf[ChatuiLoadRound][Event.NO_MAJORITY] == ChatuiLoadRound
     assert tf[FinishedChatuiLoadRound] == {}
+
+
+def test_chatui_load_round_negative_event_distinct_from_done() -> None:
+    """A rejected-vote outcome must produce a different event than success.
+
+    If `negative_event` and `done_event` ever collapse to the same value,
+    a `vote=False` payload would silently route to the success terminal —
+    the round would advance instead of retrying or failing.
+    """
+    assert ChatuiLoadRound.negative_event != ChatuiLoadRound.done_event
+    assert ChatuiLoadRound.negative_event is Event.FAIL

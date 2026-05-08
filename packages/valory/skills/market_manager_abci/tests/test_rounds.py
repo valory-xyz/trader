@@ -274,17 +274,21 @@ def test_market_manager_abci_app_initialization(abci_app: MarketManagerAbciApp) 
     }
 
 
-# Mock serialized collections for different keys
-DUMMY_PARTICIPANT_TO_BETS_HASH = json.dumps(
+# Mock serialized collections for different keys.
+# These have different shapes from the module-level DUMMY_* constants used by
+# the round-level tests above and must not be conflated with them.
+DUMMY_PARTICIPANT_TO_BETS_HASH_SERIALIZED = json.dumps(
     {
         "agent_0": {"sender": "agent_0", "data": "bet_1"},
         "agent_1": {"sender": "agent_1", "data": "bet_2"},
     }
 )
-DUMMY_BETS_HASH = json.dumps({"bets_hash": "dummy_bets_hash"})
+DUMMY_BETS_HASH_SERIALIZED = json.dumps({"bets_hash": "dummy_bets_hash"})
 
-DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH = json.dumps(DUMMY_PARTICIPANT_TO_BETS_HASH)
-DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH)
+DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH = json.dumps(
+    DUMMY_PARTICIPANT_TO_BETS_HASH_SERIALIZED
+)
+DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH_SERIALIZED)
 
 
 @pytest.mark.parametrize(
@@ -293,13 +297,13 @@ DUMMY_SERIALIZED_BETS_HASH = json.dumps(DUMMY_BETS_HASH)
         (
             "participant_to_bets_hash",
             DUMMY_SERIALIZED_PARTICIPANT_TO_BETS_HASH,
-            json.loads(DUMMY_PARTICIPANT_TO_BETS_HASH),
+            json.loads(DUMMY_PARTICIPANT_TO_BETS_HASH_SERIALIZED),
             "participant_to_bets_hash",
         ),
         (
             "bets_hash",
             DUMMY_SERIALIZED_BETS_HASH,
-            json.loads(DUMMY_BETS_HASH),
+            json.loads(DUMMY_BETS_HASH_SERIALIZED),
             "bets_hash",
         ),
     ],

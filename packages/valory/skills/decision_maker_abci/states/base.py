@@ -57,7 +57,6 @@ class Event(Enum):
     DONE_SELL = "done_sell"
     DONE_NO_SELL = "done_no_sell"
     NONE = "none"
-    FETCH_ERROR = "fetch_error"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
     BENCHMARKING_FINISHED = "benchmarking_finished"

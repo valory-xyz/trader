@@ -170,9 +170,6 @@ class FinishedStakingRound(DegenerateRound, ABC):
 class ServiceEvictedRound(DegenerateRound, ABC):
     """A round that terminates the service if it has been evicted."""
 
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
-        """End block."""
-
 
 class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     """StakingAbciApp

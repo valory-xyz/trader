@@ -1,5 +1,6 @@
 alphabet_in:
 - DONE
+- FAIL
 - NONE
 - NO_MAJORITY
 - ROUND_TIMEOUT
@@ -14,6 +15,7 @@ states:
 - FinishedChatuiLoadRound
 transition_func:
     (ChatuiLoadRound, DONE): FinishedChatuiLoadRound
+    (ChatuiLoadRound, FAIL): ChatuiLoadRound
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound

@@ -613,24 +613,76 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour._policy = mock_policy
         assert behaviour.policy == mock_policy
 
-    def test_is_first_period_true(self) -> None:
-        """Test `is_first_period` property when it is the first period."""
+    def _set_period_count(self, behaviour: Any, value: int) -> None:
+        """Set the period count via the `db.reset_index` attribute it actually reads."""
+        behaviour.synchronized_data.db.reset_index = value
+        # Guard: if synchronized_data is ever migrated to a real AbciAppDB,
+        # `reset_index` becomes a read-only property and the assignment above
+        # would silently no-op, making every is_first_period test pass by
+        # accident. Fail loudly here instead.
+        assert behaviour.synchronized_data.period_count == value
+
+    def test_is_first_period_production_first(self) -> None:
+        """In production (benchmarking disabled), period_count==0 means first period."""
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = None
-        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
-        result = behaviour.is_first_period
-        assert result is True
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is True
 
-    def test_is_first_period_false(self) -> None:
-        """Test `is_first_period` property when it is not the first period."""
+    def test_is_first_period_production_later(self) -> None:
+        """In production with mock_data unset, period_count>0 returns False."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.shared_state.mock_data = None
+        self._set_period_count(behaviour, 1)
+        assert behaviour.is_first_period is False
+
+    def test_is_first_period_production_ignores_mock_data(self) -> None:
+        """When benchmarking is disabled, the result depends only on period_count.
+
+        Setting mock_data to a non-None value must not flip is_first_period
+        in either direction.
+        """
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = MagicMock()
-        db_values = {"period_count": 1}
-        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
-        result = behaviour.is_first_period
-        assert result is False
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is True
+        self._set_period_count(behaviour, 1)
+        assert behaviour.is_first_period is False
+
+    def test_is_first_period_benchmarking_uninitialised(self) -> None:
+        """In benchmarking, mock_data is None signals the run is uninitialised."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = True
+        behaviour.shared_state.mock_data = None
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is True
+
+    def test_is_first_period_benchmarking_uninitialised_later_period(self) -> None:
+        """In benchmarking, mock_data is None still counts as first period even after period_count advances."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = True
+        behaviour.shared_state.mock_data = None
+        self._set_period_count(behaviour, 5)
+        assert behaviour.is_first_period is True
+
+    def test_is_first_period_benchmarking_initialised(self) -> None:
+        """In benchmarking with mock_data set, it is no longer the first period."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = True
+        behaviour.shared_state.mock_data = MagicMock()
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is False
+
+    def test_is_first_period_benchmarking_initialised_later_period(self) -> None:
+        """In benchmarking with mock_data set and period advanced, not the first period."""
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = True
+        behaviour.shared_state.mock_data = MagicMock()
+        self._set_period_count(behaviour, 5)
+        assert behaviour.is_first_period is False
 
     def test_usdc_to_native(self) -> None:
         """Test the `usdc_to_native` static method."""  # type: ignore[method-assign]

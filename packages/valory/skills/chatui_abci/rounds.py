@@ -54,6 +54,7 @@ class Event(Enum):
     """Event enumeration for the chat UI skill."""
 
     DONE = "done"
+    FAIL = "fail"
     NONE = "none"
     ROUND_TIMEOUT = "round_timeout"
     NO_MAJORITY = "no_majority"
@@ -65,7 +66,7 @@ class ChatuiLoadRound(VotingRound):
     payload_class = ChatuiPayload
     synchronized_data_class = SynchronizedData
     done_event = Event.DONE
-    negative_event = Event.DONE
+    negative_event = Event.FAIL
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
@@ -85,6 +86,7 @@ class ChatuiAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     Transition states:
         0. ChatuiLoadRound
             - done: 1.
+            - fail: 0.
             - none: 0.
             - round timeout: 0.
             - no majority: 0.
@@ -100,6 +102,7 @@ class ChatuiAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods
     transition_function: AbciAppTransitionFunction = {
         ChatuiLoadRound: {
             Event.DONE: FinishedChatuiLoadRound,
+            Event.FAIL: ChatuiLoadRound,
             Event.NONE: ChatuiLoadRound,
             Event.ROUND_TIMEOUT: ChatuiLoadRound,
             Event.NO_MAJORITY: ChatuiLoadRound,
