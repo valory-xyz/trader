@@ -273,9 +273,10 @@ class TestServiceEvictedRound:
     def test_end_block_raises_for_final_state(self) -> None:
         """Calling `end_block` on a final state must raise NotImplementedError.
 
-        DegenerateRound's `end_block` is a defensive guard — final states are
-        never advanced past, so any attempt to call this surfaces a framework
-        misuse rather than silently returning None.
+        DegenerateRound's `end_block` raises NotImplementedError as a
+        defensive guard. ServiceEvictedRound previously overrode it with an
+        empty body that implicitly returned None — this test locks in the
+        parent contract so the override cannot quietly come back.
         """
         round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
         with pytest.raises(NotImplementedError):
