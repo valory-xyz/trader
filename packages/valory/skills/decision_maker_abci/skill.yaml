@@ -25,7 +25,7 @@ fingerprint:
   behaviours/polymarket_reedem.py: bafybeieefb5eee5h3qx7pl7twcfairvwwliojw7h2dkmtzx2eqbak5vavy
   behaviours/polymarket_set_approval.py: bafybeieq6s2v63wcmmpzb3u65xbr6lg4ob4fftvr75qcwglqf2o36v5ag4
   behaviours/polymarket_swap.py: bafybeiack4epupksyvpm5hj6hot2cwtbvme2dqmogxdgzjn6v5mseg2m24
-  behaviours/polymarket_withdraw.py: bafybeif4lsafghmmll5lxna72pnyw4nku7oqpntvigyuqw7ywewzl24kqy
+  behaviours/polymarket_withdraw.py: bafybeigg6mtnpjfw7l7of5tk3ep62tpkvu3znvanj3p3heg3jkrpiktrh4
   behaviours/polymarket_wrap_collateral.py: bafybeicyolkipi4nmhxeativei23nxz7ylyeda5uraelh4ig5hzl3tyshi
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
@@ -124,7 +124,7 @@ fingerprint:
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeiet3bl24f7lzdn3guxdso4igaiuqxzx3tn3bsnji6ise7ifpxio3e
-  tests/test_withdrawal_rounds.py: bafybeia6p7csfv3weroomvma3i3wwxd5vdzan2t6mhlrbftj7rpdjg3v7m
+  tests/test_withdrawal_rounds.py: bafybeidyg2csptal4xfpvnaj5kbokmur3x7slhs76aegx3pvilrdettnwq
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4

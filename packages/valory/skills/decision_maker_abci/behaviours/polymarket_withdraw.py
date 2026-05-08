@@ -155,7 +155,7 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         op_name: str,
         request_fn: Callable[[], Generator[None, None, Tuple[Any, Optional[str]]]],
     ) -> Generator[None, None, Optional[Any]]:
-        """Run ``request_fn`` with up to N FAK-style retries.
+        """Run ``request_fn`` with up to ``withdrawal_max_fak_attempts`` retries.
 
         Returns the result on success; on exhaustion records a top-level
         error and returns ``None``.
@@ -165,19 +165,22 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         :yield: framework yields between attempts (sleep + nested generator).
         :return: the result on success; ``None`` once retries are exhausted.
         """
-        backoff = self._retry_schedule()
+        max_attempts = self.context.params.withdrawal_max_fak_attempts
+        backoff = self._retry_schedule()  # length == max_attempts - 1
         last_error: Optional[str] = "unknown"
-        for attempt, sleep_s in enumerate(backoff):
+        for attempt in range(max_attempts):
             result, error = yield from request_fn()
             if error is None:
                 return result
             last_error = error
             self.context.logger.warning(
-                f"withdrawal: top-level retry {attempt + 1}/{len(backoff)} "
+                f"withdrawal: top-level retry {attempt + 1}/{max_attempts} "
                 f"on {op_name} reason={last_error!r}"
             )
-            if attempt < len(backoff) - 1:
-                yield from self.sleep(sleep_s)
+            # ``backoff[attempt]`` is the gap AFTER attempt ``attempt``. No
+            # sleep after the final attempt — the loop is exiting anyway.
+            if attempt < max_attempts - 1:
+                yield from self.sleep(backoff[attempt])
         self._record_top_level_error(op_name, last_error or "unknown")
         return None
 

@@ -966,9 +966,17 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         captured_sleep: List[int] = []
         _wire_helpers(behaviour, captured_payload, captured_sleep)
 
+        # ``_finish`` re-fetches positions for the locked-funds snapshot —
+        # stub it out so the FETCH_ALL_POSITIONS count isolates the retry
+        # helper rather than mixing in the post-sweep snapshot fetch.
+        def fake_snapshot() -> Generator[Any, None, None]:
+            yield
+
+        behaviour._snapshot_locked_funds = fake_snapshot  # type: ignore[method-assign,assignment]
+
         # All three fetch attempts return an error dict.
         err = {"error": "502 bad gateway"}
-        router, _ = _make_request_router(
+        router, sent = _make_request_router(
             fetch_responses=[err, err, err],
         )
         behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
@@ -982,6 +990,66 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         rec = store["withdrawal_errors"][0]
         assert rec["token_id"] == ""  # top-level error sentinel
         assert "fetch_positions" in rec["reason"].lower()
+        # The top-level retry must run ``max_attempts`` attempts (== 3 with
+        # the default backoff=[1, 1]) and sleep once per inter-attempt gap
+        # (== 2 sleeps). Pinned to catch a regression to ``enumerate(backoff)``
+        # which silently drops one attempt.
+        sent_fetches = [
+            p
+            for p in sent
+            if p.get("request_type") == RequestType.FETCH_ALL_POSITIONS.value
+        ]
+        assert len(sent_fetches) == 3
+        assert captured_sleep == [1, 1]
+
+    @pytest.mark.parametrize("max_attempts", [2, 3, 4])
+    def test_top_level_retry_attempts_match_max_attempts(
+        self, tmp_path: Path, max_attempts: int
+    ) -> None:
+        """Top-level retry must run exactly ``max_attempts`` attempts.
+
+        Mirrors the per-position retry's contract — same
+        ``withdrawal_max_fak_attempts`` knob, same call count. Falsifiable:
+        reverting the loop to ``enumerate(backoff)`` drops one attempt and
+        fails every parametrized case.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param max_attempts: total FAK attempts to drive through the helper.
+        """
+        _seed_store(tmp_path)
+        backoff = [1] * (max_attempts - 1)
+        behaviour = _make_behaviour(
+            tmp_path, backoff=backoff, max_attempts=max_attempts
+        )
+        captured_payload: Dict[str, Any] = {}
+        captured_sleep: List[int] = []
+        _wire_helpers(behaviour, captured_payload, captured_sleep)
+
+        def fake_snapshot() -> Generator[Any, None, None]:
+            yield
+
+        behaviour._snapshot_locked_funds = fake_snapshot  # type: ignore[method-assign,assignment]
+
+        err = {"error": "boom"}
+        router, sent = _make_request_router(
+            fetch_responses=[err] * max_attempts,
+        )
+        behaviour.send_polymarket_connection_request = router  # type: ignore[method-assign,assignment]
+
+        list(behaviour.async_act())
+
+        sent_fetches = [
+            p
+            for p in sent
+            if p.get("request_type") == RequestType.FETCH_ALL_POSITIONS.value
+        ]
+        assert len(sent_fetches) == max_attempts
+        assert len(captured_sleep) == max_attempts - 1
+
+        store = _read_store(tmp_path)
+        assert store["withdrawal_state"] == WITHDRAWAL_STATE_ERRORED
+        assert len(store["withdrawal_errors"]) == 1
+        assert store["withdrawal_errors"][0]["token_id"] == ""
 
     def test_only_malformed_positions_yields_errored_state(
         self, tmp_path: Path
