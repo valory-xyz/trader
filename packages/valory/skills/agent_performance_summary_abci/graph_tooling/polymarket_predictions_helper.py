@@ -21,6 +21,7 @@
 """Helper for fetching and formatting Polymarket predictions data."""
 
 import json
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -47,6 +48,11 @@ POLYMARKET_MARKET_BASE_URL = "https://polymarket.com/market"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+# Treat sub-cent residuals as fully sold. Shares are stored in 1e-6 units; on
+# Polymarket each share redeems for at most 1 USDC, so 10_000 base units (0.01
+# share = 1 cent) is the practical "this is dust" threshold. Empirical orderbook
+# slippage leaves remainders in the 2_500–5_000 range — well inside this bound.
+SHARES_EPSILON = 10_000
 
 
 class PolymarketPredictionsFetcher(
@@ -88,26 +94,138 @@ class PolymarketPredictionsFetcher(
             self.logger.warning(f"No market participants found for {safe_address}")
             return {"total_predictions": 0, "items": []}
 
-        # Extract all bets from all market participants
-        # Now each bet already has its own question object, and we need to attach totalPayout from participant
-        all_bets_with_questions = []
+        # FIFO-allocate sells against buys per participant, then flatten to a list
+        # of enriched buy dicts. One output row per original buy.
+        all_buys: List[Dict[str, Any]] = []
         for participant in market_participants:
             total_payout = participant.get("totalPayout", 0)
-            bets = participant.get("bets", [])
-            # Attach the totalPayout to each bet for processing
-            for bet in bets:
-                bet_with_payout = {**bet, "totalPayout": total_payout}
-                all_bets_with_questions.append(bet_with_payout)
+            bets = participant.get("bets", []) or []
+            all_buys.extend(self._allocate_fifo(bets, total_payout))
 
-        if not all_bets_with_questions:
+        if not all_buys:
             return {"total_predictions": 0, "items": []}
 
         # Format individual bets (not grouped by market)
-        items = self._format_predictions(
-            all_bets_with_questions, safe_address, status_filter
-        )
+        items = self._format_predictions(all_buys, safe_address, status_filter)
 
-        return {"total_predictions": len(all_bets_with_questions), "items": items}
+        return {"total_predictions": len(all_buys), "items": items}
+
+    def _allocate_fifo(
+        self, bets: List[Dict[str, Any]], participant_total_payout: Any
+    ) -> List[Dict[str, Any]]:
+        """FIFO-allocate sells against buys per (question, outcomeIndex).
+
+        Returns one enriched buy dict per original buy row, with FIFO state
+        fields attached: ``original_shares``, ``original_cost``,
+        ``remaining_shares``, ``allocated_proceeds``, ``allocated_cost``,
+        ``totalPayout`` (participant-level), and ``participant_remaining_cost``
+        (sum of remaining_cost across every enriched buy returned). The last
+        one is required to pro-rate invalid-market refunds correctly across
+        multi-buy participants. Sells with no matching buy are logged as
+        orphans and dropped. Bets with ``question is None`` or
+        ``outcomeIndex is None`` lack a group key and are skipped.
+
+        :param bets: raw bet dicts from one participant (mix of buys and sells)
+        :param participant_total_payout: ``MarketParticipant.totalPayout``
+        :return: list of enriched buy dicts, one per original buy that produced
+            a group key
+        """
+        groups: Dict[Any, List[Dict[str, Any]]] = defaultdict(list)
+        for bet in bets:
+            question = bet.get("question") or {}
+            question_id = question.get("id")
+            outcome_index = bet.get("outcomeIndex")
+            if question_id is None or outcome_index is None:
+                self.logger.warning(
+                    "Skipping bet id=%s: question_id or outcomeIndex is None "
+                    "(subgraph gap)",
+                    bet.get("id"),
+                )
+                continue
+            groups[(question_id, int(outcome_index))].append(bet)
+
+        output: List[Dict[str, Any]] = []
+        for (question_id, outcome_index), group_bets in groups.items():
+            # Tiebreaker for same-block bets: bet.id is the subgraph's
+            # {txHash}{logIndex} encoding, so lexicographic sort on it doesn't
+            # match numeric log-index order. Same-block buy + sell pairs are
+            # rare for this agent (buys and sells happen in separate FSM
+            # rounds), so the arbitrary within-block ordering is acceptable.
+            # If this ever matters, the subgraph would need to expose a
+            # numeric logIndex on the Bet entity.
+            group_bets.sort(
+                key=lambda b: (int(b.get("blockTimestamp", 0) or 0), b.get("id", ""))
+            )
+            buys_in_group: List[Dict[str, Any]] = []
+            open_buys: "deque[Dict[str, Any]]" = deque()
+
+            for row in group_bets:
+                is_buy = row.get("isBuy", True)
+                row_shares = float(row.get("shares", 0) or 0)
+                row_amount = float(row.get("amount", 0) or 0)
+
+                if is_buy:
+                    enriched = {
+                        **row,
+                        "original_shares": row_shares,
+                        "original_cost": row_amount,
+                        "remaining_shares": row_shares,
+                        "allocated_proceeds": 0.0,
+                        "allocated_cost": 0.0,
+                        "totalPayout": participant_total_payout,
+                    }
+                    buys_in_group.append(enriched)
+                    # Skip zero-share buys; they would deadlock the FIFO loop
+                    # and have no economic effect anyway.
+                    if row_shares > 0:
+                        open_buys.append(enriched)
+                else:
+                    shares_to_consume = -row_shares
+                    proceeds_total = -row_amount
+                    sell_original_shares = shares_to_consume
+
+                    while shares_to_consume > 0 and open_buys:
+                        head = open_buys[0]
+                        take = min(shares_to_consume, head["remaining_shares"])
+
+                        proceeds_ratio = take / sell_original_shares
+                        cost_ratio = take / head["original_shares"]
+                        head["allocated_proceeds"] += proceeds_total * proceeds_ratio
+                        head["allocated_cost"] += head["original_cost"] * cost_ratio
+                        head["remaining_shares"] -= take
+                        shares_to_consume -= take
+                        if head["remaining_shares"] <= 0:
+                            open_buys.popleft()
+
+                    if shares_to_consume > 0:
+                        unattributed_usdc = (
+                            proceeds_total
+                            * (shares_to_consume / sell_original_shares)
+                            / USDC_DECIMALS_DIVISOR
+                        )
+                        self.logger.warning(
+                            "Orphan sell %s on (question=%s, outcomeIndex=%s): "
+                            "%s shares unmatched, %.4f USDC unattributed",
+                            row.get("id"),
+                            question_id,
+                            outcome_index,
+                            shares_to_consume,
+                            unattributed_usdc,
+                        )
+
+            output.extend(buys_in_group)
+
+        # Stamp participant_remaining_cost on every enriched buy so the
+        # invalid-market refund branch in _redemption_value can pro-rate
+        # the (participant-level) refund across all of this participant's
+        # buys, not just within a single (question, outcomeIndex) group.
+        participant_remaining_cost = sum(
+            max(b["original_cost"] - b["allocated_cost"], 0.0) for b in output
+        )
+        for b in output:
+            b["participant_remaining_cost"] = participant_remaining_cost
+
+        return output
 
     def _fetch_market_participants(
         self, safe_address: str, first: int, skip: int
@@ -176,8 +294,9 @@ class PolymarketPredictionsFetcher(
         # Calculate profit
         net_profit = self._calculate_bet_profit(bet)
 
-        # Get bet amount
-        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
+        # Display the original buy size, not the FIFO remainder.
+        fifo = self._fifo_state(bet)
+        bet_amount = fifo["original_cost"] / USDC_DECIMALS_DIVISOR
 
         # Get prediction side
         outcome_index = int(bet.get("outcomeIndex", 0))
@@ -194,9 +313,11 @@ class PolymarketPredictionsFetcher(
         # Get timestamps
         bet_timestamp = bet.get("blockTimestamp")
         resolution_timestamp = resolution.get("blockTimestamp") if resolution else None
-        # Per-bet payout: shares for winning bets, 0 otherwise
-        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
-        total_payout = bet_shares if prediction_status == BetStatus.WON.value else 0.0
+        # Realized cash returned to the agent: sell proceeds + redemption value
+        # on the unsold remainder. Independent of status — a partial-sell PENDING
+        # bet correctly reports the proceeds already booked.
+        realized_proceeds = fifo["allocated_proceeds"] / USDC_DECIMALS_DIVISOR
+        total_payout = realized_proceeds + self._redemption_value(bet, fifo)
         return {
             "id": bet_id,
             "market": {
@@ -207,7 +328,7 @@ class PolymarketPredictionsFetcher(
             "prediction_side": prediction_side,
             "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
-            "net_profit": round(net_profit, 3) if net_profit is not None else None,
+            "net_profit": round(net_profit, 3),
             "created_at": (
                 self._format_timestamp(str(bet_timestamp)) if bet_timestamp else None
             ),
@@ -217,93 +338,213 @@ class PolymarketPredictionsFetcher(
                 else None
             ),
             "transaction_hash": transaction_hash,
-            "total_payout": (
-                round(total_payout, 3) if total_payout is not None else None
-            ),
+            "total_payout": round(total_payout, 3),
         }
 
-    def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
-        """Calculate profit for a single Polymarket bet.
+    def _fifo_state(self, bet: Dict) -> Dict[str, float]:
+        """Return FIFO state for a buy, defaulting to "never sold" for legacy callers.
 
-        Uses per-bet shares (not participant-level totalPayout) for accurate
-        multi-bet payout attribution. On Polymarket, a winning bet's payout
-        equals its shares value.
+        Legacy callers pass a raw subgraph bet without the FIFO fields populated
+        by ``_allocate_fifo``. In that case treat the buy as if no sells ever
+        applied — original = remaining, no proceeds, no allocated cost — so the
+        old code paths reduce to today's behaviour.
 
-        :param bet: The bet dict (must include shares, amount, question with resolution)
-        :return: Net profit or None
+        :param bet: bet dict, optionally enriched with FIFO fields
+        :return: dict with float-typed FIFO state values
+        """
+        raw_shares = float(bet.get("shares", 0) or 0)
+        raw_amount = float(bet.get("amount", 0) or 0)
+        return {
+            "original_shares": float(bet.get("original_shares", raw_shares)),
+            "original_cost": float(bet.get("original_cost", raw_amount)),
+            "remaining_shares": float(bet.get("remaining_shares", raw_shares)),
+            "allocated_proceeds": float(bet.get("allocated_proceeds", 0.0)),
+            "allocated_cost": float(bet.get("allocated_cost", 0.0)),
+        }
+
+    def _redemption_value(self, bet: Dict, fifo: Dict[str, float]) -> float:
+        """Realized cash from redemption attributable to this buy's remainder.
+
+        For winning outcomes the agent receives 1 USDC per remaining share at
+        redemption (Polymarket CTF semantics). For invalid markets the
+        participant refund is pro-rated by this buy's share of the
+        participant's total remaining cost basis (refunds flow via collateral,
+        not shares, and the participant refund is one number across all of an
+        agent's buys on the cancelled market). Returns 0 USDC for losing
+        outcomes, won-but-unredeemed wins, or pre-resolution rows.
+
+        :param bet: enriched buy dict (must carry participant ``totalPayout``)
+        :param fifo: FIFO state returned by :meth:`_fifo_state`
+        :return: USDC value of redemption attributable to this buy
         """
         question = bet.get("question") or {}
         resolution = question.get("resolution")
-
-        # Pending if no resolution
         if not resolution:
             return 0.0
 
-        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
-
+        original_shares = fifo["original_shares"]
+        remaining_shares = fifo["remaining_shares"]
+        original_cost = fifo["original_cost"]
+        allocated_cost = fifo["allocated_cost"]
         winning_index = resolution.get("winningIndex")
-        # Invalid market: winningIndex < 0 (e.g. cancelled).
-        # Use participant-level totalPayout pro-rated by bet amount.
+        outcome_index = bet.get("outcomeIndex")
+        cost = original_cost / USDC_DECIMALS_DIVISOR
+        cost_realized = allocated_cost / USDC_DECIMALS_DIVISOR
+        remaining_cost = max(cost - cost_realized, 0.0)
+
         if winning_index is not None and int(winning_index) < 0:
             total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
-            return total_payout - bet_amount
+            # Pro-rate the participant-level refund by this buy's share of the
+            # participant's total remaining cost. Legacy callers (raw bets,
+            # not enriched by _allocate_fifo) don't carry the participant sum;
+            # fall back to this buy's own remaining cost in base units so the
+            # legacy single-buy formula collapses to today's `total_payout`
+            # answer. Stored as base units to match the rest of the FIFO state.
+            participant_remaining_cost = (
+                float(
+                    bet.get(
+                        "participant_remaining_cost",
+                        max(original_cost - allocated_cost, 0.0),
+                    )
+                )
+                / USDC_DECIMALS_DIVISOR
+            )
+            if participant_remaining_cost > 0:
+                return total_payout * (remaining_cost / participant_remaining_cost)
+            if total_payout > 0:
+                # cost == 0 is impossible for real Polymarket buys; the guard
+                # is for division-safety, but if we ever land here with money
+                # on the line, surface it instead of silently dropping.
+                self.logger.warning(
+                    "Invalid-market refund of %.4f USDC for bet %s dropped: "
+                    "participant_remaining_cost is zero (data inconsistency)",
+                    total_payout,
+                    bet.get("id"),
+                )
+            return 0.0
 
-        outcome_index = bet.get("outcomeIndex")
+        # Share-driven redemption: nothing to redeem if no shares ever existed
+        # or if everything was already sold.
+        if original_shares <= 0 or remaining_shares <= SHARES_EPSILON:
+            return 0.0
 
-        if outcome_index is not None and winning_index is not None:
-            if int(outcome_index) == int(winning_index):
-                # Winning bet — payout = shares
-                if bet_shares > 0:
-                    return bet_shares - bet_amount
-                else:
-                    # Won but not redeemed yet
-                    return 0.0
-            else:
-                return -bet_amount
-        else:
-            # Fallback: use shares to determine
-            if bet_shares > 0:
-                return bet_shares - bet_amount
-            else:
-                return -bet_amount
+        if outcome_index is None or winning_index is None:
+            # Indices missing — fall back to remaining-shares as the
+            # redemption signal. Equivalent to today's behaviour for legacy
+            # raw bets (where remaining_shares defaults to bet["shares"] via
+            # _fifo_state) and correct for enriched buys that have been
+            # partially sold.
+            remaining_usdc = remaining_shares / USDC_DECIMALS_DIVISOR
+            return remaining_usdc if remaining_usdc > 0 else 0.0
 
-    def _get_prediction_status(self, bet: Dict) -> str:
-        """Determine the status of a Polymarket prediction, treating unredeemed wins as pending."""
+        if int(outcome_index) != int(winning_index):
+            return 0.0  # losing outcome — remainder worthless
+
+        # Won. Redemption only books once participant.totalPayout flips positive.
+        participant_total_payout = float(bet.get("totalPayout", 0))
+        if participant_total_payout <= 0:
+            return 0.0
+        return remaining_shares / USDC_DECIMALS_DIVISOR
+
+    def _calculate_bet_profit(self, bet: Dict) -> float:
+        """Calculate sell-aware profit for a Polymarket buy.
+
+        Net profit = realized PnL (proceeds − cost basis on sold shares)
+        + redemption PnL on the unsold remainder. For losing outcomes the
+        remainder is worthless, so the unsold cost basis is booked as a loss.
+        For legacy callers passing a raw buy with no FIFO state, the FIFO
+        defaults collapse to today's formula.
+
+        :param bet: bet dict, optionally enriched with FIFO state fields
+        :return: net profit in USDC
+        """
         question = bet.get("question") or {}
         resolution = question.get("resolution")
+        fifo = self._fifo_state(bet)
 
-        # Market not resolved - resolution object is null
+        cost = fifo["original_cost"] / USDC_DECIMALS_DIVISOR
+        proceeds = fifo["allocated_proceeds"] / USDC_DECIMALS_DIVISOR
+        cost_realized = fifo["allocated_cost"] / USDC_DECIMALS_DIVISOR
+        realized_pnl = proceeds - cost_realized
+
         if not resolution:
-            return BetStatus.PENDING.value
+            return realized_pnl
 
-        # Market is resolved, determine win/loss by comparing outcomeIndex with winningIndex
+        remaining_cost = max(cost - cost_realized, 0.0)
+        winning_index = resolution.get("winningIndex")
         outcome_index = bet.get("outcomeIndex")
+
+        if winning_index is not None and int(winning_index) < 0:
+            redemption = self._redemption_value(bet, fifo)
+            return realized_pnl + (redemption - remaining_cost)
+
+        if outcome_index is None or winning_index is None:
+            # Legacy fallback: remaining shares > 0 → treat as redemption;
+            # else loss. Uses fifo["remaining_shares"] so partially-sold
+            # enriched buys book only the unsold portion as redemption.
+            remaining_usdc = fifo["remaining_shares"] / USDC_DECIMALS_DIVISOR
+            if remaining_usdc > 0:
+                return realized_pnl + (remaining_usdc - remaining_cost)
+            return realized_pnl - remaining_cost
+
+        if int(outcome_index) == int(winning_index):
+            participant_total_payout = float(bet.get("totalPayout", 0))
+            if participant_total_payout <= 0:
+                # Won but unredeemed: redemption deferred.
+                return realized_pnl
+            redemption = self._redemption_value(bet, fifo)
+            return realized_pnl + (redemption - remaining_cost)
+
+        # Losing outcome — remainder is worthless.
+        return realized_pnl - remaining_cost
+
+    def _get_prediction_status(self, bet: Dict) -> str:
+        """Hybrid status rule for a Polymarket buy.
+
+        1. Invalid market resolution wins outright.
+        2. A buy fully exited via sells (no remaining shares) classifies by
+           realized PnL sign — WON if profitable, LOST if not, PENDING on exact
+           break-even.
+        3. Otherwise fall back to today's resolution-based logic
+           (resolution-based win/loss with won-but-unredeemed → PENDING).
+
+        Legacy callers without FIFO state (``original_shares`` absent) skip the
+        "fully exited" branch when the buy never had shares to begin with, so
+        the existing four-status behaviour is preserved for pre-rewrite tests.
+
+        :param bet: bet dict, optionally enriched with FIFO state fields
+        :return: one of the ``BetStatus`` string values
+        """
+        question = bet.get("question") or {}
+        resolution = question.get("resolution") or {}
         winning_index = resolution.get("winningIndex")
 
-        # Invalid market: winningIndex < 0 (e.g. cancelled)
         if winning_index is not None and int(winning_index) < 0:
             return BetStatus.INVALID.value
 
-        # Compare outcomeIndex with winningIndex
-        if outcome_index is not None and winning_index is not None:
-            if int(outcome_index) == int(winning_index):
-                # Check if winnings have been redeemed
-                # totalPayout is only updated when the agent redeems (from subgraph)
-                total_payout = float(bet.get("totalPayout", 0))
-                if total_payout == 0:
-                    # Won but not redeemed yet - treat as pending
-                    return BetStatus.PENDING.value
+        fifo = self._fifo_state(bet)
+        if fifo["original_shares"] > 0 and fifo["remaining_shares"] <= SHARES_EPSILON:
+            realized_pnl = fifo["allocated_proceeds"] - fifo["allocated_cost"]
+            if realized_pnl > 0:
                 return BetStatus.WON.value
-            else:
+            if realized_pnl < 0:
                 return BetStatus.LOST.value
-        else:
-            # Fallback: if indices are missing, use totalPayout as backup
+            return BetStatus.PENDING.value
+
+        if not resolution:
+            return BetStatus.PENDING.value
+
+        outcome_index = bet.get("outcomeIndex")
+        if outcome_index is None or winning_index is None:
             total_payout = float(bet.get("totalPayout", 0))
-            if total_payout > 0:
-                return BetStatus.WON.value
-            else:
-                return BetStatus.LOST.value
+            return BetStatus.WON.value if total_payout > 0 else BetStatus.LOST.value
+
+        if int(outcome_index) == int(winning_index):
+            total_payout = float(bet.get("totalPayout", 0))
+            if total_payout == 0:
+                return BetStatus.PENDING.value
+            return BetStatus.WON.value
+        return BetStatus.LOST.value
 
     def _get_prediction_side(self, outcome_index: int, outcomes: List[str]) -> str:
         """Get the prediction side from outcome index and outcomes array."""
@@ -531,87 +772,22 @@ class PolymarketPredictionsFetcher(
             if not market_participants:
                 return None
 
-            # Find the bet across all market participants
+            # Find the bet across all market participants. The query returns
+            # the full bet list per participant (no isBuy filter) so we can
+            # FIFO-allocate sells against buys before formatting the target row.
             for participant in market_participants:
-                bets = participant.get("bets", [])
-                for bet in bets:
-                    if bet.get("id") == bet_id:
-                        # Format the bet to match agent_performance.json structure
-                        question = bet.get("question") or {}
-                        metadata = question.get("metadata", {})
-                        resolution = question.get("resolution")
-
-                        bet_amount = float(bet.get("amount", 0)) / USDC_DECIMALS_DIVISOR
-                        bet_shares = float(bet.get("shares", 0)) / USDC_DECIMALS_DIVISOR
-
-                        # Determine status (needs participant-level totalPayout for redemption check)
-                        status = self._get_prediction_status(
-                            {**bet, "totalPayout": participant.get("totalPayout", 0)}
-                        )
-
-                        # Calculate per-bet payout and net profit using shares
-                        if not resolution:
-                            bet_payout = 0.0
-                            net_profit = 0.0
-                        else:
-                            winning_index = resolution.get("winningIndex")
-                            if winning_index is not None and int(winning_index) < 0:
-                                # Invalid market — pro-rate refund
-                                total_traded_p = (
-                                    float(participant.get("totalTraded", 0))
-                                    / USDC_DECIMALS_DIVISOR
-                                )
-                                total_payout_p = (
-                                    float(participant.get("totalPayout", 0))
-                                    / USDC_DECIMALS_DIVISOR
-                                )
-                                bet_payout = (
-                                    total_payout_p * (bet_amount / total_traded_p)
-                                    if total_traded_p
-                                    else 0.0
-                                )
-                                net_profit = bet_payout - bet_amount
-                            elif str(bet.get("outcomeIndex")) == str(winning_index):
-                                # Winning bet — payout = shares
-                                bet_payout = bet_shares
-                                net_profit = bet_payout - bet_amount
-                            else:
-                                bet_payout = 0.0
-                                net_profit = -bet_amount
-
-                        # Get prediction side
-                        outcome_index = int(bet.get("outcomeIndex", 0))
-                        outcomes = metadata.get("outcomes", [])
-                        prediction_side = self._get_prediction_side(
-                            outcome_index, outcomes
-                        )
-
-                        return {
-                            "id": bet.get("id"),
-                            "market": {
-                                "id": question.get("questionId", ""),
-                                "condition_id": question.get("id", ""),
-                                "title": metadata.get("title", ""),
-                            },
-                            "prediction_side": prediction_side,
-                            "bet_amount": round(bet_amount, 3),
-                            "status": status,
-                            "net_profit": round(net_profit, 3),
-                            "total_payout": round(bet_payout, 3),
-                            "created_at": (
-                                self._format_timestamp(str(bet.get("blockTimestamp")))
-                                if bet.get("blockTimestamp")
-                                else None
-                            ),
-                            "settled_at": (
-                                self._format_timestamp(
-                                    str(resolution.get("blockTimestamp"))
-                                )
-                                if resolution and resolution.get("blockTimestamp")
-                                else None
-                            ),
-                            "transaction_hash": bet.get("transactionHash", ""),
-                        }
+                participant_bets = participant.get("bets", []) or []
+                if not any(b.get("id") == bet_id for b in participant_bets):
+                    continue
+                enriched_buys = self._allocate_fifo(
+                    participant_bets, participant.get("totalPayout", 0)
+                )
+                for buy in enriched_buys:
+                    if buy.get("id") == bet_id:
+                        return self._format_single_bet(buy, safe_address, None)
+                # bet_id matched a sell row (or a row dropped by FIFO); nothing
+                # to return at the per-bet API surface.
+                return None
 
             return None
 
@@ -733,9 +909,9 @@ class PolymarketPredictionsFetcher(
             potential_profit = (
                 market_info.get("potential_net_profit", 0) if market_info else 0
             )
-            if status == "won" or status == "invalid":
+            if status in (BetStatus.WON.value, BetStatus.INVALID.value):
                 to_win = total_payout
-            elif status == "lost":
+            elif status == BetStatus.LOST.value:
                 to_win = 0
             else:
                 # Pending - use potential profit
