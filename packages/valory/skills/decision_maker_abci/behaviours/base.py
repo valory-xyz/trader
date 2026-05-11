@@ -269,11 +269,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     @property
     def is_first_period(self) -> bool:
         """Return whether it is the first period of the service."""
-        return (
-            self.synchronized_data.period_count == 0
-            and not self.benchmarking_mode.enabled
-            or self.shared_state.mock_data is None
-        )
+        if self.benchmarking_mode.enabled:
+            return self.shared_state.mock_data is None
+        return self.synchronized_data.period_count == 0
 
     @property
     def sampled_bet(self) -> Bet:

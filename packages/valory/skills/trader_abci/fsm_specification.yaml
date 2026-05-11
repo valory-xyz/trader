@@ -158,6 +158,7 @@ transition_func:
     (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (ChatuiLoadRound, DONE): MechVersionDetectionRound
+    (ChatuiLoadRound, FAIL): ChatuiLoadRound
     (ChatuiLoadRound, NONE): ChatuiLoadRound
     (ChatuiLoadRound, NO_MAJORITY): ChatuiLoadRound
     (ChatuiLoadRound, ROUND_TIMEOUT): ChatuiLoadRound

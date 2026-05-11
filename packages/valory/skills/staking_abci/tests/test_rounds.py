@@ -270,6 +270,18 @@ class TestServiceEvictedRound:
         round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
         assert isinstance(round_, ServiceEvictedRound)
 
+    def test_end_block_raises_for_final_state(self) -> None:
+        """Calling `end_block` on a final state must raise NotImplementedError.
+
+        DegenerateRound's `end_block` raises NotImplementedError as a
+        defensive guard. ServiceEvictedRound previously overrode it with an
+        empty body that implicitly returned None — this test locks in the
+        parent contract so the override cannot quietly come back.
+        """
+        round_ = ServiceEvictedRound(synchronized_data=MagicMock(), context=MagicMock())
+        with pytest.raises(NotImplementedError):
+            round_.end_block()
+
 
 def test_staking_abci_app_initialization(abci_app: StakingAbciApp) -> None:
     """Test the initialization of StakingAbciApp."""

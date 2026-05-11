@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -169,9 +169,6 @@ class FinishedStakingRound(DegenerateRound, ABC):
 
 class ServiceEvictedRound(DegenerateRound, ABC):
     """A round that terminates the service if it has been evicted."""
-
-    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
-        """End block."""
 
 
 class StakingAbciApp(AbciApp[Event]):  # pylint: disable=too-few-public-methods

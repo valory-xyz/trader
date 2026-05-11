@@ -613,24 +613,81 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour._policy = mock_policy
         assert behaviour.policy == mock_policy
 
-    def test_is_first_period_true(self) -> None:
-        """Test `is_first_period` property when it is the first period."""
+    def _set_period_count(self, behaviour: Any, value: int) -> None:
+        """Set the period count via the `db.reset_index` attribute it actually reads."""
+        behaviour.synchronized_data.db.reset_index = value
+        # Guard: `synchronized_data.db` is a MagicMock that accepts any attribute
+        # write. If this test ever runs against a real `AbciAppDB` (where
+        # `reset_index` is a read-only @property), the assignment above would
+        # raise AttributeError. Either way, this assert keeps the test honest
+        # about which value `is_first_period` will actually read.
+        assert behaviour.synchronized_data.period_count == value
+
+    def test_is_first_period_production_first(self) -> None:
+        """In production (benchmarking disabled), period_count==0 means first period."""
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = None
-        behaviour.synchronized_data.db.get_strict = lambda key: 0  # type: ignore[method-assign]
-        result = behaviour.is_first_period
-        assert result is True
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is True
 
-    def test_is_first_period_false(self) -> None:
-        """Test `is_first_period` property when it is not the first period."""
+    def test_is_first_period_production_later(self) -> None:
+        """Production + mock_data=None + period_count>=1 must return False.
+
+        H-1 regression lock-in. Under the original buggy expression
+        ``(period_count == 0 and not enabled) or mock_data is None``
+        this returned True (the trailing OR fired unconditionally because
+        mock_data is permanently None outside benchmarking). The fixed
+        mode-split ignores mock_data in production mode, so the result
+        depends only on period_count.
+        """
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.shared_state.mock_data = None
+        self._set_period_count(behaviour, 1)
+        assert behaviour.is_first_period is False
+
+    def test_is_first_period_production_ignores_mock_data(self) -> None:
+        """When benchmarking is disabled, the result depends only on period_count.
+
+        Setting mock_data to a non-None value must not flip is_first_period
+        in either direction.
+        """
         behaviour = self.behaviour
         behaviour.benchmarking_mode.enabled = False
         behaviour.shared_state.mock_data = MagicMock()
-        db_values = {"period_count": 1}
-        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
-        result = behaviour.is_first_period
-        assert result is False
+        self._set_period_count(behaviour, 0)
+        assert behaviour.is_first_period is True
+        self._set_period_count(behaviour, 1)
+        assert behaviour.is_first_period is False
+
+    @pytest.mark.parametrize(
+        "mock_data, period_count, expected",
+        [
+            (None, 0, True),
+            (None, 5, True),
+            ("non-none-sentinel", 0, False),
+            ("non-none-sentinel", 5, False),
+        ],
+    )
+    def test_is_first_period_benchmarking(
+        self, mock_data: Any, period_count: int, expected: bool
+    ) -> None:
+        """In benchmarking, the result depends only on whether mock_data is set.
+
+        period_count is ignored on this branch — benchmarking cycles many
+        periods through mock markets, so it stops being a useful "first
+        period" signal there. mock_data is None is the uninitialised signal.
+
+        :param mock_data: value to assign to shared_state.mock_data.
+        :param period_count: value to write to db.reset_index.
+        :param expected: expected return of `is_first_period`.
+        """
+        behaviour = self.behaviour
+        behaviour.benchmarking_mode.enabled = True
+        behaviour.shared_state.mock_data = mock_data
+        self._set_period_count(behaviour, period_count)
+        assert behaviour.is_first_period is expected
 
     def test_usdc_to_native(self) -> None:
         """Test the `usdc_to_native` static method."""  # type: ignore[method-assign]

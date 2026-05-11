@@ -11,7 +11,7 @@ fingerprint:
   behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
   composition.py: bafybeiaju677sopibibts2mm7lafl3qql3svq75fbxg4i5uve7qshr7dfm
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeihma5a7bw4pgdy2tro2hh3ijvhofkc6ww4zmox2ea44ymztjiejia
+  fsm_specification.yaml: bafybeids7a23pphkdpeoh267khuwyjzxllayi42mbxjoe6i6632hueykea
   handlers.py: bafybeibn6727ukcuh6yez4wdiaqbcvaqaau5amzibz75ycrkvssuhgnno4
   models.py: bafybeiai3vxuyl2ydfxocaygnhbno2ef3lw4ag63turmd7fqpaleixc2xy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
@@ -55,13 +55,13 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
-- valory/market_manager_abci:0.1.0:bafybeidvkhfd7dl5fngq2pf7a3cp7ay5sai2pppedcsbndu4fgfy7r6cam
-- valory/decision_maker_abci:0.1.0:bafybeic2pajpocj3icf7pl24msk46zeugju54ax6wbs3f72ckatdm6nvy4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib5dufwbuaqig3xkm3id2cl26npzeiij4axrtmcxmi4f2kbxgfhsy
-- valory/staking_abci:0.1.0:bafybeiatxt2buyyr4lf5ijms6eibxz3d6c53ahhyeoqsdr7436hfas7xba
-- valory/check_stop_trading_abci:0.1.0:bafybeiar2ksoxq7oto6vsmg457dybywq23rddehjqerzlvxrrz23uh6awy
+- valory/market_manager_abci:0.1.0:bafybeifmzg7lwbcykcvkrp36dl32vpese643ntu56rchrfgb2y27tpd7vu
+- valory/decision_maker_abci:0.1.0:bafybeifgsef64p5tgfpmjejwtjomue7ws34gikwm6flqr7c3t2lkbdgy4u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig2xlyife5fx2v6xwxijncseu6flxh55albl5wjydmvylrdwn3lxe
+- valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
+- valory/check_stop_trading_abci:0.1.0:bafybeiblyd3vybe3mntctsanv7xy3mx72c5k4hhlbnoyiuul6brhrh7bxa
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeifzajfhonztoobq4hdtzhakjl63ro3634qek2dg3psormbeeup5h4
+- valory/chatui_abci:0.1.0:bafybeib3736are6nfsyigw4d3zzyg6kwr6rhrkftq3soumu7r6nvelerbm
 - valory/agent_performance_summary_abci:0.1.0:bafybeieayadjemkpk7irjzql3xhsignuw454uwjv6zhk7emukyxjmd6qie
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 behaviours:
