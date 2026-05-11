@@ -16,7 +16,7 @@ fingerprint:
   behaviours/update_bets.py: bafybeidq4gkjtbkriw2zqmwfmmjdmghto25yg2kfzhvy4kbhaoeogplwnu
   bets.py: bafybeiasv3tapzitpj3xjh6vn7cq6hu6ljqxuazi7jxoyzdhuulwpj2op4
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
-  fsm_specification.json: bafybeifkhzjpblwncdbe5p4sujiahpirimj6pj3ychr224pzvua3cwiepy
+  fsm_specification.md: bafybeieh3y3gtumragvcdz6zusqq4hmal7y7eaob4tbafqlm7lgp2cipza
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
