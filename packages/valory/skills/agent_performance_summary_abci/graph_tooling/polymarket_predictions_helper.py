@@ -296,7 +296,7 @@ class PolymarketPredictionsFetcher(
             "prediction_side": prediction_side,
             "bet_amount": round(bet_amount, 3),
             "status": prediction_status,
-            "net_profit": round(net_profit, 3) if net_profit is not None else None,
+            "net_profit": round(net_profit, 3),
             "created_at": (
                 self._format_timestamp(str(bet_timestamp)) if bet_timestamp else None
             ),
@@ -383,7 +383,7 @@ class PolymarketPredictionsFetcher(
             return 0.0
         return remaining_shares / USDC_DECIMALS_DIVISOR
 
-    def _calculate_bet_profit(self, bet: Dict) -> Optional[float]:
+    def _calculate_bet_profit(self, bet: Dict) -> float:
         """Calculate sell-aware profit for a Polymarket buy.
 
         Net profit = realized PnL (proceeds − cost basis on sold shares)
@@ -393,7 +393,7 @@ class PolymarketPredictionsFetcher(
         defaults collapse to today's formula.
 
         :param bet: bet dict, optionally enriched with FIFO state fields
-        :return: net profit in USDC, or ``None`` if uncomputable
+        :return: net profit in USDC
         """
         question = bet.get("question") or {}
         resolution = question.get("resolution")
@@ -459,10 +459,10 @@ class PolymarketPredictionsFetcher(
 
         fifo = self._fifo_state(bet)
         if fifo["original_shares"] > 0 and fifo["remaining_shares"] <= SHARES_EPSILON:
-            net_profit = self._calculate_bet_profit(bet) or 0.0
-            if net_profit > 0:
+            realized_pnl = fifo["allocated_proceeds"] - fifo["allocated_cost"]
+            if realized_pnl > 0:
                 return BetStatus.WON.value
-            if net_profit < 0:
+            if realized_pnl < 0:
                 return BetStatus.LOST.value
             return BetStatus.PENDING.value
 

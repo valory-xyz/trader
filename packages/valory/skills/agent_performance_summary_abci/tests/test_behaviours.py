@@ -4194,9 +4194,9 @@ class TestFetchAgentPerformanceSummaryIntegration:
         )
         agent_details = AgentDetails(id="0xabc")
         agent_perf = AgentPerformanceData()
-        # Create enough winning trades
+        # Create enough winning trades (status == "won")
         winning_items = [
-            {"id": str(i), "total_payout": 10}
+            {"id": str(i), "status": "won", "total_payout": 10}
             for i in range(MIN_TRADES_FOR_ROI_DISPLAY)
         ]
         pred_history = PredictionHistory(
@@ -4232,6 +4232,63 @@ class TestFetchAgentPerformanceSummaryIntegration:
         ][0]
         assert roi_metric.value == "10%"
 
+    def test_full_flow_sold_at_loss_not_counted_as_winning_trade(self) -> None:
+        """LOST-sold-at-non-zero-payout rows must not satisfy the ROI display gate.
+
+        Post sell-aware rewrite, ``total_payout`` is non-zero for any
+        fully-sold-at-loss bet (e.g. bet 1.0 USDC, sold for 0.988). Filtering
+        winning_trades by ``total_payout > 0`` would falsely count them; the
+        correct filter is ``status == "won"``.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context(is_polymarket=False)
+
+        profit_data = ProfitOverTimeData(
+            last_updated=1700000000,
+            total_days=0,
+            data_points=[],
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=0,
+        )
+        agent_details = AgentDetails(id="0xabc")
+        agent_perf = AgentPerformanceData()
+        # MIN_TRADES sold-at-loss rows + 0 wins should NOT show Total ROI.
+        sold_at_loss_items = [
+            {"id": str(i), "status": "lost", "total_payout": 0.988}
+            for i in range(MIN_TRADES_FOR_ROI_DISPLAY)
+        ]
+        pred_history = PredictionHistory(
+            total_predictions=MIN_TRADES_FOR_ROI_DISPLAY,
+            stored_count=MIN_TRADES_FOR_ROI_DISPLAY,
+            items=sold_at_loss_items,
+        )
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(profit_data)
+            ),
+            patch.object(b, "calculate_roi", side_effect=_return_gen((None, None))),
+            patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_fetch_agent_details_data", side_effect=_return_gen(agent_details)
+            ),
+            patch.object(
+                b, "_fetch_agent_performance_data", side_effect=_return_gen(agent_perf)
+            ),
+            patch.object(b, "_fetch_prediction_history", return_value=pred_history),
+        ):
+            self._run_gen(b._fetch_agent_performance_summary())
+        assert b._agent_performance_summary is not None
+        roi_metric = [
+            m for m in b._agent_performance_summary.metrics if m.name == "Total ROI"
+        ][0]
+        assert roi_metric.value == MORE_TRADES_NEEDED_TEXT
+
     def test_full_flow_not_enough_winning_trades(self) -> None:
         """Full flow with < MIN_TRADES_FOR_ROI_DISPLAY winning trades."""
         b = _make_fetch_behaviour()
@@ -4249,7 +4306,10 @@ class TestFetchAgentPerformanceSummaryIntegration:
         pred_history = PredictionHistory(
             total_predictions=2,
             stored_count=2,
-            items=[{"id": "1", "total_payout": 10}, {"id": "2", "total_payout": 0}],
+            items=[
+                {"id": "1", "status": "won", "total_payout": 10},
+                {"id": "2", "status": "lost", "total_payout": 0},
+            ],
         )
 
         with (

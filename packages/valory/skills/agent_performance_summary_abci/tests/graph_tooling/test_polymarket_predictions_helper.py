@@ -2872,7 +2872,7 @@ class TestAllocateFifo:
         """Sub-cent dust after a sell counts as fully exited (epsilon)."""
         fetcher = _make_fetcher()
         # Buy 5.2625 shares (5_262_500 base units), sell 5.26 shares (5_260_000).
-        # Remaining = 2500 base units < epsilon 100000? No, 2500 is the dust.
+        # Remaining = 2_500 base units < SHARES_EPSILON (10_000); treated as dust.
         bets = [
             {
                 "id": "b1",
