@@ -319,11 +319,13 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
     skip: $skip
   ) {
     totalPayout
-    bets(where: { isBuy: true }) {
+    bets {
       id
       outcomeIndex
       amount
       shares
+      isBuy
+      countedInTotal
       blockTimestamp
       transactionHash
       question {
@@ -464,11 +466,13 @@ query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
     where: {traderAgent_: {id: $id}}
   ) {
     totalPayout
-    bets(where: {id: $betId, isBuy: true}) {
+    bets {
       id
       outcomeIndex
       amount
       shares
+      isBuy
+      countedInTotal
       blockTimestamp
       transactionHash
       question {

@@ -2622,3 +2622,702 @@ class TestFetchMarketParticipantsDataNull:
         # Returns empty list (no AttributeError -- the `or {}` guard handles null data)
         result = fetcher._fetch_market_participants("0xsafe", 10, 0)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Sell-aware perf summary: FIFO allocation, hybrid status, profit/payout
+# (WITHDRAWAL_PERFORMANCE_SUMMARY_SPEC.md test plan §1-21)
+# ---------------------------------------------------------------------------
+
+
+def _raw_bet(  # type: ignore[no-untyped-def]
+    bet_id: str = "b",
+    is_buy: bool = True,
+    amount_usdc: float = 1.0,
+    shares: float = 2.0,
+    outcome_index: int = 0,
+    block_timestamp: int = 1700000000,
+    question_id: str = "c_1",
+    resolution: Optional[Dict[str, Any]] = None,
+    transaction_hash: str = "0xhash",
+) -> Dict[str, Any]:
+    """Build a raw subgraph-shape bet dict (signed amount/shares for sells).
+
+    :param bet_id: bet id
+    :param is_buy: True for buy, False for sell
+    :param amount_usdc: USDC amount (signed convention: buys positive, sells negative)
+    :param shares: share count (signed convention: buys positive, sells negative)
+    :param outcome_index: outcome index 0 or 1
+    :param block_timestamp: block timestamp
+    :param question_id: condition id used as group key
+    :param resolution: resolution dict or None
+    :param transaction_hash: tx hash
+    :return: raw bet dict matching subgraph shape
+    """
+    sign = 1 if is_buy else -1
+    return {
+        "id": bet_id,
+        "isBuy": is_buy,
+        "amount": str(int(sign * amount_usdc * USDC_DECIMALS_DIVISOR)),
+        "shares": str(int(sign * shares * USDC_DECIMALS_DIVISOR)),
+        "outcomeIndex": outcome_index,
+        "blockTimestamp": block_timestamp,
+        "transactionHash": transaction_hash,
+        "countedInTotal": resolution is not None,
+        "question": {
+            "id": question_id,
+            "questionId": f"qid_{question_id}",
+            "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+            "resolution": resolution,
+        },
+    }
+
+
+class TestAllocateFifo:
+    """FIFO allocation of sells against buys per (question, outcomeIndex)."""
+
+    def test_single_buy_no_sells_yields_buy_with_full_remaining(self) -> None:
+        """A buy with no matching sell has remaining_shares == original_shares."""
+        fetcher = _make_fetcher()
+        bets = [_raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=2.0)]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 1
+        assert buys[0]["id"] == "b1"
+        assert buys[0]["original_shares"] == 2 * USDC_DECIMALS_DIVISOR
+        assert buys[0]["original_cost"] == 1 * USDC_DECIMALS_DIVISOR
+        assert buys[0]["remaining_shares"] == 2 * USDC_DECIMALS_DIVISOR
+        assert buys[0]["allocated_proceeds"] == 0
+        assert buys[0]["allocated_cost"] == 0
+
+    def test_full_sell_against_single_buy_zeros_remaining(self) -> None:
+        """A sell consuming all shares of one buy leaves remaining_shares ≈ 0."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=2.0, block_timestamp=1),
+            _raw_bet(
+                "s1",
+                is_buy=False,
+                amount_usdc=1.5,
+                shares=2.0,
+                block_timestamp=2,
+            ),
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 1
+        buy = buys[0]
+        assert buy["remaining_shares"] == 0
+        assert buy["allocated_proceeds"] == int(1.5 * USDC_DECIMALS_DIVISOR)
+        assert buy["allocated_cost"] == 1 * USDC_DECIMALS_DIVISOR
+
+    def test_partial_sell_against_single_buy_leaves_remainder(self) -> None:
+        """A sell consuming half the shares leaves half remaining; cost half-allocated."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=2.0, block_timestamp=1),
+            _raw_bet(
+                "s1",
+                is_buy=False,
+                amount_usdc=0.6,
+                shares=1.0,
+                block_timestamp=2,
+            ),
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 1
+        buy = buys[0]
+        # half consumed
+        assert buy["remaining_shares"] == 1 * USDC_DECIMALS_DIVISOR
+        assert abs(buy["allocated_proceeds"] - 0.6 * USDC_DECIMALS_DIVISOR) < 1
+        assert buy["allocated_cost"] == int(0.5 * USDC_DECIMALS_DIVISOR)
+
+    def test_sell_spanning_two_buys_fifo_order(self) -> None:
+        """A sell consuming all of buy1 + part of buy2 splits proceeds proportionally."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=2.0, block_timestamp=1),
+            _raw_bet("b2", is_buy=True, amount_usdc=2.0, shares=4.0, block_timestamp=2),
+            _raw_bet(
+                "s1",
+                is_buy=False,
+                amount_usdc=3.0,
+                shares=4.0,
+                block_timestamp=3,
+            ),
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 2
+        buy1 = next(b for b in buys if b["id"] == "b1")
+        buy2 = next(b for b in buys if b["id"] == "b2")
+        # b1 fully consumed: 2 of 4 sold shares (50% of sell) → 1.5 USD of 3.0 proceeds.
+        assert buy1["remaining_shares"] == 0
+        assert abs(buy1["allocated_proceeds"] - 1.5 * USDC_DECIMALS_DIVISOR) < 1
+        assert buy1["allocated_cost"] == 1 * USDC_DECIMALS_DIVISOR
+        # b2 partially consumed: 2 of 4 shares (50% of buy2). proceeds = 50% of 3.0 = 1.5.
+        # cost allocated = 50% of 2.0 = 1.0.
+        assert buy2["remaining_shares"] == 2 * USDC_DECIMALS_DIVISOR
+        assert abs(buy2["allocated_proceeds"] - 1.5 * USDC_DECIMALS_DIVISOR) < 1
+        assert buy2["allocated_cost"] == int(1.0 * USDC_DECIMALS_DIVISOR)
+
+    def test_two_sells_against_same_buy(self) -> None:
+        """Two separate sells consume the same buy in chronological order."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=4.0, block_timestamp=1),
+            _raw_bet(
+                "s1",
+                is_buy=False,
+                amount_usdc=0.5,
+                shares=2.0,
+                block_timestamp=2,
+            ),
+            _raw_bet(
+                "s2",
+                is_buy=False,
+                amount_usdc=0.6,
+                shares=2.0,
+                block_timestamp=3,
+            ),
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 1
+        buy = buys[0]
+        assert buy["remaining_shares"] == 0
+        # Total proceeds from both sells: 0.5 + 0.6 = 1.1
+        assert abs(buy["allocated_proceeds"] - 1.1 * USDC_DECIMALS_DIVISOR) < 1
+        # All original cost consumed: 1.0
+        assert buy["allocated_cost"] == 1 * USDC_DECIMALS_DIVISOR
+
+    def test_orphan_sell_logs_warning_and_emits_no_buy(self) -> None:
+        """A sell with no matching buy is logged and dropped from the output."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet(
+                "s_orphan",
+                is_buy=False,
+                amount_usdc=0.5,
+                shares=1.0,
+                block_timestamp=1,
+            )
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert buys == []
+        # Logger.warning called at least once
+        fetcher.logger.warning.assert_called()
+
+    def test_groups_by_outcome_index(self) -> None:
+        """Buys on outcome 0 are not consumed by sells on outcome 1."""
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet(
+                "b_yes",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=1,
+            ),
+            _raw_bet(
+                "b_no",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=1,
+                block_timestamp=2,
+            ),
+            _raw_bet(
+                "s_no",
+                is_buy=False,
+                amount_usdc=1.2,
+                shares=2.0,
+                outcome_index=1,
+                block_timestamp=3,
+            ),
+        ]
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert len(buys) == 2
+        b_yes = next(b for b in buys if b["id"] == "b_yes")
+        b_no = next(b for b in buys if b["id"] == "b_no")
+        # b_yes untouched
+        assert b_yes["remaining_shares"] == 2 * USDC_DECIMALS_DIVISOR
+        assert b_yes["allocated_proceeds"] == 0
+        # b_no fully consumed by the same-outcome sell
+        assert b_no["remaining_shares"] == 0
+        assert abs(b_no["allocated_proceeds"] - 1.2 * USDC_DECIMALS_DIVISOR) < 1
+
+    def test_drops_bet_with_null_question(self) -> None:
+        """Bets with question=None have no group key; FIFO drops them silently."""
+        fetcher = _make_fetcher()
+        bets = [_raw_bet("b1", is_buy=True, amount_usdc=1.0, shares=2.0)]
+        bets[0]["question"] = None
+
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+
+        assert buys == []
+
+    def test_dust_remainder_treated_as_fully_sold(self) -> None:
+        """Sub-cent dust after a sell counts as fully exited (epsilon)."""
+        fetcher = _make_fetcher()
+        # Buy 5.2625 shares (5_262_500 base units), sell 5.26 shares (5_260_000).
+        # Remaining = 2500 base units < epsilon 100000? No, 2500 is the dust.
+        bets = [
+            {
+                "id": "b1",
+                "isBuy": True,
+                "amount": "1000000",
+                "shares": "5262500",
+                "outcomeIndex": 0,
+                "blockTimestamp": 1,
+                "transactionHash": "0xa",
+                "question": {
+                    "id": "c1",
+                    "questionId": "q1",
+                    "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                    "resolution": None,
+                },
+            },
+            {
+                "id": "s1",
+                "isBuy": False,
+                "amount": "-900000",
+                "shares": "-5260000",
+                "outcomeIndex": 0,
+                "blockTimestamp": 2,
+                "transactionHash": "0xb",
+                "question": {
+                    "id": "c1",
+                    "questionId": "q1",
+                    "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                    "resolution": None,
+                },
+            },
+        ]
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+        assert len(buys) == 1
+        # Verify dust threshold treats this as fully exited.
+        from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
+            SHARES_EPSILON,
+        )
+
+        assert buys[0]["remaining_shares"] <= SHARES_EPSILON
+
+
+class TestHybridStatus:
+    """Hybrid status rule per Design §4."""
+
+    def _enriched(
+        self,
+        original_shares: float,
+        remaining_shares: float,
+        allocated_proceeds: float,
+        allocated_cost: float,
+        original_cost: float,
+        outcome_index: Optional[int] = 0,
+        winning_index: Optional[int] = None,
+        total_payout: int = 0,
+    ) -> Dict[str, Any]:
+        """Build a FIFO-enriched buy dict for status testing."""
+        resolution = None
+        if winning_index is not None:
+            resolution = {"winningIndex": winning_index, "blockTimestamp": 1700001000}
+        return {
+            "id": "b1",
+            "isBuy": True,
+            "outcomeIndex": outcome_index,
+            "amount": str(int(original_cost * USDC_DECIMALS_DIVISOR)),
+            "shares": str(int(original_shares * USDC_DECIMALS_DIVISOR)),
+            "original_shares": original_shares * USDC_DECIMALS_DIVISOR,
+            "original_cost": original_cost * USDC_DECIMALS_DIVISOR,
+            "remaining_shares": remaining_shares * USDC_DECIMALS_DIVISOR,
+            "allocated_proceeds": allocated_proceeds * USDC_DECIMALS_DIVISOR,
+            "allocated_cost": allocated_cost * USDC_DECIMALS_DIVISOR,
+            "totalPayout": total_payout,
+            "question": {
+                "id": "c1",
+                "questionId": "q1",
+                "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                "resolution": resolution,
+            },
+        }
+
+    def test_full_sell_unresolved_profit_positive_is_won(self) -> None:
+        """Fully sold, no resolution yet, realized PnL > 0 → WON."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=1.5,
+            allocated_cost=1.0,
+            original_cost=1.0,
+        )
+        assert fetcher._get_prediction_status(bet) == "won"
+
+    def test_full_sell_unresolved_profit_negative_is_lost(self) -> None:
+        """Fully sold, no resolution, realized PnL < 0 → LOST."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=0.8,
+            allocated_cost=1.0,
+            original_cost=1.0,
+        )
+        assert fetcher._get_prediction_status(bet) == "lost"
+
+    def test_full_sell_resolved_winning_but_sold_below_cost_is_lost(self) -> None:
+        """Fully sold pre-resolution at a loss; later resolves in agent's favor.
+
+        Realized PnL sign wins: LOST.
+        """
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=0.8,
+            allocated_cost=1.0,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+        )
+        assert fetcher._get_prediction_status(bet) == "lost"
+
+    def test_full_sell_break_even_is_pending(self) -> None:
+        """Fully sold with realized PnL exactly 0 → PENDING fallback."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=1.0,
+            allocated_cost=1.0,
+            original_cost=1.0,
+        )
+        assert fetcher._get_prediction_status(bet) == "pending"
+
+    def test_partial_sell_unresolved_is_pending(self) -> None:
+        """Partial sell, market unresolved → PENDING (treated as still not sold)."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+        )
+        assert fetcher._get_prediction_status(bet) == "pending"
+
+    def test_partial_sell_resolved_won_redeemed_is_won(self) -> None:
+        """Partial sell, resolved + agent won + redeemed → WON."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=int(1.0 * USDC_DECIMALS_DIVISOR),
+        )
+        assert fetcher._get_prediction_status(bet) == "won"
+
+    def test_partial_sell_resolved_won_not_redeemed_is_pending(self) -> None:
+        """Partial sell, resolved + agent won + NOT redeemed → PENDING (carve-out)."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=0,
+        )
+        assert fetcher._get_prediction_status(bet) == "pending"
+
+    def test_partial_sell_resolved_lost_is_lost(self) -> None:
+        """Partial sell, resolved + agent lost → LOST."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.4,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=1,
+        )
+        assert fetcher._get_prediction_status(bet) == "lost"
+
+    def test_invalid_market_overrides_fully_sold(self) -> None:
+        """Invalid market → INVALID regardless of remaining shares or profit."""
+        fetcher = _make_fetcher()
+        bet = self._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=1.5,
+            allocated_cost=1.0,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=-1,
+        )
+        assert fetcher._get_prediction_status(bet) == "invalid"
+
+
+class TestSellAwareProfit:
+    """Profit calculations under sells per Design §5."""
+
+    def test_full_sell_unresolved_returns_realized_pnl(self) -> None:
+        """Fully sold, no resolution → profit = proceeds - allocated cost."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=1.5,
+            allocated_cost=1.0,
+            original_cost=1.0,
+        )
+        assert fetcher._calculate_bet_profit(bet) == 0.5
+
+    def test_full_sell_resolved_loss_returns_realized_pnl(self) -> None:
+        """Fully sold pre-resolution at a loss; profit = realized loss."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=0.8,
+            allocated_cost=1.0,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+        )
+        # Realized = 0.8 - 1.0 = -0.2; remaining=0 so no redemption.
+        result = fetcher._calculate_bet_profit(bet)
+        assert result is not None
+        assert abs(result + 0.2) < 1e-6
+
+    def test_partial_sell_won_redeemed_includes_realized_and_redemption(self) -> None:
+        """Partial sell + won + redeemed: realized + redemption on remainder."""
+        fetcher = _make_fetcher()
+        # Sold 1 of 2 shares for 0.6 (cost basis 0.5).
+        # Remainder 1 share redeems at 1 USDC (cost basis 0.5).
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=int(1.0 * USDC_DECIMALS_DIVISOR),
+        )
+        # realized = 0.1; redemption = 1.0 - 0.5 = 0.5; total = 0.6.
+        result = fetcher._calculate_bet_profit(bet)
+        assert result is not None
+        assert abs(result - 0.6) < 1e-6
+
+    def test_partial_sell_lost_returns_realized_minus_remaining_cost(self) -> None:
+        """Partial sell + lost: realized - cost_remaining."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.4,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=1,
+        )
+        # realized = -0.1; remaining cost 0.5 worthless. total = -0.6.
+        result = fetcher._calculate_bet_profit(bet)
+        assert result is not None
+        assert abs(result + 0.6) < 1e-6
+
+    def test_partial_sell_won_not_redeemed_returns_realized_only(self) -> None:
+        """Partial sell + won + not yet redeemed: profit = realized only."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=0,
+        )
+        # realized = 0.1; redemption deferred.
+        result = fetcher._calculate_bet_profit(bet)
+        assert result is not None
+        assert abs(result - 0.1) < 1e-6
+
+
+class TestSellAwareTotalPayout:
+    """total_payout field semantics per Design §6."""
+
+    def test_full_sell_total_payout_equals_realized_proceeds(self) -> None:
+        """Fully sold unresolved: total_payout = realized proceeds."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=0.0,
+            allocated_proceeds=1.5,
+            allocated_cost=1.0,
+            original_cost=1.0,
+        )
+        result = fetcher._format_single_bet(bet, "0xsafe", None)
+        assert result is not None
+        assert result["total_payout"] == 1.5
+
+    def test_partial_sell_pending_total_payout_is_realized(self) -> None:
+        """Partial-sell PENDING bet: total_payout reflects realized proceeds."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+        )
+        result = fetcher._format_single_bet(bet, "0xsafe", None)
+        assert result is not None
+        assert result["status"] == "pending"
+        assert result["total_payout"] == 0.6
+
+    def test_partial_sell_won_redeemed_total_payout_is_realized_plus_redemption(
+        self,
+    ) -> None:
+        """Partial-sell WON+redeemed: total_payout = realized + redemption value."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=1.0,
+            allocated_proceeds=0.6,
+            allocated_cost=0.5,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=int(1.0 * USDC_DECIMALS_DIVISOR),
+        )
+        result = fetcher._format_single_bet(bet, "0xsafe", None)
+        assert result is not None
+        assert result["status"] == "won"
+        # realized 0.6 + redemption value 1.0 = 1.6.
+        assert result["total_payout"] == 1.6
+
+
+class TestRedemptionValueBranches:
+    """Cover the rarer branches inside _redemption_value.
+
+    Won-unredeemed, lost, legacy fallback.
+    """
+
+    def test_won_unredeemed_returns_zero(self) -> None:
+        """Won but participant.totalPayout == 0 → no redemption yet."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=2.0,
+            allocated_proceeds=0.0,
+            allocated_cost=0.0,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=0,
+            total_payout=0,
+        )
+        fifo = fetcher._fifo_state(bet)
+        assert fetcher._redemption_value(bet, fifo) == 0.0
+
+    def test_losing_outcome_returns_zero(self) -> None:
+        """Losing outcome → remainder worthless."""
+        fetcher = _make_fetcher()
+        bet = TestHybridStatus()._enriched(
+            original_shares=2.0,
+            remaining_shares=2.0,
+            allocated_proceeds=0.0,
+            allocated_cost=0.0,
+            original_cost=1.0,
+            outcome_index=0,
+            winning_index=1,
+        )
+        fifo = fetcher._fifo_state(bet)
+        assert fetcher._redemption_value(bet, fifo) == 0.0
+
+    def test_legacy_fallback_with_shares_returns_share_value(self) -> None:
+        """Missing indices + shares > 0 → fall back to share-as-redemption signal."""
+        fetcher = _make_fetcher()
+        # Build a legacy-shaped bet: shares present, but outcomeIndex/winningIndex
+        # are missing.
+        bet = {
+            "id": "b",
+            "amount": str(USDC_DECIMALS_DIVISOR),
+            "shares": str(2 * USDC_DECIMALS_DIVISOR),
+            "totalPayout": 0,
+            "question": {
+                "id": "c",
+                "questionId": "q",
+                "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                "resolution": {"winningIndex": None, "blockTimestamp": 1700001000},
+            },
+        }
+        fifo = fetcher._fifo_state(bet)
+        # shares=2 → redemption value 2.0.
+        assert fetcher._redemption_value(bet, fifo) == 2.0
+
+
+class TestFetchBetFromSubgraphSellLookup:
+    """Single-bet fetch when bet_id matches a sell row (not a buy)."""
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
+    )
+    def test_sell_id_returns_none(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
+        """A bet_id matching a sell row yields None — sells are folded into buys.
+
+        :param mock_post: patched requests.post
+        """
+        fetcher = _make_fetcher()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {
+                "marketParticipants": [
+                    {
+                        "totalPayout": "0",
+                        "bets": [
+                            _raw_bet(
+                                "b1",
+                                is_buy=True,
+                                amount_usdc=1.0,
+                                shares=2.0,
+                                block_timestamp=1,
+                            ),
+                            _raw_bet(
+                                "s1",
+                                is_buy=False,
+                                amount_usdc=0.8,
+                                shares=2.0,
+                                block_timestamp=2,
+                            ),
+                        ],
+                    }
+                ]
+            }
+        }
+        mock_post.return_value = mock_response
+
+        result = fetcher._fetch_bet_from_subgraph("s1", "0xsafe")
+        assert result is None

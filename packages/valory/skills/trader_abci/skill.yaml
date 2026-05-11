@@ -56,13 +56,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/market_manager_abci:0.1.0:bafybeifmzg7lwbcykcvkrp36dl32vpese643ntu56rchrfgb2y27tpd7vu
-- valory/decision_maker_abci:0.1.0:bafybeifgsef64p5tgfpmjejwtjomue7ws34gikwm6flqr7c3t2lkbdgy4u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig2xlyife5fx2v6xwxijncseu6flxh55albl5wjydmvylrdwn3lxe
+- valory/decision_maker_abci:0.1.0:bafybeigteh3iarj3tbrjm6alyzgiy2hagy4jrij4wgjinww67fgwuo55ze
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia7o7gnnoaezae2fm3nzhfb4u7fyq4aj4fd6guqkljiiicyuorxwi
 - valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
-- valory/check_stop_trading_abci:0.1.0:bafybeiblyd3vybe3mntctsanv7xy3mx72c5k4hhlbnoyiuul6brhrh7bxa
+- valory/check_stop_trading_abci:0.1.0:bafybeicoy2qey43nw7iwxbar6jpyn7l6mlytzsxksj44scwvbhe6kzwj7y
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeib3736are6nfsyigw4d3zzyg6kwr6rhrkftq3soumu7r6nvelerbm
-- valory/agent_performance_summary_abci:0.1.0:bafybeieayadjemkpk7irjzql3xhsignuw454uwjv6zhk7emukyxjmd6qie
+- valory/chatui_abci:0.1.0:bafybeia3ef6csk2blnmnddqde6eufrg6f7zj3z6lhp3hvvbm5smv2dispu
+- valory/agent_performance_summary_abci:0.1.0:bafybeidj2grizk5dbh25bcedho2slujd32t5q35hkavy6ee5k6i43dweqa
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 behaviours:
   main:
