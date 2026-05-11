@@ -42,6 +42,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
     PolymarketPredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    BetStatus,
     PredictionsFetcher,
     now_ts,
     parse_current_answer,
@@ -1775,8 +1776,13 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance = yield from self._fetch_agent_performance_data()
         prediction_history = self._fetch_prediction_history()
 
+        # Filter by status, not total_payout: with sell-aware semantics,
+        # fully-sold-at-loss bets carry non-zero total_payout (realized
+        # proceeds) but should not satisfy the ROI display gate.
         winning_trades = [
-            item for item in prediction_history.items if item.get("total_payout", 0) > 0
+            item
+            for item in prediction_history.items
+            if item.get("status") == BetStatus.WON.value
         ]
         if len(winning_trades) >= MIN_TRADES_FOR_ROI_DISPLAY:
             partial_roi_string = (
