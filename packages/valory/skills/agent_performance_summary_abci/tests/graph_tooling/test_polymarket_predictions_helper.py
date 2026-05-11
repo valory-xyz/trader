@@ -399,8 +399,10 @@ class TestFormatSingleBet:
         assert result["transaction_hash"] == "0xtxhash"
 
     def test_with_resolution(self) -> None:
-        """Test formatting with resolution data."""
+        """Test formatting with resolution data — pin profit and payout values."""
         fetcher = _make_fetcher()
+        # bet 1 USDC, shares default 0 (legacy fixture). Resolution wins on
+        # outcome 0; participant totalPayout = 2 USDC means the bet redeemed.
         bet = _make_polymarket_bet(
             resolution={"blockTimestamp": 1700001000, "winningIndex": 0},  # type: ignore[arg-type]
             total_payout=str(2 * USDC_DECIMALS_DIVISOR),  # type: ignore[arg-type]
@@ -411,6 +413,12 @@ class TestFormatSingleBet:
         assert result is not None
         assert result["status"] == "won"
         assert result["settled_at"] is not None
+        # Legacy bet: original_shares=remaining_shares=0 (default fixture),
+        # so the share-driven redemption path returns 0. net_profit therefore
+        # equals -bet_amount (lost the cost basis with no redemption).
+        # total_payout = realized_proceeds (0) + redemption_value (0) = 0.
+        assert result["net_profit"] == -1.0
+        assert result["total_payout"] == 0.0
 
     def test_status_filter_match(self) -> None:
         """Test status filter matches."""
@@ -1587,7 +1595,7 @@ class TestFetchBetFromSubgraph:
         "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
     )
     def test_losing_bet_net_profit(self, mock_post: MagicMock) -> None:  # type: ignore[no-untyped-def]
-        """Test losing bet net_profit calculation."""
+        """Test losing bet net_profit calculation — pin profit, payout, status."""
         fetcher = _make_fetcher()
 
         mock_response = MagicMock()
@@ -1616,6 +1624,10 @@ class TestFetchBetFromSubgraph:
         result = fetcher._fetch_bet_from_subgraph("bet_1", "0xsafe")
 
         assert result is not None
+        # Outcome 0 lost; bet cost 1 USDC; no redemption.
+        assert result["status"] == "lost"
+        assert result["net_profit"] == -1.0
+        assert result["total_payout"] == 0.0
 
     @patch(
         "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.requests.post"
@@ -2663,7 +2675,6 @@ def _raw_bet(  # type: ignore[no-untyped-def]
         "outcomeIndex": outcome_index,
         "blockTimestamp": block_timestamp,
         "transactionHash": transaction_hash,
-        "countedInTotal": resolution is not None,
         "question": {
             "id": question_id,
             "questionId": f"qid_{question_id}",
@@ -2913,6 +2924,37 @@ class TestAllocateFifo:
         )
 
         assert buys[0]["remaining_shares"] <= SHARES_EPSILON
+
+    def test_zero_share_buy_not_pushed_to_open_buys_no_deadlock(self) -> None:
+        """Zero-share buy must appear in output but not feed the FIFO queue.
+
+        Pushing a zero-share buy onto ``open_buys`` would cause the sell-
+        consumption loop to spin forever (take = min(s, 0) = 0, no progress).
+        The guard at ``polymarket_predictions_helper.py:165`` skips it; this
+        test pins that behaviour by following the zero-share buy with a sell
+        of the same shape and asserting (a) the output contains the zero-share
+        buy row, (b) the sell logs an orphan warning (it can't match anything),
+        and (c) the call terminates.
+        """
+        fetcher = _make_fetcher()
+        bets = [
+            _raw_bet(
+                "b_zero", is_buy=True, amount_usdc=0.0, shares=0.0, block_timestamp=1
+            ),
+            _raw_bet(
+                "s1", is_buy=False, amount_usdc=0.5, shares=1.0, block_timestamp=2
+            ),
+        ]
+        # If the deadlock guard regressed this call would hang; the test
+        # framework's per-test timeout (or a manual ctrl-c) would catch it.
+        buys = fetcher._allocate_fifo(bets, participant_total_payout=0)
+        # Zero-share buy still appears in the output (one row per original buy).
+        assert len(buys) == 1
+        assert buys[0]["id"] == "b_zero"
+        assert buys[0]["original_shares"] == 0
+        assert buys[0]["remaining_shares"] == 0
+        # Sell logs an orphan warning since it can't be matched.
+        fetcher.logger.warning.assert_called()
 
 
 class TestHybridStatus:
@@ -3276,6 +3318,196 @@ class TestRedemptionValueBranches:
         fifo = fetcher._fifo_state(bet)
         # shares=2 → redemption value 2.0.
         assert fetcher._redemption_value(bet, fifo) == 2.0
+
+
+class TestInvalidMarketAttribution:
+    """Multi-buy invalid-market refund attribution per Design §5 (revised).
+
+    ``participant.totalPayout`` is one number per ``(agent, question)``. When
+    several buys exist for the same invalid market, the refund must be split
+    proportionally to each buy's remaining cost basis across the participant,
+    not pro-rated by each buy's own local fraction — otherwise the per-buy
+    redemption values sum to N x refund.
+    """
+
+    def test_two_never_sold_buys_sum_to_refund(self) -> None:
+        """2 never-sold buys @ $1 each, refund $1.5 → each buy = $0.75; sum = $1.5."""
+        fetcher = _make_fetcher()
+        invalid_resolution = {"winningIndex": -1, "blockTimestamp": 1700001000}
+        bets = [
+            _raw_bet(
+                "b1",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=1,
+                resolution=invalid_resolution,
+            ),
+            _raw_bet(
+                "b2",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=2,
+                resolution=invalid_resolution,
+            ),
+        ]
+        participant_total_payout = int(1.5 * USDC_DECIMALS_DIVISOR)
+        buys = fetcher._allocate_fifo(bets, participant_total_payout)
+        assert len(buys) == 2
+        redemption_values = [
+            fetcher._redemption_value(b, fetcher._fifo_state(b)) for b in buys
+        ]
+        # Each buy redeems for half the refund.
+        for v in redemption_values:
+            assert abs(v - 0.75) < 1e-6
+        # Sum equals the participant refund.
+        assert abs(sum(redemption_values) - 1.5) < 1e-6
+
+    def test_partial_sell_and_never_sold_combo(self) -> None:
+        """buy1 sold half ($0.50 remaining cost), buy2 never-sold ($1.0).
+
+        Refund $1.5 splits 1:2 → buy1 = $0.50, buy2 = $1.00; sum = $1.50.
+        """
+        fetcher = _make_fetcher()
+        invalid_resolution = {"winningIndex": -1, "blockTimestamp": 1700001000}
+        bets = [
+            _raw_bet(
+                "b1",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=1,
+                resolution=invalid_resolution,
+            ),
+            _raw_bet(
+                "s1",
+                is_buy=False,
+                amount_usdc=0.4,
+                shares=1.0,
+                outcome_index=0,
+                block_timestamp=2,
+                resolution=invalid_resolution,
+            ),
+            _raw_bet(
+                "b2",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=3,
+                resolution=invalid_resolution,
+            ),
+        ]
+        participant_total_payout = int(1.5 * USDC_DECIMALS_DIVISOR)
+        buys = fetcher._allocate_fifo(bets, participant_total_payout)
+        assert len(buys) == 2
+        buy1 = next(b for b in buys if b["id"] == "b1")
+        buy2 = next(b for b in buys if b["id"] == "b2")
+        rv1 = fetcher._redemption_value(buy1, fetcher._fifo_state(buy1))
+        rv2 = fetcher._redemption_value(buy2, fetcher._fifo_state(buy2))
+        # buy1 has $0.50 remaining cost (half sold), buy2 has $1.00; total = $1.50.
+        # buy1 gets 1/3 of $1.50 = $0.50; buy2 gets 2/3 = $1.00.
+        assert abs(rv1 - 0.5) < 1e-6
+        assert abs(rv2 - 1.0) < 1e-6
+        assert abs(rv1 + rv2 - 1.5) < 1e-6
+
+    def test_invalid_cost_zero_with_zero_refund_silent(self) -> None:
+        """Edge case: cost==0 + totalPayout==0 → return 0.0, no warning.
+
+        Complement to ``test_invalid_cost_zero_with_nonzero_refund_logs_warning``:
+        when there's no refund to lose, the silent drop is correct and no
+        observability signal is needed.
+        """
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "b_zero_both",
+            "outcomeIndex": 0,
+            "amount": "0",
+            "shares": "0",
+            "totalPayout": 0,
+            "question": {
+                "id": "c",
+                "questionId": "q",
+                "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                "resolution": {"winningIndex": -1, "blockTimestamp": 1700001000},
+            },
+        }
+        fifo = fetcher._fifo_state(bet)
+        result = fetcher._redemption_value(bet, fifo)
+        assert result == 0.0
+        fetcher.logger.warning.assert_not_called()
+
+    def test_invalid_cost_zero_with_nonzero_refund_logs_warning(self) -> None:
+        """Edge case: cost==0 + totalPayout>0 should drop the refund and warn.
+
+        Real Polymarket buys never have cost==0 (you can't buy shares for
+        free), so the defensive branch is guarding division-safety. The
+        warning surfaces the data-inconsistency case instead of dropping
+        money silently.
+        """
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "b_zero_cost",
+            "outcomeIndex": 0,
+            "amount": "0",
+            "shares": "0",
+            "totalPayout": int(0.5 * USDC_DECIMALS_DIVISOR),
+            "question": {
+                "id": "c",
+                "questionId": "q",
+                "metadata": {"title": "T", "outcomes": ["Yes", "No"]},
+                "resolution": {"winningIndex": -1, "blockTimestamp": 1700001000},
+            },
+        }
+        fifo = fetcher._fifo_state(bet)
+        result = fetcher._redemption_value(bet, fifo)
+        assert result == 0.0
+        fetcher.logger.warning.assert_called()
+
+    def test_two_outcomes_same_invalid_market(self) -> None:
+        """A buy on outcome 0 + a buy on outcome 1, same invalid market.
+
+        Both belong to the same participant; refund splits proportionally to
+        remaining cost across the whole participant, not per-outcome group.
+        """
+        fetcher = _make_fetcher()
+        invalid_resolution = {"winningIndex": -1, "blockTimestamp": 1700001000}
+        bets = [
+            _raw_bet(
+                "b_yes",
+                is_buy=True,
+                amount_usdc=1.0,
+                shares=2.0,
+                outcome_index=0,
+                block_timestamp=1,
+                resolution=invalid_resolution,
+            ),
+            _raw_bet(
+                "b_no",
+                is_buy=True,
+                amount_usdc=3.0,
+                shares=6.0,
+                outcome_index=1,
+                block_timestamp=2,
+                resolution=invalid_resolution,
+            ),
+        ]
+        participant_total_payout = int(2.0 * USDC_DECIMALS_DIVISOR)
+        buys = fetcher._allocate_fifo(bets, participant_total_payout)
+        assert len(buys) == 2
+        b_yes = next(b for b in buys if b["id"] == "b_yes")
+        b_no = next(b for b in buys if b["id"] == "b_no")
+        rv_yes = fetcher._redemption_value(b_yes, fetcher._fifo_state(b_yes))
+        rv_no = fetcher._redemption_value(b_no, fetcher._fifo_state(b_no))
+        # Total participant remaining cost = 1.0 + 3.0 = 4.0
+        # b_yes gets 1/4 of $2.0 = $0.50; b_no gets 3/4 = $1.50.
+        assert abs(rv_yes - 0.5) < 1e-6
+        assert abs(rv_no - 1.5) < 1e-6
+        assert abs(rv_yes + rv_no - 2.0) < 1e-6
 
 
 class TestFetchBetFromSubgraphSellLookup:

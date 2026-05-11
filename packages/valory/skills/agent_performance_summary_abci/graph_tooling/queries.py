@@ -325,7 +325,6 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       amount
       shares
       isBuy
-      countedInTotal
       blockTimestamp
       transactionHash
       question {
@@ -472,7 +471,6 @@ query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
       amount
       shares
       isBuy
-      countedInTotal
       blockTimestamp
       transactionHash
       question {

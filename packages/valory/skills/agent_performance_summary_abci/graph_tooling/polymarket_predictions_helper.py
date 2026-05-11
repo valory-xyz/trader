@@ -117,9 +117,12 @@ class PolymarketPredictionsFetcher(
 
         Returns one enriched buy dict per original buy row, with FIFO state
         fields attached: ``original_shares``, ``original_cost``,
-        ``remaining_shares``, ``allocated_proceeds``, ``allocated_cost``, and
-        ``totalPayout`` (participant-level). Sells with no matching buy are
-        logged as orphans and dropped. Bets with ``question is None`` or
+        ``remaining_shares``, ``allocated_proceeds``, ``allocated_cost``,
+        ``totalPayout`` (participant-level), and ``participant_remaining_cost``
+        (sum of remaining_cost across every enriched buy returned). The last
+        one is required to pro-rate invalid-market refunds correctly across
+        multi-buy participants. Sells with no matching buy are logged as
+        orphans and dropped. Bets with ``question is None`` or
         ``outcomeIndex is None`` lack a group key and are skipped.
 
         :param bets: raw bet dicts from one participant (mix of buys and sells)
@@ -133,11 +136,23 @@ class PolymarketPredictionsFetcher(
             question_id = question.get("id")
             outcome_index = bet.get("outcomeIndex")
             if question_id is None or outcome_index is None:
+                self.logger.warning(
+                    "Skipping bet id=%s: question_id or outcomeIndex is None "
+                    "(subgraph gap)",
+                    bet.get("id"),
+                )
                 continue
             groups[(question_id, int(outcome_index))].append(bet)
 
         output: List[Dict[str, Any]] = []
         for (question_id, outcome_index), group_bets in groups.items():
+            # Tiebreaker for same-block bets: bet.id is the subgraph's
+            # {txHash}{logIndex} encoding, so lexicographic sort on it doesn't
+            # match numeric log-index order. Same-block buy + sell pairs are
+            # rare for this agent (buys and sells happen in separate FSM
+            # rounds), so the arbitrary within-block ordering is acceptable.
+            # If this ever matters, the subgraph would need to expose a
+            # numeric logIndex on the Bet entity.
             group_bets.sort(
                 key=lambda b: (int(b.get("blockTimestamp", 0) or 0), b.get("id", ""))
             )
@@ -183,15 +198,32 @@ class PolymarketPredictionsFetcher(
                             open_buys.popleft()
 
                     if shares_to_consume > 0:
+                        unattributed_usdc = (
+                            proceeds_total
+                            * (shares_to_consume / sell_original_shares)
+                            / USDC_DECIMALS_DIVISOR
+                        )
                         self.logger.warning(
-                            "Orphan sell on (question=%s, outcomeIndex=%s): "
-                            "%s shares unmatched against any buy",
+                            "Orphan sell %s on (question=%s, outcomeIndex=%s): "
+                            "%s shares unmatched, %.4f USDC unattributed",
+                            row.get("id"),
                             question_id,
                             outcome_index,
                             shares_to_consume,
+                            unattributed_usdc,
                         )
 
             output.extend(buys_in_group)
+
+        # Stamp participant_remaining_cost on every enriched buy so the
+        # invalid-market refund branch in _redemption_value can pro-rate
+        # the (participant-level) refund across all of this participant's
+        # buys, not just within a single (question, outcomeIndex) group.
+        participant_remaining_cost = sum(
+            max(b["original_cost"] - b["allocated_cost"], 0.0) for b in output
+        )
+        for b in output:
+            b["participant_remaining_cost"] = participant_remaining_cost
 
         return output
 
@@ -335,10 +367,11 @@ class PolymarketPredictionsFetcher(
 
         For winning outcomes the agent receives 1 USDC per remaining share at
         redemption (Polymarket CTF semantics). For invalid markets the
-        participant refund is pro-rated by this buy's remaining cost basis,
-        independent of share count (refunds flow via collateral, not shares).
-        Returns 0 USDC for losing outcomes, won-but-unredeemed wins, or pre-
-        resolution rows.
+        participant refund is pro-rated by this buy's share of the
+        participant's total remaining cost basis (refunds flow via collateral,
+        not shares, and the participant refund is one number across all of an
+        agent's buys on the cancelled market). Returns 0 USDC for losing
+        outcomes, won-but-unredeemed wins, or pre-resolution rows.
 
         :param bet: enriched buy dict (must carry participant ``totalPayout``)
         :param fifo: FIFO state returned by :meth:`_fifo_state`
@@ -361,7 +394,34 @@ class PolymarketPredictionsFetcher(
 
         if winning_index is not None and int(winning_index) < 0:
             total_payout = float(bet.get("totalPayout", 0)) / USDC_DECIMALS_DIVISOR
-            return total_payout * (remaining_cost / cost) if cost > 0 else 0.0
+            # Pro-rate the participant-level refund by this buy's share of the
+            # participant's total remaining cost. Legacy callers (raw bets,
+            # not enriched by _allocate_fifo) don't carry the participant sum;
+            # fall back to this buy's own remaining cost in base units so the
+            # legacy single-buy formula collapses to today's `total_payout`
+            # answer. Stored as base units to match the rest of the FIFO state.
+            participant_remaining_cost = (
+                float(
+                    bet.get(
+                        "participant_remaining_cost",
+                        max(original_cost - allocated_cost, 0.0),
+                    )
+                )
+                / USDC_DECIMALS_DIVISOR
+            )
+            if participant_remaining_cost > 0:
+                return total_payout * (remaining_cost / participant_remaining_cost)
+            if total_payout > 0:
+                # cost == 0 is impossible for real Polymarket buys; the guard
+                # is for division-safety, but if we ever land here with money
+                # on the line, surface it instead of silently dropping.
+                self.logger.warning(
+                    "Invalid-market refund of %.4f USDC for bet %s dropped: "
+                    "participant_remaining_cost is zero (data inconsistency)",
+                    total_payout,
+                    bet.get("id"),
+                )
+            return 0.0
 
         # Share-driven redemption: nothing to redeem if no shares ever existed
         # or if everything was already sold.
@@ -369,10 +429,13 @@ class PolymarketPredictionsFetcher(
             return 0.0
 
         if outcome_index is None or winning_index is None:
-            # Indices missing — fall back to "shares > 0 implies redemption"
-            # signal used by the legacy fallback path.
-            bet_shares = float(bet.get("shares", 0) or 0) / USDC_DECIMALS_DIVISOR
-            return bet_shares if bet_shares > 0 else 0.0
+            # Indices missing — fall back to remaining-shares as the
+            # redemption signal. Equivalent to today's behaviour for legacy
+            # raw bets (where remaining_shares defaults to bet["shares"] via
+            # _fifo_state) and correct for enriched buys that have been
+            # partially sold.
+            remaining_usdc = remaining_shares / USDC_DECIMALS_DIVISOR
+            return remaining_usdc if remaining_usdc > 0 else 0.0
 
         if int(outcome_index) != int(winning_index):
             return 0.0  # losing outcome — remainder worthless
@@ -416,10 +479,12 @@ class PolymarketPredictionsFetcher(
             return realized_pnl + (redemption - remaining_cost)
 
         if outcome_index is None or winning_index is None:
-            # Legacy fallback: shares > 0 → treat as redemption; else loss.
-            bet_shares = float(bet.get("shares", 0) or 0) / USDC_DECIMALS_DIVISOR
-            if bet_shares > 0:
-                return realized_pnl + (bet_shares - remaining_cost)
+            # Legacy fallback: remaining shares > 0 → treat as redemption;
+            # else loss. Uses fifo["remaining_shares"] so partially-sold
+            # enriched buys book only the unsold portion as redemption.
+            remaining_usdc = fifo["remaining_shares"] / USDC_DECIMALS_DIVISOR
+            if remaining_usdc > 0:
+                return realized_pnl + (remaining_usdc - remaining_cost)
             return realized_pnl - remaining_cost
 
         if int(outcome_index) == int(winning_index):
@@ -452,7 +517,7 @@ class PolymarketPredictionsFetcher(
         """
         question = bet.get("question") or {}
         resolution = question.get("resolution") or {}
-        winning_index = resolution.get("winningIndex") if resolution else None
+        winning_index = resolution.get("winningIndex")
 
         if winning_index is not None and int(winning_index) < 0:
             return BetStatus.INVALID.value
@@ -844,9 +909,9 @@ class PolymarketPredictionsFetcher(
             potential_profit = (
                 market_info.get("potential_net_profit", 0) if market_info else 0
             )
-            if status == "won" or status == "invalid":
+            if status in (BetStatus.WON.value, BetStatus.INVALID.value):
                 to_win = total_payout
-            elif status == "lost":
+            elif status == BetStatus.LOST.value:
                 to_win = 0
             else:
                 # Pending - use potential profit
