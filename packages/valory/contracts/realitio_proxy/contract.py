@@ -51,4 +51,4 @@ class RealitioProxyContract(Contract):
                 num_outcomes,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))

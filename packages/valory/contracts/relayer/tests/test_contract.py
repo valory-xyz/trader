@@ -36,7 +36,9 @@ class TestRelayerContract:
         """Test building operator deposit transaction."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.encode_abi.return_value = b"\x01\x02"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        mock_contract_instance.encode_abi.return_value = "0x0102"
 
         with patch.object(
             RelayerContract,
@@ -59,7 +61,9 @@ class TestRelayerContract:
         """Test building exec transaction."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.encode_abi.return_value = b"\x03\x04"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        mock_contract_instance.encode_abi.return_value = "0x0304"
         target = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
         calldata = b"\xaa\xbb"
 

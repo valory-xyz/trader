@@ -45,7 +45,7 @@ class RelayerContract(Contract):
                 amount,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def build_exec_tx(
@@ -64,4 +64,4 @@ class RelayerContract(Contract):
                 data,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))

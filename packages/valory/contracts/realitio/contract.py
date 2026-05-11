@@ -246,7 +246,7 @@ class RealitioContract(Contract):
             abi_element_identifier="claimWinnings",
             args=(question_id, *claim_params),
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def simulate_claim_winnings(
@@ -497,7 +497,7 @@ class RealitioContract(Contract):
                 max_previous,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def balance_of(
@@ -522,4 +522,4 @@ class RealitioContract(Contract):
         data = contract.encode_abi(
             abi_element_identifier="withdraw",
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
