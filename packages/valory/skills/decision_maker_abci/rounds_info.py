@@ -292,8 +292,13 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "omen_withdraw_round": {
-        "name": "Withdrawing from Omen (defensive halt)",
-        "description": "Defensive stub: Omen withdrawal is not implemented; this round logs a warning and routes to the idle round so the agent halts cleanly.",
+        "name": "Selling all Omen positions",
+        "description": "Sells every held outcome-token position on Omen by bundling per-position (setApprovalForAll, FPMM.sell) calls into one Safe multisend; calcSellAmount halve-retry keeps the sweep within the slippage headroom.",
+        "transitions": {},
+    },
+    "post_omen_withdraw_round": {
+        "name": "Recording Omen sell receipts",
+        "description": "Parses the settled Omen sweep transaction, decoding each FPMMSell event into a fill record; routes to the idle round once the receipts are persisted.",
         "transitions": {},
     },
     "withdrawal_idle_round": {

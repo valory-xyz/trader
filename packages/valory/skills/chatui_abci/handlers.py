@@ -21,7 +21,6 @@
 
 import copy
 import json
-from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
@@ -629,22 +628,6 @@ class HttpHandler(BaseHttpHandler):
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Handle POST /api/v1/withdrawal — arm withdrawal mode (idempotent)."""
-        if not self.context.params.is_running_on_polymarket:
-            # D27: reject on Omenstrat — withdrawal not yet implemented for Omen.
-            self._send_http_response(
-                http_msg,
-                http_dialogue,
-                {
-                    "error": (
-                        "Withdrawal mode is not yet supported on Omenstrat. "
-                        "Polymarket-only feature in the current release."
-                    )
-                },
-                HTTPStatus.NOT_IMPLEMENTED.value,
-                HTTPStatus.NOT_IMPLEMENTED.phrase,
-            )
-            return
-
         cfg = self.shared_state.chatui_config
         if cfg.withdrawal_state == WITHDRAWAL_STATE_IDLE:
             cfg.withdrawal_mode = True

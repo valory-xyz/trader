@@ -70,6 +70,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_wrap_colla
 from packages.valory.skills.decision_maker_abci.behaviours.post_bet_update import (
     PostBetUpdateBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.post_omen_withdraw import (
+    PostOmenWithdrawBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
     RandomnessBehaviour,
@@ -118,4 +121,5 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketWithdrawBehaviour,  # type: ignore
         PolymarketWrapCollateralBehaviour,  # type: ignore
         OmenWithdrawBehaviour,  # type: ignore
+        PostOmenWithdrawBehaviour,  # type: ignore
     }
