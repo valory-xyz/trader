@@ -293,7 +293,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - mock tx: 39.
         37. PostOmenWithdrawRound
             - withdrawal done: 39.
-            - withdrawal round timeout: 37.
+            - withdrawal round timeout: 39.
             - no majority: 37.
             - none: 37.
         38. FinishedOmenWithdrawRound
