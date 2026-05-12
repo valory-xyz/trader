@@ -330,7 +330,8 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
                 # for display. The OmenWithdrawBehaviour planning step
                 # captures the decimal position id in its error records;
                 # fills only need the venue-specific identifier pair.
-                "token_id": "",
+                "token_id": "",  # nosec B105
+                # ↑ empty placeholder, not a credential — see comment above.
                 "shares_sold": shares_sold,
                 "fill_price": fill_price,
                 "ts": int(time.time()),

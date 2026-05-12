@@ -65,10 +65,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeienmgabr5areozbhwhzexxcgckbs3dktj7fmvytcms4cw2skrfq7y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih4uh7kov55we2ap3wvezdorebxkyvyfytswu43fb2tjflgxi6j7u
 - valory/market_manager_abci:0.1.0:bafybeihfs6pzizqxtnulckswmmfcxml2fp6qgaom36sytyyhmylrl47dzi
-- valory/decision_maker_abci:0.1.0:bafybeieykngtyiwagnuk24gp3eejbu2g5rpvtw6t3dzzuigyi7iqowgg3y
-- valory/trader_abci:0.1.0:bafybeibj3ilnk5spceoz52urjflo5juvnilcps75kjul3nqm5ilt3uefey
+- valory/decision_maker_abci:0.1.0:bafybeidmfdzhnddlimokhy5npju5hmcnre33zaea52qosvziegn4elbcam
+- valory/trader_abci:0.1.0:bafybeifsfzbbywqfe26fgpx6s73atph7njr57fx5dtnhp5ggbus3gdo654
 - valory/staking_abci:0.1.0:bafybeibruevnamvpuryql7d7simokhawzciihhg2rv7db7hgadtpaxzxlm
 - valory/check_stop_trading_abci:0.1.0:bafybeifuwxlgpcruannmbxafpwqehntpcyq6podefw6t6tx277vyyvlkj4
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
