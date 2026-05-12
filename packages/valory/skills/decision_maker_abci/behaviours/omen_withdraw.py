@@ -64,6 +64,11 @@ WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 # Cap on halving attempts when the marginal-price-derived returnAmount
 # overshoots the slippage-headroom invariant ``n_estimate*(1+slip) <= B``.
 MAX_SIZING_ATTEMPTS = 5
+# Integer fraction denominator for slippage. Lets ``inflate_for_slippage``
+# stay integer-only on wei amounts (float multiplication past 2^53 ≈
+# 0.009 wxDAI loses precision). Nine decimal digits is well past the
+# precision any operator-configurable slippage would have meaning at.
+_SLIPPAGE_DENOMINATOR = 10**9
 
 
 def inflate_for_slippage(amount: int, slippage: float) -> int:
@@ -74,15 +79,28 @@ def inflate_for_slippage(amount: int, slippage: float) -> int:
     want a safe upper bound on how many shares we'd surrender, so the
     rounding direction must inflate, not shrink).
 
-    :param amount: the base amount (e.g. ``calcSellAmount`` output).
+    Implemented with integer-only math: ``slippage`` is converted to a
+    ``1e9``-denominator integer fraction at the function boundary, so
+    the per-amount multiplication stays inside Python's arbitrary-
+    precision int and never loses wei precision past 2^53.
+
+    :param amount: the base amount (e.g. ``calcSellAmount`` output, in
+        base units / wei).
     :param slippage: fraction in [0, 1].
-    :return: ``int(amount * (1 + slippage)) + 1`` (the ``+1`` forces
-        round-up so even a 0% slippage still strictly exceeds ``amount``,
-        guarding against integer-floor under-shoot).
+    :return: ``ceil(amount * (1 + slippage)) + 1`` (the trailing ``+1``
+        forces a strict ceiling so even a 0% slippage exceeds ``amount``,
+        guarding against integer-floor under-shoot in the calling
+        slippage-headroom invariant).
     """
     if not 0 <= slippage <= 1:
         raise ValueError(f"slippage {slippage!r} must be in [0, 1]")
-    return int(amount * (1 + slippage)) + 1
+    slippage_num = int(slippage * _SLIPPAGE_DENOMINATOR)
+    # Ceiling division for the slippage portion:
+    #   ceil(amount * slippage_num / _SLIPPAGE_DENOMINATOR)
+    extra = (
+        amount * slippage_num + _SLIPPAGE_DENOMINATOR - 1
+    ) // _SLIPPAGE_DENOMINATOR
+    return amount + extra + 1
 
 
 class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -166,11 +184,22 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         batches: List[MultisendBatch] = []
         planned_fpmms: List[str] = []
+        # ``setApprovalForAll`` is per-(safe, operator), not per-position.
+        # A safe holding two outcomes on the same FPMM only needs one
+        # approval; skip the redundant call on subsequent positions for
+        # the same FPMM to save gas.
+        approved_fpmms: set = set()
         for position in sellable:
-            position_batches = yield from self._size_and_build_position(position)
+            fpmm_key = position.fpmm_address.lower()
+            include_approval = fpmm_key not in approved_fpmms
+            position_batches = yield from self._size_and_build_position(
+                position, include_approval=include_approval
+            )
             if position_batches is not None:
                 batches.extend(position_batches)
                 planned_fpmms.append(position.fpmm_address)
+                if include_approval:
+                    approved_fpmms.add(fpmm_key)
 
         if not batches:
             self.context.logger.info(
@@ -263,7 +292,9 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     # ------------------------------------------------------------------ #
 
     def _size_and_build_position(
-        self, position: WithdrawablePosition
+        self,
+        position: WithdrawablePosition,
+        include_approval: bool = True,
     ) -> Generator[None, None, Optional[List[MultisendBatch]]]:
         """Size the per-position sell and return the (approve, sell) batches.
 
@@ -272,8 +303,13 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         reverts); the caller continues with the next position.
 
         :param position: a single :class:`WithdrawablePosition` row.
+        :param include_approval: when ``False``, the leading
+            ``setApprovalForAll`` batch is omitted (caller already
+            approved this FPMM earlier in the sweep). ``setApprovalForAll``
+            is per-(safe, operator), not per-position, so subsequent
+            outcomes on the same FPMM don't need a second approval.
         :yield: framework yields for the on-chain reads.
-        :return: a list with exactly two ``MultisendBatch`` entries
+        :return: a list with one or two ``MultisendBatch`` entries
             (``setApprovalForAll`` + ``sell``), or ``None`` to drop.
         """
         slip = self.context.params.withdrawal_slippage
@@ -358,12 +394,16 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             inflate_for_slippage(n_estimate, slip), position.balance
         )
 
-        approval_batch = yield from self._build_set_approval_batch(
-            position.fpmm_address
-        )
-        if approval_batch is None:
-            self._store.record_error(position, "failed to encode setApprovalForAll")
-            return None
+        approval_batch: Optional[MultisendBatch] = None
+        if include_approval:
+            approval_batch = yield from self._build_set_approval_batch(
+                position.fpmm_address
+            )
+            if approval_batch is None:
+                self._store.record_error(
+                    position, "failed to encode setApprovalForAll"
+                )
+                return None
 
         sell_batch = yield from self._build_sell_batch(
             position, return_amount, max_outcome_tokens_to_sell
@@ -377,6 +417,8 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"{position.outcome_index} return={return_amount} max_tokens="
             f"{max_outcome_tokens_to_sell}"
         )
+        if approval_batch is None:
+            return [sell_batch]
         return [approval_batch, sell_batch]
 
     # ------------------------------------------------------------------ #

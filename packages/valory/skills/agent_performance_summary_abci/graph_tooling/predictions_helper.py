@@ -1128,8 +1128,23 @@ class PredictionsFetcher(BasePredictionsFetcher):
         enriched_buys = self._allocate_fifo(bets)
         market_ctx = self._build_market_context(enriched_buys)
 
+        # The allocator orders buys ASC-by-ts WITHIN each (fpmm,
+        # outcomeIndex) group (FIFO requires that), and the groups
+        # themselves follow input-arrival order. The pre-allocator path
+        # returned the bets DESC-by-ts (subgraph query default), and the
+        # FE display sorts newest-first off this list. Restore the
+        # DESC-by-ts order at the consumer boundary so the allocator's
+        # internal ordering invariant is preserved without leaking into
+        # the formatted output.
+        enriched_buys.sort(
+            key=lambda b: int(
+                b.get("blockTimestamp", b.get("timestamp", 0)) or 0
+            ),
+            reverse=True,
+        )
+
         items: List[Dict] = []
-        for bet in enriched_buys:  # ordered chronologically by FIFO output
+        for bet in enriched_buys:
             fpmm = bet.get("fixedProductMarketMaker", {}) or {}
             fpmm_id = fpmm.get("id")
             ctx = market_ctx.get(fpmm_id) if fpmm_id is not None else None
@@ -1212,10 +1227,22 @@ class PredictionsFetcher(BasePredictionsFetcher):
             )
 
             participant = entry["participant"] or {}
+            # Subgraph ``MarketParticipant.totalPayout`` and ``totalTraded``
+            # are ``BigInt!`` (raw wei). Normalise to wxDAI here so the
+            # consumer (``_calculate_bet_net_profit``) can multiply against
+            # unitless wxDAI ratios (``remaining_cost /
+            # participant_remaining_cost``) without a 1e18 scale error.
+            # Mirrors the specific-market path which already scales
+            # ``totalPayout`` / ``totalTraded`` / ``totalFees`` by
+            # ``WEI_TO_NATIVE`` at construction time.
             if entry["total_payout"] is None:
-                entry["total_payout"] = float(participant.get("totalPayout", 0))
+                entry["total_payout"] = (
+                    float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
+                )
             if entry["total_traded"] is None:
-                entry["total_traded"] = float(participant.get("totalTraded", 0))
+                entry["total_traded"] = (
+                    float(participant.get("totalTraded", 0)) / WEI_TO_NATIVE
+                )
 
             # Use the FIFO ``remaining_cost`` instead of the raw signed
             # ``amount``: prior to FIFO this summed any sell row's

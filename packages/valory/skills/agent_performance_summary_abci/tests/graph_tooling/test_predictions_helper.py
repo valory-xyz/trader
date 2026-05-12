@@ -1347,6 +1347,50 @@ class TestFormatPredictions:
 
         assert len(result) == 2
 
+    def test_output_ordered_desc_by_blocktimestamp(self) -> None:
+        """``_format_predictions`` output is DESC-by-blockTimestamp.
+
+        The FIFO allocator orders bets ASC-by-ts within each (fpmm,
+        outcomeIndex) group, then concatenates groups in input-arrival
+        order — neither preserves the strict DESC-by-ts ordering the FE
+        relies on for "newest first" display. The formatter re-sorts
+        at the consumer boundary; this test guards against the
+        post-FIFO ordering regression.
+        """
+        fetcher = _make_fetcher()
+        # 3 bets on 2 different FPMMs at distinct timestamps.
+        bets = [
+            _make_bet(
+                bet_id="old_on_a",
+                fpmm_id="market_a",
+                timestamp="1700000100",
+            ),
+            _make_bet(
+                bet_id="new_on_b",
+                fpmm_id="market_b",
+                timestamp="1700000300",
+            ),
+            _make_bet(
+                bet_id="mid_on_a",
+                fpmm_id="market_a",
+                timestamp="1700000200",
+            ),
+        ]
+        # Each bet needs blockTimestamp for the sort to pick it up
+        # (the timestamp helper field defaults to "0" otherwise).
+        for b, ts in (
+            (bets[0], "1700000100"),
+            (bets[1], "1700000300"),
+            (bets[2], "1700000200"),
+        ):
+            b["blockTimestamp"] = ts
+
+        result = fetcher._format_predictions(bets, "0xsafe")
+
+        # DESC-by-ts: newest first.
+        ids_in_order = [r["id"] for r in result]
+        assert ids_in_order == ["new_on_b", "mid_on_a", "old_on_a"]
+
     def test_none_fpmm(self) -> None:
         """Bets with None fpmm are filtered out by the FIFO allocator.
 
@@ -1423,6 +1467,33 @@ class TestBuildMarketContext:
         ctx = fetcher._build_market_context(bets)
 
         assert ctx["market_1"]["winning_total_amount"] == 0.0
+
+    def test_total_payout_normalised_to_wxdai(self) -> None:
+        """Subgraph ``totalPayout`` arrives as raw wei; ctx stores wxDAI.
+
+        Pre-fix this field was stored verbatim, so the consumer
+        (``_calculate_bet_net_profit`` line 1365) multiplied a wei
+        scalar against a unitless wxDAI ratio and got a ~1e18×
+        inflated refund. Tests with hand-built ``ctx`` dicts didn't
+        catch it because they injected ``total_payout = 2.0`` directly.
+        """
+        fetcher = _make_fetcher()
+        # 5 wxDAI in raw wei.
+        bets = [
+            _make_bet(
+                participants=[
+                    {
+                        "totalPayout": str(5 * WEI_TO_NATIVE),
+                        "totalTraded": str(10 * WEI_TO_NATIVE),
+                        "totalFees": "0",
+                        "totalBets": 1,
+                    }
+                ]
+            )
+        ]
+        ctx = fetcher._build_market_context(bets)
+        assert ctx["market_1"]["total_payout"] == 5.0
+        assert ctx["market_1"]["total_traded"] == 10.0
 
     def test_invalid_answer_not_accumulated(self) -> None:
         """Test that invalid answers are not accumulated."""

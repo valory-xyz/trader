@@ -2732,6 +2732,104 @@ class TestOmenWithdrawBehaviourSurface:
         with pytest.raises(ValueError):
             inflate_for_slippage(100, 1.01)
 
+    def test_size_and_build_skips_approval_when_requested(self) -> None:
+        """``include_approval=False`` omits the ``setApprovalForAll`` batch.
+
+        ``setApprovalForAll`` is per-(safe, operator), not per-position.
+        A safe holding two outcomes on the same FPMM doesn't need a
+        second approval, so the second call to
+        ``_size_and_build_position`` for that FPMM passes
+        ``include_approval=False`` and gets a single-element list back.
+        """
+        from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+            OmenWithdrawBehaviour,
+        )
+        from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+            WithdrawablePosition,
+        )
+
+        behaviour = object.__new__(OmenWithdrawBehaviour)
+        mock_context = MagicMock()
+        mock_context.logger = MagicMock()
+        mock_context.params.withdrawal_slippage = 0.01
+        mock_context.params.withdrawal_return_buffer = 0.05
+        mock_context.params.dust_epsilon_wxdai = 0
+        behaviour._context = mock_context  # type: ignore[attr-defined]
+        behaviour._store_cache = MagicMock()  # type: ignore[attr-defined]
+
+        # Stub the per-position dependencies so the sizing loop converges.
+        def fake_pool(_p: Any) -> Generator[None, None, Optional[List[int]]]:
+            return [10**20, 10**20]
+            yield  # pragma: no cover
+
+        def fake_calc(
+            _fpmm: str, return_amount: int, _outcome: int
+        ) -> Generator[None, None, Optional[int]]:
+            return return_amount * 2  # always under headroom cap
+            yield  # pragma: no cover
+
+        def fake_approval(_fpmm: str) -> Generator[None, None, Any]:
+            return MagicMock(name="approval_batch")
+            yield  # pragma: no cover
+
+        def fake_sell(*_a: Any, **_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(name="sell_batch")
+            yield  # pragma: no cover
+
+        behaviour._read_pool_balances = fake_pool  # type: ignore[assignment]
+        behaviour._calc_sell_amount_static = fake_calc  # type: ignore[assignment]
+        behaviour._build_set_approval_batch = fake_approval  # type: ignore[assignment]
+        behaviour._build_sell_batch = fake_sell  # type: ignore[assignment]
+
+        position = WithdrawablePosition(
+            fpmm_address="0xfpmm",
+            outcome_index=0,
+            balance=10**18,
+            condition_id="0x" + "a1" * 32,
+            index_set=1,
+            token_id="1",
+        )
+
+        def drive(gen: Generator) -> Any:
+            try:
+                while True:
+                    next(gen)
+            except StopIteration as exc:
+                return exc.value
+
+        with_approval = drive(
+            behaviour._size_and_build_position(position, include_approval=True)
+        )
+        assert with_approval is not None and len(with_approval) == 2
+
+        without_approval = drive(
+            behaviour._size_and_build_position(position, include_approval=False)
+        )
+        assert without_approval is not None and len(without_approval) == 1
+
+    def test_inflate_for_slippage_int_math_at_wei_scale(self) -> None:
+        """Ceiling holds for wei-scale amounts past 2^53.
+
+        Pre-fix the helper did ``int(amount * (1 + slippage)) + 1`` —
+        float multiplication on wei amounts beyond ~9e15 (~0.009 wxDAI)
+        loses precision. With integer math, the ceiling invariant
+        ``result > amount * (1 + slippage)`` holds exactly for any
+        Python-int amount.
+        """
+        from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+            inflate_for_slippage,
+        )
+
+        # 1000 wxDAI position = 1e21 wei. Well past float53.
+        big_amount = 10**21
+        out = inflate_for_slippage(big_amount, 0.01)
+        # Integer-exact lower bound: ceil(big_amount * 0.01) + 1.
+        # With slippage_num = 10**7 (= 0.01 * 1e9), extra = ceil(1e21 * 1e7 / 1e9) = 1e19.
+        # Total = big_amount + 1e19 + 1.
+        assert out == big_amount + 10**19 + 1
+        # Must strictly exceed amount.
+        assert out > big_amount
+
 
 # ---------------------------------------------------------------------------
 # Cross-skill composition
