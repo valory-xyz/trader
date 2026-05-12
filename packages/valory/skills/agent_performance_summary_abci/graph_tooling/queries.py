@@ -111,6 +111,7 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
       fixedProductMarketMaker {
         id
         currentAnswer
+        conditionIds
       }
     }
   }

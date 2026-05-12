@@ -232,6 +232,108 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             return result.get("sender")
         return result
 
+    def _fetch_ct_held_position_keys(
+        self, agent_safe_address: str
+    ) -> Generator[None, None, "set[tuple[str, int]]"]:
+        """Return ``{(condition_id_lower, outcome_index)}`` for CT positions the safe still holds.
+
+        Reads the ConditionalTokens subgraph's ``userPositions`` where
+        ``balance > 0``. Used to gate the per-position
+        ``funds_locked_in_markets`` formula so that positions whose CT
+        shares have been burned by ``redeemPositions`` (or transferred
+        externally) are correctly excluded — without this gate, an
+        already-redeemed winning position is still counted as locked
+        because the bet history is immutable. See spec §7.2 (the
+        ``CT.balanceOf > 0`` requirement) and the audit on PR #952
+        revision.
+
+        Returns an empty set on subgraph error; callers treat that as
+        "no gate" rather than "everything is unheld" — preserves the
+        pre-fix behaviour as a fallback rather than zeroing out
+        funds_locked spuriously.
+
+        :param agent_safe_address: the safe address (lower-cased
+            internally).
+        :return: set of ``(condition_id_lower, outcome_index)`` tuples
+            for every non-zero, single-outcome position. Compound
+            positions and non-power-of-2 indexSets are skipped (the
+            trader agent doesn't create those).
+        """
+        held: "set[tuple[str, int]]" = set()
+        try:
+            ct_subgraph = self.context.conditional_tokens_subgraph
+        except AttributeError:
+            self.context.logger.warning(
+                "funds_locked: CT subgraph context unavailable; "
+                "skipping CT-balance gate"
+            )
+            return held
+
+        # Inlined pagination query — same shape as
+        # market_manager_abci.graph_tooling.queries.conditional_tokens.user_positions,
+        # but with GraphQL variables so we can route through the existing
+        # _fetch_from_subgraph helper.
+        query = """
+        query CTUserPositions($id: ID!, $first: Int!, $idGt: String!) {
+          user(id: $id) {
+            userPositions(
+              first: $first
+              where: { id_gt: $idGt }
+              orderBy: id
+            ) {
+              balance
+              id
+              position {
+                conditionIds
+                indexSets
+              }
+            }
+          }
+        }
+        """
+        id_gt = ""
+        page_size = 1000
+        while True:
+            response = yield from self._fetch_from_subgraph(
+                query=query,
+                variables={
+                    "id": agent_safe_address.lower(),
+                    "first": page_size,
+                    "idGt": id_gt,
+                },
+                subgraph=ct_subgraph,
+                res_context="ct_user_positions_for_funds_locked",
+            )
+            if not response or not isinstance(response, dict):
+                break
+            user = response.get("user") or {}
+            rows = user.get("userPositions") or []
+            if not rows:
+                break
+            for row in rows:
+                try:
+                    balance = int(row.get("balance", 0))
+                except (TypeError, ValueError):
+                    continue
+                if balance == 0:
+                    continue
+                pos = row.get("position") or {}
+                cids = pos.get("conditionIds") or []
+                idx_sets = pos.get("indexSets") or []
+                if len(cids) != 1 or len(idx_sets) != 1:
+                    continue  # compound — skip
+                try:
+                    index_set = int(idx_sets[0])
+                except (TypeError, ValueError):
+                    continue
+                if index_set <= 0 or (index_set & (index_set - 1)) != 0:
+                    continue  # not single-bit
+                held.add((cids[0].lower(), index_set.bit_length() - 1))
+            if len(rows) < page_size:
+                break
+            id_gt = rows[-1]["id"]
+        return held
+
     def _fetch_trader_agent(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:

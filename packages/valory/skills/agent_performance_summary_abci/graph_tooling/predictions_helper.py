@@ -127,31 +127,51 @@ def compute_funds_locked_from_bets(
     bets: List[Dict[str, Any]],
     context: Any,
     logger: Any,
+    held_keys: Optional["set[tuple[str, int]]"] = None,
 ) -> float:
     """Per-position ``funds_locked_in_markets`` for Omenstrat (spec §7.2).
 
     FIFO-allocates the bet history, drops buys on resolved-and-losing
-    markets (shares are worthless), and sums the remaining cost basis in
-    wxDAI. Bound by the same FIFO allocator and resolution-detection
-    helpers that drive the per-bet PnL math, so the value the FE
-    displays as "locked" stays consistent with what the prediction-
-    history rows show as "remaining cost" per bet.
+    markets (shares are worthless) and — when ``held_keys`` is provided
+    — also drops buys whose CT shares have already been burned by
+    ``redeemPositions``. Sums the remaining cost basis in wxDAI on
+    what's left.
 
-    Shared between the normal perf-summary round (which sees the agent's
-    bet history end-to-end) and the post-withdrawal snapshot hook in
-    ``decision_maker_abci.PostOmenWithdrawBehaviour`` (which uses the
-    same data path to bridge the indexer-lag gap between settlement and
-    the next normal perf-summary refresh — spec §7.3 / §10.13.3).
+    Shared between the normal perf-summary round (which sees the
+    agent's bet history end-to-end) and the post-withdrawal snapshot
+    hook in ``decision_maker_abci.PostOmenWithdrawBehaviour`` (which
+    uses the same data path to bridge the indexer-lag gap between
+    settlement and the next normal perf-summary refresh — spec §7.3 /
+    §10.13.3).
+
+    The ``held_keys`` gate is the critical correction over the initial
+    Phase 3B release: trade-history FIFO alone counts a redeemed
+    winning position as locked (the bet row is immutable, and FIFO
+    doesn't see the CT.balanceOf burn from ``CT.redeemPositions``).
+    Discovered on PR #952's first live run: a safe with 0 actual
+    recoverable value reported ~110 wxDAI locked. With the gate,
+    redeemed positions correctly drop out.
+
+    Per spec §7.2, requires the bet's ``fixedProductMarketMaker`` to
+    carry ``conditionIds`` so we can key the gate by
+    ``(conditionId, outcomeIndex)`` — the same key shape the CT
+    subgraph's ``userPositions`` exposes.
 
     :param bets: subgraph ``bets`` array — must carry at least
         ``amount``, ``outcomeTokenAmount``, ``blockTimestamp``,
-        ``outcomeIndex`` and ``fixedProductMarketMaker.{id, currentAnswer}``
-        on each row.
-    :param context: skill ``Context`` (passed through to ``PredictionsFetcher``
-        for subgraph and logging dependencies).
+        ``outcomeIndex`` and ``fixedProductMarketMaker.{id,
+        currentAnswer, conditionIds}``.
+    :param context: skill ``Context`` (passed through to
+        ``PredictionsFetcher`` for subgraph and logging dependencies).
     :param logger: logger to attach to the fetcher.
-    :return: wxDAI total of remaining cost on open / WINNING / PENDING /
-        FROZEN positions; 0.0 for an empty bet list.
+    :param held_keys: optional set of ``(condition_id_lower,
+        outcome_index)`` tuples representing positions the safe still
+        holds on-chain (``CT.balanceOf > 0``). When provided, bets
+        whose position is NOT in this set are excluded. When ``None``
+        (legacy callers / fallback on subgraph error), no gate is
+        applied — same behaviour as the initial release.
+    :return: wxDAI total of remaining cost on currently-held,
+        non-LOSING positions; 0.0 for an empty bet list.
     """
     if not bets:
         return 0.0
@@ -173,6 +193,22 @@ def compute_funds_locked_from_bets(
             ):
                 # Resolved-and-losing — shares are worthless.
                 continue
+
+        if held_keys is not None:
+            condition_ids = fpmm.get("conditionIds") or []
+            if len(condition_ids) != 1:
+                # Compound or missing — can't key the gate; skip
+                # conservatively (better to under-report than count an
+                # already-redeemed position as locked).
+                continue
+            outcome_index = buy.get("outcomeIndex")
+            if outcome_index is None:
+                continue
+            key = (str(condition_ids[0]).lower(), int(outcome_index))
+            if key not in held_keys:
+                # Position already redeemed / transferred / never held.
+                continue
+
         remaining = float(buy.get("original_cost", 0.0)) - float(
             buy.get("allocated_cost", 0.0)
         )

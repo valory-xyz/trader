@@ -772,8 +772,8 @@ class FetchPerformanceSummaryBehaviour(
                 total_traded - total_traded_settled
             ) / token_divisor
         else:
-            funds_locked_in_markets = self._compute_omen_funds_locked(
-                trader_agent
+            funds_locked_in_markets = yield from self._compute_omen_funds_locked(
+                trader_agent, safe_address
             )
 
         # Get available funds
@@ -810,22 +810,34 @@ class FetchPerformanceSummaryBehaviour(
             unplaced_mech_request_count=unplaced_mech_requests,
         )
 
-    def _compute_omen_funds_locked(self, trader_agent: dict) -> float:
+    def _compute_omen_funds_locked(
+        self, trader_agent: dict, safe_address: str
+    ) -> Generator[None, None, float]:
         """Per-position funds-locked-in-markets for Omenstrat (spec §7.2).
 
-        Thin wrapper over :func:`compute_funds_locked_from_bets` —
-        shared with the post-withdrawal snapshot hook in
+        Fetches the CT-balance "held" set first so already-redeemed
+        positions drop out of the trade-history-FIFO sum. Shared with
+        the post-withdrawal snapshot hook in
         ``decision_maker_abci.PostOmenWithdrawBehaviour`` so both
         writers produce the same scalar.
 
         :param trader_agent: the dict returned by
             ``_fetch_trader_agent_performance`` for Omenstrat.
-        :return: wxDAI total of remaining cost on open / WINNING /
-            PENDING / FROZEN positions.
+        :param safe_address: the agent's safe address (used as the CT
+            subgraph ``userPositions`` key).
+        :yield: framework yields for the CT subgraph fetch.
+        :return: wxDAI total of remaining cost on currently-held,
+            non-LOSING positions.
         """
         bets = trader_agent.get("bets") or []
+        held_keys = yield from self._fetch_ct_held_position_keys(
+            safe_address
+        )
         return compute_funds_locked_from_bets(
-            bets, self.context, self.context.logger
+            bets,
+            self.context,
+            self.context.logger,
+            held_keys=held_keys,
         )
 
     def _get_pol_to_usdc_rate(

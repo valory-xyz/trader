@@ -2820,6 +2820,7 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
         mock_synced.safe_contract_address = "0xSAFE"
 
         # Fixture: one open buy of 2.5 wxDAI; remaining_cost = 2.5.
+        condition_id = "0x" + "a1" * 32
         trader_agent = {
             "bets": [
                 {
@@ -2831,6 +2832,7 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
                     "fixedProductMarketMaker": {
                         "id": "0xa1",
                         "currentAnswer": None,
+                        "conditionIds": [condition_id],
                     },
                 }
             ]
@@ -2839,6 +2841,10 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
         def fake_fetch(_safe: str) -> Generator[Any, None, dict]:
             return trader_agent
             yield  # pragma: no cover — generator-shape preservation
+
+        def fake_held(_safe: str) -> Generator[Any, None, set]:
+            return {(condition_id.lower(), 0)}
+            yield  # pragma: no cover
 
         with patch.object(
             type(behaviour),
@@ -2849,6 +2855,10 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
             behaviour,
             "_fetch_trader_agent_performance",
             side_effect=fake_fetch,
+        ), patch.object(
+            behaviour,
+            "_fetch_ct_held_position_keys",
+            side_effect=fake_held,
         ):
             list(behaviour._snapshot_funds_locked())
 

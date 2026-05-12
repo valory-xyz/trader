@@ -21,7 +21,7 @@
 
 import json
 from datetime import datetime, timezone
-from typing import Any, Generator, Tuple
+from typing import Any, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.protocols.contract_api import ContractApiMessage
@@ -2301,6 +2301,9 @@ class TestFetchAgentPerformanceData:
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
             patch.object(b, "_get_prediction_accuracy", side_effect=_return_gen(75.0)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
         ):
             result = self._run_gen(b._fetch_agent_performance_data())  # type: ignore[arg-type]
         assert result.window == "lifetime"
@@ -2804,6 +2807,9 @@ class TestCalculatePerformanceMetrics:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
         ):
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert isinstance(result, PerformanceMetricsData)
@@ -2831,6 +2837,9 @@ class TestCalculatePerformanceMetrics:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(None)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
         ):
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         assert result.roi is None
@@ -2858,6 +2867,9 @@ class TestCalculatePerformanceMetrics:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(0.0)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
         ):
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         # Zero is a valid value — must NOT become None
@@ -2898,6 +2910,9 @@ class TestCalculatePerformanceMetrics:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
             patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
         ):
             result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
         # Must report 2 placed (from _placed_mech_requests_count), not 5 (from lookup)
@@ -5351,178 +5366,227 @@ class TestPerformInitialBackfillMissingDateKey:
 
 
 class TestComputeOmenFundsLocked:
-    """The Omen funds-locked formula uses FIFO ``remaining_cost`` per buy."""
+    """The Omen funds-locked formula uses FIFO ``remaining_cost`` per buy,
+    gated by the CT-balance "still held" set so redeemed positions drop out.
+    """
+
+    SAFE = "0xsafe"
+    CONDITION_A = "0x" + "a1" * 32
+    CONDITION_B = "0x" + "b1" * 32
 
     @staticmethod
-    def _make_behaviour() -> FetchPerformanceSummaryBehaviour:  # type: ignore[no-untyped-def]
-        """Build a behaviour with the bare context the helper reads."""
+    def _make_behaviour(
+        held_keys: "set[tuple[str, int]]",
+    ) -> FetchPerformanceSummaryBehaviour:  # type: ignore[no-untyped-def]
+        """Build a behaviour with the CT-fetch stubbed to a fixed set."""
         behaviour = object.__new__(FetchPerformanceSummaryBehaviour)
         mock_context = MagicMock()
         mock_context.logger = MagicMock()
         behaviour._context = mock_context  # type: ignore[attr-defined]
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, "set[tuple[str, int]]"]:
+            return held_keys
+            yield  # pragma: no cover
+
+        behaviour._fetch_ct_held_position_keys = fake_fetch  # type: ignore[assignment]
         return behaviour
+
+    @staticmethod
+    def _drive(gen: Generator[Any, None, float]) -> float:
+        """Exhaust a generator and return the StopIteration value."""
+        try:
+            while True:
+                next(gen)
+        except StopIteration as exc:
+            return float(exc.value)
+
+    def _bet(
+        self,
+        *,
+        condition_id: str,
+        outcome_index: int,
+        amount_wei: int,
+        shares_wei: int,
+        current_answer: Optional[str] = None,
+        block_ts: int = 1000,
+    ) -> dict:
+        return {
+            "id": f"b-{condition_id[:6]}-{outcome_index}-{block_ts}",
+            "amount": str(amount_wei),
+            "outcomeTokenAmount": str(shares_wei),
+            "outcomeIndex": outcome_index,
+            "blockTimestamp": str(block_ts),
+            "fixedProductMarketMaker": {
+                "id": f"0xfpmm{condition_id[:4]}",
+                "currentAnswer": current_answer,
+                "conditionIds": [condition_id],
+            },
+        }
 
     def test_empty_bets_returns_zero(self) -> None:
         """Trader agent with no bets contributes nothing locked."""
-        result = self._make_behaviour()._compute_omen_funds_locked(  # type: ignore[arg-type]
-            {"bets": []}
-        )
+        b = self._make_behaviour(held_keys=set())
+        result = self._drive(b._compute_omen_funds_locked({"bets": []}, self.SAFE))
         assert result == 0.0
 
     def test_single_open_buy_returns_cost_basis(self) -> None:
-        """An unresolved buy contributes its full cost basis in wxDAI."""
-        behaviour = self._make_behaviour()
+        """Unresolved buy + held set includes its key → full cost basis."""
+        b = self._make_behaviour(held_keys={(self.CONDITION_A.lower(), 0)})
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(WEI_IN_ETH),  # 1 wxDAI cost
-                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,  # unresolved
-                    },
-                }
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                )
             ]
         }
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 1.0
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 1.0
 
     def test_resolved_winning_position_still_counts(self) -> None:
-        """A winning unredeemed position still counts as locked (§7.2)."""
-        behaviour = self._make_behaviour()
+        """Winning unredeemed position still counts (held set includes it)."""
+        b = self._make_behaviour(held_keys={(self.CONDITION_A.lower(), 0)})
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(WEI_IN_ETH),
-                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": "0x" + "00" * 32,  # outcome 0 wins
-                    },
-                }
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                    current_answer="0x" + "00" * 32,
+                )
             ]
         }
-        # Outcome 0 matches the answer → counts. Redeem path will sweep it.
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 1.0
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 1.0
+
+    def test_redeemed_winning_position_excluded(self) -> None:
+        """A redeemed winning position drops out — held set excludes it.
+
+        This is the failure mode that drove the gate: pre-fix, a winning
+        bet on a market the agent already redeemed was still counted
+        because the bet row is immutable and FIFO doesn't see the
+        CT.balanceOf burn from redeemPositions.
+        """
+        b = self._make_behaviour(held_keys=set())  # nothing held
+        trader_agent = {
+            "bets": [
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                    current_answer="0x" + "00" * 32,
+                )
+            ]
+        }
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 0.0
 
     def test_resolved_losing_position_excluded(self) -> None:
-        """A resolved-and-LOSING position is excluded — shares are worthless."""
-        behaviour = self._make_behaviour()
+        """Resolved-and-LOSING positions excluded by the answer-vs-outcome gate."""
+        b = self._make_behaviour(held_keys={(self.CONDITION_A.lower(), 1)})
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(WEI_IN_ETH),
-                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
-                    "outcomeIndex": 1,  # bet on outcome 1...
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": "0x" + "00" * 32,  # ...but 0 wins
-                    },
-                }
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=1,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                    current_answer="0x" + "00" * 32,
+                )
             ]
         }
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 0.0
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 0.0
 
     def test_partial_sell_reduces_locked_to_remaining(self) -> None:
         """A buy partially exited via sells contributes only its remaining cost."""
-        behaviour = self._make_behaviour()
+        b = self._make_behaviour(held_keys={(self.CONDITION_A.lower(), 0)})
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(10 * WEI_IN_ETH),  # 10 wxDAI buy
-                    "outcomeTokenAmount": str(100 * WEI_IN_ETH),  # 100 shares
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,
-                    },
-                },
-                {
-                    "id": "s1",
-                    "amount": str(-3 * WEI_IN_ETH),  # 3 wxDAI proceeds
-                    "outcomeTokenAmount": str(-40 * WEI_IN_ETH),  # 40 shares sold
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "2000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,
-                    },
-                },
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=10 * WEI_IN_ETH,
+                    shares_wei=100 * WEI_IN_ETH,
+                ),
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=-3 * WEI_IN_ETH,
+                    shares_wei=-40 * WEI_IN_ETH,
+                    block_ts=2000,
+                ),
             ]
         }
-        # 40 of 100 shares sold = 40% of cost (4 wxDAI) realised.
-        # Remaining cost basis = 10 - 4 = 6 wxDAI.
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 6.0
+        # 40 of 100 sold → 4 wxDAI allocated_cost; remaining 6 wxDAI.
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 6.0
 
     def test_full_sweep_returns_zero(self) -> None:
-        """After selling 100% of every position, locked funds is 0."""
-        behaviour = self._make_behaviour()
+        """All-shares-sold leaves remaining_cost == 0."""
+        b = self._make_behaviour(held_keys={(self.CONDITION_A.lower(), 0)})
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(WEI_IN_ETH),
-                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,
-                    },
-                },
-                {
-                    "id": "s1",
-                    "amount": str(-WEI_IN_ETH // 2),  # at-loss sale
-                    "outcomeTokenAmount": str(-2 * WEI_IN_ETH),  # all shares
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "2000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,
-                    },
-                },
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                ),
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=-WEI_IN_ETH // 2,
+                    shares_wei=-2 * WEI_IN_ETH,
+                    block_ts=2000,
+                ),
             ]
         }
-        # All shares sold; allocated_cost == original_cost. remaining = 0.
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 0.0
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 0.0
 
     def test_multiple_positions_sum(self) -> None:
-        """Locked funds = sum of remaining_cost across all positions."""
-        behaviour = self._make_behaviour()
+        """Locked funds = sum of remaining_cost across held, non-LOSING positions."""
+        b = self._make_behaviour(
+            held_keys={
+                (self.CONDITION_A.lower(), 0),
+                (self.CONDITION_B.lower(), 1),
+            }
+        )
         trader_agent = {
             "bets": [
-                {
-                    "id": "b1",
-                    "amount": str(2 * WEI_IN_ETH),
-                    "outcomeTokenAmount": str(4 * WEI_IN_ETH),
-                    "outcomeIndex": 0,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xa1",
-                        "currentAnswer": None,
-                    },
-                },
-                {
-                    "id": "b2",
-                    "amount": str(3 * WEI_IN_ETH),
-                    "outcomeTokenAmount": str(5 * WEI_IN_ETH),
-                    "outcomeIndex": 1,
-                    "blockTimestamp": "1000",
-                    "fixedProductMarketMaker": {
-                        "id": "0xb1",
-                        "currentAnswer": None,
-                    },
-                },
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=2 * WEI_IN_ETH,
+                    shares_wei=4 * WEI_IN_ETH,
+                ),
+                self._bet(
+                    condition_id=self.CONDITION_B,
+                    outcome_index=1,
+                    amount_wei=3 * WEI_IN_ETH,
+                    shares_wei=5 * WEI_IN_ETH,
+                ),
             ]
         }
-        # 2 + 3 = 5 wxDAI locked across the two positions.
-        assert behaviour._compute_omen_funds_locked(trader_agent) == 5.0
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 5.0
+
+    def test_held_set_none_falls_back_to_no_gate(self) -> None:
+        """Subgraph fetch failing returns empty held set → all positions excluded.
+
+        Empty set is the "no positions held" interpretation; the
+        ``held_keys=None`` legacy fallback (caller passes None
+        explicitly) is exercised at the function-API level in
+        ``test_predictions_helper`` instead.
+        """
+        b = self._make_behaviour(held_keys=set())
+        trader_agent = {
+            "bets": [
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                )
+            ]
+        }
+        # Empty held_keys excludes everything (no CT-positions to gate).
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 0.0

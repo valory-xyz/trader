@@ -249,8 +249,19 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
                 )
                 return
             bets = trader_agent.get("bets") or []
+            # Gate by CT-subgraph "still held" set so redeemed positions
+            # drop out of the trade-history-FIFO sum. Without this gate
+            # an already-redeemed winning position would still be
+            # counted as locked (the bet row is immutable and FIFO
+            # doesn't see the CT.balanceOf burn from redeemPositions).
+            held_keys = yield from self._fetch_ct_held_position_keys(
+                safe_address.lower()
+            )
             value = compute_funds_locked_from_bets(
-                bets, self.context, self.context.logger
+                bets,
+                self.context,
+                self.context.logger,
+                held_keys=held_keys,
             )
             shared_state = cast(
                 AgentPerformanceSummarySharedState, self.context.state
