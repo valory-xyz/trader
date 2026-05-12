@@ -255,6 +255,9 @@ models:
       minimum_batch_size: 500
       redeeming_batch_size: 5
       slippage: 0.01
+      withdrawal_slippage: 0.01
+      withdrawal_return_buffer: 0.05
+      dust_epsilon_wxdai: 10000000000000000
       policy_epsilon: 0.25
       store_path: /data/
       policy_store_update_offset: 259200

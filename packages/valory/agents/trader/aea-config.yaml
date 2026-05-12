@@ -68,7 +68,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidmly6tyj2rdwhiesgrorlni5rjzujpu2msuvbdj24xuyek5tdbwm
 - valory/market_manager_abci:0.1.0:bafybeihfs6pzizqxtnulckswmmfcxml2fp6qgaom36sytyyhmylrl47dzi
 - valory/decision_maker_abci:0.1.0:bafybeib3h7av4m2w7iatzdsc6x7inmxb5gjbqgao3umxp5cgxctzplgvyq
-- valory/trader_abci:0.1.0:bafybeietwwksqyleszephglahfdb3drxascfuiu7udduegxfkqcjwln7xi
+- valory/trader_abci:0.1.0:bafybeibomdqihklsa24k55om7g7x6zaab2m5mgd3g3umux5ih5vh6wcrxq
 - valory/staking_abci:0.1.0:bafybeibruevnamvpuryql7d7simokhawzciihhg2rv7db7hgadtpaxzxlm
 - valory/check_stop_trading_abci:0.1.0:bafybeihaz57cet4vg4ttt4qdjxxnbvez4fhxzo34dkuiqneqor5tfheccq
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
@@ -227,6 +227,9 @@ models:
       max_filtering_retries: ${int:6}
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
+      withdrawal_slippage: ${float:0.01}
+      withdrawal_return_buffer: ${float:0.05}
+      dust_epsilon_wxdai: ${int:10000000000000000}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.25}
       store_path: ${str:/data/}
