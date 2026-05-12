@@ -313,14 +313,20 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 subgraph=ct_subgraph,
                 res_context="ct_user_positions_for_funds_locked",
             )
-            if not response or not isinstance(response, dict):
+            # The CT subgraph spec sets ``response_key:
+            # data:user:userPositions`` and ``response_type: list``, so
+            # ``_fetch_from_subgraph`` returns the unwrapped positions
+            # list directly. ``None`` means request error; an empty
+            # list means a legitimately exhausted pagination (or
+            # ``user`` doesn't exist on the subgraph — pre-indexing
+            # state, treated as "holds nothing").
+            if response is None:
                 self.context.logger.warning(
                     "funds_locked: CT subgraph request failed; "
                     "skipping CT-balance gate"
                 )
                 return None
-            user = response.get("user") or {}
-            rows = user.get("userPositions") or []
+            rows = response if isinstance(response, list) else []
             if not rows:
                 break
             for row in rows:

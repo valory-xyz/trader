@@ -1906,50 +1906,56 @@ class TestFetchCTHeldPositionKeys:
 
         assert result is None
 
-    def test_no_user_returns_empty_set(self) -> None:
-        """Subgraph returns ``{"user": None}`` -> empty set (not ``None``).
+    def test_empty_list_returns_empty_set(self) -> None:
+        """Subgraph returns ``[]`` -> empty set (not ``None``).
 
-        Distinguishes "user genuinely holds nothing" (legit empty set,
-        gates everything out -> writes ``0.0`` correctly) from "fetch
-        error" (``None``, no gate, writes the un-gated sum).
+        The CT subgraph spec extracts ``data:user:userPositions`` as a
+        ``list`` (``response_type: list`` in
+        ``trader_abci/skill.yaml``), so ``process_response`` returns
+        the unwrapped list directly. An empty list distinguishes
+        "user genuinely holds nothing" (gate everything out -> 0.0
+        correctly) from "fetch error" (``None``, no gate, un-gated
+        sum).
         """
         b = _make_behaviour()
         b.context.conditional_tokens_subgraph = MagicMock()
-        b._fetch_from_subgraph = _return_gen({"user": None})  # type: ignore[method-assign]
+        b._fetch_from_subgraph = _return_gen([])  # type: ignore[method-assign]
 
         result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
 
         assert result == set()
 
     def test_populated_positions_returns_keys(self) -> None:
-        """Returns the ``(condition_id, outcome_index)`` tuple per held row."""
+        """Returns the ``(condition_id, outcome_index)`` tuple per held row.
+
+        Receives the unwrapped ``userPositions`` list directly (not a
+        nested ``{"user": {...}}`` dict) — matches what
+        ``process_response`` produces given the spec's
+        ``response_key: data:user:userPositions``.
+        """
         b = _make_behaviour()
         b.context.conditional_tokens_subgraph = MagicMock()
         condition_a = "0x" + "a1" * 32
         # indexSet "1" -> outcome 0, indexSet "2" -> outcome 1.
         b._fetch_from_subgraph = _return_gen(  # type: ignore[method-assign]
-            {
-                "user": {
-                    "userPositions": [
-                        {
-                            "balance": "1000",
-                            "id": "0xpos1",
-                            "position": {
-                                "conditionIds": [condition_a],
-                                "indexSets": ["1"],
-                            },
-                        },
-                        {
-                            "balance": "500",
-                            "id": "0xpos2",
-                            "position": {
-                                "conditionIds": [condition_a],
-                                "indexSets": ["2"],
-                            },
-                        },
-                    ]
-                }
-            }
+            [
+                {
+                    "balance": "1000",
+                    "id": "0xpos1",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["1"],
+                    },
+                },
+                {
+                    "balance": "500",
+                    "id": "0xpos2",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["2"],
+                    },
+                },
+            ]
         )
 
         result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
@@ -1977,7 +1983,7 @@ class TestFetchCTHeldPositionKeys:
 
         def fake_fetch(**kwargs: Any) -> Generator[None, None, Any]:
             captured["query"] = kwargs.get("query", "")
-            return {"user": {"userPositions": []}}
+            return []
             yield  # pragma: no cover
 
         b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign]
