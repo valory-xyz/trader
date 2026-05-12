@@ -5385,6 +5385,12 @@ class TestComputeOmenFundsLocked:
         ``held_keys=None`` simulates a CT subgraph error — the fetcher
         signals "no data" by returning ``None`` and the downstream
         consumer falls back to the un-gated sum.
+
+        :param held_keys: value the stubbed
+            ``_fetch_ct_held_position_keys`` should return; ``None``
+            means "subgraph error, no gate".
+        :return: a partially-initialised behaviour wired with the
+            stubbed fetcher and a mock context.
         """
         behaviour = object.__new__(FetchPerformanceSummaryBehaviour)
         mock_context = MagicMock()

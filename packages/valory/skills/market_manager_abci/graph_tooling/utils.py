@@ -240,6 +240,12 @@ def _is_finalized_timestamp(value: Any) -> bool:
     :mod:`agent_performance_summary_abci.graph_tooling.predictions_helper`
     — kept inline to avoid an upward cross-skill dependency on the
     perf-summary package.
+
+    :param value: raw ``answerFinalizedTimestamp`` from the subgraph
+        (typically a stringified Unix-seconds int, but defensive
+        against missing/malformed shapes).
+    :return: True iff the timestamp represents a real (positive)
+        finalization moment.
     """
     if value is None:
         return False

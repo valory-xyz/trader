@@ -2790,7 +2790,7 @@ class TestOmenWithdrawBehaviourSurface:
             token_id="1",
         )
 
-        def drive(gen: Generator) -> Any:
+        def drive(gen: "Generator[Any, Any, Any]") -> Any:
             try:
                 while True:
                     next(gen)
@@ -2823,9 +2823,10 @@ class TestOmenWithdrawBehaviourSurface:
         # 1000 wxDAI position = 1e21 wei. Well past float53.
         big_amount = 10**21
         out = inflate_for_slippage(big_amount, 0.01)
-        # Integer-exact lower bound: ceil(big_amount * 0.01) + 1.
-        # With slippage_num = 10**7 (= 0.01 * 1e9), extra = ceil(1e21 * 1e7 / 1e9) = 1e19.
-        # Total = big_amount + 1e19 + 1.
+        # Integer-exact lower bound. With slippage_num scaled to a 1e9
+        # denominator the slippage portion is 1e19 wei (1% of 1e21).
+        # The trailing +1 is the round-up safety. Verify the exact
+        # integer result so float drift can never silently sneak back in.
         assert out == big_amount + 10**19 + 1
         # Must strictly exceed amount.
         assert out > big_amount
@@ -2898,11 +2899,14 @@ class TestComposition:
 
 
 class TestOmenWithdrawSizingLoopDiagnostics:
-    """The sizing loop has three distinct failure modes that pre-fix all
-    surfaced as ``returnAmount could not be sized...``. The split ensures
-    each failure mode self-attributes with an operator-actionable reason,
-    and that the halve-to-zero path doesn't depend on the post-loop guard
-    (which would silently drop if a future refactor removed that guard).
+    """Verify each sizing-loop failure mode emits its own distinct error.
+
+    The sizing loop has three distinct failure modes that pre-fix all
+    surfaced as ``returnAmount could not be sized...``. The split
+    ensures each failure mode self-attributes with an
+    operator-actionable reason, and that the halve-to-zero path
+    doesn't depend on the post-loop guard (which would silently drop
+    if a future refactor removed that guard).
     """
 
     fpmm = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"
@@ -2941,7 +2945,7 @@ class TestOmenWithdrawSizingLoopDiagnostics:
         )
 
     @staticmethod
-    def _drive(gen: Generator) -> Any:
+    def _drive(gen: "Generator[Any, Any, Any]") -> Any:
         try:
             while True:
                 next(gen)
@@ -2959,9 +2963,7 @@ class TestOmenWithdrawSizingLoopDiagnostics:
         behaviour._read_pool_balances = fake_read  # type: ignore[assignment]
 
     @staticmethod
-    def _stub_calc_sell_amount(
-        behaviour: Any, side_effect: Callable[..., Any]
-    ) -> None:
+    def _stub_calc_sell_amount(behaviour: Any, side_effect: Callable[..., Any]) -> None:
         """Stub ``_calc_sell_amount_static`` with the given side-effect callable."""
 
         def fake_calc(
@@ -3039,14 +3041,11 @@ class TestOmenWithdrawSizingLoopDiagnostics:
         behaviour = self._make_behaviour()
         self._stub_pool_balances(behaviour, [10**20, 10**20])
 
-        # n_estimate above headroom_cap; return_amount stays > 0 because
-        # we start at a huge value and 5 halvings still leaves room.
-        # headroom_cap ≈ balance / (1 + 0.01) ≈ 0.99e18
-        # Start: return_amount = notional*(1 - buffer)
-        # With pool 50/50 and balance 1e18: notional ≈ 0.5e18,
-        # return_amount ≈ 0.475e18 -> halves down through ~0.029e18 after
-        # 4 halvings, > 0. With n_estimate >> headroom_cap each time, the
-        # loop runs all 5 iterations.
+        # Stub n_estimate to always be above the headroom cap while
+        # keeping return_amount > 0 across the 5 attempts (huge starting
+        # balance below means 5 halvings still leave a positive value),
+        # so the loop exits via for/else rather than the halve-to-zero
+        # self-record path.
         self._stub_calc_sell_amount(behaviour, lambda ra: 10**30)
 
         # Override balance to give headroom big enough that 5 halvings
@@ -3134,7 +3133,7 @@ class TestPostOmenWithdrawParseSellEventsFilter:
         )
 
     @staticmethod
-    def _drive(gen: Generator) -> Any:
+    def _drive(gen: "Generator[Any, Any, Any]") -> Any:
         try:
             while True:
                 next(gen)

@@ -95,11 +95,9 @@ def inflate_for_slippage(amount: int, slippage: float) -> int:
     if not 0 <= slippage <= 1:
         raise ValueError(f"slippage {slippage!r} must be in [0, 1]")
     slippage_num = int(slippage * _SLIPPAGE_DENOMINATOR)
-    # Ceiling division for the slippage portion:
-    #   ceil(amount * slippage_num / _SLIPPAGE_DENOMINATOR)
-    extra = (
-        amount * slippage_num + _SLIPPAGE_DENOMINATOR - 1
-    ) // _SLIPPAGE_DENOMINATOR
+    # Ceiling-divide ``amount * slippage_num`` by ``_SLIPPAGE_DENOMINATOR``
+    # to get the slippage portion as an integer count of base units.
+    extra = (amount * slippage_num + _SLIPPAGE_DENOMINATOR - 1) // _SLIPPAGE_DENOMINATOR
     return amount + extra + 1
 
 
@@ -129,6 +127,9 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         Cached on the instance to avoid rebuilding the helper for every
         state transition / per-position record.
+
+        :return: the cached :class:`OmenWithdrawalStore` bound to the
+            agent's store directory + logger.
         """
         if getattr(self, "_store_cache", None) is None:
             self._store_cache = OmenWithdrawalStore(
@@ -400,9 +401,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 position.fpmm_address
             )
             if approval_batch is None:
-                self._store.record_error(
-                    position, "failed to encode setApprovalForAll"
-                )
+                self._store.record_error(position, "failed to encode setApprovalForAll")
                 return None
 
         sell_batch = yield from self._build_sell_batch(

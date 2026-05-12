@@ -803,9 +803,7 @@ class TestGetWithdrawablePositions:
                 )
             ]
             result = get_withdrawable_positions(trades, positions)
-            assert len(result) == 1, (
-                f"value {bad_value!r} should be treated as unset"
-            )
+            assert len(result) == 1, f"value {bad_value!r} should be treated as unset"
 
     def test_pending_arbitration_filtered_out(self) -> None:
         """FROZEN bucket (isPendingArbitration=True) is excluded."""

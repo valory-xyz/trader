@@ -89,6 +89,9 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
 
         Cached on the instance to avoid rebuilding the helper for every
         fill/error record persisted during receipt parsing.
+
+        :return: the cached :class:`OmenWithdrawalStore` bound to the
+            agent's store directory + logger.
         """
         if getattr(self, "_store_cache", None) is None:
             self._store_cache = OmenWithdrawalStore(

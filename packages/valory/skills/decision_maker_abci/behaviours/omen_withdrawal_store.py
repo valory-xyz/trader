@@ -122,9 +122,7 @@ parse_sell_events`.
         return_amount = int(event.get("return_amount", 0))
         fee_amount = int(event.get("fee_amount", 0))
         shares_sold = outcome_tokens_sold / 1e18
-        fill_price = (
-            (return_amount / 1e18) / shares_sold if shares_sold > 0 else 0.0
-        )
+        fill_price = (return_amount / 1e18) / shares_sold if shares_sold > 0 else 0.0
         store = self.read()
         fills = store.setdefault("withdrawal_fills", [])
         fills.append(
@@ -146,9 +144,7 @@ parse_sell_events`.
         )
         self.write(store)
 
-    def record_error(
-        self, position: WithdrawablePosition, reason: str
-    ) -> None:
+    def record_error(self, position: WithdrawablePosition, reason: str) -> None:
         """Append an error record for a per-position drop.
 
         :param position: the position that couldn't be included in the

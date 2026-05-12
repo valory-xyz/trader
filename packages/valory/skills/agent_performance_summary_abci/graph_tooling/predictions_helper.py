@@ -257,21 +257,21 @@ def allocate_fifo(
                     # Integer mul-then-divide: per-step rounding error
                     # is bounded at 1 wei vs. the float drift it
                     # replaces (potentially much larger past 2^53).
-                    head["allocated_proceeds"] += (
-                        proceeds_total * take
-                    ) // (-row_shares)
-                    head["allocated_cost"] += (
-                        head["original_cost"] * take
-                    ) // head["original_shares"]
+                    head["allocated_proceeds"] += (proceeds_total * take) // (
+                        -row_shares
+                    )
+                    head["allocated_cost"] += (head["original_cost"] * take) // head[
+                        "original_shares"
+                    ]
                     head["remaining_shares"] -= take
                     shares_consumed -= take
                     if head["remaining_shares"] <= 0:
                         open_buys.popleft()
 
                 if shares_consumed > 0:
-                    unattributed_wxdai = (
-                        proceeds_total * shares_consumed
-                    ) / (-row_shares * WEI_TO_NATIVE)
+                    unattributed_wxdai = (proceeds_total * shares_consumed) / (
+                        -row_shares * WEI_TO_NATIVE
+                    )
                     logger.warning(
                         "FIFO: orphan sell %s on (fpmm=%s, outcomeIndex=%s): "
                         "%s shares unmatched, %.6f wxDAI unattributed",
@@ -298,9 +298,7 @@ def allocate_fifo(
         fpmm_id = (b.get("fixedProductMarketMaker") or {}).get("id")
         if fpmm_id is None:
             continue
-        per_fpmm_remaining[fpmm_id] += max(
-            b["original_cost"] - b["allocated_cost"], 0
-        )
+        per_fpmm_remaining[fpmm_id] += max(b["original_cost"] - b["allocated_cost"], 0)
     for b in output:
         fpmm_id = (b.get("fixedProductMarketMaker") or {}).get("id")
         b["participant_remaining_cost"] = (
@@ -1137,9 +1135,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # internal ordering invariant is preserved without leaking into
         # the formatted output.
         enriched_buys.sort(
-            key=lambda b: int(
-                b.get("blockTimestamp", b.get("timestamp", 0)) or 0
-            ),
+            key=lambda b: int(b.get("blockTimestamp", b.get("timestamp", 0)) or 0),
             reverse=True,
         )
 

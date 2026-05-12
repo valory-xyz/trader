@@ -23,8 +23,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from packages.valory.skills.decision_maker_abci.behaviours.omen_withdrawal_store import (
-    TOP_LEVEL_ERROR_TOKEN_ID,
     OmenWithdrawalStore,
+    TOP_LEVEL_ERROR_TOKEN_ID,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     WithdrawablePosition,
@@ -202,9 +202,7 @@ class TestRecordTopLevelError:
         assert len(errors) == 1
         assert errors[0]["token_id"] == TOP_LEVEL_ERROR_TOKEN_ID
         assert errors[0]["shares_remaining"] == 0.0
-        assert (
-            errors[0]["reason"] == "fetch_user_positions: retries exhausted"
-        )
+        assert errors[0]["reason"] == "fetch_user_positions: retries exhausted"
         store._logger.error.assert_called_once()  # type: ignore[attr-defined]
 
 
@@ -235,9 +233,7 @@ class TestPlannedFpmms:
     def test_roundtrip_lowercases_and_sorts(self, tmp_path: Path) -> None:
         """Stored addresses are lower-cased and sorted (stable comparison)."""
         store = _make_store(tmp_path)
-        store.record_planned_fpmms(
-            ["0xAaaa", "0xCCCC", "0xbbbb"]
-        )
+        store.record_planned_fpmms(["0xAaaa", "0xCCCC", "0xbbbb"])
         assert store.planned_fpmms() == ["0xaaaa", "0xbbbb", "0xcccc"]
 
     def test_missing_returns_empty_list(self, tmp_path: Path) -> None:
@@ -277,7 +273,7 @@ class TestWriteFailureLogsAndContinues:
     """Tests for write resilience."""
 
     def test_write_failure_logged_not_raised(self, tmp_path: Path) -> None:
-        """OSError on write is logged via ``error``, not raised."""
+        """An OSError on write is logged via ``error``, not raised."""
         # Point to a path inside a missing directory; open will OSError.
         store = OmenWithdrawalStore(
             store_dir=tmp_path / "does-not-exist",

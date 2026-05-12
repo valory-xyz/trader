@@ -210,7 +210,7 @@ def _make_behaviour(**overrides: Any) -> _ConcreteAPTBehaviour:
     return b
 
 
-def _exhaust(gen: Generator) -> Any:
+def _exhaust(gen: "Generator[Any, Any, Any]") -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
@@ -1875,6 +1875,9 @@ class TestFetchCTHeldPositionKeys:
         production-side ``except AttributeError`` would never fire on a
         bare ``_make_behaviour()`` instance. We replace the context
         with a spec'd mock that lacks the attribute entirely.
+
+        :param b: behaviour instance whose ``_context`` will be swapped
+            for a class instance lacking ``conditional_tokens_subgraph``.
         """
 
         class _CtxWithoutCt:

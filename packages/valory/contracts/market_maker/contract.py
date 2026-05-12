@@ -277,9 +277,7 @@ class FixedProductMarketMakerContract(Contract):
                 outcome_index = int(HexBytes(topics[2]).hex(), 16)
                 data = HexBytes(data_hex)
                 return_amount = int.from_bytes(data[:_WORD_BYTES], "big")
-                fee_amount = int.from_bytes(
-                    data[_WORD_BYTES : 2 * _WORD_BYTES], "big"
-                )
+                fee_amount = int.from_bytes(data[_WORD_BYTES : 2 * _WORD_BYTES], "big")
                 outcome_tokens_sold = int.from_bytes(
                     data[2 * _WORD_BYTES : 3 * _WORD_BYTES], "big"
                 )

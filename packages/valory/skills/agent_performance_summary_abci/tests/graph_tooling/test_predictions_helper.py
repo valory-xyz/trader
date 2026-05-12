@@ -4182,8 +4182,10 @@ class TestAllocateFifoModuleLevel:
         ]
         from_method = fetcher._allocate_fifo([dict(b) for b in bets])
         from_function = allocate_fifo([dict(b) for b in bets], MagicMock())
+
         # Strip the participant_remaining_cost which is path-independent
         # to keep the comparison resilient to future enrichment fields.
+
         def _strip(rows: list) -> list:
             return [
                 {k: v for k, v in row.items() if k != "participant_remaining_cost"}
