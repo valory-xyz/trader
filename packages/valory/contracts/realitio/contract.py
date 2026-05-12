@@ -266,7 +266,7 @@ class RealitioContract(Contract):
                 {
                     "from": ledger_api.api.to_checksum_address(sender_address),
                     "to": ledger_api.api.to_checksum_address(contract_address),
-                    "data": data[2:],
+                    "data": data,
                 }
             )
             simulation_ok = True

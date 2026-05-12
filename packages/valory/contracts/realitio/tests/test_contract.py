@@ -398,6 +398,16 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": True}
+        # Guard against the regression that previously sliced ``data[2:]`` on
+        # raw bytes (chopping half the 4-byte selector). The call must receive
+        # the FULL calldata, byte-for-byte matching ``build_claim_winnings``.
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_simulate_claim_winnings_failure_value_error(self) -> None:
         """Test failed simulation returns False on ValueError."""
@@ -414,6 +424,13 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": False}
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_simulate_claim_winnings_failure_contract_logic(self) -> None:
         """Test failed simulation returns False on ContractLogicError."""
@@ -430,6 +447,13 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": False}
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_get_history_hash(self) -> None:
         """Test getting history hash for a question."""
