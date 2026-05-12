@@ -65,14 +65,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiazcubl2lnazcwdfzn2m26atp653ajfchot5aht6i5yrpmvi6xivy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiatsymbe7nzecnrf2pkh4km5qtwvst6t5shksxp4cd7dcwz2tuuiu
 - valory/market_manager_abci:0.1.0:bafybeifmzg7lwbcykcvkrp36dl32vpese643ntu56rchrfgb2y27tpd7vu
-- valory/decision_maker_abci:0.1.0:bafybeibqx2kcx4bj77goskyyw3nv2ta74zq5fronoqt2enx4uwzvktat5u
-- valory/trader_abci:0.1.0:bafybeidbxsru5kd452fttpeidpha3ftyobnsnojr7exsuwdx7z7k5ropva
+- valory/decision_maker_abci:0.1.0:bafybeigogwj6svgco4bafff35kyzs2kmumuhimonr7ir4pvawxhnsl3o5y
+- valory/trader_abci:0.1.0:bafybeieaildmhlexskblwo5iadve5youf74duw5vqz2cqckep7asileyze
 - valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
-- valory/check_stop_trading_abci:0.1.0:bafybeibqyxrn4pv5mhd2eqhtml3s7lt2cda7fxgmwnlvjipdic5odlsni4
+- valory/check_stop_trading_abci:0.1.0:bafybeihmbaep2d74pzo2qtrpy34mvxucowy2i7osn4udygixvhon3tjjyq
 - valory/mech_interact_abci:0.1.0:bafybeibcr5ifxkkeb4q3jbyxhri2yrydiunh5csifermqdcboa2ydybu6m
-- valory/chatui_abci:0.1.0:bafybeihpusxzo56zrkym5aig5vo4vwbqmfdy25wx2qkpynjywlgw6ruviu
+- valory/chatui_abci:0.1.0:bafybeihpeewapdgw6ai6dqm7kxhvmu3h37qylph3vonajbeah5drsaktcu
 - valory/agent_performance_summary_abci:0.1.0:bafybeiferaq3ffxptxsji3k6b7i4xp5wnkjgqc7efcfr77mwzdzy7baf2e
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 customs:

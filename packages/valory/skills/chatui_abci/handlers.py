@@ -38,7 +38,9 @@ from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
-from packages.valory.skills.abstract_round_abci.handlers import AbstractResponseHandler
+from packages.valory.skills.abstract_round_abci.handlers import (
+    AbstractResponseHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -60,7 +62,9 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
-from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    HttpMethod,
+)
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import (
     SharedState,

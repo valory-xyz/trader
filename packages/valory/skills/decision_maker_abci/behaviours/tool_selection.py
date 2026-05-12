@@ -49,6 +49,8 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         2. `allowed_tools` — keep only tools the user pinned by name.
 
         Either layer being empty/None is a no-op for that layer.
+
+        :return: the candidate tool set after applying the pin filters.
         """
         candidate = set(self.mech_tools)
 
