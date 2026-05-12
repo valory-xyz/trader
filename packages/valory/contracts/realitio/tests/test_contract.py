@@ -371,7 +371,9 @@ class TestRealitioContract:
 
     def test_build_claim_winnings(self) -> None:
         """Test building claim winnings transaction."""
-        self.mock_contract.encode_abi.return_value = b"\xaa\xbb"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        self.mock_contract.encode_abi.return_value = "0xaabb"
         claim_params = ([b"\x01"], ["0xabc"], [1], [b"\x02"])
         result = RealitioContract.build_claim_winnings(
             ledger_api=self.mock_ledger_api,
@@ -396,6 +398,16 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": True}
+        # Guard against the regression that previously sliced ``data[2:]`` on
+        # raw bytes (chopping half the 4-byte selector). The call must receive
+        # the FULL calldata, byte-for-byte matching ``build_claim_winnings``.
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_simulate_claim_winnings_failure_value_error(self) -> None:
         """Test failed simulation returns False on ValueError."""
@@ -412,6 +424,13 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": False}
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_simulate_claim_winnings_failure_contract_logic(self) -> None:
         """Test failed simulation returns False on ContractLogicError."""
@@ -428,6 +447,13 @@ class TestRealitioContract:
             sender_address="0xsender",
         )
         assert result == {"data": False}
+        self.mock_ledger_api.api.eth.call.assert_called_once_with(
+            {
+                "from": "0xsender",
+                "to": CONTRACT_ADDRESS,
+                "data": b"\xaa\xbb",
+            }
+        )
 
     def test_get_history_hash(self) -> None:
         """Test getting history hash for a question."""
@@ -610,7 +636,9 @@ class TestRealitioContract:
 
     def test_get_submit_answer_tx(self) -> None:
         """Test getting submit answer transaction data."""
-        self.mock_contract.encode_abi.return_value = b"\xee\xff"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        self.mock_contract.encode_abi.return_value = "0xeeff"
         result = RealitioContract.get_submit_answer_tx(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,
@@ -632,7 +660,9 @@ class TestRealitioContract:
 
     def test_build_withdraw_tx(self) -> None:
         """Test building withdraw transaction."""
-        self.mock_contract.encode_abi.return_value = b"\x11\x22"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        self.mock_contract.encode_abi.return_value = "0x1122"
         result = RealitioContract.build_withdraw_tx(
             ledger_api=self.mock_ledger_api,
             contract_address=CONTRACT_ADDRESS,

@@ -311,7 +311,10 @@ class TestConditionalTokensContract:
 
     def test_build_redeem_positions_tx(self) -> None:
         """Test building redeem positions transaction."""
-        self.mock_contract.encode_abi.return_value = b"\xaa\xbb"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string (matching real
+        # web3.py behaviour); the contract method strips the prefix and
+        # converts to ``bytes`` so multisend consumers receive raw bytes.
+        self.mock_contract.encode_abi.return_value = "0xaabb"
         self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
 
         result = ConditionalTokensContract.build_redeem_positions_tx(
@@ -495,7 +498,9 @@ class TestConditionalTokensContract:
 
     def test_build_merge_positions_tx(self) -> None:
         """Test building merge positions transaction."""
-        self.mock_contract.encode_abi.return_value = b"\xcc\xdd"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        self.mock_contract.encode_abi.return_value = "0xccdd"
         self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
 
         result = ConditionalTokensContract.build_merge_positions_tx(
