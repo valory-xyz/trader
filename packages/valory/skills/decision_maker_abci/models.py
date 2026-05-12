@@ -440,6 +440,21 @@ class DecisionMakerParams(
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
+        # Omenstrat withdrawal sweep parameters.
+        # `withdrawal_slippage`: extra headroom on `maxOutcomeTokensToSell` for
+        # sells through FPMM.sell (ceiling-direction; see omen_withdraw.py).
+        # `withdrawal_return_buffer`: shrink `n_estimate` when sizing the
+        # returnAmount to stay below the headroom-cap (avoids step-2 halving
+        # loops in calcSellAmount).
+        # `dust_epsilon_wxdai`: positions whose `balance * marginal_price`
+        # (wxDAI wei) falls below this are skipped as dust.
+        self.withdrawal_slippage: float = self._ensure(
+            "withdrawal_slippage", kwargs, float
+        )
+        self.withdrawal_return_buffer: float = self._ensure(
+            "withdrawal_return_buffer", kwargs, float
+        )
+        self.dust_epsilon_wxdai: int = self._ensure("dust_epsilon_wxdai", kwargs, int)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
         self.tool_punishment_multiplier: int = self._ensure(

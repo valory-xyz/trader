@@ -1562,44 +1562,30 @@ class TestHandlePostWithdrawalPolymarket:
 
 
 class TestHandlePostWithdrawalOmenstrat:
-    """Tests for POST /api/v1/withdrawal on Omenstrat (D27 — 501 reject)."""
+    """Tests for POST /api/v1/withdrawal on Omenstrat.
 
-    def test_post_on_omenstrat_returns_501(self) -> None:
-        """POST on Omenstrat must return 501 Not Implemented."""
-        from http import HTTPStatus
+    The 501 reject from #942 (D27) was removed once the real Omen sweep
+    behaviour landed — POST on Omenstrat now arms the same way Polystrat
+    does. These tests prove venue parity at the HTTP boundary.
+    """
 
+    def test_post_on_omenstrat_arms_flag_and_state(self) -> None:
+        """POST from idle on Omenstrat must arm just like Polystrat."""
         handler = _make_withdrawal_handler(
             is_polymarket=False,
             config=ChatuiConfig(
                 withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
             ),
         )
-
-        handler._handle_post_withdrawal(MagicMock(), MagicMock())
-
-        handler._send_http_response.assert_called_once()
-        call_args = handler._send_http_response.call_args
-        # status code is the 4th positional or "status_code" kwarg
-        status_code = call_args.kwargs.get("status_code") or call_args.args[3]
-        assert status_code == HTTPStatus.NOT_IMPLEMENTED.value
-
-    def test_post_on_omenstrat_does_not_arm_flag(self) -> None:
-        """POST on Omenstrat must leave withdrawal_mode/state untouched."""
-        starting_cfg = ChatuiConfig(
-            withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
-        )
-        handler = _make_withdrawal_handler(is_polymarket=False, config=starting_cfg)
 
         handler._handle_post_withdrawal(MagicMock(), MagicMock())
 
         cfg = handler.shared_state.chatui_config
-        assert cfg.withdrawal_mode is False
-        assert cfg.withdrawal_state == WITHDRAWAL_STATE_IDLE
-        handler._store_chatui_param_to_json.assert_not_called()
-        handler._send_ok_response.assert_not_called()
+        assert cfg.withdrawal_mode is True
+        assert cfg.withdrawal_state == WITHDRAWAL_STATE_ARMED
 
-    def test_post_on_omenstrat_response_body_explains_reason(self) -> None:
-        """The 501 body must include an error explaining the limitation."""
+    def test_post_on_omenstrat_returns_200(self) -> None:
+        """POST on Omenstrat returns 200 OK (the 501 from #942 was dropped)."""
         handler = _make_withdrawal_handler(
             is_polymarket=False,
             config=ChatuiConfig(
@@ -1609,9 +1595,28 @@ class TestHandlePostWithdrawalOmenstrat:
 
         handler._handle_post_withdrawal(MagicMock(), MagicMock())
 
-        body = handler._send_http_response.call_args.args[2]
-        assert "error" in body
-        assert "Omenstrat" in body["error"] or "Polymarket" in body["error"]
+        handler._send_ok_response.assert_called_once()
+        # No 501 response should ever fire on the new path.
+        handler._send_http_response.assert_not_called()
+
+    def test_post_on_omenstrat_persists_each_changed_field(self) -> None:
+        """POST on Omenstrat persists the same fields the Polystrat path does."""
+        handler = _make_withdrawal_handler(
+            is_polymarket=False,
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            ),
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        persisted_fields = {
+            call.args[0] for call in handler._store_chatui_param_to_json.call_args_list
+        }
+        assert "withdrawal_mode" in persisted_fields
+        assert "withdrawal_state" in persisted_fields
+        assert "withdrawal_fills" in persisted_fields
+        assert "withdrawal_errors" in persisted_fields
 
 
 # ---------------------------------------------------------------------------

@@ -17,34 +17,521 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Omen withdrawal behaviour (defensive stub, D27).
+"""Omen withdrawal sweep behaviour — builds an (approve, sell)*N multisend."""
 
-POST /api/v1/withdrawal returns 501 on Omenstrat, so this behaviour is
-unreachable in normal operation. It exists only to keep the FSM symmetric
-across services and to provide a sane failure mode if the on-disk flag is
-somehow set on Omen.
-"""
+from pathlib import Path
+from typing import Any, Callable, Generator, List, Optional
 
-from typing import Generator
+from hexbytes import HexBytes
 
+from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
+)
+from packages.valory.contracts.market_maker.contract import (
+    FixedProductMarketMakerContract,
+)
+from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.chatui_abci.models import (
+    CHATUI_PARAM_STORE,
+    WITHDRAWAL_STATE_COMPLETE,
+    WITHDRAWAL_STATE_ERRORED,
+    WITHDRAWAL_STATE_SELLING,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+    MultisendBatch,
 )
-from packages.valory.skills.decision_maker_abci.payloads import WithdrawalPayload
+from packages.valory.skills.decision_maker_abci.behaviours.omen_withdrawal_store import (
+    OmenWithdrawalStore,
+)
+from packages.valory.skills.decision_maker_abci.payloads import OmenWithdrawalPayload
+from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
     OmenWithdrawRound,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
+    QueryingBehaviour,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+    WithdrawablePosition,
+    get_withdrawable_positions,
+)
+
+# Hardcoded collateral address — every Olas-touched Omen FPMM uses wxDAI
+# (verified across 7,203 distinct FPMMs in the historical scan); avoids
+# an on-chain ``collateralToken()`` read per sweep.
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+# Cap on halving attempts when the marginal-price-derived returnAmount
+# overshoots the slippage-headroom invariant ``n_estimate*(1+slip) <= B``.
+MAX_SIZING_ATTEMPTS = 5
+# Integer fraction denominator for slippage. Lets ``inflate_for_slippage``
+# stay integer-only on wei amounts (float multiplication past 2^53 ≈
+# 0.009 wxDAI loses precision). Nine decimal digits is well past the
+# precision any operator-configurable slippage would have meaning at.
+_SLIPPAGE_DENOMINATOR = 10**9
 
 
-class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour):
-    """OmenWithdrawBehaviour (defensive stub)."""
+def inflate_for_slippage(amount: int, slippage: float) -> int:
+    """Inflate ``amount`` by ``slippage`` fraction, rounding up.
+
+    Symmetric to ``behaviours/base.remove_fraction_wei`` for the buy
+    direction. Use for SELL ``maxOutcomeTokensToSell`` (a ceiling — we
+    want a safe upper bound on how many shares we'd surrender, so the
+    rounding direction must inflate, not shrink).
+
+    Implemented with integer-only math: ``slippage`` is converted to a
+    ``1e9``-denominator integer fraction at the function boundary, so
+    the per-amount multiplication stays inside Python's arbitrary-
+    precision int and never loses wei precision past 2^53.
+
+    :param amount: the base amount (e.g. ``calcSellAmount`` output, in
+        base units / wei).
+    :param slippage: fraction in [0, 1].
+    :return: ``ceil(amount * (1 + slippage)) + 1`` (the trailing ``+1``
+        forces a strict ceiling so even a 0% slippage exceeds ``amount``,
+        guarding against integer-floor under-shoot in the calling
+        slippage-headroom invariant).
+    """
+    if not 0 <= slippage <= 1:
+        raise ValueError(f"slippage {slippage!r} must be in [0, 1]")
+    slippage_num = int(slippage * _SLIPPAGE_DENOMINATOR)
+    # Ceiling-divide ``amount * slippage_num`` by ``_SLIPPAGE_DENOMINATOR``
+    # to get the slippage portion as an integer count of base units.
+    extra = (amount * slippage_num + _SLIPPAGE_DENOMINATOR - 1) // _SLIPPAGE_DENOMINATOR
+    return amount + extra + 1
+
+
+class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
+    """Builds the Omen withdrawal sweep multisend.
+
+    Lifecycle:
+      1. Persist ``selling`` state, reset fills/errors session records.
+      2. Fetch CT ``user_positions`` (current ERC1155 balance) and omen
+         ``fpmmTrades`` (FPMM metadata) — top-level retries.
+      3. Filter via :func:`get_withdrawable_positions` (OPEN bucket only).
+      4. Per position: size the sell via marginal-price + calcSellAmount
+         halve-retry, drop on revert or sizing exhaustion.
+      5. If nothing sellable: persist ``complete`` (or ``errored``), emit
+         ``WITHDRAWAL_DONE`` (short-circuit; no tx settles, so no
+         ``PostOmenWithdrawRound`` runs this cycle).
+      6. Else: build the (setApprovalForAll, sell)*N multisend, compute
+         the Safe tx hash, emit ``PREPARE_TX`` to route through tx
+         settlement and on to ``PostOmenWithdrawRound``.
+    """
 
     matching_round = OmenWithdrawRound
 
+    @property
+    def _store(self) -> OmenWithdrawalStore:
+        """Lazily-instantiated chatui JSON-store helper.
+
+        Cached on the instance to avoid rebuilding the helper for every
+        state transition / per-position record.
+
+        :return: the cached :class:`OmenWithdrawalStore` bound to the
+            agent's store directory + logger.
+        """
+        if getattr(self, "_store_cache", None) is None:
+            self._store_cache = OmenWithdrawalStore(
+                store_dir=Path(self.context.params.store_path),
+                filename=CHATUI_PARAM_STORE,
+                logger=self.context.logger,
+            )
+        return self._store_cache
+
     def async_act(self) -> Generator:
-        """Log a warning and route to idle — Omen sell-off is not yet implemented."""
-        self.context.logger.warning(
-            "withdrawal: omen stub invoked — agent will halt without selling"
+        """Run the sweep build."""
+        with self.context.benchmark_tool.measure(self.behaviour_id).local():
+            payload = yield from self._build_payload()
+
+        with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
+            yield from self.send_a2a_transaction(payload)
+            yield from self.wait_until_round_end()
+        self.set_done()
+
+    # ------------------------------------------------------------------ #
+    # Top-level orchestration                                            #
+    # ------------------------------------------------------------------ #
+
+    def _build_payload(self) -> Generator[None, None, OmenWithdrawalPayload]:
+        """Run the full sweep-build pipeline and return the payload to emit."""
+        self._store.set_state(WITHDRAWAL_STATE_SELLING)
+        self._store.reset_session_records()
+
+        safe = self.synchronized_data.safe_contract_address
+        user_positions = yield from self._with_top_level_retry(
+            "fetch_user_positions",
+            lambda: self.fetch_user_positions(safe),
         )
-        payload = WithdrawalPayload(sender=self.context.agent_address, vote=True)
-        yield from self.finish_behaviour(payload)
+        if user_positions is None:
+            return self._short_circuit_payload(errored=True)
+
+        creator_rows = yield from self._with_top_level_retry(
+            "fetch_withdrawal_creator_fpmms",
+            lambda: self.fetch_withdrawal_creator_fpmms(safe),
+        )
+        if creator_rows is None:
+            return self._short_circuit_payload(errored=True)
+
+        sellable = get_withdrawable_positions(creator_rows, user_positions)
+        if not sellable:
+            self.context.logger.info("omen withdrawal: no sellable positions found")
+            return self._short_circuit_payload(errored=False)
+
+        sellable.sort(key=lambda p: (p.fpmm_address.lower(), p.outcome_index))
+        self.context.logger.info(
+            f"omen withdrawal: discovered {len(sellable)} sellable position(s)"
+        )
+
+        batches: List[MultisendBatch] = []
+        planned_fpmms: List[str] = []
+        # ``setApprovalForAll`` is per-(safe, operator), not per-position.
+        # A safe holding two outcomes on the same FPMM only needs one
+        # approval; skip the redundant call on subsequent positions for
+        # the same FPMM to save gas.
+        approved_fpmms: set = set()
+        for position in sellable:
+            fpmm_key = position.fpmm_address.lower()
+            include_approval = fpmm_key not in approved_fpmms
+            position_batches = yield from self._size_and_build_position(
+                position, include_approval=include_approval
+            )
+            if position_batches is not None:
+                batches.extend(position_batches)
+                planned_fpmms.append(position.fpmm_address)
+                if include_approval:
+                    approved_fpmms.add(fpmm_key)
+
+        if not batches:
+            self.context.logger.info(
+                "omen withdrawal: all positions filtered out (dust or sizing)"
+            )
+            return self._short_circuit_payload(errored=self._store.has_errors())
+
+        # Persist the planned-FPMM allowlist so the post-settlement
+        # receipt parser can reject FPMMSell events from any non-target
+        # FPMM that lands in the same receipt (e.g. via a future
+        # cross-contract hook).
+        self._store.record_planned_fpmms(planned_fpmms)
+
+        # Stage batches on the base behaviour so the existing
+        # _build_multisend_* helpers see them.
+        self.multisend_batches = batches
+
+        for step in (
+            self._build_multisend_data,
+            self._build_multisend_safe_tx_hash,
+        ):
+            yield from self.wait_for_condition_with_sleep(step)
+
+        return OmenWithdrawalPayload(
+            sender=self.context.agent_address,
+            tx_submitter=self.matching_round.auto_round_id(),
+            tx_hash=self.tx_hex,
+            mocking_mode=False,
+            event=Event.PREPARE_TX.value,
+        )
+
+    def _short_circuit_payload(self, errored: bool) -> OmenWithdrawalPayload:
+        """Persist terminal state and build the ``WITHDRAWAL_DONE`` payload.
+
+        :param errored: whether to flag the session as ``errored`` (any
+            top-level fetch failure or per-position error already
+            persisted) or ``complete``.
+        :return: a payload with no tx fields; the round's ``end_block``
+            override routes the trailing ``event`` field through.
+        """
+        terminal = WITHDRAWAL_STATE_ERRORED if errored else WITHDRAWAL_STATE_COMPLETE
+        self._store.set_state(terminal)
+        return OmenWithdrawalPayload(
+            sender=self.context.agent_address,
+            tx_submitter=None,
+            tx_hash=None,
+            mocking_mode=None,
+            event=Event.WITHDRAWAL_DONE.value,
+        )
+
+    # ------------------------------------------------------------------ #
+    # Top-level retry helper (Polystrat-compatible)                      #
+    # ------------------------------------------------------------------ #
+
+    def _with_top_level_retry(
+        self,
+        op_name: str,
+        request_fn: Callable[[], Generator[None, None, Any]],
+    ) -> Generator[None, None, Optional[Any]]:
+        """Run ``request_fn`` with up to ``withdrawal_max_fak_attempts`` retries.
+
+        Mirrors the Polystrat retry wrapper (same params; the name is
+        Polystrat-historic but the schedule is venue-agnostic).
+
+        :param op_name: human-readable label written to the error record.
+        :param request_fn: zero-arg generator returning the result (or
+            ``None`` on subgraph failure — caller-supplied semantics).
+        :yield: framework yields between attempts.
+        :return: the result on success; ``None`` on exhaustion.
+        """
+        max_attempts = self.context.params.withdrawal_max_fak_attempts
+        backoff = list(self.context.params.withdrawal_fak_backoff_s)
+        for attempt in range(max_attempts):
+            result = yield from request_fn()
+            if result is not None:
+                return result
+            self.context.logger.warning(
+                f"omen withdrawal: top-level retry {attempt + 1}/{max_attempts} "
+                f"on {op_name}"
+            )
+            if attempt < max_attempts - 1 and attempt < len(backoff):
+                yield from self.sleep(backoff[attempt])
+        # Compose the full reason here rather than passing op_name to a
+        # store method — the store doesn't know about retries semantics.
+        self._store.record_top_level_error(f"{op_name}: retries exhausted")
+        return None
+
+    # ------------------------------------------------------------------ #
+    # Per-position sizing + batch assembly                               #
+    # ------------------------------------------------------------------ #
+
+    def _size_and_build_position(
+        self,
+        position: WithdrawablePosition,
+        include_approval: bool = True,
+    ) -> Generator[None, None, Optional[List[MultisendBatch]]]:
+        """Size the per-position sell and return the (approve, sell) batches.
+
+        Returns ``None`` if the position is dropped (dust below
+        ``dust_epsilon_wxdai``, sizing exhausted, or ``calcSellAmount``
+        reverts); the caller continues with the next position.
+
+        :param position: a single :class:`WithdrawablePosition` row.
+        :param include_approval: when ``False``, the leading
+            ``setApprovalForAll`` batch is omitted (caller already
+            approved this FPMM earlier in the sweep). ``setApprovalForAll``
+            is per-(safe, operator), not per-position, so subsequent
+            outcomes on the same FPMM don't need a second approval.
+        :yield: framework yields for the on-chain reads.
+        :return: a list with one or two ``MultisendBatch`` entries
+            (``setApprovalForAll`` + ``sell``), or ``None`` to drop.
+        """
+        slip = self.context.params.withdrawal_slippage
+        buffer_frac = self.context.params.withdrawal_return_buffer
+        dust_threshold = self.context.params.dust_epsilon_wxdai
+
+        pool_balances = yield from self._read_pool_balances(position)
+        if pool_balances is None or sum(pool_balances) == 0:
+            self._store.record_error(
+                position,
+                "pool_balances unavailable or empty",
+            )
+            return None
+
+        other_sum = sum(
+            balance
+            for idx, balance in enumerate(pool_balances)
+            if idx != position.outcome_index
+        )
+        marginal_price = other_sum / sum(pool_balances)
+        notional_wxdai = int(position.balance * marginal_price)
+        if notional_wxdai < dust_threshold:
+            # Sub-dust notional — exclude silently. The ``record_error``
+            # noise floor would otherwise drown out real per-position
+            # failures with rows that aren't worth selling.
+            return None
+
+        return_amount = int(notional_wxdai * (1 - buffer_frac))
+        headroom_cap = int(position.balance / (1 + slip))
+
+        n_estimate: Optional[int] = None
+        for _ in range(MAX_SIZING_ATTEMPTS):
+            n_estimate = yield from self._calc_sell_amount_static(
+                position.fpmm_address, return_amount, position.outcome_index
+            )
+            if n_estimate is None:
+                self._store.record_error(
+                    position,
+                    "calcSellAmount reverted: see logs",
+                )
+                return None
+            if n_estimate <= headroom_cap:
+                break
+            return_amount //= 2
+            if return_amount == 0:
+                # Distinct from "max attempts exhausted" — halve-to-zero
+                # means the FPMM's pool depth is too thin for the agent's
+                # share size at this slippage tolerance. Self-record
+                # rather than ``break`` so the post-loop ``for/else``
+                # cannot be silently fallen through, and operators get a
+                # diagnostic that names the pool-depth root cause.
+                self._store.record_error(
+                    position,
+                    "return_amount halved to zero before sizing "
+                    "converged (FPMM pool too thin for this share size "
+                    "at the configured slippage)",
+                )
+                return None
+        else:
+            self._store.record_error(
+                position,
+                "sizing attempts exhausted with n_estimate above "
+                "slippage-headroom cap (tighten withdrawal_slippage or "
+                "withdrawal_return_buffer)",
+            )
+            return None
+
+        # Defensive safety net: the only path here is the converged
+        # ``break`` above. ``n_estimate`` should be positive and
+        # ``return_amount`` non-zero, but a future refactor could
+        # introduce a regression — keep the guard so a silent drop
+        # isn't possible.
+        if n_estimate is None or n_estimate <= 0 or return_amount <= 0:
+            self._store.record_error(
+                position,
+                "sizing converged but produced non-positive estimate "
+                "(unreachable under current loop semantics)",
+            )
+            return None
+
+        max_outcome_tokens_to_sell = min(
+            inflate_for_slippage(n_estimate, slip), position.balance
+        )
+
+        approval_batch: Optional[MultisendBatch] = None
+        if include_approval:
+            approval_batch = yield from self._build_set_approval_batch(
+                position.fpmm_address
+            )
+            if approval_batch is None:
+                self._store.record_error(position, "failed to encode setApprovalForAll")
+                return None
+
+        sell_batch = yield from self._build_sell_batch(
+            position, return_amount, max_outcome_tokens_to_sell
+        )
+        if sell_batch is None:
+            self._store.record_error(position, "failed to encode sell calldata")
+            return None
+
+        self.context.logger.info(
+            f"omen withdrawal: sized {position.fpmm_address} outcome="
+            f"{position.outcome_index} return={return_amount} max_tokens="
+            f"{max_outcome_tokens_to_sell}"
+        )
+        if approval_batch is None:
+            return [sell_batch]
+        return [approval_batch, sell_batch]
+
+    # ------------------------------------------------------------------ #
+    # Contract interactions                                              #
+    # ------------------------------------------------------------------ #
+
+    def _read_pool_balances(
+        self, position: WithdrawablePosition
+    ) -> Generator[None, None, Optional[List[int]]]:
+        """Read the FPMM's per-outcome ERC1155 reserves via CT."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=position.fpmm_address,
+            contract_id=str(FixedProductMarketMakerContract.contract_id),
+            contract_callable="get_pool_balances_via_ct",
+            conditional_tokens_address=self.params.conditional_tokens_address,
+            collateral_token=WXDAI,
+            condition_id=position.condition_id,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.warning(
+                f"omen withdrawal: pool balances unavailable for "
+                f"{position.fpmm_address}: {response_msg}"
+            )
+            return None
+        balances = response_msg.state.body.get("balances")
+        if not balances:
+            return None
+        return [int(b) for b in balances]
+
+    def _calc_sell_amount_static(
+        self, fpmm_address: str, return_amount: int, outcome_index: int
+    ) -> Generator[None, None, Optional[int]]:
+        """Static-call ``FPMM.calcSellAmount``; ``None`` on revert."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address=fpmm_address,
+            contract_id=str(FixedProductMarketMakerContract.contract_id),
+            contract_callable="calc_sell_amount",
+            return_amount=return_amount,
+            outcome_index=outcome_index,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.context.logger.warning(
+                f"omen withdrawal: calcSellAmount reverted for {fpmm_address}: "
+                f"{response_msg}"
+            )
+            return None
+        amount = response_msg.raw_transaction.body.get("amount")
+        if amount is None:
+            return None
+        return int(amount)
+
+    def _build_set_approval_batch(
+        self, fpmm_address: str
+    ) -> Generator[None, None, Optional[MultisendBatch]]:
+        """Encode ``setApprovalForAll(fpmm, true)`` on ConditionalTokens."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=self.params.conditional_tokens_address,
+            contract_id=str(ConditionalTokensContract.contract_id),
+            contract_callable="build_set_approval_for_all_tx",
+            operator=fpmm_address,
+            approved=True,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            return None
+        data = response_msg.state.body.get("data")
+        if data is None:
+            return None
+        return MultisendBatch(
+            to=self.params.conditional_tokens_address,
+            data=HexBytes(data),
+        )
+
+    def _build_sell_batch(
+        self,
+        position: WithdrawablePosition,
+        return_amount: int,
+        max_outcome_tokens_to_sell: int,
+    ) -> Generator[None, None, Optional[MultisendBatch]]:
+        """Encode ``FPMM.sell(returnAmount, outcomeIndex, maxOut)``."""
+        response_msg = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=position.fpmm_address,
+            contract_id=str(FixedProductMarketMakerContract.contract_id),
+            contract_callable="get_sell_data",
+            return_amount=return_amount,
+            outcome_index=position.outcome_index,
+            max_outcome_tokens_to_sell=max_outcome_tokens_to_sell,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.STATE:
+            return None
+        data = response_msg.state.body.get("data")
+        if data is None:
+            return None
+        return MultisendBatch(
+            to=position.fpmm_address,
+            data=HexBytes(data),
+        )
+
+    # ------------------------------------------------------------------ #
+    # Multisend / Safe tx-hash plumbing — re-uses base behaviour helpers #
+    # ------------------------------------------------------------------ #
+
+    # `_build_multisend_data` and `_build_multisend_safe_tx_hash` live on
+    # `DecisionMakerBaseBehaviour` and read from `self.multisend_batches`
+    # / write to `self.safe_tx_hash` — staged in `_build_payload`.
+
+    # ------------------------------------------------------------------ #
+    # Disk-backed persistence is delegated to                            #
+    # ``OmenWithdrawalStore`` — see ``self._store`` above.               #
+    # ------------------------------------------------------------------ #

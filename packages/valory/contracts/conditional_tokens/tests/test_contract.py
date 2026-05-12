@@ -514,6 +514,49 @@ class TestConditionalTokensContract:
         )
         assert result == {"data": b"\xcc\xdd"}
 
+    def test_build_set_approval_for_all_tx(self) -> None:
+        """Test encoding ERC1155 setApprovalForAll for the multisend.
+
+        Returns raw bytes (``bytes.fromhex(data[2:])``) to match the
+        sibling ``build_*_tx`` methods in this file. Pre-fix this one
+        returned the ``0x``-hex string verbatim; callers wrapping in
+        ``HexBytes`` tolerated either form, but the inconsistency
+        was surprising.
+        """
+        self.mock_contract.encode_abi.return_value = "0xa22cb46500dead"
+        self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
+
+        result = ConditionalTokensContract.build_set_approval_for_all_tx(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            operator="0xfpmm",
+        )
+
+        assert result == {"data": bytes.fromhex("a22cb46500dead")}
+        # Verify the encoder was called with the right ERC1155 signature +
+        # checksummed operator + the default approved=True.
+        self.mock_contract.encode_abi.assert_called_once_with(
+            abi_element_identifier="setApprovalForAll",
+            args=["0xfpmm", True],
+        )
+
+    def test_build_set_approval_for_all_tx_revoke(self) -> None:
+        """Encoding with approved=False reaches the encoder as False."""
+        self.mock_contract.encode_abi.return_value = "0xa22cb4650000"
+        self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
+
+        ConditionalTokensContract.build_set_approval_for_all_tx(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            operator="0xfpmm",
+            approved=False,
+        )
+
+        self.mock_contract.encode_abi.assert_called_once_with(
+            abi_element_identifier="setApprovalForAll",
+            args=["0xfpmm", False],
+        )
+
 
 PACKAGE_DIR = Path(__file__).parent.parent
 

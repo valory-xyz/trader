@@ -10,7 +10,7 @@ fingerprint:
   behaviours.py: bafybeidu4jsysd6mh25cnkxmwunrsis77nqjcz2x4o72gor77fun7h4m4a
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeidz7zhitbwa5ah6e5v3y3mfiprtloojqxxzsouyzmq75o7a6mv3zq
+  handlers.py: bafybeidoawwg2g2cuexoyexr3ocxoa6cmgeeifh4fmqnp6i5yh35y3b2qi
   models.py: bafybeif6ckvvdwcee5lqvcwhxynnzxemqal2lgohjbrhcvobngyghuis4i
   payloads.py: bafybeib7q5bppbxctnfonjmats2guu76r4dfc5hghnl3dfdp7vzmapk5ji
   prompts.py: bafybeicjwd5phk2dcdcfmvwk72n4xhaqlmbq464yzxqht4rwy6tdmphubq
@@ -18,7 +18,7 @@ fingerprint:
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeiay6njysztm7uoiv2s23knoeob27xnwbfqufwmz6gpn3e74ovmqga
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeibockrfyrcgq3axpglfbftb7t2fo7ww7qcy6dtz6fufbenxzs27pa
+  tests/test_handlers.py: bafybeiexe3mnur3wv6fzziyldwmgohe5lnbrfvl4jnhvqw7vnpnjorrg3q
   tests/test_models.py: bafybeifyj75rrsq7c2kvpqromougbqg2wflyfa6ehzvqv5g63cehus6bae
   tests/test_payloads.py: bafybeiggrgq7zujlhjpqiefqkwqjiyngs7gcguwiet4n7fkidgjpa5rjni
   tests/test_prompts.py: bafybeifcdzk6xdhkgq72g2cicqfokqt2wozxekakxxamqaw3zyyymhrx7m
@@ -32,7 +32,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
-- valory/agent_performance_summary_abci:0.1.0:bafybeiferaq3ffxptxsji3k6b7i4xp5wnkjgqc7efcfr77mwzdzy7baf2e
+- valory/agent_performance_summary_abci:0.1.0:bafybeihqm5ebfwdbcc7zan66ffv7lsp6jeyz6ydrj65lizm7rtzoyy6s3i
 handlers:
   abci:
     args: {}

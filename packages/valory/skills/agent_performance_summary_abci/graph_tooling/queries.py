@@ -103,10 +103,15 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
     totalFeesSettled
     totalBets
     bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      id
       amount
+      outcomeTokenAmount
+      blockTimestamp
       outcomeIndex
       fixedProductMarketMaker {
+        id
         currentAnswer
+        conditionIds
       }
     }
   }
@@ -142,7 +147,9 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
     bets {
       id
       timestamp
+      blockTimestamp
       amount
+      outcomeTokenAmount
       feeAmount
       outcomeIndex
     }
@@ -395,7 +402,9 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
             bets(where: { id: $betId }, orderBy: timestamp, orderDirection: desc) {
               id
               timestamp
+              blockTimestamp
               amount
+              outcomeTokenAmount
               feeAmount
               outcomeIndex
               fixedProductMarketMaker {
@@ -411,7 +420,9 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
                   totalFees
                   bets(first: 1000) {
                     id
+                    blockTimestamp
                     amount
+                    outcomeTokenAmount
                     outcomeIndex
                   }
                 }

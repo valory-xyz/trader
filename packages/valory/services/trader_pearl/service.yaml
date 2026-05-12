@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiduv26nlwgf6dzlzexlchagf2eutc2tcf2kp4l5w4if6uwfml5pnu
+agent: valory/trader:0.1.0:bafybeiatdeavwlpm5ggea7crjodr6apya33wl3dskynvsje6b3v7ke64pe
 number_of_agents: 1
 deployment:
   agent:
@@ -111,6 +111,9 @@ models:
       minimum_batch_size: ${MINIMUM_BATCH_SIZE:int:500}
       redeeming_batch_size: ${REDEEMING_BATCH_SIZE:int:1}
       slippage: ${SLIPPAGE:float:0.01}
+      withdrawal_slippage: ${WITHDRAWAL_SLIPPAGE:float:0.01}
+      withdrawal_return_buffer: ${WITHDRAWAL_RETURN_BUFFER:float:0.05}
+      dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
       store_path: ${STORE_PATH:str:/data/}
       irrelevant_tools: ${IRRELEVANT_TOOLS:list:["native-transfer","prediction-online-lite","claude-prediction-online-lite","prediction-online-sme-lite","prediction-request-reasoning-lite","prediction-request-reasoning-claude-lite","prediction-offline-sme","deepmind-optimization",
@@ -366,7 +369,7 @@ is_abstract: true
 public_id: valory/http_server:0.22.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  host: ${HTTP_SERVER_HOST:str:0.0.0.0}
+  host: ${HTTP_SERVER_HOST:str:127.0.0.1}
   port: ${HTTP_SERVER_PORT:int:8716}
   timeout: ${HTTP_SERVER_TIMEOUT:float:30.0}
   target_skill_id: valory/trader_abci:0.1.0

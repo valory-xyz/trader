@@ -39,6 +39,9 @@ from packages.valory.skills.decision_maker_abci.states.base import SynchronizedD
 from packages.valory.skills.decision_maker_abci.states.bet_placement import (
     BetPlacementRound,
 )
+from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
+    OmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_redeem import (
     PolymarketRedeemRound,
 )
@@ -79,6 +82,7 @@ class Event(Enum):
     NO_MAJORITY = "no_majority"
     SWAP_DONE = "swap_done"
     WRAP_COLLATERAL_DONE = "wrap_collateral_done"
+    WITHDRAW_OMEN_DONE = "withdraw_omen_done"
 
 
 class PreTxSettlementRound(VotingRound):
@@ -124,6 +128,7 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
             SellOutcomeTokensRound.auto_round_id(): Event.SELL_OUTCOME_TOKENS_DONE,
             RedeemRound.auto_round_id(): Event.REDEEMING_DONE,
             PolymarketRedeemRound.auto_round_id(): Event.REDEEMING_DONE,
+            OmenWithdrawRound.auto_round_id(): Event.WITHDRAW_OMEN_DONE,
             CallCheckpointRound.auto_round_id(): Event.STAKING_DONE,
             MechPurchaseSubscriptionRound.auto_round_id(): Event.SUBSCRIPTION_DONE,
             PolymarketSetApprovalRound.auto_round_id(): Event.SET_APPROVAL_DONE,
@@ -194,6 +199,10 @@ class FinishedPolymarketWrapCollateralTxRound(DegenerateRound):
     """Round that represents that a Polymarket USDC.e→pUSD wrap has settled."""
 
 
+class FinishedOmenWithdrawTxRound(DegenerateRound):
+    """Round that represents that the Omen withdrawal sweep multisend has settled."""
+
+
 class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
     """TxSettlementMultiplexerAbciApp
 
@@ -214,11 +223,12 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             - redeeming done: 8.
             - swap done: 9.
             - wrap collateral done: 10.
-            - staking done: 11.
+            - staking done: 12.
             - subscription done: 6.
             - set approval done: 7.
+            - withdraw omen done: 11.
             - round timeout: 1.
-            - unrecognized: 12.
+            - unrecognized: 13.
         2. ChecksPassedRound
         3. FinishedMechRequestTxRound
         4. FinishedBetPlacementTxRound
@@ -228,10 +238,11 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         8. FinishedRedeemingTxRound
         9. FinishedPolymarketSwapTxRound
         10. FinishedPolymarketWrapCollateralTxRound
-        11. FinishedStakingTxRound
-        12. FailedMultiplexerRound
+        11. FinishedOmenWithdrawTxRound
+        12. FinishedStakingTxRound
+        13. FailedMultiplexerRound
 
-    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedPolymarketSwapTxRound, FinishedPolymarketWrapCollateralTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
+    Final states: {ChecksPassedRound, FailedMultiplexerRound, FinishedBetPlacementTxRound, FinishedMechRequestTxRound, FinishedOmenWithdrawTxRound, FinishedPolymarketSwapTxRound, FinishedPolymarketWrapCollateralTxRound, FinishedRedeemingTxRound, FinishedSellOutcomeTokensTxRound, FinishedSetApprovalTxRound, FinishedStakingTxRound, FinishedSubscriptionTxRound}
 
     Timeouts:
         round timeout: 30.0
@@ -256,6 +267,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
             Event.STAKING_DONE: FinishedStakingTxRound,
             Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
             Event.SET_APPROVAL_DONE: FinishedSetApprovalTxRound,
+            Event.WITHDRAW_OMEN_DONE: FinishedOmenWithdrawTxRound,
             Event.ROUND_TIMEOUT: PostTxSettlementRound,
             Event.UNRECOGNIZED: FailedMultiplexerRound,
         },
@@ -268,6 +280,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedRedeemingTxRound: {},
         FinishedPolymarketSwapTxRound: {},
         FinishedPolymarketWrapCollateralTxRound: {},
+        FinishedOmenWithdrawTxRound: {},
         FinishedStakingTxRound: {},
         FailedMultiplexerRound: {},
     }
@@ -282,6 +295,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedRedeemingTxRound,
         FinishedPolymarketSwapTxRound,
         FinishedPolymarketWrapCollateralTxRound,
+        FinishedOmenWithdrawTxRound,
         FinishedStakingTxRound,
         FinishedSubscriptionTxRound,
         FinishedSetApprovalTxRound,
@@ -299,6 +313,7 @@ class TxSettlementMultiplexerAbciApp(AbciApp[Event]):
         FinishedRedeemingTxRound: set(),
         FinishedPolymarketSwapTxRound: set(),
         FinishedPolymarketWrapCollateralTxRound: set(),
+        FinishedOmenWithdrawTxRound: set(),
         FinishedStakingTxRound: set(),
         FailedMultiplexerRound: set(),
         FinishedSubscriptionTxRound: set(),

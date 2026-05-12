@@ -232,6 +232,127 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             return result.get("sender")
         return result
 
+    def _fetch_ct_held_position_keys(
+        self, agent_safe_address: str
+    ) -> Generator[None, None, Optional["set[tuple[str, int]]"]]:
+        """Return ``{(condition_id_lower, outcome_index)}`` for CT positions the safe still holds.
+
+        Reads the ConditionalTokens subgraph's ``userPositions`` where
+        ``balance > 0``. Used to gate the per-position
+        ``funds_locked_in_markets`` formula so that positions whose CT
+        shares have been burned by ``redeemPositions`` (or transferred
+        externally) are correctly excluded — without this gate, an
+        already-redeemed winning position is still counted as locked
+        because the bet history is immutable.
+
+        Returns ``None`` on subgraph error (missing context, failed
+        request). The downstream consumer
+        :func:`compute_funds_locked_from_bets` treats ``None`` as
+        "no gate" (fallback to the un-gated sum) rather than collapsing
+        every position out — collapsing would write a phantom ``0.0``
+        to the FE on every transient CT-subgraph hiccup. A legitimate
+        empty set (user genuinely holds nothing on-chain) still gates
+        everything out and yields ``0.0`` correctly.
+
+        :param agent_safe_address: the safe address (lower-cased
+            internally).
+        :yield: framework yields for each paginated CT subgraph request.
+        :return: set of ``(condition_id_lower, outcome_index)`` tuples
+            for every non-zero, single-outcome position, or ``None``
+            on error. Compound positions and non-power-of-2 indexSets
+            are skipped (the trader agent doesn't create those).
+        """
+        held: "set[tuple[str, int]]" = set()
+        try:
+            ct_subgraph = self.context.conditional_tokens_subgraph
+        except AttributeError:
+            self.context.logger.warning(
+                "funds_locked: CT subgraph context unavailable; "
+                "skipping CT-balance gate"
+            )
+            return None
+
+        # Inlined pagination query. The ``balance_gt: "0"`` filter is
+        # critical: trader-agent safes accumulate thousands of
+        # zero-balance ``userPositions`` over their lifetime (every
+        # historical bet that was later redeemed leaves a 0-balance row
+        # behind). Without the filter, the result set easily exceeds
+        # one page (1000 rows) and page-2 fetch failures collapse the
+        # entire gate, falling back to the un-gated sum — exactly the
+        # 110-wxDAI phantom-locked regression motivating this fix.
+        # Filtering server-side keeps the result set tiny (only
+        # actually-held positions) and almost always fits in one page.
+        query = """
+        query CTUserPositions($id: ID!, $first: Int!, $idGt: String!) {
+          user(id: $id) {
+            userPositions(
+              first: $first
+              where: { balance_gt: "0", id_gt: $idGt }
+              orderBy: id
+            ) {
+              balance
+              id
+              position {
+                conditionIds
+                indexSets
+              }
+            }
+          }
+        }
+        """
+        id_gt = ""
+        page_size = 1000
+        while True:
+            response = yield from self._fetch_from_subgraph(
+                query=query,
+                variables={
+                    "id": agent_safe_address.lower(),
+                    "first": page_size,
+                    "idGt": id_gt,
+                },
+                subgraph=ct_subgraph,
+                res_context="ct_user_positions_for_funds_locked",
+            )
+            # The CT subgraph spec sets ``response_key:
+            # data:user:userPositions`` and ``response_type: list``, so
+            # ``_fetch_from_subgraph`` returns the unwrapped positions
+            # list directly. ``None`` means request error; an empty
+            # list means a legitimately exhausted pagination (or
+            # ``user`` doesn't exist on the subgraph — pre-indexing
+            # state, treated as "holds nothing").
+            if response is None:
+                self.context.logger.warning(
+                    "funds_locked: CT subgraph request failed; "
+                    "skipping CT-balance gate"
+                )
+                return None
+            rows = response if isinstance(response, list) else []
+            if not rows:
+                break
+            for row in rows:
+                try:
+                    balance = int(row.get("balance", 0))
+                except (TypeError, ValueError):
+                    continue
+                if balance == 0:
+                    continue
+                pos = row.get("position") or {}
+                cids = pos.get("conditionIds") or []
+                idx_sets = pos.get("indexSets") or []
+                if len(cids) != 1 or len(idx_sets) != 1:
+                    continue  # compound — skip
+                try:
+                    index_set = int(idx_sets[0])
+                except (TypeError, ValueError):
+                    continue
+                if index_set <= 0 or (index_set & (index_set - 1)) != 0:
+                    continue  # not single-bit
+                held.add((cids[0].lower(), index_set.bit_length() - 1))
+            if len(rows) < page_size:
+                break
+            id_gt = rows[-1]["id"]
+        return held
+
     def _fetch_trader_agent(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
