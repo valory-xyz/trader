@@ -51,6 +51,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedOmenWithdrawRound,
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
@@ -93,6 +94,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collatera
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
 )
+from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
+    PostOmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
@@ -121,7 +125,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
 
     Initial round: CheckBenchmarkingModeRound
 
-    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, OmenWithdrawRound, PolymarketPostSetApprovalRound, PolymarketWithdrawRound, PostBetUpdateRound, RandomnessRound, RedeemRouterRound}
+    Initial states: {CheckBenchmarkingModeRound, DecisionReceiveRound, DecisionRequestRound, HandleFailedTxRound, OmenWithdrawRound, PolymarketPostSetApprovalRound, PolymarketWithdrawRound, PostBetUpdateRound, PostOmenWithdrawRound, RandomnessRound, RedeemRouterRound}
 
     Transition states:
         0. CheckBenchmarkingModeRound
@@ -275,18 +279,27 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - round timeout: 34.
             - none: 32.
         35. PolymarketWithdrawRound
-            - withdrawal done: 37.
-            - withdrawal round timeout: 37.
+            - withdrawal done: 39.
+            - withdrawal round timeout: 39.
             - no majority: 35.
             - none: 35.
         36. OmenWithdrawRound
-            - withdrawal done: 37.
-            - withdrawal round timeout: 37.
+            - prepare tx: 38.
+            - withdrawal done: 39.
+            - withdrawal round timeout: 39.
             - no majority: 36.
             - none: 36.
-        37. WithdrawalIdleRound
+            - done: 39.
+            - mock tx: 39.
+        37. PostOmenWithdrawRound
+            - withdrawal done: 39.
+            - withdrawal round timeout: 37.
+            - no majority: 37.
+            - none: 37.
+        38. FinishedOmenWithdrawRound
+        39. WithdrawalIdleRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedOmenWithdrawRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
 
     Timeouts:
         round timeout: 30.0
@@ -306,6 +319,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         PostBetUpdateRound,
         PolymarketWithdrawRound,
         OmenWithdrawRound,
+        PostOmenWithdrawRound,
     }
     transition_function: AbciAppTransitionFunction = {
         CheckBenchmarkingModeRound: {
@@ -545,11 +559,25 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: PolymarketWithdrawRound,
         },
         OmenWithdrawRound: {
+            Event.PREPARE_TX: FinishedOmenWithdrawRound,
             Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
             Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
             Event.NO_MAJORITY: OmenWithdrawRound,
             Event.NONE: OmenWithdrawRound,
+            # DONE / MOCK_TX inherited from `TxPreparationRound` and silenced
+            # by the `end_block` override (which switches `DONE` to the
+            # payload-carried `event` field). Routed defensively to the
+            # terminal so the FSM linter sees them; never actually emitted.
+            Event.DONE: WithdrawalIdleRound,
+            Event.MOCK_TX: WithdrawalIdleRound,
         },
+        PostOmenWithdrawRound: {
+            Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
+            Event.WITHDRAWAL_ROUND_TIMEOUT: PostOmenWithdrawRound,
+            Event.NO_MAJORITY: PostOmenWithdrawRound,
+            Event.NONE: PostOmenWithdrawRound,
+        },
+        FinishedOmenWithdrawRound: {},
         WithdrawalIdleRound: {},
     }
     cross_period_persisted_keys = frozenset(
@@ -576,6 +604,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         FinishedPolymarketSwapTxPreparationRound,
         FinishedPolymarketWrapCollateralTxPreparationRound,
         FinishedSetApprovalTxPreparationRound,
+        FinishedOmenWithdrawRound,
         FinishedWithoutDecisionRound,
         FinishedWithoutRedeemingRound,
         RefillRequiredRound,
@@ -602,6 +631,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         # Reached via cross-skill mapping from check_stop_trading_abci.
         PolymarketWithdrawRound: set(),
         OmenWithdrawRound: set(),
+        # Reached via cross-skill mapping from tx_settlement_multiplexer_abci
+        # (FinishedOmenWithdrawTxRound -> PostOmenWithdrawRound).
+        PostOmenWithdrawRound: set(),
     }
     db_post_conditions: Dict[AppState, Set[str]] = {
         FinishedDecisionMakerRound: {
@@ -627,6 +659,10 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.most_voted_tx_hash),
         },
         FinishedSetApprovalTxPreparationRound: {
+            get_name(SynchronizedData.tx_submitter),
+            get_name(SynchronizedData.most_voted_tx_hash),
+        },
+        FinishedOmenWithdrawRound: {
             get_name(SynchronizedData.tx_submitter),
             get_name(SynchronizedData.most_voted_tx_hash),
         },

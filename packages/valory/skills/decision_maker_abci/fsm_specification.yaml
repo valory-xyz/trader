@@ -38,6 +38,7 @@ final_states:
 - BenchmarkingModeDisabledRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedOmenWithdrawRound
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
@@ -60,6 +61,7 @@ start_states:
 - PolymarketPostSetApprovalRound
 - PolymarketWithdrawRound
 - PostBetUpdateRound
+- PostOmenWithdrawRound
 - RandomnessRound
 - RedeemRouterRound
 states:
@@ -73,6 +75,7 @@ states:
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedOmenWithdrawRound
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
@@ -93,6 +96,7 @@ states:
 - PolymarketWithdrawRound
 - PolymarketWrapCollateralRound
 - PostBetUpdateRound
+- PostOmenWithdrawRound
 - RandomnessRound
 - RedeemRound
 - RedeemRouterRound
@@ -142,8 +146,11 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
+    (OmenWithdrawRound, DONE): WithdrawalIdleRound
+    (OmenWithdrawRound, MOCK_TX): WithdrawalIdleRound
     (OmenWithdrawRound, NONE): OmenWithdrawRound
     (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
+    (OmenWithdrawRound, PREPARE_TX): FinishedOmenWithdrawRound
     (OmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
     (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): FinishedPolymarketBetPlacementRound
@@ -193,6 +200,10 @@ transition_func:
     (PostBetUpdateRound, NONE): PostBetUpdateRound
     (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
     (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
+    (PostOmenWithdrawRound, NONE): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): PostOmenWithdrawRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound

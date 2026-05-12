@@ -490,6 +490,35 @@ class ConditionalTokensContract(Contract):
         return dict(balance=balance)
 
     @classmethod
+    def build_set_approval_for_all_tx(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+        operator: str,
+        approved: bool = True,
+    ) -> JSONLike:
+        """Build a ``setApprovalForAll`` tx for ConditionalTokens (ERC1155).
+
+        Distinct from ``ERC20.build_approval_tx`` which encodes
+        ``approve(spender, amount)`` — this encodes the ERC1155
+        ``setApprovalForAll(operator, approved)`` selector ``0xa22cb465``,
+        required before a FPMM can pull the seller's outcome-token shares
+        for a ``sell`` call.
+
+        :param ledger_api: the ledger API object
+        :param contract_address: the ConditionalTokens contract address
+        :param operator: the address being approved (typically an FPMM)
+        :param approved: whether to grant (True) or revoke (False) approval
+        :return: ``{"data": encoded_calldata_hex}``
+        """
+        contract_instance = cls.get_instance(ledger_api, contract_address)
+        data = contract_instance.encode_abi(
+            abi_element_identifier="setApprovalForAll",
+            args=[ledger_api.api.to_checksum_address(operator), approved],
+        )
+        return dict(data=data)
+
+    @classmethod
     def build_merge_positions_tx(
         cls,
         ledger_api: LedgerApi,

@@ -16,6 +16,7 @@ fingerprint:
   behaviours/update_bets.py: bafybeidq4gkjtbkriw2zqmwfmmjdmghto25yg2kfzhvy4kbhaoeogplwnu
   bets.py: bafybeiasv3tapzitpj3xjh6vn7cq6hu6ljqxuazi7jxoyzdhuulwpj2op4
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
+  fsm_specification.md: bafybeibxy3gklgo5fh2m4mvvetrenxskzedydfee6fhyl3heoglnfdycju
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
   graph_tooling/queries/__init__.py: bafybeihbybnl53i7k57ql5ujt5ru5n2eg324jfndh4lcnm4fk52mwbkjda
@@ -23,9 +24,9 @@ fingerprint:
   graph_tooling/queries/network.py: bafybeihtzh7j3bnzbkcctdeyc4qt5pejx4cwpny7spxlnc5oakqq2mv4p4
   graph_tooling/queries/omen.py: bafybeihpcx4il6esnudevyifa74e3opvrl3yccaciyi5ldy4fqbheyohzu
   graph_tooling/queries/realitio.py: bafybeigasvg5iyaa5bxljytncokwvzppnqnybd4mqui5pfffirasltmkfi
-  graph_tooling/queries/trades.py: bafybeialr7u7cpfauc56hjyas3nh7htw5qoa52ypgbrnhaueudwc5ahcia
-  graph_tooling/requests.py: bafybeibzzmzh7jg3i6vgcu4qv2fm3kupbw55ugpc7vgjrpcrr6cgeyiuby
-  graph_tooling/utils.py: bafybeigf3fq3s6y6trubrwdhfr3jizsuk4enn4yiaucycexgban2nliykm
+  graph_tooling/queries/trades.py: bafybeicg4gj5ys7z4saupfsbpfjvfct4bilkbg7tdcqldzjtczxkjev7nm
+  graph_tooling/requests.py: bafybeiepq4tnacq4farcscdhr36tp2qrliihugtnm3zyver5h72dcs7rcq
+  graph_tooling/utils.py: bafybeict7vhizazb7dko7mmzc2cd6tw5kxkabnmbokde3haixo7dgj2gf4
   handlers.py: bafybeic7o2zjg2wkmtfbgzvivuwsktgneevwjcisgmji5upmtxqc5xuoui
   models.py: bafybeidenff2ca7zdt2cya53ght2atnh6jblfyig3kvyxg7islf5tfp5de
   payloads.py: bafybeiduptsixzxaut2zvak3htjmhkm2jgvprlvkaiiwjjtel7w5cwhw2y

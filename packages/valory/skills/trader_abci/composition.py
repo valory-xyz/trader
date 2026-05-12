@@ -58,6 +58,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedOmenWithdrawRound,
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
@@ -77,6 +78,9 @@ from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
+    PostOmenWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
     PolymarketWithdrawRound,
@@ -148,6 +152,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
     FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
@@ -221,6 +226,14 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     # place so the FSM is symmetric across services.
     FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawRound,
     FinishedWithWithdrawalOmenRound: OmenWithdrawRound,
+    # Omen sweep takes the same two-hop tx-settlement route as the other
+    # tx-preparing rounds: OmenWithdrawRound prepares the multisend ->
+    # PreTxSettlementRound settles it -> FinishedOmenWithdrawTxRound returns
+    # control to PostOmenWithdrawRound for receipt parse + funds_locked
+    # snapshot, before the cycle terminates via WithdrawalIdleRound ->
+    # ResetAndPauseRound.
+    FinishedOmenWithdrawRound: PreTxSettlementRound,
+    FinishedOmenWithdrawTxRound: PostOmenWithdrawRound,
     # WithdrawalIdleRound is a DegenerateRound — it must map onward in the
     # composed app or the framework hits NotImplementedError on end_block.
     # Pause-then-cycle matches the established pattern for halt-like

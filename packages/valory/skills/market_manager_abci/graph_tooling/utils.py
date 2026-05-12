@@ -21,8 +21,9 @@
 
 import time
 from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 INVALID_MARKET_ANSWER = (
     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
@@ -194,3 +195,116 @@ def filter_claimed_conditions(
         for condition_id, payout in payouts.items()
         if condition_id.lower() not in claimed_condition_ids
     }
+
+
+@dataclass(frozen=True)
+class WithdrawablePosition:
+    """A safe-held position that the Omen withdrawal sweep can sell.
+
+    Built by :func:`get_withdrawable_positions` from the join of the
+    ConditionalTokens subgraph ``user_positions`` (authoritative source for
+    current ERC1155 balance — see withdrawal spec §13.9) and the omen
+    subgraph ``fpmm`` metadata (resolution state).
+    """
+
+    fpmm_address: str
+    outcome_index: int
+    balance: int
+    condition_id: str
+    index_set: int
+    # ERC1155 position id from the CT subgraph (``position.id``), converted
+    # from bytes32 hex to the decimal string the FE / Polystrat fills use
+    # as ``token_id``. Lets us avoid an off-chain keccak derivation that
+    # would need to mirror the CT contract's getCollectionId/getPositionId
+    # implementation byte-for-byte.
+    token_id: str
+
+
+def _is_power_of_two(value: int) -> bool:
+    """Return True iff ``value`` is a positive power of two."""
+    return value > 0 and (value & (value - 1)) == 0
+
+
+def get_withdrawable_positions(
+    creator_trades: List[Dict[str, Any]],
+    user_positions: List[Dict[str, Any]],
+) -> List[WithdrawablePosition]:
+    """Filter ``user_positions`` to the OPEN bucket (§1 classification).
+
+    Excludes resolved markets (WINNING / LOSING / RESOLVED_PENDING — those
+    are handled by ``RedeemRound`` or carry no value), markets pending
+    arbitration (FROZEN), zero-balance rows, compound positions with more
+    than one condition / index-set entry, and non-power-of-two index sets
+    (a single-outcome position must have exactly one bit set).
+
+    Distinct from the existing :func:`get_position_balance` helper, which
+    decodes ``outcome_index`` as ``int(indexSets[0]) - 1`` (correct only
+    for 2-outcome markets where the chosen outcome equals indexSet ``2``
+    minus one). The N-outcome correct decoding is ``log2(indexSet)`` —
+    used here.
+
+    :param creator_trades: omen subgraph ``fpmmTrades`` for the safe,
+        providing FPMM metadata (``id``, ``condition.id``,
+        ``answerFinalizedTimestamp``, ``isPendingArbitration``).
+    :param user_positions: ConditionalTokens subgraph ``userPositions``
+        rows for the safe, providing the authoritative current ERC1155
+        ``balance`` per position.
+    :return: One :class:`WithdrawablePosition` per OPEN-bucket position.
+    """
+    fpmm_by_condition: Dict[str, Dict[str, Any]] = {}
+    for trade in creator_trades:
+        fpmm = trade.get("fpmm") or {}
+        condition = fpmm.get("condition") or {}
+        condition_id = (condition.get("id") or "").lower()
+        if condition_id:
+            fpmm_by_condition.setdefault(condition_id, fpmm)
+
+    out: List[WithdrawablePosition] = []
+    for row in user_positions:
+        try:
+            balance = int(row.get("balance", 0))
+        except (TypeError, ValueError):
+            continue
+        if balance == 0:
+            continue
+        position = row.get("position") or {}
+        condition_ids = position.get("conditionIds") or []
+        index_sets_raw = position.get("indexSets") or []
+        if len(condition_ids) != 1 or len(index_sets_raw) != 1:
+            # compound position — trader agent doesn't create these
+            continue
+        condition_id = condition_ids[0].lower()
+        try:
+            index_set = int(index_sets_raw[0])
+        except (TypeError, ValueError):
+            continue
+        if not _is_power_of_two(index_set):
+            continue
+        fpmm: Optional[Dict[str, Any]] = fpmm_by_condition.get(condition_id)
+        if fpmm is None:
+            # CT position with no FPMM in the safe's trade history
+            continue
+        if fpmm.get("answerFinalizedTimestamp") is not None:
+            # resolved (WINNING / LOSING / RESOLVED_PENDING bucket)
+            continue
+        if fpmm.get("isPendingArbitration"):
+            # FROZEN
+            continue
+        position_id_hex = (position.get("id") or "").lower()
+        if not position_id_hex:
+            continue
+        try:
+            token_id_decimal = str(int(position_id_hex, 16))
+        except ValueError:
+            continue
+        out.append(
+            WithdrawablePosition(
+                fpmm_address=fpmm["id"],
+                outcome_index=index_set.bit_length() - 1,
+                balance=balance,
+                condition_id=condition_id,
+                index_set=index_set,
+                token_id=token_id_decimal,
+            )
+        )
+    return out

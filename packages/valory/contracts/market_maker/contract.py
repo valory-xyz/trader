@@ -19,15 +19,27 @@
 
 """This module contains the class to connect to a Market Maker contract."""
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
 from aea.contracts.base import Contract as BaseContract
 from aea.crypto.base import LedgerApi
 from aea_ledger_ethereum import EthereumApi
+from hexbytes import HexBytes
+
+from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
+)
 
 PUBLIC_ID = PublicId.from_str("valory/market_maker:0.1.0")
+
+# keccak256("FPMMSell(address,uint256,uint256,uint256,uint256)")
+FPMM_SELL_TOPIC0 = HexBytes(
+    "0xadcf2a240ed9300d681d9a3f5382b6c1beed1b7e46643e0c7b42cbe6e2d766b4"
+)
+_ADDRESS_HEX_LEN = 40
+_WORD_BYTES = 32
 
 
 class Contract(BaseContract):
@@ -186,3 +198,98 @@ class FixedProductMarketMakerContract(Contract):
             outcomeIndex=outcome_index,
             maxOutcomeTokensToSell=max_outcome_tokens_to_sell,
         )
+
+    @classmethod
+    def parse_sell_events(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,  # noqa: ARG003 - unused but required by framework
+        receipt: Dict[str, Any],
+    ) -> JSONLike:
+        """Decode every ``FPMMSell`` log present in ``receipt``.
+
+        :param ledger_api: the ledger API object
+        :param contract_address: the contract address (unused; logs are filtered by topic)
+        :param receipt: the transaction receipt dict
+        :return: ``{"events": [{seller, fpmm, outcome_index, return_amount,
+            fee_amount, outcome_tokens_sold}, ...]}``
+        """
+        events: List[Dict[str, Any]] = []
+        for log in receipt.get("logs", []) or []:
+            topics = log.get("topics", []) or []
+            if not topics or HexBytes(topics[0]) != FPMM_SELL_TOPIC0:
+                continue
+            seller_padded = HexBytes(topics[1]).hex()
+            seller = "0x" + seller_padded[-_ADDRESS_HEX_LEN:]
+            outcome_index = int(HexBytes(topics[2]).hex(), 16)
+            data = HexBytes(log["data"])
+            return_amount = int.from_bytes(data[:_WORD_BYTES], "big")
+            fee_amount = int.from_bytes(data[_WORD_BYTES : 2 * _WORD_BYTES], "big")
+            outcome_tokens_sold = int.from_bytes(
+                data[2 * _WORD_BYTES : 3 * _WORD_BYTES], "big"
+            )
+            events.append(
+                {
+                    "seller": ledger_api.api.to_checksum_address(seller),
+                    "fpmm": ledger_api.api.to_checksum_address(log["address"]),
+                    "outcome_index": outcome_index,
+                    "return_amount": return_amount,
+                    "fee_amount": fee_amount,
+                    "outcome_tokens_sold": outcome_tokens_sold,
+                }
+            )
+        return {"events": events}
+
+    @classmethod
+    def get_pool_balances_via_ct(
+        cls,
+        ledger_api: EthereumApi,
+        contract_address: str,
+        conditional_tokens_address: str,
+        collateral_token: str,
+        condition_id: str,
+    ) -> JSONLike:
+        """Read the FPMM's per-outcome ERC1155 reserves from ConditionalTokens.
+
+        The Olas/Omen FPMM build does not expose ``getPoolBalances()`` (see
+        §13.8 of the withdrawal spec), so we derive each outcome's
+        ``positionId`` and read ``balanceOf(fpmm, positionId)`` on the
+        ConditionalTokens contract instead.
+
+        :param ledger_api: the ledger API object
+        :param contract_address: the FPMM address whose pool balances are read
+        :param conditional_tokens_address: the CT contract address
+        :param collateral_token: the FPMM's collateral token address (wxDAI on
+            Olas-touched Omen)
+        :param condition_id: the FPMM's condition id (bytes32 hex)
+        :return: ``{"balances": [outcome_0_balance, outcome_1_balance, ...]}``
+        """
+        ct_instance = ConditionalTokensContract.get_instance(
+            ledger_api=ledger_api, contract_address=conditional_tokens_address
+        )
+        condition_id_b = HexBytes(condition_id)
+        slot_count = int(
+            ct_instance.functions.getOutcomeSlotCount(condition_id_b).call()
+        )
+        fpmm_checksum = ledger_api.api.to_checksum_address(contract_address)
+        collateral_checksum = ledger_api.api.to_checksum_address(collateral_token)
+        parent_collection_id = b"\x00" * _WORD_BYTES
+
+        balances: List[int] = []
+        for outcome_index in range(slot_count):
+            collection_id = ct_instance.functions.getCollectionId(
+                parent_collection_id, condition_id_b, 1 << outcome_index
+            ).call()
+            collection_id_int = int.from_bytes(collection_id, "big")
+            position_id = int.from_bytes(
+                ledger_api.api.solidity_keccak(
+                    ["address", "uint256"],
+                    [collateral_checksum, collection_id_int],
+                ),
+                "big",
+            )
+            balance = int(
+                ct_instance.functions.balanceOf(fpmm_checksum, position_id).call()
+            )
+            balances.append(balance)
+        return {"balances": balances}

@@ -44,6 +44,7 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio i
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
     trades as trades_query,
+    withdrawal_creator_fpmms,
 )
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
@@ -387,6 +388,55 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 all_trades.extend(trades_chunk)
                 return all_trades
             all_trades.extend(trades_chunk)
+
+    def fetch_withdrawal_creator_fpmms(
+        self, user: str
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Fetch every FPMM the ``user`` has traded on, with resolution metadata.
+
+        Used by the Omen withdrawal sweep to join CT ``user_positions``
+        (current ERC1155 balance) against omen FPMM metadata
+        (``answerFinalizedTimestamp``, ``isPendingArbitration``,
+        ``condition.id``) — see ``get_withdrawable_positions``.
+
+        :param user: the trader safe address (lowercased internally).
+        :return: a list of ``{id, fpmm: {...}}`` rows from the omen
+            ``fpmmTrades`` subgraph; on ``None`` from the response handler
+            the caller treats it as a fetch failure.
+        """
+        self._fetch_status = FetchStatus.IN_PROGRESS
+        current_subgraph = self.context.trades_subgraph
+
+        id_gt = ""
+        all_rows: List[Dict[str, Any]] = []
+        while True:
+            query = withdrawal_creator_fpmms.substitute(
+                creator=user.lower(),
+                first=QUERY_BATCH_SIZE,
+                id_gt=id_gt,
+            )
+            res_raw = yield from self.get_http_response(
+                content=to_content(query),
+                **current_subgraph.get_spec(),
+            )
+            res = current_subgraph.process_response(res_raw)
+            rows = yield from self._handle_response(
+                current_subgraph,
+                res,
+                res_context="withdrawal_creator_fpmms",
+            )
+            if res is None:
+                self.context.logger.error(
+                    "Failed to process withdrawal creator FPMMs."
+                )
+                return None
+
+            rows = cast(List[Dict[str, Any]], rows)
+            if len(rows) == 0:
+                return all_rows
+
+            all_rows.extend(rows)
+            id_gt = rows[-1]["id"]
 
     def fetch_user_positions(
         self, user: str
