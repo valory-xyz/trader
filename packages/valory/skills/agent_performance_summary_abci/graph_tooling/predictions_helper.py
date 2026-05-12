@@ -23,6 +23,7 @@
 import enum
 import json
 import time
+from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -749,18 +750,29 @@ class PredictionsFetcher(BasePredictionsFetcher):
             else:
                 # Fallback: use just the single bet (old behavior)
                 all_bets_with_fpmm = bets
-            market_ctx_dict = self._build_market_context(all_bets_with_fpmm)
+            # FIFO-allocate before building the market context so the
+            # winning-total denominator + per-bet payout share use the
+            # FIFO-aware remaining cost basis. The target ``bet`` is
+            # re-resolved from the enriched output so this single-bet
+            # endpoint emits the same FIFO state the bulk endpoint does.
+            enriched_buys = self._allocate_fifo(all_bets_with_fpmm)
+            market_ctx_dict = self._build_market_context(enriched_buys)
+            enriched_bet = next(
+                (b for b in enriched_buys if b.get("id") == bet_id),
+                bet,
+            )
             fpmm_id = fpmm.get("id")
             market_ctx = (
                 market_ctx_dict.get(str(fpmm_id), {}) if fpmm_id is not None else {}
             )
             participant = market_ctx.get("participant") if market_ctx else None
 
-            status = self._get_prediction_status(bet, participant)
+            status = self._get_prediction_status(enriched_bet, participant)
 
-            bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            fifo = self._fifo_state(enriched_bet)
+            bet_amount = fifo["original_cost"] / WEI_TO_NATIVE
             net_profit_val, payout_amount = self._calculate_bet_net_profit(
-                bet, market_ctx, bet_amount
+                enriched_bet, market_ctx, bet_amount
             )
 
             net_profit = (
@@ -807,15 +819,22 @@ class PredictionsFetcher(BasePredictionsFetcher):
     ) -> List[Dict]:
         """Format raw bets into prediction objects with proportional payout distribution.
 
+        Runs the sell-aware FIFO allocator before formatting so each output
+        row represents a single original buy enriched with its
+        FIFO-consumed sells. Sells are folded into their parent buys and
+        therefore do not appear as standalone rows. See
+        :meth:`_allocate_fifo` for the per-group allocation semantics.
+
         :param bets: List of raw bet dictionaries
         :param safe_address: The safe address for filtering
         :param status_filter: Optional status filter
         :return: List of formatted prediction dictionaries
         """
-        market_ctx = self._build_market_context(bets)
+        enriched_buys = self._allocate_fifo(bets)
+        market_ctx = self._build_market_context(enriched_buys)
 
         items: List[Dict] = []
-        for bet in bets:  # already ordered desc by timestamp in the query
+        for bet in enriched_buys:  # ordered chronologically by FIFO output
             fpmm = bet.get("fixedProductMarketMaker", {}) or {}
             fpmm_id = fpmm.get("id")
             ctx = market_ctx.get(fpmm_id) if fpmm_id is not None else None
@@ -824,6 +843,175 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 items.append(prediction)
 
         return items
+
+    def _allocate_fifo(self, bets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """FIFO-allocate sells against prior buys per ``(fpmm.id, outcomeIndex)``.
+
+        Returns one enriched buy dict per original buy row, with FIFO state
+        fields attached:
+
+        - ``original_shares`` / ``original_cost`` — the buy as posted.
+        - ``remaining_shares`` — shares still held after sells (≥ 0).
+        - ``allocated_proceeds`` — wxDAI realised from sells of this buy.
+        - ``allocated_cost`` — cost-basis portion already exited via sells.
+        - ``participant_remaining_cost`` — sum of all buys' remaining cost
+          across the participant, used to pro-rate invalid-market refunds
+          (multi-buy attribution from PR #948 review round 2).
+
+        Sells are detected by ``amount < 0`` (predict-omen handler convention,
+        confirmed empirically in spec §13.3) and folded into their parent buys
+        — they do NOT appear in the output. Orphan sells (no matching prior
+        buy within the same ``(fpmm, outcomeIndex)`` group) are logged and
+        dropped. Bets with a None ``fpmm.id`` or ``outcomeIndex`` are skipped
+        because they have no group key.
+
+        :param bets: raw bet dicts from the subgraph (mix of buys and sells,
+            ordered descending by timestamp from the query).
+        :return: enriched buy dicts in chronological order within each group;
+            inter-group order matches the input.
+        """
+        groups: Dict[Tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
+        bet_to_participant: Dict[str, Dict[str, Any]] = {}
+        for bet in bets:
+            fpmm = bet.get("fixedProductMarketMaker") or {}
+            fpmm_id = fpmm.get("id")
+            outcome_index = bet.get("outcomeIndex")
+            if fpmm_id is None or outcome_index is None:
+                self.logger.warning(
+                    "FIFO: skipping bet id=%s; fpmm_id or outcomeIndex missing",
+                    bet.get("id"),
+                )
+                continue
+            participant = (fpmm.get("participants") or [None])[0]
+            bet_to_participant[bet.get("id", "")] = participant or {}
+            groups[(fpmm_id, int(outcome_index))].append(bet)
+
+        output: List[Dict[str, Any]] = []
+        for (fpmm_id, outcome_index), group_bets in groups.items():
+            # Sort chronologically. blockTimestamp is the canonical FIFO key;
+            # `id` (subgraph's {txHash}-{logIndex} form) is a deterministic
+            # tiebreaker for same-block rows.
+            group_bets.sort(
+                key=lambda b: (
+                    int(b.get("blockTimestamp", b.get("timestamp", 0)) or 0),
+                    b.get("id", ""),
+                )
+            )
+            buys_in_group: List[Dict[str, Any]] = []
+            open_buys: "deque[Dict[str, Any]]" = deque()
+
+            for row in group_bets:
+                row_amount = float(row.get("amount", 0) or 0)
+                row_shares = float(row.get("outcomeTokenAmount", 0) or 0)
+
+                # Defensive cross-check (spec §8.2): amount and shares
+                # carry the same sign on a well-formed row. Disagreement is
+                # a data-quality signal — warn and skip rather than feed
+                # garbage through FIFO.
+                if row_amount != 0 and row_shares != 0:
+                    if (row_amount > 0) != (row_shares > 0):
+                        self.logger.warning(
+                            "FIFO: bet id=%s on (fpmm=%s, outcomeIndex=%s) has "
+                            "amount/outcomeTokenAmount sign disagreement "
+                            "(amount=%s, shares=%s); skipping",
+                            row.get("id"),
+                            fpmm_id,
+                            outcome_index,
+                            row_amount,
+                            row_shares,
+                        )
+                        continue
+
+                is_buy = row_amount > 0
+                if is_buy:
+                    enriched = {
+                        **row,
+                        "original_shares": row_shares,
+                        "original_cost": row_amount,
+                        "remaining_shares": row_shares,
+                        "allocated_proceeds": 0.0,
+                        "allocated_cost": 0.0,
+                    }
+                    buys_in_group.append(enriched)
+                    if row_shares > 0:
+                        open_buys.append(enriched)
+                else:
+                    proceeds_total = -row_amount  # positive wxDAI received
+                    shares_consumed = -row_shares  # positive shares sold
+
+                    while shares_consumed > 0 and open_buys:
+                        head = open_buys[0]
+                        take = min(shares_consumed, head["remaining_shares"])
+                        if take <= 0:
+                            open_buys.popleft()
+                            continue
+                        share_ratio = take / (-row_shares)
+                        cost_ratio = take / head["original_shares"]
+                        head["allocated_proceeds"] += proceeds_total * share_ratio
+                        head["allocated_cost"] += head["original_cost"] * cost_ratio
+                        head["remaining_shares"] -= take
+                        shares_consumed -= take
+                        if head["remaining_shares"] <= 0:
+                            open_buys.popleft()
+
+                    if shares_consumed > 0:
+                        unattributed_wxdai = (
+                            proceeds_total * (shares_consumed / (-row_shares))
+                            / WEI_TO_NATIVE
+                        )
+                        self.logger.warning(
+                            "FIFO: orphan sell %s on (fpmm=%s, outcomeIndex=%s): "
+                            "%s shares unmatched, %.6f wxDAI unattributed",
+                            row.get("id"),
+                            fpmm_id,
+                            outcome_index,
+                            shares_consumed,
+                            unattributed_wxdai,
+                        )
+
+            output.extend(buys_in_group)
+
+        # participant_remaining_cost — sum across all enriched buys for the
+        # invalid-market refund pro-rate. Stored in base units (wei) to
+        # match the rest of the FIFO state.
+        participant_remaining_cost = sum(
+            max(b["original_cost"] - b["allocated_cost"], 0.0) for b in output
+        )
+        for b in output:
+            b["participant_remaining_cost"] = participant_remaining_cost
+
+        return output
+
+    def _fifo_state(self, bet: Dict[str, Any]) -> Dict[str, float]:
+        """Return FIFO state for a buy with safe defaults for legacy callers.
+
+        Callers that haven't been routed through :meth:`_allocate_fifo`
+        pass raw subgraph rows; treat those as "never sold" so the old
+        formula paths remain bit-identical until they migrate. New
+        sell-aware paths read from the enriched fields (``remaining_cost``
+        etc.) and get the correct values.
+
+        :param bet: bet dict, optionally enriched with FIFO state fields.
+        :return: dict with float-typed FIFO state values, all in base units.
+        """
+        raw_amount = float(bet.get("amount", 0) or 0)
+        raw_shares = float(bet.get("outcomeTokenAmount", 0) or 0)
+        original_cost = float(bet.get("original_cost", raw_amount))
+        allocated_cost = float(bet.get("allocated_cost", 0.0))
+        return {
+            "original_shares": float(bet.get("original_shares", raw_shares)),
+            "original_cost": original_cost,
+            "remaining_shares": float(bet.get("remaining_shares", raw_shares)),
+            "allocated_proceeds": float(bet.get("allocated_proceeds", 0.0)),
+            "allocated_cost": allocated_cost,
+            "remaining_cost": max(original_cost - allocated_cost, 0.0),
+            "participant_remaining_cost": float(
+                bet.get(
+                    "participant_remaining_cost",
+                    max(original_cost - allocated_cost, 0.0),
+                )
+            ),
+        }
 
     def _build_market_context(self, bets: List[Dict]) -> Dict[str, Dict[str, Any]]:
         """Precompute per-market aggregates needed to distribute payouts per bet."""
@@ -860,11 +1048,19 @@ class PredictionsFetcher(BasePredictionsFetcher):
             if entry["total_traded"] is None:
                 entry["total_traded"] = float(participant.get("totalTraded", 0))
 
-            amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+            # Use the FIFO ``remaining_cost`` instead of the raw signed
+            # ``amount``: prior to FIFO this summed any sell row's negative
+            # amount into the winning-total denominator (spec §8.1 bug
+            # site at line 867), under-counting and skewing every winning
+            # bet's payout share. After FIFO, sells have been folded into
+            # the originating buys' ``allocated_cost`` — so the unsold
+            # remaining cost basis is the right contribution.
+            fifo = self._fifo_state(bet)
+            remaining_cost = fifo["remaining_cost"] / WEI_TO_NATIVE
             correct = parse_current_answer(entry["current_answer"])
             if correct is not None:
                 if int(bet.get("outcomeIndex", 0)) == correct:
-                    entry["winning_total_amount"] += amount
+                    entry["winning_total_amount"] += remaining_cost
 
         return ctx
 
@@ -882,7 +1078,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if status_filter and prediction_status != status_filter:
             return None
 
-        bet_amount = float(bet.get("amount", 0)) / WEI_TO_NATIVE
+        # Display the original buy size — the post-FIFO ``original_cost``
+        # for enriched rows; the raw ``amount`` for legacy callers (the
+        # FIFO state helper's defaults make this transparent).
+        fifo = self._fifo_state(bet)
+        bet_amount = fifo["original_cost"] / WEI_TO_NATIVE
         net_profit, payout_amount = self._calculate_bet_net_profit(
             bet, market_ctx, bet_amount
         )
@@ -918,7 +1118,29 @@ class PredictionsFetcher(BasePredictionsFetcher):
         market_ctx: Optional[Dict[str, Any]],
         bet_amount: float,
     ) -> Tuple[Optional[float], Optional[float]]:
-        """Calculate net profit and actual payout for a single bet using market-level payout data."""
+        """Calculate sell-aware net profit and payout for a single bet.
+
+        Net profit = realized PnL on sold shares (allocated_proceeds −
+        allocated_cost) + redemption PnL on the unsold remainder. For
+        losing outcomes the remainder is worthless; for winners it is
+        ``payout_share − remaining_cost``; for invalid-markets the
+        participant refund is pro-rated by this buy's share of the
+        participant's total remaining cost. Legacy callers that pass a raw
+        subgraph row (no FIFO fields) get treated as "never sold" via
+        :meth:`_fifo_state`'s defaults, preserving the pre-rewrite formula.
+
+        ``bet_amount`` is kept in the signature for backward compatibility
+        but no longer used — all cost-basis math now flows through the
+        FIFO state.
+
+        Spec §8.1 calls out three prior bug sites this method now fixes:
+          - Line 954 invalid-market refund used the signed raw amount as
+            the numerator; sells made the ratio negative.
+          - Line 971 booked ``-bet_amount`` as the loss; for a sell row
+            (negative amount) this surfaced as a positive profit.
+          - Line 978 winning payout share used the raw amount; sells
+            shrank it and skewed the winning-total denominator.
+        """
         if not market_ctx:
             return 0.0, None
 
@@ -929,54 +1151,72 @@ class PredictionsFetcher(BasePredictionsFetcher):
         winning_total = market_ctx.get("winning_total_amount") or 0.0
         outcome_index = int(bet.get("outcomeIndex", 0))
 
-        # Unresolved market
+        fifo = self._fifo_state(bet)
+        original_cost = fifo["original_cost"] / WEI_TO_NATIVE
+        allocated_proceeds = fifo["allocated_proceeds"] / WEI_TO_NATIVE
+        allocated_cost = fifo["allocated_cost"] / WEI_TO_NATIVE
+        remaining_cost = fifo["remaining_cost"] / WEI_TO_NATIVE
+        participant_remaining_cost = (
+            fifo["participant_remaining_cost"] / WEI_TO_NATIVE
+        )
+        realized_pnl = allocated_proceeds - allocated_cost
+
+        # Unresolved market — only realised PnL is settled at this point.
         if current_answer is None:
-            return 0.0, None
+            return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
-        # ZD#919: a market under Kleros arbitration is provisional until the
-        # arbitrator submits a final answer, which can take days or weeks.
-        # Treat as unfinalized regardless of the on-chain currentAnswer.
+        # ZD#919: pending arbitration is provisional regardless of the
+        # on-chain currentAnswer; treat as unresolved for the unsold leg.
         if market_ctx.get("is_pending_arbitration"):
-            return 0.0, None
+            return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
-        # Bug A (ZD#919): Reality.eth answers can flip during the dispute
-        # window, so any answer (including the invalid sentinel) must wait
-        # for finalization before becoming terminal. parse_timestamp
-        # treats None / "0" / malformed values as unfinalized (pending).
+        # Reality.eth answers can flip during the dispute window — wait
+        # for finalization before booking the unsold leg.
         finalized_ts = parse_timestamp(answer_finalized_ts)
         if finalized_ts is None or finalized_ts > self._now():
-            return 0.0, None
+            return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
-        # Invalid market refund path
+        # Invalid-market refund path. Pro-rate by THIS buy's remaining
+        # cost share of the participant's total remaining cost, not the
+        # signed raw amount (which sells made negative — spec §8.1 line
+        # 954 bug).
         if current_answer == INVALID_ANSWER_HEX:
-            if total_payout == 0 or total_traded == 0:
-                return 0.0, None
-            refund_share = total_payout * (bet_amount / total_traded)
-            return refund_share - bet_amount, refund_share
+            if total_payout == 0 or participant_remaining_cost <= 0:
+                return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
+            refund_share = total_payout * (
+                remaining_cost / participant_remaining_cost
+            )
+            payout = allocated_proceeds + refund_share
+            return realized_pnl + (refund_share - remaining_cost), payout
 
         correct_answer = parse_current_answer(current_answer)
         if correct_answer is None:
-            # Malformed currentAnswer (not None, not sentinel, not parseable).
-            # Treat as unresolved rather than crash. Log symmetrically with
-            # _get_prediction_status so a subgraph data-quality regression
-            # surfaces in both code paths, not just one.
             self.logger.warning(
                 f"Malformed currentAnswer for bet {bet.get('id')!r}: "
                 f"{current_answer!r}"
             )
-            return 0.0, None
+            return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
-        # Losing bet
+        # Losing bet — the unsold remainder is worthless; the realized
+        # leg is whatever was already exited via sells. Spec §8.1 line 971
+        # used ``-bet_amount``; for a sell that was a positive number,
+        # mis-booking the loss as profit.
         if outcome_index != correct_answer:
-            return -bet_amount, 0.0
+            payout = allocated_proceeds if allocated_proceeds > 0 else None
+            return realized_pnl - remaining_cost, payout
 
-        # Winning bet
+        # Winning bet. Until the participant has been credited a payout
+        # the unsold winning side is still pending — book only the
+        # realised leg.
         if total_payout == 0 or winning_total == 0:
-            # Won but not redeemed yet
-            return 0.0, None
+            return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
-        payout_share = total_payout * (bet_amount / winning_total)
-        return payout_share - bet_amount, payout_share
+        # Use remaining_cost (the unsold winning cost basis) as the
+        # numerator. winning_total is now the FIFO-aware denominator
+        # (per the §8.1 line 867 fix above), so this stays consistent.
+        payout_share = total_payout * (remaining_cost / winning_total)
+        payout = allocated_proceeds + payout_share
+        return realized_pnl + (payout_share - remaining_cost), payout
 
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
