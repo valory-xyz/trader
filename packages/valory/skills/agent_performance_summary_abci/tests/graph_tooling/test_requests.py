@@ -1955,3 +1955,32 @@ class TestFetchCTHeldPositionKeys:
         result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
 
         assert result == {(condition_a.lower(), 0), (condition_a.lower(), 1)}
+
+    def test_query_filters_balance_gt_zero_server_side(self) -> None:
+        """The CT query carries ``balance_gt: "0"`` so the result set stays small.
+
+        Without the server-side filter the query returns every
+        historical ``userPosition`` (including thousands of redeemed
+        zero-balance rows on a long-lived trader safe). Page 1 fills
+        up at 1000 rows, the loop then tries page 2 which is
+        susceptible to transient subgraph failures — when that fails
+        the fetcher returns ``None`` and the consumer falls back to
+        the un-gated sum, surfacing the 110-wxDAI phantom-locked-funds
+        regression.
+
+        Filtering server-side keeps the response to actually-held
+        positions only (~tens of rows) and fits in one page.
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        captured: Dict[str, Any] = {}
+
+        def fake_fetch(**kwargs: Any) -> Generator[None, None, Any]:
+            captured["query"] = kwargs.get("query", "")
+            return {"user": {"userPositions": []}}
+            yield  # pragma: no cover
+
+        b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign]
+        _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert 'balance_gt: "0"' in captured["query"], captured["query"]

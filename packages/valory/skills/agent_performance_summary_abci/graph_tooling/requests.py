@@ -272,16 +272,22 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             )
             return None
 
-        # Inlined pagination query — same shape as
-        # market_manager_abci.graph_tooling.queries.conditional_tokens.user_positions,
-        # but with GraphQL variables so we can route through the existing
-        # _fetch_from_subgraph helper.
+        # Inlined pagination query. The ``balance_gt: "0"`` filter is
+        # critical: trader-agent safes accumulate thousands of
+        # zero-balance ``userPositions`` over their lifetime (every
+        # historical bet that was later redeemed leaves a 0-balance row
+        # behind). Without the filter, the result set easily exceeds
+        # one page (1000 rows) and page-2 fetch failures collapse the
+        # entire gate, falling back to the un-gated sum — exactly the
+        # 110-wxDAI phantom-locked regression motivating this fix.
+        # Filtering server-side keeps the result set tiny (only
+        # actually-held positions) and almost always fits in one page.
         query = """
         query CTUserPositions($id: ID!, $first: Int!, $idGt: String!) {
           user(id: $id) {
             userPositions(
               first: $first
-              where: { id_gt: $idGt }
+              where: { balance_gt: "0", id_gt: $idGt }
               orderBy: id
             ) {
               balance

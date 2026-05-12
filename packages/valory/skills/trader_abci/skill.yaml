@@ -16,7 +16,7 @@ fingerprint:
   models.py: bafybeiai3vxuyl2ydfxocaygnhbno2ef3lw4ag63turmd7fqpaleixc2xy
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeifjcacyux5r6knfycdllht7kuojarxuyivhithitvc64fv2kijs6a
+  tests/test_composition.py: bafybeigridos5lmr23w42ny7szpafwspskqtrb222muj2fgvvdsgwqyhhm
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
   tests/test_handlers.py: bafybeihripx7irjcgu7i2mkqm3jdpcnv5kkuieezqng5l33xqv7rrlfh6i
   tests/test_models.py: bafybeianja6z3rspswf4cag3pnq2hgtsbc3hq7ndggyr2p3q6ye34wnoqq
@@ -56,13 +56,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/market_manager_abci:0.1.0:bafybeia7nohjn3ela6epm6tlgqwdvezws2e2n2mbo27xhnxwp366vlqovq
-- valory/decision_maker_abci:0.1.0:bafybeifny2ts6zoottklja7fulxd67pr5cfzzth7st2hviwxkbra7u3ncu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihbdogtggirbu7t7sjedatv2p26pra43vfh2oq7ijebbcpsseziha
+- valory/decision_maker_abci:0.1.0:bafybeibd6x6rh3tfidbp7ngwhoziqqshmjuodg3znqpngemuk5k7rchasq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiasyajzalropafsc4yhjielyrvx4nkp64j5y3islzvzvoi6ndhatm
 - valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
-- valory/check_stop_trading_abci:0.1.0:bafybeiaxa27vwgunkxofnlg5z2irbjgadxf33s67c7iyrl6t3myn7u2xxa
+- valory/check_stop_trading_abci:0.1.0:bafybeif7uwv5coasykd7fp4hrxnuqpbfaeey4n2pmojcqxmnp3tdkb4mnu
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeieflto752tyykxwellvwavbozvroeh4zrqemk6tbcb55c2k5hdl4a
-- valory/agent_performance_summary_abci:0.1.0:bafybeibpfyan5vn4wghuraxxtycawe6p2ghlavam6zvl7m2ydffkzbglxu
+- valory/chatui_abci:0.1.0:bafybeiesncpjuwmwtp6seb77wh6sbnkujxjq43qaikn4c6bdnxkvf2kyba
+- valory/agent_performance_summary_abci:0.1.0:bafybeicxzjb2he7mbwbngoe6otgpdxm5ncvtsoi62odlvkqfdhte27owqi
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 behaviours:
   main:
