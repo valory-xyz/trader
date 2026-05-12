@@ -228,7 +228,7 @@ class ConditionalTokensContract(Contract):
                 index_sets,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def get_raw_transaction(
@@ -544,5 +544,5 @@ class ConditionalTokensContract(Contract):
             ],
         )
         return dict(
-            data=data,
+            data=bytes.fromhex(data[2:]),
         )
