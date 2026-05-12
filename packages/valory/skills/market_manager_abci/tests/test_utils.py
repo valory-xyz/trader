@@ -750,6 +750,63 @@ class TestGetWithdrawablePositions:
         ]
         assert get_withdrawable_positions(trades, positions) == []
 
+    def test_string_zero_finalized_timestamp_kept_as_open(self) -> None:
+        """``answerFinalizedTimestamp == "0"`` is the unset sentinel, not finalized.
+
+        Some Omen subgraph indexers emit the string ``"0"`` rather than
+        ``null`` for unset fields. A naive ``is not None`` gate would
+        treat ``"0"`` as finalized and silently strand truly-unfinalized
+        OPEN positions from the sweep.
+        """
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a,
+                condition_id=self.condition_a,
+                answer_finalized_timestamp="0",
+            )
+        ]
+        positions = [
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="1000")
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+        assert result[0].fpmm_address == self.fpmm_a
+
+    def test_integer_zero_finalized_timestamp_kept_as_open(self) -> None:
+        """``answerFinalizedTimestamp == 0`` is also the unset sentinel."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a,
+                condition_id=self.condition_a,
+                answer_finalized_timestamp=0,
+            )
+        ]
+        positions = [
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="1000")
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+
+    def test_malformed_finalized_timestamp_kept_as_open(self) -> None:
+        """A non-numeric / negative / malformed value is treated as unset."""
+        for bad_value in ("not-a-number", "-1", -1, ""):
+            trades = [
+                _omen_trade_row(
+                    fpmm_address=self.fpmm_a,
+                    condition_id=self.condition_a,
+                    answer_finalized_timestamp=bad_value,
+                )
+            ]
+            positions = [
+                _ct_position_row(
+                    condition_id=self.condition_a, index_set=1, balance="1000"
+                )
+            ]
+            result = get_withdrawable_positions(trades, positions)
+            assert len(result) == 1, (
+                f"value {bad_value!r} should be treated as unset"
+            )
+
     def test_pending_arbitration_filtered_out(self) -> None:
         """FROZEN bucket (isPendingArbitration=True) is excluded."""
         trades = [

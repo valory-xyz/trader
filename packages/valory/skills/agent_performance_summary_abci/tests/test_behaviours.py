@@ -5378,15 +5378,22 @@ class TestComputeOmenFundsLocked:
 
     @staticmethod
     def _make_behaviour(
-        held_keys: "set[tuple[str, int]]",
+        held_keys: Optional["set[tuple[str, int]]"],
     ) -> FetchPerformanceSummaryBehaviour:  # type: ignore[no-untyped-def]
-        """Build a behaviour with the CT-fetch stubbed to a fixed set."""
+        """Build a behaviour with the CT-fetch stubbed to a fixed value.
+
+        ``held_keys=None`` simulates a CT subgraph error — the fetcher
+        signals "no data" by returning ``None`` and the downstream
+        consumer falls back to the un-gated sum.
+        """
         behaviour = object.__new__(FetchPerformanceSummaryBehaviour)
         mock_context = MagicMock()
         mock_context.logger = MagicMock()
         behaviour._context = mock_context  # type: ignore[attr-defined]
 
-        def fake_fetch(_safe: str) -> Generator[Any, None, "set[tuple[str, int]]"]:
+        def fake_fetch(
+            _safe: str,
+        ) -> Generator[Any, None, Optional["set[tuple[str, int]]"]]:
             return held_keys
             yield  # pragma: no cover
 
@@ -5571,13 +5578,13 @@ class TestComputeOmenFundsLocked:
         }
         assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 5.0
 
-    def test_held_set_none_falls_back_to_no_gate(self) -> None:
-        """Subgraph fetch failing returns empty held set → all positions excluded.
+    def test_empty_held_set_excludes_all_positions(self) -> None:
+        """A legitimately-empty held set means "user holds nothing on-chain".
 
-        Empty set is the "no positions held" interpretation; the
-        ``held_keys=None`` legacy fallback (caller passes None
-        explicitly) is exercised at the function-API level in
-        ``test_predictions_helper`` instead.
+        Every position is gated out and the result is ``0.0``. Distinct
+        from the subgraph-error path, which signals ``None`` to fall
+        back to no gate — see
+        :meth:`test_none_held_set_falls_back_to_no_gate`.
         """
         b = self._make_behaviour(held_keys=set())
         trader_agent = {
@@ -5590,5 +5597,27 @@ class TestComputeOmenFundsLocked:
                 )
             ]
         }
-        # Empty held_keys excludes everything (no CT-positions to gate).
         assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 0.0
+
+    def test_none_held_set_falls_back_to_no_gate(self) -> None:
+        """CT subgraph error → fetcher returns ``None`` → un-gated sum.
+
+        Guards against the regression where the fetcher returned
+        ``set()`` on error and a transient CT-subgraph hiccup collapsed
+        ``funds_locked_in_markets`` to a phantom ``0.0`` on the FE.
+        With the fix, ``None`` propagates through to
+        :func:`compute_funds_locked_from_bets`, which skips the gate
+        and reports the un-gated FIFO remaining cost instead of zero.
+        """
+        b = self._make_behaviour(held_keys=None)
+        trader_agent = {
+            "bets": [
+                self._bet(
+                    condition_id=self.CONDITION_A,
+                    outcome_index=0,
+                    amount_wei=WEI_IN_ETH,
+                    shares_wei=2 * WEI_IN_ETH,
+                )
+            ]
+        }
+        assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 1.0

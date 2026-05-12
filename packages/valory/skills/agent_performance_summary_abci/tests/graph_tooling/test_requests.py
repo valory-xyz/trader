@@ -1855,3 +1855,100 @@ class TestCleanUp:
 
         # Should not raise
         b.clean_up()
+
+
+class TestFetchCTHeldPositionKeys:
+    """Tests for ``_fetch_ct_held_position_keys`` error semantics.
+
+    The error path must return ``None`` so the downstream consumer in
+    :func:`compute_funds_locked_from_bets` can fall back to the
+    un-gated FIFO sum. Returning ``set()`` would collapse every
+    position out and write a phantom ``0.0`` to
+    ``funds_locked_in_markets``.
+    """
+
+    @staticmethod
+    def _strip_ct_subgraph(b: _ConcreteAPTBehaviour) -> None:
+        """Make ``context.conditional_tokens_subgraph`` raise ``AttributeError``.
+
+        ``MagicMock`` auto-creates attributes on access, so the
+        production-side ``except AttributeError`` would never fire on a
+        bare ``_make_behaviour()`` instance. We replace the context
+        with a spec'd mock that lacks the attribute entirely.
+        """
+
+        class _CtxWithoutCt:
+            logger = MagicMock()
+            params = MagicMock()
+            # deliberately no ``conditional_tokens_subgraph`` attribute
+
+        b._context = _CtxWithoutCt()  # type: ignore[assignment]
+
+    def test_missing_ct_subgraph_returns_none(self) -> None:
+        """No ``conditional_tokens_subgraph`` on context -> ``None``."""
+        b = _make_behaviour()
+        self._strip_ct_subgraph(b)
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_subgraph_request_failure_returns_none(self) -> None:
+        """``_fetch_from_subgraph`` returning ``None`` -> ``None``."""
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen(None)  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_no_user_returns_empty_set(self) -> None:
+        """Subgraph returns ``{"user": None}`` -> empty set (not ``None``).
+
+        Distinguishes "user genuinely holds nothing" (legit empty set,
+        gates everything out -> writes ``0.0`` correctly) from "fetch
+        error" (``None``, no gate, writes the un-gated sum).
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen({"user": None})  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == set()
+
+    def test_populated_positions_returns_keys(self) -> None:
+        """Returns the ``(condition_id, outcome_index)`` tuple per held row."""
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        condition_a = "0x" + "a1" * 32
+        # indexSet "1" -> outcome 0, indexSet "2" -> outcome 1.
+        b._fetch_from_subgraph = _return_gen(  # type: ignore[method-assign]
+            {
+                "user": {
+                    "userPositions": [
+                        {
+                            "balance": "1000",
+                            "id": "0xpos1",
+                            "position": {
+                                "conditionIds": [condition_a],
+                                "indexSets": ["1"],
+                            },
+                        },
+                        {
+                            "balance": "500",
+                            "id": "0xpos2",
+                            "position": {
+                                "conditionIds": [condition_a],
+                                "indexSets": ["2"],
+                            },
+                        },
+                    ]
+                }
+            }
+        )
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == {(condition_a.lower(), 0), (condition_a.lower(), 1)}

@@ -203,8 +203,9 @@ class WithdrawablePosition:
 
     Built by :func:`get_withdrawable_positions` from the join of the
     ConditionalTokens subgraph ``user_positions`` (authoritative source for
-    current ERC1155 balance — see withdrawal spec §13.9) and the omen
-    subgraph ``fpmm`` metadata (resolution state).
+    current ERC1155 balance — authoritative because it reflects on-chain
+    redemptions, unlike the immutable bet history) and the omen subgraph
+    ``fpmm`` metadata (resolution state).
     """
 
     fpmm_address: str
@@ -223,6 +224,30 @@ class WithdrawablePosition:
 def _is_power_of_two(value: int) -> bool:
     """Return True iff ``value`` is a positive power of two."""
     return value > 0 and (value & (value - 1)) == 0
+
+
+def _is_finalized_timestamp(value: Any) -> bool:
+    """Return True iff a subgraph timestamp indicates a finalized answer.
+
+    Some Omen subgraph indexers emit the string ``"0"`` (or integer
+    ``0``) for an unset ``answerFinalizedTimestamp`` rather than
+    ``null``. A naive ``is not None`` check would treat ``"0"`` as
+    finalized and exclude truly-unfinalized OPEN positions from the
+    withdrawal sweep, stranding user funds.
+
+    Treats ``None``, ``"0"``, ``0``, negative values, and malformed
+    inputs as not-finalized. Mirrors the ``parse_timestamp`` helper in
+    :mod:`agent_performance_summary_abci.graph_tooling.predictions_helper`
+    — kept inline to avoid an upward cross-skill dependency on the
+    perf-summary package.
+    """
+    if value is None:
+        return False
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return False
+    return parsed > 0
 
 
 def get_withdrawable_positions(
@@ -284,7 +309,7 @@ def get_withdrawable_positions(
         if fpmm_meta is None:
             # CT position with no FPMM in the safe's trade history
             continue
-        if fpmm_meta.get("answerFinalizedTimestamp") is not None:
+        if _is_finalized_timestamp(fpmm_meta.get("answerFinalizedTimestamp")):
             # resolved (WINNING / LOSING / RESOLVED_PENDING bucket)
             continue
         if fpmm_meta.get("isPendingArbitration"):

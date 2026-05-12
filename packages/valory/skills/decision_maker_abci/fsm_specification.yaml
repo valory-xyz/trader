@@ -203,7 +203,7 @@ transition_func:
     (PostOmenWithdrawRound, NONE): PostOmenWithdrawRound
     (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
     (PostOmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
-    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound

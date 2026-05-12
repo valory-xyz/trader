@@ -234,7 +234,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
     def _fetch_ct_held_position_keys(
         self, agent_safe_address: str
-    ) -> Generator[None, None, "set[tuple[str, int]]"]:
+    ) -> Generator[None, None, Optional["set[tuple[str, int]]"]]:
         """Return ``{(condition_id_lower, outcome_index)}`` for CT positions the safe still holds.
 
         Reads the ConditionalTokens subgraph's ``userPositions`` where
@@ -243,22 +243,24 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         shares have been burned by ``redeemPositions`` (or transferred
         externally) are correctly excluded — without this gate, an
         already-redeemed winning position is still counted as locked
-        because the bet history is immutable. See spec §7.2 (the
-        ``CT.balanceOf > 0`` requirement) and the audit on PR #952
-        revision.
+        because the bet history is immutable.
 
-        Returns an empty set on subgraph error; callers treat that as
-        "no gate" rather than "everything is unheld" — preserves the
-        pre-fix behaviour as a fallback rather than zeroing out
-        funds_locked spuriously.
+        Returns ``None`` on subgraph error (missing context, failed
+        request). The downstream consumer
+        :func:`compute_funds_locked_from_bets` treats ``None`` as
+        "no gate" (fallback to the un-gated sum) rather than collapsing
+        every position out — collapsing would write a phantom ``0.0``
+        to the FE on every transient CT-subgraph hiccup. A legitimate
+        empty set (user genuinely holds nothing on-chain) still gates
+        everything out and yields ``0.0`` correctly.
 
         :param agent_safe_address: the safe address (lower-cased
             internally).
         :yield: framework yields for each paginated CT subgraph request.
         :return: set of ``(condition_id_lower, outcome_index)`` tuples
-            for every non-zero, single-outcome position. Compound
-            positions and non-power-of-2 indexSets are skipped (the
-            trader agent doesn't create those).
+            for every non-zero, single-outcome position, or ``None``
+            on error. Compound positions and non-power-of-2 indexSets
+            are skipped (the trader agent doesn't create those).
         """
         held: "set[tuple[str, int]]" = set()
         try:
@@ -268,7 +270,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 "funds_locked: CT subgraph context unavailable; "
                 "skipping CT-balance gate"
             )
-            return held
+            return None
 
         # Inlined pagination query — same shape as
         # market_manager_abci.graph_tooling.queries.conditional_tokens.user_positions,
@@ -306,7 +308,11 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context="ct_user_positions_for_funds_locked",
             )
             if not response or not isinstance(response, dict):
-                break
+                self.context.logger.warning(
+                    "funds_locked: CT subgraph request failed; "
+                    "skipping CT-balance gate"
+                )
+                return None
             user = response.get("user") or {}
             rows = user.get("userPositions") or []
             if not rows:

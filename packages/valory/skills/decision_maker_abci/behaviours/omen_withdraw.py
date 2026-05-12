@@ -19,10 +19,8 @@
 
 """Omen withdrawal sweep behaviour — builds an (approve, sell)*N multisend."""
 
-import json
-import time
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional
+from typing import Any, Callable, Generator, List, Optional
 
 from hexbytes import HexBytes
 
@@ -43,6 +41,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
     MultisendBatch,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.omen_withdrawal_store import (
+    OmenWithdrawalStore,
+)
 from packages.valory.skills.decision_maker_abci.payloads import OmenWithdrawalPayload
 from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
@@ -56,12 +57,12 @@ from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     get_withdrawable_positions,
 )
 
-# Hardcoded per spec §9.3 — every Olas-touched Omen FPMM uses wxDAI as
-# collateral. Verified across 7,203 distinct FPMMs in the empirical scan.
+# Hardcoded collateral address — every Olas-touched Omen FPMM uses wxDAI
+# (verified across 7,203 distinct FPMMs in the historical scan); avoids
+# an on-chain ``collateralToken()`` read per sweep.
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
-# Spec §6.3 step 2: cap on halving attempts when the marginal-price estimate
-# overshoots the slippage-headroom invariant `n_estimate*(1+slip) <= B`.
+# Cap on halving attempts when the marginal-price-derived returnAmount
+# overshoots the slippage-headroom invariant ``n_estimate*(1+slip) <= B``.
 MAX_SIZING_ATTEMPTS = 5
 
 
@@ -69,8 +70,9 @@ def inflate_for_slippage(amount: int, slippage: float) -> int:
     """Inflate ``amount`` by ``slippage`` fraction, rounding up.
 
     Symmetric to ``behaviours/base.remove_fraction_wei`` for the buy
-    direction. Use for SELL ``maxOutcomeTokensToSell`` (a ceiling) — see
-    spec §6.3 for the floor-vs-ceiling rationale.
+    direction. Use for SELL ``maxOutcomeTokensToSell`` (a ceiling — we
+    want a safe upper bound on how many shares we'd surrender, so the
+    rounding direction must inflate, not shrink).
 
     :param amount: the base amount (e.g. ``calcSellAmount`` output).
     :param slippage: fraction in [0, 1].
@@ -86,7 +88,7 @@ def inflate_for_slippage(amount: int, slippage: float) -> int:
 class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """Builds the Omen withdrawal sweep multisend.
 
-    Lifecycle (spec §6.5a):
+    Lifecycle:
       1. Persist ``selling`` state, reset fills/errors session records.
       2. Fetch CT ``user_positions`` (current ERC1155 balance) and omen
          ``fpmmTrades`` (FPMM metadata) — top-level retries.
@@ -102,6 +104,21 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     """
 
     matching_round = OmenWithdrawRound
+
+    @property
+    def _store(self) -> OmenWithdrawalStore:
+        """Lazily-instantiated chatui JSON-store helper.
+
+        Cached on the instance to avoid rebuilding the helper for every
+        state transition / per-position record.
+        """
+        if getattr(self, "_store_cache", None) is None:
+            self._store_cache = OmenWithdrawalStore(
+                store_dir=Path(self.context.params.store_path),
+                filename=CHATUI_PARAM_STORE,
+                logger=self.context.logger,
+            )
+        return self._store_cache
 
     def async_act(self) -> Generator:
         """Run the sweep build."""
@@ -119,8 +136,8 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _build_payload(self) -> Generator[None, None, OmenWithdrawalPayload]:
         """Run the full sweep-build pipeline and return the payload to emit."""
-        self._set_state(WITHDRAWAL_STATE_SELLING)
-        self._reset_session_records()
+        self._store.set_state(WITHDRAWAL_STATE_SELLING)
+        self._store.reset_session_records()
 
         safe = self.synchronized_data.safe_contract_address
         user_positions = yield from self._with_top_level_retry(
@@ -148,16 +165,24 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         batches: List[MultisendBatch] = []
+        planned_fpmms: List[str] = []
         for position in sellable:
             position_batches = yield from self._size_and_build_position(position)
             if position_batches is not None:
                 batches.extend(position_batches)
+                planned_fpmms.append(position.fpmm_address)
 
         if not batches:
             self.context.logger.info(
                 "omen withdrawal: all positions filtered out (dust or sizing)"
             )
-            return self._short_circuit_payload(errored=self._store_has_errors())
+            return self._short_circuit_payload(errored=self._store.has_errors())
+
+        # Persist the planned-FPMM allowlist so the post-settlement
+        # receipt parser can reject FPMMSell events from any non-target
+        # FPMM that lands in the same receipt (e.g. via a future
+        # cross-contract hook).
+        self._store.record_planned_fpmms(planned_fpmms)
 
         # Stage batches on the base behaviour so the existing
         # _build_multisend_* helpers see them.
@@ -187,7 +212,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             override routes the trailing ``event`` field through.
         """
         terminal = WITHDRAWAL_STATE_ERRORED if errored else WITHDRAWAL_STATE_COMPLETE
-        self._set_state(terminal)
+        self._store.set_state(terminal)
         return OmenWithdrawalPayload(
             sender=self.context.agent_address,
             tx_submitter=None,
@@ -228,7 +253,9 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             )
             if attempt < max_attempts - 1 and attempt < len(backoff):
                 yield from self.sleep(backoff[attempt])
-        self._record_top_level_error(op_name)
+        # Compose the full reason here rather than passing op_name to a
+        # store method — the store doesn't know about retries semantics.
+        self._store.record_top_level_error(f"{op_name}: retries exhausted")
         return None
 
     # ------------------------------------------------------------------ #
@@ -255,7 +282,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         pool_balances = yield from self._read_pool_balances(position)
         if pool_balances is None or sum(pool_balances) == 0:
-            self._record_error(
+            self._store.record_error(
                 position,
                 "pool_balances unavailable or empty",
             )
@@ -269,7 +296,9 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         marginal_price = other_sum / sum(pool_balances)
         notional_wxdai = int(position.balance * marginal_price)
         if notional_wxdai < dust_threshold:
-            # spec §6.3 dust threshold — exclude silently
+            # Sub-dust notional — exclude silently. The ``record_error``
+            # noise floor would otherwise drown out real per-position
+            # failures with rows that aren't worth selling.
             return None
 
         return_amount = int(notional_wxdai * (1 - buffer_frac))
@@ -281,7 +310,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 position.fpmm_address, return_amount, position.outcome_index
             )
             if n_estimate is None:
-                self._record_error(
+                self._store.record_error(
                     position,
                     "calcSellAmount reverted: see logs",
                 )
@@ -290,20 +319,38 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 break
             return_amount //= 2
             if return_amount == 0:
-                break
+                # Distinct from "max attempts exhausted" — halve-to-zero
+                # means the FPMM's pool depth is too thin for the agent's
+                # share size at this slippage tolerance. Self-record
+                # rather than ``break`` so the post-loop ``for/else``
+                # cannot be silently fallen through, and operators get a
+                # diagnostic that names the pool-depth root cause.
+                self._store.record_error(
+                    position,
+                    "return_amount halved to zero before sizing "
+                    "converged (FPMM pool too thin for this share size "
+                    "at the configured slippage)",
+                )
+                return None
         else:
-            self._record_error(
+            self._store.record_error(
                 position,
-                "returnAmount could not be sized to fit balance with "
-                "slippage headroom",
+                "sizing attempts exhausted with n_estimate above "
+                "slippage-headroom cap (tighten withdrawal_slippage or "
+                "withdrawal_return_buffer)",
             )
             return None
 
+        # Defensive safety net: the only path here is the converged
+        # ``break`` above. ``n_estimate`` should be positive and
+        # ``return_amount`` non-zero, but a future refactor could
+        # introduce a regression — keep the guard so a silent drop
+        # isn't possible.
         if n_estimate is None or n_estimate <= 0 or return_amount <= 0:
-            self._record_error(
+            self._store.record_error(
                 position,
-                "returnAmount could not be sized to fit balance with "
-                "slippage headroom",
+                "sizing converged but produced non-positive estimate "
+                "(unreachable under current loop semantics)",
             )
             return None
 
@@ -315,14 +362,14 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             position.fpmm_address
         )
         if approval_batch is None:
-            self._record_error(position, "failed to encode setApprovalForAll")
+            self._store.record_error(position, "failed to encode setApprovalForAll")
             return None
 
         sell_batch = yield from self._build_sell_batch(
             position, return_amount, max_outcome_tokens_to_sell
         )
         if sell_batch is None:
-            self._record_error(position, "failed to encode sell calldata")
+            self._store.record_error(position, "failed to encode sell calldata")
             return None
 
         self.context.logger.info(
@@ -444,78 +491,6 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     # / write to `self.safe_tx_hash` — staged in `_build_payload`.
 
     # ------------------------------------------------------------------ #
-    # Disk-backed persistence (mirror Polystrat)                         #
+    # Disk-backed persistence is delegated to                            #
+    # ``OmenWithdrawalStore`` — see ``self._store`` above.               #
     # ------------------------------------------------------------------ #
-
-    def _store_path(self) -> Path:
-        """Return the path of the chatui JSON store."""
-        return Path(self.context.params.store_path) / CHATUI_PARAM_STORE
-
-    def _read_store(self) -> Dict[str, Any]:
-        """Load the chatui JSON store, defensive against missing/invalid file."""
-        try:
-            with open(self._store_path(), "r") as f:
-                return json.load(f)
-        except (OSError, json.JSONDecodeError):
-            return {}
-
-    def _write_store(self, store: Dict[str, Any]) -> None:
-        """Persist the chatui JSON store."""
-        try:
-            with open(self._store_path(), "w") as f:
-                json.dump(store, f, indent=4)
-        except OSError as e:
-            self.context.logger.error(f"omen withdrawal: failed to write store: {e}")
-
-    def _set_state(self, state: str) -> None:
-        """Update ``withdrawal_state`` on disk and log the transition."""
-        store = self._read_store()
-        store["withdrawal_state"] = state
-        self._write_store(store)
-        self.context.logger.info(f"omen withdrawal: state -> {state}")
-
-    def _reset_session_records(self) -> None:
-        """Clear ``withdrawal_fills`` and ``withdrawal_errors`` on disk."""
-        store = self._read_store()
-        store["withdrawal_fills"] = []
-        store["withdrawal_errors"] = []
-        self._write_store(store)
-
-    def _record_error(self, position: WithdrawablePosition, reason: str) -> None:
-        """Append an error record for a per-position drop."""
-        store = self._read_store()
-        errors = store.setdefault("withdrawal_errors", [])
-        errors.append(
-            {
-                "token_id": position.token_id,
-                "shares_remaining": position.balance / 1e18,
-                "reason": reason,
-                "ts": int(time.time()),
-                "fpmm": position.fpmm_address,
-                "outcome_index": position.outcome_index,
-            }
-        )
-        self._write_store(store)
-        self.context.logger.warning(
-            f"omen withdrawal: drop {position.fpmm_address} "
-            f"outcome={position.outcome_index} reason={reason!r}"
-        )
-
-    def _record_top_level_error(self, op_name: str) -> None:
-        """Record a top-level error (no per-position attribution)."""
-        store = self._read_store()
-        errors = store.setdefault("withdrawal_errors", [])
-        errors.append(
-            {
-                "token_id": TOP_LEVEL_ERROR_TOKEN_ID,
-                "shares_remaining": 0.0,
-                "reason": f"{op_name}: retries exhausted",
-                "ts": int(time.time()),
-            }
-        )
-        self._write_store(store)
-        self.context.logger.error(f"omen withdrawal: top-level failure on {op_name}")
-
-    def _store_has_errors(self) -> bool:
-        """Check whether the current session has any persisted errors."""
-        return bool(self._read_store().get("withdrawal_errors"))

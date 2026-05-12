@@ -19,6 +19,7 @@
 
 """This module contains the class to connect to a Market Maker contract."""
 
+import logging
 from typing import Any, Dict, List
 
 from aea.common import JSONLike
@@ -31,6 +32,8 @@ from hexbytes import HexBytes
 from packages.valory.contracts.conditional_tokens.contract import (
     ConditionalTokensContract,
 )
+
+_logger = logging.getLogger(__name__)
 
 PUBLIC_ID = PublicId.from_str("valory/market_maker:0.1.0")
 
@@ -211,6 +214,14 @@ class FixedProductMarketMakerContract(Contract):
     ) -> JSONLike:
         """Decode every ``FPMMSell`` log present in ``receipt``.
 
+        Malformed logs (wrong topic count, missing ``data`` / ``address``,
+        truncated payload, or any other shape that breaks decoding) are
+        skipped individually with a warning rather than failing the whole
+        call. Without this, a single non-conformant log would raise out
+        through the framework's dispatch wrapper as
+        ``"parse_sell_events dispatch failed"``, taking the entire
+        receipt's audit trail with it.
+
         :param ledger_api: the ledger API object
         :param contract_address: the contract address (unused; logs are filtered by topic)
         :param receipt: the transaction receipt dict
@@ -218,29 +229,80 @@ class FixedProductMarketMakerContract(Contract):
             fee_amount, outcome_tokens_sold}, ...]}``
         """
         events: List[Dict[str, Any]] = []
-        for log in receipt.get("logs", []) or []:
+        for idx, log in enumerate(receipt.get("logs", []) or []):
             topics = log.get("topics", []) or []
             if not topics or HexBytes(topics[0]) != FPMM_SELL_TOPIC0:
                 continue
-            seller_padded = HexBytes(topics[1]).hex()
-            seller = "0x" + seller_padded[-_ADDRESS_HEX_LEN:]
-            outcome_index = int(HexBytes(topics[2]).hex(), 16)
-            data = HexBytes(log["data"])
-            return_amount = int.from_bytes(data[:_WORD_BYTES], "big")
-            fee_amount = int.from_bytes(data[_WORD_BYTES : 2 * _WORD_BYTES], "big")
-            outcome_tokens_sold = int.from_bytes(
-                data[2 * _WORD_BYTES : 3 * _WORD_BYTES], "big"
-            )
-            events.append(
-                {
-                    "seller": ledger_api.api.to_checksum_address(seller),
-                    "fpmm": ledger_api.api.to_checksum_address(log["address"]),
-                    "outcome_index": outcome_index,
-                    "return_amount": return_amount,
-                    "fee_amount": fee_amount,
-                    "outcome_tokens_sold": outcome_tokens_sold,
-                }
-            )
+
+            # Structural guards: tailored diagnostics for the common
+            # malformations. FPMMSell signature is
+            # (indexed seller, returnAmount, feeAmount, indexed outcomeIndex,
+            # outcomeTokensSold) -> 3 topics (topic0 + seller + outcomeIndex)
+            # and 3 words of data (96 bytes hex-decoded).
+            if len(topics) < 3:
+                _logger.warning(
+                    "parse_sell_events: dropping log idx=%s with only %d "
+                    "topics (need >=3); txHash=%s",
+                    idx,
+                    len(topics),
+                    log.get("transactionHash"),
+                )
+                continue
+            address = log.get("address")
+            if not address:
+                _logger.warning(
+                    "parse_sell_events: dropping log idx=%s missing "
+                    "'address'; txHash=%s",
+                    idx,
+                    log.get("transactionHash"),
+                )
+                continue
+            data_hex = log.get("data")
+            if not data_hex:
+                _logger.warning(
+                    "parse_sell_events: dropping log idx=%s from %s "
+                    "missing 'data'; txHash=%s",
+                    idx,
+                    address,
+                    log.get("transactionHash"),
+                )
+                continue
+
+            # Safety net: any unexpected shape (truncated data, bad
+            # hex, non-numeric topic) is logged and skipped without
+            # losing the rest of the receipt.
+            try:
+                seller_padded = HexBytes(topics[1]).hex()
+                seller = "0x" + seller_padded[-_ADDRESS_HEX_LEN:]
+                outcome_index = int(HexBytes(topics[2]).hex(), 16)
+                data = HexBytes(data_hex)
+                return_amount = int.from_bytes(data[:_WORD_BYTES], "big")
+                fee_amount = int.from_bytes(
+                    data[_WORD_BYTES : 2 * _WORD_BYTES], "big"
+                )
+                outcome_tokens_sold = int.from_bytes(
+                    data[2 * _WORD_BYTES : 3 * _WORD_BYTES], "big"
+                )
+                events.append(
+                    {
+                        "seller": ledger_api.api.to_checksum_address(seller),
+                        "fpmm": ledger_api.api.to_checksum_address(address),
+                        "outcome_index": outcome_index,
+                        "return_amount": return_amount,
+                        "fee_amount": fee_amount,
+                        "outcome_tokens_sold": outcome_tokens_sold,
+                    }
+                )
+            except (ValueError, TypeError) as exc:
+                _logger.warning(
+                    "parse_sell_events: dropping log idx=%s from %s; "
+                    "decode failed: %r; txHash=%s",
+                    idx,
+                    address,
+                    exc,
+                    log.get("transactionHash"),
+                )
+                continue
         return {"events": events}
 
     @classmethod

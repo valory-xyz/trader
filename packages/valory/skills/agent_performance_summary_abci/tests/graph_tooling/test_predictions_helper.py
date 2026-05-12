@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     INVALID_ANSWER_HEX,
     PredictionsFetcher,
     WEI_TO_NATIVE,
+    allocate_fifo,
     parse_current_answer,
 )
 
@@ -3909,6 +3910,52 @@ class TestAllocateFifo:
         assert out == []
         assert fetcher.logger.warning.called
 
+    def test_int_math_no_float_drift_across_many_sells(self) -> None:
+        """Many partial sells fully exit a wei-scale buy with exactly zero remaining.
+
+        Pre-fix the allocator used floats; ``head["remaining_shares"] -=
+        take`` accumulated drift at wei scale (past 2^53). A tiny
+        positive residual (e.g. 1e-9) left the head un-popped and
+        blocked the queue. The int conversion eliminates the drift —
+        100 partial sells of 0.01 wxDAI each fully exit a 1 wxDAI buy
+        with exactly zero ``remaining_shares``.
+        """
+        fetcher = _make_fetcher()
+        buy_shares_wei = 10**18  # 1 wxDAI buy
+        n_sells = 100
+        sell_chunk = buy_shares_wei // n_sells  # 10**16 each
+
+        bets = [
+            _fifo_bet(
+                bet_id="b_buy",
+                fpmm_id=self.fpmm_a,
+                outcome_index=0,
+                amount_wei=buy_shares_wei,
+                shares_wei=buy_shares_wei,
+                block_ts=1000,
+            )
+        ]
+        for i in range(n_sells):
+            bets.append(
+                _fifo_bet(
+                    bet_id=f"s_{i}",
+                    fpmm_id=self.fpmm_a,
+                    outcome_index=0,
+                    amount_wei=-sell_chunk,
+                    shares_wei=-sell_chunk,
+                    block_ts=2000 + i,
+                )
+            )
+
+        out = fetcher._allocate_fifo(bets)
+        assert len(out) == 1
+        # ``remaining_shares`` must be exactly 0 — not 1e-9 from float
+        # drift that would leave the buy stuck in the open queue.
+        assert out[0]["remaining_shares"] == 0
+        # ``allocated_cost`` should sum exactly to the original cost
+        # under int math (each step is a clean divide, no residual).
+        assert out[0]["allocated_cost"] == buy_shares_wei
+
     def test_zero_share_buy_does_not_deadlock(self) -> None:
         """A zero-share buy is preserved but does not enter the open-buys deque."""
         fetcher = _make_fetcher()
@@ -3926,8 +3973,16 @@ class TestAllocateFifo:
         assert len(out) == 1
         assert out[0]["remaining_shares"] == 0.0
 
-    def test_participant_remaining_cost_aggregates_across_groups(self) -> None:
-        """participant_remaining_cost sums all enriched buys, not just one group."""
+    def test_participant_remaining_cost_scoped_per_fpmm(self) -> None:
+        """``participant_remaining_cost`` is summed PER-FPMM, not across FPMMs.
+
+        Pre-fix this scalar summed remaining costs across every FPMM
+        in the output. The consumer in ``_calculate_bet_net_profit``
+        divides this buy's remaining cost by the scalar and multiplies
+        by ``total_payout`` — which is itself per-market — so a
+        cross-FPMM denominator skewed the invalid-market refund
+        attribution by ``(N-1)/N`` for an agent with N FPMMs.
+        """
         fetcher = _make_fetcher()
         bets = [
             _fifo_bet(
@@ -3957,10 +4012,114 @@ class TestAllocateFifo:
             ),
         ]
         out = fetcher._allocate_fifo(bets)
-        # All enriched buys carry the same participant_remaining_cost:
-        # b_a0 remaining = 10 - 2 = 8; b_b0 remaining = 5. Total = 13.
+        # fpmm_a remaining = 10 - 2 = 8 wxDAI; fpmm_b remaining = 5 wxDAI.
+        # Each buy now reads its FPMM's own bucket, not the cross-FPMM
+        # total of 13.
+        by_id = {b["id"]: b for b in out}
+        assert by_id["b_a0"]["participant_remaining_cost"] == float(8 * 10**18)
+        assert by_id["b_b0"]["participant_remaining_cost"] == float(5 * 10**18)
+
+    def test_participant_remaining_cost_aggregates_across_outcomes_same_fpmm(
+        self,
+    ) -> None:
+        """Same FPMM, two outcomeIndices: denominator sums both outcomes.
+
+        Reality.eth pays the invalid-market refund per market, not per
+        outcome — so an agent holding outcome 0 AND outcome 1 of the
+        same FPMM shares one refund pool, and the denominator must
+        cover both legs.
+        """
+        fetcher = _make_fetcher()
+        bets = [
+            _fifo_bet(
+                bet_id="b_a0",
+                fpmm_id=self.fpmm_a,
+                outcome_index=0,
+                amount_wei=4 * 10**18,
+                shares_wei=4 * 10**18,
+                block_ts=1000,
+            ),
+            _fifo_bet(
+                bet_id="b_a1",
+                fpmm_id=self.fpmm_a,
+                outcome_index=1,
+                amount_wei=6 * 10**18,
+                shares_wei=6 * 10**18,
+                block_ts=1000,
+            ),
+        ]
+        out = fetcher._allocate_fifo(bets)
+        # Both legs carry the same per-FPMM total: 4 + 6 = 10 wxDAI.
         for b in out:
-            assert b["participant_remaining_cost"] == float(13 * 10**18)
+            assert b["participant_remaining_cost"] == float(10 * 10**18)
+
+
+class TestAllocateFifoModuleLevel:
+    """Tests exercising the public ``allocate_fifo`` directly.
+
+    The class method ``PredictionsFetcher._allocate_fifo`` delegates to
+    this function. These tests guarantee the module-level entry point
+    is callable without a fetcher instance — the whole point of the
+    extraction from H8.
+    """
+
+    fpmm_a = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"
+
+    def test_callable_without_fetcher_instance(self) -> None:
+        """``allocate_fifo`` works given just a logger; no fetcher needed."""
+        logger = MagicMock()
+        bets = [
+            _fifo_bet(
+                bet_id="b1",
+                fpmm_id=self.fpmm_a,
+                outcome_index=0,
+                amount_wei=10**18,
+                shares_wei=2 * 10**18,
+                block_ts=1000,
+            )
+        ]
+        out = allocate_fifo(bets, logger)
+        assert len(out) == 1
+        assert out[0]["original_cost"] == float(10**18)
+        assert out[0]["remaining_shares"] == float(2 * 10**18)
+
+    def test_class_method_and_module_function_produce_same_output(
+        self,
+    ) -> None:
+        """``fetcher._allocate_fifo`` delegates verbatim to the module fn.
+
+        Guards against future drift between the two entry points.
+        """
+        fetcher = _make_fetcher()
+        bets = [
+            _fifo_bet(
+                bet_id="b1",
+                fpmm_id=self.fpmm_a,
+                outcome_index=0,
+                amount_wei=10 * 10**18,
+                shares_wei=20 * 10**18,
+                block_ts=1000,
+            ),
+            _fifo_bet(
+                bet_id="b2",
+                fpmm_id=self.fpmm_a,
+                outcome_index=0,
+                amount_wei=-3 * 10**18,
+                shares_wei=-5 * 10**18,
+                block_ts=2000,
+            ),
+        ]
+        from_method = fetcher._allocate_fifo([dict(b) for b in bets])
+        from_function = allocate_fifo([dict(b) for b in bets], MagicMock())
+        # Strip the participant_remaining_cost which is path-independent
+        # to keep the comparison resilient to future enrichment fields.
+        def _strip(rows: list) -> list:
+            return [
+                {k: v for k, v in row.items() if k != "participant_remaining_cost"}
+                for row in rows
+            ]
+
+        assert _strip(from_method) == _strip(from_function)
 
 
 class TestFifoAwareCalculateBetNetProfit:
@@ -4001,6 +4160,62 @@ class TestFifoAwareCalculateBetNetProfit:
         assert net_profit == pytest.approx(-0.7, abs=1e-9)
         # payout reflects the realised proceeds.
         assert payout == pytest.approx(0.3, abs=1e-9)
+
+    def test_invalid_refund_scoped_per_fpmm_across_multi_market_history(
+        self,
+    ) -> None:
+        """Multi-FPMM history: invalid resolution on one FPMM refunds fully.
+
+        Pre-fix, ``participant_remaining_cost`` summed remaining costs
+        across every FPMM in the agent's history. The consumer then
+        did ``total_payout × (remaining_cost / cross_fpmm_sum)`` — so
+        an agent with N FPMMs got only ``1/N`` of the per-market
+        refund attributed.
+
+        Here: invalid FPMM A (1 wxDAI buy, total_payout 1.0) plus a
+        2 wxDAI buy on an unrelated FPMM B. The full 1.0 refund must
+        attribute to FPMM A, not 1.0 × (1/3) = 0.33.
+        """
+        fetcher = _make_fetcher()
+        fpmm_a_invalid = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"
+        fpmm_b_open = "0x3767f3b500d7d0d51e72f80213b3531beea1b6f5"
+        bets = [
+            _fifo_bet(
+                bet_id="b_a",
+                fpmm_id=fpmm_a_invalid,
+                outcome_index=0,
+                amount_wei=10**18,  # 1 wxDAI on invalid market
+                shares_wei=10**18,
+                block_ts=1000,
+            ),
+            _fifo_bet(
+                bet_id="b_b",
+                fpmm_id=fpmm_b_open,
+                outcome_index=0,
+                amount_wei=2 * 10**18,  # 2 wxDAI on unrelated market
+                shares_wei=2 * 10**18,
+                block_ts=1000,
+            ),
+        ]
+        enriched = fetcher._allocate_fifo(bets)
+        invalid_buy = next(b for b in enriched if b["id"] == "b_a")
+
+        ctx = {
+            "current_answer": INVALID_ANSWER_HEX,
+            "answer_finalized_ts": "1700000000",
+            "total_payout": 1.0,  # full refund on the invalid market
+            "total_traded": 1.0,
+        }
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            net_profit, payout = fetcher._calculate_bet_net_profit(
+                invalid_buy, ctx, 0.0
+            )
+
+        # FPMM A's only buy has remaining cost 1.0; per-FPMM denominator
+        # is also 1.0. refund_share = 1.0 × (1.0 / 1.0) = 1.0, fully
+        # attributed. net = 1.0 − 1.0 = 0 (broke even). payout = 1.0.
+        assert net_profit == pytest.approx(0.0, abs=1e-9)
+        assert payout == pytest.approx(1.0, abs=1e-9)
 
     def test_winning_with_partial_sell_uses_remaining_cost(self) -> None:
         """Winning bet after a partial sell: payout share scales on remaining cost."""

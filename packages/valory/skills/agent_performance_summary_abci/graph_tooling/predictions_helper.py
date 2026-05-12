@@ -123,13 +123,200 @@ def parse_timestamp(value: Any) -> Optional[int]:
     return parsed
 
 
+def allocate_fifo(
+    bets: List[Dict[str, Any]],
+    logger: Any,
+) -> List[Dict[str, Any]]:
+    """FIFO-allocate sells against prior buys per ``(fpmm.id, outcomeIndex)``.
+
+    Module-level pure function so callers outside ``PredictionsFetcher``
+    (e.g. :func:`compute_funds_locked_from_bets`) can run the allocator
+    without constructing a throwaway fetcher just for its logger.
+    ``PredictionsFetcher._allocate_fifo`` delegates here so all
+    in-class call sites get identical semantics.
+
+    Returns one enriched buy dict per original buy row, with FIFO state
+    fields attached:
+
+    - ``original_shares`` / ``original_cost`` — the buy as posted.
+    - ``remaining_shares`` — shares still held after sells (≥ 0).
+    - ``allocated_proceeds`` — wxDAI realised from sells of this buy.
+    - ``allocated_cost`` — cost-basis portion already exited via sells.
+    - ``participant_remaining_cost`` — sum of buys' remaining cost
+      across the participant's positions on the SAME FPMM (scoped
+      per-FPMM, not across markets); used to pro-rate invalid-market
+      refunds.
+
+    Sells are detected by ``amount < 0`` (predict-omen handler
+    convention — verified against the safe-side handler) and folded
+    into their parent buys
+    — they do NOT appear in the output. Orphan sells (no matching prior
+    buy within the same ``(fpmm, outcomeIndex)`` group) are logged and
+    dropped. Bets with a None ``fpmm.id`` or ``outcomeIndex`` are skipped
+    because they have no group key.
+
+    :param bets: raw bet dicts from the subgraph (mix of buys and sells,
+        ordered descending by timestamp from the query).
+    :param logger: logger used to surface skipped / orphan rows.
+    :return: enriched buy dicts in chronological order within each group;
+        inter-group order matches the input.
+    """
+    groups: Dict[Tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
+    bet_to_participant: Dict[str, Dict[str, Any]] = {}
+    for bet in bets:
+        fpmm = bet.get("fixedProductMarketMaker") or {}
+        fpmm_id = fpmm.get("id")
+        outcome_index = bet.get("outcomeIndex")
+        if fpmm_id is None or outcome_index is None:
+            logger.warning(
+                "FIFO: skipping bet id=%s; fpmm_id or outcomeIndex missing",
+                bet.get("id"),
+            )
+            continue
+        participant = (fpmm.get("participants") or [None])[0]
+        bet_to_participant[bet.get("id", "")] = participant or {}
+        groups[(fpmm_id, int(outcome_index))].append(bet)
+
+    output: List[Dict[str, Any]] = []
+    for (fpmm_id, outcome_index), group_bets in groups.items():
+        # Sort chronologically. blockTimestamp is the canonical FIFO key;
+        # `id` (subgraph's {txHash}-{logIndex} form) is a deterministic
+        # tiebreaker for same-block rows.
+        group_bets.sort(
+            key=lambda b: (
+                int(b.get("blockTimestamp", b.get("timestamp", 0)) or 0),
+                b.get("id", ""),
+            )
+        )
+        buys_in_group: List[Dict[str, Any]] = []
+        open_buys: "deque[Dict[str, Any]]" = deque()
+
+        for row in group_bets:
+            # Parse wei-scaled subgraph strings as ``int`` to avoid
+            # IEEE-754 precision loss past 2^53 (~9e15 wei ≈ 0.009
+            # wxDAI). Float-based math accumulated drift across
+            # multiple sells and left tiny positive residuals in
+            # ``remaining_shares``, blocking the FIFO queue.
+            try:
+                row_amount = int(row.get("amount", 0) or 0)
+                row_shares = int(row.get("outcomeTokenAmount", 0) or 0)
+            except (ValueError, TypeError):
+                logger.warning(
+                    "FIFO: bet id=%s on (fpmm=%s, outcomeIndex=%s) has "
+                    "non-integer amount/outcomeTokenAmount "
+                    "(amount=%r, shares=%r); skipping",
+                    row.get("id"),
+                    fpmm_id,
+                    outcome_index,
+                    row.get("amount"),
+                    row.get("outcomeTokenAmount"),
+                )
+                continue
+
+            # Defensive cross-check: amount and shares carry the same
+            # sign on a well-formed row (positive=buy, negative=sell).
+            # Disagreement is a data-quality signal — warn and skip
+            # rather than feed garbage through FIFO.
+            if row_amount != 0 and row_shares != 0:
+                if (row_amount > 0) != (row_shares > 0):
+                    logger.warning(
+                        "FIFO: bet id=%s on (fpmm=%s, outcomeIndex=%s) has "
+                        "amount/outcomeTokenAmount sign disagreement "
+                        "(amount=%s, shares=%s); skipping",
+                        row.get("id"),
+                        fpmm_id,
+                        outcome_index,
+                        row_amount,
+                        row_shares,
+                    )
+                    continue
+
+            is_buy = row_amount > 0
+            if is_buy:
+                enriched = {
+                    **row,
+                    "original_shares": row_shares,
+                    "original_cost": row_amount,
+                    "remaining_shares": row_shares,
+                    "allocated_proceeds": 0,
+                    "allocated_cost": 0,
+                }
+                buys_in_group.append(enriched)
+                if row_shares > 0:
+                    open_buys.append(enriched)
+            else:
+                proceeds_total = -row_amount  # positive wei received
+                shares_consumed = -row_shares  # positive shares sold
+
+                while shares_consumed > 0 and open_buys:
+                    head = open_buys[0]
+                    take = min(shares_consumed, head["remaining_shares"])
+                    if take <= 0:
+                        open_buys.popleft()
+                        continue
+                    # Integer mul-then-divide: per-step rounding error
+                    # is bounded at 1 wei vs. the float drift it
+                    # replaces (potentially much larger past 2^53).
+                    head["allocated_proceeds"] += (
+                        proceeds_total * take
+                    ) // (-row_shares)
+                    head["allocated_cost"] += (
+                        head["original_cost"] * take
+                    ) // head["original_shares"]
+                    head["remaining_shares"] -= take
+                    shares_consumed -= take
+                    if head["remaining_shares"] <= 0:
+                        open_buys.popleft()
+
+                if shares_consumed > 0:
+                    unattributed_wxdai = (
+                        proceeds_total * shares_consumed
+                    ) / (-row_shares * WEI_TO_NATIVE)
+                    logger.warning(
+                        "FIFO: orphan sell %s on (fpmm=%s, outcomeIndex=%s): "
+                        "%s shares unmatched, %.6f wxDAI unattributed",
+                        row.get("id"),
+                        fpmm_id,
+                        outcome_index,
+                        shares_consumed,
+                        unattributed_wxdai,
+                    )
+
+        output.extend(buys_in_group)
+
+    # participant_remaining_cost — sum of remaining costs scoped
+    # PER-FPMM (across all of the agent's outcomeIndices on that
+    # FPMM). The invalid-market refund pro-rate in
+    # ``_calculate_bet_net_profit`` divides this buy's remaining cost
+    # by this scalar and multiplies by ``total_payout``, which is
+    # itself per-market. A cross-FPMM denominator would skew the
+    # share: an agent with N FPMMs would see only ``1/N`` of the
+    # invalid refund attributed to the resolved market. Stored in
+    # base units (wei) to match the rest of the FIFO state.
+    per_fpmm_remaining: Dict[str, int] = defaultdict(int)
+    for b in output:
+        fpmm_id = (b.get("fixedProductMarketMaker") or {}).get("id")
+        if fpmm_id is None:
+            continue
+        per_fpmm_remaining[fpmm_id] += max(
+            b["original_cost"] - b["allocated_cost"], 0
+        )
+    for b in output:
+        fpmm_id = (b.get("fixedProductMarketMaker") or {}).get("id")
+        b["participant_remaining_cost"] = (
+            per_fpmm_remaining.get(fpmm_id, 0) if fpmm_id else 0
+        )
+
+    return output
+
+
 def compute_funds_locked_from_bets(
     bets: List[Dict[str, Any]],
     context: Any,
     logger: Any,
     held_keys: Optional["set[tuple[str, int]]"] = None,
 ) -> float:
-    """Per-position ``funds_locked_in_markets`` for Omenstrat (spec §7.2).
+    """Per-position ``funds_locked_in_markets`` for Omenstrat.
 
     FIFO-allocates the bet history, drops buys on resolved-and-losing
     markets (shares are worthless) and — when ``held_keys`` is provided
@@ -140,20 +327,19 @@ def compute_funds_locked_from_bets(
     Shared between the normal perf-summary round (which sees the
     agent's bet history end-to-end) and the post-withdrawal snapshot
     hook in ``decision_maker_abci.PostOmenWithdrawBehaviour`` (which
-    uses the same data path to bridge the indexer-lag gap between
-    settlement and the next normal perf-summary refresh — spec §7.3 /
-    §10.13.3).
+    bridges the indexer-lag gap between sweep settlement and the next
+    normal perf-summary refresh).
 
-    The ``held_keys`` gate is the critical correction over the initial
-    Phase 3B release: trade-history FIFO alone counts a redeemed
-    winning position as locked (the bet row is immutable, and FIFO
-    doesn't see the CT.balanceOf burn from ``CT.redeemPositions``).
-    Discovered on PR #952's first live run: a safe with 0 actual
-    recoverable value reported ~110 wxDAI locked. With the gate,
-    redeemed positions correctly drop out.
+    The ``held_keys`` gate is critical: trade-history FIFO alone
+    counts a redeemed winning position as locked, because the bet row
+    is immutable and FIFO doesn't see the CT.balanceOf burn from
+    ``CT.redeemPositions``. Without it, a safe with 0 actual
+    recoverable value reports its full historical winning cost basis
+    as locked (~110 wxDAI was the headline regression that motivated
+    the gate).
 
-    Per spec §7.2, requires the bet's ``fixedProductMarketMaker`` to
-    carry ``conditionIds`` so we can key the gate by
+    Requires the bet's ``fixedProductMarketMaker`` to carry
+    ``conditionIds`` so we can key the gate by
     ``(conditionId, outcomeIndex)`` — the same key shape the CT
     subgraph's ``userPositions`` exposes.
 
@@ -176,8 +362,15 @@ def compute_funds_locked_from_bets(
     if not bets:
         return 0.0
 
-    fetcher = PredictionsFetcher(context, logger)
-    enriched_buys = fetcher._allocate_fifo(bets)
+    # Use the module-level ``allocate_fifo`` directly — building a
+    # throwaway ``PredictionsFetcher`` just for ``self.logger`` is
+    # wasted work and forces a public function to reach into a
+    # ``_``-prefixed method.
+    enriched_buys = allocate_fifo(bets, logger)
+    # ``context`` is retained in the signature for backward
+    # compatibility with callers that already pass it; it is not used
+    # by the allocator itself.
+    _ = context
 
     total_remaining_wei = 0.0
     for buy in enriched_buys:
@@ -947,143 +1140,16 @@ class PredictionsFetcher(BasePredictionsFetcher):
         return items
 
     def _allocate_fifo(self, bets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """FIFO-allocate sells against prior buys per ``(fpmm.id, outcomeIndex)``.
+        """Thin wrapper around the module-level :func:`allocate_fifo`.
 
-        Returns one enriched buy dict per original buy row, with FIFO state
-        fields attached:
+        Kept on the class so existing internal callers don't need to
+        thread ``self.logger`` through; external callers should use the
+        module function directly.
 
-        - ``original_shares`` / ``original_cost`` — the buy as posted.
-        - ``remaining_shares`` — shares still held after sells (≥ 0).
-        - ``allocated_proceeds`` — wxDAI realised from sells of this buy.
-        - ``allocated_cost`` — cost-basis portion already exited via sells.
-        - ``participant_remaining_cost`` — sum of all buys' remaining cost
-          across the participant, used to pro-rate invalid-market refunds
-          (multi-buy attribution from PR #948 review round 2).
-
-        Sells are detected by ``amount < 0`` (predict-omen handler convention,
-        confirmed empirically in spec §13.3) and folded into their parent buys
-        — they do NOT appear in the output. Orphan sells (no matching prior
-        buy within the same ``(fpmm, outcomeIndex)`` group) are logged and
-        dropped. Bets with a None ``fpmm.id`` or ``outcomeIndex`` are skipped
-        because they have no group key.
-
-        :param bets: raw bet dicts from the subgraph (mix of buys and sells,
-            ordered descending by timestamp from the query).
-        :return: enriched buy dicts in chronological order within each group;
-            inter-group order matches the input.
+        :param bets: raw bet dicts from the subgraph (mix of buys and sells).
+        :return: enriched buy dicts; see :func:`allocate_fifo`.
         """
-        groups: Dict[Tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
-        bet_to_participant: Dict[str, Dict[str, Any]] = {}
-        for bet in bets:
-            fpmm = bet.get("fixedProductMarketMaker") or {}
-            fpmm_id = fpmm.get("id")
-            outcome_index = bet.get("outcomeIndex")
-            if fpmm_id is None or outcome_index is None:
-                self.logger.warning(
-                    "FIFO: skipping bet id=%s; fpmm_id or outcomeIndex missing",
-                    bet.get("id"),
-                )
-                continue
-            participant = (fpmm.get("participants") or [None])[0]
-            bet_to_participant[bet.get("id", "")] = participant or {}
-            groups[(fpmm_id, int(outcome_index))].append(bet)
-
-        output: List[Dict[str, Any]] = []
-        for (fpmm_id, outcome_index), group_bets in groups.items():
-            # Sort chronologically. blockTimestamp is the canonical FIFO key;
-            # `id` (subgraph's {txHash}-{logIndex} form) is a deterministic
-            # tiebreaker for same-block rows.
-            group_bets.sort(
-                key=lambda b: (
-                    int(b.get("blockTimestamp", b.get("timestamp", 0)) or 0),
-                    b.get("id", ""),
-                )
-            )
-            buys_in_group: List[Dict[str, Any]] = []
-            open_buys: "deque[Dict[str, Any]]" = deque()
-
-            for row in group_bets:
-                row_amount = float(row.get("amount", 0) or 0)
-                row_shares = float(row.get("outcomeTokenAmount", 0) or 0)
-
-                # Defensive cross-check (spec §8.2): amount and shares
-                # carry the same sign on a well-formed row. Disagreement is
-                # a data-quality signal — warn and skip rather than feed
-                # garbage through FIFO.
-                if row_amount != 0 and row_shares != 0:
-                    if (row_amount > 0) != (row_shares > 0):
-                        self.logger.warning(
-                            "FIFO: bet id=%s on (fpmm=%s, outcomeIndex=%s) has "
-                            "amount/outcomeTokenAmount sign disagreement "
-                            "(amount=%s, shares=%s); skipping",
-                            row.get("id"),
-                            fpmm_id,
-                            outcome_index,
-                            row_amount,
-                            row_shares,
-                        )
-                        continue
-
-                is_buy = row_amount > 0
-                if is_buy:
-                    enriched = {
-                        **row,
-                        "original_shares": row_shares,
-                        "original_cost": row_amount,
-                        "remaining_shares": row_shares,
-                        "allocated_proceeds": 0.0,
-                        "allocated_cost": 0.0,
-                    }
-                    buys_in_group.append(enriched)
-                    if row_shares > 0:
-                        open_buys.append(enriched)
-                else:
-                    proceeds_total = -row_amount  # positive wxDAI received
-                    shares_consumed = -row_shares  # positive shares sold
-
-                    while shares_consumed > 0 and open_buys:
-                        head = open_buys[0]
-                        take = min(shares_consumed, head["remaining_shares"])
-                        if take <= 0:
-                            open_buys.popleft()
-                            continue
-                        share_ratio = take / (-row_shares)
-                        cost_ratio = take / head["original_shares"]
-                        head["allocated_proceeds"] += proceeds_total * share_ratio
-                        head["allocated_cost"] += head["original_cost"] * cost_ratio
-                        head["remaining_shares"] -= take
-                        shares_consumed -= take
-                        if head["remaining_shares"] <= 0:
-                            open_buys.popleft()
-
-                    if shares_consumed > 0:
-                        unattributed_wxdai = (
-                            proceeds_total
-                            * (shares_consumed / (-row_shares))
-                            / WEI_TO_NATIVE
-                        )
-                        self.logger.warning(
-                            "FIFO: orphan sell %s on (fpmm=%s, outcomeIndex=%s): "
-                            "%s shares unmatched, %.6f wxDAI unattributed",
-                            row.get("id"),
-                            fpmm_id,
-                            outcome_index,
-                            shares_consumed,
-                            unattributed_wxdai,
-                        )
-
-            output.extend(buys_in_group)
-
-        # participant_remaining_cost — sum across all enriched buys for the
-        # invalid-market refund pro-rate. Stored in base units (wei) to
-        # match the rest of the FIFO state.
-        participant_remaining_cost = sum(
-            max(b["original_cost"] - b["allocated_cost"], 0.0) for b in output
-        )
-        for b in output:
-            b["participant_remaining_cost"] = participant_remaining_cost
-
-        return output
+        return allocate_fifo(bets, self.logger)
 
     def _fifo_state(self, bet: Dict[str, Any]) -> Dict[str, float]:
         """Return FIFO state for a buy with safe defaults for legacy callers.
@@ -1152,11 +1218,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 entry["total_traded"] = float(participant.get("totalTraded", 0))
 
             # Use the FIFO ``remaining_cost`` instead of the raw signed
-            # ``amount``: prior to FIFO this summed any sell row's negative
-            # amount into the winning-total denominator (spec §8.1 bug
-            # site at line 867), under-counting and skewing every winning
-            # bet's payout share. After FIFO, sells have been folded into
-            # the originating buys' ``allocated_cost`` — so the unsold
+            # ``amount``: prior to FIFO this summed any sell row's
+            # negative amount into the winning-total denominator,
+            # under-counting and skewing every winning bet's payout
+            # share. After FIFO, sells have been folded into the
+            # originating buys' ``allocated_cost`` — so the unsold
             # remaining cost basis is the right contribution.
             fifo = self._fifo_state(bet)
             remaining_cost = fifo["remaining_cost"] / WEI_TO_NATIVE
@@ -1236,13 +1302,15 @@ class PredictionsFetcher(BasePredictionsFetcher):
         but no longer used — all cost-basis math now flows through the
         FIFO state.
 
-        Spec §8.1 calls out three prior bug sites this method now fixes:
-          - Line 954 invalid-market refund used the signed raw amount as
-            the numerator; sells made the ratio negative.
-          - Line 971 booked ``-bet_amount`` as the loss; for a sell row
-            (negative amount) this surfaced as a positive profit.
-          - Line 978 winning payout share used the raw amount; sells
-            shrank it and skewed the winning-total denominator.
+        Three prior bug sites this method now fixes (all caused by the
+        pre-FIFO formula reading the signed raw ``amount`` field, which
+        a sell row makes negative):
+          - Invalid-market refund numerator used the signed raw amount;
+            sells made the ratio negative.
+          - Loss path booked ``-bet_amount``; for a sell row this
+            surfaced as a positive profit instead of a loss.
+          - Winning payout share used the raw amount; sells shrank it
+            and skewed the winning-total denominator.
 
         :param bet: bet dict, optionally enriched with FIFO state fields.
         :param market_ctx: per-market context entry built by
@@ -1287,8 +1355,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Invalid-market refund path. Pro-rate by THIS buy's remaining
         # cost share of the participant's total remaining cost, not the
-        # signed raw amount (which sells made negative — spec §8.1 line
-        # 954 bug).
+        # signed raw amount (which sells made negative, flipping the
+        # ratio sign and surfacing as phantom profit pre-FIFO).
         if current_answer == INVALID_ANSWER_HEX:
             if total_payout == 0 or participant_remaining_cost <= 0:
                 return realized_pnl, (
@@ -1307,9 +1375,9 @@ class PredictionsFetcher(BasePredictionsFetcher):
             return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
 
         # Losing bet — the unsold remainder is worthless; the realized
-        # leg is whatever was already exited via sells. Spec §8.1 line 971
-        # used ``-bet_amount``; for a sell that was a positive number,
-        # mis-booking the loss as profit.
+        # leg is whatever was already exited via sells. The pre-FIFO
+        # formula used ``-bet_amount`` for the loss; for a sell row
+        # that's a positive number, mis-booking the loss as profit.
         if outcome_index != correct_answer:
             losing_payout: Optional[float] = (
                 allocated_proceeds if allocated_proceeds > 0 else None
@@ -1324,7 +1392,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         # Use remaining_cost (the unsold winning cost basis) as the
         # numerator. winning_total is now the FIFO-aware denominator
-        # (per the §8.1 line 867 fix above), so this stays consistent.
+        # (the participant_remaining_cost block above), so this stays
+        # consistent.
         payout_share = total_payout * (remaining_cost / winning_total)
         payout = allocated_proceeds + payout_share
         return realized_pnl + (payout_share - remaining_cost), payout
@@ -1332,7 +1401,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
     ) -> str:
-        """Hybrid status rule (spec §8.2 — mirror of Polystrat's helper).
+        """Hybrid status rule — mirror of Polystrat's tiered classification.
 
         Tier 1 — Invalid market wins outright. The participant-level
         refund mechanism in Realitio compensates regardless of when the

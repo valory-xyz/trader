@@ -32,13 +32,16 @@ from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
 
+# Public on-chain addresses used as test fixtures. Bandit flags any
+# hex-like constant as a potential credential — these are
+# well-known mainnet/test addresses, not secrets.
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
-WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # nosec B105
-CONDITIONAL_TOKENS_ADDRESS = (  # nosec B105 gitleaks:allow
+WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # nosec B105 — public wxDAI
+CONDITIONAL_TOKENS_ADDRESS = (  # nosec B105 gitleaks:allow — public CT contract
     "0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce"
 )
-FPMM_ADDR = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"  # nosec B105
-SELLER_ADDR = "0x19f4d0728906968649862788c7975ef503f43380"  # nosec B105
+FPMM_ADDR = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"  # nosec B105 — public FPMM
+SELLER_ADDR = "0x19f4d0728906968649862788c7975ef503f43380"  # nosec B105 — public addr
 
 
 def _padded_address(addr: str) -> str:
@@ -330,6 +333,124 @@ class TestParseSellEvents:
             receipt={},
         )
         assert result == {"events": []}
+
+    def test_malformed_log_skipped_well_formed_preserved(self) -> None:
+        """A malformed log doesn't poison the rest of the receipt.
+
+        Pre-fix, a single non-conformant log (missing ``data``, too few
+        topics, etc.) would raise out of the loop and the framework's
+        dispatch wrapper would record a generic ``parse_sell_events
+        dispatch failed`` — losing the audit trail for every other
+        well-formed log in the same receipt.
+        """
+        good_log = _build_fpmm_sell_log(
+            fpmm=FPMM_ADDR,
+            seller=SELLER_ADDR,
+            outcome_index=0,
+            return_amount=42,
+            fee_amount=0,
+            outcome_tokens_sold=100,
+        )
+        # Topic-only log matching topic0 but with no data — exercises
+        # both the topic-length guard fallthrough and the data guard.
+        only_topic0 = {
+            "address": FPMM_ADDR,
+            "topics": [FPMM_SELL_TOPIC0.hex()],
+            "data": "0x",
+        }
+        result = FixedProductMarketMakerContract.parse_sell_events(
+            ledger_api=self._ledger_api_mock(),
+            contract_address=CONTRACT_ADDRESS,
+            receipt={"logs": [only_topic0, good_log]},
+        )
+        assert len(result["events"]) == 1
+        assert result["events"][0]["return_amount"] == 42
+
+    def test_short_topics_dropped(self) -> None:
+        """A topic0-matching log with <3 topics is dropped (need seller+outcome)."""
+        bad_log = {
+            "address": FPMM_ADDR,
+            "topics": [
+                FPMM_SELL_TOPIC0.hex(),
+                _padded_address(SELLER_ADDR),
+            ],  # only 2 — missing outcome_index
+            "data": "0x" + "00" * 96,
+        }
+        result = FixedProductMarketMakerContract.parse_sell_events(
+            ledger_api=self._ledger_api_mock(),
+            contract_address=CONTRACT_ADDRESS,
+            receipt={"logs": [bad_log]},
+        )
+        assert result == {"events": []}
+
+    def test_missing_address_dropped(self) -> None:
+        """A topic0-matching log without ``address`` can't be attributed."""
+        bad_log = {
+            "topics": [
+                FPMM_SELL_TOPIC0.hex(),
+                _padded_address(SELLER_ADDR),
+                _padded_uint(0),
+            ],
+            "data": "0x" + "00" * 96,
+        }
+        result = FixedProductMarketMakerContract.parse_sell_events(
+            ledger_api=self._ledger_api_mock(),
+            contract_address=CONTRACT_ADDRESS,
+            receipt={"logs": [bad_log]},
+        )
+        assert result == {"events": []}
+
+    def test_missing_data_dropped(self) -> None:
+        """A topic0-matching log without ``data`` can't be decoded."""
+        bad_log = {
+            "address": FPMM_ADDR,
+            "topics": [
+                FPMM_SELL_TOPIC0.hex(),
+                _padded_address(SELLER_ADDR),
+                _padded_uint(0),
+            ],
+        }
+        result = FixedProductMarketMakerContract.parse_sell_events(
+            ledger_api=self._ledger_api_mock(),
+            contract_address=CONTRACT_ADDRESS,
+            receipt={"logs": [bad_log]},
+        )
+        assert result == {"events": []}
+
+    def test_truncated_data_caught_by_safety_net(self) -> None:
+        """Data shorter than 3 words is caught by the decode try/except.
+
+        Guards against an ABI variant or RPC truncation that the explicit
+        structural guards wouldn't catch.
+        """
+        # 32 bytes — enough for return_amount but not the other two
+        # words. ``int.from_bytes(b"", "big")`` returns 0 silently in
+        # Python; the failure mode worth catching here is a non-numeric
+        # topic. Build one such case.
+        bad_log = {
+            "address": FPMM_ADDR,
+            "topics": [
+                FPMM_SELL_TOPIC0.hex(),
+                _padded_address(SELLER_ADDR),
+                "not-hex",  # int(HexBytes(...).hex(), 16) will raise
+            ],
+            "data": "0x" + "00" * 96,
+        }
+        good_log = _build_fpmm_sell_log(
+            fpmm=FPMM_ADDR,
+            seller=SELLER_ADDR,
+            outcome_index=1,
+            return_amount=7,
+            fee_amount=0,
+            outcome_tokens_sold=10,
+        )
+        result = FixedProductMarketMakerContract.parse_sell_events(
+            ledger_api=self._ledger_api_mock(),
+            contract_address=CONTRACT_ADDRESS,
+            receipt={"logs": [bad_log, good_log]},
+        )
+        assert len(result["events"]) == 1
+        assert result["events"][0]["return_amount"] == 7
 
 
 class TestGetPoolBalancesViaCT:

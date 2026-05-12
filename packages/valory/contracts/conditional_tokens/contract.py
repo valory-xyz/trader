@@ -516,7 +516,12 @@ class ConditionalTokensContract(Contract):
             abi_element_identifier="setApprovalForAll",
             args=[ledger_api.api.to_checksum_address(operator), approved],
         )
-        return dict(data=data)
+        # Return raw bytes to match the sibling ``build_*_tx`` methods
+        # in this file (``build_redeem_positions_tx``,
+        # ``build_merge_positions_tx``, ``get_prepare_condition_tx_data``).
+        # Callers wrapping in ``HexBytes`` tolerate either form, but
+        # consistency avoids future-reader surprise.
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def build_merge_positions_tx(

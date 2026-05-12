@@ -228,6 +228,23 @@ class TestAbciAppWithdrawalWiring:
             tx[OmenWithdrawRound][Event.WITHDRAWAL_ROUND_TIMEOUT] is WithdrawalIdleRound
         )
 
+    def test_post_omen_withdraw_routes_to_idle_on_round_timeout(self) -> None:
+        """WITHDRAWAL_ROUND_TIMEOUT from PostOmenWithdrawRound → WithdrawalIdleRound.
+
+        Receipt parsing is deterministic — retrying won't unblock a real
+        bug. Mirror the upstream OmenWithdrawRound escape so a persistent
+        receipt-side timeout doesn't strand the agent in the round.
+        """
+        from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
+            PostOmenWithdrawRound,
+        )
+
+        tx = DecisionMakerAbciApp.transition_function
+        assert (
+            tx[PostOmenWithdrawRound][Event.WITHDRAWAL_ROUND_TIMEOUT]
+            is WithdrawalIdleRound
+        )
+
     def test_withdraw_rounds_use_dedicated_timeout_event(self) -> None:
         """Withdraw rounds emit WITHDRAWAL_ROUND_TIMEOUT, not the generic 30s ROUND_TIMEOUT.
 
@@ -2782,6 +2799,365 @@ class TestComposition:
 # ---------------------------------------------------------------------------
 
 
+class TestOmenWithdrawSizingLoopDiagnostics:
+    """The sizing loop has three distinct failure modes that pre-fix all
+    surfaced as ``returnAmount could not be sized...``. The split ensures
+    each failure mode self-attributes with an operator-actionable reason,
+    and that the halve-to-zero path doesn't depend on the post-loop guard
+    (which would silently drop if a future refactor removed that guard).
+    """
+
+    fpmm = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"
+    condition = "0x" + "a1" * 32
+
+    def _make_behaviour(self) -> Any:
+        """Build a bare OmenWithdrawBehaviour with stubbed context + store."""
+        from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+            OmenWithdrawBehaviour,
+        )
+
+        behaviour = object.__new__(OmenWithdrawBehaviour)
+        mock_context = MagicMock()
+        mock_context.logger = MagicMock()
+        mock_context.params.withdrawal_slippage = 0.01
+        mock_context.params.withdrawal_return_buffer = 0.05
+        mock_context.params.dust_epsilon_wxdai = 10**15
+        behaviour._context = mock_context  # type: ignore[attr-defined]
+        store = MagicMock()
+        behaviour._store_cache = store  # type: ignore[attr-defined]
+        return behaviour
+
+    def _position(self) -> Any:
+        """Build a representative WithdrawablePosition."""
+        from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+            WithdrawablePosition,
+        )
+
+        return WithdrawablePosition(
+            fpmm_address=self.fpmm,
+            outcome_index=0,
+            balance=10**18,
+            condition_id=self.condition,
+            index_set=1,
+            token_id="123",
+        )
+
+    @staticmethod
+    def _drive(gen: Generator) -> Any:
+        try:
+            while True:
+                next(gen)
+        except StopIteration as exc:
+            return exc.value
+
+    @staticmethod
+    def _stub_pool_balances(behaviour: Any, balances: List[int]) -> None:
+        """Stub ``_read_pool_balances`` to return the given balances."""
+
+        def fake_read(_position: Any) -> Generator[None, None, Optional[List[int]]]:
+            return list(balances)
+            yield  # pragma: no cover
+
+        behaviour._read_pool_balances = fake_read  # type: ignore[assignment]
+
+    @staticmethod
+    def _stub_calc_sell_amount(
+        behaviour: Any, side_effect: Callable[..., Any]
+    ) -> None:
+        """Stub ``_calc_sell_amount_static`` with the given side-effect callable."""
+
+        def fake_calc(
+            fpmm_address: str, return_amount: int, outcome_index: int
+        ) -> Generator[None, None, Optional[int]]:
+            return side_effect(return_amount)
+            yield  # pragma: no cover
+
+        behaviour._calc_sell_amount_static = fake_calc  # type: ignore[assignment]
+
+    def test_calc_sell_amount_revert_records_distinct_error(self) -> None:
+        """``n_estimate is None`` from the first call -> 'calcSellAmount reverted'."""
+        behaviour = self._make_behaviour()
+        # Pool balanced so notional clears dust threshold.
+        self._stub_pool_balances(behaviour, [10**20, 10**20])
+        self._stub_calc_sell_amount(behaviour, lambda ra: None)
+
+        result = self._drive(behaviour._size_and_build_position(self._position()))
+
+        assert result is None
+        recorded = behaviour._store_cache.record_error.call_args_list
+        assert len(recorded) == 1
+        reason = recorded[0].args[1]
+        assert "calcSellAmount reverted" in reason
+
+    def test_halve_to_zero_records_pool_depth_error(self) -> None:
+        """``return_amount`` halved to 0 -> distinct 'pool too thin' error.
+
+        The pre-fix path used ``break`` and depended on the post-loop
+        guard at L327. With explicit self-record, the failure mode is
+        named operator-actionably and the post-loop guard becomes a
+        true defensive-only check.
+
+        Forcing halve-to-zero under the production constants requires
+        a tiny ``return_amount`` start (so ≤5 halvings reach 0) — set
+        ``dust_epsilon_wxdai = 0`` and use a small balance to bypass
+        the dust gate.
+        """
+        from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+            WithdrawablePosition,
+        )
+
+        behaviour = self._make_behaviour()
+        behaviour.context.params.dust_epsilon_wxdai = 0
+        # Tiny balance: notional ≈ 16, return_amount ≈ 15 → halves
+        # 15 → 7 → 3 → 1 → 0 (reaches zero at iteration 4).
+        position = WithdrawablePosition(
+            fpmm_address=self.fpmm,
+            outcome_index=0,
+            balance=32,
+            condition_id=self.condition,
+            index_set=1,
+            token_id="123",
+        )
+        self._stub_pool_balances(behaviour, [10**20, 10**20])
+        # n_estimate always above headroom_cap → loop keeps halving.
+        self._stub_calc_sell_amount(behaviour, lambda ra: 10**30)
+
+        result = self._drive(behaviour._size_and_build_position(position))
+
+        assert result is None
+        recorded = behaviour._store_cache.record_error.call_args_list
+        # One error recorded for the halve-to-zero exit.
+        assert len(recorded) == 1
+        reason = recorded[0].args[1]
+        assert "halved to zero" in reason
+        assert "pool too thin" in reason
+
+    def test_max_attempts_exhausted_records_slippage_error(self) -> None:
+        """5 iterations with ``n_estimate > headroom`` AND ``return_amount > 0``.
+
+        Triggers the ``for/else`` clause — distinct from halve-to-zero
+        — and emits the slippage-actionable diagnostic.
+        """
+        behaviour = self._make_behaviour()
+        self._stub_pool_balances(behaviour, [10**20, 10**20])
+
+        # n_estimate above headroom_cap; return_amount stays > 0 because
+        # we start at a huge value and 5 halvings still leaves room.
+        # headroom_cap ≈ balance / (1 + 0.01) ≈ 0.99e18
+        # Start: return_amount = notional*(1 - buffer)
+        # With pool 50/50 and balance 1e18: notional ≈ 0.5e18,
+        # return_amount ≈ 0.475e18 -> halves down through ~0.029e18 after
+        # 4 halvings, > 0. With n_estimate >> headroom_cap each time, the
+        # loop runs all 5 iterations.
+        self._stub_calc_sell_amount(behaviour, lambda ra: 10**30)
+
+        # Override balance to give headroom big enough that 5 halvings
+        # of return_amount don't reach zero.
+        position = self._position()
+        from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
+            WithdrawablePosition,
+        )
+
+        # 5 halvings of ~0.475e18 lands at ~0.0148e18 > 0. With a much
+        # larger pool, headroom stays positive — but we need a path where
+        # the loop completes naturally without halving to 0. Increase the
+        # balance scale so the initial return_amount can survive 5 halves.
+        position = WithdrawablePosition(
+            fpmm_address=position.fpmm_address,
+            outcome_index=position.outcome_index,
+            balance=10**24,  # 1e6 wxDAI position
+            condition_id=position.condition_id,
+            index_set=position.index_set,
+            token_id=position.token_id,
+        )
+
+        result = self._drive(behaviour._size_and_build_position(position))
+
+        assert result is None
+        recorded = behaviour._store_cache.record_error.call_args_list
+        assert len(recorded) == 1
+        reason = recorded[0].args[1]
+        assert "attempts exhausted" in reason
+        assert "withdrawal_slippage" in reason
+
+
+class TestPostOmenWithdrawParseSellEventsFilter:
+    """Tests for the planned-FPMM allowlist filter in ``_parse_sell_events``.
+
+    Without the filter, an FPMMSell event emitted by a non-target FPMM
+    (cross-contract hook, fee distributor, future integration) in the
+    same receipt as a real sweep would silently land in the operator
+    audit trail. The post-settlement behaviour filters decoded events
+    against the planned-FPMM set persisted by ``OmenWithdrawBehaviour``.
+    """
+
+    @staticmethod
+    def _make_behaviour(planned: Optional[List[str]] = None) -> Any:
+        """Build a bare PostOmenWithdrawBehaviour with stubbed store + context."""
+        from packages.valory.skills.decision_maker_abci.behaviours.post_omen_withdraw import (
+            PostOmenWithdrawBehaviour,
+        )
+
+        behaviour = object.__new__(PostOmenWithdrawBehaviour)
+        mock_context = MagicMock()
+        mock_context.logger = MagicMock()
+        behaviour._context = mock_context  # type: ignore[attr-defined]
+
+        store = MagicMock()
+        store.planned_fpmms.return_value = list(planned) if planned else []
+        behaviour._store_cache = store  # type: ignore[attr-defined]
+        return behaviour
+
+    @staticmethod
+    def _stub_contract_response(behaviour: Any, events: List[Dict[str, Any]]) -> None:
+        """Stub ``get_contract_api_response`` to return the given events."""
+        from packages.valory.protocols.contract_api import ContractApiMessage
+
+        response = MagicMock()
+        response.performative = ContractApiMessage.Performative.STATE
+        response.state.body = {"events": events}
+
+        def fake_call(**_kwargs: Any) -> Generator[None, None, Any]:
+            return response
+            yield  # pragma: no cover
+
+        behaviour.get_contract_api_response = fake_call  # type: ignore[assignment]
+        params_mock = MagicMock()
+        params_mock.mech_chain_id = "gnosis"
+        synced_mock = MagicMock()
+        synced_mock.final_tx_hash = "0xabc"
+        # ``params`` and ``synchronized_data`` are read-only properties on
+        # the base behaviours — patch via type() so direct assignment works.
+        type(behaviour).params = PropertyMock(  # type: ignore[misc]
+            return_value=params_mock
+        )
+        type(behaviour).synchronized_data = PropertyMock(  # type: ignore[misc]
+            return_value=synced_mock
+        )
+
+    @staticmethod
+    def _drive(gen: Generator) -> Any:
+        try:
+            while True:
+                next(gen)
+        except StopIteration as exc:
+            return exc.value
+
+    def test_events_from_planned_fpmms_kept(self) -> None:
+        """Events whose ``fpmm`` is in the allowlist pass through."""
+        good_fpmm = "0xAAA0000000000000000000000000000000000000"
+        behaviour = self._make_behaviour(planned=[good_fpmm])
+        self._stub_contract_response(
+            behaviour,
+            [
+                {
+                    "seller": "0xseller",
+                    "fpmm": good_fpmm,
+                    "outcome_index": 0,
+                    "return_amount": 42,
+                    "fee_amount": 0,
+                    "outcome_tokens_sold": 100,
+                }
+            ],
+        )
+
+        result = self._drive(behaviour._parse_sell_events({"logs": []}))
+
+        assert result is not None and len(result) == 1
+        assert result[0]["fpmm"] == good_fpmm
+
+    def test_events_from_unplanned_fpmm_dropped(self) -> None:
+        """Events from FPMMs not in the allowlist are filtered out + warned."""
+        good_fpmm = "0xAAA0000000000000000000000000000000000000"
+        rogue_fpmm = "0xDEAD000000000000000000000000000000000000"
+        behaviour = self._make_behaviour(planned=[good_fpmm])
+        self._stub_contract_response(
+            behaviour,
+            [
+                {
+                    "seller": "0xs1",
+                    "fpmm": good_fpmm,
+                    "outcome_index": 0,
+                    "return_amount": 42,
+                    "fee_amount": 0,
+                    "outcome_tokens_sold": 100,
+                },
+                {
+                    "seller": "0xs2",
+                    "fpmm": rogue_fpmm,
+                    "outcome_index": 1,
+                    "return_amount": 99,
+                    "fee_amount": 0,
+                    "outcome_tokens_sold": 50,
+                },
+            ],
+        )
+
+        result = self._drive(behaviour._parse_sell_events({"logs": []}))
+
+        assert result is not None and len(result) == 1
+        assert result[0]["fpmm"] == good_fpmm
+        # The drop fires a warning naming the rogue address.
+        warnings = [
+            str(call.args) for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any(rogue_fpmm in w for w in warnings), warnings
+
+    def test_filter_is_case_insensitive(self) -> None:
+        """Checksum vs lower-case address mismatch does not drop a real fill."""
+        # Allowlist stored lower-cased (record_planned_fpmms normalises);
+        # event arrives checksum-cased (to_checksum_address output).
+        planned_lower = "0xaaa0000000000000000000000000000000000000"
+        event_checksum = "0xAAA0000000000000000000000000000000000000"
+        behaviour = self._make_behaviour(planned=[planned_lower])
+        self._stub_contract_response(
+            behaviour,
+            [
+                {
+                    "seller": "0xs",
+                    "fpmm": event_checksum,
+                    "outcome_index": 0,
+                    "return_amount": 1,
+                    "fee_amount": 0,
+                    "outcome_tokens_sold": 1,
+                }
+            ],
+        )
+
+        result = self._drive(behaviour._parse_sell_events({"logs": []}))
+        assert result is not None and len(result) == 1
+
+    def test_missing_allowlist_falls_through_with_warning(self) -> None:
+        """No persisted allowlist -> events returned unfiltered + warning logged.
+
+        Backwards compatibility: a legacy session that ran before the
+        planning step recorded its FPMMs shouldn't lose its fills.
+        """
+        behaviour = self._make_behaviour(planned=None)
+        any_fpmm = "0xAAA0000000000000000000000000000000000000"
+        self._stub_contract_response(
+            behaviour,
+            [
+                {
+                    "seller": "0xs",
+                    "fpmm": any_fpmm,
+                    "outcome_index": 0,
+                    "return_amount": 1,
+                    "fee_amount": 0,
+                    "outcome_tokens_sold": 1,
+                }
+            ],
+        )
+
+        result = self._drive(behaviour._parse_sell_events({"logs": []}))
+
+        assert result is not None and len(result) == 1
+        warnings = [
+            str(call.args) for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any("allowlist" in w for w in warnings), warnings
+
+
 class TestPostOmenWithdrawSnapshotFundsLocked:
     """Tests for the cross-skill funds_locked snapshot hook.
 
@@ -2892,6 +3268,46 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
         # Defensive warning is logged.
         assert behaviour.context.logger.warning.called
 
+    def test_empty_bets_skips_write_on_indexer_lag(self) -> None:
+        """``trader_agent`` returned but ``bets=[]`` -> skip, don't write 0.0.
+
+        ``_snapshot_funds_locked`` only runs after a sweep settled, so
+        the safe definitively has on-chain history. An empty ``bets``
+        array from a successful fetch is indexer lag — falling through
+        to ``compute_funds_locked_from_bets([])`` would write a phantom
+        ``0.0`` to ``funds_locked_in_markets``, showing the user "all
+        funds recovered" until the next normal perf-summary round.
+        """
+        behaviour = self._make_behaviour()
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSAFE"
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, Optional[dict]]:
+            return {"bets": [], "totalBets": "0"}
+            yield  # pragma: no cover
+
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_synced,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_trader_agent_performance",
+                side_effect=fake_fetch,
+            ),
+        ):
+            list(behaviour._snapshot_funds_locked())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Specific warning mentions indexer lag.
+        warnings = [
+            call.args[0] for call in behaviour.context.logger.warning.call_args_list
+        ]
+        assert any("indexer lag" in w for w in warnings), warnings
+
     def test_fetch_failure_caught_and_logged(self) -> None:
         """Subgraph fetch raising is non-fatal — log + continue."""
         behaviour = self._make_behaviour()
@@ -2920,3 +3336,67 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
 
         behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
         assert behaviour.context.logger.warning.called
+
+    def test_ct_fetch_returns_none_writes_ungated_sum(self) -> None:
+        """CT fetcher error -> ``None`` -> snapshot writes the un-gated sum.
+
+        Guards against the regression where the fetcher returned
+        ``set()`` on error and a transient CT-subgraph hiccup wrote a
+        phantom ``0.0`` to ``funds_locked_in_markets``. With the fix,
+        the snapshot falls back to the un-gated FIFO sum (matching the
+        pre-Phase-3B behaviour) instead of collapsing every position
+        out.
+        """
+        behaviour = self._make_behaviour()
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSAFE"
+
+        condition_id = "0x" + "a1" * 32
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(int(2.5 * 10**18)),
+                    "outcomeTokenAmount": str(5 * 10**18),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                        "conditionIds": [condition_id],
+                    },
+                }
+            ]
+        }
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, dict]:
+            return trader_agent
+            yield  # pragma: no cover
+
+        def fake_held(_safe: str) -> Generator[Any, None, Optional[set]]:
+            return None
+            yield  # pragma: no cover
+
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_synced,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_trader_agent_performance",
+                side_effect=fake_fetch,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_ct_held_position_keys",
+                side_effect=fake_held,
+            ),
+        ):
+            list(behaviour._snapshot_funds_locked())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            2.5
+        )

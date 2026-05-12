@@ -813,7 +813,7 @@ class FetchPerformanceSummaryBehaviour(
     def _compute_omen_funds_locked(
         self, trader_agent: dict, safe_address: str
     ) -> Generator[None, None, float]:
-        """Per-position funds-locked-in-markets for Omenstrat (spec §7.2).
+        """Per-position funds-locked-in-markets for Omenstrat.
 
         Fetches the CT-balance "held" set first so already-redeemed
         positions drop out of the trade-history-FIFO sum. Shared with

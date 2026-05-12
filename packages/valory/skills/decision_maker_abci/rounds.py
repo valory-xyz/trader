@@ -573,7 +573,13 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         PostOmenWithdrawRound: {
             Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
-            Event.WITHDRAWAL_ROUND_TIMEOUT: PostOmenWithdrawRound,
+            # Receipt parsing is deterministic — retrying the same input
+            # won't unblock a real bug. Escape to the idle terminal so
+            # the agent can resume normal operation; the chatui store
+            # has already captured any per-position errors from the
+            # planning round upstream. Mirrors the OmenWithdrawRound
+            # timeout transition above.
+            Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
             Event.NO_MAJORITY: PostOmenWithdrawRound,
             Event.NONE: PostOmenWithdrawRound,
         },

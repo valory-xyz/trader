@@ -307,7 +307,7 @@ transition_func:
     (PostOmenWithdrawRound, NONE): PostOmenWithdrawRound
     (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
     (PostOmenWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
-    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): PostBetUpdateRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CheckStopTradingRound

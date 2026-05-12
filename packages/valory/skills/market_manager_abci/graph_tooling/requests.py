@@ -428,8 +428,17 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 res,
                 res_context="withdrawal_creator_fpmms",
             )
-            if res is None:
+            if rows is None:
+                # Check the post-handler result, not the pre-handler
+                # input — _handle_response returns None iff res was None,
+                # but reading the check on `rows` makes intent obvious:
+                # did we get usable data back?
                 self.context.logger.error("Failed to process withdrawal creator FPMMs.")
+                # _handle_response only flips to FAIL when retries are
+                # exhausted; otherwise status stays IN_PROGRESS. Set it
+                # explicitly so any caller gating on _fetch_status sees
+                # a terminal state.
+                self._fetch_status = FetchStatus.FAIL
                 return None
 
             rows = cast(List[Dict[str, Any]], rows)
@@ -467,10 +476,25 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 res,
                 res_context="positions",
             )
-            if res is None:
-                # something went wrong
+            if positions is None:
+                # Check the post-handler result, not the pre-handler
+                # input — _handle_response returns None iff res was None,
+                # but reading the check on `positions` makes intent
+                # obvious: did we get usable data back?
+                #
+                # Subgraph error mid-pagination: returning the partial
+                # accumulator would silently strand un-fetched pages —
+                # the omen withdrawal sweep would sell only what it saw
+                # and skip the rest. Return ``None`` so callers (and
+                # ``_with_top_level_retry`` wrappers) can surface the
+                # failure.
                 self.context.logger.error("Failed to process all positions.")
-                return all_positions
+                # _handle_response only flips to FAIL when retries are
+                # exhausted; otherwise status stays IN_PROGRESS. Set it
+                # explicitly so any caller gating on _fetch_status sees
+                # a terminal state.
+                self._fetch_status = FetchStatus.FAIL
+                return None
 
             positions = cast(List[Dict[str, Any]], positions)
             if len(positions) == 0:

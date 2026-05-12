@@ -27,8 +27,6 @@ the FE reflects the post-sweep state without waiting for the next
 normal perf-summary round.
 """
 
-import json
-import time
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, cast
 
@@ -55,6 +53,9 @@ from packages.valory.skills.chatui_abci.models import (
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.omen_withdrawal_store import (
+    OmenWithdrawalStore,
+)
 from packages.valory.skills.decision_maker_abci.payloads import (
     PostOmenWithdrawalPayload,
 )
@@ -70,7 +71,6 @@ from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import
 EXECUTION_FAILURE_TOPIC0 = HexBytes(
     "0x23428b18acfb3ea64b08dc0c1d296ea9c09702c09083ca5272e64d115b687d23"
 )
-TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 
 
 class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour):
@@ -82,6 +82,21 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
     """
 
     matching_round = PostOmenWithdrawRound
+
+    @property
+    def _store(self) -> OmenWithdrawalStore:
+        """Lazily-instantiated chatui JSON-store helper.
+
+        Cached on the instance to avoid rebuilding the helper for every
+        fill/error record persisted during receipt parsing.
+        """
+        if getattr(self, "_store_cache", None) is None:
+            self._store_cache = OmenWithdrawalStore(
+                store_dir=Path(self.context.params.store_path),
+                filename=CHATUI_PARAM_STORE,
+                logger=self.context.logger,
+            )
+        return self._store_cache
 
     def async_act(self) -> Generator:
         """Run the receipt-parse pipeline."""
@@ -109,34 +124,34 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         """
         tx_hash = self.synchronized_data.final_tx_hash
         if not tx_hash:
-            self._record_top_level_error("missing final_tx_hash")
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
+            self._store.record_top_level_error("missing final_tx_hash")
+            self._store.set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
         receipt = yield from self.get_transaction_receipt(
             tx_hash, chain_id=self.params.mech_chain_id
         )
         if receipt is None:
-            self._record_top_level_error(
+            self._store.record_top_level_error(
                 f"get_transaction_receipt returned None for {tx_hash}"
             )
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
+            self._store.set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
         if int(receipt.get("status", 0)) == 0:
-            self._record_top_level_error("Safe tx reverted")
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
+            self._store.record_top_level_error("Safe tx reverted")
+            self._store.set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
         if self._receipt_has_execution_failure(receipt):
-            self._record_top_level_error(f"Safe ExecutionFailure: {tx_hash}")
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
+            self._store.record_top_level_error(f"Safe ExecutionFailure: {tx_hash}")
+            self._store.set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
         events = yield from self._parse_sell_events(receipt)
         if events is None:
-            self._record_top_level_error("parse_sell_events returned None")
-            self._set_state(WITHDRAWAL_STATE_ERRORED)
+            self._store.record_top_level_error("parse_sell_events returned None")
+            self._store.set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
         if not events:
@@ -147,7 +162,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
             )
 
         for event in events:
-            self._record_fill(event)
+            self._store.record_fill(event)
         self.context.logger.info(
             f"omen withdrawal: recorded {len(events)} fill(s) from {tx_hash}"
         )
@@ -157,10 +172,10 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         # already (sizing exhaustion, calcSellAmount reverts, dust drops).
         terminal = (
             WITHDRAWAL_STATE_ERRORED
-            if self._store_has_errors()
+            if self._store.has_errors()
             else WITHDRAWAL_STATE_COMPLETE
         )
-        self._set_state(terminal)
+        self._store.set_state(terminal)
 
     def _receipt_has_execution_failure(self, receipt: Dict[str, Any]) -> bool:
         """Return True iff the receipt contains a Safe ExecutionFailure log."""
@@ -174,6 +189,14 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         self, receipt: Dict[str, Any]
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
         """Call ``FixedProductMarketMakerContract.parse_sell_events`` on the receipt.
+
+        Filters the decoded events against the planned-FPMM allowlist
+        persisted by :class:`OmenWithdrawBehaviour` so an FPMMSell
+        emitted by a non-target FPMM in the same receipt (cross-contract
+        hooks, future integrations) doesn't silently land as a fill in
+        the operator audit trail. If the allowlist is missing (legacy
+        session before the planning step recorded it), the filter is
+        skipped with a warning rather than dropping every event.
 
         :param receipt: the tx receipt dict.
         :yield: framework yields for the contract call.
@@ -202,7 +225,32 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         events = response_msg.state.body.get("events")
         if events is None:
             return []
-        return [dict(e) for e in events]
+
+        decoded = [dict(e) for e in events]
+        allowlist = self._store.planned_fpmms()
+        if not allowlist:
+            self.context.logger.warning(
+                "omen withdrawal: no planned-FPMM allowlist persisted; "
+                "skipping receipt-side FPMM filter (audit-trail "
+                "mis-attribution risk if a non-target FPMM emitted "
+                "FPMMSell in this tx)"
+            )
+            return decoded
+
+        allowlist_set = {addr.lower() for addr in allowlist}
+        kept: List[Dict[str, Any]] = []
+        for event in decoded:
+            fpmm_addr = str(event.get("fpmm") or "").lower()
+            if fpmm_addr in allowlist_set:
+                kept.append(event)
+            else:
+                self.context.logger.warning(
+                    "omen withdrawal: dropping FPMMSell event from "
+                    "unplanned FPMM %s (not in allowlist); txHash=%s",
+                    event.get("fpmm"),
+                    self.synchronized_data.final_tx_hash,
+                )
+        return kept
 
     @staticmethod
     def _first_fpmm_in_receipt(receipt: Dict[str, Any]) -> Optional[str]:
@@ -225,7 +273,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         formula, and writes the result into the shared
         ``AgentPerformanceSummarySharedState``. Bridges the indexer-lag
         gap between sweep settlement and the next normal perf-summary
-        round (spec §7.3 / §10.13.3).
+        round.
 
         Failure is non-fatal — log a warning and skip. The next normal
         perf-summary round overwrites this value anyway, so a transient
@@ -246,6 +294,22 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
                 )
                 return
             bets = trader_agent.get("bets") or []
+            if not bets:
+                # We only reach this hook after a sweep settled, so the
+                # safe definitively has buy history on-chain. An empty
+                # ``bets`` array from a successful trader_agent fetch
+                # is unambiguously indexer lag (the subgraph indexer
+                # hasn't caught up with the post-sweep state yet).
+                # Falling through to ``compute_funds_locked_from_bets``
+                # would write a phantom ``0.0`` until the next normal
+                # perf-summary round corrects it.
+                self.context.logger.warning(
+                    "omen withdrawal: skipping funds_locked snapshot "
+                    "(trader_agent has no bets yet — likely indexer "
+                    "lag; FE will refresh on the next normal "
+                    "perf-summary round)"
+                )
+                return
             # Gate by CT-subgraph "still held" set so redeemed positions
             # drop out of the trade-history-FIFO sum. Without this gate
             # an already-redeemed winning position would still be
@@ -275,80 +339,6 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
             )
 
     # ------------------------------------------------------------------ #
-    # Disk-backed persistence (mirror OmenWithdrawBehaviour)             #
+    # Disk-backed persistence is delegated to                            #
+    # ``OmenWithdrawalStore`` — see ``self._store`` above.               #
     # ------------------------------------------------------------------ #
-
-    def _store_path(self) -> Path:
-        """Return the path of the chatui JSON store."""
-        return Path(self.context.params.store_path) / CHATUI_PARAM_STORE
-
-    def _read_store(self) -> Dict[str, Any]:
-        """Load the chatui JSON store, defensive against missing/invalid file."""
-        try:
-            with open(self._store_path(), "r") as f:
-                return json.load(f)
-        except (OSError, json.JSONDecodeError):
-            return {}
-
-    def _write_store(self, store: Dict[str, Any]) -> None:
-        """Persist the chatui JSON store."""
-        try:
-            with open(self._store_path(), "w") as f:
-                json.dump(store, f, indent=4)
-        except OSError as e:
-            self.context.logger.error(f"omen withdrawal: failed to write store: {e}")
-
-    def _set_state(self, state: str) -> None:
-        """Update ``withdrawal_state`` on disk and log the transition."""
-        store = self._read_store()
-        store["withdrawal_state"] = state
-        self._write_store(store)
-        self.context.logger.info(f"omen withdrawal: state -> {state}")
-
-    def _record_fill(self, event: Dict[str, Any]) -> None:
-        """Append a fill record from a decoded FPMMSell event."""
-        outcome_tokens_sold = int(event.get("outcome_tokens_sold", 0))
-        return_amount = int(event.get("return_amount", 0))
-        fee_amount = int(event.get("fee_amount", 0))
-        shares_sold = outcome_tokens_sold / 1e18
-        fill_price = (return_amount / 1e18) / shares_sold if shares_sold > 0 else 0.0
-        store = self._read_store()
-        fills = store.setdefault("withdrawal_fills", [])
-        fills.append(
-            {
-                # token_id derivation requires position-id keccak; the FE
-                # tolerates an empty string and uses (fpmm, outcome_index)
-                # for display. The OmenWithdrawBehaviour planning step
-                # captures the decimal position id in its error records;
-                # fills only need the venue-specific identifier pair.
-                "token_id": "",  # nosec B105
-                # ↑ empty placeholder, not a credential — see comment above.
-                "shares_sold": shares_sold,
-                "fill_price": fill_price,
-                "ts": int(time.time()),
-                "fpmm": event.get("fpmm"),
-                "outcome_index": int(event.get("outcome_index", 0)),
-                "return_amount": return_amount / 1e18,
-                "fee_amount": fee_amount / 1e18,
-            }
-        )
-        self._write_store(store)
-
-    def _record_top_level_error(self, reason: str) -> None:
-        """Record a top-level error (no per-position attribution)."""
-        store = self._read_store()
-        errors = store.setdefault("withdrawal_errors", [])
-        errors.append(
-            {
-                "token_id": TOP_LEVEL_ERROR_TOKEN_ID,
-                "shares_remaining": 0.0,
-                "reason": reason,
-                "ts": int(time.time()),
-            }
-        )
-        self._write_store(store)
-        self.context.logger.error(f"omen withdrawal: top-level failure: {reason}")
-
-    def _store_has_errors(self) -> bool:
-        """Check whether the current session has any persisted errors."""
-        return bool(self._read_store().get("withdrawal_errors"))
