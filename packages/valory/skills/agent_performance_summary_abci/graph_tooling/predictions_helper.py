@@ -53,6 +53,13 @@ PREDICT_BASE_URL = "https://predict.olas.network/questions"
 GRAPHQL_BATCH_SIZE = 1000
 ISO_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DEFAULT_CURRENCY = "USD"
+# Treat sub-cent share residuals as fully sold for the hybrid-status rule.
+# Shares are 18-decimal-scaled; 1 share of a winning Omen outcome redeems
+# for at most 1 wxDAI (binary FPMMs, payout fraction 1.0), so 1e16 base
+# units (= 0.01 share, ~1 wxDAI cent on a fully-priced winner) is the
+# practical "this is dust" threshold. Mirrors Polystrat's SHARES_EPSILON
+# at 1e-6 scale; same semantic, different decimals.
+SHARES_EPSILON_OMEN = 10**16
 
 
 def now_ts() -> int:
@@ -1280,16 +1287,73 @@ class PredictionsFetcher(BasePredictionsFetcher):
     def _get_prediction_status(
         self, bet: Dict, market_participant: Optional[Dict]
     ) -> str:
-        """Determine the status of a prediction (pending, won, lost), treating unredeemed wins as pending.
+        """Hybrid status rule (spec §8.2 — mirror of Polystrat's helper).
 
-        :param bet: The bet dictionary
-        :param market_participant: Optional market participant data
-        :return: Status string (pending, won, or lost)
+        Tier 1 — Invalid market wins outright. The participant-level
+        refund mechanism in Realitio compensates regardless of when the
+        agent exited, so an invalid resolution classifies any buy as
+        INVALID even if it was already fully sold.
+
+        Tier 2 — A buy fully exited via sells (``remaining_shares <=
+        SHARES_EPSILON_OMEN``) classifies by realized PnL sign:
+        ``allocated_proceeds - allocated_cost > 0`` is WON,
+        ``< 0`` is LOST, exact break-even is PENDING. The market's
+        resolution state is irrelevant — the agent has no remaining
+        position, their P&L is fully determined. This is the key shape
+        difference from the pre-Phase-3 resolution-only logic: a sell-
+        at-profit on a market that later resolves against the bet is
+        now correctly tagged WON, not LOST.
+
+        Tier 3 — Not fully exited: fall back to the resolution-based
+        logic (unresolved / arbitration / unfinalized → PENDING; won-
+        but-unredeemed → PENDING; won-and-redeemed → WON; otherwise
+        LOST).
+
+        Legacy callers passing a raw subgraph bet without FIFO state
+        get ``original_shares == 0`` from :meth:`_fifo_state`'s
+        defaults; tier 2's gate (``original_shares > 0``) trivially
+        skips for them and the pre-rewrite behaviour is preserved.
+
+        :param bet: bet dict, optionally enriched with FIFO state fields
+        :param market_participant: optional market participant data (used
+            by tier 3 to detect won-but-unredeemed → PENDING)
+        :return: one of the ``BetStatus`` string values
         """
         fpmm = bet.get("fixedProductMarketMaker", {})
         current_answer = fpmm.get("currentAnswer")
 
-        # Market not resolved
+        # Tier 1 — invalid market beats fully-exited, but only once the
+        # answer is terminal: must be finalized AND not under arbitration
+        # (a Kleros arbitrator can override an invalid sentinel; ZD#919).
+        if current_answer == INVALID_ANSWER_HEX and not fpmm.get(
+            "isPendingArbitration"
+        ):
+            answer_finalized_ts = parse_timestamp(
+                fpmm.get("answerFinalizedTimestamp")
+            )
+            if (
+                answer_finalized_ts is not None
+                and answer_finalized_ts <= self._now()
+            ):
+                return BetStatus.INVALID.value
+            # else: fall through (provisional sentinel, still in dispute window).
+
+        # Tier 2 — fully exited via sells: realized PnL is the status.
+        fifo = self._fifo_state(bet)
+        if (
+            fifo["original_shares"] > 0
+            and fifo["remaining_shares"] <= SHARES_EPSILON_OMEN
+        ):
+            realized_pnl = fifo["allocated_proceeds"] - fifo["allocated_cost"]
+            if realized_pnl > 0:
+                return BetStatus.WON.value
+            if realized_pnl < 0:
+                return BetStatus.LOST.value
+            return BetStatus.PENDING.value
+
+        # Tier 3 — resolution-based fallback for not-fully-exited buys.
+
+        # Market not resolved.
         if current_answer is None:
             return BetStatus.PENDING.value
 
@@ -1316,14 +1380,11 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if answer_finalized_ts is None or answer_finalized_ts > self._now():
             return BetStatus.PENDING.value
 
-        # Check for invalid market (now safe — finalization passed)
-        if current_answer == INVALID_ANSWER_HEX:
-            return BetStatus.INVALID.value
-
+        # Invalid sentinel was already handled in tier 1; any other
+        # malformed answer reaches the int(...) below and degrades to
+        # pending.
         correct_answer = parse_current_answer(current_answer)
         if correct_answer is None:
-            # Malformed currentAnswer — log and degrade to pending rather
-            # than crash on int(...) further down.
             self.logger.warning(
                 f"Malformed currentAnswer for bet {bet.get('id')!r}: "
                 f"{current_answer!r}"
@@ -1332,15 +1393,14 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
         outcome_index = int(bet.get("outcomeIndex", 0))
 
-        # Check if won
+        # Won — gate on participant-level totalPayout to flag the
+        # brief won-but-unredeemed window as PENDING.
         if outcome_index == correct_answer:
-            # Check if winnings have been redeemed
             if market_participant:
                 total_payout = (
                     float(market_participant.get("totalPayout", 0)) / WEI_TO_NATIVE
                 )
                 if total_payout == 0:
-                    # Won but not redeemed yet - treat as pending
                     return BetStatus.PENDING.value
             return BetStatus.WON.value
 

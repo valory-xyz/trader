@@ -4039,3 +4039,188 @@ class TestFifoAwareCalculateBetNetProfit:
         assert net_profit == pytest.approx(1.4, abs=1e-9)
         # payout = allocated_proceeds + payout_share = 0.4 + 2.0 = 2.4
         assert payout == pytest.approx(2.4, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Hybrid status rule — Phase 3 (mirror of Polystrat's tiered classification)
+# ---------------------------------------------------------------------------
+
+
+class TestHybridPredictionStatus:
+    """Tier-2 "fully exited via sells" overrides resolution-based status."""
+
+    # 18-dec scale dust threshold (= 0.01 share, ~1 wxDAI cent).
+    _DUST = 10**16
+
+    @staticmethod
+    def _enriched_bet(
+        *,
+        outcome_index: int,
+        original_shares: int,
+        remaining_shares: int,
+        allocated_proceeds: int,
+        allocated_cost: int,
+        current_answer: Optional[str] = None,
+        answer_finalized_ts: Optional[str] = None,
+        is_pending_arbitration: bool = False,
+    ) -> dict:
+        """Build a FIFO-enriched bet dict for the status helper to read."""
+        return {
+            "id": "b1",
+            "outcomeIndex": outcome_index,
+            "amount": str(original_shares),  # placeholder; helper reads FIFO fields
+            "original_shares": float(original_shares),
+            "original_cost": float(original_shares),
+            "remaining_shares": float(remaining_shares),
+            "allocated_proceeds": float(allocated_proceeds),
+            "allocated_cost": float(allocated_cost),
+            "fixedProductMarketMaker": {
+                "currentAnswer": current_answer,
+                "answerFinalizedTimestamp": answer_finalized_ts,
+                "isPendingArbitration": is_pending_arbitration,
+            },
+        }
+
+    def test_fully_exited_at_profit_returns_won(self) -> None:
+        """A buy fully sold off at a net profit is WON regardless of market state."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=12 * 10**17,  # 1.2 wxDAI back
+            allocated_cost=10**18,  # 1.0 wxDAI cost
+        )
+        # Market still open — tier 2 fires anyway.
+        assert fetcher._get_prediction_status(bet, None) == "won"
+
+    def test_fully_exited_at_loss_returns_lost(self) -> None:
+        """A buy fully sold off at a net loss is LOST regardless of market state."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=8 * 10**17,
+            allocated_cost=10**18,
+        )
+        assert fetcher._get_prediction_status(bet, None) == "lost"
+
+    def test_fully_exited_break_even_returns_pending(self) -> None:
+        """Exact-break-even sell-off classifies PENDING."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=10**18,
+            allocated_cost=10**18,
+        )
+        assert fetcher._get_prediction_status(bet, None) == "pending"
+
+    def test_dust_residual_treated_as_fully_exited(self) -> None:
+        """A residual of ≤ SHARES_EPSILON_OMEN counts as fully exited."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=self._DUST - 1,  # dust
+            allocated_proceeds=12 * 10**17,
+            allocated_cost=10**18,
+        )
+        assert fetcher._get_prediction_status(bet, None) == "won"
+
+    def test_partial_exit_falls_through_to_resolution_logic(self) -> None:
+        """A buy with significant remaining shares uses resolution-based status."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=5 * 10**17,  # half remaining
+            allocated_proceeds=6 * 10**17,
+            allocated_cost=5 * 10**17,
+        )
+        # Market still unresolved → PENDING (not WON despite profitable exits).
+        assert fetcher._get_prediction_status(bet, None) == "pending"
+
+    def test_fully_exited_at_profit_against_winning_outcome_is_won(
+        self,
+    ) -> None:
+        """Spec §8.2 case: sell at profit then market resolves AGAINST the bet.
+
+        Pre-Phase-3 this returned LOST (resolution-based). Post-fix it
+        returns WON — the agent realised the profit and has no exposure
+        to the resolution.
+        """
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=1,  # bet on outcome 1
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=12 * 10**17,
+            allocated_cost=10**18,
+            current_answer="0x" + "00" * 32,  # outcome 0 wins; agent's side lost
+            answer_finalized_ts="1000000000",
+        )
+        assert fetcher._get_prediction_status(bet, None) == "won"
+
+    def test_invalid_market_still_overrides_fully_exited(self) -> None:
+        """Tier 1 (INVALID, finalized, not arbitrating) beats tier 2."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=12 * 10**17,
+            allocated_cost=10**18,
+            current_answer=INVALID_ANSWER_HEX,
+            answer_finalized_ts="1700000000",
+        )
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            assert fetcher._get_prediction_status(bet, None) == "invalid"
+
+    def test_provisional_invalid_falls_through_to_fully_exited(self) -> None:
+        """Invalid sentinel pre-finalization is provisional — tier 2 fires."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=10**18,
+            remaining_shares=0,
+            allocated_proceeds=12 * 10**17,
+            allocated_cost=10**18,
+            current_answer=INVALID_ANSWER_HEX,
+            answer_finalized_ts="1700100000",  # future
+        )
+        with patch.object(fetcher, "_now", return_value=1700000000):
+            assert fetcher._get_prediction_status(bet, None) == "won"
+
+    def test_arbitration_preserves_invalid_sentinel_for_unexited(self) -> None:
+        """Existing arbitration gate (ZD#919) — INVALID is provisional under arbitration."""
+        fetcher = _make_fetcher()
+        bet = self._enriched_bet(
+            outcome_index=0,
+            original_shares=0,  # raw bet, no FIFO state → tier 2 skips
+            remaining_shares=0,
+            allocated_proceeds=0,
+            allocated_cost=0,
+            current_answer=INVALID_ANSWER_HEX,
+            answer_finalized_ts="1700000000",
+            is_pending_arbitration=True,
+        )
+        with patch.object(fetcher, "_now", return_value=1700001000):
+            assert fetcher._get_prediction_status(bet, None) == "pending"
+
+    def test_legacy_raw_bet_uses_resolution_logic(self) -> None:
+        """Pre-FIFO callers (original_shares == 0) skip tier 2; old logic stands."""
+        fetcher = _make_fetcher()
+        bet = {
+            "id": "legacy",
+            "outcomeIndex": 0,
+            "fixedProductMarketMaker": {
+                "currentAnswer": "0x" + "00" * 32,
+                "answerFinalizedTimestamp": "1000000000",
+                "isPendingArbitration": False,
+            },
+        }
+        # Won + no participant → returns WON via tier 3.
+        assert fetcher._get_prediction_status(bet, None) == "won"
