@@ -11,16 +11,16 @@
         "contract/valory/market_maker/0.1.0": "bafybeibxhskdwjtnlppd47bgdshrsuaylxymru6l2tpb22hpoqv5de5dbq",
         "connection/valory/polymarket_client/0.1.0": "bafybeib4gnficoo23kwlfwcuaefzqwf5p7m2vuflg5oekimkwctcd6e3pm",
         "skill/valory/market_manager_abci/0.1.0": "bafybeifmzg7lwbcykcvkrp36dl32vpese643ntu56rchrfgb2y27tpd7vu",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeiavvqxyu6mmwffuy6mvtmte6kh6gnr7kt5k7xln2zgzk4c2xwid6m",
-        "skill/valory/trader_abci/0.1.0": "bafybeidjp2scpzmdcoli7imcjh2hcahcplbnjfc46jmw5qly7q2aqzuhyy",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiflbclsyjfqgygxniq46t46ji4hviyh3oc375b6pv2xnxnnw2hjtm",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeihtx3zttuq2kj63huf6inx7jxvoemtq4a2viasyqcydym6jy4qqqe",
+        "skill/valory/trader_abci/0.1.0": "bafybeih62v5w4zeb6otuyqkm62v5yr3wh7lowi5eyyidoqjp3svggoeirm",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeibuvxou6x5jacarofcvd6qshzwwntfim2vozxddym2dyscsxd4vtq",
         "skill/valory/staking_abci/0.1.0": "bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeiferaq3ffxptxsji3k6b7i4xp5wnkjgqc7efcfr77mwzdzy7baf2e",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiarcjujcfce7wn5whod5v2cu7bngtuzepf4zs2lnn5s6smwfx3mni",
-        "skill/valory/chatui_abci/0.1.0": "bafybeib3jm6u4vlmyk2g2kqz3wpsgzymmlta3avd3aiamzbig545dosg7a",
-        "agent/valory/trader/0.1.0": "bafybeiffl5cp46leuiq3lfnmypspzerdxzdcqlclwhnbqxkppo3m5bjnmi",
-        "service/valory/trader_pearl/0.1.0": "bafybeibkpk6ijfrucgmbw3qqikuvxygq4ygpln25intqlnxrl7hv2xzfce",
-        "service/valory/polymarket_trader/0.1.0": "bafybeie7xyefp6ncipi746qtckb7svhsgecjnkmaggvopv452yhtgfnrpe"
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeianfjgzqif6bgdoaj3morjluaue73ieepeevkqfhefwramc35ud3q",
+        "skill/valory/chatui_abci/0.1.0": "bafybeihpusxzo56zrkym5aig5vo4vwbqmfdy25wx2qkpynjywlgw6ruviu",
+        "agent/valory/trader/0.1.0": "bafybeiann7f3zhzxxemvdj7dk3bkpl2oj7sht7sbqby5yumkfpf4oxzp64",
+        "service/valory/trader_pearl/0.1.0": "bafybeieu6efkspfqgmgm47745xs23rpp7atzxy52surz7mkpxwug3svtbq",
+        "service/valory/polymarket_trader/0.1.0": "bafybeidg675y7k45xk2yh6mgeh3j7ywc7tdallhe4w6iw3dgtfplbxe6vu"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
@@ -68,7 +68,7 @@
         "skill/valory/registration_abci/0.1.0": "bafybeietlh4pq5wjsb6srpsqehcq3gwsod5c6gs4jdiwpzkgrwyxhbbbvq",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa",
         "skill/valory/termination_abci/0.1.0": "bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky",
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeihzzzm5gy6oim7q2ptjtygh6ma3cilmsglre3fowxe36pdxjuvp7u",
         "skill/valory/funds_manager/0.1.0": "bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i"
     }
 }

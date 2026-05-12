@@ -49,6 +49,28 @@ class SynchronizedData(BaseSynchronizedData):
         tools = self.db.get_strict("available_mech_tools")
         return set(json.loads(tools))
 
+    @property
+    def available_valid_mechs(self) -> Set[str]:
+        """Get the addresses of mechs currently visible to mech-interact.
+
+        Read from the same `mechs_info` key written by mech_interact_abci's
+        MechInformationRound. Addresses are lowercased to match the format
+        produced by the Autonolas subgraph and the `valid_mechs`
+        normalization in mech-interact.
+        """
+        raw = self.db.get("mechs_info", "[]")
+        if not isinstance(raw, str):
+            return set()
+        try:
+            mechs = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return set()
+        return {
+            str(m["address"]).lower()
+            for m in (mechs or [])
+            if isinstance(m, dict) and m.get("address")
+        }
+
 
 class Event(Enum):
     """Event enumeration for the chat UI skill."""

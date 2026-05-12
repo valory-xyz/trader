@@ -37,6 +37,38 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
     matching_round = ToolSelectionRound
 
+    def _candidate_tools(self) -> set:
+        """Compute the candidate tool set after applying ChatUI restrictions.
+
+        Layers two filters on top of `self.mech_tools` (the set of tools
+        already filtered by mech-interact's `valid_tools` allowlist):
+
+        1. `selected_mechs` — keep only tools served by at least one pinned
+           mech. Requires `mechs_info` from synced data; skipped in
+           benchmarking mode where that data is not populated.
+        2. `allowed_tools` — keep only tools the user pinned by name.
+
+        Either layer being empty/None is a no-op for that layer.
+        """
+        candidate = set(self.mech_tools)
+
+        selected_mechs = self.shared_state.chatui_config.selected_mechs
+        if selected_mechs and not self.benchmarking_mode.enabled:
+            selected_lower = {m.lower() for m in selected_mechs}
+            tools_from_pinned_mechs = {
+                tool
+                for mech in self.synchronized_data.mechs_info
+                if mech.address.lower() in selected_lower
+                for tool in mech.relevant_tools
+            }
+            candidate &= tools_from_pinned_mechs
+
+        allowed_tools = self.shared_state.chatui_config.allowed_tools
+        if allowed_tools:
+            candidate &= set(allowed_tools)
+
+        return candidate
+
     def _select_tool(self) -> Generator[None, None, Optional[str]]:
         """Select a Mech tool based on an e-greedy policy and return its index."""
         success = yield from self._setup_policy_and_tools()
@@ -49,29 +81,22 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             else self.synchronized_data.most_voted_randomness
         )
 
-        # If an allowed-tools list is set via the chat UI, restrict the policy's
-        # selection to only those tools.  The policy keeps learning across the full
-        # accuracy store; we only narrow the selection pool temporarily.
-        chatui_allowed_tools = self.shared_state.chatui_config.allowed_tools
-        if chatui_allowed_tools:
-            allowed_intersection = [
-                t for t in chatui_allowed_tools if t in self.mech_tools
-            ]
-            if allowed_intersection:
-                restricted_policy = copy.deepcopy(self.policy)
-                restricted_policy.accuracy_store = {
-                    t: v
-                    for t, v in restricted_policy.accuracy_store.items()
-                    if t in allowed_intersection
-                }
-                restricted_policy.update_weighted_accuracy()
-                selected_tool = restricted_policy.select_tool(randomness)
-            else:
-                self.context.logger.warning(
-                    f"None of the allowed tools {chatui_allowed_tools} are in the "
-                    f"current tool set {self.mech_tools}. Falling back to unrestricted policy."
-                )
-                selected_tool = self.policy.select_tool(randomness)
+        candidate_tools = self._candidate_tools()
+        if not candidate_tools:
+            self.context.logger.warning(
+                "ChatUI restrictions left no candidate tools; falling back to "
+                "the unrestricted policy."
+            )
+            selected_tool = self.policy.select_tool(randomness)
+        elif candidate_tools != self.mech_tools:
+            restricted_policy = copy.deepcopy(self.policy)
+            restricted_policy.accuracy_store = {
+                t: v
+                for t, v in restricted_policy.accuracy_store.items()
+                if t in candidate_tools
+            }
+            restricted_policy.update_weighted_accuracy()
+            selected_tool = restricted_policy.select_tool(randomness)
         else:
             selected_tool = self.policy.select_tool(randomness)
 
@@ -82,6 +107,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             mech_tools = policy = utilized_tools = None
+            selected_mechs_payload: Optional[str] = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
                 # the period will increment when the benchmarking finishes
@@ -95,6 +121,13 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 mech_tools = json.dumps(list(self.mech_tools))
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
+                # Serialize the user's mech pin so mech-interact's
+                # relevant_mechs_info can restrict ranking to it after
+                # consensus. Empty list means "no pin".
+                pinned_mechs = self.shared_state.chatui_config.selected_mechs or []
+                selected_mechs_payload = json.dumps(
+                    [str(m).lower() for m in pinned_mechs]
+                )
                 self._store_all()
 
             payload = ToolSelectionPayload(
@@ -103,6 +136,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 policy,
                 utilized_tools,
                 selected_tool,
+                selected_mechs_payload,
             )
 
         yield from self.finish_behaviour(payload)

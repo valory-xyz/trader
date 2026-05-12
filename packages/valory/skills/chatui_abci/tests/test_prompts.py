@@ -39,6 +39,7 @@ class TestUpdatedAgentConfig:
         config = UpdatedAgentConfig(
             trading_strategy=None,
             allowed_tools=None,
+            selected_mechs=None,
             fixed_bet_size=None,
             max_bet_size=None,
             removed_config_fields=[],
@@ -56,6 +57,7 @@ class TestUpdatedAgentConfig:
         config = UpdatedAgentConfig(
             trading_strategy=TradingStrategy.KELLY_CRITERION,
             allowed_tools=["tool-a", "tool-b"],
+            selected_mechs=None,
             fixed_bet_size=1.0,
             max_bet_size=2.0,
             removed_config_fields=[FieldsThatCanBeRemoved.ALLOWED_TOOLS],
@@ -73,6 +75,7 @@ class TestUpdatedAgentConfig:
         config = UpdatedAgentConfig(
             trading_strategy=TradingStrategy.FIXED_BET,
             allowed_tools=None,
+            selected_mechs=None,
             fixed_bet_size=5.0,
             max_bet_size=None,
             removed_config_fields=[
@@ -93,6 +96,7 @@ class TestChatUILLMResponse:
         config = UpdatedAgentConfig(
             trading_strategy=None,
             allowed_tools=None,
+            selected_mechs=None,
             fixed_bet_size=None,
             max_bet_size=None,
             removed_config_fields=[],

@@ -38,9 +38,7 @@ from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
-from packages.valory.skills.abstract_round_abci.handlers import (
-    AbstractResponseHandler,
-)
+from packages.valory.skills.abstract_round_abci.handlers import AbstractResponseHandler
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -62,9 +60,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
-from packages.valory.skills.agent_performance_summary_abci.handlers import (
-    HttpMethod,
-)
+from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import (
     SharedState,
@@ -108,6 +104,7 @@ UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
+SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -237,12 +234,19 @@ class HttpHandler(BaseHttpHandler):
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
+        available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
             ", ".join(current_allowed_tools_raw)
             if current_allowed_tools_raw
             else "Automatic tool selection based on policy (all available tools)"
+        )
+        current_selected_mechs_raw = self.shared_state.chatui_config.selected_mechs
+        current_selected_mechs = (
+            ", ".join(current_selected_mechs_raw)
+            if current_selected_mechs_raw
+            else "All configured valid mechs"
         )
         current_fixed_bet_size = self.shared_state.chatui_config.fixed_bet_size
         current_max_bet_size = self.shared_state.chatui_config.max_bet_size
@@ -260,6 +264,12 @@ class HttpHandler(BaseHttpHandler):
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
             available_tools=available_tools,
+            current_selected_mechs=current_selected_mechs,
+            available_mechs=(
+                ", ".join(sorted(available_mechs))
+                if available_mechs
+                else "(none discovered yet)"
+            ),
             current_fixed_bet_size=(
                 current_fixed_bet_size / (10**decimals)
                 if current_fixed_bet_size is not None
@@ -306,6 +316,18 @@ class HttpHandler(BaseHttpHandler):
             self._handle_chatui_llm_response,
             callback_kwargs,
         )
+
+    def _get_available_valid_mechs(self) -> Set[str]:
+        """Return the set of mech addresses currently visible to mech-interact.
+
+        Falls back to an empty set if the synced data has not yet been
+        populated (e.g. before MechInformationRound has run for the first
+        time). Caller is responsible for handling the empty case.
+        """
+        try:
+            return self.synchronized_data.available_valid_mechs
+        except (TypeError, KeyError):
+            return set()
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -479,6 +501,39 @@ class HttpHandler(BaseHttpHandler):
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
                 self._store_allowed_tools(None)
 
+        updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
+            SELECTED_MECHS_FIELD, None
+        )
+        selected_mechs_is_removed: bool = (
+            FieldsThatCanBeRemoved.SELECTED_MECHS.value
+            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+        )
+
+        if selected_mechs_is_removed:
+            updated_params.update({SELECTED_MECHS_FIELD: None})
+            self._store_selected_mechs(None)
+
+        elif updated_selected_mechs is not None:
+            # Address comparison is case-insensitive; the synced data stores
+            # lowercase addresses to match the subgraph format.
+            available_mechs = self._get_available_valid_mechs()
+            normalized = [str(m).lower() for m in updated_selected_mechs]
+            unknown_mechs = [m for m in normalized if m not in available_mechs]
+            valid_mechs = [m for m in normalized if m in available_mechs]
+            if unknown_mechs:
+                issue_message = (
+                    f"Unknown mech(s) ignored: {unknown_mechs}. "
+                    f"Available mechs are: {', '.join(sorted(available_mechs)) or '(none discovered yet)'}."
+                )
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
+            if valid_mechs:
+                updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
+                self._store_selected_mechs(valid_mechs)
+            elif not unknown_mechs:
+                updated_params.update({SELECTED_MECHS_FIELD: None})
+                self._store_selected_mechs(None)
+
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
             "absolute_max_bet_size"
@@ -599,6 +654,11 @@ class HttpHandler(BaseHttpHandler):
         """Store the allowed tools list."""
         self.shared_state.chatui_config.allowed_tools = tools
         self._store_chatui_param_to_json(ALLOWED_TOOLS_FIELD, tools)
+
+    def _store_selected_mechs(self, mechs: Optional[List[str]] = None) -> None:
+        """Store the ChatUI-pinned mech addresses."""
+        self.shared_state.chatui_config.selected_mechs = mechs
+        self._store_chatui_param_to_json(SELECTED_MECHS_FIELD, mechs)
 
     def _build_withdrawal_status(self) -> Dict[str, Any]:
         """Return the GET payload describing current withdrawal state.

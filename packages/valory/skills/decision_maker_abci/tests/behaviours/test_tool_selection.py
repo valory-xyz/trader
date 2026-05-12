@@ -20,7 +20,7 @@
 """Tests for ToolSelectionBehaviour._select_tool and async_act."""
 
 import json
-from typing import Callable, Generator, List, Optional
+from typing import Any, Callable, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
@@ -93,6 +93,8 @@ def _make_behaviour(
     policy: EGreedyPolicy,
     mech_tools: set,
     allowed_tools: Optional[List[str]] = None,
+    selected_mechs: Optional[List[str]] = None,
+    mechs_info: Optional[List[Any]] = None,
     randomness: str = RANDOMNESS,
 ) -> _TestableBehaviour:
     """Return a _TestableBehaviour wired with mocked dependencies."""
@@ -110,11 +112,13 @@ def _make_behaviour(
     # synchronized_data
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
+    sync_data.mechs_info = mechs_info or []
     behaviour.synchronized_data = sync_data  # type: ignore[assignment]
 
     # shared_state / chatui_config
     shared_state = MagicMock()
     shared_state.chatui_config.allowed_tools = allowed_tools
+    shared_state.chatui_config.selected_mechs = selected_mechs
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy and mech_tools
@@ -279,7 +283,7 @@ class TestSelectToolEmptyIntersection:
         mock_select.assert_called_once_with(RANDOMNESS)
         behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
         warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
-        assert "Falling back" in warning_msg
+        assert "falling back" in warning_msg.lower()
 
     def test_original_policy_store_not_mutated_on_fallback(self) -> None:
         """Even the fallback path must leave the original accuracy_store untouched."""
@@ -297,6 +301,99 @@ class TestSelectToolEmptyIntersection:
             _run_select_tool(behaviour)
 
         assert set(policy.accuracy_store.keys()) == original_keys
+
+
+class _StubMech:
+    """Minimal stand-in for MechInfo: just `address` and `relevant_tools`."""
+
+    def __init__(self, address: str, relevant_tools: set) -> None:
+        self.address = address
+        self.relevant_tools = relevant_tools
+
+
+class TestSelectToolWithSelectedMechs:
+    """Tests for the `selected_mechs` filter layer in _select_tool."""
+
+    def test_restricts_to_tools_served_by_pinned_mechs(self) -> None:
+        """Pinned mechs restrict candidates to the union of their relevant_tools."""
+        policy = _make_policy("tool-a", "tool-b", "tool-c")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b", "tool-c"},
+            selected_mechs=["0xa"],
+            mechs_info=[
+                _StubMech("0xa", {"tool-a"}),
+                _StubMech("0xb", {"tool-b", "tool-c"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        # Only `tool-a` is reachable through the pinned mech `0xa`.
+        assert result == "tool-a"
+
+    def test_pin_lookup_is_case_insensitive(self) -> None:
+        """Mech address comparison must be case-insensitive."""
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xABC"],
+            mechs_info=[
+                _StubMech("0xabc", {"tool-a"}),
+                _StubMech("0xdef", {"tool-b"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        assert result == "tool-a"
+
+    def test_combined_with_allowed_tools(self) -> None:
+        """selected_mechs AND allowed_tools intersect together."""
+        policy = _make_policy("tool-a", "tool-b", "tool-c")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b", "tool-c"},
+            allowed_tools=["tool-a", "tool-b"],
+            selected_mechs=["0xa"],
+            mechs_info=[
+                _StubMech("0xa", {"tool-b", "tool-c"}),
+                _StubMech("0xb", {"tool-a"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        # tool-a is allowed but not served by 0xa; tool-b is both allowed and served by 0xa.
+        assert result == "tool-b"
+
+    def test_empty_pin_is_no_op(self) -> None:
+        """selected_mechs=None must not restrict beyond the existing filters."""
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=None,
+            mechs_info=[_StubMech("0xa", {"tool-a"})],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-b"):
+                result = _run_select_tool(behaviour)
+
+        assert result == "tool-b"
 
 
 def _run_async_act(behaviour: "ToolSelectionBehaviour") -> None:
@@ -380,7 +477,44 @@ class TestAsyncActSelectedToolNotNone:
         assert set(mech_tools_parsed) == {"tool-a", "tool-b"}
         assert payload.policy is not None
         assert payload.utilized_tools is not None
+        # ChatUI pin defaults to None → serialized as an empty list.
+        assert payload.selected_mechs == "[]"
         behaviour._store_all.assert_called_once()
+
+    def test_payload_carries_pinned_mechs_lowercased(self) -> None:
+        """The ChatUI mech pin must be serialized into the payload, lowercased."""
+        policy = _make_policy("tool-a")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a"},
+            selected_mechs=["0xABC", "0xDEF"],
+            mechs_info=[
+                _StubMech("0xabc", {"tool-a"}),
+                _StubMech("0xdef", {"tool-a"}),
+            ],
+        )
+        behaviour._utilized_tools = {}
+        benchmark_ctx = MagicMock()
+        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
+        benchmark_ctx.local.return_value.__enter__ = MagicMock()
+        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
+        behaviour.benchmarking_mode.enabled = False  # type: ignore[attr-defined]
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-a"):
+                with patch.object(
+                    behaviour,
+                    "finish_behaviour",
+                    side_effect=lambda p: iter([None]),
+                ) as mock_finish:
+                    _run_async_act(behaviour)
+
+        payload = mock_finish.call_args[0][0]
+        assert payload.selected_mechs is not None
+        assert set(json.loads(payload.selected_mechs)) == {"0xabc", "0xdef"}
 
     def test_benchmarking_calls_tool_used(self) -> None:
         """Should call policy.tool_used during benchmarking mode."""

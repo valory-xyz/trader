@@ -203,7 +203,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                         "use_acn_for_delivers": True,
                         "penalize_mech_time_window": 0,
                         "irrelevant_tools": [],
-                        "ignored_mechs": [],
+                        "valid_mechs": [],
+                        "valid_tools": [],
                         "deliveries_lookback_days": 30,
                         "store_path": tempfile.gettempdir(),
                     }

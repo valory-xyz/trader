@@ -59,6 +59,27 @@ class TestSynchronizedData:
         )
         assert data.available_mech_tools == {"tool-a"}
 
+    def test_available_valid_mechs_lowercased(self) -> None:
+        """Mech addresses are lowercased when read out of synced data."""
+        mechs_info = [
+            {"address": "0xABC", "relevant_tools": ["t1"]},
+            {"address": "0xdef", "relevant_tools": ["t2"]},
+        ]
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"mechs_info": [json.dumps(mechs_info)]})
+        )
+        assert data.available_valid_mechs == {"0xabc", "0xdef"}
+
+    def test_available_valid_mechs_missing_key(self) -> None:
+        """Absent mechs_info yields an empty set (early-boot case)."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.available_valid_mechs == set()
+
+    def test_available_valid_mechs_malformed_json(self) -> None:
+        """Malformed db payload yields an empty set rather than raising."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"mechs_info": ["not-json"]}))
+        assert data.available_valid_mechs == set()
+
 
 class TestFinishedChatuiLoadRound:
     """Tests for the FinishedChatuiLoadRound class."""
