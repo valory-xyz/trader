@@ -116,6 +116,65 @@ def parse_timestamp(value: Any) -> Optional[int]:
     return parsed
 
 
+def compute_funds_locked_from_bets(
+    bets: List[Dict[str, Any]],
+    context: Any,
+    logger: Any,
+) -> float:
+    """Per-position ``funds_locked_in_markets`` for Omenstrat (spec §7.2).
+
+    FIFO-allocates the bet history, drops buys on resolved-and-losing
+    markets (shares are worthless), and sums the remaining cost basis in
+    wxDAI. Bound by the same FIFO allocator and resolution-detection
+    helpers that drive the per-bet PnL math, so the value the FE
+    displays as "locked" stays consistent with what the prediction-
+    history rows show as "remaining cost" per bet.
+
+    Shared between the normal perf-summary round (which sees the agent's
+    bet history end-to-end) and the post-withdrawal snapshot hook in
+    ``decision_maker_abci.PostOmenWithdrawBehaviour`` (which uses the
+    same data path to bridge the indexer-lag gap between settlement and
+    the next normal perf-summary refresh — spec §7.3 / §10.13.3).
+
+    :param bets: subgraph ``bets`` array — must carry at least
+        ``amount``, ``outcomeTokenAmount``, ``blockTimestamp``,
+        ``outcomeIndex`` and ``fixedProductMarketMaker.{id, currentAnswer}``
+        on each row.
+    :param context: skill ``Context`` (passed through to ``PredictionsFetcher``
+        for subgraph and logging dependencies).
+    :param logger: logger to attach to the fetcher.
+    :return: wxDAI total of remaining cost on open / WINNING / PENDING /
+        FROZEN positions; 0.0 for an empty bet list.
+    """
+    if not bets:
+        return 0.0
+
+    fetcher = PredictionsFetcher(context, logger)
+    enriched_buys = fetcher._allocate_fifo(bets)
+
+    total_remaining_wei = 0.0
+    for buy in enriched_buys:
+        fpmm = buy.get("fixedProductMarketMaker") or {}
+        current_answer = fpmm.get("currentAnswer")
+        if current_answer is not None:
+            correct = parse_current_answer(current_answer)
+            outcome_index = buy.get("outcomeIndex")
+            if (
+                correct is not None
+                and outcome_index is not None
+                and int(outcome_index) != correct
+            ):
+                # Resolved-and-losing — shares are worthless.
+                continue
+        remaining = float(buy.get("original_cost", 0.0)) - float(
+            buy.get("allocated_cost", 0.0)
+        )
+        if remaining > 0:
+            total_remaining_wei += remaining
+
+    return total_remaining_wei / WEI_TO_NATIVE
+
+
 class BetStatus(enum.Enum):
     """BetStatus"""
 

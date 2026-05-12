@@ -28,7 +28,7 @@ fingerprint:
   behaviours/polymarket_withdraw.py: bafybeigg6mtnpjfw7l7of5tk3ep62tpkvu3znvanj3p3heg3jkrpiktrh4
   behaviours/polymarket_wrap_collateral.py: bafybeicyolkipi4nmhxeativei23nxz7ylyeda5uraelh4ig5hzl3tyshi
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
-  behaviours/post_omen_withdraw.py: bafybeiejnxhufku2y3xw5hpyhpsiqqrzhgltxxagrmakdz5uzs325vdq7u
+  behaviours/post_omen_withdraw.py: bafybeihdfsre7sj4n6yn5b6xo6qazyzplxofznun7ga4bogeq3wh4xnqnu
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeicprmsx3icwulc7qpxwx3xborufqjutrppxozx4zbbcvtjywtwuvu
@@ -127,7 +127,7 @@ fingerprint:
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeiet3bl24f7lzdn3guxdso4igaiuqxzx3tn3bsnji6ise7ifpxio3e
-  tests/test_withdrawal_rounds.py: bafybeic2jmxfh7bythsnzl57n2t47qxjq7dzxhfrrv7p4nyepwqh7uv5wm
+  tests/test_withdrawal_rounds.py: bafybeihiuladglznxkox23et5iotofi44ua5bjotgdi7jg3hmftdo7hzu4
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
@@ -160,8 +160,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
 - valory/staking_abci:0.1.0:bafybeibruevnamvpuryql7d7simokhawzciihhg2rv7db7hgadtpaxzxlm
-- valory/agent_performance_summary_abci:0.1.0:bafybeibt5fbpdaj2zioapyxnv6ikns7z6cubqnjrc4vha5adnoknpaj26q
-- valory/chatui_abci:0.1.0:bafybeicraetsk6w2t7hxjm2ufdhlxombf7k67qhlggecl6ihrqk2g5gnyq
+- valory/agent_performance_summary_abci:0.1.0:bafybeihsaclcsjpkznr7u7qcgurfqepzqjylsemilsbmnzknc4bbnngm2u
+- valory/chatui_abci:0.1.0:bafybeien4qorbzboag2znky44i4suojtazyb3wphwfa5gxf2gl23mmxmje
 behaviours:
   main:
     args: {}

@@ -30,7 +30,7 @@ normal perf-summary round.
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, cast
 
 from hexbytes import HexBytes
 
@@ -38,6 +38,15 @@ from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    compute_funds_locked_from_bets,
+)
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
+    APTQueryingBehaviour,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    SharedState as AgentPerformanceSummarySharedState,
+)
 from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
     WITHDRAWAL_STATE_COMPLETE,
@@ -65,8 +74,13 @@ EXECUTION_FAILURE_TOPIC0 = HexBytes(
 TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 
 
-class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour):
-    """Parses the Omen sweep tx receipt; persists fills / errors / snapshot."""
+class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour):
+    """Parses the Omen sweep tx receipt; persists fills / errors / snapshot.
+
+    Inherits ``APTQueryingBehaviour`` for the subgraph fetch used by the
+    funds-locked snapshot — runs the same trader-agent-performance query
+    the normal perf-summary round runs, so both writers see the same data.
+    """
 
     matching_round = PostOmenWithdrawRound
 
@@ -209,20 +223,50 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour):
     def _snapshot_funds_locked(self) -> Generator:
         """Best-effort post-sweep refresh of ``funds_locked_in_markets``.
 
-        Bridges the indexer-lag gap between settlement and the next
-        normal perf-summary round, so the FE doesn't show a stale value
-        for minutes. Failure here is non-fatal — log a warning and let
-        the next normal round catch up.
+        Fetches the agent's bet history via the same subgraph path the
+        normal perf-summary round uses, runs the FIFO-based per-position
+        formula, and writes the result into the shared
+        ``AgentPerformanceSummarySharedState``. Bridges the indexer-lag
+        gap between sweep settlement and the next normal perf-summary
+        round (spec §7.3 / §10.13.3).
 
-        :yield: framework yield for the (currently no-op) generator.
+        Failure is non-fatal — log a warning and skip. The next normal
+        perf-summary round overwrites this value anyway, so a transient
+        subgraph hiccup just means the FE shows the pre-sweep value for
+        a few extra minutes.
+
+        :yield: framework yields for the subgraph fetch.
         """
-        # NOTE (#943): kept as a hook for Phase 3 — the per-position
-        # locked-funds formula (spec §10.13.1) will land alongside the
-        # perf-summary edits and call into this method. Until then we
-        # leave the existing snapshot alone to avoid a non-monotonic FE
-        # jump.
-        if False:  # pragma: no cover — generator-shape preservation
-            yield
+        try:
+            safe_address = self.synchronized_data.safe_contract_address
+            trader_agent = yield from self._fetch_trader_agent_performance(
+                safe_address.lower()
+            )
+            if not trader_agent:
+                self.context.logger.warning(
+                    "omen withdrawal: skipping funds_locked snapshot "
+                    "(trader_agent fetch returned no data)"
+                )
+                return
+            bets = trader_agent.get("bets") or []
+            value = compute_funds_locked_from_bets(
+                bets, self.context, self.context.logger
+            )
+            shared_state = cast(
+                AgentPerformanceSummarySharedState, self.context.state
+            )
+            shared_state.update_funds_locked_in_markets(round(value, 2))
+            self.context.logger.info(
+                f"omen withdrawal: snapshotted funds_locked_in_markets="
+                f"{round(value, 2)}"
+            )
+        except Exception as exc:  # noqa: BLE001 — best-effort by design
+            self.context.logger.warning(
+                f"omen withdrawal: funds_locked snapshot failed "
+                f"(compute/write failure: {exc!r}); FE will catch up on "
+                f"the next normal perf-summary round",
+                exc_info=True,
+            )
 
     # ------------------------------------------------------------------ #
     # Disk-backed persistence (mirror OmenWithdrawBehaviour)             #

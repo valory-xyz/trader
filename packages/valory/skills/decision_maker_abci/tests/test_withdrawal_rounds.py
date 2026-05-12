@@ -22,7 +22,7 @@
 import json
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -2783,3 +2783,127 @@ class TestComposition:
         )
 
         assert abci_app_transition_mapping[WithdrawalIdleRound] is ResetAndPauseRound
+
+
+# ---------------------------------------------------------------------------
+# PostOmenWithdrawBehaviour._snapshot_funds_locked (cross-skill hook)
+# ---------------------------------------------------------------------------
+
+
+class TestPostOmenWithdrawSnapshotFundsLocked:
+    """The snapshot hook fetches the bet history, runs the per-position formula,
+    and writes the result into the shared agent_performance_summary state.
+
+    Failure is non-fatal — exceptions get caught and logged, leaving the
+    next normal perf-summary round to catch up.
+    """
+
+    @staticmethod
+    def _make_behaviour() -> Any:
+        """Build a bare PostOmenWithdrawBehaviour with stubbed context."""
+        # Local import — module-level import would pollute the test
+        # collection if the omen_withdraw module fails to import.
+        from packages.valory.skills.decision_maker_abci.behaviours.post_omen_withdraw import (
+            PostOmenWithdrawBehaviour,
+        )
+
+        behaviour = object.__new__(PostOmenWithdrawBehaviour)
+        mock_context = MagicMock()
+        mock_context.logger = MagicMock()
+        behaviour._context = mock_context  # type: ignore[attr-defined]
+        return behaviour
+
+    def test_writes_snapshot_to_shared_state(self) -> None:
+        """A successful fetch + compute writes the rounded value via the setter."""
+        behaviour = self._make_behaviour()
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSAFE"
+
+        # Fixture: one open buy of 2.5 wxDAI; remaining_cost = 2.5.
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(int(2.5 * 10**18)),
+                    "outcomeTokenAmount": str(5 * 10**18),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                }
+            ]
+        }
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, dict]:
+            return trader_agent
+            yield  # pragma: no cover — generator-shape preservation
+
+        with patch.object(
+            type(behaviour),
+            "synchronized_data",
+            new_callable=PropertyMock,
+            return_value=mock_synced,
+        ), patch.object(
+            behaviour,
+            "_fetch_trader_agent_performance",
+            side_effect=fake_fetch,
+        ):
+            list(behaviour._snapshot_funds_locked())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+            2.5
+        )
+
+    def test_empty_trader_agent_skips_write(self) -> None:
+        """No bets -> no write; behaviour still completes."""
+        behaviour = self._make_behaviour()
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSAFE"
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, Optional[dict]]:
+            return None
+            yield  # pragma: no cover
+
+        with patch.object(
+            type(behaviour),
+            "synchronized_data",
+            new_callable=PropertyMock,
+            return_value=mock_synced,
+        ), patch.object(
+            behaviour,
+            "_fetch_trader_agent_performance",
+            side_effect=fake_fetch,
+        ):
+            list(behaviour._snapshot_funds_locked())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        # Defensive warning is logged.
+        assert behaviour.context.logger.warning.called
+
+    def test_fetch_failure_caught_and_logged(self) -> None:
+        """Subgraph fetch raising is non-fatal — log + continue."""
+        behaviour = self._make_behaviour()
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSAFE"
+
+        def fake_fetch(_safe: str) -> Generator[Any, None, dict]:
+            raise RuntimeError("subgraph down")
+            yield  # pragma: no cover
+
+        with patch.object(
+            type(behaviour),
+            "synchronized_data",
+            new_callable=PropertyMock,
+            return_value=mock_synced,
+        ), patch.object(
+            behaviour,
+            "_fetch_trader_agent_performance",
+            side_effect=fake_fetch,
+        ):
+            # No exception escapes.
+            list(behaviour._snapshot_funds_locked())
+
+        behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+        assert behaviour.context.logger.warning.called
