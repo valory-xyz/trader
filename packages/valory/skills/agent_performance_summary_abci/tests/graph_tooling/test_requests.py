@@ -21,7 +21,7 @@
 
 import json
 from abc import ABC
-from typing import Any, Generator
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
@@ -1986,7 +1986,7 @@ class TestFetchCTHeldPositionKeys:
             return []
             yield  # pragma: no cover
 
-        b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign]
+        b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign,assignment]
         _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
 
         assert 'balance_gt: "0"' in captured["query"], captured["query"]
