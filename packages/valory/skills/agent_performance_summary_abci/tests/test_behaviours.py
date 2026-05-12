@@ -5343,3 +5343,186 @@ class TestPerformInitialBackfillMissingDateKey:
         assert len(result.data_points) == 1
         assert result.data_points[0].daily_profit_raw == 0.0  # no bet profit
         assert result.data_points[0].daily_mech_requests == 1
+
+
+# ---------------------------------------------------------------------------
+# _compute_omen_funds_locked (Phase 3B — per-position funds-locked formula)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeOmenFundsLocked:
+    """The Omen funds-locked formula uses FIFO ``remaining_cost`` per buy."""
+
+    @staticmethod
+    def _make_behaviour() -> FetchPerformanceSummaryBehaviour:  # type: ignore[no-untyped-def]
+        """Build a behaviour with the bare context the helper reads."""
+        behaviour = object.__new__(FetchPerformanceSummaryBehaviour)
+        mock_context = MagicMock()
+        mock_context.logger = MagicMock()
+        behaviour._context = mock_context  # type: ignore[attr-defined]
+        return behaviour
+
+    def test_empty_bets_returns_zero(self) -> None:
+        """Trader agent with no bets contributes nothing locked."""
+        result = self._make_behaviour()._compute_omen_funds_locked(  # type: ignore[arg-type]
+            {"bets": []}
+        )
+        assert result == 0.0
+
+    def test_single_open_buy_returns_cost_basis(self) -> None:
+        """An unresolved buy contributes its full cost basis in wxDAI."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(WEI_IN_ETH),  # 1 wxDAI cost
+                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,  # unresolved
+                    },
+                }
+            ]
+        }
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 1.0
+
+    def test_resolved_winning_position_still_counts(self) -> None:
+        """A winning unredeemed position still counts as locked (§7.2)."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(WEI_IN_ETH),
+                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": "0x" + "00" * 32,  # outcome 0 wins
+                    },
+                }
+            ]
+        }
+        # Outcome 0 matches the answer → counts. Redeem path will sweep it.
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 1.0
+
+    def test_resolved_losing_position_excluded(self) -> None:
+        """A resolved-and-LOSING position is excluded — shares are worthless."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(WEI_IN_ETH),
+                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
+                    "outcomeIndex": 1,  # bet on outcome 1...
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": "0x" + "00" * 32,  # ...but 0 wins
+                    },
+                }
+            ]
+        }
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 0.0
+
+    def test_partial_sell_reduces_locked_to_remaining(self) -> None:
+        """A buy partially exited via sells contributes only its remaining cost."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(10 * WEI_IN_ETH),  # 10 wxDAI buy
+                    "outcomeTokenAmount": str(100 * WEI_IN_ETH),  # 100 shares
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                },
+                {
+                    "id": "s1",
+                    "amount": str(-3 * WEI_IN_ETH),  # 3 wxDAI proceeds
+                    "outcomeTokenAmount": str(-40 * WEI_IN_ETH),  # 40 shares sold
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "2000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                },
+            ]
+        }
+        # 40 of 100 shares sold = 40% of cost (4 wxDAI) realised.
+        # Remaining cost basis = 10 - 4 = 6 wxDAI.
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 6.0
+
+    def test_full_sweep_returns_zero(self) -> None:
+        """After selling 100% of every position, locked funds is 0."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(WEI_IN_ETH),
+                    "outcomeTokenAmount": str(2 * WEI_IN_ETH),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                },
+                {
+                    "id": "s1",
+                    "amount": str(-WEI_IN_ETH // 2),  # at-loss sale
+                    "outcomeTokenAmount": str(-2 * WEI_IN_ETH),  # all shares
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "2000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                },
+            ]
+        }
+        # All shares sold; allocated_cost == original_cost. remaining = 0.
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 0.0
+
+    def test_multiple_positions_sum(self) -> None:
+        """Locked funds = sum of remaining_cost across all positions."""
+        behaviour = self._make_behaviour()
+        trader_agent = {
+            "bets": [
+                {
+                    "id": "b1",
+                    "amount": str(2 * WEI_IN_ETH),
+                    "outcomeTokenAmount": str(4 * WEI_IN_ETH),
+                    "outcomeIndex": 0,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xa1",
+                        "currentAnswer": None,
+                    },
+                },
+                {
+                    "id": "b2",
+                    "amount": str(3 * WEI_IN_ETH),
+                    "outcomeTokenAmount": str(5 * WEI_IN_ETH),
+                    "outcomeIndex": 1,
+                    "blockTimestamp": "1000",
+                    "fixedProductMarketMaker": {
+                        "id": "0xb1",
+                        "currentAnswer": None,
+                    },
+                },
+            ]
+        }
+        # 2 + 3 = 5 wxDAI locked across the two positions.
+        assert behaviour._compute_omen_funds_locked(trader_agent) == 5.0

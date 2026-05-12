@@ -65,15 +65,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifiykjoeu3ddjtcjh54p436ymm3irl6mk4jevnei4t62efbuqul5e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifikh2bhkmemqw35yujp7pjbli45bjivhkidg5awfzszg2xm35dhq
 - valory/market_manager_abci:0.1.0:bafybeihfs6pzizqxtnulckswmmfcxml2fp6qgaom36sytyyhmylrl47dzi
-- valory/decision_maker_abci:0.1.0:bafybeic5qplrelexvvn4oikvhizc3y4qaqdcjokxoldkk6mbxfom6d767i
-- valory/trader_abci:0.1.0:bafybeigci2ywxi46z4hbqfuiplc2hiyuwzwbli5ghafvef2xgwettbi6yq
+- valory/decision_maker_abci:0.1.0:bafybeichsqhieytw2eoucu6qcsilxxzujl2yplkyk5jy34xmhqnwh4ef6u
+- valory/trader_abci:0.1.0:bafybeigacg3or567xi6k77h43xrvsmg4qpjeeye47l2miae7fljiamybgq
 - valory/staking_abci:0.1.0:bafybeibruevnamvpuryql7d7simokhawzciihhg2rv7db7hgadtpaxzxlm
-- valory/check_stop_trading_abci:0.1.0:bafybeie3p2qebtu7agjzzpxd7hlo3wbq5uulg3sdmre2cquaee6jcke4qq
+- valory/check_stop_trading_abci:0.1.0:bafybeiai2laphs3qtpyx6abmttw7uivylaogou3ibcgjceyv74uyjsibgi
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeid4ay2lgdoxlqwtove4deet5iuxxsspagrgacikb2gwipmsorskqu
-- valory/agent_performance_summary_abci:0.1.0:bafybeiens2oefrx2mx3hfbj3i2egqpzun45qgnaj4um4snxkfmxukef67e
+- valory/chatui_abci:0.1.0:bafybeicraetsk6w2t7hxjm2ufdhlxombf7k67qhlggecl6ihrqk2g5gnyq
+- valory/agent_performance_summary_abci:0.1.0:bafybeibt5fbpdaj2zioapyxnv6ikns7z6cubqnjrc4vha5adnoknpaj26q
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 customs:
 - valory/kelly_criterion:0.1.0:bafybeibio4ynwl4ovejwgsxdkbdeyrefygam6juneuatkduzek3egnp4ay

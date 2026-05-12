@@ -103,9 +103,13 @@ query GetTraderAgentPerformance($id: ID!, $first: Int, $skip: Int) {
     totalFeesSettled
     totalBets
     bets(first: $first, skip: $skip, orderBy: timestamp, orderDirection: desc) {
+      id
       amount
+      outcomeTokenAmount
+      blockTimestamp
       outcomeIndex
       fixedProductMarketMaker {
+        id
         currentAnswer
       }
     }

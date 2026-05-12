@@ -759,8 +759,21 @@ class FetchPerformanceSummaryBehaviour(
             total_payout - total_traded_settled - total_fees_settled
         ) / token_divisor - (settled_mech_costs / WEI_IN_ETH)
 
-        # Calculate locked funds
-        funds_locked_in_markets = (total_traded - total_traded_settled) / token_divisor
+        # Calculate locked funds. Polymarket keeps its pre-existing
+        # cash-flow-net formula (set up by #943). Omenstrat now uses a
+        # per-position formula that survives sell-at-loss: sum the
+        # FIFO-aware ``remaining_cost`` of every non-resolved-losing buy
+        # in the agent's history. Spec §7.2 / §10.13.1 — fixes the
+        # phantom-locked-funds bug where a sell-at-loss leaves cost
+        # basis on the balance sheet until Realitio finalisation.
+        if self.params.is_running_on_polymarket:
+            funds_locked_in_markets = (
+                total_traded - total_traded_settled
+            ) / token_divisor
+        else:
+            funds_locked_in_markets = self._compute_omen_funds_locked(
+                trader_agent
+            )
 
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
@@ -795,6 +808,64 @@ class FetchPerformanceSummaryBehaviour(
             placed_mech_request_count=placed_mech_requests,
             unplaced_mech_request_count=unplaced_mech_requests,
         )
+
+    def _compute_omen_funds_locked(self, trader_agent: dict) -> float:
+        """Per-position funds-locked-in-markets for Omenstrat (spec §7.2).
+
+        Sums the FIFO-aware ``remaining_cost`` across every buy in the
+        agent's bet history, excluding rows whose market resolved to a
+        different outcome (LOSING — the unsold shares are worthless and
+        not recoverable). Returns wxDAI as a float.
+
+        Distinct from the old aggregate formula
+        ``(totalTraded - totalTradedSettled) / 1e18`` (line 763,
+        pre-replacement), which counted realised losses as locked until
+        Realitio finalisation. Per-position semantics surface the same
+        steady-state value for the common no-sell case (all of today's
+        agents per §4.1) but stop counting phantom losses for any agent
+        that has used withdrawal-mode sells.
+
+        Resolved-and-losing detection uses the same
+        ``parse_current_answer`` helper as the per-bet PnL math so a
+        subgraph data-quality regression surfaces in both code paths.
+
+        :param trader_agent: the dict returned by
+            ``_fetch_trader_agent_performance`` for Omenstrat — must
+            carry ``bets[]`` enriched with at least ``amount``,
+            ``outcomeTokenAmount``, ``blockTimestamp``, ``outcomeIndex``
+            and ``fixedProductMarketMaker.{id, currentAnswer}``.
+        :return: wxDAI total of remaining cost on open / WINNING /
+            PENDING / FROZEN positions.
+        """
+        bets = trader_agent.get("bets") or []
+        if not bets:
+            return 0.0
+
+        fetcher = PredictionsFetcher(self.context, self.context.logger)
+        enriched_buys = fetcher._allocate_fifo(bets)
+
+        total_remaining_wei = 0.0
+        for buy in enriched_buys:
+            fpmm = buy.get("fixedProductMarketMaker") or {}
+            current_answer = fpmm.get("currentAnswer")
+            if current_answer is not None:
+                correct = parse_current_answer(current_answer)
+                outcome_index = buy.get("outcomeIndex")
+                if (
+                    correct is not None
+                    and outcome_index is not None
+                    and int(outcome_index) != correct
+                ):
+                    # Resolved-and-losing — shares are worthless; nothing
+                    # locked from this buy.
+                    continue
+            remaining = float(buy.get("original_cost", 0.0)) - float(
+                buy.get("allocated_cost", 0.0)
+            )
+            if remaining > 0:
+                total_remaining_wei += remaining
+
+        return total_remaining_wei / WEI_IN_ETH
 
     def _get_pol_to_usdc_rate(
         self,
