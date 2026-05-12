@@ -33,7 +33,6 @@ from packages.valory.contracts.market_maker.contract import (
     FixedProductMarketMakerContract,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.skills.abstract_round_abci.base import WaitableConditionType
 from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
     WITHDRAWAL_STATE_COMPLETE,

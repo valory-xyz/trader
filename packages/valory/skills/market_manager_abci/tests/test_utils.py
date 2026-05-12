@@ -32,11 +32,13 @@ from packages.valory.skills.market_manager_abci.bets import (
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     INVALID_MARKET_ANSWER,
     MarketState,
+    WithdrawablePosition,
     filter_claimed_conditions,
     get_bet_id_to_balance,
     get_condition_id_to_balances,
     get_position_balance,
     get_position_lifetime_value,
+    get_withdrawable_positions,
     next_status,
 )
 
@@ -653,3 +655,253 @@ class TestGetConditionIdToBalancesPayoutBranch:
             payouts, balances = get_condition_id_to_balances(trades, user_positions)
         # payout > 0 but balance["0"] > 0 too, so condition should NOT be in payouts
         assert condition_id not in payouts
+
+
+# --------------------------------------------------------------------------- #
+# get_withdrawable_positions                                                  #
+# --------------------------------------------------------------------------- #
+
+
+def _ct_position_row(
+    *,
+    condition_id: str,
+    index_set: int,
+    balance: str,
+    position_id: str = "0x" + "ab" * 32,
+) -> Dict[str, Any]:
+    """Build a CT-subgraph-shaped ``user_positions`` row."""
+    return {
+        "balance": balance,
+        "id": position_id + ":0",
+        "position": {
+            "id": position_id,
+            "conditionIds": [condition_id],
+            "indexSets": [str(index_set)],
+            "lifetimeValue": "0",
+            "conditions": [{"id": condition_id, "outcomes": ["Yes", "No"]}],
+        },
+    }
+
+
+def _omen_trade_row(
+    *,
+    fpmm_address: str,
+    condition_id: str,
+    answer_finalized_timestamp: Any = None,
+    is_pending_arbitration: bool = False,
+) -> Dict[str, Any]:
+    """Build an omen-subgraph-shaped ``fpmmTrades`` row."""
+    return {
+        "id": f"{fpmm_address}-trade",
+        "fpmm": {
+            "id": fpmm_address,
+            "answerFinalizedTimestamp": answer_finalized_timestamp,
+            "isPendingArbitration": is_pending_arbitration,
+            "condition": {"id": condition_id},
+        },
+    }
+
+
+class TestGetWithdrawablePositions:
+    """Tests for ``get_withdrawable_positions``."""
+
+    fpmm_a = "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7"
+    fpmm_b = "0x3767f3b500d7d0d51e72f80213b3531beea1b6f5"
+    condition_a = "0x4e7c905e" + "00" * 28
+    condition_b = "0x12345678" + "00" * 28
+
+    def test_open_position_passes_through(self) -> None:
+        """An OPEN position (unresolved market, non-zero balance) is returned."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a,
+                index_set=1,
+                balance="100000000000000000000",
+            )
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+        wp = result[0]
+        assert isinstance(wp, WithdrawablePosition)
+        assert wp.fpmm_address == self.fpmm_a
+        assert wp.outcome_index == 0  # log2(indexSet=1)
+        assert wp.balance == 10**20
+        assert wp.condition_id == self.condition_a
+        assert wp.index_set == 1
+        # token_id is the decimal conversion of the bytes32 position id.
+        # The default fixture id is 0xabab..ab — its decimal form should be
+        # a stable 78-char string.
+        assert wp.token_id == str(int("0x" + "ab" * 32, 16))
+
+    def test_resolved_market_filtered_out(self) -> None:
+        """Markets with answerFinalizedTimestamp set are excluded (WINNING/LOSING/RESOLVED_PENDING)."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a,
+                condition_id=self.condition_a,
+                answer_finalized_timestamp="1700000000",
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=1, balance="1000"
+            )
+        ]
+        assert get_withdrawable_positions(trades, positions) == []
+
+    def test_pending_arbitration_filtered_out(self) -> None:
+        """FROZEN bucket (isPendingArbitration=True) is excluded."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a,
+                condition_id=self.condition_a,
+                is_pending_arbitration=True,
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=1, balance="1000"
+            )
+        ]
+        assert get_withdrawable_positions(trades, positions) == []
+
+    def test_zero_balance_filtered_out(self) -> None:
+        """Zero-balance positions are excluded (already redeemed/sold)."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=1, balance="0"
+            )
+        ]
+        assert get_withdrawable_positions(trades, positions) == []
+
+    def test_compound_position_filtered_out(self) -> None:
+        """Positions with len(conditionIds) != 1 are skipped (defensive)."""
+        compound_position = {
+            "balance": "1000",
+            "id": "0xab" * 16 + ":0",
+            "position": {
+                "id": "0x" + "ab" * 32,
+                "conditionIds": [self.condition_a, self.condition_b],
+                "indexSets": ["1", "2"],
+                "lifetimeValue": "0",
+                "conditions": [],
+            },
+        }
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        assert get_withdrawable_positions(trades, [compound_position]) == []
+
+    def test_non_power_of_two_index_set_filtered_out(self) -> None:
+        """An indexSet that isn't a single bit (e.g. 3 = 011) is rejected."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=3, balance="1000"
+            )
+        ]
+        assert get_withdrawable_positions(trades, positions) == []
+
+    def test_position_without_matching_fpmm_filtered_out(self) -> None:
+        """CT position with no matching fpmm trade is dropped."""
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=1, balance="1000"
+            )
+        ]
+        assert get_withdrawable_positions([], positions) == []
+
+    def test_outcome_index_derived_from_index_set_bit(self) -> None:
+        """outcome_index = log2(index_set) — correct for N>2 markets."""
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        # index_set = 4 means outcome 2 (3rd outcome of a 3-way), NOT
+        # outcome 3 which is what the legacy `int(indexSets[0]) - 1`
+        # formula in get_position_balance would return.
+        positions = [
+            _ct_position_row(
+                condition_id=self.condition_a, index_set=4, balance="1000"
+            )
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+        assert result[0].outcome_index == 2
+        assert result[0].index_set == 4
+
+    def test_mixed_bucket_input(self) -> None:
+        """OPEN positions returned; resolved/zero/frozen filtered out concurrently."""
+        # Three FPMMs: open / resolved / frozen.
+        fpmm_open = self.fpmm_a
+        fpmm_resolved = "0x" + "11" * 20
+        fpmm_frozen = "0x" + "22" * 20
+        cid_open = self.condition_a
+        cid_resolved = "0x" + "aa" * 32
+        cid_frozen = "0x" + "bb" * 32
+        trades = [
+            _omen_trade_row(fpmm_address=fpmm_open, condition_id=cid_open),
+            _omen_trade_row(
+                fpmm_address=fpmm_resolved,
+                condition_id=cid_resolved,
+                answer_finalized_timestamp="1700000000",
+            ),
+            _omen_trade_row(
+                fpmm_address=fpmm_frozen,
+                condition_id=cid_frozen,
+                is_pending_arbitration=True,
+            ),
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=cid_open, index_set=1, balance="100000000000000000"
+            ),
+            _ct_position_row(
+                condition_id=cid_resolved,
+                index_set=1,
+                balance="500000000000000000",
+            ),
+            _ct_position_row(
+                condition_id=cid_frozen,
+                index_set=1,
+                balance="700000000000000000",
+            ),
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+        assert result[0].fpmm_address == fpmm_open
+        assert result[0].balance == 10**17
+
+    def test_condition_id_match_is_case_insensitive(self) -> None:
+        """A CT row with uppercase condition_id still joins to the omen fpmm."""
+        cid_upper = self.condition_a.upper()
+        trades = [
+            _omen_trade_row(
+                fpmm_address=self.fpmm_a, condition_id=self.condition_a
+            )
+        ]
+        positions = [
+            _ct_position_row(
+                condition_id=cid_upper, index_set=1, balance="1000"
+            )
+        ]
+        result = get_withdrawable_positions(trades, positions)
+        assert len(result) == 1
+        assert result[0].balance == 1000

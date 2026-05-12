@@ -48,7 +48,10 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw i
 from packages.valory.skills.decision_maker_abci.behaviours.round_behaviour import (
     AgentDecisionMakerRoundBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.payloads import WithdrawalPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    OmenWithdrawalPayload,
+    WithdrawalPayload,
+)
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
@@ -85,17 +88,119 @@ class TestRoundClasses:
         """Verify PolymarketWithdrawRound posts WithdrawalPayload values."""
         assert PolymarketWithdrawRound.payload_class is WithdrawalPayload
 
-    def test_omen_withdraw_uses_withdrawal_payload(self) -> None:
-        """Verify OmenWithdrawRound posts WithdrawalPayload values."""
-        assert OmenWithdrawRound.payload_class is WithdrawalPayload
+    def test_omen_withdraw_uses_omen_withdrawal_payload(self) -> None:
+        """OmenWithdrawRound now submits a Safe multisend; posts ``OmenWithdrawalPayload``."""
+        assert OmenWithdrawRound.payload_class is OmenWithdrawalPayload
 
     def test_polymarket_withdraw_done_event(self) -> None:
         """Verify PolymarketWithdrawRound emits WITHDRAWAL_DONE on consensus."""
         assert PolymarketWithdrawRound.done_event == Event.WITHDRAWAL_DONE
 
-    def test_omen_withdraw_done_event(self) -> None:
-        """Verify OmenWithdrawRound emits WITHDRAWAL_DONE on consensus."""
-        assert OmenWithdrawRound.done_event == Event.WITHDRAWAL_DONE
+    def test_omen_withdraw_none_event_is_withdrawal_done(self) -> None:
+        """The ``none_event`` is the short-circuit terminal — no-op safe halt."""
+        assert OmenWithdrawRound.none_event == Event.WITHDRAWAL_DONE
+
+
+class TestOmenWithdrawRoundEventSwitch:
+    """``OmenWithdrawRound.end_block`` reads the payload's ``event`` field.
+
+    The framework's ``TxPreparationRound`` would emit ``Event.DONE`` on
+    consensus, but withdrawal needs to dispatch between two branches:
+      - PREPARE_TX (tx_hash set, route to tx settlement)
+      - WITHDRAWAL_DONE (short-circuit, no tx settles)
+
+    Verified here by stubbing the framework parts ``super().end_block``
+    needs (synchronized_data, payload_values_count) so we can exercise
+    the override branches directly without spinning up an FSM.
+    """
+
+    @staticmethod
+    def _build_round(payload_values: tuple) -> OmenWithdrawRound:
+        """Construct an ``OmenWithdrawRound`` instance with stubbed framework state."""
+        round_ = object.__new__(OmenWithdrawRound)
+        sync = MagicMock()
+        # `most_voted_payload_values` reads `consensus_threshold` as an int.
+        sync.consensus_threshold = 1
+        round_._synchronized_data = sync
+        round_._previous_round_payload_class = OmenWithdrawalPayload  # noqa: SLF001
+        round_._allow_rejoin_payloads = False  # noqa: SLF001
+        fake_payload = MagicMock()
+        fake_payload.values = payload_values
+        round_.collection = {"agent_0": fake_payload}
+        round_.block_confirmations = 0
+        return round_
+
+    @staticmethod
+    def _patch_super_end_block(monkeypatch: Any, event_to_return: Any) -> None:
+        """Force ``CollectSameUntilThresholdRound.end_block`` to a fixed return."""
+
+        def fake_end_block(self: Any) -> Any:
+            return (self._synchronized_data, event_to_return)  # noqa: SLF001
+
+        monkeypatch.setattr(
+            CollectSameUntilThresholdRound, "end_block", fake_end_block
+        )
+
+    def test_payload_event_prepare_tx_emits_prepare_tx(
+        self, monkeypatch: Any
+    ) -> None:
+        """Payload `event=PREPARE_TX` -> emits Event.PREPARE_TX (route to settlement)."""
+        round_ = self._build_round(
+            payload_values=(
+                "OmenWithdrawRound",
+                "0x" + "ab" * 32,
+                False,
+                Event.PREPARE_TX.value,
+            )
+        )
+        self._patch_super_end_block(monkeypatch, Event.DONE)
+
+        result = round_.end_block()
+
+        assert result is not None
+        _, emitted = result
+        assert emitted == Event.PREPARE_TX
+
+    def test_payload_event_withdrawal_done_emits_withdrawal_done(
+        self, monkeypatch: Any
+    ) -> None:
+        """Payload `event=WITHDRAWAL_DONE` -> short-circuits straight to idle."""
+        round_ = self._build_round(
+            payload_values=(None, None, None, Event.WITHDRAWAL_DONE.value)
+        )
+        self._patch_super_end_block(monkeypatch, Event.DONE)
+
+        result = round_.end_block()
+
+        assert result is not None
+        _, emitted = result
+        assert emitted == Event.WITHDRAWAL_DONE
+
+    def test_no_majority_passes_through_untouched(
+        self, monkeypatch: Any
+    ) -> None:
+        """On NO_MAJORITY the override returns the super result unchanged."""
+        round_ = self._build_round(payload_values=(None, None, None, None))
+        self._patch_super_end_block(monkeypatch, Event.NO_MAJORITY)
+
+        result = round_.end_block()
+
+        assert result is not None
+        _, emitted = result
+        assert emitted == Event.NO_MAJORITY
+
+    def test_super_none_short_circuits(self, monkeypatch: Any) -> None:
+        """If super().end_block returns None, the override returns None."""
+        round_ = self._build_round(payload_values=(None, None, None, None))
+
+        def fake_end_block(self: Any) -> Any:
+            return None
+
+        monkeypatch.setattr(
+            CollectSameUntilThresholdRound, "end_block", fake_end_block
+        )
+
+        assert round_.end_block() is None
 
 
 # ---------------------------------------------------------------------------
@@ -2583,28 +2688,40 @@ class TestPolymarketWithdrawBehaviourSellLoop:
         assert "payload" in captured_payload
 
 
-class TestOmenWithdrawBehaviourStub:
-    """Tests for the defensive Omen stub behaviour."""
+class TestOmenWithdrawBehaviourSurface:
+    """Surface tests for the real Omen sweep behaviour.
 
-    def test_async_act_logs_warning_and_finishes(self) -> None:
-        """The Omen stub must emit a WARNING and post a WithdrawalPayload."""
-        behaviour = object.__new__(_TestableOmenWithdraw)
-        behaviour.context = MagicMock()  # type: ignore[assignment]
-        behaviour.context.agent_address = "agent_y"
+    Heavier end-to-end coverage of ``async_act`` lives next to the
+    contract / subgraph / round wiring tests; this class only sanity-checks
+    that the stub has been replaced with the multi-step pipeline and that
+    the module-level helpers behave per spec §6.3.
+    """
 
-        captured_payload: Dict[str, Any] = {}
+    def test_module_exports_inflate_for_slippage(self) -> None:
+        """``inflate_for_slippage`` (§6.3 ceiling-direction helper) is exposed."""
+        from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+            inflate_for_slippage,
+        )
 
-        def fake_finish(payload: BaseTxPayload) -> Generator[Any, None, None]:
-            captured_payload["payload"] = payload
-            yield
+        # Round-up invariant: even tiny slippage strictly exceeds N_estimate
+        # (the ``+1`` guards against integer floor under-shoot).
+        assert inflate_for_slippage(100, 0.01) == 102
+        # Zero amount with non-zero slippage still rounds up via the +1.
+        assert inflate_for_slippage(0, 0.5) == 1
+        # Asymmetry vs the buy-side helper: inflation strictly exceeds the
+        # input, while the buy-side ``remove_fraction_wei`` strictly shrinks.
+        assert inflate_for_slippage(1_000_000, 0.05) > 1_000_000
 
-        behaviour.finish_behaviour = fake_finish  # type: ignore[method-assign,assignment]
-        list(behaviour.async_act())
+    def test_inflate_for_slippage_rejects_out_of_range(self) -> None:
+        """slippage must live in [0, 1] (closed interval)."""
+        from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+            inflate_for_slippage,
+        )
 
-        behaviour.context.logger.warning.assert_called_once()
-        msg = str(behaviour.context.logger.warning.call_args).lower()
-        assert "omen" in msg and "halt" in msg
-        assert isinstance(captured_payload["payload"], WithdrawalPayload)
+        with pytest.raises(ValueError):
+            inflate_for_slippage(100, -0.01)
+        with pytest.raises(ValueError):
+            inflate_for_slippage(100, 1.01)
 
 
 # ---------------------------------------------------------------------------
