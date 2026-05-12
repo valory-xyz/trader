@@ -123,7 +123,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
                 "selected_tool": "dummy selected tool",
-                "selected_mechs": '["0xabc"]',
             },
         ),
         (

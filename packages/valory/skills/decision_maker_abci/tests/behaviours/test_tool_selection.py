@@ -262,8 +262,15 @@ class TestSelectToolWithAllowedTools:
 class TestSelectToolEmptyIntersection:
     """Tests for _select_tool when allowed_tools has no intersection with mech_tools."""
 
-    def test_falls_back_to_unrestricted_policy_and_logs_warning(self) -> None:
-        """When no allowed tool exists in mech_tools, fallback to full policy + warning."""
+    def test_returns_none_and_names_constraint(self) -> None:
+        """An unsatisfiable allowed_tools pin must fail closed.
+
+        Previously the round silently fell back to the unrestricted
+        policy, which could violate the user's pin for that iteration.
+        The warning must name the constraint (allowed_tools, not the
+        more general "ChatUI restrictions") so a user-reported "my pin
+        didn't work" can be correlated to the right config field.
+        """
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
@@ -274,19 +281,17 @@ class TestSelectToolEmptyIntersection:
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ) as mock_select:
+            with patch.object(policy, "select_tool") as mock_select:
                 result = _run_select_tool(behaviour)
 
-        assert result == "tool-a"
-        mock_select.assert_called_once_with(RANDOMNESS)
+        assert result is None
+        mock_select.assert_not_called()
         behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
         warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
-        assert "falling back" in warning_msg.lower()
+        assert "allowed_tools" in warning_msg
 
-    def test_original_policy_store_not_mutated_on_fallback(self) -> None:
-        """Even the fallback path must leave the original accuracy_store untouched."""
+    def test_original_policy_store_not_mutated_on_collapse(self) -> None:
+        """A pin-collapse round must leave the original accuracy_store untouched."""
         policy = _make_policy("tool-a", "tool-b")
         original_keys = set(policy.accuracy_store.keys())
         behaviour = _make_behaviour(
@@ -395,6 +400,64 @@ class TestSelectToolWithSelectedMechs:
 
         assert result == "tool-b"
 
+    def test_boot_race_empty_mechs_info_skips_pin_filter(self) -> None:
+        """Pin must not collapse the candidate set before MechInformation has run.
+
+        Right after agent boot, ``mechs_info`` is empty until mech-interact
+        finishes its first discovery round. If we applied the pin filter in
+        that window, the candidate set would always be empty for a pinned
+        user and tool selection would noisy-fail every round until the
+        FSM finally populates ``mechs_info``. We treat the pin as inactive
+        for this round so the unrestricted policy selects normally; the
+        pin filter resumes on the next round once mech-interact has
+        populated ``mechs_info``.
+        """
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xa"],
+            mechs_info=[],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(
+                policy, "select_tool", return_value="tool-a"
+            ) as mock_select:
+                result = _run_select_tool(behaviour)
+
+        assert result == "tool-a"
+        mock_select.assert_called_once_with(RANDOMNESS)
+
+    def test_pin_collapse_returns_none_when_mechs_info_present(self) -> None:
+        """A genuinely unsatisfiable pin must fail closed (return None).
+
+        When ``mechs_info`` is populated but the pin yields no candidate
+        tool, the previous behaviour silently fell back to the unrestricted
+        policy. That picked a tool no pinned mech serves, which mech-interact
+        rejected one round later with ``no_overlap_with_selected_mechs``.
+        Failing closed here surfaces the cause to the consumer immediately
+        instead of routing through a dead-end mech request.
+        """
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xa"],
+            mechs_info=[_StubMech("0xa", {"tool-c"})],  # serves a tool we don't have
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool") as mock_select:
+                result = _run_select_tool(behaviour)
+
+        assert result is None
+        mock_select.assert_not_called()
+
 
 def _run_async_act(behaviour: "ToolSelectionBehaviour") -> None:
     """Drive async_act() to completion."""
@@ -477,44 +540,7 @@ class TestAsyncActSelectedToolNotNone:
         assert set(mech_tools_parsed) == {"tool-a", "tool-b"}
         assert payload.policy is not None
         assert payload.utilized_tools is not None
-        # ChatUI pin defaults to None → serialized as an empty list.
-        assert payload.selected_mechs == "[]"
         behaviour._store_all.assert_called_once()
-
-    def test_payload_carries_pinned_mechs_lowercased(self) -> None:
-        """The ChatUI mech pin must be serialized into the payload, lowercased."""
-        policy = _make_policy("tool-a")
-        behaviour = _make_behaviour(
-            policy,
-            {"tool-a"},
-            selected_mechs=["0xABC", "0xDEF"],
-            mechs_info=[
-                _StubMech("0xabc", {"tool-a"}),
-                _StubMech("0xdef", {"tool-a"}),
-            ],
-        )
-        behaviour._utilized_tools = {}
-        benchmark_ctx = MagicMock()
-        behaviour.context.benchmark_tool.measure.return_value = benchmark_ctx  # type: ignore[attr-defined]
-        benchmark_ctx.local.return_value.__enter__ = MagicMock()
-        benchmark_ctx.local.return_value.__exit__ = MagicMock(return_value=False)
-        behaviour.benchmarking_mode.enabled = False  # type: ignore[attr-defined]
-        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
-
-        with patch.object(
-            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
-        ):
-            with patch.object(policy, "select_tool", return_value="tool-a"):
-                with patch.object(
-                    behaviour,
-                    "finish_behaviour",
-                    side_effect=lambda p: iter([None]),
-                ) as mock_finish:
-                    _run_async_act(behaviour)
-
-        payload = mock_finish.call_args[0][0]
-        assert payload.selected_mechs is not None
-        assert set(json.loads(payload.selected_mechs)) == {"0xabc", "0xdef"}
 
     def test_benchmarking_calls_tool_used(self) -> None:
         """Should call policy.tool_used during benchmarking mode."""

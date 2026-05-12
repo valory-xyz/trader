@@ -43,6 +43,5 @@ class ToolSelectionRound(CollectSameUntilThresholdRound):
         get_name(SynchronizedData.policy),
         get_name(SynchronizedData.utilized_tools),
         get_name(SynchronizedData.mech_tool),
-        get_name(SynchronizedData.selected_mechs),
     )
     collection_key = get_name(SynchronizedData.participant_to_selection)

@@ -107,7 +107,6 @@ class ToolSelectionPayload(BaseTxPayload):
     policy: Optional[str]
     utilized_tools: Optional[str]
     selected_tool: Optional[str]
-    selected_mechs: Optional[str] = None
 
 
 @dataclass(frozen=True)

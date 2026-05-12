@@ -324,14 +324,11 @@ class HttpHandler(BaseHttpHandler):
     def _get_available_valid_mechs(self) -> Set[str]:
         """Return the set of mech addresses currently visible to mech-interact.
 
-        Falls back to an empty set if the synced data has not yet been
-        populated (e.g. before MechInformationRound has run for the first
-        time). Caller is responsible for handling the empty case.
+        ``available_valid_mechs`` is fully defensive: it falls back to an
+        empty set on a missing or malformed ``mechs_info`` key. Callers
+        are responsible for handling the empty case.
         """
-        try:
-            return self.synchronized_data.available_valid_mechs
-        except (TypeError, KeyError):
-            return set()
+        return self.synchronized_data.available_valid_mechs
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

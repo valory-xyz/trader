@@ -22,7 +22,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, Set, Type
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -35,6 +35,9 @@ from packages.valory.skills.abstract_round_abci.base import (
     get_name,
 )
 from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
+
+SERIALIZED_EMPTY_PIN = "[]"
+SELECTED_MECHS_DB_KEY = "selected_mechs"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -92,6 +95,46 @@ class ChatuiLoadRound(VotingRound):
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
     collection_key = get_name(SynchronizedData.participant_to_votes)
+
+    def end_block(self) -> Optional[Tuple[BaseSynchronizedData, "Enum"]]:
+        """Process the end of the block.
+
+        On positive vote threshold, publish the consumer-set
+        ``selected_mechs`` pin into synchronized data alongside the
+        usual vote collection. mech-interact's MechInformationRound
+        reads this key on the same FSM iteration, so the pin is
+        always fresh before discovery runs — avoiding the stale-pin
+        loop where pinned_mechs_offline kept failing on a value the
+        user had already cleared.
+
+        :return: the updated synchronized data and the resulting event,
+            or ``None`` if no threshold has been reached yet.
+        """
+        if self.positive_vote_threshold_reached:
+            positive_payloads = [
+                cast(ChatuiPayload, p)
+                for p in self.collection.values()
+                if getattr(p, "vote", None) is True
+            ]
+            raw_pin = positive_payloads[0].selected_mechs if positive_payloads else None
+            selected_mechs = raw_pin if raw_pin is not None else SERIALIZED_EMPTY_PIN
+            synchronized_data = self.synchronized_data.update(
+                synchronized_data_class=self.synchronized_data_class,
+                **{
+                    self.collection_key: self.serialized_collection,
+                    SELECTED_MECHS_DB_KEY: selected_mechs,
+                },
+            )
+            return synchronized_data, self.done_event
+        if self.negative_vote_threshold_reached:
+            return self.synchronized_data, self.negative_event
+        if self.none_vote_threshold_reached:
+            return self.synchronized_data, self.none_event
+        if not self.is_majority_possible(
+            self.collection, self.synchronized_data.nb_participants
+        ):
+            return self.synchronized_data, self.no_majority_event
+        return None
 
 
 class FinishedChatuiLoadRound(DegenerateRound, ABC):

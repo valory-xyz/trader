@@ -21,7 +21,7 @@
 
 import copy
 import json
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
@@ -37,26 +37,36 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
     matching_round = ToolSelectionRound
 
-    def _candidate_tools(self) -> set:
+    def _candidate_tools(self) -> Tuple[set, Optional[str]]:
         """Compute the candidate tool set after applying ChatUI restrictions.
 
         Layers two filters on top of `self.mech_tools` (the set of tools
         already filtered by mech-interact's `valid_tools` allowlist):
 
         1. `selected_mechs` — keep only tools served by at least one pinned
-           mech. Requires `mechs_info` from synced data; skipped in
-           benchmarking mode where that data is not populated.
+           mech. Skipped in benchmarking mode and during the boot race
+           where `mechs_info` has not been populated yet (MechInformation
+           hasn't run for the first time).
         2. `allowed_tools` — keep only tools the user pinned by name.
 
-        Either layer being empty/None is a no-op for that layer.
+        Either layer being unset is a no-op for that layer.
 
-        :return: the candidate tool set after applying the pin filters.
+        :return: (candidate set, name of the constraint that emptied the
+            set, or ``None`` if no constraint emptied it). When the pin
+            filter is skipped due to the boot race, this reads as if no
+            pin were set for this round.
         """
         candidate = set(self.mech_tools)
+        cause: Optional[str] = None
 
         selected_mechs = self.shared_state.chatui_config.selected_mechs
-        if selected_mechs and not self.benchmarking_mode.enabled:
-            selected_lower = {m.lower() for m in selected_mechs}
+        pin_active = (
+            bool(selected_mechs)
+            and not self.benchmarking_mode.enabled
+            and bool(self.synchronized_data.mechs_info)
+        )
+        if pin_active:
+            selected_lower = {m.lower() for m in selected_mechs}  # type: ignore[union-attr]
             tools_from_pinned_mechs = {
                 tool
                 for mech in self.synchronized_data.mechs_info
@@ -64,15 +74,25 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 for tool in mech.relevant_tools
             }
             candidate &= tools_from_pinned_mechs
+            if not candidate:
+                cause = "selected_mechs"
 
         allowed_tools = self.shared_state.chatui_config.allowed_tools
         if allowed_tools:
             candidate &= set(allowed_tools)
+            if not candidate and cause is None:
+                cause = "allowed_tools"
 
-        return candidate
+        return candidate, cause
 
     def _select_tool(self) -> Generator[None, None, Optional[str]]:
-        """Select a Mech tool based on an e-greedy policy and return its index."""
+        """Select a Mech tool based on an e-greedy policy and return its index.
+
+        :yield: behaviour-utility yields while awaiting policy setup.
+        :return: the chosen tool name, or ``None`` when a ChatUI
+            restriction has collapsed the candidate set so the round
+            should fail closed.
+        """
         success = yield from self._setup_policy_and_tools()
         if not success:
             return None
@@ -83,12 +103,14 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             else self.synchronized_data.most_voted_randomness
         )
 
-        candidate_tools = self._candidate_tools()
+        candidate_tools, cause = self._candidate_tools()
         if not candidate_tools:
-            self.context.logger.warning(
-                "ChatUI restrictions left no candidate tools; falling back to "
-                "the unrestricted policy."
-            )
+            if cause is not None:
+                self.context.logger.warning(
+                    f"ChatUI {cause!r} restriction left no candidate tools; "
+                    "skipping this round so the user can adjust the pin."
+                )
+                return None
             selected_tool = self.policy.select_tool(randomness)
         elif candidate_tools != self.mech_tools:
             restricted_policy = copy.deepcopy(self.policy)
@@ -109,7 +131,6 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             mech_tools = policy = utilized_tools = None
-            selected_mechs_payload: Optional[str] = None
             selected_tool = yield from self._select_tool()
             if selected_tool is not None:
                 # the period will increment when the benchmarking finishes
@@ -123,13 +144,6 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 mech_tools = json.dumps(list(self.mech_tools))
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
-                # Serialize the user's mech pin so mech-interact's
-                # relevant_mechs_info can restrict ranking to it after
-                # consensus. Empty list means "no pin".
-                pinned_mechs = self.shared_state.chatui_config.selected_mechs or []
-                selected_mechs_payload = json.dumps(
-                    [str(m).lower() for m in pinned_mechs]
-                )
                 self._store_all()
 
             payload = ToolSelectionPayload(
@@ -138,7 +152,6 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 policy,
                 utilized_tools,
                 selected_tool,
-                selected_mechs_payload,
             )
 
         yield from self.finish_behaviour(payload)
