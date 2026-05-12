@@ -38,7 +38,6 @@ fingerprint:
   behaviours/storage_manager.py: bafybeifuthllbvup2ox2nqotpzpsg7tq53vvbjy4lfcdjlhojeawm57cda
   behaviours/tool_selection.py: bafybeih7s7lvhquocztakzsvpbzy4z7tbvxswztr73q2nzopc2qrbdrlki
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
-  fsm_specification.md: bafybeih7k63ygliknp3s7bn7bh3sgtas2f5osad6iudr6vxuwoc7e7p54u
   fsm_specification.yaml: bafybeifzgtterypfnowgr3jbzx43omfo6dr3szr7x6dz3gt2gbcd2bylgi
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
@@ -156,12 +155,12 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
-- valory/market_manager_abci:0.1.0:bafybeihifolcdzb3aqsgrxotos675by7u457te7ekph4gryqr6dno4srce
+- valory/market_manager_abci:0.1.0:bafybeibtjsjfnpxysawbgr2jz5xir2slgcisfnupg5tgz7th3axg7hbezm
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/staking_abci:0.1.0:bafybeibruevnamvpuryql7d7simokhawzciihhg2rv7db7hgadtpaxzxlm
-- valory/agent_performance_summary_abci:0.1.0:bafybeicfydwo475ocp5aygv565rppqb6tetaw3rs6ghlwgunsettyw3vv4
-- valory/chatui_abci:0.1.0:bafybeiajqervkyssocffgeqnd5zj4aya7jvegdfwhxxktr7fxztvb7ashm
+- valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
+- valory/agent_performance_summary_abci:0.1.0:bafybeiegae7saqga62wwzn56wikjitb6h7xsh7kixybid6v7wosefjbvvu
+- valory/chatui_abci:0.1.0:bafybeicsh2nkgz3jiafbvpab4ox4sm4a54p5hfwz3nheaxa7geetyepooi
 behaviours:
   main:
     args: {}
