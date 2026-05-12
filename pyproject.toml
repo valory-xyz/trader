@@ -80,9 +80,9 @@ check_dependencies_extra_excludes = [
 ]
 upstream_pins = [
     "valory-xyz/mech-interact@v0.30.0",
-    "valory-xyz/genai@v7.0.0",
+    "valory-xyz/genai@v7.1.1",
     "valory-xyz/kv-store@v0.5.0",
-    "valory-xyz/funds-manager@v3.0.0",
+    "valory-xyz/funds-manager@v3.0.1",
 ]
 gitleaks_extra_paths = ["ui-build/.*"]
 tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@v0.7.0"
