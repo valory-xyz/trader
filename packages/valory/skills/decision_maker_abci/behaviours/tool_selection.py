@@ -40,33 +40,21 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
     def _candidate_tools(self) -> Tuple[set, Optional[str]]:
         """Compute the candidate tool set after applying ChatUI restrictions.
 
-        Layers two filters on top of `self.mech_tools` (the set of tools
-        already filtered by mech-interact's `valid_tools` allowlist):
+        Layers two filters on top of `self.mech_tools`:
 
         1. `selected_mechs` — keep only tools served by at least one pinned
-           mech. Skipped in benchmarking mode and during the boot race
-           where `mechs_info` has not been populated yet (MechInformation
-           hasn't run for the first time).
+           mech. Skipped in benchmarking mode.
         2. `allowed_tools` — keep only tools the user pinned by name.
 
-        Either layer being unset is a no-op for that layer.
-
         :return: (candidate set, name of the constraint that emptied the
-            set, or ``None`` if no constraint emptied it). When the pin
-            filter is skipped due to the boot race, this reads as if no
-            pin were set for this round.
+            set, or ``None`` if no constraint emptied it).
         """
         candidate = set(self.mech_tools)
         cause: Optional[str] = None
 
         selected_mechs = self.shared_state.chatui_config.selected_mechs
-        pin_active = (
-            bool(selected_mechs)
-            and not self.benchmarking_mode.enabled
-            and bool(self.synchronized_data.mechs_info)
-        )
-        if pin_active:
-            selected_lower = {m.lower() for m in selected_mechs}  # type: ignore[union-attr]
+        if selected_mechs and not self.benchmarking_mode.enabled:
+            selected_lower = {m.lower() for m in selected_mechs}
             tools_from_pinned_mechs = {
                 tool
                 for mech in self.synchronized_data.mechs_info

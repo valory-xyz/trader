@@ -400,17 +400,14 @@ class TestSelectToolWithSelectedMechs:
 
         assert result == "tool-b"
 
-    def test_boot_race_empty_mechs_info_skips_pin_filter(self) -> None:
-        """Pin must not collapse the candidate set before MechInformation has run.
+    def test_pin_set_but_mechs_info_empty_fails_closed(self) -> None:
+        """Pin applies whenever set; empty mechs_info collapses the candidate.
 
-        Right after agent boot, ``mechs_info`` is empty until mech-interact
-        finishes its first discovery round. If we applied the pin filter in
-        that window, the candidate set would always be empty for a pinned
-        user and tool selection would noisy-fail every round until the
-        FSM finally populates ``mechs_info``. We treat the pin as inactive
-        for this round so the unrestricted policy selects normally; the
-        pin filter resumes on the next round once mech-interact has
-        populated ``mechs_info``.
+        v2 normally populates mechs_info during MechInformationRound before
+        ToolSelectionRound reads it. If it lands here empty (e.g. subgraph
+        returned zero matching mechs), the pin yields no candidate and the
+        round fails closed rather than silently broadening to the
+        unrestricted policy.
         """
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
@@ -423,13 +420,11 @@ class TestSelectToolWithSelectedMechs:
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ) as mock_select:
+            with patch.object(policy, "select_tool") as mock_select:
                 result = _run_select_tool(behaviour)
 
-        assert result == "tool-a"
-        mock_select.assert_called_once_with(RANDOMNESS)
+        assert result is None
+        mock_select.assert_not_called()
 
     def test_pin_collapse_returns_none_when_mechs_info_present(self) -> None:
         """A genuinely unsatisfiable pin must fail closed (return None).

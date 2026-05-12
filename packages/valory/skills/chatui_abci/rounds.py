@@ -116,6 +116,11 @@ class ChatuiLoadRound(VotingRound):
                 for p in self.collection.values()
                 if getattr(p, "vote", None) is True
             ]
+            # Single-agent assumption: only the receiving agent's
+            # chatui_config carries the pin, so the dict-order pick is
+            # uniquely determined. On a future multi-agent migration
+            # this must switch to a consensus rule (e.g. most_common)
+            # to stay deterministic across peers.
             raw_pin = positive_payloads[0].selected_mechs if positive_payloads else None
             selected_mechs = raw_pin if raw_pin is not None else SERIALIZED_EMPTY_PIN
             synchronized_data = self.synchronized_data.update(
