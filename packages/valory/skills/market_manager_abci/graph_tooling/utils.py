@@ -280,14 +280,14 @@ def get_withdrawable_positions(
             continue
         if not _is_power_of_two(index_set):
             continue
-        fpmm: Optional[Dict[str, Any]] = fpmm_by_condition.get(condition_id)
-        if fpmm is None:
+        fpmm_meta: Optional[Dict[str, Any]] = fpmm_by_condition.get(condition_id)
+        if fpmm_meta is None:
             # CT position with no FPMM in the safe's trade history
             continue
-        if fpmm.get("answerFinalizedTimestamp") is not None:
+        if fpmm_meta.get("answerFinalizedTimestamp") is not None:
             # resolved (WINNING / LOSING / RESOLVED_PENDING bucket)
             continue
-        if fpmm.get("isPendingArbitration"):
+        if fpmm_meta.get("isPendingArbitration"):
             # FROZEN
             continue
         position_id_hex = (position.get("id") or "").lower()
@@ -299,7 +299,7 @@ def get_withdrawable_positions(
             continue
         out.append(
             WithdrawablePosition(
-                fpmm_address=fpmm["id"],
+                fpmm_address=fpmm_meta["id"],
                 outcome_index=index_set.bit_length() - 1,
                 balance=balance,
                 condition_id=condition_id,

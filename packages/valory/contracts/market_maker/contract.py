@@ -34,7 +34,10 @@ from packages.valory.contracts.conditional_tokens.contract import (
 
 PUBLIC_ID = PublicId.from_str("valory/market_maker:0.1.0")
 
-# keccak256("FPMMSell(address,uint256,uint256,uint256,uint256)")
+# FPMMSell event topic0 — the keccak of the canonical event signature
+# "FPMMSell(address,uint256,uint256,uint256,uint256)". Hardcoded to
+# avoid re-computing per call; verified by the parse_sell_events tests
+# in the contract's test_contract.py.
 FPMM_SELL_TOPIC0 = HexBytes(
     "0xadcf2a240ed9300d681d9a3f5382b6c1beed1b7e46643e0c7b42cbe6e2d766b4"
 )

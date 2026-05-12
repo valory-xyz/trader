@@ -44,6 +44,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio i
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
     trades as trades_query,
+)
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
     withdrawal_creator_fpmms,
 )
 from packages.valory.skills.market_manager_abci.models import (
@@ -400,6 +402,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
         ``condition.id``) — see ``get_withdrawable_positions``.
 
         :param user: the trader safe address (lowercased internally).
+        :yield: framework yields for each paginated HTTP request.
         :return: a list of ``{id, fpmm: {...}}`` rows from the omen
             ``fpmmTrades`` subgraph; on ``None`` from the response handler
             the caller treats it as a fetch failure.
@@ -426,9 +429,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 res_context="withdrawal_creator_fpmms",
             )
             if res is None:
-                self.context.logger.error(
-                    "Failed to process withdrawal creator FPMMs."
-                )
+                self.context.logger.error("Failed to process withdrawal creator FPMMs.")
                 return None
 
             rows = cast(List[Dict[str, Any]], rows)

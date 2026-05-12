@@ -5366,8 +5366,10 @@ class TestPerformInitialBackfillMissingDateKey:
 
 
 class TestComputeOmenFundsLocked:
-    """The Omen funds-locked formula uses FIFO ``remaining_cost`` per buy,
-    gated by the CT-balance "still held" set so redeemed positions drop out.
+    """Tests for the Omen funds-locked formula.
+
+    Uses FIFO ``remaining_cost`` per buy, gated by the CT-balance "still
+    held" set so redeemed positions correctly drop out.
     """
 
     SAFE = "0xsafe"

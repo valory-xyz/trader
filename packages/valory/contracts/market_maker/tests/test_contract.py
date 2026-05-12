@@ -27,8 +27,8 @@ from unittest.mock import MagicMock, patch
 from hexbytes import HexBytes
 
 from packages.valory.contracts.market_maker.contract import (
-    FPMM_SELL_TOPIC0,
     Contract,
+    FPMM_SELL_TOPIC0,
     FixedProductMarketMakerContract,
 )
 
@@ -489,9 +489,7 @@ class TestABIConsistency:
         """All contract functions referenced in contract.py must exist in the ABI."""
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
-        missing = (
-            referenced_functions - abi_functions - self._CROSS_CONTRACT_FUNCTIONS
-        )
+        missing = referenced_functions - abi_functions - self._CROSS_CONTRACT_FUNCTIONS
         assert (
             not missing
         ), f"Functions used in contract.py but missing from ABI: {missing}"

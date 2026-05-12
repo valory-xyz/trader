@@ -3772,9 +3772,7 @@ class TestAllocateFifo:
         assert wrapped["allocated_cost"] == float(4 * 10**18)
         # Realized PnL on the sold portion: 3 - 4 = -1 wxDAI (sold at loss).
         # Verified indirectly: original_cost - allocated_cost = 6 wxDAI remaining.
-        assert wrapped["original_cost"] - wrapped["allocated_cost"] == float(
-            6 * 10**18
-        )
+        assert wrapped["original_cost"] - wrapped["allocated_cost"] == float(6 * 10**18)
 
     def test_multiple_buys_fifo_chronological(self) -> None:
         """Sells consume earlier buys first (chronological FIFO order)."""
@@ -3997,14 +3995,11 @@ class TestFifoAwareCalculateBetNetProfit:
             "total_traded": 1.0,
             "winning_total_amount": 0.0,  # the winning side has no buys
         }
-        net_profit, payout = fetcher._calculate_bet_net_profit(
-            enriched_buy, ctx, 0.0
-        )
-        # realized_pnl = 0.3 - 0.3 = 0
-        # remaining_cost = 0.7 (lost)
-        # net = 0 - 0.7 = -0.7
+        net_profit, payout = fetcher._calculate_bet_net_profit(enriched_buy, ctx, 0.0)
+        # realised proceeds were 0.3 wxDAI on cost 0.3 wxDAI (realised PnL
+        # zero). Remaining 0.7 wxDAI cost basis is lost. Net = -0.7 wxDAI.
         assert net_profit == pytest.approx(-0.7, abs=1e-9)
-        # payout reflects the realized proceeds.
+        # payout reflects the realised proceeds.
         assert payout == pytest.approx(0.3, abs=1e-9)
 
     def test_winning_with_partial_sell_uses_remaining_cost(self) -> None:
@@ -4029,15 +4024,13 @@ class TestFifoAwareCalculateBetNetProfit:
             "total_traded": 1.0,
             "winning_total_amount": 0.5,  # = remaining_cost of this buy
         }
-        net_profit, payout = fetcher._calculate_bet_net_profit(
-            enriched_buy, ctx, 0.0
-        )
-        # realized_pnl = 0.4 - 0.5 = -0.1
-        # payout_share = 2.0 * (0.5 / 0.5) = 2.0
-        # remaining_cost = 0.5
-        # net = -0.1 + (2.0 - 0.5) = 1.4
+        net_profit, payout = fetcher._calculate_bet_net_profit(enriched_buy, ctx, 0.0)
+        # Realised leg: proceeds 0.4 wxDAI minus cost 0.5 wxDAI gives PnL
+        # of -0.1 wxDAI. Redemption leg: total_payout 2.0 scaled by the
+        # remaining 0.5 of 0.5 winning cost gives 2.0 wxDAI on a 0.5
+        # remaining cost basis. Net = -0.1 + 1.5 = 1.4 wxDAI.
         assert net_profit == pytest.approx(1.4, abs=1e-9)
-        # payout = allocated_proceeds + payout_share = 0.4 + 2.0 = 2.4
+        # payout = realised proceeds (0.4) + redemption share (2.0).
         assert payout == pytest.approx(2.4, abs=1e-9)
 
 

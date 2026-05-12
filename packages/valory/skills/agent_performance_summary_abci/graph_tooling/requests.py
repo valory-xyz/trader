@@ -254,6 +254,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
         :param agent_safe_address: the safe address (lower-cased
             internally).
+        :yield: framework yields for each paginated CT subgraph request.
         :return: set of ``(condition_id_lower, outcome_index)`` tuples
             for every non-zero, single-outcome position. Compound
             positions and non-power-of-2 indexSets are skipped (the

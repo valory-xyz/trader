@@ -62,7 +62,6 @@ from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import
     PostOmenWithdrawRound,
 )
 
-
 # Safe v1.x event topics — keccak("ExecutionFailure(bytes32,uint256)") /
 # ("ExecutionSuccess(bytes32,uint256)"). The outer Safe ``execTransaction``
 # returns true (status=1) regardless of whether the inner multisend
@@ -130,9 +129,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
             return
 
         if self._receipt_has_execution_failure(receipt):
-            self._record_top_level_error(
-                f"Safe ExecutionFailure: {tx_hash}"
-            )
+            self._record_top_level_error(f"Safe ExecutionFailure: {tx_hash}")
             self._set_state(WITHDRAWAL_STATE_ERRORED)
             return
 
@@ -263,9 +260,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
                 self.context.logger,
                 held_keys=held_keys,
             )
-            shared_state = cast(
-                AgentPerformanceSummarySharedState, self.context.state
-            )
+            shared_state = cast(AgentPerformanceSummarySharedState, self.context.state)
             shared_state.update_funds_locked_in_markets(round(value, 2))
             self.context.logger.info(
                 f"omen withdrawal: snapshotted funds_locked_in_markets="
@@ -301,9 +296,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
             with open(self._store_path(), "w") as f:
                 json.dump(store, f, indent=4)
         except OSError as e:
-            self.context.logger.error(
-                f"omen withdrawal: failed to write store: {e}"
-            )
+            self.context.logger.error(f"omen withdrawal: failed to write store: {e}")
 
     def _set_state(self, state: str) -> None:
         """Update ``withdrawal_state`` on disk and log the transition."""
@@ -318,9 +311,7 @@ class PostOmenWithdrawBehaviour(DecisionMakerBaseBehaviour, APTQueryingBehaviour
         return_amount = int(event.get("return_amount", 0))
         fee_amount = int(event.get("fee_amount", 0))
         shares_sold = outcome_tokens_sold / 1e18
-        fill_price = (
-            (return_amount / 1e18) / shares_sold if shares_sold > 0 else 0.0
-        )
+        fill_price = (return_amount / 1e18) / shares_sold if shares_sold > 0 else 0.0
         store = self._read_store()
         fills = store.setdefault("withdrawal_fills", [])
         fills.append(

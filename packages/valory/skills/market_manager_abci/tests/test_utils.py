@@ -713,9 +713,7 @@ class TestGetWithdrawablePositions:
     def test_open_position_passes_through(self) -> None:
         """An OPEN position (unresolved market, non-zero balance) is returned."""
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         positions = [
             _ct_position_row(
@@ -748,9 +746,7 @@ class TestGetWithdrawablePositions:
             )
         ]
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=1, balance="1000"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="1000")
         ]
         assert get_withdrawable_positions(trades, positions) == []
 
@@ -764,23 +760,17 @@ class TestGetWithdrawablePositions:
             )
         ]
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=1, balance="1000"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="1000")
         ]
         assert get_withdrawable_positions(trades, positions) == []
 
     def test_zero_balance_filtered_out(self) -> None:
         """Zero-balance positions are excluded (already redeemed/sold)."""
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=1, balance="0"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="0")
         ]
         assert get_withdrawable_positions(trades, positions) == []
 
@@ -798,49 +788,37 @@ class TestGetWithdrawablePositions:
             },
         }
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         assert get_withdrawable_positions(trades, [compound_position]) == []
 
     def test_non_power_of_two_index_set_filtered_out(self) -> None:
         """An indexSet that isn't a single bit (e.g. 3 = 011) is rejected."""
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=3, balance="1000"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=3, balance="1000")
         ]
         assert get_withdrawable_positions(trades, positions) == []
 
     def test_position_without_matching_fpmm_filtered_out(self) -> None:
         """CT position with no matching fpmm trade is dropped."""
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=1, balance="1000"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=1, balance="1000")
         ]
         assert get_withdrawable_positions([], positions) == []
 
     def test_outcome_index_derived_from_index_set_bit(self) -> None:
         """outcome_index = log2(index_set) — correct for N>2 markets."""
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         # index_set = 4 means outcome 2 (3rd outcome of a 3-way), NOT
         # outcome 3 which is what the legacy `int(indexSets[0]) - 1`
         # formula in get_position_balance would return.
         positions = [
-            _ct_position_row(
-                condition_id=self.condition_a, index_set=4, balance="1000"
-            )
+            _ct_position_row(condition_id=self.condition_a, index_set=4, balance="1000")
         ]
         result = get_withdrawable_positions(trades, positions)
         assert len(result) == 1
@@ -893,14 +871,10 @@ class TestGetWithdrawablePositions:
         """A CT row with uppercase condition_id still joins to the omen fpmm."""
         cid_upper = self.condition_a.upper()
         trades = [
-            _omen_trade_row(
-                fpmm_address=self.fpmm_a, condition_id=self.condition_a
-            )
+            _omen_trade_row(fpmm_address=self.fpmm_a, condition_id=self.condition_a)
         ]
         positions = [
-            _ct_position_row(
-                condition_id=cid_upper, index_set=1, balance="1000"
-            )
+            _ct_position_row(condition_id=cid_upper, index_set=1, balance="1000")
         ]
         result = get_withdrawable_positions(trades, positions)
         assert len(result) == 1

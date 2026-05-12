@@ -79,14 +79,14 @@ from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )
-from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
-    PostOmenWithdrawRound,
-)
 from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
     PolymarketWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
+)
+from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
+    PostOmenWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (

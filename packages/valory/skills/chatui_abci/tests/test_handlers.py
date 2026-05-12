@@ -1512,8 +1512,7 @@ class TestHandlePostWithdrawalOmenstrat:
         handler._handle_post_withdrawal(MagicMock(), MagicMock())
 
         persisted_fields = {
-            call.args[0]
-            for call in handler._store_chatui_param_to_json.call_args_list
+            call.args[0] for call in handler._store_chatui_param_to_json.call_args_list
         }
         assert "withdrawal_mode" in persisted_fields
         assert "withdrawal_state" in persisted_fields

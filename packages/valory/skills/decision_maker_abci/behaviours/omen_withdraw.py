@@ -56,7 +56,6 @@ from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     get_withdrawable_positions,
 )
 
-
 # Hardcoded per spec §9.3 — every Olas-touched Omen FPMM uses wxDAI as
 # collateral. Verified across 7,203 distinct FPMMs in the empirical scan.
 WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
@@ -140,9 +139,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         sellable = get_withdrawable_positions(creator_rows, user_positions)
         if not sellable:
-            self.context.logger.info(
-                "omen withdrawal: no sellable positions found"
-            )
+            self.context.logger.info("omen withdrawal: no sellable positions found")
             return self._short_circuit_payload(errored=False)
 
         sellable.sort(key=lambda p: (p.fpmm_address.lower(), p.outcome_index))
@@ -189,9 +186,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :return: a payload with no tx fields; the round's ``end_block``
             override routes the trailing ``event`` field through.
         """
-        terminal = (
-            WITHDRAWAL_STATE_ERRORED if errored else WITHDRAWAL_STATE_COMPLETE
-        )
+        terminal = WITHDRAWAL_STATE_ERRORED if errored else WITHDRAWAL_STATE_COMPLETE
         self._set_state(terminal)
         return OmenWithdrawalPayload(
             sender=self.context.agent_address,
@@ -470,9 +465,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             with open(self._store_path(), "w") as f:
                 json.dump(store, f, indent=4)
         except OSError as e:
-            self.context.logger.error(
-                f"omen withdrawal: failed to write store: {e}"
-            )
+            self.context.logger.error(f"omen withdrawal: failed to write store: {e}")
 
     def _set_state(self, state: str) -> None:
         """Update ``withdrawal_state`` on disk and log the transition."""
@@ -488,9 +481,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         store["withdrawal_errors"] = []
         self._write_store(store)
 
-    def _record_error(
-        self, position: WithdrawablePosition, reason: str
-    ) -> None:
+    def _record_error(self, position: WithdrawablePosition, reason: str) -> None:
         """Append an error record for a per-position drop."""
         store = self._read_store()
         errors = store.setdefault("withdrawal_errors", [])
@@ -523,9 +514,7 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             }
         )
         self._write_store(store)
-        self.context.logger.error(
-            f"omen withdrawal: top-level failure on {op_name}"
-        )
+        self.context.logger.error(f"omen withdrawal: top-level failure on {op_name}")
 
     def _store_has_errors(self) -> bool:
         """Check whether the current session has any persisted errors."""

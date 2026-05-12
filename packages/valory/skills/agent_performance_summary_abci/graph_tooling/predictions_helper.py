@@ -1058,7 +1058,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
 
                     if shares_consumed > 0:
                         unattributed_wxdai = (
-                            proceeds_total * (shares_consumed / (-row_shares))
+                            proceeds_total
+                            * (shares_consumed / (-row_shares))
                             / WEI_TO_NATIVE
                         )
                         self.logger.warning(
@@ -1242,6 +1243,16 @@ class PredictionsFetcher(BasePredictionsFetcher):
             (negative amount) this surfaced as a positive profit.
           - Line 978 winning payout share used the raw amount; sells
             shrank it and skewed the winning-total denominator.
+
+        :param bet: bet dict, optionally enriched with FIFO state fields.
+        :param market_ctx: per-market context entry built by
+            :meth:`_build_market_context`; ``None`` falls through to
+            ``(0.0, None)``.
+        :param bet_amount: unused; retained for backward compatibility
+            with the pre-FIFO signature.
+        :return: ``(net_profit_wxDAI, payout_wxDAI_or_None)``. The payout
+            is ``None`` when no realised proceeds and no redemption have
+            settled — i.e., the bet's P&L is still notional.
         """
         if not market_ctx:
             return 0.0, None
@@ -1249,18 +1260,14 @@ class PredictionsFetcher(BasePredictionsFetcher):
         current_answer = market_ctx.get("current_answer")
         answer_finalized_ts = market_ctx.get("answer_finalized_ts")
         total_payout = market_ctx.get("total_payout") or 0.0
-        total_traded = market_ctx.get("total_traded") or 0.0
         winning_total = market_ctx.get("winning_total_amount") or 0.0
         outcome_index = int(bet.get("outcomeIndex", 0))
 
         fifo = self._fifo_state(bet)
-        original_cost = fifo["original_cost"] / WEI_TO_NATIVE
         allocated_proceeds = fifo["allocated_proceeds"] / WEI_TO_NATIVE
         allocated_cost = fifo["allocated_cost"] / WEI_TO_NATIVE
         remaining_cost = fifo["remaining_cost"] / WEI_TO_NATIVE
-        participant_remaining_cost = (
-            fifo["participant_remaining_cost"] / WEI_TO_NATIVE
-        )
+        participant_remaining_cost = fifo["participant_remaining_cost"] / WEI_TO_NATIVE
         realized_pnl = allocated_proceeds - allocated_cost
 
         # Unresolved market — only realised PnL is settled at this point.
@@ -1284,10 +1291,10 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # 954 bug).
         if current_answer == INVALID_ANSWER_HEX:
             if total_payout == 0 or participant_remaining_cost <= 0:
-                return realized_pnl, allocated_proceeds if allocated_proceeds > 0 else None
-            refund_share = total_payout * (
-                remaining_cost / participant_remaining_cost
-            )
+                return realized_pnl, (
+                    allocated_proceeds if allocated_proceeds > 0 else None
+                )
+            refund_share = total_payout * (remaining_cost / participant_remaining_cost)
             payout = allocated_proceeds + refund_share
             return realized_pnl + (refund_share - remaining_cost), payout
 
@@ -1304,8 +1311,10 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # used ``-bet_amount``; for a sell that was a positive number,
         # mis-booking the loss as profit.
         if outcome_index != correct_answer:
-            payout = allocated_proceeds if allocated_proceeds > 0 else None
-            return realized_pnl - remaining_cost, payout
+            losing_payout: Optional[float] = (
+                allocated_proceeds if allocated_proceeds > 0 else None
+            )
+            return realized_pnl - remaining_cost, losing_payout
 
         # Winning bet. Until the participant has been credited a payout
         # the unsold winning side is still pending — book only the
@@ -1364,13 +1373,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
         if current_answer == INVALID_ANSWER_HEX and not fpmm.get(
             "isPendingArbitration"
         ):
-            answer_finalized_ts = parse_timestamp(
-                fpmm.get("answerFinalizedTimestamp")
-            )
-            if (
-                answer_finalized_ts is not None
-                and answer_finalized_ts <= self._now()
-            ):
+            answer_finalized_ts = parse_timestamp(fpmm.get("answerFinalizedTimestamp"))
+            if answer_finalized_ts is not None and answer_finalized_ts <= self._now():
                 return BetStatus.INVALID.value
             # else: fall through (provisional sentinel, still in dispute window).
 

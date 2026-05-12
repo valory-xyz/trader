@@ -89,7 +89,7 @@ class TestRoundClasses:
         assert PolymarketWithdrawRound.payload_class is WithdrawalPayload
 
     def test_omen_withdraw_uses_omen_withdrawal_payload(self) -> None:
-        """OmenWithdrawRound now submits a Safe multisend; posts ``OmenWithdrawalPayload``."""
+        """Verify OmenWithdrawRound (Safe-multisend submitter) posts ``OmenWithdrawalPayload``."""
         assert OmenWithdrawRound.payload_class is OmenWithdrawalPayload
 
     def test_polymarket_withdraw_done_event(self) -> None:
@@ -137,13 +137,9 @@ class TestOmenWithdrawRoundEventSwitch:
         def fake_end_block(self: Any) -> Any:
             return (self._synchronized_data, event_to_return)  # noqa: SLF001
 
-        monkeypatch.setattr(
-            CollectSameUntilThresholdRound, "end_block", fake_end_block
-        )
+        monkeypatch.setattr(CollectSameUntilThresholdRound, "end_block", fake_end_block)
 
-    def test_payload_event_prepare_tx_emits_prepare_tx(
-        self, monkeypatch: Any
-    ) -> None:
+    def test_payload_event_prepare_tx_emits_prepare_tx(self, monkeypatch: Any) -> None:
         """Payload `event=PREPARE_TX` -> emits Event.PREPARE_TX (route to settlement)."""
         round_ = self._build_round(
             payload_values=(
@@ -176,9 +172,7 @@ class TestOmenWithdrawRoundEventSwitch:
         _, emitted = result
         assert emitted == Event.WITHDRAWAL_DONE
 
-    def test_no_majority_passes_through_untouched(
-        self, monkeypatch: Any
-    ) -> None:
+    def test_no_majority_passes_through_untouched(self, monkeypatch: Any) -> None:
         """On NO_MAJORITY the override returns the super result unchanged."""
         round_ = self._build_round(payload_values=(None, None, None, None))
         self._patch_super_end_block(monkeypatch, Event.NO_MAJORITY)
@@ -196,9 +190,7 @@ class TestOmenWithdrawRoundEventSwitch:
         def fake_end_block(self: Any) -> Any:
             return None
 
-        monkeypatch.setattr(
-            CollectSameUntilThresholdRound, "end_block", fake_end_block
-        )
+        monkeypatch.setattr(CollectSameUntilThresholdRound, "end_block", fake_end_block)
 
         assert round_.end_block() is None
 
@@ -2713,7 +2705,7 @@ class TestOmenWithdrawBehaviourSurface:
         assert inflate_for_slippage(1_000_000, 0.05) > 1_000_000
 
     def test_inflate_for_slippage_rejects_out_of_range(self) -> None:
-        """slippage must live in [0, 1] (closed interval)."""
+        """Verify slippage must live in [0, 1] (closed interval)."""
         from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
             inflate_for_slippage,
         )
@@ -2791,9 +2783,10 @@ class TestComposition:
 
 
 class TestPostOmenWithdrawSnapshotFundsLocked:
-    """The snapshot hook fetches the bet history, runs the per-position formula,
-    and writes the result into the shared agent_performance_summary state.
+    """Tests for the cross-skill funds_locked snapshot hook.
 
+    The hook fetches the bet history, runs the per-position formula, and
+    writes the result into the shared agent_performance_summary state.
     Failure is non-fatal — exceptions get caught and logged, leaving the
     next normal perf-summary round to catch up.
     """
@@ -2846,19 +2839,23 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
             return {(condition_id.lower(), 0)}
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_synced,
-        ), patch.object(
-            behaviour,
-            "_fetch_trader_agent_performance",
-            side_effect=fake_fetch,
-        ), patch.object(
-            behaviour,
-            "_fetch_ct_held_position_keys",
-            side_effect=fake_held,
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_synced,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_trader_agent_performance",
+                side_effect=fake_fetch,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_ct_held_position_keys",
+                side_effect=fake_held,
+            ),
         ):
             list(behaviour._snapshot_funds_locked())
 
@@ -2876,15 +2873,18 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
             return None
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_synced,
-        ), patch.object(
-            behaviour,
-            "_fetch_trader_agent_performance",
-            side_effect=fake_fetch,
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_synced,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_trader_agent_performance",
+                side_effect=fake_fetch,
+            ),
         ):
             list(behaviour._snapshot_funds_locked())
 
@@ -2902,15 +2902,18 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
             raise RuntimeError("subgraph down")
             yield  # pragma: no cover
 
-        with patch.object(
-            type(behaviour),
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=mock_synced,
-        ), patch.object(
-            behaviour,
-            "_fetch_trader_agent_performance",
-            side_effect=fake_fetch,
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=mock_synced,
+            ),
+            patch.object(
+                behaviour,
+                "_fetch_trader_agent_performance",
+                side_effect=fake_fetch,
+            ),
         ):
             # No exception escapes.
             list(behaviour._snapshot_funds_locked())

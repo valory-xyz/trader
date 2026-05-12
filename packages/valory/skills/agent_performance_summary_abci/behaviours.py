@@ -830,9 +830,7 @@ class FetchPerformanceSummaryBehaviour(
             non-LOSING positions.
         """
         bets = trader_agent.get("bets") or []
-        held_keys = yield from self._fetch_ct_held_position_keys(
-            safe_address
-        )
+        held_keys = yield from self._fetch_ct_held_position_keys(safe_address)
         return compute_funds_locked_from_bets(
             bets,
             self.context,
