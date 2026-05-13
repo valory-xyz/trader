@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihb3zu3jimdibqnslscdn6zdt2a3orhe6avqt35yxqvfpajmftcii
+agent: valory/trader:0.1.0:bafybeigmuysbq2w4aj5felnq7mm2c5qizltmopnhaswb5w6faad5c5bswe
 number_of_agents: 1
 deployment:
   agent:
@@ -161,7 +161,7 @@ models:
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
       valid_mechs: ${VALID_MECHS:list:["0x45f25db135e83d7a010b05ffc1202f8473e3ae7d","0xe7f818513a48d74c99b8bde153bee0b70dbb300b","0x76a9a29441c7acd072b03e63911f0e177de56ab7"]}
-      valid_tools: ${VALID_TOOLS:list:["superforcaster"]}
+      valid_tools: ${VALID_TOOLS:list:["superforcaster","factual_research"]}
       slippages_for_swap: ${SLIPPAGES_FOR_SWAP:dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:true}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
