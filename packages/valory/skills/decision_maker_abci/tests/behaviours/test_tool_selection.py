@@ -20,7 +20,7 @@
 """Tests for ToolSelectionBehaviour._select_tool and async_act."""
 
 import json
-from typing import Callable, Generator, List, Optional
+from typing import Any, Callable, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
@@ -93,6 +93,8 @@ def _make_behaviour(
     policy: EGreedyPolicy,
     mech_tools: set,
     allowed_tools: Optional[List[str]] = None,
+    selected_mechs: Optional[List[str]] = None,
+    mechs_info: Optional[List[Any]] = None,
     randomness: str = RANDOMNESS,
 ) -> _TestableBehaviour:
     """Return a _TestableBehaviour wired with mocked dependencies."""
@@ -110,11 +112,13 @@ def _make_behaviour(
     # synchronized_data
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
+    sync_data.mechs_info = mechs_info or []
     behaviour.synchronized_data = sync_data  # type: ignore[assignment]
 
     # shared_state / chatui_config
     shared_state = MagicMock()
     shared_state.chatui_config.allowed_tools = allowed_tools
+    shared_state.chatui_config.selected_mechs = selected_mechs
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy and mech_tools
@@ -258,8 +262,15 @@ class TestSelectToolWithAllowedTools:
 class TestSelectToolEmptyIntersection:
     """Tests for _select_tool when allowed_tools has no intersection with mech_tools."""
 
-    def test_falls_back_to_unrestricted_policy_and_logs_warning(self) -> None:
-        """When no allowed tool exists in mech_tools, fallback to full policy + warning."""
+    def test_returns_none_and_names_constraint(self) -> None:
+        """An unsatisfiable allowed_tools pin must fail closed.
+
+        Previously the round silently fell back to the unrestricted
+        policy, which could violate the user's pin for that iteration.
+        The warning must name the constraint (allowed_tools, not the
+        more general "ChatUI restrictions") so a user-reported "my pin
+        didn't work" can be correlated to the right config field.
+        """
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
@@ -270,19 +281,17 @@ class TestSelectToolEmptyIntersection:
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(
-                policy, "select_tool", return_value="tool-a"
-            ) as mock_select:
+            with patch.object(policy, "select_tool") as mock_select:
                 result = _run_select_tool(behaviour)
 
-        assert result == "tool-a"
-        mock_select.assert_called_once_with(RANDOMNESS)
+        assert result is None
+        mock_select.assert_not_called()
         behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
         warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
-        assert "Falling back" in warning_msg
+        assert "allowed_tools" in warning_msg
 
-    def test_original_policy_store_not_mutated_on_fallback(self) -> None:
-        """Even the fallback path must leave the original accuracy_store untouched."""
+    def test_original_policy_store_not_mutated_on_collapse(self) -> None:
+        """A pin-collapse round must leave the original accuracy_store untouched."""
         policy = _make_policy("tool-a", "tool-b")
         original_keys = set(policy.accuracy_store.keys())
         behaviour = _make_behaviour(
@@ -297,6 +306,152 @@ class TestSelectToolEmptyIntersection:
             _run_select_tool(behaviour)
 
         assert set(policy.accuracy_store.keys()) == original_keys
+
+
+class _StubMech:
+    """Minimal stand-in for MechInfo: just `address` and `relevant_tools`."""
+
+    def __init__(self, address: str, relevant_tools: set) -> None:
+        self.address = address
+        self.relevant_tools = relevant_tools
+
+
+class TestSelectToolWithSelectedMechs:
+    """Tests for the `selected_mechs` filter layer in _select_tool."""
+
+    def test_restricts_to_tools_served_by_pinned_mechs(self) -> None:
+        """Pinned mechs restrict candidates to the union of their relevant_tools."""
+        policy = _make_policy("tool-a", "tool-b", "tool-c")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b", "tool-c"},
+            selected_mechs=["0xa"],
+            mechs_info=[
+                _StubMech("0xa", {"tool-a"}),
+                _StubMech("0xb", {"tool-b", "tool-c"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        # Only `tool-a` is reachable through the pinned mech `0xa`.
+        assert result == "tool-a"
+
+    def test_pin_lookup_is_case_insensitive(self) -> None:
+        """Mech address comparison must be case-insensitive."""
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xABC"],
+            mechs_info=[
+                _StubMech("0xabc", {"tool-a"}),
+                _StubMech("0xdef", {"tool-b"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        assert result == "tool-a"
+
+    def test_combined_with_allowed_tools(self) -> None:
+        """selected_mechs AND allowed_tools intersect together."""
+        policy = _make_policy("tool-a", "tool-b", "tool-c")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b", "tool-c"},
+            allowed_tools=["tool-a", "tool-b"],
+            selected_mechs=["0xa"],
+            mechs_info=[
+                _StubMech("0xa", {"tool-b", "tool-c"}),
+                _StubMech("0xb", {"tool-a"}),
+            ],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            result = _run_select_tool(behaviour)
+
+        # tool-a is allowed but not served by 0xa; tool-b is both allowed and served by 0xa.
+        assert result == "tool-b"
+
+    def test_empty_pin_is_no_op(self) -> None:
+        """selected_mechs=None must not restrict beyond the existing filters."""
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=None,
+            mechs_info=[_StubMech("0xa", {"tool-a"})],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool", return_value="tool-b"):
+                result = _run_select_tool(behaviour)
+
+        assert result == "tool-b"
+
+    def test_pin_set_but_mechs_info_empty_fails_closed(self) -> None:
+        """Pin applies whenever set; empty mechs_info collapses the candidate.
+
+        v2 normally populates mechs_info during MechInformationRound before
+        ToolSelectionRound reads it. If it lands here empty (e.g. subgraph
+        returned zero matching mechs), the pin yields no candidate and the
+        round fails closed rather than silently broadening to the
+        unrestricted policy.
+        """
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xa"],
+            mechs_info=[],
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool") as mock_select:
+                result = _run_select_tool(behaviour)
+
+        assert result is None
+        mock_select.assert_not_called()
+
+    def test_pin_collapse_returns_none_when_mechs_info_present(self) -> None:
+        """A genuinely unsatisfiable pin must fail closed (return None).
+
+        When ``mechs_info`` is populated but the pin yields no candidate
+        tool, the previous behaviour silently fell back to the unrestricted
+        policy. That picked a tool no pinned mech serves, which mech-interact
+        rejected one round later with ``no_overlap_with_selected_mechs``.
+        Failing closed here surfaces the cause to the consumer immediately
+        instead of routing through a dead-end mech request.
+        """
+        policy = _make_policy("tool-a", "tool-b")
+        behaviour = _make_behaviour(
+            policy,
+            {"tool-a", "tool-b"},
+            selected_mechs=["0xa"],
+            mechs_info=[_StubMech("0xa", {"tool-c"})],  # serves a tool we don't have
+        )
+
+        with patch.object(
+            _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
+        ):
+            with patch.object(policy, "select_tool") as mock_select:
+                result = _run_select_tool(behaviour)
+
+        assert result is None
+        mock_select.assert_not_called()
 
 
 def _run_async_act(behaviour: "ToolSelectionBehaviour") -> None:

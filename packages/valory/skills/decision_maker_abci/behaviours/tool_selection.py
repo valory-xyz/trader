@@ -21,7 +21,7 @@
 
 import copy
 import json
-from typing import Generator, Optional
+from typing import Generator, Optional, Tuple
 
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
@@ -37,8 +37,50 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
     matching_round = ToolSelectionRound
 
+    def _candidate_tools(self) -> Tuple[set, Optional[str]]:
+        """Compute the candidate tool set after applying ChatUI restrictions.
+
+        Layers two filters on top of `self.mech_tools`:
+
+        1. `selected_mechs` — keep only tools served by at least one pinned
+           mech. Skipped in benchmarking mode.
+        2. `allowed_tools` — keep only tools the user pinned by name.
+
+        :return: (candidate set, name of the constraint that emptied the
+            set, or ``None`` if no constraint emptied it).
+        """
+        candidate = set(self.mech_tools)
+        cause: Optional[str] = None
+
+        selected_mechs = self.shared_state.chatui_config.selected_mechs
+        if selected_mechs and not self.benchmarking_mode.enabled:
+            selected_lower = {m.lower() for m in selected_mechs}
+            tools_from_pinned_mechs = {
+                tool
+                for mech in self.synchronized_data.mechs_info
+                if mech.address.lower() in selected_lower
+                for tool in mech.relevant_tools
+            }
+            candidate &= tools_from_pinned_mechs
+            if not candidate:
+                cause = "selected_mechs"
+
+        allowed_tools = self.shared_state.chatui_config.allowed_tools
+        if allowed_tools:
+            candidate &= set(allowed_tools)
+            if not candidate and cause is None:
+                cause = "allowed_tools"
+
+        return candidate, cause
+
     def _select_tool(self) -> Generator[None, None, Optional[str]]:
-        """Select a Mech tool based on an e-greedy policy and return its index."""
+        """Select a Mech tool based on an e-greedy policy and return its index.
+
+        :yield: behaviour-utility yields while awaiting policy setup.
+        :return: the chosen tool name, or ``None`` when a ChatUI
+            restriction has collapsed the candidate set so the round
+            should fail closed.
+        """
         success = yield from self._setup_policy_and_tools()
         if not success:
             return None
@@ -49,29 +91,24 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             else self.synchronized_data.most_voted_randomness
         )
 
-        # If an allowed-tools list is set via the chat UI, restrict the policy's
-        # selection to only those tools.  The policy keeps learning across the full
-        # accuracy store; we only narrow the selection pool temporarily.
-        chatui_allowed_tools = self.shared_state.chatui_config.allowed_tools
-        if chatui_allowed_tools:
-            allowed_intersection = [
-                t for t in chatui_allowed_tools if t in self.mech_tools
-            ]
-            if allowed_intersection:
-                restricted_policy = copy.deepcopy(self.policy)
-                restricted_policy.accuracy_store = {
-                    t: v
-                    for t, v in restricted_policy.accuracy_store.items()
-                    if t in allowed_intersection
-                }
-                restricted_policy.update_weighted_accuracy()
-                selected_tool = restricted_policy.select_tool(randomness)
-            else:
+        candidate_tools, cause = self._candidate_tools()
+        if not candidate_tools:
+            if cause is not None:
                 self.context.logger.warning(
-                    f"None of the allowed tools {chatui_allowed_tools} are in the "
-                    f"current tool set {self.mech_tools}. Falling back to unrestricted policy."
+                    f"ChatUI {cause!r} restriction left no candidate tools; "
+                    "skipping this round so the user can adjust the pin."
                 )
-                selected_tool = self.policy.select_tool(randomness)
+                return None
+            selected_tool = self.policy.select_tool(randomness)
+        elif candidate_tools != self.mech_tools:
+            restricted_policy = copy.deepcopy(self.policy)
+            restricted_policy.accuracy_store = {
+                t: v
+                for t, v in restricted_policy.accuracy_store.items()
+                if t in candidate_tools
+            }
+            restricted_policy.update_weighted_accuracy()
+            selected_tool = restricted_policy.select_tool(randomness)
         else:
             selected_tool = self.policy.select_tool(randomness)
 

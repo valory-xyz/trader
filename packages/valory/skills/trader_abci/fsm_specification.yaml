@@ -226,7 +226,7 @@ transition_func:
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
     (MechInformationRound, DONE): CheckBenchmarkingModeRound
-    (MechInformationRound, NONE): MechVersionDetectionRound
+    (MechInformationRound, NONE): ChatuiLoadRound
     (MechInformationRound, NO_MAJORITY): MechInformationRound
     (MechInformationRound, ROUND_TIMEOUT): MechInformationRound
     (MechPurchaseSubscriptionRound, DONE): PreTxSettlementRound
