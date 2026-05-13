@@ -158,6 +158,35 @@ class RedeemRouterPayload(VotingPayload):
 
 
 @dataclass(frozen=True)
+class WithdrawalPayload(VotingPayload):
+    """Represents a payload for the withdrawal rounds (Polymarket / Omen / Idle)."""
+
+
+@dataclass(frozen=True)
+class OmenWithdrawalPayload(MultisigTxPayload):
+    """Represents a transaction payload for the Omen sweep multisend.
+
+    ``event`` carries the short-circuit signal: ``Event.PREPARE_TX.value``
+    when there are positions to sell (``tx_hash`` populated, route through
+    tx settlement), or ``Event.WITHDRAWAL_DONE.value`` when nothing
+    sellable (no tx settles; jump straight to ``WithdrawalIdleRound``).
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PostOmenWithdrawalPayload(VotingPayload):
+    """Represents a payload for the Omen withdrawal post-settlement round.
+
+    Consensus-only — the tx itself was submitted by ``OmenWithdrawRound``
+    one step earlier; this round just parses the receipt and persists
+    fills / errors / the funds-locked snapshot. ``vote`` is unused
+    (matches ``WithdrawalPayload``).
+    """
+
+
+@dataclass(frozen=True)
 class PostBetUpdatePayload(VotingPayload):
     """Represents a payload for the post-bet bookkeeping round."""
 

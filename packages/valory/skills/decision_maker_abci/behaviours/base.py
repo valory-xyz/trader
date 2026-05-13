@@ -269,11 +269,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     @property
     def is_first_period(self) -> bool:
         """Return whether it is the first period of the service."""
-        return (
-            self.synchronized_data.period_count == 0
-            and not self.benchmarking_mode.enabled
-            or self.shared_state.mock_data is None
-        )
+        if self.benchmarking_mode.enabled:
+            return self.shared_state.mock_data is None
+        return self.synchronized_data.period_count == 0
 
     @property
     def sampled_bet(self) -> Bet:
@@ -915,6 +913,15 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if operation == TradingOperation.BUY:
             self.buy_amount = remove_fraction_wei(token_amount, self.params.slippage)
         else:
+            # LATENT BUG (kept as-is — dead code path, see decision_receive.py
+            # "Selling flow is currently not supported in production").
+            # remove_fraction_wei REDUCES token_amount, which is correct for buy
+            # minOutcomeTokensToBuy (a floor) but WRONG for sell
+            # maxOutcomeTokensToSell (a ceiling): capping below the AMM's
+            # required count would revert under any adverse pool movement.
+            # Correct direction would inflate (1 + slippage). The Omenstrat
+            # withdrawal feature uses a separate `inflate_for_slippage` helper
+            # to avoid this.
             self.sell_amount = remove_fraction_wei(token_amount, self.params.slippage)
 
         return True

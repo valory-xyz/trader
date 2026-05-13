@@ -177,6 +177,15 @@ class RealitioContract(Contract):
         (default ``DEFAULT_GETLOGS_CHUNK_SIZE``) to stay within RPC
         ``eth_getLogs`` limits. Pass ``chunk_size=None`` or ``<=0`` to
         disable chunking. Returns ``{"error": ...}`` on RPC failure.
+
+        :param ledger_api: the ledger API object
+        :param contract_address: the contract address
+        :param from_block: starting block to scan from
+        :param to_block: ending block to scan to
+        :param question_id: 32-byte realitio question id
+        :param timeout: per-window RPC timeout
+        :param chunk_size: blocks per ``eth_getLogs`` window; None/<=0 disables chunking
+        :return: claim params dict, or ``{"error": ...}`` on failure
         """
         eth = ledger_api.api.eth
         contract_instance = cls.get_instance(ledger_api, contract_address)
@@ -237,7 +246,7 @@ class RealitioContract(Contract):
             abi_element_identifier="claimWinnings",
             args=(question_id, *claim_params),
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def simulate_claim_winnings(
@@ -257,7 +266,7 @@ class RealitioContract(Contract):
                 {
                     "from": ledger_api.api.to_checksum_address(sender_address),
                     "to": ledger_api.api.to_checksum_address(contract_address),
-                    "data": data[2:],
+                    "data": data,
                 }
             )
             simulation_ok = True
@@ -488,7 +497,7 @@ class RealitioContract(Contract):
                 max_previous,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def balance_of(
@@ -513,4 +522,4 @@ class RealitioContract(Contract):
         data = contract.encode_abi(
             abi_element_identifier="withdraw",
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))

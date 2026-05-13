@@ -431,7 +431,7 @@ class TestGetMechTools:
                 with patch.object(
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
-                    mock_params.return_value = MagicMock(irrelevant_tools=set())
+                    mock_params.return_value = MagicMock(valid_tools={"tool1", "tool2"})
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )
@@ -520,13 +520,13 @@ class TestGetMechTools:
         assert result is False
 
     def test_get_mech_tools_empty_relevant_tools(self) -> None:
-        """Should return False when all tools are irrelevant."""
+        """Should return False when no fetched tool is in the valid_tools allowlist."""
         behaviour = _make_behaviour()
         behaviour._mech_hash = "valid_hash"
 
         mock_api = MagicMock()
         mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
-        mock_api.process_response.return_value = ["irrelevant_tool"]
+        mock_api.process_response.return_value = ["unknown_tool"]
         mock_api.is_retries_exceeded.return_value = False
 
         with patch.object(
@@ -541,7 +541,7 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        irrelevant_tools={"irrelevant_tool"}
+                        valid_tools={"some_other_tool"}
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(MagicMock())
@@ -558,6 +558,57 @@ class TestGetMechTools:
                         result = e.value
 
         assert result is False
+
+    def test_get_mech_tools_normalizes_case_before_intersect(self) -> None:
+        """Mixed-case manifest tools must match the lowercased valid_tools set.
+
+        The mech IPFS manifest can return tool names in any case, while
+        MechParams.valid_tools is lowercased on load. Without normalization
+        here, e.g. manifest ["Prediction-Offline"] vs config
+        ["prediction-offline"] would intersect to the empty set and the
+        round would fail closed unnecessarily.
+        """
+        behaviour = _make_behaviour()
+        behaviour._mech_hash = "valid_hash"
+
+        mock_api = MagicMock()
+        mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
+        mock_api.process_response.return_value = [
+            "Prediction-Offline",
+            "Superforcaster",
+        ]
+        mock_api.is_retries_exceeded.return_value = False
+
+        with patch.object(
+            type(behaviour), "mech_tools_api", new_callable=PropertyMock
+        ) as api_mock:
+            api_mock.return_value = mock_api
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(is_marketplace_v2=True)
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        valid_tools={"prediction-offline", "superforcaster"}
+                    )
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                        return_value=_return_gen(MagicMock())
+                    )
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+
+                    gen = behaviour._get_mech_tools()
+                    result = None
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration as e:
+                        result = e.value
+
+        assert result is True
+        assert behaviour._mech_tools == {"prediction-offline", "superforcaster"}
 
 
 # Tests for get_tools
@@ -819,12 +870,12 @@ class TestFetchAccuracyInfo:
         assert result is False
 
 
-# Tests for remove_irrelevant_tools
+# Tests for prune_accuracy_store_to_current_tools
 # ---------------------------------------------------------------------------
 
 
-class TestRemoveIrrelevantTools:
-    """Tests for _remove_irrelevant_tools."""
+class TestPruneAccuracyStoreToCurrentTools:
+    """Tests for _prune_accuracy_store_to_current_tools."""
 
     def test_removes_tools_not_in_mech_tools(self) -> None:
         """Should remove tools from accuracy_store that are not in mech_tools."""
@@ -838,7 +889,7 @@ class TestRemoveIrrelevantTools:
         )
         behaviour._policy = policy
 
-        behaviour._remove_irrelevant_tools()
+        behaviour._prune_accuracy_store_to_current_tools()
 
         assert "tool1" in policy.accuracy_store
         assert "tool2" not in policy.accuracy_store
@@ -1131,7 +1182,9 @@ class TestUpdatePolicyTools:
         policy = _make_policy()
         behaviour._policy = policy
 
-        with patch.object(behaviour, "_remove_irrelevant_tools") as mock_remove:
+        with patch.object(
+            behaviour, "_prune_accuracy_store_to_current_tools"
+        ) as mock_remove:
             with patch.object(
                 behaviour, "_parse_global_info", return_value=(100, {"tool1": {}})
             ) as mock_parse:

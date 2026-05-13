@@ -21,7 +21,7 @@
 
 import json
 from abc import ABC
-from typing import Any, Generator
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
@@ -210,7 +210,7 @@ def _make_behaviour(**overrides: Any) -> _ConcreteAPTBehaviour:
     return b
 
 
-def _exhaust(gen: Generator) -> Any:
+def _exhaust(gen: "Generator[Any, Any, Any]") -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
@@ -1855,3 +1855,138 @@ class TestCleanUp:
 
         # Should not raise
         b.clean_up()
+
+
+class TestFetchCTHeldPositionKeys:
+    """Tests for ``_fetch_ct_held_position_keys`` error semantics.
+
+    The error path must return ``None`` so the downstream consumer in
+    :func:`compute_funds_locked_from_bets` can fall back to the
+    un-gated FIFO sum. Returning ``set()`` would collapse every
+    position out and write a phantom ``0.0`` to
+    ``funds_locked_in_markets``.
+    """
+
+    @staticmethod
+    def _strip_ct_subgraph(b: _ConcreteAPTBehaviour) -> None:
+        """Make ``context.conditional_tokens_subgraph`` raise ``AttributeError``.
+
+        ``MagicMock`` auto-creates attributes on access, so the
+        production-side ``except AttributeError`` would never fire on a
+        bare ``_make_behaviour()`` instance. We replace the context
+        with a spec'd mock that lacks the attribute entirely.
+
+        :param b: behaviour instance whose ``_context`` will be swapped
+            for a class instance lacking ``conditional_tokens_subgraph``.
+        """
+
+        class _CtxWithoutCt:
+            logger = MagicMock()
+            params = MagicMock()
+            # deliberately no ``conditional_tokens_subgraph`` attribute
+
+        b._context = _CtxWithoutCt()  # type: ignore[assignment]
+
+    def test_missing_ct_subgraph_returns_none(self) -> None:
+        """No ``conditional_tokens_subgraph`` on context -> ``None``."""
+        b = _make_behaviour()
+        self._strip_ct_subgraph(b)
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_subgraph_request_failure_returns_none(self) -> None:
+        """``_fetch_from_subgraph`` returning ``None`` -> ``None``."""
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen(None)  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_empty_list_returns_empty_set(self) -> None:
+        """Subgraph returns ``[]`` -> empty set (not ``None``).
+
+        The CT subgraph spec extracts ``data:user:userPositions`` as a
+        ``list`` (``response_type: list`` in
+        ``trader_abci/skill.yaml``), so ``process_response`` returns
+        the unwrapped list directly. An empty list distinguishes
+        "user genuinely holds nothing" (gate everything out -> 0.0
+        correctly) from "fetch error" (``None``, no gate, un-gated
+        sum).
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen([])  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == set()
+
+    def test_populated_positions_returns_keys(self) -> None:
+        """Returns the ``(condition_id, outcome_index)`` tuple per held row.
+
+        Receives the unwrapped ``userPositions`` list directly (not a
+        nested ``{"user": {...}}`` dict) — matches what
+        ``process_response`` produces given the spec's
+        ``response_key: data:user:userPositions``.
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        condition_a = "0x" + "a1" * 32
+        # indexSet "1" -> outcome 0, indexSet "2" -> outcome 1.
+        b._fetch_from_subgraph = _return_gen(  # type: ignore[method-assign]
+            [
+                {
+                    "balance": "1000",
+                    "id": "0xpos1",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["1"],
+                    },
+                },
+                {
+                    "balance": "500",
+                    "id": "0xpos2",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["2"],
+                    },
+                },
+            ]
+        )
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == {(condition_a.lower(), 0), (condition_a.lower(), 1)}
+
+    def test_query_filters_balance_gt_zero_server_side(self) -> None:
+        """The CT query carries ``balance_gt: "0"`` so the result set stays small.
+
+        Without the server-side filter the query returns every
+        historical ``userPosition`` (including thousands of redeemed
+        zero-balance rows on a long-lived trader safe). Page 1 fills
+        up at 1000 rows, the loop then tries page 2 which is
+        susceptible to transient subgraph failures — when that fails
+        the fetcher returns ``None`` and the consumer falls back to
+        the un-gated sum, surfacing the 110-wxDAI phantom-locked-funds
+        regression.
+
+        Filtering server-side keeps the response to actually-held
+        positions only (~tens of rows) and fits in one page.
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        captured: Dict[str, Any] = {}
+
+        def fake_fetch(**kwargs: Any) -> Generator[None, None, Any]:
+            captured["query"] = kwargs.get("query", "")
+            return []
+            yield  # pragma: no cover
+
+        b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign,assignment]
+        _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert 'balance_gt: "0"' in captured["query"], captured["query"]

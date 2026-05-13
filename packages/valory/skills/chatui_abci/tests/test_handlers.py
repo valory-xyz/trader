@@ -20,9 +20,13 @@
 """Tests for chatui_abci/handlers.py."""
 
 import json
-from typing import Optional
+from dataclasses import asdict
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
 from packages.valory.skills.chatui_abci.handlers import (
     ALLOWED_TOOLS_FIELD,
     AVAILABLE_TRADING_STRATEGIES,
@@ -32,11 +36,20 @@ from packages.valory.skills.chatui_abci.handlers import (
     HttpHandler,
     LLM_MESSAGE_FIELD,
     PREVIOUS_TRADING_TYPE_FIELD,
+    SELECTED_MECHS_FIELD,
     SrrHandler,
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
 )
-from packages.valory.skills.chatui_abci.models import ChatuiConfig, TradingStrategyUI
+from packages.valory.skills.chatui_abci.models import (
+    ChatuiConfig,
+    TradingStrategyUI,
+    WITHDRAWAL_STATE_ARMED,
+    WITHDRAWAL_STATE_COMPLETE,
+    WITHDRAWAL_STATE_ERRORED,
+    WITHDRAWAL_STATE_IDLE,
+    WITHDRAWAL_STATE_SELLING,
+)
 from packages.valory.skills.chatui_abci.prompts import (
     FieldsThatCanBeRemoved,
     TradingStrategy,
@@ -60,9 +73,14 @@ AVAILABLE_TOOLS = {"prediction-online", "prediction-offline", "claude-prediction
 class _TestableHttpHandler(HttpHandler):
     """Shadows read-only AEA properties with plain attributes for testing."""
 
-    context = None  # type: ignore[assignment]
-    shared_state = None  # type: ignore[assignment]
-    synchronized_data = None  # type: ignore[assignment]
+    context: Any = None  # type: ignore[assignment]
+    shared_state: Any = None  # type: ignore[assignment]
+    synchronized_data: Any = None  # type: ignore[assignment]
+    # Re-declared as Any so tests can replace them with MagicMock and read
+    # call_args / assert_called* without mypy chasing the parent signature.
+    _store_chatui_param_to_json: Any = None  # type: ignore[assignment]
+    _send_ok_response: Any = None  # type: ignore[assignment]
+    _send_http_response: Any = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +91,7 @@ class _TestableHttpHandler(HttpHandler):
 def _make_handler(
     available_tools: set = AVAILABLE_TOOLS,
     current_config: Optional[ChatuiConfig] = None,
+    available_mechs: Optional[set] = None,
 ) -> _TestableHttpHandler:
     """Return a _TestableHttpHandler wired with minimal mocks."""
     handler = object.__new__(_TestableHttpHandler)
@@ -91,11 +110,13 @@ def _make_handler(
 
     sync_data = MagicMock()
     sync_data.available_mech_tools = available_tools
+    sync_data.available_valid_mechs = available_mechs or set()
     handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     # Patch store helpers — no filesystem side-effects.
     handler._store_trading_strategy = MagicMock()  # type: ignore[method-assign]
     handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+    handler._store_selected_mechs = MagicMock()  # type: ignore[method-assign]
     handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
 
     return handler
@@ -216,6 +237,101 @@ class TestAllowedTools:
         params, issues = handler._process_updated_agent_config({})
         assert ALLOWED_TOOLS_FIELD not in params
         handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Selected mechs
+# ---------------------------------------------------------------------------
+
+
+_AVAILABLE_MECHS = {
+    "0x601024e27f1c67b28209e24272ced8a31fc8151f",
+    "0xc05e7412439bd7e91730a6880e18d5d5873f632c",
+}
+
+
+class TestSelectedMechs:
+    """Tests for selected_mechs field processing."""
+
+    def test_valid_list_stored_lowercase(self) -> None:
+        """Mixed-case input is normalized to lowercase before storage."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {"selected_mechs": ["0X601024E27F1C67B28209E24272CED8A31FC8151F"]}
+        )
+        assert issues == []
+        expected = ["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+        assert params[SELECTED_MECHS_FIELD] == expected
+        handler._store_selected_mechs.assert_called_once_with(expected)  # type: ignore[attr-defined]
+
+    def test_unknown_mechs_dropped_and_issue_added(self) -> None:
+        """Unknown mechs are dropped; the valid ones are still stored."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {
+                "selected_mechs": [
+                    "0x601024e27f1c67b28209e24272ced8a31fc8151f",
+                    "0xdeadbeef",
+                ]
+            }
+        )
+        assert len(issues) == 1
+        assert "0xdeadbeef" in issues[0]
+        handler._store_selected_mechs.assert_called_once_with(  # type: ignore[attr-defined]
+            ["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+        )
+
+    def test_all_unknown_adds_issue_no_store(self) -> None:
+        """If every mech is unknown, the store is not touched."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {"selected_mechs": ["0xnotreal1", "0xnotreal2"]}
+        )
+        assert len(issues) == 1
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert SELECTED_MECHS_FIELD not in params
+
+    def test_empty_list_treated_as_clear(self) -> None:
+        """Empty list explicitly clears the pin to None."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config({"selected_mechs": []})
+        assert issues == []
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_remove_clears_pin(self) -> None:
+        """`removed_config_fields` entry clears the pin to None."""
+        handler = _make_handler(
+            available_mechs=_AVAILABLE_MECHS,
+            current_config=ChatuiConfig(
+                selected_mechs=["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+            ),
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.SELECTED_MECHS.value]}
+        )
+        assert issues == []
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_remove_takes_precedence_over_set(self) -> None:
+        """Remove must win when both a list and a remove are present."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, _issues = handler._process_updated_agent_config(
+            {
+                "selected_mechs": ["0x601024e27f1c67b28209e24272ced8a31fc8151f"],
+                "removed_config_fields": [FieldsThatCanBeRemoved.SELECTED_MECHS.value],
+            }
+        )
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_absent_field_is_noop(self) -> None:
+        """Missing selected_mechs field must be a no-op."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config({})
+        assert SELECTED_MECHS_FIELD not in params
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -1271,3 +1387,424 @@ class TestHandleChatuiPromptMalformedJson:
         handler._send_bad_request_response.assert_called_once()
         call_args = handler._send_bad_request_response.call_args
         assert "Invalid JSON" in str(call_args)
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal endpoints — POST /api/v1/withdrawal
+# ---------------------------------------------------------------------------
+
+
+def _make_withdrawal_handler(
+    *,
+    is_polymarket: bool = True,
+    config: Optional[ChatuiConfig] = None,
+) -> _TestableHttpHandler:
+    """Return a handler configured for the withdrawal endpoint tests."""
+    handler = object.__new__(_TestableHttpHandler)
+
+    context = MagicMock()
+    context.params.is_running_on_polymarket = is_polymarket
+    handler.context = context  # type: ignore[assignment]
+
+    shared_state = MagicMock()
+    cfg = config or ChatuiConfig()
+    shared_state.chatui_config = cfg
+    # Model the disk view as a mutable dict that mirrors the in-memory cfg
+    # at handler creation. This lets GET (which now reads from disk) see
+    # the same state existing tests previously asserted on cfg directly.
+    # Tests that exercise cfg/disk divergence overwrite ``return_value``
+    # on the mock directly.
+    disk_view: Dict[str, Any] = asdict(cfg)
+    shared_state._get_current_json_store.return_value = disk_view
+    handler.shared_state = shared_state  # type: ignore[assignment]
+
+    # Wire the per-field persist mock so writes to "disk" are visible to
+    # subsequent reads. Mirrors production: _store_chatui_param_to_json
+    # does read-modify-write on the JSON store, so subsequent GETs see
+    # the updated state.
+    def _persist_to_disk_view(param_name: str, value: Any) -> None:
+        disk_view[param_name] = value
+
+    handler._store_chatui_param_to_json = MagicMock(  # type: ignore[method-assign]
+        side_effect=_persist_to_disk_view
+    )
+    handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+    handler._send_http_response = MagicMock()  # type: ignore[method-assign]
+    return handler
+
+
+class TestHandlePostWithdrawalPolymarket:
+    """Tests for POST /api/v1/withdrawal on the Polymarket service."""
+
+    def test_post_from_idle_arms_flag_and_state(self) -> None:
+        """POST from idle must set withdrawal_mode=True and state=armed."""
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            )
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        cfg = handler.shared_state.chatui_config
+        assert cfg.withdrawal_mode is True
+        assert cfg.withdrawal_state == WITHDRAWAL_STATE_ARMED
+
+    def test_post_from_idle_resets_fills_and_errors(self) -> None:
+        """POST from idle must reset fills and errors arrays (D21)."""
+        starting_cfg = ChatuiConfig(
+            withdrawal_mode=False,
+            withdrawal_state=WITHDRAWAL_STATE_IDLE,
+            withdrawal_fills=[
+                {
+                    "token_id": "x",
+                    "shares_sold": 1.0,
+                    "fill_price": 0.5,
+                    "ts": 1,
+                }  # nosec B105
+            ],
+            withdrawal_errors=[
+                {
+                    "token_id": "y",
+                    "shares_remaining": 2.0,
+                    "reason": "old",
+                    "ts": 2,
+                }  # nosec B105
+            ],
+        )
+        handler = _make_withdrawal_handler(config=starting_cfg)
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        assert handler.shared_state.chatui_config.withdrawal_fills == []
+        assert handler.shared_state.chatui_config.withdrawal_errors == []
+
+    def test_post_from_idle_persists_each_changed_field(self) -> None:
+        """POST from idle must persist withdrawal_mode, state, fills, errors."""
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            )
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        persisted_calls = handler._store_chatui_param_to_json.call_args_list
+        persisted_fields = {call.args[0] for call in persisted_calls}
+        assert "withdrawal_mode" in persisted_fields
+        assert "withdrawal_state" in persisted_fields
+        assert "withdrawal_fills" in persisted_fields
+        assert "withdrawal_errors" in persisted_fields
+
+    def test_post_from_idle_returns_200_with_armed_status(self) -> None:
+        """POST from idle returns 200 OK; payload mode == 'armed'."""
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            )
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        handler._send_ok_response.assert_called_once()
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["mode"] == WITHDRAWAL_STATE_ARMED
+
+    @pytest.mark.parametrize(
+        "live_state",
+        [
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_COMPLETE,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_post_from_non_idle_is_noop(self, live_state: str) -> None:
+        """POST from any non-idle state must NOT mutate any field (D20 idempotency)."""
+        starting_cfg = ChatuiConfig(
+            withdrawal_mode=True,
+            withdrawal_state=live_state,
+            withdrawal_fills=[{"keep": True}],
+            withdrawal_errors=[{"keep": True}],
+        )
+        handler = _make_withdrawal_handler(config=starting_cfg)
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        cfg = handler.shared_state.chatui_config
+        assert cfg.withdrawal_mode is True
+        assert cfg.withdrawal_state == live_state
+        assert cfg.withdrawal_fills == [{"keep": True}]
+        assert cfg.withdrawal_errors == [{"keep": True}]
+        handler._store_chatui_param_to_json.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "live_state",
+        [
+            WITHDRAWAL_STATE_ARMED,
+            WITHDRAWAL_STATE_SELLING,
+            WITHDRAWAL_STATE_COMPLETE,
+            WITHDRAWAL_STATE_ERRORED,
+        ],
+    )
+    def test_post_from_non_idle_returns_200_with_current_status(
+        self, live_state: str
+    ) -> None:
+        """POST from any non-idle state returns 200 with current mode unchanged."""
+        starting_cfg = ChatuiConfig(withdrawal_mode=True, withdrawal_state=live_state)
+        handler = _make_withdrawal_handler(config=starting_cfg)
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        handler._send_ok_response.assert_called_once()
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["mode"] == live_state
+
+
+class TestHandlePostWithdrawalOmenstrat:
+    """Tests for POST /api/v1/withdrawal on Omenstrat.
+
+    The 501 reject from #942 (D27) was removed once the real Omen sweep
+    behaviour landed — POST on Omenstrat now arms the same way Polystrat
+    does. These tests prove venue parity at the HTTP boundary.
+    """
+
+    def test_post_on_omenstrat_arms_flag_and_state(self) -> None:
+        """POST from idle on Omenstrat must arm just like Polystrat."""
+        handler = _make_withdrawal_handler(
+            is_polymarket=False,
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            ),
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        cfg = handler.shared_state.chatui_config
+        assert cfg.withdrawal_mode is True
+        assert cfg.withdrawal_state == WITHDRAWAL_STATE_ARMED
+
+    def test_post_on_omenstrat_returns_200(self) -> None:
+        """POST on Omenstrat returns 200 OK (the 501 from #942 was dropped)."""
+        handler = _make_withdrawal_handler(
+            is_polymarket=False,
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            ),
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        handler._send_ok_response.assert_called_once()
+        # No 501 response should ever fire on the new path.
+        handler._send_http_response.assert_not_called()
+
+    def test_post_on_omenstrat_persists_each_changed_field(self) -> None:
+        """POST on Omenstrat persists the same fields the Polystrat path does."""
+        handler = _make_withdrawal_handler(
+            is_polymarket=False,
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            ),
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        persisted_fields = {
+            call.args[0] for call in handler._store_chatui_param_to_json.call_args_list
+        }
+        assert "withdrawal_mode" in persisted_fields
+        assert "withdrawal_state" in persisted_fields
+        assert "withdrawal_fills" in persisted_fields
+        assert "withdrawal_errors" in persisted_fields
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal endpoints — GET /api/v1/withdrawal
+# ---------------------------------------------------------------------------
+
+
+class TestHandleGetWithdrawal:
+    """Tests for GET /api/v1/withdrawal."""
+
+    def test_get_idle_state_returns_idle_payload(self) -> None:
+        """GET on a fresh agent must return mode=idle with empty arrays."""
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            )
+        )
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["mode"] == WITHDRAWAL_STATE_IDLE
+        assert payload["positions_total"] == 0
+        assert payload["positions_sold"] == 0
+        assert payload["positions_stuck"] == 0
+        assert payload["fills"] == []
+        assert payload["errors"] == []
+
+    def test_get_includes_venue_polymarket(self) -> None:
+        """GET on Polystrat must report venue='polymarket'."""
+        handler = _make_withdrawal_handler(is_polymarket=True)
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["venue"] == "polymarket"
+
+    def test_get_includes_venue_omen(self) -> None:
+        """GET on Omenstrat must report venue='omen'."""
+        handler = _make_withdrawal_handler(is_polymarket=False)
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["venue"] == "omen"
+
+    def test_get_counts_derived_from_fills_and_errors(self) -> None:
+        """positions_total = len(fills)+len(errors); _sold = len(fills); _stuck = len(errors)."""
+        fills = [
+            {
+                "token_id": "a",
+                "shares_sold": 1.0,
+                "fill_price": 0.5,
+                "ts": 1,
+            },  # nosec B105
+            {
+                "token_id": "b",
+                "shares_sold": 2.0,
+                "fill_price": 0.6,
+                "ts": 2,
+            },  # nosec B105
+        ]
+        errors = [
+            {
+                "token_id": "c",
+                "shares_remaining": 3.0,
+                "reason": "x",
+                "ts": 3,
+            },  # nosec B105
+        ]
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=True,
+                withdrawal_state=WITHDRAWAL_STATE_SELLING,
+                withdrawal_fills=fills,
+                withdrawal_errors=errors,
+            )
+        )
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["positions_total"] == 3
+        assert payload["positions_sold"] == 2
+        assert payload["positions_stuck"] == 1
+        assert payload["fills"] == fills
+        assert payload["errors"] == errors
+
+    def test_get_mirrors_state_from_config(self) -> None:
+        """GET response 'mode' must equal the persisted withdrawal_state."""
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=True, withdrawal_state=WITHDRAWAL_STATE_COMPLETE
+            )
+        )
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        assert payload["mode"] == WITHDRAWAL_STATE_COMPLETE
+
+    def test_get_reflects_disk_writes_made_outside_post_handler(self) -> None:
+        """GET must surface state and fills written to disk by another skill.
+
+        Simulates the production hot path: POST arms the flag (cfg + disk),
+        then ``decision_maker_abci`` writes ``withdrawal_state=selling`` and
+        a fill record directly to ``chatui_param_store.json`` (bypassing
+        chatui_abci's in-memory cfg, since it's a different skill). The next
+        GET must return the disk values, not the cached cfg.
+        """
+        # In-memory cfg simulates the post-POST state: armed, no fills yet.
+        handler = _make_withdrawal_handler(
+            config=ChatuiConfig(
+                withdrawal_mode=True,
+                withdrawal_state=WITHDRAWAL_STATE_ARMED,
+                withdrawal_fills=[],
+                withdrawal_errors=[],
+            )
+        )
+        # Simulate decision_maker_abci writing to disk after the sweep started:
+        # state advanced to selling and one fill recorded. The chatui in-memory
+        # cfg does NOT see these writes because the behaviour writes to disk
+        # directly, not through chatui's SharedState.
+        disk_fill = {
+            "token_id": "0xabc",  # nosec B105
+            "shares_sold": 60.0,
+            "fill_price": 0.5,
+            "ts": 100,
+        }
+        handler.shared_state._get_current_json_store.return_value = {
+            "withdrawal_mode": True,
+            "withdrawal_state": WITHDRAWAL_STATE_SELLING,
+            "withdrawal_fills": [disk_fill],
+            "withdrawal_errors": [],
+        }
+
+        handler._handle_get_withdrawal(MagicMock(), MagicMock())
+
+        payload = handler._send_ok_response.call_args.args[2]
+        # disk wins: the response reflects the behaviour's writes, not the
+        # stale in-memory cfg.
+        assert payload["mode"] == WITHDRAWAL_STATE_SELLING
+        assert payload["fills"] == [disk_fill]
+        assert payload["positions_sold"] == 1
+        assert payload["positions_total"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal endpoints — route registration
+# ---------------------------------------------------------------------------
+
+
+class TestWithdrawalRouteRegistration:
+    """The withdrawal routes must be registered by HttpHandler.setup()."""
+
+    def _registered_routes(self) -> Dict[tuple, list]:  # type: ignore[name-defined]
+        """Return the routes table after setup() runs against a mocked context."""
+        from packages.valory.skills.agent_performance_summary_abci.handlers import (
+            HttpHandler as BaseHttpHandler,
+        )
+
+        handler = object.__new__(_TestableHttpHandler)
+        handler.routes = {}  # type: ignore[attr-defined]
+
+        context = MagicMock()
+        context.params.service_endpoint = "https://example.com"
+        handler.context = context  # type: ignore[assignment]
+
+        # Bypass the agent_performance_summary super().setup() so we don't
+        # depend on its hostname_regex / route construction here.
+        with patch.object(BaseHttpHandler, "setup", lambda self: None):
+            handler.setup()
+        return handler.routes  # type: ignore[no-any-return]
+
+    def test_post_withdrawal_route_registered(self) -> None:
+        """POST /api/v1/withdrawal must be registered with the post handler."""
+        routes = self._registered_routes()
+        post_routes = routes.get((HttpMethod.POST.value,), [])
+        regex_strings = [pattern for pattern, _ in post_routes]
+        assert any(
+            "withdrawal" in p for p in regex_strings
+        ), f"no /api/v1/withdrawal POST route registered; found: {regex_strings}"
+
+    def test_get_withdrawal_route_registered(self) -> None:
+        """GET /api/v1/withdrawal must be registered with the get handler."""
+        routes = self._registered_routes()
+        get_routes = routes.get((HttpMethod.GET.value,), [])
+        regex_strings = [pattern for pattern, _ in get_routes]
+        assert any(
+            "withdrawal" in p for p in regex_strings
+        ), f"no /api/v1/withdrawal GET route registered; found: {regex_strings}"

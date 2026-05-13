@@ -286,6 +286,26 @@ ROUNDS_INFO = {
         "description": "Updates the achievements earned by the agent based on its performance.",
         "transitions": {},
     },
+    "polymarket_withdraw_round": {
+        "name": "Selling all Polymarket positions",
+        "description": "Sells every unredeemable position the Safe holds on Polymarket via market FAK orders, retrying per-position on partial fills.",
+        "transitions": {},
+    },
+    "omen_withdraw_round": {
+        "name": "Selling all Omen positions",
+        "description": "Sells every held outcome-token position on Omen by bundling per-position (setApprovalForAll, FPMM.sell) calls into one Safe multisend; calcSellAmount halve-retry keeps the sweep within the slippage headroom.",
+        "transitions": {},
+    },
+    "post_omen_withdraw_round": {
+        "name": "Recording Omen sell receipts",
+        "description": "Parses the settled Omen sweep transaction, decoding each FPMMSell event into a fill record; routes to the idle round once the receipts are persisted.",
+        "transitions": {},
+    },
+    "withdrawal_idle_round": {
+        "name": "Withdrawal complete — agent paused",
+        "description": "Terminal round entered after the sell-off finishes. The agent stops trading until the operator clears withdrawal mode.",
+        "transitions": {},
+    },
 }
 
 

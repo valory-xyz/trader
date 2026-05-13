@@ -117,6 +117,107 @@ class TestAsyncAct:
             )
             mock_set_done.assert_called_once()
 
+    def test_async_act_serializes_pinned_mechs_lowercased(self) -> None:
+        """The consumer-set pin is lowercased and JSON-encoded into the payload.
+
+        Catches regressions like dropping `.lower()` or `json.dumps` that
+        would otherwise slide through ``test_async_act_happy_path``
+        because ``MagicMock.__iter__`` defaults to ``iter([])``.
+        """
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
+        mock_context = MagicMock()
+        mock_context.agent_address = "agent_0"
+
+        mock_shared_state = MagicMock(spec=SharedState)
+        mock_chatui_config = MagicMock(spec=ChatuiConfig)
+        mock_chatui_config.selected_mechs = ["0xABC", "0xDEF"]
+        mock_shared_state.chatui_config = mock_chatui_config
+
+        captured: dict = {}
+
+        def _capture_payload(payload: Any) -> Generator:
+            captured["payload"] = payload
+            if False:
+                yield  # pragma: no cover
+
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_behaviour",
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
+            patch.object(behaviour, "send_a2a_transaction", _capture_payload),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", MagicMock()),
+        ):
+            gen = behaviour.async_act()
+            with pytest.raises(StopIteration):
+                next(gen)
+
+        payload = captured["payload"]
+        assert payload.selected_mechs == '["0xabc", "0xdef"]'
+
+    def test_async_act_empty_pin_serializes_as_empty_list(self) -> None:
+        """An unset pin must publish ``"[]"`` so synced data is deterministic."""
+        behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
+        mock_context = MagicMock()
+        mock_context.agent_address = "agent_0"
+
+        mock_shared_state = MagicMock(spec=SharedState)
+        mock_chatui_config = MagicMock(spec=ChatuiConfig)
+        mock_chatui_config.selected_mechs = None
+        mock_shared_state.chatui_config = mock_chatui_config
+
+        captured: dict = {}
+
+        def _capture_payload(payload: Any) -> Generator:
+            captured["payload"] = payload
+            if False:
+                yield  # pragma: no cover
+
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            patch.object(
+                type(behaviour),
+                "behaviour_id",
+                new_callable=PropertyMock,
+                return_value="test_behaviour",
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=mock_shared_state,
+            ),
+            patch.object(behaviour, "send_a2a_transaction", _capture_payload),
+            patch.object(behaviour, "wait_until_round_end", _noop_gen),
+            patch.object(behaviour, "set_done", MagicMock()),
+        ):
+            gen = behaviour.async_act()
+            with pytest.raises(StopIteration):
+                next(gen)
+
+        payload = captured["payload"]
+        assert payload.selected_mechs == "[]"
+
     def test_async_act_config_is_none_raises(self) -> None:
         """async_act propagates ValueError raised by chatui_config."""
         behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]

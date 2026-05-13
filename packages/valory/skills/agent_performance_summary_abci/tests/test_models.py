@@ -761,6 +761,160 @@ class TestSharedState:
         assert data["agent_behavior"] == "active"
         assert data["timestamp"] == 1700000100
 
+    def test_update_funds_locked_in_markets_creates_summary_if_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """First-ever call (no file yet) initializes the nested dataclasses.
+
+        Withdrawal completion may run before any normal performance
+        summary round has populated the file, so the helper must be
+        defensive: ``read_existing_performance_summary`` returns a
+        default ``AgentPerformanceSummary()`` with
+        ``agent_performance=None``; the helper must lazily build the
+        nested chain (AgentPerformanceData → PerformanceMetricsData)
+        before writing the field.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        state.update_funds_locked_in_markets(123.45)
+
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        assert file_path.exists()
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["agent_performance"] is not None
+        assert data["agent_performance"]["metrics"] is not None
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 123.45
+
+    def test_update_funds_locked_in_markets_preserves_other_fields(
+        self, tmp_path: Path
+    ) -> None:
+        """The helper updates only the target field; other fields are preserved.
+
+        Falsifies a regression where the helper accidentally clobbers
+        unrelated parts of the summary (e.g., agent_details, stats,
+        or other metrics fields).
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        # Pre-populate a summary with multiple non-trivial fields.
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_behavior="active",
+            agent_details=AgentDetails(
+                id="agent-x",
+                created_at="2025-01-01T00:00:00Z",
+                last_active_at="2025-12-01T00:00:00Z",
+            ),
+            agent_performance=AgentPerformanceData(
+                metrics=PerformanceMetricsData(
+                    all_time_funds_used=500.0,
+                    all_time_profit=42.0,
+                    funds_locked_in_markets=200.0,
+                    available_funds=300.0,
+                    roi=0.084,
+                ),
+                stats=PerformanceStatsData(
+                    predictions_made=10,
+                    prediction_accuracy=0.7,
+                ),
+            ),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(150.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        # Target field updated.
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 150.0
+        # Sibling fields untouched.
+        assert data["agent_performance"]["metrics"]["all_time_funds_used"] == 500.0
+        assert data["agent_performance"]["metrics"]["all_time_profit"] == 42.0
+        assert data["agent_performance"]["metrics"]["available_funds"] == 300.0
+        assert data["agent_performance"]["metrics"]["roi"] == 0.084
+        assert data["agent_performance"]["stats"]["predictions_made"] == 10
+        assert data["agent_performance"]["stats"]["prediction_accuracy"] == 0.7
+        assert data["agent_behavior"] == "active"
+        assert data["agent_details"]["id"] == "agent-x"
+
+    def test_update_funds_locked_in_markets_updates_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """The helper bumps the summary's top-level ``timestamp`` field.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        initial = AgentPerformanceSummary(timestamp=1700000000)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(50.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["timestamp"] == 1700000100
+
+    def test_update_funds_locked_in_markets_handles_existing_metrics_none(
+        self, tmp_path: Path
+    ) -> None:
+        """A pre-populated summary with ``metrics=None`` initializes lazily.
+
+        Mid-state where ``agent_performance`` exists (set by an earlier
+        round) but ``metrics`` is None — the helper must not crash.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_performance=AgentPerformanceData(metrics=None),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(75.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["agent_performance"]["metrics"] is not None
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 75.0
+
 
 class _TestableSubgraph(Subgraph):
     """Subclass that overrides the read-only context property for testing.

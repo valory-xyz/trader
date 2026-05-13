@@ -22,7 +22,7 @@
 
 import enum
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
@@ -41,6 +41,21 @@ FILE_WRITE_MODE = "w"
 FILE_READ_MODE = "r"
 JSON_FILE_INDENT_LEVEL = 4
 
+WITHDRAWAL_STATE_IDLE = "idle"
+WITHDRAWAL_STATE_ARMED = "armed"
+WITHDRAWAL_STATE_SELLING = "selling"
+WITHDRAWAL_STATE_COMPLETE = "complete"
+WITHDRAWAL_STATE_ERRORED = "errored"
+WITHDRAWAL_STATES = frozenset(
+    {
+        WITHDRAWAL_STATE_IDLE,
+        WITHDRAWAL_STATE_ARMED,
+        WITHDRAWAL_STATE_SELLING,
+        WITHDRAWAL_STATE_COMPLETE,
+        WITHDRAWAL_STATE_ERRORED,
+    }
+)
+
 
 class TradingStrategyUI(enum.Enum):
     """Trading strategy for the Agent's UI."""
@@ -56,8 +71,13 @@ class ChatuiConfig:
     trading_strategy: Optional[str] = None
     initial_trading_strategy: Optional[str] = None
     allowed_tools: Optional[List[str]] = None
+    selected_mechs: Optional[List[str]] = None
     fixed_bet_size: Optional[int] = None
     max_bet_size: Optional[int] = None
+    withdrawal_mode: bool = False
+    withdrawal_state: str = WITHDRAWAL_STATE_IDLE
+    withdrawal_fills: List[Dict[str, Any]] = field(default_factory=list)
+    withdrawal_errors: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class SharedState(BaseSharedState):
@@ -70,6 +90,24 @@ class SharedState(BaseSharedState):
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
         self._chatui_config: Optional[ChatuiConfig] = None
+
+    def setup(self) -> None:
+        """Set up the shared state and apply boot-time withdrawal flag auto-clear.
+
+        Restart is the only way out of withdrawal mode: any boot with the flag
+        set returns the agent to trading mode regardless of the persisted
+        state. The fills/errors arrays are left intact so the FE can still
+        surface the previous sweep's results until the user re-arms via POST.
+        """
+        super().setup()
+        cfg = self.chatui_config
+        if cfg.withdrawal_mode:
+            self.context.logger.info(
+                f"withdrawal: clearing flag on boot (state was {cfg.withdrawal_state})"
+            )
+            cfg.withdrawal_mode = False
+            cfg.withdrawal_state = WITHDRAWAL_STATE_IDLE
+            self._set_json_store(asdict(cfg))
 
     @property
     def chatui_config(self) -> ChatuiConfig:
@@ -164,6 +202,14 @@ class SharedState(BaseSharedState):
             # update the store with the YAML value
             self._chatui_config.trading_strategy = trading_strategy_yaml
             self._chatui_config.initial_trading_strategy = trading_strategy_yaml
+
+        if self._chatui_config.withdrawal_state not in WITHDRAWAL_STATES:
+            self.context.logger.warning(
+                f"invalid withdrawal_state {self._chatui_config.withdrawal_state!r} "
+                "on disk; resetting to idle"
+            )
+            self._chatui_config.withdrawal_state = WITHDRAWAL_STATE_IDLE
+            self._chatui_config.withdrawal_mode = False
 
         self._set_json_store(asdict(self._chatui_config))
 

@@ -150,6 +150,9 @@ def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
     carries `side` and `signatureType` as IntEnums, which json.dumps refuses.
     We convert enums to their int values here and include the ``clob_version``
     marker so the cache-invalidation check in W5 can distinguish v1 entries.
+
+    :param signed: a v2 signed order from the polymarket SDK
+    :return: a JSON-serializable dict representing the order
     """
     data = dataclasses.asdict(signed)
     for key, value in list(data.items()):
@@ -165,6 +168,9 @@ def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
     The ``clob_version`` marker, if present, is ignored here; cache-invalidation
     logic is expected to reject entries without the v2 marker before calling
     this.
+
+    :param payload: previously-serialized v2 order dict
+    :return: a SignedOrderV2 with enum fields rehydrated
     """
     payload = {k: v for k, v in payload.items() if k != "clob_version"}
     if "side" in payload and not isinstance(payload["side"], Side):
@@ -423,6 +429,8 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
+            RequestType.SELL_POSITION: self._sell_position,
+            RequestType.GET_ORDER: self._get_order,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -523,6 +531,132 @@ class PolymarketClientConnection(BaseSyncConnection):
             # Return error with signed order for retry
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
+
+    def _sell_position(
+        self,
+        token_id: str,
+        amount: float,
+    ) -> Tuple[Any, Any]:
+        """Submit a market SELL against the CLOB.
+
+        Sign + post a fresh FAK order on every call. The buy-side
+        ``signed_order_json`` cache pattern was deliberately NOT replicated
+        here: once the CLOB has acknowledged a signed order (whether it
+        matched, killed, or rejected it) the orderID is indexed server-side,
+        and resubmitting yields ``order ... is invalid. Duplicated.`` On a
+        zero-fill kill ("no orders found to match with FAK order") this
+        means cache reuse is guaranteed to fail. Re-signing on every retry
+        is a single ECDSA op — cheap.
+
+        ``amount`` is **shares** (CTF token units) for SELL, not USDC.
+
+        ``PartialCreateOrderOptions`` is omitted: the SDK auto-resolves
+        ``tick_size`` (via ``__resolve_tick_size``) and ``neg_risk`` (via
+        ``get_neg_risk``) from the cached market info. This matches the
+        buy path.
+
+        :param token_id: CTF token id of the outcome to sell.
+        :param amount: shares (CTF token units) to sell, not USDC.
+        :return: ``(response_payload, error_or_none)``.
+        """
+        try:
+            mo = MarketOrderArgs(
+                token_id=token_id,
+                amount=amount,
+                side=Side.SELL,
+                order_type=OrderType.FAK,
+            )
+            signed = self.client.create_market_order(mo)
+
+            resp: Dict = self.client.post_order(signed, OrderType.FAK)
+
+            if not resp:
+                error_msg = "post_order returned empty response"
+                self.logger.error(error_msg)
+                return {"error": error_msg}, error_msg
+
+            order_id = resp.get("orderID") or ""
+            status = (resp.get("status") or "").lower()
+
+            # Async-match path: the matching engine deferred resolution.
+            # Return immediately with the ``delayed`` envelope. The
+            # behaviour drives the cooperative get_order poll loop (see
+            # ``polymarket_withdraw._poll_order_until_terminal_cooperative``)
+            # rather than blocking the connection's worker thread on
+            # ``time.sleep``. Behaviour-side polling lets other connection
+            # consumers continue to be served during the wait.
+            if status == "delayed" and order_id:
+                return (
+                    {
+                        "order_id": order_id,
+                        "status": "delayed",
+                        "filled_shares": 0.0,
+                        "filled_usdc": 0.0,
+                        "fill_price": 0.0,
+                        "raw": resp,
+                    },
+                    None,
+                )
+
+            # Synchronous path (status in {"matched", "live", "unmatched"}).
+            # Field mapping is role-based: for a SELL we
+            # (the maker) sent ``makerAmount`` shares expecting
+            # ``takerAmount`` USDC, so ``makingAmount`` is the shares filled
+            # and ``takingAmount`` is the USDC received. (Verified against a
+            # live partial fill on Polygon mainnet where ``balance`` =
+            # 11596040, ``sum of matched orders`` = 11590000 confirmed that
+            # ``makingAmount: 11.59`` was shares.)
+            taking_amount_raw = resp.get("takingAmount") or 0.0
+            making_amount_raw = resp.get("makingAmount") or 0.0
+            filled_shares = float(making_amount_raw) if making_amount_raw else 0.0
+            filled_usdc = float(taking_amount_raw) if taking_amount_raw else 0.0
+            fill_price = filled_usdc / filled_shares if filled_shares > 0 else 0.0
+
+            return (
+                {
+                    "order_id": order_id,
+                    "status": resp.get("status") or "",
+                    "filled_shares": filled_shares,
+                    "filled_usdc": filled_usdc,
+                    "fill_price": fill_price,
+                    "raw": resp,
+                },
+                None,
+            )
+
+        except PolyApiException as e:
+            error_msg = (
+                e.error_msg.get("error")
+                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
+                else f"Error selling position: {e}"
+            )
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
+
+    def _get_order(self, order_id: str) -> Tuple[Any, Any]:
+        """Look up a single order via ``client.get_order``.
+
+        Thin wrapper used by the behaviour-side cooperative poll loop:
+        the behaviour drives backoff/retry/terminal-status decisions, and
+        each iteration issues one ``GET_ORDER`` request that lands here.
+
+        :param order_id: CLOB order id to look up.
+        :return: ``(order_payload, error_or_none)``. The payload is the
+            raw ``client.get_order`` response (may be ``None`` if the data
+            API hasn't indexed the order yet). On ``PolyApiException`` the
+            tuple shape mirrors the rest of this connection's handlers.
+        """
+        try:
+            order = self.client.get_order(order_id)
+            return order, None
+        except PolyApiException as e:
+            error_msg = (
+                e.error_msg.get("error")
+                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
+                else f"Error fetching order {order_id}: {e}"
+            )
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
 
     def _request_with_retries(
         self, url: str, params: Dict = None, max_retries: int = MAX_API_RETRIES
@@ -1014,7 +1148,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         index_sets: list[int],
         collateral_token: str,
         is_neg_risk: bool = False,
-        size: float = 0,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
 
@@ -1022,7 +1155,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :param size: The size of the position to redeem (for neg risk markets)
         :return: Tuple of (transaction_result, error_message)
         """
         try:
@@ -1036,54 +1168,27 @@ class PolymarketClientConnection(BaseSyncConnection):
             condition_id_clean = condition_id.removeprefix("0x")
             condition_id_bytes = bytes.fromhex(condition_id_clean)
 
-            # Build transaction based on market type
+            # Both CtfCollateralAdapter and NegRiskCtfCollateralAdapter expose
+            # the same 4-arg redeemPositions(address,bytes32,bytes32,uint256[])
+            # signature; only the destination contract differs. Under CLOB v2,
+            # neg-risk markets are plain CTF binary conditions and the v1
+            # 2-arg overload (0xdbeccb23) reverts with GS013.
+            selector = bytes.fromhex("01b7037c")
+            encoded_args = encode(
+                ["address", "bytes32", "bytes32", "uint256[]"],
+                [
+                    collateral_token,
+                    PARENT_COLLECTION_ID,
+                    condition_id_bytes,
+                    index_sets,
+                ],
+            )
+            calldata = selector + encoded_args
+
             if is_neg_risk:
-                # For negative risk markets, use neg risk adapter
-                # redeemPositions(bytes32,uint256[])
-                selector = bytes.fromhex(
-                    "dbeccb23"
-                )  # redeemPositions(bytes32,uint256[])
-
-                # For neg risk, index_sets contains bit-shifted outcome_index (1 << outcome_index)
-                # We need to build redeem_amounts array [yes_amount, no_amount]
-                # The size parameter tells us the amount to redeem
-                redeem_amounts = [0, 0]
-                if index_sets:
-                    # Extract outcome_index from bit-shifted value
-                    # index_sets[0] = 1 << outcome_index # noqa: E800
-                    # So: 1 (0b01) -> outcome_index = 0, 2 (0b10) -> outcome_index = 1
-                    index_set = index_sets[0]
-                    outcome_index = 0
-                    while index_set > 1:
-                        index_set >>= 1
-                        outcome_index += 1
-                    redeem_amounts[outcome_index] = int(size)
-
-                encoded_args = encode(
-                    ["bytes32", "uint256[]"],
-                    [condition_id_bytes, redeem_amounts],
-                )
-                calldata = selector + encoded_args
                 target_address = self.neg_risk_ctf_collateral_adapter
                 market_type = "negative risk (via NegRiskCtfCollateralAdapter)"
             else:
-                # Standard markets are redeemed via CtfCollateralAdapter so the
-                # USDC.e payout is unwrapped to pUSD before reaching the Safe.
-                # The adapter exposes the same redeemPositions selector as the
-                # raw CTF, so the calldata shape is unchanged.
-                selector = bytes.fromhex(
-                    "01b7037c"
-                )  # redeemPositions(address,bytes32,bytes32,uint256[])
-                encoded_args = encode(
-                    ["address", "bytes32", "bytes32", "uint256[]"],
-                    [
-                        collateral_token,
-                        PARENT_COLLECTION_ID,
-                        condition_id_bytes,
-                        index_sets,
-                    ],
-                )
-                calldata = selector + encoded_args
                 target_address = self.ctf_collateral_adapter
                 market_type = "standard (via CtfCollateralAdapter)"
 

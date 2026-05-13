@@ -26,7 +26,6 @@ from unittest.mock import MagicMock, patch
 
 from packages.valory.contracts.realitio_proxy.contract import RealitioProxyContract
 
-
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 
 
@@ -37,7 +36,9 @@ class TestRealitioProxyContract:
         """Test building resolve transaction with all parameters."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.encode_abi.return_value = b"\x01\x02\x03"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        mock_contract_instance.encode_abi.return_value = "0x010203"
 
         question_id = b"\x00" * 32
         template_id = 2
@@ -108,15 +109,15 @@ class TestABIConsistency:
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
         missing = referenced_functions - abi_functions
-        assert not missing, (
-            f"Functions used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Functions used in contract.py but missing from ABI: {missing}"
 
     def test_events_present_in_abi(self) -> None:
         """All contract events referenced in contract.py must exist in the ABI."""
         _, abi_events = self._get_abi_names()
         _, referenced_events = self._get_contract_references()
         missing = referenced_events - abi_events
-        assert not missing, (
-            f"Events used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Events used in contract.py but missing from ABI: {missing}"

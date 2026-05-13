@@ -91,3 +91,7 @@ class FinishedPolymarketSwapTxPreparationRound(DegenerateRound):
 
 class FinishedPolymarketWrapCollateralTxPreparationRound(DegenerateRound):
     """A round representing that a USDC.e → pUSD wrap has been prepared and needs tx settlement."""
+
+
+class FinishedOmenWithdrawRound(DegenerateRound):
+    """A round representing that the Omen withdrawal sweep multisend has been prepared and needs tx settlement."""

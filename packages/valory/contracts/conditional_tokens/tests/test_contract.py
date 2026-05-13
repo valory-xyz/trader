@@ -27,14 +27,13 @@ from unittest.mock import MagicMock, patch
 from hexbytes import HexBytes
 
 from packages.valory.contracts.conditional_tokens.contract import (
+    ConditionalTokensContract,
     TOPIC_BYTEORDER,
     TOPIC_BYTES,
-    ConditionalTokensContract,
     get_logs,
     pad_int_for_topic,
     update_from_event,
 )
-
 
 CONTRACT_ADDRESS = "0x1234567890abcdef1234567890abcdef12345678"
 CONDITION_ID = HexBytes(b"\xaa" * 32)
@@ -132,9 +131,7 @@ class TestGetLogs:
             "packages.valory.contracts.conditional_tokens.contract.event_abi_to_log_topic",
             return_value=b"\x01" * 32,
         ):
-            result = get_logs(
-                mock_eth, mock_contract, mock_event_abi, [b"\x02" * 32]
-            )
+            result = get_logs(mock_eth, mock_contract, mock_event_abi, [b"\x02" * 32])
 
         assert result == [mock_log]
 
@@ -202,12 +199,15 @@ class TestConditionalTokensContract:
             }
         }
 
-        with patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_logs",
-            return_value=[MagicMock()],
-        ), patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_event_data",
-            return_value=mock_event,
+        with (
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_logs",
+                return_value=[MagicMock()],
+            ),
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_event_data",
+                return_value=mock_event,
+            ),
         ):
             result = ConditionalTokensContract.check_redeemed(
                 ledger_api=self.mock_ledger_api,
@@ -311,7 +311,10 @@ class TestConditionalTokensContract:
 
     def test_build_redeem_positions_tx(self) -> None:
         """Test building redeem positions transaction."""
-        self.mock_contract.encode_abi.return_value = b"\xaa\xbb"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string (matching real
+        # web3.py behaviour); the contract method strips the prefix and
+        # converts to ``bytes`` so multisend consumers receive raw bytes.
+        self.mock_contract.encode_abi.return_value = "0xaabb"
         self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
 
         result = ConditionalTokensContract.build_redeem_positions_tx(
@@ -430,12 +433,15 @@ class TestConditionalTokensContract:
         }
         mock_entry["transactionHash"].to_0x_hex.return_value = "0xabc"
 
-        with patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_logs",
-            return_value=[mock_log],
-        ), patch(
-            "packages.valory.contracts.conditional_tokens.contract.get_event_data",
-            return_value=mock_entry,
+        with (
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_logs",
+                return_value=[mock_log],
+            ),
+            patch(
+                "packages.valory.contracts.conditional_tokens.contract.get_event_data",
+                return_value=mock_entry,
+            ),
         ):
             result = ConditionalTokensContract.get_condition_preparation_events(
                 ledger_api=self.mock_ledger_api,
@@ -492,7 +498,9 @@ class TestConditionalTokensContract:
 
     def test_build_merge_positions_tx(self) -> None:
         """Test building merge positions transaction."""
-        self.mock_contract.encode_abi.return_value = b"\xcc\xdd"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        self.mock_contract.encode_abi.return_value = "0xccdd"
         self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
 
         result = ConditionalTokensContract.build_merge_positions_tx(
@@ -505,6 +513,49 @@ class TestConditionalTokensContract:
             amount=1000,
         )
         assert result == {"data": b"\xcc\xdd"}
+
+    def test_build_set_approval_for_all_tx(self) -> None:
+        """Test encoding ERC1155 setApprovalForAll for the multisend.
+
+        Returns raw bytes (``bytes.fromhex(data[2:])``) to match the
+        sibling ``build_*_tx`` methods in this file. Pre-fix this one
+        returned the ``0x``-hex string verbatim; callers wrapping in
+        ``HexBytes`` tolerated either form, but the inconsistency
+        was surprising.
+        """
+        self.mock_contract.encode_abi.return_value = "0xa22cb46500dead"
+        self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
+
+        result = ConditionalTokensContract.build_set_approval_for_all_tx(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            operator="0xfpmm",
+        )
+
+        assert result == {"data": bytes.fromhex("a22cb46500dead")}
+        # Verify the encoder was called with the right ERC1155 signature +
+        # checksummed operator + the default approved=True.
+        self.mock_contract.encode_abi.assert_called_once_with(
+            abi_element_identifier="setApprovalForAll",
+            args=["0xfpmm", True],
+        )
+
+    def test_build_set_approval_for_all_tx_revoke(self) -> None:
+        """Encoding with approved=False reaches the encoder as False."""
+        self.mock_contract.encode_abi.return_value = "0xa22cb4650000"
+        self.mock_ledger_api.api.to_checksum_address.side_effect = lambda x: x
+
+        ConditionalTokensContract.build_set_approval_for_all_tx(
+            ledger_api=self.mock_ledger_api,
+            contract_address=CONTRACT_ADDRESS,
+            operator="0xfpmm",
+            approved=False,
+        )
+
+        self.mock_contract.encode_abi.assert_called_once_with(
+            abi_element_identifier="setApprovalForAll",
+            args=["0xfpmm", False],
+        )
 
 
 PACKAGE_DIR = Path(__file__).parent.parent
@@ -550,15 +601,15 @@ class TestABIConsistency:
         abi_functions, _ = self._get_abi_names()
         referenced_functions, _ = self._get_contract_references()
         missing = referenced_functions - abi_functions
-        assert not missing, (
-            f"Functions used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Functions used in contract.py but missing from ABI: {missing}"
 
     def test_events_present_in_abi(self) -> None:
         """All contract events referenced in contract.py must exist in the ABI."""
         _, abi_events = self._get_abi_names()
         _, referenced_events = self._get_contract_references()
         missing = referenced_events - abi_events
-        assert not missing, (
-            f"Events used in contract.py but missing from ABI: {missing}"
-        )
+        assert (
+            not missing
+        ), f"Events used in contract.py but missing from ABI: {missing}"

@@ -37,3 +37,5 @@ class RequestType(Enum):
     SET_APPROVAL = "set_approval"
     CHECK_APPROVAL = "check_approval"
     FETCH_ORDER_BOOK = "fetch_order_book"
+    SELL_POSITION = "sell_position"
+    GET_ORDER = "get_order"

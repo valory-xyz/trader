@@ -57,7 +57,6 @@ class Event(Enum):
     DONE_SELL = "done_sell"
     DONE_NO_SELL = "done_no_sell"
     NONE = "none"
-    FETCH_ERROR = "fetch_error"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
     BENCHMARKING_FINISHED = "benchmarking_finished"
@@ -76,6 +75,7 @@ class Event(Enum):
     NO_OP = "no_op"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
+    WITHDRAWAL_ROUND_TIMEOUT = "withdrawal_round_timeout"
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
     POLYMARKET_DONE = "polymarket_done"
@@ -84,6 +84,7 @@ class Event(Enum):
     BET_PLACEMENT_DONE = "bet_placement_done"
     SET_APPROVAL = "set_approval"
     PREPARE_TX = "prepare_tx"
+    WITHDRAWAL_DONE = "withdrawal_done"
 
 
 class SynchronizedData(

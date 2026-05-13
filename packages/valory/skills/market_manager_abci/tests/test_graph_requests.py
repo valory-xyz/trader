@@ -860,8 +860,15 @@ class TestFetchUserPositions:
 
         assert result == batch1 + batch2
 
-    def test_none_response_returns_partial(self) -> None:
-        """When process_response returns None, returns what was collected."""
+    def test_none_response_returns_none(self) -> None:
+        """Subgraph error mid-pagination returns ``None``, not a partial list.
+
+        Returning the partial accumulator would silently strand
+        un-fetched pages — the omen withdrawal sweep treats non-``None``
+        as success and would sell only the positions it saw.
+        ``_with_top_level_retry`` and other callers rely on ``None``
+        to surface the failure.
+        """
         b, mock_sg = self._setup_behaviour()
 
         mock_raw = MagicMock()
@@ -873,7 +880,103 @@ class TestFetchUserPositions:
         gen = b.fetch_user_positions(user="0xUser1")
         result = _exhaust(gen)
 
-        assert result == []
+        assert result is None
+        b.context.logger.error.assert_called()
+
+    def test_partial_then_failure_returns_none(self) -> None:
+        """A successful first page followed by a failure returns ``None``.
+
+        Guards against the pre-fix regression where the function
+        returned the page-1 accumulator on a page-2 failure, leaving
+        downstream sweepers to silently strand the un-fetched pages.
+        """
+        b, mock_sg = self._setup_behaviour()
+
+        batch1 = [{"id": "pos1", "balance": "100"}]
+        process_returns = iter([batch1, None])
+
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        mock_sg.process_response.side_effect = lambda _: next(process_returns)
+        mock_sg.retries_info.suggested_sleep_time = 1.0
+
+        gen = b.fetch_user_positions(user="0xUser1")
+        result = _exhaust(gen)
+
+        assert result is None
+        b.context.logger.error.assert_called()
+
+    def test_failure_sets_fetch_status_to_fail(self) -> None:
+        """``res is None`` exit path leaves ``_fetch_status == FAIL``.
+
+        ``_handle_response`` only flips status to ``FAIL`` when retries
+        are exhausted; otherwise it sleeps and returns ``None`` with
+        status still ``IN_PROGRESS``. Without the explicit ``FAIL``
+        assignment on the error-return, any future caller gating on
+        ``_fetch_status`` would see a hung intermediate state.
+        """
+        b, mock_sg = self._setup_behaviour()
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        mock_sg.process_response.return_value = None
+        mock_sg.is_retries_exceeded.return_value = False  # retries pending
+        mock_sg.retries_info.suggested_sleep_time = 1.0
+
+        _exhaust(b.fetch_user_positions(user="0xUser1"))
+
+        assert b._fetch_status == FetchStatus.FAIL
+
+
+class TestFetchWithdrawalCreatorFpmms:
+    """Tests for the ``fetch_withdrawal_creator_fpmms`` generator."""
+
+    def _setup_behaviour(self) -> Any:
+        """Create a behaviour wired for withdrawal-creator-fpmms tests."""
+        b = _make_behaviour()
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.trades_subgraph = mock_sg
+
+        return b, mock_sg
+
+    def test_single_batch(self) -> None:
+        """One non-empty batch followed by empty returns the rows."""
+        b, mock_sg = self._setup_behaviour()
+        batch1 = [{"id": "fpmm1", "fpmm": {"id": "0xa1"}}]
+
+        process_returns = iter([batch1, []])
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        mock_sg.process_response.side_effect = lambda _: next(process_returns)
+
+        result = _exhaust(b.fetch_withdrawal_creator_fpmms(user="0xUser1"))
+
+        assert result == batch1
+        assert b._fetch_status == FetchStatus.SUCCESS
+
+    def test_failure_returns_none_and_sets_fail_status(self) -> None:
+        """``res is None`` returns ``None`` AND sets ``_fetch_status = FAIL``.
+
+        Pre-fix, status persisted as ``IN_PROGRESS`` whenever the
+        underlying subgraph failed with retries still pending, leaving
+        any future status-gating caller in a hung state.
+        """
+        b, mock_sg = self._setup_behaviour()
+        mock_raw = MagicMock()
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        mock_sg.process_response.return_value = None
+        mock_sg.is_retries_exceeded.return_value = False  # retries pending
+        mock_sg.retries_info.suggested_sleep_time = 1.0
+
+        result = _exhaust(b.fetch_withdrawal_creator_fpmms(user="0xUser1"))
+
+        assert result is None
+        assert b._fetch_status == FetchStatus.FAIL
         b.context.logger.error.assert_called()
 
 

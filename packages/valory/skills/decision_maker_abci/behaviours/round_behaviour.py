@@ -43,6 +43,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.decision_request impo
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+    OmenWithdrawBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
 )
@@ -58,11 +61,17 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approv
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     PolymarketSwapUsdcBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
+    PolymarketWithdrawBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_wrap_collateral import (
     PolymarketWrapCollateralBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.post_bet_update import (
     PostBetUpdateBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.post_omen_withdraw import (
+    PostOmenWithdrawBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.randomness import (
     BenchmarkingRandomnessBehaviour,
@@ -109,5 +118,8 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         PolymarketSetApprovalBehaviour,  # type: ignore
         PolymarketPostSetApprovalBehaviour,  # type: ignore
         PolymarketSwapUsdcBehaviour,  # type: ignore
+        PolymarketWithdrawBehaviour,  # type: ignore
         PolymarketWrapCollateralBehaviour,  # type: ignore
+        OmenWithdrawBehaviour,  # type: ignore
+        PostOmenWithdrawBehaviour,  # type: ignore
     }

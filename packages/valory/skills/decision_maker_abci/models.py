@@ -34,12 +34,16 @@ from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.base import AbciApp
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
-from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
+from packages.valory.skills.abstract_round_abci.models import (
+    TypeCheckMixin,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
@@ -430,9 +434,27 @@ class DecisionMakerParams(
         self.redeem_round_timeout: float = self._ensure(
             "redeem_round_timeout", kwargs, float
         )
+        self.withdrawal_round_timeout: float = self._ensure(
+            "withdrawal_round_timeout", kwargs, float
+        )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
+        # Omenstrat withdrawal sweep parameters.
+        # `withdrawal_slippage`: extra headroom on `maxOutcomeTokensToSell` for
+        # sells through FPMM.sell (ceiling-direction; see omen_withdraw.py).
+        # `withdrawal_return_buffer`: shrink `n_estimate` when sizing the
+        # returnAmount to stay below the headroom-cap (avoids step-2 halving
+        # loops in calcSellAmount).
+        # `dust_epsilon_wxdai`: positions whose `balance * marginal_price`
+        # (wxDAI wei) falls below this are skipped as dust.
+        self.withdrawal_slippage: float = self._ensure(
+            "withdrawal_slippage", kwargs, float
+        )
+        self.withdrawal_return_buffer: float = self._ensure(
+            "withdrawal_return_buffer", kwargs, float
+        )
+        self.dust_epsilon_wxdai: int = self._ensure("dust_epsilon_wxdai", kwargs, int)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
         self.tool_punishment_multiplier: int = self._ensure(
@@ -475,6 +497,23 @@ class DecisionMakerParams(
         self.review_period_seconds: int = self._ensure(
             "review_period_seconds", kwargs, int
         )
+        self.withdrawal_max_fak_attempts: int = self._ensure(
+            "withdrawal_max_fak_attempts", kwargs, int
+        )
+        self.withdrawal_fak_backoff_s: List[int] = self._ensure(
+            "withdrawal_fak_backoff_s", kwargs, List[int]
+        )
+        # ``withdrawal_fak_backoff_s`` is the schedule of inter-attempt
+        # sleeps, so it has one fewer entry than the attempt count: with
+        # ``max_attempts=3`` and ``backoff=[10, 30]``, the loop tries,
+        # sleeps 10s, retries, sleeps 30s, retries — 3 attempts, 2 gaps.
+        expected = self.withdrawal_max_fak_attempts - 1
+        if len(self.withdrawal_fak_backoff_s) != expected:
+            raise ValueError(
+                "withdrawal_fak_backoff_s length "
+                f"({len(self.withdrawal_fak_backoff_s)}) must equal "
+                f"withdrawal_max_fak_attempts - 1 ({expected})"
+            )
         self.min_confidence_for_selling: float = 0.5
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool

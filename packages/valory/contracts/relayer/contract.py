@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ class RelayerContract(Contract):
                 amount,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))
 
     @classmethod
     def build_exec_tx(
@@ -64,4 +64,4 @@ class RelayerContract(Contract):
                 data,
             ],
         )
-        return dict(data=data)
+        return dict(data=bytes.fromhex(data[2:]))

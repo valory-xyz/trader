@@ -22,6 +22,8 @@
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from eth_abi import decode as abi_decode
+
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
@@ -66,7 +68,6 @@ def _make_policy(tools=None):  # type: ignore[no-untyped-def]
 def _make_behaviour():  # type: ignore[no-untyped-def]
     """Return a PolymarketRedeemBehaviour with mocked dependencies."""
     behaviour = object.__new__(PolymarketRedeemBehaviour)  # type: ignore[no-untyped-def]
-    behaviour._user_token_balance = None
     behaviour._policy = None
     behaviour._utilized_tools = {}
     behaviour._mech_tools = set()
@@ -116,20 +117,6 @@ class TestPolymarketRedeemConstants:
 class TestPolymarketRedeemProperties:
     """Tests for PolymarketRedeemBehaviour properties."""
 
-    def test_user_token_balance_property(self) -> None:
-        """user_token_balance should get/set correctly."""
-        behaviour = _make_behaviour()
-        assert behaviour.user_token_balance is None
-        behaviour.user_token_balance = 100
-        assert behaviour.user_token_balance == 100
-
-    def test_user_token_balance_setter_none(self) -> None:
-        """user_token_balance setter should accept None."""
-        behaviour = _make_behaviour()
-        behaviour.user_token_balance = 42
-        behaviour.user_token_balance = None
-        assert behaviour.user_token_balance is None
-
     def test_params_property(self) -> None:
         """Params property should return context.params cast to DecisionMakerParams."""
         behaviour = _make_behaviour()
@@ -141,17 +128,6 @@ class TestPolymarketRedeemProperties:
             mock_ctx.return_value = ctx
             result = behaviour.params
             assert result is ctx.params
-
-    def test_init_sets_user_token_balance(self) -> None:
-        """__init__ should set _user_token_balance to None."""
-        with patch(
-            "packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem.StorageManagerBehaviour.__init__",
-            return_value=None,
-        ):
-            behaviour = PolymarketRedeemBehaviour(
-                name="test", skill_context=MagicMock()
-            )
-            assert behaviour._user_token_balance is None
 
 
 # ---------------------------------------------------------------------------
@@ -190,105 +166,6 @@ class TestFinishBehaviour:
 
         behaviour._store_utilized_tools.assert_called_once()
         assert len(payloads_sent) == 1
-
-
-# ---------------------------------------------------------------------------
-# Tests for conditional_tokens_interact
-
-
-class TestConditionalTokensInteract:
-    """Tests for _conditional_tokens_interact."""
-
-    def test_returns_status_from_contract_interact(self) -> None:
-        """Should return status from contract_interact."""
-        behaviour = _make_behaviour()
-
-        def mock_contract_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock contract interact."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        behaviour.contract_interact = mock_contract_interact  # type: ignore[method-assign]
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(polymarket_ctf_address="0xctf")
-
-            gen = behaviour._conditional_tokens_interact(
-                contract_callable="get_balance_of",
-                data_key="balance",
-                placeholder="user_token_balance",
-            )
-            result = None
-            try:
-                while True:
-                    next(gen)
-            except StopIteration as e:
-                result = e.value
-
-        assert result is True
-
-
-# ---------------------------------------------------------------------------
-# Tests for get_token_balance
-
-
-class TestGetTokenBalance:
-    """Tests for _get_token_balance."""
-
-    def test_returns_balance_on_success(self) -> None:
-        """Should return user_token_balance on success."""
-        behaviour = _make_behaviour()
-        behaviour._user_token_balance = 500
-
-        def mock_conditional_tokens_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock conditional tokens interact."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[method-assign]
-
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd:
-            mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
-
-            gen = behaviour._get_token_balance(12345)
-            result = None
-            try:
-                while True:
-                    next(gen)
-            except StopIteration as e:
-                result = e.value
-
-        assert result == 500
-
-    def test_returns_none_on_failure(self) -> None:
-        """Should return None when contract interaction fails."""
-        behaviour = _make_behaviour()
-
-        def mock_conditional_tokens_interact(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock conditional tokens interact that fails."""
-            yield  # type: ignore[no-untyped-def]
-            return False
-
-        behaviour._conditional_tokens_interact = mock_conditional_tokens_interact  # type: ignore[method-assign]
-
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd:
-            mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
-
-            gen = behaviour._get_token_balance(12345)
-            result = None
-            try:
-                while True:
-                    next(gen)
-            except StopIteration as e:
-                result = e.value
-
-        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -417,54 +294,67 @@ class TestRedeemPosition:
     """Tests for _redeem_position."""
 
     def test_redeems_standard_position(self) -> None:
-        """Should redeem a standard position via connection."""
+        """Standard position payload contains 1<<outcomeIndex and is_neg_risk=False."""
         behaviour = _make_behaviour()
 
-        redeem_result = {"success": True}
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
-            redeem_result
-        )
+        sent_payloads = []
+
+        def capture(payload):  # type: ignore[no-untyped-def]
+            sent_payloads.append(payload)
+            return _return_gen({"success": True})
+
+        behaviour.send_polymarket_connection_request = capture  # type: ignore[method-assign]
 
         gen = behaviour._redeem_position(
             condition_id="0xcond1",
             outcome_index=0,
             collateral_token="0xusdc",  # nosec B106
             is_neg_risk=False,
-            size=100,
         )
-        result = None
         try:
             while True:
                 next(gen)
-        except StopIteration as e:
-            result = e.value
+        except StopIteration:
+            pass
 
-        assert result == redeem_result
+        assert len(sent_payloads) == 1
+        params = sent_payloads[0]["params"]
+        assert params["condition_id"] == "0xcond1"
+        assert params["index_sets"] == [1]  # 1 << 0
+        assert params["collateral_token"] == "0xusdc"
+        assert params["is_neg_risk"] is False
+        assert "size" not in params
 
     def test_redeems_neg_risk_position(self) -> None:
-        """Should redeem a negative risk position via connection."""
+        """Neg-risk position payload contains 1<<outcomeIndex and is_neg_risk=True."""
         behaviour = _make_behaviour()
 
-        redeem_result = {"success": True}
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
-            redeem_result
-        )
+        sent_payloads = []
+
+        def capture(payload):  # type: ignore[no-untyped-def]
+            sent_payloads.append(payload)
+            return _return_gen({"success": True})
+
+        behaviour.send_polymarket_connection_request = capture  # type: ignore[method-assign]
 
         gen = behaviour._redeem_position(
             condition_id="0xcond2",
             outcome_index=1,
             collateral_token="0xusdc",  # nosec B106
             is_neg_risk=True,
-            size=50,
         )
-        result = None
         try:
             while True:
                 next(gen)
-        except StopIteration as e:
-            result = e.value
+        except StopIteration:
+            pass
 
-        assert result == redeem_result
+        assert len(sent_payloads) == 1
+        params = sent_payloads[0]["params"]
+        assert params["condition_id"] == "0xcond2"
+        assert params["index_sets"] == [2]  # 1 << 1
+        assert params["is_neg_risk"] is True
+        assert "size" not in params
 
 
 # ---------------------------------------------------------------------------
@@ -583,118 +473,6 @@ class TestBuildRedeemPositionsData:
 
 
 # ---------------------------------------------------------------------------
-# Tests for build_redeem_neg_risk_data
-
-
-class TestBuildRedeemNegRiskData:
-    """Tests for _build_redeem_neg_risk_data."""
-
-    def test_neg_risk_data_starts_with_correct_selector(self) -> None:
-        """Should start with redeemPositions(bytes32,uint256[]) selector."""
-        behaviour = _make_behaviour()
-        result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
-            condition_id="0xaabbccdd",
-            redeem_amounts=[100, 0],
-        )
-        assert result.startswith("0xdbeccb23")
-
-    def test_neg_risk_data_contains_condition_id(self) -> None:
-        """Should contain the condition ID."""
-        behaviour = _make_behaviour()
-        result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
-            condition_id="0xaabbccdd",
-            redeem_amounts=[100, 0],
-        )
-        assert "aabbccdd" in result.lower()
-
-    def test_neg_risk_data_encodes_amounts(self) -> None:
-        """Should encode redeem amounts correctly."""
-        behaviour = _make_behaviour()
-        result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
-            condition_id="0xaabbccdd",
-            redeem_amounts=[100, 0],
-        )
-        # 100 in hex is 64
-        assert hex(100)[2:].zfill(64) in result
-
-    def test_neg_risk_data_zero_amounts(self) -> None:
-        """Should handle zero amounts."""
-        behaviour = _make_behaviour()
-        result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
-            condition_id="0xaabbccdd",
-            redeem_amounts=[0, 0],
-        )
-        assert result.startswith("0xdbeccb23")
-
-    def test_neg_risk_condition_id_without_0x_prefix(self) -> None:
-        """Should handle condition ID without 0x prefix."""
-        behaviour = _make_behaviour()
-        result = behaviour._build_redeem_neg_risk_data(
-            collateral_token="0x1234567890123456789012345678901234567890",  # nosec B106
-            condition_id="aabbccdd",
-            redeem_amounts=[100, 0],
-        )
-        assert "aabbccdd" in result.lower()
-
-
-# ---------------------------------------------------------------------------
-# Tests for get_token_balance_from_chain
-
-
-class TestGetTokenBalanceFromChain:
-    """Tests for _get_token_balance_from_chain."""
-
-    def test_returns_none_on_failure(self) -> None:
-        """Should return None when _get_token_balance fails."""
-        behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(None)  # type: ignore[method-assign]
-
-        gen = behaviour._get_token_balance_from_chain(123)
-        result = None
-        try:
-            while True:
-                next(gen)
-        except StopIteration as e:
-            result = e.value
-
-        assert result is None
-
-    def test_returns_zero_when_balance_is_zero(self) -> None:
-        """Should return 0 when token balance is zero."""
-        behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
-
-        gen = behaviour._get_token_balance_from_chain(123)
-        result = None
-        try:
-            while True:
-                next(gen)
-        except StopIteration as e:
-            result = e.value
-
-        assert result == 0
-
-    def test_returns_balance_when_positive(self) -> None:
-        """Should return balance when positive."""
-        behaviour = _make_behaviour()
-        behaviour._get_token_balance = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
-
-        gen = behaviour._get_token_balance_from_chain(123)
-        result = None
-        try:
-            while True:
-                next(gen)
-        except StopIteration as e:
-            result = e.value
-
-        assert result == 500
-
-
-# ---------------------------------------------------------------------------
 # Tests for redeem_via_builder
 
 
@@ -705,13 +483,19 @@ class TestRedeemViaBuilder:
         """Should redeem standard (non-neg-risk) positions."""
         behaviour = _make_behaviour()
 
-        redeem_results = []
+        redeem_calls = []
 
         def mock_redeem(  # type: ignore[no-untyped-def]
-            condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0
+            condition_id, outcome_index, collateral_token, is_neg_risk=False
         ):
             """Mock redeem position."""
-            redeem_results.append(condition_id)
+            redeem_calls.append(
+                {
+                    "condition_id": condition_id,
+                    "outcome_index": outcome_index,
+                    "is_neg_risk": is_neg_risk,
+                }
+            )
             yield
             return {"success": True}
 
@@ -744,34 +528,45 @@ class TestRedeemViaBuilder:
             except StopIteration:
                 pass
 
-        assert "0xcond1" in redeem_results
+        assert redeem_calls == [
+            {"condition_id": "0xcond1", "outcome_index": 0, "is_neg_risk": False}
+        ]
         assert isinstance(behaviour.payload, PolymarketRedeemPayload)
 
-    def test_redeem_neg_risk_position_with_balance(self) -> None:
-        """Should use on-chain balance for neg risk positions."""
+    def test_redeem_neg_risk_position_passes_flag_through(self) -> None:
+        """Neg-risk positions are forwarded to _redeem_position with is_neg_risk=True.
+
+        Why: under CLOB v2 the collateral adapter discovers the Safe's ERC1155
+        balance itself via balanceOf, so the agent must not pre-fetch balances
+        or override size — it just routes the position through with the flag.
+        """
         behaviour = _make_behaviour()
 
         redeem_calls = []
 
         def mock_redeem(  # type: ignore[no-untyped-def]
-            condition_id, outcome_index, collateral_token, is_neg_risk=False, size=0
+            condition_id, outcome_index, collateral_token, is_neg_risk=False
         ):
             """Mock redeem position."""
-            redeem_calls.append({"condition_id": condition_id, "size": size})
+            redeem_calls.append(
+                {
+                    "condition_id": condition_id,
+                    "outcome_index": outcome_index,
+                    "is_neg_risk": is_neg_risk,
+                }
+            )
             yield
             return {"success": True}
 
         behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(999)  # type: ignore[method-assign]
 
         positions = [
             {
                 "conditionId": "0xcond1",
-                "outcomeIndex": 0,
-                "outcome": "Yes",
+                "outcomeIndex": 1,
+                "outcome": "No",
                 "size": 100,
                 "negativeRisk": True,
-                "asset": "12345",
             }
         ]
 
@@ -792,34 +587,52 @@ class TestRedeemViaBuilder:
             except StopIteration:
                 pass
 
-        assert len(redeem_calls) == 1
-        # Size should be the on-chain balance, not the API size
-        assert redeem_calls[0]["size"] == 999
+        assert redeem_calls == [
+            {"condition_id": "0xcond1", "outcome_index": 1, "is_neg_risk": True}
+        ]
 
-    def test_redeem_neg_risk_position_skips_zero_balance(self) -> None:
-        """Should skip neg risk positions with zero on-chain balance."""
+    def test_malformed_position_skipped_others_processed(self) -> None:
+        """Position missing outcomeIndex is skipped; remaining valid positions still routed.
+
+        Why: without a guard, the downstream ``1 << None`` raises TypeError and
+        aborts the loop, dropping all subsequent positions on the floor. A
+        defensive log+continue keeps one bad dict from poisoning the batch.
+        """
         behaviour = _make_behaviour()
 
         redeem_calls = []
 
-        def mock_redeem(**kwargs) -> None:  # type: ignore[no-untyped-def, misc]
+        def mock_redeem(  # type: ignore[no-untyped-def]
+            condition_id, outcome_index, collateral_token, is_neg_risk=False
+        ):
             """Mock redeem position."""
-            redeem_calls.append(kwargs)  # type: ignore[no-untyped-def]
+            redeem_calls.append(
+                {
+                    "condition_id": condition_id,
+                    "outcome_index": outcome_index,
+                    "is_neg_risk": is_neg_risk,
+                }
+            )
             yield
             return {"success": True}
 
-        behaviour._redeem_position = lambda **kwargs: mock_redeem(**kwargs)  # type: ignore[method-assign]
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
 
         positions = [
+            {
+                "conditionId": "0xmalformed",
+                # outcomeIndex deliberately missing
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": True,
+            },
             {
                 "conditionId": "0xcond1",
                 "outcomeIndex": 0,
                 "outcome": "Yes",
                 "size": 100,
-                "negativeRisk": True,
-                "asset": "12345",
-            }
+                "negativeRisk": False,
+            },
         ]
 
         with patch.object(
@@ -839,45 +652,10 @@ class TestRedeemViaBuilder:
             except StopIteration:
                 pass
 
-        # Redeem should NOT have been called since balance is 0
-        assert len(redeem_calls) == 0
-
-    def test_redeem_neg_risk_position_missing_asset(self) -> None:
-        """Should skip neg risk positions missing asset field."""
-        behaviour = _make_behaviour()
-
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
-
-        positions = [
-            {
-                "conditionId": "0xcond1",
-                "outcomeIndex": 0,
-                "outcome": "Yes",
-                "size": 100,
-                "negativeRisk": True,
-                # No "asset" key
-            }
+        # Only the valid position was forwarded to _redeem_position.
+        assert redeem_calls == [
+            {"condition_id": "0xcond1", "outcome_index": 0, "is_neg_risk": False}
         ]
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
-
-            gen = behaviour._redeem_via_builder(
-                positions,
-                current_mech_tools="[]",
-                current_policy=None,
-                current_utilized_tools="{}",
-            )
-            try:
-                while True:
-                    next(gen)
-            except StopIteration:
-                pass
-
-        # Should complete without error - the position was skipped
-        assert isinstance(behaviour.payload, PolymarketRedeemPayload)
 
 
 # ---------------------------------------------------------------------------
@@ -900,6 +678,75 @@ class TestPrepareRedeemTx:
             result = e.value
 
         assert result == ""
+
+    def test_malformed_position_skipped_others_processed(self) -> None:
+        """Position missing outcomeIndex is skipped; remaining valid positions still build batches.
+
+        Why: without a guard, ``1 << None`` raises TypeError mid-loop and aborts
+        the entire multisend, killing all queued redemptions. The Polymarket API
+        is contract-bound to provide outcomeIndex, but a defensive log+continue
+        keeps one bad dict from poisoning the whole batch.
+        """
+        behaviour = _make_behaviour()
+        behaviour.multisend_batches = []
+
+        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock build multisend data."""
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock build multisend safe tx hash."""
+            yield  # type: ignore[no-untyped-def]
+            return True
+
+        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
+
+        positions = [
+            {
+                "conditionId": "0xmalformed",
+                # outcomeIndex deliberately missing
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            },
+            {
+                "conditionId": "0xaabbccdd",
+                "outcomeIndex": 0,
+                "outcome": "Yes",
+                "size": 100,
+                "negativeRisk": False,
+            },
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
+                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
+                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
+                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+            )
+            with patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx:
+                mock_tx.return_value = "0xfinalHash"
+
+                gen = behaviour._prepare_redeem_tx(positions)
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        # Only the valid position produced a batch.
+        assert len(behaviour.multisend_batches) == 1
+        # The encoded calldata is for the valid conditionId, not the malformed.
+        calldata = behaviour.multisend_batches[0].data.hex()
+        assert "aabbccdd" in calldata
+        assert "malformed" not in calldata
 
     def test_standard_position_builds_batch(self) -> None:
         """Should build multisend batch for standard positions."""
@@ -953,12 +800,43 @@ class TestPrepareRedeemTx:
 
         assert result == "0xfinalHash"
         assert len(behaviour.multisend_batches) == 1
+        # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
+        calldata = behaviour.multisend_batches[0].data.hex()
+        assert calldata.startswith("01b7037c")
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata, even alongside the v2 selector. Catches a
+        # regression that resurrects the broken overload from git history.
+        assert "dbeccb23" not in calldata
+        # ABI-decode the args (skip 4-byte selector) so we assert on typed
+        # values rather than zero-padded substrings, which can match offsets
+        # or lengths in any zero-heavy payload by accident.
+        collateral, parent, condition_id, index_sets = abi_decode(
+            ["address", "bytes32", "bytes32", "uint256[]"],
+            bytes.fromhex(calldata[8:]),
+        )
+        assert collateral.lower() == "0x1234567890123456789012345678901234567890"
+        assert parent == bytes(32)
+        assert (
+            condition_id.hex()
+            == "00000000000000000000000000000000000000000000000000000000aabbccdd"
+        )
+        # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
+        # functionally identical on-chain. Pin the encoded shape anyway as a
+        # regression check on what the agent puts on the wire.
+        assert list(index_sets) == [1]
 
-    def test_neg_risk_position_builds_batch_with_balance(self) -> None:
-        """Should build multisend batch for neg risk positions using on-chain balance."""
+    def test_neg_risk_position_builds_batch(self) -> None:
+        """Neg-risk redeem builds a 4-arg redeemPositions batch.
+
+        Why: under CLOB v2, the NegRiskCtfCollateralAdapter accepts the standard
+        4-arg redeemPositions(IERC20, bytes32, bytes32, uint256[]) overload. The
+        v1 2-arg overload reverts with GS013 for v2-resolved markets flagged
+        negativeRisk. The adapter ignores the uint256[] argument internally and
+        redeems both sides via balanceOf — passing [1 << outcomeIndex] is a
+        calldata-size choice, not a redemption-scope control.
+        """
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
 
         def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             """Mock build multisend data."""
@@ -980,7 +858,6 @@ class TestPrepareRedeemTx:
                 "outcome": "Yes",
                 "size": 100,
                 "negativeRisk": True,
-                "asset": "12345",
             }
         ]
 
@@ -1009,61 +886,35 @@ class TestPrepareRedeemTx:
 
         assert result == "0xfinalHash"
         assert len(behaviour.multisend_batches) == 1
-
-    def test_neg_risk_missing_asset_skips(self) -> None:
-        """Should skip neg risk positions missing asset field in prepare_redeem_tx."""
-        behaviour = _make_behaviour()
-        behaviour.multisend_batches = []
-
-        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock build multisend data."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock build multisend safe tx hash."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
-
-        positions = [
-            {
-                "conditionId": "0xaabbccdd",
-                "outcomeIndex": 0,
-                "outcome": "Yes",
-                "size": 100,
-                "negativeRisk": True,
-                # No asset key
-            }
-        ]
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
-                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
-                polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
-                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
-                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
-            )
-            with patch.object(
-                type(behaviour), "tx_hex", new_callable=PropertyMock
-            ) as mock_tx:
-                mock_tx.return_value = "0xfinalHash"
-
-                gen = behaviour._prepare_redeem_tx(positions)
-                _ = None
-                try:
-                    while True:
-                        next(gen)
-                except StopIteration as e:
-                    _ = e.value
-
-        # Skipped the position, no batches
-        assert len(behaviour.multisend_batches) == 0
+        # Routes to the neg-risk adapter, not the standard one.
+        assert (
+            behaviour.multisend_batches[0].to
+            == "0x7234567890123456789012345678901234567890"
+        )
+        # 4-arg redeemPositions selector + indexSets=[1 << outcomeIndex].
+        calldata = behaviour.multisend_batches[0].data.hex()
+        assert calldata.startswith("01b7037c")
+        # Defensive: the v1 2-arg selector must never appear anywhere in the
+        # encoded calldata, even alongside the v2 selector. Catches a
+        # regression that resurrects the broken overload from git history.
+        assert "dbeccb23" not in calldata
+        # ABI-decode the args (skip 4-byte selector) so we assert on typed
+        # values rather than zero-padded substrings, which can match offsets
+        # or lengths in any zero-heavy payload by accident.
+        collateral, parent, condition_id, index_sets = abi_decode(
+            ["address", "bytes32", "bytes32", "uint256[]"],
+            bytes.fromhex(calldata[8:]),
+        )
+        assert collateral.lower() == "0x1234567890123456789012345678901234567890"
+        assert parent == bytes(32)
+        assert (
+            condition_id.hex()
+            == "00000000000000000000000000000000000000000000000000000000aabbccdd"
+        )
+        # The adapters ignore the uint256[] argument so [1] vs [1, 2] is
+        # functionally identical on-chain. Pin the encoded shape anyway as a
+        # regression check on what the agent puts on the wire.
+        assert list(index_sets) == [1]
 
     def test_multisend_data_failure(self) -> None:
         """Should return empty string when _build_multisend_data fails."""
@@ -1155,62 +1006,6 @@ class TestPrepareRedeemTx:
 
         assert result == ""
 
-    def test_neg_risk_position_with_zero_balance(self) -> None:
-        """Should skip neg risk positions with zero on-chain balance."""
-        behaviour = _make_behaviour()
-        behaviour.multisend_batches = []
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(0)  # type: ignore[method-assign]
-
-        def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock build multisend data."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        def mock_build_multisend_safe_tx_hash() -> None:  # type: ignore[no-untyped-def, misc]
-            """Mock build multisend safe tx hash."""
-            yield  # type: ignore[no-untyped-def]
-            return True
-
-        behaviour._build_multisend_data = mock_build_multisend_data  # type: ignore[method-assign]
-        behaviour._build_multisend_safe_tx_hash = mock_build_multisend_safe_tx_hash  # type: ignore[method-assign]
-
-        positions = [
-            {
-                "conditionId": "0xaabbccdd",
-                "outcomeIndex": 0,
-                "outcome": "Yes",
-                "size": 100,
-                "negativeRisk": True,
-                "asset": "12345",
-            }
-        ]
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(
-                polymarket_collateral_address="0x1234567890123456789012345678901234567890",
-                polymarket_ctf_address="0x2234567890123456789012345678901234567890",
-                polymarket_neg_risk_adapter_address="0x3234567890123456789012345678901234567890",
-                polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
-                polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
-            )
-            with patch.object(
-                type(behaviour), "tx_hex", new_callable=PropertyMock
-            ) as mock_tx:
-                mock_tx.return_value = "0xfinalHash"
-
-                gen = behaviour._prepare_redeem_tx(positions)
-                _ = None
-                try:
-                    while True:
-                        next(gen)
-                except StopIteration as e:
-                    _ = e.value
-
-        # Should still complete, but no batch was added for zero balance
-        assert len(behaviour.multisend_batches) == 0
-
     def test_standard_position_targets_ctf_collateral_adapter(self) -> None:
         """Standard-market redeem must route through CtfCollateralAdapter, not raw CTF.
 
@@ -1275,7 +1070,6 @@ class TestPrepareRedeemTx:
         """
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
-        behaviour._get_token_balance_from_chain = lambda token_id: _return_gen(500)  # type: ignore[method-assign]
 
         def mock_build_multisend_data() -> None:  # type: ignore[no-untyped-def, misc]
             yield  # type: ignore[no-untyped-def]
@@ -1295,7 +1089,6 @@ class TestPrepareRedeemTx:
                 "outcome": "Yes",
                 "size": 100,
                 "negativeRisk": True,
-                "asset": "12345",
             }
         ]
         neg_risk_ctf_collateral_adapter = "0x7234567890123456789012345678901234567890"

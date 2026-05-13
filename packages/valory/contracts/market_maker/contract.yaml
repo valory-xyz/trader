@@ -9,11 +9,12 @@ fingerprint:
   README.md: bafybeiegnihrovfkk5big52pl4bo6evt5toqvvmft2jgnq6ofdbhfp7xwa
   __init__.py: bafybeicoucixii3fv5xlpk3zfewm4ys4okidcng54bhtjxvwup7g2jcjza
   build/FixedProductMarketMaker.json: bafybeigim7n3f67r5czfc5wp2m7cxzxwvnhxops3n5j2zlawenan7qrrtu
-  contract.py: bafybeichcklcimfntmwvcrlce6szyjqo5okgeir4zbwnla7g2lqcrycdti
+  contract.py: bafybeiaie672lym576evo7nf5itzqgbleaaalzkop3pmiv4fhuhmu4hzve
   tests/__init__.py: bafybeienqvttlvi32ohg47yg4ihylchoo4quti3bxfvb7ewmyy3tt5igsy
-  tests/test_contract.py: bafybeibdap5mqygtf7j6vas44vqmytxonoij4qfypqk5trw75mlpzmohwm
+  tests/test_contract.py: bafybeiazadbc46xnqn66moytmop5nzlhmruyvqfqn7rlwhd3l6re4wvu5m
 fingerprint_ignore_patterns: []
-contracts: []
+contracts:
+- valory/conditional_tokens:0.1.0:bafybeieub4do6tw6k6qjotkca46fk2j7f7al5fush73ai6atqz5e47k2by
 class_name: FixedProductMarketMakerContract
 contract_interface_paths:
   ethereum: build/FixedProductMarketMaker.json
@@ -23,9 +24,9 @@ dependencies:
   eth_typing: {}
   hexbytes: {}
   open-aea-ledger-ethereum:
-    version: ==2.2.1
+    version: ==2.2.3
   open-aea-test-autonomy:
-    version: ==0.21.19
+    version: ==0.21.20
   packaging: {}
   py-eth-sig-utils: {}
   requests:
