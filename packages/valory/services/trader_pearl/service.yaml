@@ -158,7 +158,7 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
       valid_mechs: ${VALID_MECHS:list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
-      valid_tools: ${VALID_TOOLS:list:["prediction-offline","superforcaster","factual_research"]}
+      valid_tools: ${VALID_TOOLS:list:["superforcaster","factual_research","prediction-request-reasoning-claude"]}
       penalize_mech_time_window: ${PENALIZE_MECH_TIME_WINDOW:int:1800}
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
