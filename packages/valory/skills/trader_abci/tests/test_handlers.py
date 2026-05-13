@@ -1179,7 +1179,7 @@ class TestGetAdjustedFundsStatus:
         handler.context.logger.warning.assert_not_called()
 
     def test_gnosis_skips_adjustment_when_wxdai_balance_unknown(self) -> None:
-        """Skip wxDAI->xDAI consolidation when wxDAI balance is unknown; leave native deficit untouched."""
+        """Skip wxDAI->xDAI consolidation when wxDAI balance is unknown; clear native deficit."""
         handler = self._setup_handler(is_polymarket=False)
 
         fund_status = self._make_funds_status(
@@ -1202,7 +1202,7 @@ class TestGetAdjustedFundsStatus:
         native_token_in = (
             fund_status["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
         )
-        native_token_in.deficit = None
+        native_token_in.deficit = 990
 
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
@@ -1259,7 +1259,7 @@ class TestGetAdjustedFundsStatus:
         handler.context.logger.warning.assert_called()
 
     def test_polygon_skips_adjustment_when_usdc_balance_unknown(self) -> None:
-        """USDC balance unknown on Polygon -> skip USDC->POL adjustment, no overwrite."""
+        """USDC balance unknown on Polygon -> skip USDC->POL adjustment, clear native deficit."""
         handler = self._setup_handler(is_polymarket=True)
 
         fund_status = self._make_funds_status(
@@ -1283,7 +1283,7 @@ class TestGetAdjustedFundsStatus:
             .accounts["0xSafe"]
             .tokens[POLYGON_NATIVE_TOKEN_ADDRESS]
         )
-        native_token_in.deficit = None
+        native_token_in.deficit = 900
 
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
@@ -1309,7 +1309,7 @@ class TestGetAdjustedFundsStatus:
         handler.context.logger.warning.assert_called()
 
     def test_merge_skips_when_usdc_e_balance_unknown(self) -> None:
-        """USDC.e balance None -> no merge, USDC.e dropped, pUSD untouched."""
+        """USDC.e balance None -> no merge, USDC.e dropped, pUSD deficit cleared."""
         handler = self._setup_handler(is_polymarket=True)
         fund_status = self._make_polymarket_funds_status_with_pusd(
             usdc_e_balance=0,
@@ -1326,7 +1326,7 @@ class TestGetAdjustedFundsStatus:
         handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
 
         assert pusd.balance == 40_000_000
-        assert pusd.deficit == 25_000_000
+        assert pusd.deficit is None
         assert POLYGON_USDC_E_ADDRESS not in safe_balances.tokens
         handler.context.logger.warning.assert_called()
 
