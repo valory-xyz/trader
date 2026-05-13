@@ -30,7 +30,7 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
-- valory/chatui_abci:0.1.0:bafybeigg62gb2qfks7wb6chbawcixt4ikjxwmssrkkks37n5vy4istsufa
+- valory/chatui_abci:0.1.0:bafybeiapd5374rqevr6eiwqdcnl446edbuzu3qmfkdblb3bavptcn2uwxe
 - valory/mech_interact_abci:0.1.0:bafybeihds6vqk3gsevtsdsowz56jdnbbhc6gnswwd25opm6rrj32dhsmou
 - valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
 behaviours:

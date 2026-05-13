@@ -33,6 +33,7 @@ from packages.valory.connections.polymarket_client.connection import (
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
     PolymarketClientConnection,
+    RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
     SrrDialogues,
     _validate_builder_code,
@@ -1025,6 +1026,50 @@ class TestRequestWithRetries:
             RETRY_DELAY * 2,
             RETRY_DELAY * 4,
         ]
+
+    def test_backoff_uses_rate_limit_base_on_429(self) -> None:
+        """A 429 response triggers a longer base delay to respect rate limits.
+
+        The retry loop catches ``HTTPError`` from ``raise_for_status()`` via
+        the broad ``RequestException`` clause, so 429s share the same backoff
+        path as transient errors. Without a status-aware base, dropping the
+        transient base to 1s would hammer a rate-limited endpoint at
+        ~7s cumulative; this asserts the rate-limit case still uses the
+        longer ``RATE_LIMIT_RETRY_DELAY`` base.
+        """
+        conn = _make_connection()
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        http_error = requests.exceptions.HTTPError("429 Too Many Requests")
+        http_error.response = mock_response
+        mock_response.raise_for_status.side_effect = http_error
+
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch("time.sleep") as mock_sleep,
+        ):
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [
+            RATE_LIMIT_RETRY_DELAY * 1,
+            RATE_LIMIT_RETRY_DELAY * 2,
+        ]
+
+    def test_backoff_uses_transient_base_on_connection_error(self) -> None:
+        """Connection-level errors (no HTTP response) use the short base delay.
+
+        Counterpart to the 429 case: a transient ``ConnectionError`` should
+        not pay the rate-limit penalty since there is no rate-limited server
+        to back off from.
+        """
+        conn = _make_connection()
+        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+            mock_get.side_effect = requests.exceptions.ConnectionError("dns")
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [RETRY_DELAY * 1, RETRY_DELAY * 2]
 
     def test_backoff_total_budget_is_bounded(self) -> None:
         """Total blocking sleep across all retries must stay under 10 seconds.
