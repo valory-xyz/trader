@@ -910,6 +910,35 @@ class TestHandleGetAgentPerformance:
             assert response["metrics"] == {}
             assert response["stats"] == {}
 
+    def test_response_includes_last_updated_as_iso_string(self) -> None:
+        """Surfaces summary.timestamp as ISO last_updated so UI can show staleness."""
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
+        summary = self._make_performance_summary()
+        summary.timestamp = 1735776000  # 2025-01-02T00:00:00Z
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
+            response = mock_ok.call_args[0][2]
+            assert response["last_updated"] == "2025-01-02T00:00:00Z"
+
+    def test_response_last_updated_is_none_when_timestamp_missing(self) -> None:
+        """Key is always present; value is None when summary.timestamp is None."""
+        http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
+        summary = self._make_performance_summary()
+        summary.timestamp = None
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_agent_performance(http_msg, self.http_dialogue)
+            response = mock_ok.call_args[0][2]
+            assert "last_updated" in response
+            assert response["last_updated"] is None
+
     def test_exception_returns_internal_error(self) -> None:
         """Test exception in handler returns 500."""
         http_msg = _make_http_msg(url="http://localhost:8080/api/v1/agent/performance")
@@ -1271,6 +1300,50 @@ class TestHandleGetPredictions:
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
 
+    def test_stored_history_response_includes_last_updated_iso(self) -> None:
+        """Stored-history response surfaces history.last_updated as ISO last_updated."""
+        http_msg = _make_http_msg(
+            url="http://localhost:8080/api/v1/agent/prediction-history"
+        )
+        history = PredictionHistory(
+            total_predictions=1,
+            stored_count=1,
+            items=[{"id": "1", "status": "won"}],
+            last_updated=1735776000,  # 2025-01-02T00:00:00Z
+        )
+        summary = AgentPerformanceSummary(prediction_history=history)
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_predictions(http_msg, self.http_dialogue)
+            response = mock_ok.call_args[0][2]
+            assert response["last_updated"] == "2025-01-02T00:00:00Z"
+
+    def test_subgraph_fallback_response_last_updated_is_none(self) -> None:
+        """Subgraph fallback has no cached generation timestamp; last_updated is None."""
+        http_msg = _make_http_msg(
+            url="http://localhost:8080/api/v1/agent/prediction-history"
+        )
+        summary = AgentPerformanceSummary(prediction_history=None)
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        mock_result = {"total_predictions": 0, "items": []}
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockFetcher,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
+            MockFetcher.return_value.fetch_predictions.return_value = mock_result
+            self.handler._handle_get_predictions(http_msg, self.http_dialogue)
+            response = mock_ok.call_args[0][2]
+            assert "last_updated" in response
+            assert response["last_updated"] is None
+
     def test_exception_returns_internal_error(self) -> None:
         """Test exception returns 500."""
         http_msg = _make_http_msg(
@@ -1531,6 +1604,23 @@ class TestHandleGetProfitOverTime:
             response = mock_ok.call_args[0][2]
             assert response["agent_id"] == "0xabc123"
             assert response["currency"] == "USD"
+
+    def test_response_includes_last_updated_iso(self) -> None:
+        """Surfaces profit_over_time.last_updated as ISO last_updated for the UI."""
+        http_msg = _make_http_msg(
+            url="http://localhost:8080/api/v1/agent/profit-over-time"
+        )
+        summary = self._make_profit_summary()
+        assert summary.profit_over_time is not None
+        summary.profit_over_time.last_updated = 1735776000  # 2025-01-02T00:00:00Z
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
+            response = mock_ok.call_args[0][2]
+            assert response["last_updated"] == "2025-01-02T00:00:00Z"
 
     def test_exception_returns_internal_error(self) -> None:
         """Test exception returns 500."""
