@@ -1015,7 +1015,12 @@ class TestRequestWithRetries:
         the third sleep distinguishes exponential (4x) from linear (3x).
         """
         conn = _make_connection()
-        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+        with (
+            patch("requests.get") as mock_get,
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
             mock_get.side_effect = requests.exceptions.RequestException("boom")
             conn._request_with_retries("https://example.com/api", max_retries=4)
 
@@ -1046,7 +1051,9 @@ class TestRequestWithRetries:
 
         with (
             patch("requests.get", return_value=mock_response),
-            patch("time.sleep") as mock_sleep,
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
         ):
             conn._request_with_retries("https://example.com/api", max_retries=3)
 
@@ -1064,7 +1071,12 @@ class TestRequestWithRetries:
         to back off from.
         """
         conn = _make_connection()
-        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+        with (
+            patch("requests.get") as mock_get,
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
             mock_get.side_effect = requests.exceptions.ConnectionError("dns")
             conn._request_with_retries("https://example.com/api", max_retries=3)
 
@@ -1079,7 +1091,12 @@ class TestRequestWithRetries:
         fits well within any realistic round timeout.
         """
         conn = _make_connection()
-        with patch("requests.get") as mock_get, patch("time.sleep") as mock_sleep:
+        with (
+            patch("requests.get") as mock_get,
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
             mock_get.side_effect = requests.exceptions.RequestException("boom")
             conn._request_with_retries("https://example.com/api", max_retries=3)
 

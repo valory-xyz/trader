@@ -1553,9 +1553,14 @@ class TestHandleGetProfitOverTime:
             response = mock_ok.call_args[0][2]
             assert response["points"] == []
             assert response["window"] == "lifetime"
+            assert response["last_updated"] is None
 
     def test_profit_data_with_no_data_points_returns_empty(self) -> None:
-        """Test profit data with empty data_points returns empty points."""
+        """Test profit data with empty data_points returns empty points.
+
+        ``last_updated=0`` is the model's sentinel for "never set" — the helper
+        must collapse it to ``None`` so the UI doesn't render 1970-01-01.
+        """
         http_msg = _make_http_msg(
             url="http://localhost:8080/api/v1/agent/profit-over-time"
         )
@@ -1569,6 +1574,7 @@ class TestHandleGetProfitOverTime:
             self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
             response = mock_ok.call_args[0][2]
             assert response["points"] == []
+            assert response["last_updated"] is None
 
     def test_response_format_with_data_points(self) -> None:
         """Test response format includes timestamp and cumulative_profit."""

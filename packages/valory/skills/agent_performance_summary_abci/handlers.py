@@ -421,8 +421,17 @@ class HttpHandler(BaseHttpHandler):
 
     @staticmethod
     def _format_last_updated(timestamp: Optional[int]) -> Optional[str]:
-        """Format a UTC epoch timestamp as ISO 8601, or pass through None."""
-        if timestamp is None:
+        """Format a UTC epoch timestamp as ISO 8601, or pass through None.
+
+        Treats ``<= 0`` as a "never set" sentinel — ``ProfitOverTimeData.last_updated``
+        is a non-Optional ``int`` with no default, so callers commonly initialize
+        it to ``0``. Rendering that as ``1970-01-01T00:00:00Z`` would mislead the
+        UI's staleness indicator.
+
+        :param timestamp: UTC epoch seconds, or ``None``/``<= 0`` for "no data".
+        :return: ISO 8601 string with trailing ``Z``, or ``None``.
+        """
+        if timestamp is None or timestamp <= 0:
             return None
         return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
             ISO_TIMESTAMP_FORMAT
