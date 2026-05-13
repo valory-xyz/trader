@@ -212,7 +212,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        res = set(res) & self.params.valid_tools
+        res = {str(tool).lower() for tool in res} & self.params.valid_tools
         self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
 
         if len(res) == 0:
@@ -291,8 +291,8 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
-    def _remove_irrelevant_tools(self) -> None:
-        """Remove irrelevant tools from the accuracy store."""
+    def _prune_accuracy_store_to_current_tools(self) -> None:
+        """Drop accuracy_store entries that are no longer in self.mech_tools."""
         accuracy_store = self.policy.accuracy_store
         for tool in accuracy_store.copy():
             if tool not in self.mech_tools:
@@ -403,7 +403,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _update_policy_tools(self) -> None:
         """Update the policy's tools and their accuracy with the latest information available if `with_global_info`."""
         self.context.logger.info("Updating information of the policy...")
-        self._remove_irrelevant_tools()
+        self._prune_accuracy_store_to_current_tools()
         global_info = self._parse_global_info()
         self._update_accuracy_store(*global_info)
         self.policy.update_weighted_accuracy()

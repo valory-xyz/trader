@@ -36,7 +36,7 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeihauyieaox7d77wz3ofjflvhicsnhzitvcgnysoral5l4m5gluglm
   behaviours/sampling.py: bafybeig3w6bmlivit3sx5adiflq6bclzipfugxzmjn7v7shdq4l7a2q2gu
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeigv2zkimz4srm2hiud3gwc4rlfz2nfcpxdtni4yzpz34pckoedyva
+  behaviours/storage_manager.py: bafybeid7r45kniqbcbtw57kapegfujzjyqd55pgnbylzaqgyanmbqjeo4a
   behaviours/tool_selection.py: bafybeidkhmz6x32kuz5gkwxuqqou6zq4rgcyc34vg7awhe2bud5s3sc3am
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeiepnwc2poubqk5tbafcd4id7ly2ngf6htgzglql64y6loau65o3pm
@@ -100,7 +100,7 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
   tests/behaviours/test_sampling.py: bafybeihfb3eke7hmhagkv5tcvpvgj4mljatllnjauiae5hfaaoxlffqhfy
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeibh47wpmkgzkxdhpkhushnt7usxvm5w4p7z5r754vidlhgij4r2lm
+  tests/behaviours/test_storage_manager.py: bafybeifq236dedjc6hrgfrztq3iern55jjjvdvknffemdrb65punwa3b6i
   tests/behaviours/test_tool_selection.py: bafybeig2ynzrtml73kmv4hyvbrmvptrket2pji45pcy44uzkpkjviscwcq
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
