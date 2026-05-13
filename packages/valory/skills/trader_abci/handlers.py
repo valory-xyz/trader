@@ -33,6 +33,7 @@ import requests
 from aea_ledger_ethereum.ethereum import EthereumCrypto
 from eth_account import Account
 from web3 import Web3
+from web3.exceptions import ContractLogicError
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -123,6 +124,8 @@ TRADING_STRATEGY_EXPLANATION = {
 COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
 FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
+
+X402_SWAP_MAX_ROUTE_RETRIES = 3
 
 
 class HttpHandler(BaseHttpHandler):
@@ -795,6 +798,7 @@ class HttpHandler(BaseHttpHandler):
         from_amount: Optional[str] = None,
         to_amount: Optional[str] = None,
         timeout: int = 30,
+        deny_exchanges: Optional[List[str]] = None,
     ) -> Optional[Dict]:
         """
         Get LiFi quote for token swap.
@@ -807,6 +811,7 @@ class HttpHandler(BaseHttpHandler):
         :param from_amount: Amount to swap from (for standard quote)
         :param to_amount: Desired amount to receive (for toAmount quote)
         :param timeout: Request timeout in seconds
+        :param deny_exchanges: LiFi tool names to exclude from routing
         :return: LiFi quote response or None if failed
         """
         try:
@@ -827,6 +832,8 @@ class HttpHandler(BaseHttpHandler):
                 "slippage": slippage,
                 "integrator": "valory",
             }
+            if deny_exchanges:
+                params["denyExchanges"] = ",".join(deny_exchanges)
 
             # Add amount parameter based on what's provided
             if to_amount is not None:
@@ -927,15 +934,24 @@ class HttpHandler(BaseHttpHandler):
         tx_request: Dict,
         eoa_address: str,
         chain: str,
-    ) -> Optional[int]:
-        """Estimate gas for a transaction"""
+    ) -> Tuple[Optional[int], bool]:
+        """Estimate gas for a transaction.
+
+        :param tx_request: LiFi `transactionRequest` dict with `to`, `data`,
+            and `value` keys.
+        :param eoa_address: EOA that would sign and send the transaction.
+        :param chain: Chain name selecting the RPC endpoint.
+        :return: (gas, route_revert). route_revert is True only when the
+            failure was a contract-side revert, in which case retrying the
+            LiFi quote with the offending route denied may help.
+        """
         try:
             w3 = self._get_web3_instance(chain)
             if not w3:
                 self.context.logger.error(
                     "Failed to get Web3 instance for gas estimation"
                 )
-                return None
+                return None, False
 
             tx_value = (
                 int(tx_request["value"], 16)
@@ -957,11 +973,14 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.info(
                 f"Estimated gas: {estimated_gas}, with 20% buffer: {tx_gas}"
             )
-            return tx_gas
+            return tx_gas, False
 
+        except ContractLogicError as e:
+            self.context.logger.error(f"Route revert in gas estimation: {e}")
+            return None, True
         except Exception as e:
             self.context.logger.error(f"Error in gas estimation: {str(e)}")
-            return None
+            return None, False
 
     def _submit_x402_swap_if_idle(self) -> None:
         """Submit x402 swap task only if no swap is currently in progress."""
@@ -1017,23 +1036,63 @@ class HttpHandler(BaseHttpHandler):
             )
 
             top_up_usdc_amount = str(top_up)
-            quote = self._get_lifi_quote(
-                from_token=chain_config["native_token_address"],
-                to_token=usdc_address,
-                from_address=eoa_address,
-                to_address=eoa_address,
-                chain_config=chain_config,
-                to_amount=top_up_usdc_amount,
-            )
-            if not quote:
-                self.context.logger.error("Failed to get LiFi quote")
+            denied: List[str] = []
+            tx_request: Optional[Dict] = None
+            tx_gas: Optional[int] = None
+
+            for attempt in range(X402_SWAP_MAX_ROUTE_RETRIES):
+                quote = self._get_lifi_quote(
+                    from_token=chain_config["native_token_address"],
+                    to_token=usdc_address,
+                    from_address=eoa_address,
+                    to_address=eoa_address,
+                    chain_config=chain_config,
+                    to_amount=top_up_usdc_amount,
+                    deny_exchanges=denied or None,
+                )
+                if not quote:
+                    self.context.logger.error("Failed to get LiFi quote")
+                    return False
+
+                tx_request = quote.get("transactionRequest")
+                if not tx_request:
+                    self.context.logger.error("No transactionRequest in quote")
+                    return False
+
+                tx_gas, route_revert = self._estimate_gas(
+                    tx_request, eoa_address, chain
+                )
+                if tx_gas is not None:
+                    break
+
+                if not route_revert:
+                    self.context.logger.error("Failed to estimate gas for transaction")
+                    return False
+
+                tool = quote.get("tool")
+                if not tool or tool in denied:
+                    self.context.logger.error(
+                        "LiFi returned an unusable route; cannot retry "
+                        f"(tool={tool!r}, denied={denied})"
+                    )
+                    return False
+
+                self.context.logger.warning(
+                    f"LiFi route via '{tool}' reverted on gas estimation; "
+                    f"retrying with denyExchanges={denied + [tool]} "
+                    f"(attempt {attempt + 1}/{X402_SWAP_MAX_ROUTE_RETRIES})"
+                )
+                denied.append(tool)
+            else:
+                self.context.logger.error(
+                    f"Exhausted LiFi route retries ({X402_SWAP_MAX_ROUTE_RETRIES}); "
+                    f"denied={denied}"
+                )
                 return False
 
-            tx_request: Optional[Dict] = quote.get("transactionRequest")
-            if not tx_request:
-                self.context.logger.error("No transactionRequest in quote")
-                return False
-
+            # tx_gas, tx_request now belong to a route that passed estimation.
+            # Fetch nonce/gas-price only after a working route is found so the
+            # nonce window stays small even if the loop ran multiple LiFi calls.
             nonce, gas_price = self._get_nonce_and_gas_web3(eoa_address, chain)
             if nonce is None or gas_price is None:
                 self.context.logger.error("Failed to get nonce or gas price")
@@ -1044,10 +1103,6 @@ class HttpHandler(BaseHttpHandler):
                 if isinstance(tx_request["value"], str)
                 else tx_request["value"]
             )
-            tx_gas = self._estimate_gas(tx_request, eoa_address, chain)
-            if tx_gas is None:
-                self.context.logger.error("Failed to estimate gas for transaction")
-                return False
 
             tx_data = {
                 "to": Web3.to_checksum_address(tx_request["to"]),
