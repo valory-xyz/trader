@@ -45,6 +45,9 @@ from packages.valory.skills.market_manager_abci.graph_tooling.queries.realitio i
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
     trades as trades_query,
 )
+from packages.valory.skills.market_manager_abci.graph_tooling.queries.trades import (
+    withdrawal_creator_fpmms,
+)
 from packages.valory.skills.market_manager_abci.models import (
     MarketManagerParams,
     SharedState,
@@ -388,6 +391,63 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 return all_trades
             all_trades.extend(trades_chunk)
 
+    def fetch_withdrawal_creator_fpmms(
+        self, user: str
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Fetch every FPMM the ``user`` has traded on, with resolution metadata.
+
+        Used by the Omen withdrawal sweep to join CT ``user_positions``
+        (current ERC1155 balance) against omen FPMM metadata
+        (``answerFinalizedTimestamp``, ``isPendingArbitration``,
+        ``condition.id``) — see ``get_withdrawable_positions``.
+
+        :param user: the trader safe address (lowercased internally).
+        :yield: framework yields for each paginated HTTP request.
+        :return: a list of ``{id, fpmm: {...}}`` rows from the omen
+            ``fpmmTrades`` subgraph; on ``None`` from the response handler
+            the caller treats it as a fetch failure.
+        """
+        self._fetch_status = FetchStatus.IN_PROGRESS
+        current_subgraph = self.context.trades_subgraph
+
+        id_gt = ""
+        all_rows: List[Dict[str, Any]] = []
+        while True:
+            query = withdrawal_creator_fpmms.substitute(
+                creator=user.lower(),
+                first=QUERY_BATCH_SIZE,
+                id_gt=id_gt,
+            )
+            res_raw = yield from self.get_http_response(
+                content=to_content(query),
+                **current_subgraph.get_spec(),
+            )
+            res = current_subgraph.process_response(res_raw)
+            rows = yield from self._handle_response(
+                current_subgraph,
+                res,
+                res_context="withdrawal_creator_fpmms",
+            )
+            if rows is None:
+                # Check the post-handler result, not the pre-handler
+                # input — _handle_response returns None iff res was None,
+                # but reading the check on `rows` makes intent obvious:
+                # did we get usable data back?
+                self.context.logger.error("Failed to process withdrawal creator FPMMs.")
+                # _handle_response only flips to FAIL when retries are
+                # exhausted; otherwise status stays IN_PROGRESS. Set it
+                # explicitly so any caller gating on _fetch_status sees
+                # a terminal state.
+                self._fetch_status = FetchStatus.FAIL
+                return None
+
+            rows = cast(List[Dict[str, Any]], rows)
+            if len(rows) == 0:
+                return all_rows
+
+            all_rows.extend(rows)
+            id_gt = rows[-1]["id"]
+
     def fetch_user_positions(
         self, user: str
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
@@ -416,10 +476,25 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 res,
                 res_context="positions",
             )
-            if res is None:
-                # something went wrong
+            if positions is None:
+                # Check the post-handler result, not the pre-handler
+                # input — _handle_response returns None iff res was None,
+                # but reading the check on `positions` makes intent
+                # obvious: did we get usable data back?
+                #
+                # Subgraph error mid-pagination: returning the partial
+                # accumulator would silently strand un-fetched pages —
+                # the omen withdrawal sweep would sell only what it saw
+                # and skip the rest. Return ``None`` so callers (and
+                # ``_with_top_level_retry`` wrappers) can surface the
+                # failure.
                 self.context.logger.error("Failed to process all positions.")
-                return all_positions
+                # _handle_response only flips to FAIL when retries are
+                # exhausted; otherwise status stays IN_PROGRESS. Set it
+                # explicitly so any caller gating on _fetch_status sees
+                # a terminal state.
+                self._fetch_status = FetchStatus.FAIL
+                return None
 
             positions = cast(List[Dict[str, Any]], positions)
             if len(positions) == 0:

@@ -36,7 +36,9 @@ class TestRealitioProxyContract:
         """Test building resolve transaction with all parameters."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.encode_abi.return_value = b"\x01\x02\x03"
+        # ``encode_abi`` returns a ``0x``-prefixed hex string; the contract
+        # method strips the prefix and converts to bytes for multisend.
+        mock_contract_instance.encode_abi.return_value = "0x010203"
 
         question_id = b"\x00" * 32
         template_id = 2

@@ -67,6 +67,7 @@ alphabet_in:
 - WITHDRAWAL_DONE
 - WITHDRAWAL_ROUND_TIMEOUT
 - WITHDRAW_OMEN
+- WITHDRAW_OMEN_DONE
 - WITHDRAW_POLYMARKET
 - WRAP_COLLATERAL_DONE
 default_start_state: RegistrationStartupRound
@@ -112,6 +113,7 @@ states:
 - PolymarketWithdrawRound
 - PolymarketWrapCollateralRound
 - PostBetUpdateRound
+- PostOmenWithdrawRound
 - PostTxSettlementRound
 - PreTxSettlementRound
 - RandomnessRound
@@ -224,7 +226,7 @@ transition_func:
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
     (MechInformationRound, DONE): CheckBenchmarkingModeRound
-    (MechInformationRound, NONE): MechVersionDetectionRound
+    (MechInformationRound, NONE): ChatuiLoadRound
     (MechInformationRound, NO_MAJORITY): MechInformationRound
     (MechInformationRound, ROUND_TIMEOUT): MechInformationRound
     (MechPurchaseSubscriptionRound, DONE): PreTxSettlementRound
@@ -244,8 +246,11 @@ transition_func:
     (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
     (MechVersionDetectionRound, V1): CheckBenchmarkingModeRound
     (MechVersionDetectionRound, V2): MechInformationRound
+    (OmenWithdrawRound, DONE): ResetAndPauseRound
+    (OmenWithdrawRound, MOCK_TX): ResetAndPauseRound
     (OmenWithdrawRound, NONE): OmenWithdrawRound
     (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
+    (OmenWithdrawRound, PREPARE_TX): PreTxSettlementRound
     (OmenWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
     (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): CallCheckpointRound
@@ -299,6 +304,10 @@ transition_func:
     (PostBetUpdateRound, NONE): PostBetUpdateRound
     (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
     (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
+    (PostOmenWithdrawRound, NONE): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, WITHDRAWAL_DONE): ResetAndPauseRound
+    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): PostBetUpdateRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
     (PostTxSettlementRound, REDEEMING_DONE): CheckStopTradingRound
@@ -309,6 +318,7 @@ transition_func:
     (PostTxSettlementRound, SUBSCRIPTION_DONE): RandomnessRound
     (PostTxSettlementRound, SWAP_DONE): DecisionRequestRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+    (PostTxSettlementRound, WITHDRAW_OMEN_DONE): PostOmenWithdrawRound
     (PostTxSettlementRound, WRAP_COLLATERAL_DONE): FetchMarketsRouterRound
     (PreTxSettlementRound, CHECKS_PASSED): RandomnessTransactionSubmissionRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound

@@ -610,6 +610,9 @@ def _build_decision_maker_params_kwargs() -> dict:
         "review_period_seconds": 3600,
         "withdrawal_max_fak_attempts": 3,
         "withdrawal_fak_backoff_s": [10, 30],
+        "withdrawal_slippage": 0.01,
+        "withdrawal_return_buffer": 0.05,
+        "dust_epsilon_wxdai": 10**16,
         "polymarket_builder_program_enabled": False,
         "polymarket_collateral_address": "0xpusd",
         "polymarket_usdc_e_address": "0xusdce",
@@ -688,6 +691,9 @@ class TestDecisionMakerParams:
         assert params.review_period_seconds == 3600
         assert params.withdrawal_max_fak_attempts == 3
         assert params.withdrawal_fak_backoff_s == [10, 30]
+        assert params.withdrawal_slippage == 0.01
+        assert params.withdrawal_return_buffer == 0.05
+        assert params.dust_epsilon_wxdai == 10**16
         assert params.min_confidence_for_selling == 0.5
         assert params.polymarket_builder_program_enabled is False
         assert params.polymarket_collateral_address == "0xpusd"

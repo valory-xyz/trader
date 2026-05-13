@@ -79,7 +79,7 @@ check_dependencies_extra_excludes = [
     "urllib3",
 ]
 upstream_pins = [
-    "valory-xyz/mech-interact@v0.30.0",
+    "valory-xyz/mech-interact@v0.31.0",
     "valory-xyz/genai@v7.1.1",
     "valory-xyz/kv-store@v0.5.0",
     "valory-xyz/funds-manager@v3.0.1",

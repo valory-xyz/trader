@@ -44,6 +44,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     BetStatus,
     PredictionsFetcher,
+    compute_funds_locked_from_bets,
     now_ts,
     parse_current_answer,
     parse_timestamp,
@@ -759,8 +760,21 @@ class FetchPerformanceSummaryBehaviour(
             total_payout - total_traded_settled - total_fees_settled
         ) / token_divisor - (settled_mech_costs / WEI_IN_ETH)
 
-        # Calculate locked funds
-        funds_locked_in_markets = (total_traded - total_traded_settled) / token_divisor
+        # Calculate locked funds. Polymarket keeps its pre-existing
+        # cash-flow-net formula (set up by #943). Omenstrat now uses a
+        # per-position formula that survives sell-at-loss: sum the
+        # FIFO-aware ``remaining_cost`` of every non-resolved-losing buy
+        # in the agent's history. Spec §7.2 / §10.13.1 — fixes the
+        # phantom-locked-funds bug where a sell-at-loss leaves cost
+        # basis on the balance sheet until Realitio finalisation.
+        if self.params.is_running_on_polymarket:
+            funds_locked_in_markets = (
+                total_traded - total_traded_settled
+            ) / token_divisor
+        else:
+            funds_locked_in_markets = yield from self._compute_omen_funds_locked(
+                trader_agent, safe_address
+            )
 
         # Get available funds
         available_funds = yield from self._fetch_available_funds()
@@ -794,6 +808,34 @@ class FetchPerformanceSummaryBehaviour(
             open_mech_request_count=open_mech_requests,
             placed_mech_request_count=placed_mech_requests,
             unplaced_mech_request_count=unplaced_mech_requests,
+        )
+
+    def _compute_omen_funds_locked(
+        self, trader_agent: dict, safe_address: str
+    ) -> Generator[None, None, float]:
+        """Per-position funds-locked-in-markets for Omenstrat.
+
+        Fetches the CT-balance "held" set first so already-redeemed
+        positions drop out of the trade-history-FIFO sum. Shared with
+        the post-withdrawal snapshot hook in
+        ``decision_maker_abci.PostOmenWithdrawBehaviour`` so both
+        writers produce the same scalar.
+
+        :param trader_agent: the dict returned by
+            ``_fetch_trader_agent_performance`` for Omenstrat.
+        :param safe_address: the agent's safe address (used as the CT
+            subgraph ``userPositions`` key).
+        :yield: framework yields for the CT subgraph fetch.
+        :return: wxDAI total of remaining cost on currently-held,
+            non-LOSING positions.
+        """
+        bets = trader_agent.get("bets") or []
+        held_keys = yield from self._fetch_ct_held_position_keys(safe_address)
+        return compute_funds_locked_from_bets(
+            bets,
+            self.context,
+            self.context.logger,
+            held_keys=held_keys,
         )
 
     def _get_pol_to_usdc_rate(

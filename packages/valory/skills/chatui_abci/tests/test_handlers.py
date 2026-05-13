@@ -36,6 +36,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     HttpHandler,
     LLM_MESSAGE_FIELD,
     PREVIOUS_TRADING_TYPE_FIELD,
+    SELECTED_MECHS_FIELD,
     SrrHandler,
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
@@ -90,6 +91,7 @@ class _TestableHttpHandler(HttpHandler):
 def _make_handler(
     available_tools: set = AVAILABLE_TOOLS,
     current_config: Optional[ChatuiConfig] = None,
+    available_mechs: Optional[set] = None,
 ) -> _TestableHttpHandler:
     """Return a _TestableHttpHandler wired with minimal mocks."""
     handler = object.__new__(_TestableHttpHandler)
@@ -108,11 +110,13 @@ def _make_handler(
 
     sync_data = MagicMock()
     sync_data.available_mech_tools = available_tools
+    sync_data.available_valid_mechs = available_mechs or set()
     handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     # Patch store helpers — no filesystem side-effects.
     handler._store_trading_strategy = MagicMock()  # type: ignore[method-assign]
     handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+    handler._store_selected_mechs = MagicMock()  # type: ignore[method-assign]
     handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
 
     return handler
@@ -233,6 +237,101 @@ class TestAllowedTools:
         params, issues = handler._process_updated_agent_config({})
         assert ALLOWED_TOOLS_FIELD not in params
         handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Selected mechs
+# ---------------------------------------------------------------------------
+
+
+_AVAILABLE_MECHS = {
+    "0x601024e27f1c67b28209e24272ced8a31fc8151f",
+    "0xc05e7412439bd7e91730a6880e18d5d5873f632c",
+}
+
+
+class TestSelectedMechs:
+    """Tests for selected_mechs field processing."""
+
+    def test_valid_list_stored_lowercase(self) -> None:
+        """Mixed-case input is normalized to lowercase before storage."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {"selected_mechs": ["0X601024E27F1C67B28209E24272CED8A31FC8151F"]}
+        )
+        assert issues == []
+        expected = ["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+        assert params[SELECTED_MECHS_FIELD] == expected
+        handler._store_selected_mechs.assert_called_once_with(expected)  # type: ignore[attr-defined]
+
+    def test_unknown_mechs_dropped_and_issue_added(self) -> None:
+        """Unknown mechs are dropped; the valid ones are still stored."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {
+                "selected_mechs": [
+                    "0x601024e27f1c67b28209e24272ced8a31fc8151f",
+                    "0xdeadbeef",
+                ]
+            }
+        )
+        assert len(issues) == 1
+        assert "0xdeadbeef" in issues[0]
+        handler._store_selected_mechs.assert_called_once_with(  # type: ignore[attr-defined]
+            ["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+        )
+
+    def test_all_unknown_adds_issue_no_store(self) -> None:
+        """If every mech is unknown, the store is not touched."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config(
+            {"selected_mechs": ["0xnotreal1", "0xnotreal2"]}
+        )
+        assert len(issues) == 1
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert SELECTED_MECHS_FIELD not in params
+
+    def test_empty_list_treated_as_clear(self) -> None:
+        """Empty list explicitly clears the pin to None."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config({"selected_mechs": []})
+        assert issues == []
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_remove_clears_pin(self) -> None:
+        """`removed_config_fields` entry clears the pin to None."""
+        handler = _make_handler(
+            available_mechs=_AVAILABLE_MECHS,
+            current_config=ChatuiConfig(
+                selected_mechs=["0x601024e27f1c67b28209e24272ced8a31fc8151f"]
+            ),
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.SELECTED_MECHS.value]}
+        )
+        assert issues == []
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_remove_takes_precedence_over_set(self) -> None:
+        """Remove must win when both a list and a remove are present."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, _issues = handler._process_updated_agent_config(
+            {
+                "selected_mechs": ["0x601024e27f1c67b28209e24272ced8a31fc8151f"],
+                "removed_config_fields": [FieldsThatCanBeRemoved.SELECTED_MECHS.value],
+            }
+        )
+        assert params[SELECTED_MECHS_FIELD] is None
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_absent_field_is_noop(self) -> None:
+        """Missing selected_mechs field must be a no-op."""
+        handler = _make_handler(available_mechs=_AVAILABLE_MECHS)
+        params, issues = handler._process_updated_agent_config({})
+        assert SELECTED_MECHS_FIELD not in params
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -1463,44 +1562,30 @@ class TestHandlePostWithdrawalPolymarket:
 
 
 class TestHandlePostWithdrawalOmenstrat:
-    """Tests for POST /api/v1/withdrawal on Omenstrat (D27 — 501 reject)."""
+    """Tests for POST /api/v1/withdrawal on Omenstrat.
 
-    def test_post_on_omenstrat_returns_501(self) -> None:
-        """POST on Omenstrat must return 501 Not Implemented."""
-        from http import HTTPStatus
+    The 501 reject from #942 (D27) was removed once the real Omen sweep
+    behaviour landed — POST on Omenstrat now arms the same way Polystrat
+    does. These tests prove venue parity at the HTTP boundary.
+    """
 
+    def test_post_on_omenstrat_arms_flag_and_state(self) -> None:
+        """POST from idle on Omenstrat must arm just like Polystrat."""
         handler = _make_withdrawal_handler(
             is_polymarket=False,
             config=ChatuiConfig(
                 withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
             ),
         )
-
-        handler._handle_post_withdrawal(MagicMock(), MagicMock())
-
-        handler._send_http_response.assert_called_once()
-        call_args = handler._send_http_response.call_args
-        # status code is the 4th positional or "status_code" kwarg
-        status_code = call_args.kwargs.get("status_code") or call_args.args[3]
-        assert status_code == HTTPStatus.NOT_IMPLEMENTED.value
-
-    def test_post_on_omenstrat_does_not_arm_flag(self) -> None:
-        """POST on Omenstrat must leave withdrawal_mode/state untouched."""
-        starting_cfg = ChatuiConfig(
-            withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
-        )
-        handler = _make_withdrawal_handler(is_polymarket=False, config=starting_cfg)
 
         handler._handle_post_withdrawal(MagicMock(), MagicMock())
 
         cfg = handler.shared_state.chatui_config
-        assert cfg.withdrawal_mode is False
-        assert cfg.withdrawal_state == WITHDRAWAL_STATE_IDLE
-        handler._store_chatui_param_to_json.assert_not_called()
-        handler._send_ok_response.assert_not_called()
+        assert cfg.withdrawal_mode is True
+        assert cfg.withdrawal_state == WITHDRAWAL_STATE_ARMED
 
-    def test_post_on_omenstrat_response_body_explains_reason(self) -> None:
-        """The 501 body must include an error explaining the limitation."""
+    def test_post_on_omenstrat_returns_200(self) -> None:
+        """POST on Omenstrat returns 200 OK (the 501 from #942 was dropped)."""
         handler = _make_withdrawal_handler(
             is_polymarket=False,
             config=ChatuiConfig(
@@ -1510,9 +1595,28 @@ class TestHandlePostWithdrawalOmenstrat:
 
         handler._handle_post_withdrawal(MagicMock(), MagicMock())
 
-        body = handler._send_http_response.call_args.args[2]
-        assert "error" in body
-        assert "Omenstrat" in body["error"] or "Polymarket" in body["error"]
+        handler._send_ok_response.assert_called_once()
+        # No 501 response should ever fire on the new path.
+        handler._send_http_response.assert_not_called()
+
+    def test_post_on_omenstrat_persists_each_changed_field(self) -> None:
+        """POST on Omenstrat persists the same fields the Polystrat path does."""
+        handler = _make_withdrawal_handler(
+            is_polymarket=False,
+            config=ChatuiConfig(
+                withdrawal_mode=False, withdrawal_state=WITHDRAWAL_STATE_IDLE
+            ),
+        )
+
+        handler._handle_post_withdrawal(MagicMock(), MagicMock())
+
+        persisted_fields = {
+            call.args[0] for call in handler._store_chatui_param_to_json.call_args_list
+        }
+        assert "withdrawal_mode" in persisted_fields
+        assert "withdrawal_state" in persisted_fields
+        assert "withdrawal_fills" in persisted_fields
+        assert "withdrawal_errors" in persisted_fields
 
 
 # ---------------------------------------------------------------------------

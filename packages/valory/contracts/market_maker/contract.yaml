@@ -9,11 +9,12 @@ fingerprint:
   README.md: bafybeiegnihrovfkk5big52pl4bo6evt5toqvvmft2jgnq6ofdbhfp7xwa
   __init__.py: bafybeicoucixii3fv5xlpk3zfewm4ys4okidcng54bhtjxvwup7g2jcjza
   build/FixedProductMarketMaker.json: bafybeigim7n3f67r5czfc5wp2m7cxzxwvnhxops3n5j2zlawenan7qrrtu
-  contract.py: bafybeiaorveigrkshdqrfwdqc7wcdbtacx6kks4lsdnlnsivwl7kuy2g7a
+  contract.py: bafybeiaie672lym576evo7nf5itzqgbleaaalzkop3pmiv4fhuhmu4hzve
   tests/__init__.py: bafybeienqvttlvi32ohg47yg4ihylchoo4quti3bxfvb7ewmyy3tt5igsy
-  tests/test_contract.py: bafybeiei4ggqa2t6kod7s326hodiopzpipoosbjleofqaurly3jx47pgc4
+  tests/test_contract.py: bafybeiazadbc46xnqn66moytmop5nzlhmruyvqfqn7rlwhd3l6re4wvu5m
 fingerprint_ignore_patterns: []
-contracts: []
+contracts:
+- valory/conditional_tokens:0.1.0:bafybeieub4do6tw6k6qjotkca46fk2j7f7al5fush73ai6atqz5e47k2by
 class_name: FixedProductMarketMakerContract
 contract_interface_paths:
   ethereum: build/FixedProductMarketMaker.json

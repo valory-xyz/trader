@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2026 Valory AG
+#   Copyright 2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -17,31 +17,34 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the tool selection state of the decision-making abci app."""
+"""This module contains the post-settlement round for the Omen withdrawal sweep."""
 
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
     get_name,
 )
-from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
+from packages.valory.skills.decision_maker_abci.payloads import (
+    PostOmenWithdrawalPayload,
+)
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
 
 
-class ToolSelectionRound(CollectSameUntilThresholdRound):
-    """A round for selecting a Mech tool."""
+class PostOmenWithdrawRound(CollectSameUntilThresholdRound):
+    """Consensus round that runs after the Omen sweep tx settles.
 
-    payload_class = ToolSelectionPayload
+    The behaviour parses the settled tx's receipt, persists per-position
+    fills / errors to the chatui JSON store, and best-effort refreshes
+    the ``funds_locked_in_markets`` snapshot. The round itself just
+    confirms consensus and routes to ``WithdrawalIdleRound``.
+    """
+
+    payload_class = PostOmenWithdrawalPayload
     synchronized_data_class = SynchronizedData
-    done_event = Event.DONE
+    done_event = Event.WITHDRAWAL_DONE
     none_event = Event.NONE
     no_majority_event = Event.NO_MAJORITY
-    selection_key = (
-        get_name(SynchronizedData.available_mech_tools),
-        get_name(SynchronizedData.policy),
-        get_name(SynchronizedData.utilized_tools),
-        get_name(SynchronizedData.mech_tool),
-    )
+    selection_key = (get_name(SynchronizedData.participant_to_selection),)
     collection_key = get_name(SynchronizedData.participant_to_selection)
