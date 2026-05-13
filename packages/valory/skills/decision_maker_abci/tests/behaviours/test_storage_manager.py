@@ -431,7 +431,7 @@ class TestGetMechTools:
                 with patch.object(
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
-                    mock_params.return_value = MagicMock(irrelevant_tools=set())
+                    mock_params.return_value = MagicMock(valid_tools={"tool1", "tool2"})
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )
@@ -520,13 +520,13 @@ class TestGetMechTools:
         assert result is False
 
     def test_get_mech_tools_empty_relevant_tools(self) -> None:
-        """Should return False when all tools are irrelevant."""
+        """Should return False when no fetched tool is in the valid_tools allowlist."""
         behaviour = _make_behaviour()
         behaviour._mech_hash = "valid_hash"
 
         mock_api = MagicMock()
         mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
-        mock_api.process_response.return_value = ["irrelevant_tool"]
+        mock_api.process_response.return_value = ["unknown_tool"]
         mock_api.is_retries_exceeded.return_value = False
 
         with patch.object(
@@ -541,7 +541,7 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        irrelevant_tools={"irrelevant_tool"}
+                        valid_tools={"some_other_tool"}
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(MagicMock())

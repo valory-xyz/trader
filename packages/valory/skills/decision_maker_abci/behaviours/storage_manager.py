@@ -212,8 +212,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        # keep only the relevant mech tools
-        res = set(res) - self.params.irrelevant_tools
+        res = set(res) & self.params.valid_tools
         self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
 
         if len(res) == 0:
