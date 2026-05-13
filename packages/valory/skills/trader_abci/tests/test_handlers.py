@@ -2408,7 +2408,9 @@ class TestEnsureSufficientFundsForX402Payments:
 
             assert result is True
             assert mock_quote.call_count == 2
-            assert mock_quote.call_args_list[0].kwargs["deny_exchanges"] is None
+            # Snapshot per call: first sees an empty deny list, second sees
+            # ['paraswap'] after the route revert.
+            assert mock_quote.call_args_list[0].kwargs["deny_exchanges"] == []
             assert mock_quote.call_args_list[1].kwargs["deny_exchanges"] == ["paraswap"]
             mock_nonce.assert_called_once()
 
@@ -2445,6 +2447,80 @@ class TestEnsureSufficientFundsForX402Payments:
             assert result is False
             assert mock_quote.call_count == 3
             mock_nonce.assert_not_called()
+            # Pin the for/else exhaustion branch: the ERROR log only fires
+            # when the loop completes without break. A mutation that
+            # replaced the for/else with an inline return would skip this.
+            error_messages = [
+                call.args[0]
+                for call in self.handler.context.logger.error.call_args_list
+            ]
+            assert any(
+                "Exhausted LiFi route attempts" in msg
+                and "['tool_0', 'tool_1', 'tool_2']" in msg
+                for msg in error_messages
+            )
+
+    def test_route_revert_two_retries_then_success(self) -> None:
+        """Two consecutive reverts then success: deny list accumulates."""
+        mock_account = MagicMock()
+        mock_account.address = "0xEOA"
+
+        quotes = [
+            {
+                "tool": "paraswap",
+                "transactionRequest": {
+                    "to": "0x1",
+                    "data": "0x",
+                    "value": "0x10",
+                },
+            },
+            {
+                "tool": "sushiswap",
+                "transactionRequest": {
+                    "to": "0x2",
+                    "data": "0x",
+                    "value": "0x20",
+                },
+            },
+            {
+                "tool": "1inch",
+                "transactionRequest": {
+                    "to": "0x3",
+                    "data": "0x",
+                    "value": "0x30",
+                },
+            },
+        ]
+        gas_results = [(None, True), (None, True), (150000, False)]
+
+        with (
+            patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
+            patch.object(self.handler, "_check_usdc_balance", return_value=100),
+            patch.object(
+                self.handler, "_get_lifi_quote", side_effect=quotes
+            ) as mock_quote,
+            patch.object(self.handler, "_estimate_gas", side_effect=gas_results),
+            patch.object(
+                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+            ),
+            patch.object(
+                self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
+            ),
+            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
+        ):
+            MockWeb3.to_checksum_address = lambda addr: addr
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
+
+            assert result is True
+            assert mock_quote.call_count == 3
+            # Each call sees a fresh snapshot of the deny list.
+            assert mock_quote.call_args_list[0].kwargs["deny_exchanges"] == []
+            assert mock_quote.call_args_list[1].kwargs["deny_exchanges"] == ["paraswap"]
+            assert mock_quote.call_args_list[2].kwargs["deny_exchanges"] == [
+                "paraswap",
+                "sushiswap",
+            ]
 
     def test_non_route_failure_no_retry(self) -> None:
         """A non-revert estimate_gas failure aborts immediately, no re-quote."""

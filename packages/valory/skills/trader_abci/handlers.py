@@ -125,7 +125,7 @@ COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
 FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
 
-X402_SWAP_MAX_ROUTE_RETRIES = 3
+X402_SWAP_MAX_ROUTE_ATTEMPTS = 3
 
 
 class HttpHandler(BaseHttpHandler):
@@ -976,7 +976,11 @@ class HttpHandler(BaseHttpHandler):
             return tx_gas, False
 
         except ContractLogicError as e:
-            self.context.logger.error(f"Route revert in gas estimation: {e}")
+            # Demoted to warning: the caller's retry loop turns this into
+            # either a successful swap (after a route swap) or a single ERROR
+            # on "Exhausted LiFi route retries". ERROR-on-recovered-failure
+            # would false-fire alerting wired to ERROR-level logs.
+            self.context.logger.warning(f"Route revert in gas estimation: {e}")
             return None, True
         except Exception as e:
             self.context.logger.error(f"Error in gas estimation: {str(e)}")
@@ -1040,7 +1044,7 @@ class HttpHandler(BaseHttpHandler):
             tx_request: Optional[Dict] = None
             tx_gas: Optional[int] = None
 
-            for attempt in range(X402_SWAP_MAX_ROUTE_RETRIES):
+            for attempt in range(X402_SWAP_MAX_ROUTE_ATTEMPTS):
                 quote = self._get_lifi_quote(
                     from_token=chain_config["native_token_address"],
                     to_token=usdc_address,
@@ -1048,10 +1052,16 @@ class HttpHandler(BaseHttpHandler):
                     to_address=eoa_address,
                     chain_config=chain_config,
                     to_amount=top_up_usdc_amount,
-                    deny_exchanges=denied or None,
+                    # Snapshot per call so the assertion-time mock state in
+                    # tests reflects the value at call time.
+                    deny_exchanges=list(denied),
                 )
                 if not quote:
-                    self.context.logger.error("Failed to get LiFi quote")
+                    self.context.logger.error(
+                        "Failed to get LiFi quote "
+                        f"(attempt {attempt + 1}/"
+                        f"{X402_SWAP_MAX_ROUTE_ATTEMPTS}, denied={denied})"
+                    )
                     return False
 
                 tx_request = quote.get("transactionRequest")
@@ -1077,16 +1087,18 @@ class HttpHandler(BaseHttpHandler):
                     )
                     return False
 
-                self.context.logger.warning(
-                    f"LiFi route via '{tool}' reverted on gas estimation; "
-                    f"retrying with denyExchanges={denied + [tool]} "
-                    f"(attempt {attempt + 1}/{X402_SWAP_MAX_ROUTE_RETRIES})"
-                )
-                denied.append(tool)
+                denied = denied + [tool]
+                if attempt + 1 < X402_SWAP_MAX_ROUTE_ATTEMPTS:
+                    self.context.logger.warning(
+                        f"LiFi route via '{tool}' reverted on gas "
+                        f"estimation; retrying with denyExchanges={denied} "
+                        f"(attempt {attempt + 1}/"
+                        f"{X402_SWAP_MAX_ROUTE_ATTEMPTS})"
+                    )
             else:
                 self.context.logger.error(
-                    f"Exhausted LiFi route retries ({X402_SWAP_MAX_ROUTE_RETRIES}); "
-                    f"denied={denied}"
+                    "Exhausted LiFi route attempts "
+                    f"({X402_SWAP_MAX_ROUTE_ATTEMPTS}); denied={denied}"
                 )
                 return False
 
