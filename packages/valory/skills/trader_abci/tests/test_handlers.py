@@ -1178,6 +1178,178 @@ class TestGetAdjustedFundsStatus:
 
         handler.context.logger.warning.assert_not_called()
 
+    def test_gnosis_skips_adjustment_when_wxdai_balance_unknown(self) -> None:
+        """Skip wxDAI->xDAI consolidation when wxDAI balance is unknown; leave native deficit untouched."""
+        handler = self._setup_handler(is_polymarket=False)
+
+        fund_status = self._make_funds_status(
+            chain_name="gnosis",
+            safe_address="0xSafe",
+            native_token_addr=GNOSIS_NATIVE_TOKEN_ADDRESS,
+            native_balance=10,
+            native_threshold=500,
+            native_topup=1000,
+            wrapped_addr=GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            wrapped_balance=0,
+        )
+        wrapped_token = (
+            fund_status["gnosis"]
+            .accounts["0xSafe"]
+            .tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS]
+        )
+        wrapped_token.balance = None
+        wrapped_token.deficit = None
+        native_token_in = (
+            fund_status["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        native_token_in.deficit = None
+
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSafe"
+        mock_fn = MagicMock(return_value=fund_status)
+        handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
+
+        with patch.object(
+            type(handler), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            result = handler._get_adjusted_funds_status()
+
+        native_token = (
+            result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        assert native_token.deficit is None
+        handler.context.logger.warning.assert_called()
+
+    def test_gnosis_skips_adjustment_when_native_balance_unknown(self) -> None:
+        """Native balance unknown -> leave deficit untouched, no spurious top-up."""
+        handler = self._setup_handler(is_polymarket=False)
+
+        fund_status = self._make_funds_status(
+            chain_name="gnosis",
+            safe_address="0xSafe",
+            native_token_addr=GNOSIS_NATIVE_TOKEN_ADDRESS,
+            native_balance=0,
+            native_threshold=500,
+            native_topup=1000,
+            wrapped_addr=GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            wrapped_balance=600,
+        )
+        native_token_in = (
+            fund_status["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        native_token_in.balance = None
+        native_token_in.deficit = None
+
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSafe"
+        mock_fn = MagicMock(return_value=fund_status)
+        handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
+
+        with patch.object(
+            type(handler), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            result = handler._get_adjusted_funds_status()
+
+        native_token = (
+            result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        assert native_token.deficit is None
+        handler.context.logger.warning.assert_called()
+
+    def test_polygon_skips_adjustment_when_usdc_balance_unknown(self) -> None:
+        """USDC balance unknown on Polygon -> skip USDC->POL adjustment, no overwrite."""
+        handler = self._setup_handler(is_polymarket=True)
+
+        fund_status = self._make_funds_status(
+            chain_name="polygon",
+            safe_address="0xSafe",
+            native_token_addr=POLYGON_NATIVE_TOKEN_ADDRESS,
+            native_balance=100,
+            native_threshold=500,
+            native_topup=1000,
+            usdc_addr=POLYGON_USDC_ADDRESS,
+            usdc_balance=0,
+            usdc_decimals=6,
+        )
+        usdc_token = (
+            fund_status["polygon"].accounts["0xSafe"].tokens[POLYGON_USDC_ADDRESS]
+        )
+        usdc_token.balance = None
+        usdc_token.deficit = None
+        native_token_in = (
+            fund_status["polygon"]
+            .accounts["0xSafe"]
+            .tokens[POLYGON_NATIVE_TOKEN_ADDRESS]
+        )
+        native_token_in.deficit = None
+
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSafe"
+        mock_fn = MagicMock(return_value=fund_status)
+        handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
+
+        with (
+            patch.object(
+                type(handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                handler, "_get_pol_equivalent_for_usdc", return_value=0
+            ) as mock_pol,
+        ):
+            mock_sd.return_value = mock_synced
+            result = handler._get_adjusted_funds_status()
+
+        mock_pol.assert_not_called()
+        native_token = (
+            result["polygon"].accounts["0xSafe"].tokens[POLYGON_NATIVE_TOKEN_ADDRESS]
+        )
+        assert native_token.deficit is None
+        handler.context.logger.warning.assert_called()
+
+    def test_merge_skips_when_usdc_e_balance_unknown(self) -> None:
+        """USDC.e balance None -> no merge, USDC.e dropped, pUSD untouched."""
+        handler = self._setup_handler(is_polymarket=True)
+        fund_status = self._make_polymarket_funds_status_with_pusd(
+            usdc_e_balance=0,
+            pusd_balance=40_000_000,
+        )
+        safe_balances = fund_status["polygon"].accounts["0xSafe"]
+        usdc_e = safe_balances.tokens[POLYGON_USDC_E_ADDRESS]
+        usdc_e.balance = None
+        usdc_e.deficit = None
+        pusd = safe_balances.tokens[POLYGON_PUSD_ADDRESS]
+        pusd.deficit = 25_000_000
+        chain_config = handler._get_chain_config()
+
+        handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
+
+        assert pusd.balance == 40_000_000
+        assert pusd.deficit == 25_000_000
+        assert POLYGON_USDC_E_ADDRESS not in safe_balances.tokens
+        handler.context.logger.warning.assert_called()
+
+    def test_merge_skips_when_pusd_balance_unknown(self) -> None:
+        """Skip merge when pUSD balance is None; drop USDC.e, leave pUSD deficit untouched."""
+        handler = self._setup_handler(is_polymarket=True)
+        fund_status = self._make_polymarket_funds_status_with_pusd(
+            usdc_e_balance=50_000_000,
+            pusd_balance=0,
+        )
+        safe_balances = fund_status["polygon"].accounts["0xSafe"]
+        pusd = safe_balances.tokens[POLYGON_PUSD_ADDRESS]
+        pusd.balance = None
+        pusd.deficit = None
+        chain_config = handler._get_chain_config()
+
+        handler._merge_usdc_e_into_pusd(safe_balances, chain_config)
+
+        assert pusd.balance is None
+        assert pusd.deficit is None
+        assert POLYGON_USDC_E_ADDRESS not in safe_balances.tokens
+        handler.context.logger.warning.assert_called()
+
 
 # ---------------------------------------------------------------------------
 # _get_pol_to_usdc_rate tests
