@@ -71,6 +71,7 @@ class ChatuiConfig:
     trading_strategy: Optional[str] = None
     initial_trading_strategy: Optional[str] = None
     allowed_tools: Optional[List[str]] = None
+    selected_mechs: Optional[List[str]] = None
     fixed_bet_size: Optional[int] = None
     max_bet_size: Optional[int] = None
     withdrawal_mode: bool = False

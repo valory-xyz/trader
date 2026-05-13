@@ -172,7 +172,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
     FinishedMechLegacyDetectedRound: CheckBenchmarkingModeRound,
     FinishedMechInformationRound: CheckBenchmarkingModeRound,
-    FailedMechInformationRound: MechVersionDetectionRound,
+    FailedMechInformationRound: ChatuiLoadRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
     # Always-redeem-first: route the cycle entry through `RedeemRouterRound`
     # so any unclaimed winning positions are redeemed before the agent

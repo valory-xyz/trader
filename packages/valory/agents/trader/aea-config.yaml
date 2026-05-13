@@ -65,14 +65,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeide72ykmlyo7h73e2q3y54cwfwh6laiemqtbvhpxheaytnyfoxkjm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidhdqd2f7tgip43nqbsctik2jjz2jeioifr4xybb5a4x5tcn4kez4
 - valory/market_manager_abci:0.1.0:bafybeia7nohjn3ela6epm6tlgqwdvezws2e2n2mbo27xhnxwp366vlqovq
-- valory/decision_maker_abci:0.1.0:bafybeie27u6wy2a5zvyd3ys6w3ftu2ip42htb4qcaaddsxuxyd2j6ugjyu
-- valory/trader_abci:0.1.0:bafybeibw6dkzxqa6wwue5qdyugg4rp7kbp2ohx4t5zgmkpfoi3lpxxulje
+- valory/decision_maker_abci:0.1.0:bafybeicjdnlu5cyzhby5vzkqkkrpqbcte5zh6cudjbsbkbla3uzxyvsmuy
+- valory/trader_abci:0.1.0:bafybeidnoxlnpzkbenaowtvkjttdmqvut4gtdqaiint47u3jtmueeakrri
 - valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
-- valory/check_stop_trading_abci:0.1.0:bafybeieojv6o46lqw3h3qekjw4dao7mpedzjue7dbjufovyarnttnebhhe
-- valory/mech_interact_abci:0.1.0:bafybeiburftv5nj5427qyue2f5sx56fpfskalnplwoow2ixqbvgio3kfky
-- valory/chatui_abci:0.1.0:bafybeierjvo2lazw6a6daglc3l24i2yuwgausgrxzb57t3lqzmlawq6acu
+- valory/check_stop_trading_abci:0.1.0:bafybeiajpixuxyvmtdai2ibw3caeu2xv2ie6ag5l7ifjptecyk47yz52oy
+- valory/mech_interact_abci:0.1.0:bafybeibcr5ifxkkeb4q3jbyxhri2yrydiunh5csifermqdcboa2ydybu6m
+- valory/chatui_abci:0.1.0:bafybeicgoq2rdq3uzvjxoxny3hiis4i23eyq7v7vahd7wrwhxwl645agde
 - valory/agent_performance_summary_abci:0.1.0:bafybeihqm5ebfwdbcc7zan66ffv7lsp6jeyz6ydrj65lizm7rtzoyy6s3i
 - valory/funds_manager:0.1.0:bafybeihuwnkgrhqixl4zj55fz2awptmpmdnmub2uzkgbx7rve7bnhkkl5i
 customs:
@@ -285,7 +285,8 @@ models:
       polymarket_ctf_exchange_address: ${str:0xE111180000d2663C0091e4f400237545B87B996B}
       polymarket_neg_risk_ctf_exchange_address: ${str:0xe2222d279d744050d28e00520010520000310F59}
       polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-      ignored_mechs: ${list:[]}
+      valid_mechs: ${list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
+      valid_tools: ${list:["prediction-offline","prediction-online","claude-prediction-online","claude-prediction-offline","prediction-online-sme","prediction-offline-sme","resolve-market-reasoning-gpt-4.1","resolve-market-jury-v1","prediction-request-rag","prediction-request-rag-claude","prediction-request-reasoning","prediction-request-reasoning-claude","superforcaster","factual_research"]}
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
