@@ -429,7 +429,16 @@ class HttpHandler(BaseHttpHandler):
                 # On Polygon: USDC balance needs to be converted to POL equivalent
                 # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
-                usdc_balance = int(usdc_status.balance or 0)
+
+                if usdc_status.balance is None:
+                    self.context.logger.warning(
+                        "USDC balance unknown (sub-call reverted); "
+                        "skipping USDC->POL adjustment and clearing native deficit."
+                    )
+                    native_status.deficit = None
+                    return funds_status
+
+                usdc_balance = int(usdc_status.balance)
                 usdc_decimals = usdc_status.decimals
                 pol_decimals = native_status.decimals
 
@@ -476,7 +485,14 @@ class HttpHandler(BaseHttpHandler):
                 wrapped_native_status = safe_balances.tokens[
                     chain_config["wrapped_native_address"]
                 ]
-                adjustment_balance = int(wrapped_native_status.balance or 0)
+                if wrapped_native_status.balance is None:
+                    self.context.logger.warning(
+                        "Wrapped-native balance unknown (sub-call reverted); "
+                        "skipping wxDAI->xDAI consolidation and clearing native deficit."
+                    )
+                    native_status.deficit = None
+                    return funds_status
+                adjustment_balance = int(wrapped_native_status.balance)
 
         except KeyError:
             self.context.logger.error(
@@ -484,7 +500,14 @@ class HttpHandler(BaseHttpHandler):
             )
             return funds_status
 
-        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
+        if native_status.balance is None:
+            self.context.logger.warning(
+                "Native balance unknown (sub-call reverted); "
+                "leaving native deficit unchanged to avoid spurious top-up request."
+            )
+            return funds_status
+
+        actual_considered_balance = int(native_status.balance) + adjustment_balance
 
         actual_deficit = 0
         if native_status.threshold > actual_considered_balance:
@@ -530,7 +553,20 @@ class HttpHandler(BaseHttpHandler):
         usdc_e = safe_balances.tokens[usdc_e_addr]
         pusd = safe_balances.tokens[pusd_addr]
 
-        combined = int(usdc_e.balance or 0) + int(pusd.balance or 0)
+        if usdc_e.balance is None or pusd.balance is None:
+            self.context.logger.warning(
+                "USDC.e or pUSD balance unknown (sub-call reverted); "
+                "skipping merge and clearing pUSD deficit."
+            )
+            pusd.deficit = None
+            # Only drop the USDC.e row when its own balance is unknown — if
+            # USDC.e is readable but pUSD isn't, keep USDC.e visible so the
+            # operator still sees the known balance.
+            if usdc_e.balance is None:
+                del safe_balances.tokens[usdc_e_addr]
+            return
+
+        combined = int(usdc_e.balance) + int(pusd.balance)
         pusd.balance = combined
 
         deficit = max(pusd.topup - combined, 0) if combined < pusd.threshold else 0
