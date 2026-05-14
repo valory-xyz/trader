@@ -29,6 +29,7 @@ import requests
 from packages.valory.connections.polymarket_client.connection import (
     DATA_API_BASE_URL,
     GAMMA_API_BASE_URL,
+    MAX_RATE_LIMIT_SLEEP,
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
@@ -1102,6 +1103,118 @@ class TestRequestWithRetries:
 
         total = sum(call.args[0] for call in mock_sleep.call_args_list)
         assert total < 10
+
+    @staticmethod
+    def _make_429_with_header(retry_after: str) -> requests.exceptions.HTTPError:
+        """Build a 429 HTTPError whose response carries the given Retry-After value."""
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.headers = {"Retry-After": retry_after}
+        http_error = requests.exceptions.HTTPError("429 Too Many Requests")
+        http_error.response = mock_response
+        mock_response.raise_for_status.side_effect = http_error
+        return http_error, mock_response
+
+    def test_retry_after_header_extends_429_backoff(self) -> None:
+        """``Retry-After: 30`` lifts both sleeps above the 10s/20s exponential base.
+
+        RFC 9110 §10.2.3 lets a 429 carry ``Retry-After`` to tell the client when
+        to retry. Without honoring it, the 30s exponential budget can fire all
+        three attempts inside a 60s server cooldown — exactly the failure mode
+        the rate-limit-aware backoff was meant to prevent.
+        """
+        conn = _make_connection()
+        _, mock_response = self._make_429_with_header("30")
+
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        # max(10*1, 30) = 30, max(10*2, 30) = 30
+        assert durations == [30.0, 30.0]
+
+    def test_retry_after_header_capped_at_max(self) -> None:
+        """A pathological ``Retry-After: 3600`` clamps to ``MAX_RATE_LIMIT_SLEEP``.
+
+        Honoring the server is good; blocking a single-threaded connection for
+        an hour is not. The cap bounds the worst-case per-attempt sleep so a
+        misconfigured (or malicious) server cannot stall the agent indefinitely.
+        """
+        conn = _make_connection()
+        _, mock_response = self._make_429_with_header("3600")
+
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [
+            float(MAX_RATE_LIMIT_SLEEP),
+            float(MAX_RATE_LIMIT_SLEEP),
+        ]
+
+    def test_no_retry_after_header_uses_exponential_base(self) -> None:
+        """A 429 without a ``Retry-After`` header keeps the plain exponential.
+
+        Most 429 responses don't carry ``Retry-After`` — the absent-header path
+        must behave exactly like the pre-Retry-After implementation so this
+        change stays additive.
+        """
+        conn = _make_connection()
+        mock_response = MagicMock()
+        mock_response.status_code = 429
+        mock_response.headers = {}  # explicitly no Retry-After
+        http_error = requests.exceptions.HTTPError("429 Too Many Requests")
+        http_error.response = mock_response
+        mock_response.raise_for_status.side_effect = http_error
+
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [
+            RATE_LIMIT_RETRY_DELAY * 1,
+            RATE_LIMIT_RETRY_DELAY * 2,
+        ]
+
+    def test_retry_after_header_invalid_falls_back(self) -> None:
+        """HTTP-date or garbage ``Retry-After`` falls back to the exponential base.
+
+        ``Retry-After`` permits an HTTP-date form (RFC 9110 §10.2.3); we don't
+        parse it. Anything that doesn't ``float()`` cleanly — HTTP-date, garbage,
+        empty — must not crash or skew the backoff: the loop should behave as
+        if the header were absent.
+        """
+        conn = _make_connection()
+        _, mock_response = self._make_429_with_header("Fri, 31 Dec 1999 23:59:59 GMT")
+
+        with (
+            patch("requests.get", return_value=mock_response),
+            patch(
+                "packages.valory.connections.polymarket_client.connection.time.sleep"
+            ) as mock_sleep,
+        ):
+            conn._request_with_retries("https://example.com/api", max_retries=3)
+
+        durations = [call.args[0] for call in mock_sleep.call_args_list]
+        assert durations == [
+            RATE_LIMIT_RETRY_DELAY * 1,
+            RATE_LIMIT_RETRY_DELAY * 2,
+        ]
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@
 
 """Genai connection."""
 
+import contextlib
 import dataclasses
 import json
 import time
@@ -78,6 +79,7 @@ API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 1  # base seconds for transient connection errors
 RATE_LIMIT_RETRY_DELAY = 10  # base seconds for HTTP 429 (rate-limit) responses
+MAX_RATE_LIMIT_SLEEP = 60  # upper bound on a single Retry-After-aware sleep
 # Subgraph indexes markets created after this date; exclude older markets
 MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 
@@ -688,10 +690,21 @@ class PolymarketClientConnection(BaseSyncConnection):
                     base_delay = (
                         RATE_LIMIT_RETRY_DELAY if is_rate_limited else RETRY_DELAY
                     )
+                    delay = base_delay * (2**attempt)  # Exponential backoff
+                    if is_rate_limited:
+                        # RFC 9110 §10.2.3: honor numeric Retry-After when the
+                        # server tells us how long to wait. Cap to keep the
+                        # single-threaded connection from stalling indefinitely.
+                        header = e.response.headers.get("Retry-After")
+                        if header is not None:
+                            with contextlib.suppress(ValueError):
+                                delay = max(
+                                    delay, min(float(header), MAX_RATE_LIMIT_SLEEP)
+                                )
                     self.logger.warning(
                         f"API request failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying..."
                     )
-                    time.sleep(base_delay * (2**attempt))  # Exponential backoff
+                    time.sleep(delay)
                 else:
                     self.logger.error(
                         f"API request failed after {max_retries} attempts: {e}"
