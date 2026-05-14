@@ -433,8 +433,9 @@ class HttpHandler(BaseHttpHandler):
                 if usdc_status.balance is None:
                     self.context.logger.warning(
                         "USDC balance unknown (sub-call reverted); "
-                        "skipping USDC->POL adjustment to avoid spurious deficit."
+                        "skipping USDC->POL adjustment and clearing native deficit."
                     )
+                    native_status.deficit = None
                     return funds_status
 
                 usdc_balance = int(usdc_status.balance)
@@ -487,8 +488,9 @@ class HttpHandler(BaseHttpHandler):
                 if wrapped_native_status.balance is None:
                     self.context.logger.warning(
                         "Wrapped-native balance unknown (sub-call reverted); "
-                        "skipping wxDAI->xDAI consolidation to avoid spurious deficit."
+                        "skipping wxDAI->xDAI consolidation and clearing native deficit."
                     )
+                    native_status.deficit = None
                     return funds_status
                 adjustment_balance = int(wrapped_native_status.balance)
 
@@ -554,9 +556,14 @@ class HttpHandler(BaseHttpHandler):
         if usdc_e.balance is None or pusd.balance is None:
             self.context.logger.warning(
                 "USDC.e or pUSD balance unknown (sub-call reverted); "
-                "skipping merge to avoid spurious pUSD deficit."
+                "skipping merge and clearing pUSD deficit."
             )
-            del safe_balances.tokens[usdc_e_addr]
+            pusd.deficit = None
+            # Only drop the USDC.e row when its own balance is unknown — if
+            # USDC.e is readable but pUSD isn't, keep USDC.e visible so the
+            # operator still sees the known balance.
+            if usdc_e.balance is None:
+                del safe_balances.tokens[usdc_e_addr]
             return
 
         combined = int(usdc_e.balance) + int(pusd.balance)
