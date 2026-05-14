@@ -419,6 +419,24 @@ class HttpHandler(BaseHttpHandler):
             "Not Found",
         )
 
+    @staticmethod
+    def _format_last_updated(timestamp: Optional[int]) -> Optional[str]:
+        """Format a UTC epoch timestamp as ISO 8601, or pass through None.
+
+        Treats ``<= 0`` as a "never set" sentinel — ``ProfitOverTimeData.last_updated``
+        is a non-Optional ``int`` with no default, so callers commonly initialize
+        it to ``0``. Rendering that as ``1970-01-01T00:00:00Z`` would mislead the
+        UI's staleness indicator.
+
+        :param timestamp: UTC epoch seconds, or ``None``/``<= 0`` for "no data".
+        :return: ISO 8601 string with trailing ``Z``, or ``None``.
+        """
+        if timestamp is None or timestamp <= 0:
+            return None
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime(
+            ISO_TIMESTAMP_FORMAT
+        )
+
     def _handle_get_agent_performance(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
@@ -451,6 +469,7 @@ class HttpHandler(BaseHttpHandler):
                 "currency": "USD",
                 "metrics": asdict(performance.metrics) if performance.metrics else {},
                 "stats": asdict(performance.stats) if performance.stats else {},
+                "last_updated": self._format_last_updated(summary.timestamp),
             }
 
             self.context.logger.info(
@@ -506,6 +525,7 @@ class HttpHandler(BaseHttpHandler):
                     "page_size": page_size,
                     "total": history.total_predictions,
                     "items": items,
+                    "last_updated": self._format_last_updated(history.last_updated),
                 }
                 self._send_ok_response(http_msg, http_dialogue, response)
                 return
@@ -529,6 +549,7 @@ class HttpHandler(BaseHttpHandler):
                 "page_size": page_size,
                 "total": result["total_predictions"],
                 "items": result["items"],
+                "last_updated": None,
             }
 
             self.context.logger.info(f"Sending {len(result['items'])} predictions")
@@ -610,11 +631,14 @@ class HttpHandler(BaseHttpHandler):
 
             if not profit_data or not profit_data.data_points:
                 # Return empty response if no data
-                empty_response = {
+                empty_response: Dict[str, Any] = {
                     "agent_id": safe_address,
                     "currency": "USD",
                     "window": window,
                     "points": [],
+                    "last_updated": self._format_last_updated(
+                        profit_data.last_updated if profit_data else None
+                    ),
                 }
                 self._send_ok_response(http_msg, http_dialogue, empty_response)
                 return
@@ -641,6 +665,7 @@ class HttpHandler(BaseHttpHandler):
                 "currency": "USD",
                 "window": window,
                 "points": api_points,
+                "last_updated": self._format_last_updated(profit_data.last_updated),
             }
 
             self.context.logger.info(
