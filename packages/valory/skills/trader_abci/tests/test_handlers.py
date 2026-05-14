@@ -1331,7 +1331,7 @@ class TestGetAdjustedFundsStatus:
         handler.context.logger.warning.assert_called()
 
     def test_merge_skips_when_pusd_balance_unknown(self) -> None:
-        """Skip merge when pUSD balance is None; drop USDC.e, leave pUSD deficit untouched."""
+        """When pUSD is None but USDC.e known: skip merge, keep USDC.e row, pUSD deficit cleared."""
         handler = self._setup_handler(is_polymarket=True)
         fund_status = self._make_polymarket_funds_status_with_pusd(
             usdc_e_balance=50_000_000,
@@ -1347,7 +1347,10 @@ class TestGetAdjustedFundsStatus:
 
         assert pusd.balance is None
         assert pusd.deficit is None
-        assert POLYGON_USDC_E_ADDRESS not in safe_balances.tokens
+        # USDC.e is still readable; keep its row so the operator retains
+        # diagnostic info while pUSD is unknown.
+        assert POLYGON_USDC_E_ADDRESS in safe_balances.tokens
+        assert safe_balances.tokens[POLYGON_USDC_E_ADDRESS].balance == 50_000_000
         handler.context.logger.warning.assert_called()
 
 

@@ -559,7 +559,11 @@ class HttpHandler(BaseHttpHandler):
                 "skipping merge and clearing pUSD deficit."
             )
             pusd.deficit = None
-            del safe_balances.tokens[usdc_e_addr]
+            # Only drop the USDC.e row when its own balance is unknown — if
+            # USDC.e is readable but pUSD isn't, keep USDC.e visible so the
+            # operator still sees the known balance.
+            if usdc_e.balance is None:
+                del safe_balances.tokens[usdc_e_addr]
             return
 
         combined = int(usdc_e.balance) + int(pusd.balance)
