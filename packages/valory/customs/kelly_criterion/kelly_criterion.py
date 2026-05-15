@@ -337,32 +337,19 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
-            min_order_shares = float(kwargs.get("min_order_shares", 5.0))
 
-            # Compute venue minimum spend from min_order_shares
-            remaining_shares = min_order_shares
-            venue_min_side = 0.0
-            for level in sorted_asks:
-                lp = float(level["price"])
-                ls = float(level["size"])
-                if lp <= 0 or ls <= 0:
-                    continue
-                fill = min(ls, remaining_shares)
-                venue_min_side += fill * lp
-                remaining_shares -= fill
-                if remaining_shares <= 0:
-                    break
-
-            if remaining_shares > 0:
-                msg = (
-                    f"{label}: insufficient book depth to fill "
-                    f"min_order_shares={min_order_shares}"
-                )
-                info.append(msg)
-                all_rejections.append(msg)
-                continue
-
-            b_min_side = max(min_bet, venue_min_side)
+            # No venue-minimum floor for CLOB. The per-market
+            # ``min_order_size`` (~5 shares) is a maker/limit-order
+            # constraint; Trader places FOK *taker* market orders, which the
+            # CLOB does not size-check on share count (only USD depth). The
+            # old ``b_min_side = max(min_bet, 5*best_ask)`` floor, combined
+            # with the ``b_min = min(b_min, b_max)`` clamp in optimize_side
+            # and the deployed ``n_bets=1`` (so ``W_bet == max_bet``),
+            # collapsed the grid to a single point at ``b = max_bet`` and
+            # forced ``w_lose <= 0`` — suppressing profitable bets whenever a
+            # side was priced > $0.50. ``min_bet`` (the policy floor, ~1 pUSD)
+            # already exceeds Polymarket's real taker minimum.
+            b_min_side = min_bet
             x_native, y_native = 0.0, 0.0
 
             # CLOB pre-filter: quick edge check against best ask
