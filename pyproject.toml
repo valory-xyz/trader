@@ -32,7 +32,7 @@ dependencies = [
     "requests==2.32.5",
     "aiohttp==3.13.4",
     "asn1crypto==1.4.0",
-    "web3==7.14.1",
+    "web3==7.15.0",
     "protobuf==5.29.6",
     "jsonschema==4.23.0",
     "openapi-spec-validator==0.7.2",
