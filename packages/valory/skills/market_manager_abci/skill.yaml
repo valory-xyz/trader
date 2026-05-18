@@ -13,7 +13,7 @@ fingerprint:
   behaviours/fetch_markets_router.py: bafybeiezt27o6u5tstmopzyyc5g7goyzsremai36ldxn7n2qjvhimbiyha
   behaviours/polymarket_fetch_market.py: bafybeibajdqbfulzibx35dynquzrczgwbocul34u7uj7z3y52mwbpu5xa4
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
-  behaviours/update_bets.py: bafybeidq4gkjtbkriw2zqmwfmmjdmghto25yg2kfzhvy4kbhaoeogplwnu
+  behaviours/update_bets.py: bafybeidpeyuns7awapixbokone56pucjscyzmaxp7f4psyragqyr6leevi
   bets.py: bafybeiasv3tapzitpj3xjh6vn7cq6hu6ljqxuazi7jxoyzdhuulwpj2op4
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
@@ -39,7 +39,7 @@ fingerprint:
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/test_behaviours_base.py: bafybeicjhr25nbom2bxs4z4bl3vgs74li3czjj7qdsq7aun42gpodxqbfa
   tests/test_behaviours_polymarket.py: bafybeic5ru7ozutwxvrjlrg3bsswbuqd4cuziuizz2po3u47v3h54v3tzm
-  tests/test_behaviours_update_bets.py: bafybeibjkktewpjvdrp4sm4ta7h2hnbgg26aorgovdidrupfjmrfjgue7y
+  tests/test_behaviours_update_bets.py: bafybeiefmdcb4mww3fpfjpnpbvwmu7f7nch2ojo2dh25q3l5vcngwtnmoe
   tests/test_bets.py: bafybeiem5qtklqhopdqfsrppq4ie5piszzlw2qknfyvziphd6s5tebkuhm
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_disabled_tags_invariant.py: bafybeihw2elbgoitd6cpnwzs5odj6l5otdatdsjknjnpdjj3jsivp54fba
