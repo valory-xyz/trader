@@ -479,18 +479,66 @@ class TestRunClob:
         result = run(**kwargs)
         assert result["bet_amount"] == 0
 
-    def test_insufficient_depth_for_min_order_shares(self) -> None:
-        """Book depth < min_order_shares returns no trade."""
+    def test_thin_book_below_old_min_order_shares_now_bets(self) -> None:
+        """A thin book (no venue-min floor) sizes a small +EV taker bet.
+
+        ``min_order_shares`` is still accepted but no longer consulted in the
+        CLOB sizing path; FOK taker orders are not share-count-constrained, so
+        a small +EV bet into the available 2 shares is correct.
+        """
         kwargs = {
             **CLOB_KWARGS,
             "orderbook_asks_yes": [{"price": "0.55", "size": "2"}],
-            "min_order_shares": 10.0,  # need 10 but only 2 available
+            "min_order_shares": 10.0,  # no longer consulted
+        }
+        result = run(**kwargs)
+        assert result["bet_amount"] > 0
+        # Cannot exceed available book depth: 2 shares * $0.55 = $1.10.
+        assert result["bet_amount"] <= 1_100_000
+        assert result["vote"] == 0
+
+    def test_thin_book_below_min_bet_is_rejected(self) -> None:
+        """A fill capped below ``min_bet`` by book depth must be rejected.
+
+        ``b_min_side = min_bet`` only sets the requested grid point;
+        ``walk_book`` caps the actual fill cost to available depth, so a book
+        thinner than ``min_bet`` would otherwise leak a sub-floor order
+        through. Here YES depth is 0.55 * 0.18 = $0.099, well below the
+        $1.0 ``min_bet`` floor — the side must be rejected, not sized to
+        $0.099.
+        """
+        kwargs = {
+            **CLOB_KWARGS,
+            "orderbook_asks_yes": [{"price": "0.55", "size": "0.18"}],
+            "min_bet": 1_000_000,  # 1.0 USDC policy floor
         }
         result = run(**kwargs)
         assert result["bet_amount"] == 0
+        info_text = " ".join(result.get("info", []))
+        assert "yes: fill cost" in info_text
+        assert "insufficient book depth" in info_text
 
-    def test_clob_zero_price_level_in_venue_min_calc(self) -> None:
-        """Zero-price level skipped during venue min spend calculation."""
+    def test_book_exhausted_to_zero_emits_rejection(self) -> None:
+        """A side whose book fills to 0 at every grid point is logged.
+
+        An all-zero-price YES book makes ``walk_book`` return ``(0, 0)`` at
+        every grid point. Without an explicit rejection the side is dropped
+        silently and the no-trade reason degrades to the generic
+        "no bet improves log-growth" — indistinguishable from a genuinely
+        unprofitable market in ops logs. The book-was-the-cause signal must
+        survive.
+        """
+        kwargs = {
+            **CLOB_KWARGS,
+            "orderbook_asks_yes": [{"price": "0", "size": "100"}],
+        }
+        result = run(**kwargs)
+        assert result["bet_amount"] == 0
+        info_text = " ".join(result.get("info", []))
+        assert "yes: book filled to 0 at all grid points" in info_text
+
+    def test_clob_zero_price_level_skipped(self) -> None:
+        """Zero-price ask level is skipped by walk_book without breaking sizing."""
         kwargs = {
             **CLOB_KWARGS,
             "orderbook_asks_yes": [
@@ -641,3 +689,40 @@ class TestRunMaxBet:
         """Bet amount cannot exceed max_bet in wei."""
         result = run(**{**CLOB_KWARGS, "max_bet": 100_000})  # 0.10 USDC
         assert result["bet_amount"] <= 100_000
+
+
+# ---------------------------------------------------------------------------
+# run — venue-min clamp regression (Polystrat no-bet bug)
+# ---------------------------------------------------------------------------
+
+
+class TestRunVenueMinClamp:
+    """Regression: the 5-share venue-min must not suppress a profitable bet.
+
+    Reproduces the deployed Polystrat config (n_bets=1, max_bet=2.5 USDC,
+    min_bet=1.0 USDC) on a +EV side priced > $0.50. The old
+    ``b_min_side = max(min_bet, venue_min_side)`` floor with
+    ``venue_min_side = 5*best_ask = 2.75 > max_bet 2.5`` collapsed the grid
+    (via the ``b_min = min(b_min, b_max)`` clamp) to the single point
+    ``b = max_bet``. With ``W_bet = min(n_bets*max_bet, bankroll)`` equal to
+    ``max_bet`` here (bankroll 10 >= n_bets*max_bet 2.5), that forced
+    ``w_lose <= 0`` and returned no-bet on a clearly profitable side.
+    """
+
+    def test_profitable_side_not_suppressed_by_venue_min(self) -> None:
+        """+EV side priced > $0.50 must bet under n_bets=1 / max_bet=2.5."""
+        kwargs = {
+            **CLOB_KWARGS,
+            "p_yes": 0.95,  # strong YES edge vs best ask 0.55
+            "max_bet": 2_500_000,  # 2.5 USDC — deployed Polystrat cap
+            "min_bet": 1_000_000,  # 1.0 USDC — absolute_min_bet_size
+            "n_bets": 1,  # deployed value: W_bet collapses to max_bet
+            "min_order_shares": 5.0,  # 5*0.55 = 2.75 > max_bet 2.5
+        }
+        result = run(**kwargs)
+        # Pre-fix (buggy): clamp → spend=2.5=W_bet → w_lose<=0 → bet_amount=0.
+        # Post-fix the grid finds an *interior* optimum: at least the
+        # min_bet floor, strictly below the max_bet cap (not clamped).
+        assert result["bet_amount"] >= 1_000_000  # >= min_bet, not junk-sized
+        assert result["bet_amount"] < 2_500_000  # interior, not clamped to cap
+        assert result["vote"] == 0  # YES

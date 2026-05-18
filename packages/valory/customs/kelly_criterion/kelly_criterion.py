@@ -50,6 +50,9 @@ OPTIONAL_FIELDS = frozenset(
         "bet_fee",
         "orderbook_asks_yes",
         "orderbook_asks_no",
+        # accepted but NOT consulted in the CLOB sizing path post-PR #971
+        # (FOK takers are not share-count-constrained); still populated by
+        # decision_receive.py — kept here to avoid breaking those callers.
         "min_order_shares",
     }
 )
@@ -337,32 +340,11 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
-            min_order_shares = float(kwargs.get("min_order_shares", 5.0))
 
-            # Compute venue minimum spend from min_order_shares
-            remaining_shares = min_order_shares
-            venue_min_side = 0.0
-            for level in sorted_asks:
-                lp = float(level["price"])
-                ls = float(level["size"])
-                if lp <= 0 or ls <= 0:
-                    continue
-                fill = min(ls, remaining_shares)
-                venue_min_side += fill * lp
-                remaining_shares -= fill
-                if remaining_shares <= 0:
-                    break
-
-            if remaining_shares > 0:
-                msg = (
-                    f"{label}: insufficient book depth to fill "
-                    f"min_order_shares={min_order_shares}"
-                )
-                info.append(msg)
-                all_rejections.append(msg)
-                continue
-
-            b_min_side = max(min_bet, venue_min_side)
+            # No venue-minimum floor for CLOB: ``min_order_size`` (~5 shares)
+            # is a maker/limit constraint, not enforced on the FOK *taker*
+            # orders Trader places (USD depth checked only). See PR #971.
+            b_min_side = min_bet
             x_native, y_native = 0.0, 0.0
 
             # CLOB pre-filter: quick edge check against best ask
@@ -423,6 +405,32 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
             f"vwap={vwap:.4f}, edge={edge:+.4f}, "
             f"G_improvement={g_improvement:.6f}"
         )
+
+        if market_type == "clob":
+            # The book genuinely cannot fill (empty / all zero-price /
+            # invalid): keep an explicit signal so a no-bet on a high-edge
+            # market is not mistaken for a legitimately unprofitable one.
+            _, depth_shares = walk_book(sorted_asks, max_bet)
+            if depth_shares <= 0:
+                msg = (
+                    f"{label}: book filled to 0 at all grid points "
+                    f"(thin or invalid)"
+                )
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
+
+            # ``b_min_side`` only sets the requested grid point; ``walk_book``
+            # caps the actual fill cost to available depth, so a book thinner
+            # than ``min_bet`` would otherwise leak a sub-floor order through.
+            if 0 < best_spend < b_min_side:
+                msg = (
+                    f"{label}: fill cost {best_spend:.4f} < min_bet "
+                    f"{b_min_side:.4f} (insufficient book depth)"
+                )
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
 
         if best_spend > 0 and g_improvement > 0:
             if (  # pragma: no branch — first side always sets best_result

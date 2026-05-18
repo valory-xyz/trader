@@ -76,7 +76,7 @@ skills:
 - valory/agent_performance_summary_abci:0.1.0:bafybeiflmb7qawupc3ihzzgi5pvxee5hxvh6irjngjog7rscrnyu4hizs4
 - valory/funds_manager:0.1.0:bafybeifff3amddh44muocd4nfo3txu5lltgjtycvqa4jiwgde6idwvdoii
 customs:
-- valory/kelly_criterion:0.1.0:bafybeibio4ynwl4ovejwgsxdkbdeyrefygam6juneuatkduzek3egnp4ay
+- valory/kelly_criterion:0.1.0:bafybeia4jbzn5bmzii72l43y6wxdw57dy3wndsozdvmeiz5dzqmlvga664
 - valory/fixed_bet:0.1.0:bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim
 default_ledger: ethereum
 required_ledgers:
