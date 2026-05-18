@@ -19,7 +19,7 @@ dependencies:
   eth_typing: {}
   hexbytes: {}
   web3:
-    version: <8,>=7.0.0
+    version: <8,>=7.15.0
   requests:
     version: <2.33.0,>=2.32.5
   urllib3:

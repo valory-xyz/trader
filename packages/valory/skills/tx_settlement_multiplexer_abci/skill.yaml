@@ -27,8 +27,8 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeidpod4inivvvgzenx46whshq4mzmxgwsxinv6ibdvyemkstam2yz4
-- valory/decision_maker_abci:0.1.0:bafybeifj5u3nkkxhvp4fjlvlgwkfer3m6okjjgicuoqjylxawqvg6i5jfy
-- valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
+- valory/decision_maker_abci:0.1.0:bafybeid4gsj3d5aijfvdo5mla5tzuczkjyj7mchexacxzk2lsugkm2562m
+- valory/staking_abci:0.1.0:bafybeieeu7xwjnrklmysbg3tsfnv3o6gmh5rua6xqaxdadkxyox7xgimjy
 - valory/mech_interact_abci:0.1.0:bafybeihds6vqk3gsevtsdsowz56jdnbbhc6gnswwd25opm6rrj32dhsmou
 behaviours:
   main:
@@ -146,5 +146,5 @@ models:
     class_name: SharedState
 dependencies:
   web3:
-    version: <8,>=7.0.0
+    version: <8,>=7.15.0
 is_abstract: true

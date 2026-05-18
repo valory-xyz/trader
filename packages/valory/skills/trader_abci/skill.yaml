@@ -55,14 +55,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
-- valory/market_manager_abci:0.1.0:bafybeigsgzw3a4jltpj2pvepn3bsbccia3bv6juyr75bg7el6yjqsearve
-- valory/decision_maker_abci:0.1.0:bafybeifj5u3nkkxhvp4fjlvlgwkfer3m6okjjgicuoqjylxawqvg6i5jfy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih7tffmgfamzsmk6nywy6x6o42zdgsoozstp6gb4gxq7mnzvjjz5i
-- valory/staking_abci:0.1.0:bafybeifr5puvjn722l6f5gngpsrpyb4xkcxiecbfhpewcnbuzr7hgp5ezu
-- valory/check_stop_trading_abci:0.1.0:bafybeife5the6aeuzbf473zmxgnxoov35swobhrpqiysjp62i6vjurosrm
+- valory/market_manager_abci:0.1.0:bafybeigrtkteop2i3mtzcg36qa5o63qwzaxr4qwjt3v74zbh46yo44aa4m
+- valory/decision_maker_abci:0.1.0:bafybeid4gsj3d5aijfvdo5mla5tzuczkjyj7mchexacxzk2lsugkm2562m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigkhdx6mjgqmwfl66qfn53iynyzb3jw72hz4fnqr4hbseyg6ahlfm
+- valory/staking_abci:0.1.0:bafybeieeu7xwjnrklmysbg3tsfnv3o6gmh5rua6xqaxdadkxyox7xgimjy
+- valory/check_stop_trading_abci:0.1.0:bafybeicuymfgfnhnzipqgryra2ip3w3qpkddrb42wcj3iru57tqgm3puza
 - valory/mech_interact_abci:0.1.0:bafybeihds6vqk3gsevtsdsowz56jdnbbhc6gnswwd25opm6rrj32dhsmou
-- valory/chatui_abci:0.1.0:bafybeifjk6sd6fbtiuusnuuia6wg24rcscxlxihlgtqfds2pvgk62megm4
-- valory/agent_performance_summary_abci:0.1.0:bafybeiflmb7qawupc3ihzzgi5pvxee5hxvh6irjngjog7rscrnyu4hizs4
+- valory/chatui_abci:0.1.0:bafybeig3mypuwsvzvv6a4arwfuwuebjfrxrqdutufs4uvy5s7waoqe52ym
+- valory/agent_performance_summary_abci:0.1.0:bafybeibgs2bpb62zvcxkgqcbgoeppl4cwiwlaywtut2hwba7q5lgh5e2dm
 - valory/funds_manager:0.1.0:bafybeifff3amddh44muocd4nfo3txu5lltgjtycvqa4jiwgde6idwvdoii
 behaviours:
   main:
@@ -655,7 +655,7 @@ dependencies:
   eth-account:
     version: <0.14.0,>=0.13.0
   web3:
-    version: <8,>=7.0.0
+    version: <8,>=7.15.0
   requests:
     version: <2.33.0,>=2.32.5
   open-aea-ledger-ethereum:
