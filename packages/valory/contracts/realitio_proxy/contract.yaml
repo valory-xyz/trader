@@ -17,5 +17,5 @@ contract_interface_paths:
   ethereum: build/Realitio.json
 dependencies:
   web3:
-    version: <8,>=7.0.0
+    version: <8,>=7.15.0
 contracts: []

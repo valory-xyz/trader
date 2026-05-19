@@ -52,7 +52,7 @@ fingerprint:
   tests/test_utils.py: bafybeicf3krbvoya6o3loqjsigt7rruzaejdvvxlfl3ghtzq4cqgk4vxua
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeie4e2pj2ensqnqxyuf377vrcwyrxsv6wg7hqpzkkonri3blizyvq4
+- valory/polymarket_client:0.1.0:bafybeie6yruvibrumlu5k7pt77fsmefejgated3dzoxumozu4v2k4tidba
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
@@ -281,7 +281,7 @@ models:
     class_name: SharedState
 dependencies:
   web3:
-    version: <8,>=7.0.0
+    version: <8,>=7.15.0
   python-dateutil:
     version: <4,>=2
 is_abstract: true
