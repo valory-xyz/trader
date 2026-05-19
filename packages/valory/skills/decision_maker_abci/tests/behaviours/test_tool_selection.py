@@ -87,6 +87,8 @@ class _TestableBehaviour(ToolSelectionBehaviour):
     benchmarking_mode = None  # type: ignore[assignment]
     policy = None  # type: ignore[assignment]
     mech_tools = None  # type: ignore[assignment]
+    mech_tools_api = None  # type: ignore[assignment]
+    params = None  # type: ignore[assignment]
 
 
 def _make_behaviour(
@@ -109,10 +111,12 @@ def _make_behaviour(
     benchmarking_mode.enabled = False
     behaviour.benchmarking_mode = benchmarking_mode  # type: ignore[assignment]
 
-    # synchronized_data
+    # synchronized_data. Default to V1 so the new V2-only IPFS-fetch loop in
+    # `_fetch_mech_manifests` short-circuits; V2-specific tests override this.
     sync_data = MagicMock()
     sync_data.most_voted_randomness = randomness
     sync_data.mechs_info = mechs_info or []
+    sync_data.is_marketplace_v2 = False
     behaviour.synchronized_data = sync_data  # type: ignore[assignment]
 
     # shared_state / chatui_config
@@ -121,9 +125,11 @@ def _make_behaviour(
     shared_state.chatui_config.selected_mechs = selected_mechs
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
-    # policy and mech_tools
+    # policy / mech_tools / classifier cache. `object.__new__` above skips
+    # __init__, so we set `_tool_metadata` explicitly.
     behaviour.policy = policy  # type: ignore[assignment]
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
+    behaviour._tool_metadata = {}  # type: ignore[attr-defined]
 
     return behaviour
 
@@ -631,3 +637,284 @@ class TestAsyncActSelectedToolNotNone:
                         _run_async_act(behaviour)
 
         mock_tool_used.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Suitability classifier integration: __init__, _extract_tool_metadata,
+# _fetch_mech_manifests, and the suitability branch of _candidate_tools.
+# ---------------------------------------------------------------------------
+
+
+class _StubManifestMech:
+    """Mech stub with a `.service.metadata_str` for the V2 fetch loop."""
+
+    def __init__(self, address: str, metadata_str: Optional[str]) -> None:
+        self.address = address
+        self.relevant_tools: set = set()
+        self.service = MagicMock(metadata_str=metadata_str)
+
+
+class _PredictionMetadata:
+    """Convenience builders for manifest blobs used in classifier tests."""
+
+    PREDICTION_EXAMPLE = (
+        '{"p_yes": 0.6, "p_no": 0.4, "confidence": 0.8, "info_utility": 0.6}'
+    )
+
+    @staticmethod
+    def predictor(description: str = "Makes binary predictions.") -> dict:
+        """Manifest blob that the classifier passes."""
+        return {
+            "description": description,
+            "input": {
+                "type": "text",
+                "description": "The text to make a prediction on",
+            },
+            "output": {
+                "schema": {
+                    "properties": {
+                        "result": {
+                            "type": "string",
+                            "example": _PredictionMetadata.PREDICTION_EXAMPLE,
+                        }
+                    }
+                }
+            },
+        }
+
+    @staticmethod
+    def resolver() -> dict:
+        """Manifest blob that the classifier rejects (resolver shape)."""
+        return {
+            "description": "Resolves prediction markets after they have closed.",
+            "input": {"type": "text", "description": "market question"},
+            "output": {
+                "schema": {
+                    "properties": {
+                        "result": {
+                            "type": "string",
+                            "example": (
+                                '{"is_valid": true, "is_determinable": true, '
+                                '"has_occurred": true}'
+                            ),
+                        }
+                    }
+                }
+            },
+        }
+
+
+class TestToolSelectionInit:
+    """ToolSelectionBehaviour.__init__ initializes the per-round cache."""
+
+    def test_tool_metadata_starts_empty(self) -> None:
+        """The classifier cache must default to an empty dict on instantiation."""
+        behaviour = ToolSelectionBehaviour.__new__(ToolSelectionBehaviour)
+        ToolSelectionBehaviour.__init__(  # type: ignore[misc]
+            behaviour, name="x", skill_context=MagicMock()
+        )
+        assert behaviour._tool_metadata == {}
+
+
+class TestExtractToolMetadata:
+    """_extract_tool_metadata isolates and lowercases the toolMetadata blob."""
+
+    def test_happy_path_lowercases_and_filters_non_dict(self) -> None:
+        """Valid manifest body returns lowercased tool-name keyed dict, dropping non-dicts."""
+        body = {
+            "tools": ["a", "b"],
+            "toolMetadata": {
+                "TOOL-A": {"description": "alpha"},
+                "tool-b": {"description": "beta"},
+                "bogus": "not-a-dict",
+            },
+        }
+        res_raw = MagicMock(body=json.dumps(body).encode())
+
+        out = ToolSelectionBehaviour._extract_tool_metadata(res_raw)
+
+        assert out == {
+            "tool-a": {"description": "alpha"},
+            "tool-b": {"description": "beta"},
+        }
+
+    def test_returns_empty_on_decode_error(self) -> None:
+        """Non-UTF-8 body returns empty dict (caught by UnicodeDecodeError)."""
+        res_raw = MagicMock(body=b"\xff\xfe garbage")
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
+    def test_returns_empty_on_json_error(self) -> None:
+        """Malformed JSON returns empty dict."""
+        res_raw = MagicMock(body=b"{not json")
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
+    def test_returns_empty_when_body_missing_attribute(self) -> None:
+        """A response without a `.body` attribute returns empty (AttributeError)."""
+        res_raw = object()  # no .body
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
+    def test_returns_empty_when_no_tool_metadata_key(self) -> None:
+        """Body without `toolMetadata` returns empty dict."""
+        res_raw = MagicMock(body=json.dumps({"tools": ["a"]}).encode())
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
+    def test_returns_empty_when_tool_metadata_not_a_dict(self) -> None:
+        """A `toolMetadata` value that isn't a dict returns empty."""
+        res_raw = MagicMock(body=json.dumps({"toolMetadata": ["unexpected"]}).encode())
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
+
+def _attach_mech_tools_api(behaviour: "_TestableBehaviour") -> MagicMock:
+    """Wire a writable mech_tools_api stub onto a _TestableBehaviour."""
+    api = MagicMock()
+    api.__dict__["_frozen"] = True
+    api.get_spec.return_value = {"method": "GET", "url": "x"}
+    behaviour.mech_tools_api = api  # type: ignore[attr-defined]
+    return api
+
+
+def _drive_fetch(behaviour: "_TestableBehaviour") -> None:
+    """Run _fetch_mech_manifests to completion."""
+    gen = behaviour._fetch_mech_manifests()
+    try:
+        while True:
+            next(gen)
+    except StopIteration:
+        return
+
+
+class TestFetchMechManifests:
+    """_fetch_mech_manifests populates the cache and short-circuits as needed."""
+
+    def test_short_circuits_when_v1(self) -> None:
+        """V1 marketplace path never fetches and leaves the cache empty."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour.synchronized_data.is_marketplace_v2 = False  # type: ignore[attr-defined]
+        behaviour._tool_metadata = {"stale": {"description": "x"}}
+
+        _drive_fetch(behaviour)
+
+        assert behaviour._tool_metadata == {}
+
+    def test_short_circuits_when_benchmarking_enabled(self) -> None:
+        """Benchmark mode never hits IPFS."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+
+        _drive_fetch(behaviour)
+
+        assert behaviour._tool_metadata == {}
+
+    def test_fetches_each_unique_cid_once(self) -> None:
+        """Mechs that share a CID resolve to a single HTTP fetch."""
+        policy = _make_policy("good", "bad")
+        behaviour = _make_behaviour(policy, {"good", "bad"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = [  # type: ignore[attr-defined]
+            _StubManifestMech("0xa", "cid-1"),
+            _StubManifestMech("0xb", "cid-1"),  # same CID
+            _StubManifestMech("0xc", "cid-2"),
+            _StubManifestMech("0xd", None),  # no CID, skipped
+        ]
+        api = _attach_mech_tools_api(behaviour)
+
+        body = {
+            "toolMetadata": {
+                "good": _PredictionMetadata.predictor(),
+                "bad": _PredictionMetadata.resolver(),
+            }
+        }
+        behaviour.params = MagicMock(  # type: ignore[attr-defined]
+            ipfs_address="https://ipfs.example/"
+        )
+
+        call_count = {"n": 0}
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            call_count["n"] += 1
+            return MagicMock(body=json.dumps(body).encode())
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign]
+
+        _drive_fetch(behaviour)
+
+        # 2 unique CIDs → 2 HTTP calls (the dup CID and the None one are skipped).
+        assert call_count["n"] == 2
+        assert set(behaviour._tool_metadata) == {"good", "bad"}
+        api.reset_retries.assert_called()
+
+    def test_extraction_failure_leaves_cache_partially_populated(self) -> None:
+        """A manifest with no toolMetadata is silently skipped, others still land."""
+        policy = _make_policy("tool")
+        behaviour = _make_behaviour(policy, {"tool"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = [  # type: ignore[attr-defined]
+            _StubManifestMech("0xgood", "cid-good"),
+            _StubManifestMech("0xbad", "cid-bad"),
+        ]
+        _attach_mech_tools_api(behaviour)
+        behaviour.params = MagicMock(  # type: ignore[attr-defined]
+            ipfs_address="https://ipfs.example/"
+        )
+
+        bodies = [
+            MagicMock(
+                body=json.dumps(
+                    {"toolMetadata": {"tool": _PredictionMetadata.predictor()}}
+                ).encode()
+            ),
+            MagicMock(body=b"not-json"),  # extraction failure
+        ]
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return bodies.pop(0)
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign]
+
+        _drive_fetch(behaviour)
+
+        assert set(behaviour._tool_metadata) == {"tool"}
+
+
+class TestCandidateToolsSuitability:
+    """_candidate_tools applies the suitability classifier when metadata exists."""
+
+    def test_suitability_keeps_prediction_tools_and_drops_others(self) -> None:
+        """Classifier passes prediction tools, drops resolver-shaped ones."""
+        policy = _make_policy("good", "bad")
+        behaviour = _make_behaviour(policy, {"good", "bad"})
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "bad": _PredictionMetadata.resolver(),
+        }
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"good"}
+        assert cause is None
+
+    def test_suitability_emptied_keeps_raw_mech_tools_and_warns(self) -> None:
+        """If classifier rejects every tool, fall back to raw mech_tools + log a warning."""
+        policy = _make_policy("only")
+        behaviour = _make_behaviour(policy, {"only"})
+        behaviour._tool_metadata = {"only": _PredictionMetadata.resolver()}
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"only"}
+        assert cause is None
+        behaviour.context.logger.warning.assert_called()  # type: ignore[attr-defined]
+
+    def test_suitability_skipped_when_no_metadata(self) -> None:
+        """Empty metadata cache leaves the candidate set untouched."""
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"})
+        behaviour._tool_metadata = {}
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"a", "b"}
+        assert cause is None

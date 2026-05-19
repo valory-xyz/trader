@@ -212,11 +212,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        res = {str(tool).lower() for tool in res} & self.params.valid_tools
-        self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
+        res = {str(tool).lower() for tool in res}
 
         if len(res) == 0:
-            self.context.logger.error("The relevant mech agent's tools are empty!")
+            self.context.logger.error("The mech agent's manifest is empty!")
             return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()

@@ -36,8 +36,8 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeihauyieaox7d77wz3ofjflvhicsnhzitvcgnysoral5l4m5gluglm
   behaviours/sampling.py: bafybeig3w6bmlivit3sx5adiflq6bclzipfugxzmjn7v7shdq4l7a2q2gu
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeid7r45kniqbcbtw57kapegfujzjyqd55pgnbylzaqgyanmbqjeo4a
-  behaviours/tool_selection.py: bafybeidkhmz6x32kuz5gkwxuqqou6zq4rgcyc34vg7awhe2bud5s3sc3am
+  behaviours/storage_manager.py: bafybeierknztldtbv3py3azpjmhkxy5rebe6amuop2grzfqs2wwdstaehu
+  behaviours/tool_selection.py: bafybeid5pd7dssskoasq34xhmx4q66jq6iz4kjrpje4bh6h2pirwc46pai
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeier7ttbrdlyh2mzo2wc4yg6zgsz6gha3yihlelgxaguriytcumfiq
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
@@ -100,8 +100,8 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
   tests/behaviours/test_sampling.py: bafybeihfb3eke7hmhagkv5tcvpvgj4mljatllnjauiae5hfaaoxlffqhfy
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeifq236dedjc6hrgfrztq3iern55jjjvdvknffemdrb65punwa3b6i
-  tests/behaviours/test_tool_selection.py: bafybeig2ynzrtml73kmv4hyvbrmvptrket2pji45pcy44uzkpkjviscwcq
+  tests/behaviours/test_storage_manager.py: bafybeihs6xhr4buen6mrogkpfi6cwehmm2p57f55eeyaje5n6tuprcipvm
+  tests/behaviours/test_tool_selection.py: bafybeie7xisxenfn5zs6t7rjewue5wzw24snehjrz6djkmoyw6iyxa5zg4
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
   tests/io_/test_loader.py: bafybeidd2zyzrhhxv75ijofg7mqzobmf4yu32lsscqdi3zd3hwlrwe2kne
@@ -132,9 +132,11 @@ fingerprint:
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
+  tests/utils/test_tool_suitability.py: bafybeibcocvmwpcipdjbsvywqdu3srm47jkq3iq6cygprbqpgf26eg25yu
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/general.py: bafybeiaiszrv22dmqm6h7hoerpg7rpabkpakd4s43ct6p7y5zd2koz7ctq
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
+  utils/tool_suitability.py: bafybeig3vyws43jkdxhfzcs7ax6njvrzomoyr2lqbkrgt5b2pvblvktciu
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
