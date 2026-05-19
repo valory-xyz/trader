@@ -115,9 +115,6 @@ from packages.valory.skills.decision_maker_abci.states.tool_selection import (
 from packages.valory.skills.decision_maker_abci.states.withdrawal_idle import (
     WithdrawalIdleRound,
 )
-from packages.valory.skills.market_manager_abci.rounds import (
-    Event as MarketManagerEvent,
-)
 
 
 class DecisionMakerAbciApp(AbciApp[Event]):
@@ -153,7 +150,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - new simulated resample: 3.
             - benchmarking enabled: 4.
             - benchmarking finished: 33.
-            - fetch error: 32.
         4. ToolSelectionRound
             - done: 5.
             - none: 4.
@@ -195,7 +191,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 32.
             - no majority: 9.
             - round timeout: 9.
-            - fetch error: 32.
         10. BetPlacementRound
             - done: 19.
             - mock tx: 14.
@@ -203,7 +198,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - calc buy amount failed: 17.
             - no majority: 10.
             - round timeout: 10.
-            - none: 32.
         11. PolymarketBetPlacementRound
             - done: 24.
             - bet placement done: 24.
@@ -213,7 +207,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - mock tx: 24.
             - no majority: 11.
             - round timeout: 11.
-            - none: 32.
         12. PolymarketSetApprovalRound
             - done: 13.
             - prepare tx: 28.
@@ -233,7 +226,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - no redeeming: 30.
             - no majority: 14.
             - redeem round timeout: 30.
-            - none: 32.
         15. RedeemRouterRound
             - done: 14.
             - polymarket done: 16.
@@ -243,7 +235,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - done: 23.
             - prepare tx: 22.
             - no majority: 16.
-            - none: 16.
             - no redeeming: 30.
             - redeem round timeout: 19.
             - mock tx: 23.
@@ -288,7 +279,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - withdrawal done: 39.
             - withdrawal round timeout: 39.
             - no majority: 36.
-            - none: 36.
             - done: 39.
             - mock tx: 39.
         37. PostOmenWithdrawRound
@@ -360,9 +350,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NEW_SIMULATED_RESAMPLE: SamplingRound,
             Event.BENCHMARKING_ENABLED: ToolSelectionRound,
             Event.BENCHMARKING_FINISHED: BenchmarkingDoneRound,
-            # this is here because of `autonomy analyse fsm-specs`
-            # falsely reporting it as missing from the transition
-            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         ToolSelectionRound: {
             Event.DONE: PolymarketSwapUsdcRound,
@@ -425,9 +412,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.NONE: ImpossibleRound,
             Event.NO_MAJORITY: BlacklistingRound,
             Event.ROUND_TIMEOUT: BlacklistingRound,
-            # this is here because of `autonomy analyse fsm-specs`
-            # falsely reporting it as missing from the transition
-            MarketManagerEvent.FETCH_ERROR: ImpossibleRound,
         },
         BetPlacementRound: {
             Event.DONE: FinishedDecisionMakerRound,
@@ -438,9 +422,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.CALC_BUY_AMOUNT_FAILED: HandleFailedTxRound,
             Event.NO_MAJORITY: BetPlacementRound,
             Event.ROUND_TIMEOUT: BetPlacementRound,
-            # this is here because of `autonomy analyse fsm-specs`
-            # falsely reporting it as missing from the transition
-            Event.NONE: ImpossibleRound,
         },
         PolymarketBetPlacementRound: {
             # Polymarket bets are placed off-chain via py-clob-client, so
@@ -459,9 +440,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.MOCK_TX: FinishedPolymarketBetPlacementRound,
             Event.NO_MAJORITY: PolymarketBetPlacementRound,
             Event.ROUND_TIMEOUT: PolymarketBetPlacementRound,
-            # this is here because of `autonomy analyse fsm-specs`
-            # falsely reporting it as missing from the transition
-            Event.NONE: ImpossibleRound,
         },
         PolymarketSetApprovalRound: {
             Event.DONE: PolymarketPostSetApprovalRound,
@@ -496,9 +474,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             # it could be the RPC, or some other issue.
             # We don't want to be stuck trying to redeem.
             Event.REDEEM_ROUND_TIMEOUT: FinishedWithoutRedeemingRound,
-            # this is here because of `autonomy analyse fsm-specs` falsely
-            # reporting it as missing from the transition
-            Event.NONE: ImpossibleRound,
         },
         RedeemRouterRound: {
             Event.DONE: RedeemRound,
@@ -510,7 +485,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.DONE: FinishedPolymarketRedeemRound,
             Event.PREPARE_TX: FinishedRedeemTxPreparationRound,
             Event.NO_MAJORITY: PolymarketRedeemRound,
-            Event.NONE: PolymarketRedeemRound,
             Event.NO_REDEEMING: FinishedWithoutRedeemingRound,
             Event.REDEEM_ROUND_TIMEOUT: FinishedDecisionMakerRound,
             Event.MOCK_TX: FinishedPolymarketRedeemRound,
@@ -563,7 +537,6 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             Event.WITHDRAWAL_DONE: WithdrawalIdleRound,
             Event.WITHDRAWAL_ROUND_TIMEOUT: WithdrawalIdleRound,
             Event.NO_MAJORITY: OmenWithdrawRound,
-            Event.NONE: OmenWithdrawRound,
             # DONE / MOCK_TX inherited from `TxPreparationRound` and silenced
             # by the `end_block` override (which switches `DONE` to the
             # payload-carried `event` field). Routed defensively to the

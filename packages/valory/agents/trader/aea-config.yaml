@@ -22,19 +22,19 @@ contracts:
 - valory/gnosis_safe:0.1.0:bafybeihfmmoyk7tfh6xg5ylqnxpsxqgzgwklablc3zonp55sz6b2vzuzue
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeicutxdhfofyqt3l2y4udiqgfh22n3sn6fl2i5r7txd2kctvuig4e4
 - valory/service_registry:0.1.0:bafybeid7bou6qn43oeldbbs2vuytrozpu3pegrtnr4kf6zbw3cpd2sxhjq
-- valory/market_maker:0.1.0:bafybeidfq4qxfgezaxhcn3s7em6556igncx2gtlm5i5m7pz4dpcjqgafnm
+- valory/market_maker:0.1.0:bafybeia73kg5d7mjeckxnmajh3sdjbfldjtjhpqpg3l4aewubosd2dhdcy
 - valory/multisend:0.1.0:bafybeidwr3l2t564gle533l7elroxr77wvmqogdmwz4e6mmqxnbqsk37tm
 - valory/mech:0.1.0:bafybeih5furyu6czdccbudkfgnotlewxfp7o6qtjxlnkd7z6llazyjxd7q
 - valory/conditional_tokens:0.1.0:bafybeifkrnpjm3a7lupjn2w3widfei4to2xk6tt2dhalllgso52vmeaayy
 - valory/realitio:0.1.0:bafybeidva2wdv2vuswrrkjoanccysuhcsmq3ojvn2kf5ufonxbvfgvhvsm
 - valory/realitio_proxy:0.1.0:bafybeiagm5qkgcmkhpyxvhptxcysvtu2pwgg4gcjt3yplczcqev3kt3zzy
 - valory/agent_registry:0.1.0:bafybeiaafivnt5l6flmjudmodjjkpxz7ech5gb2udegmrfjfnafn2vdtye
-- valory/service_staking_token:0.1.0:bafybeie27sqwq7cac3iocy7pkeiux76lvoyej6zfl5a3dyasp5ms6ms7wq
+- valory/service_staking_token:0.1.0:bafybeici4bbllbyw4aeg3lw2fj26oolflj5r4wwrav23ulyl7v7r6fobzu
 - valory/erc20:0.1.0:bafybeihs6u6diy5iy5tnvgdgtgu4phb2niqze6kpmknmfvqio44zyozog4
 - valory/staking_token:0.1.0:bafybeic6rlrsdgo5my3nxiy247njlsn2tupodhcehxqis6dpfyz325bdp4
-- valory/mech_activity:0.1.0:bafybeigi3rnihcb7t7mrw7j4aa4yyfazry42vd34mldpl6geics5oqpdwm
+- valory/mech_activity:0.1.0:bafybeiasmh6vxp2gh3kfoh6ulqia3nh2a3zh2fszowszc62dbdndk7inku
 - valory/agent_mech:0.1.0:bafybeibdig2phm4hmquta6msnuhpb5y6btcvikpjzlmbz76bqxhsboppqm
-- valory/relayer:0.1.0:bafybeigxrf27ryd4yhe6a7iallxfom44g3aplmljh54fau5osb6vj2ti6e
+- valory/relayer:0.1.0:bafybeia7zmnqsfk235yjpegb6tijmfyelezms3bewadpdqhx65aricaaoe
 - valory/mech_marketplace_legacy:0.1.0:bafybeif54g7wbbgr6wb3df57e5wy5xqa5rjhoyutkkjfzruhhox7tawycm
 - valory/mech_mm:0.1.0:bafybeiclpnm6ohwxvj2rzaz7mu7ngg4ttoswegsrvyye33ab2bj4p6nmkm
 - valory/ierc1155:0.1.0:bafybeiemvq2fntozchxczkt4kxmyy4jtuqhkxlcepsurnyebgd5xqbbymq
@@ -65,12 +65,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifdzwzz5byan3ytsi46n4n2svtqme6475hk5z77sopymyzqszcpoa
 - valory/termination_abci:0.1.0:bafybeiadbtzcvzkwbrosshlsubilj7mwzdqfni6dr75wsd3vawhslpwqeu
 - valory/transaction_settlement_abci:0.1.0:bafybeigiojqgbi54jhree3sqrzaudbmjxb7y2ete74bbliryi3t7ztwi5q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigkhdx6mjgqmwfl66qfn53iynyzb3jw72hz4fnqr4hbseyg6ahlfm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic45sd7et6scbdp5w7hj42byeosix576uxsmhdrpteyhjexagx73q
 - valory/market_manager_abci:0.1.0:bafybeigrtkteop2i3mtzcg36qa5o63qwzaxr4qwjt3v74zbh46yo44aa4m
-- valory/decision_maker_abci:0.1.0:bafybeid4gsj3d5aijfvdo5mla5tzuczkjyj7mchexacxzk2lsugkm2562m
-- valory/trader_abci:0.1.0:bafybeiayeit6vhk7xlisl3pyndfwe2sda6pefajedxdybnk3zggkzcy4nm
-- valory/staking_abci:0.1.0:bafybeieeu7xwjnrklmysbg3tsfnv3o6gmh5rua6xqaxdadkxyox7xgimjy
-- valory/check_stop_trading_abci:0.1.0:bafybeicuymfgfnhnzipqgryra2ip3w3qpkddrb42wcj3iru57tqgm3puza
+- valory/decision_maker_abci:0.1.0:bafybeihzvdvscgmgagetsrb5r46sz5szmmkrlnrxsq2iwkui7bimchbtty
+- valory/trader_abci:0.1.0:bafybeidfodqumbajpbakncz2f5x4pv6wu4wssstaebcvl6tzjsyovnxfzq
+- valory/staking_abci:0.1.0:bafybeihourb5vie4miynp6b6euuyrp5t3tink6io6j5ls3s7jn2bzxmmfm
+- valory/check_stop_trading_abci:0.1.0:bafybeibxwoxqgpxt2ip6ehfcs4uu4spjysvw3srddttithvvs3dhds2ame
 - valory/mech_interact_abci:0.1.0:bafybeihds6vqk3gsevtsdsowz56jdnbbhc6gnswwd25opm6rrj32dhsmou
 - valory/chatui_abci:0.1.0:bafybeig3mypuwsvzvv6a4arwfuwuebjfrxrqdutufs4uvy5s7waoqe52ym
 - valory/agent_performance_summary_abci:0.1.0:bafybeibgs2bpb62zvcxkgqcbgoeppl4cwiwlaywtut2hwba7q5lgh5e2dm
@@ -111,11 +111,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==2.2.3
+    version: ==2.2.6
   open-aea-ledger-ethereum:
-    version: ==2.2.3
+    version: ==2.2.6
   open-aea-test-autonomy:
-    version: ==0.21.18
+    version: ==0.21.22
   typing_extensions:
     version: <=4.15.0,>=3.10.0.2
 skill_exception_policy: stop_and_exit
