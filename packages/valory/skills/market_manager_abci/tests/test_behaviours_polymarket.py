@@ -1786,9 +1786,10 @@ class TestFetchMarketsFromPolymarket:
 
         assert result is not None
         assert len(result) == 1  # type: ignore[arg-type]
-        # Verify logger was called with category skip info
+        # Verify per-reason [POLYSTRAT] funnel line was emitted for the
+        # missing-conditionId skip (raises ValueError → missing_required bucket).
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("skipped" in call.lower() for call in log_calls)
+        assert any("filter=missing_required" in call for call in log_calls)
 
     def test_market_without_id_uses_unknown(self) -> None:
         """Test market without id field uses 'unknown'."""

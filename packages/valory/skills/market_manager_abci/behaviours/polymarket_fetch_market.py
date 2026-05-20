@@ -145,14 +145,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin or have resolved/over outcome prices."""
         pre_non_expired = sum(1 for b in self.bets if not b.queue_status.is_expired())
-        rule3_drops = 0
-        rule4_drops = 0
+        past_opening_margin_drops = 0
+        extreme_outcome_price_drops = 0
         for bet in self.bets:
             was_expired = bet.queue_status.is_expired()
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
                 if not was_expired:
-                    rule3_drops += 1
+                    past_opening_margin_drops += 1
                 continue
             # Blacklist binary markets with extreme outcome prices (>= 0.99) indicating resolved/over markets
             if len(bet.outcomeTokenMarginalPrices) == 2:
@@ -162,16 +162,16 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 ):
                     bet.blacklist_forever()
                     if not was_expired:
-                        rule4_drops += 1
+                        extreme_outcome_price_drops += 1
         self.context.logger.info(
-            f"[POLYSTRAT] filter=rule3_opening_margin "
-            f"input={pre_non_expired} dropped={rule3_drops} "
-            f"kept={pre_non_expired - rule3_drops}"
+            f"[POLYSTRAT] filter=past_opening_margin_blacklist "
+            f"input={pre_non_expired} dropped={past_opening_margin_drops} "
+            f"kept={pre_non_expired - past_opening_margin_drops}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=rule4_extreme_price "
-            f"input={pre_non_expired - rule3_drops} dropped={rule4_drops} "
-            f"kept={pre_non_expired - rule3_drops - rule4_drops}"
+            f"[POLYSTRAT] filter=extreme_outcome_price_blacklist "
+            f"input={pre_non_expired - past_opening_margin_drops} dropped={extreme_outcome_price_drops} "
+            f"kept={pre_non_expired - past_opening_margin_drops - extreme_outcome_price_drops}"
         )
 
     @staticmethod
@@ -350,8 +350,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
 
     @staticmethod
-    def _is_rule1_violation(raw_bet: Dict[str, Any]) -> bool:
-        """Whether the raw bet would trip ``Bet._validate`` (RULE#1: null/mismatch).
+    def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
+        """Whether the raw bet would trip ``Bet._validate`` (null/mismatch).
 
         Mirrors the necessary-values null/'null' check and the
         outcomeSlotCount-vs-list-length check from ``Bet._validate``
@@ -393,45 +393,45 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         new_count = 0
         update_count = 0
-        rule1_drops = 0
-        rule2_drops = 0
-        update_poison = 0
+        null_or_mismatch_drops = 0
+        zero_liquidity_drops = 0
+        update_propagated_drops = 0
         for raw_bet in chunk:
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
                 new_count += 1
                 if bet.queue_status.is_expired():
-                    if self._is_rule1_violation(raw_bet):
-                        rule1_drops += 1
+                    if self._is_null_or_mismatch_violation(raw_bet):
+                        null_or_mismatch_drops += 1
                     else:
-                        rule2_drops += 1
+                        zero_liquidity_drops += 1
                 self.bets.append(bet)
             else:
                 update_count += 1
                 prev_expired = self.bets[index].queue_status.is_expired()
                 self.bets[index].update_market_info(bet)
                 if not prev_expired and self.bets[index].queue_status.is_expired():
-                    update_poison += 1
+                    update_propagated_drops += 1
                 if not self.bets[index].market:
                     self.bets[index].market = self._current_market
 
         if new_count:
             self.context.logger.info(
-                f"[POLYSTRAT] filter=rule1_null_mismatch "
-                f"input={new_count} dropped={rule1_drops} "
-                f"kept={new_count - rule1_drops}"
+                f"[POLYSTRAT] filter=null_or_mismatch_blacklist "
+                f"input={new_count} dropped={null_or_mismatch_drops} "
+                f"kept={new_count - null_or_mismatch_drops}"
             )
             self.context.logger.info(
-                f"[POLYSTRAT] filter=rule2_zero_liq "
-                f"input={new_count - rule1_drops} dropped={rule2_drops} "
-                f"kept={new_count - rule1_drops - rule2_drops}"
+                f"[POLYSTRAT] filter=zero_liquidity_blacklist "
+                f"input={new_count - null_or_mismatch_drops} dropped={zero_liquidity_drops} "
+                f"kept={new_count - null_or_mismatch_drops - zero_liquidity_drops}"
             )
         if update_count:
             self.context.logger.info(
-                f"[POLYSTRAT] filter=update_poison "
-                f"input={update_count} dropped={update_poison} "
-                f"kept={update_count - update_poison}"
+                f"[POLYSTRAT] filter=update_propagated_blacklist "
+                f"input={update_count} dropped={update_propagated_drops} "
+                f"kept={update_count - update_propagated_drops}"
             )
 
     def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
