@@ -207,7 +207,7 @@ jobs:
           make agent_id
 
       - name: prepare archives
-        if: runner.os == 'macOS'
+        if: matrix.os == 'ubuntu-24.04'
         run: |
           make agent.zip
           make agent.tar.gz
@@ -282,38 +282,39 @@ jobs:
         run: |
           make check-agent-runner
 
-      - name: Upload Release Assets Windows
+      - name: Upload agent runner binary
         uses: actions/upload-artifact@v7
         with:
           name: ${{env.FILENAME}}
           path: dist/${{env.FILENAME}}
 
-      - name: Upload Release Assets
+      - name: Upload hash_id
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
         with:
           name: hash_id
           path: hash_id
-          overwrite: true
-      - name: Upload Release Assets
+
+      - name: Upload agent_id
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
         with:
           name: agent_id
           path: agent_id
-          overwrite: true
 
-      - name: Upload Release Assets
+      - name: Upload agent.tar.gz
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
         with:
           name: agent.tar.gz
           path: agent.tar.gz
-          overwrite: true
 
-      - name: Upload Release Assets
+      - name: Upload agent.zip
+        if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
         with:
           name: agent.zip
           path: agent.zip
-          overwrite: true
 
   upload-assets:
     needs: build-agent-runner
