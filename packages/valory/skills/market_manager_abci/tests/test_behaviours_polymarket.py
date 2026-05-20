@@ -1579,27 +1579,6 @@ class TestFetchMarketsFromPolymarket:
         assert result[0]["outcomes"] is None
         assert result[0]["queue_status"] == QueueStatus.EXPIRED
 
-    def test_invalid_category_market_blacklisted(self) -> None:
-        """Test market that fails category validation gets blacklisted."""
-        # NOTE: Non-falsifiable — assertions below only check len(result) == 1,
-        # which holds regardless of is_market_valid. Compare with
-        # test_closed_market_blacklisted, which asserts queue_status == EXPIRED.
-        behaviour = self._setup_behaviour()
-        market = _make_valid_market(
-            question="Will cats fly?",  # not matching technology keywords
-            category_valid=False,
-        )
-        response = {"technology": [market]}
-        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
-
-        gen = behaviour._fetch_markets_from_polymarket()
-        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
-
-        assert result is not None
-        assert len(result) == 1  # type: ignore[arg-type]
-        # _validate_markets_by_category will set category_valid based on actual check
-        # "cats fly" doesn't match technology keywords, so it will be invalid
-
     def test_keyword_filter_disabled_warning_logged(self) -> None:
         """Test that disabled-filter summary warning logs correct counts."""
         # NOTE: Exists because the keyword category filter is temporarily disabled
@@ -1619,7 +1598,7 @@ class TestFetchMarketsFromPolymarket:
 
         with patch.object(behaviour.context.logger, "warning") as mock_warning:
             gen = behaviour._fetch_markets_from_polymarket()
-            _exhaust_gen(gen)  # type: ignore[arg-type]
+            result = _exhaust_gen(gen)  # type: ignore[arg-type]
 
         disabled_calls = [
             c
@@ -1630,6 +1609,14 @@ class TestFetchMarketsFromPolymarket:
         msg = str(disabled_calls[0])
         assert "passing all 2 markets" in msg
         assert "1/2 would pass" in msg
+
+        # Verify the disable itself — both markets must flow through as bettable.
+        # If the `is_category_valid = True` override were reverted, "Will cats fly?"
+        # would be blacklisted (outcomes=None, queue_status=EXPIRED) and these
+        # assertions would fail.
+        assert len(result) == 2  # type: ignore[arg-type]
+        assert all(r["outcomes"] is not None for r in result)  # type: ignore[index]
+        assert all(r["queue_status"] == QueueStatus.FRESH for r in result)  # type: ignore[index]
 
     def test_market_without_submitted_by_uses_zero_address(self) -> None:
         """Test that markets without submitted_by use ZERO_ADDRESS."""
