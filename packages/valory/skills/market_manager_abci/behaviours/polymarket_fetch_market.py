@@ -368,6 +368,21 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # Deduplicate ALL markets across categories (preferring valid ones)
         deduplicated_by_category = self._deduplicate_markets(marked_markets_by_category)
 
+        # Keyword category filter is currently disabled — log what it would have done
+        total_markets_pre_filter = sum(
+            len(m) for m in deduplicated_by_category.values()
+        )
+        would_pass_filter = sum(
+            1
+            for m_list in deduplicated_by_category.values()
+            for m in m_list
+            if m.get("category_valid", False)
+        )
+        self.context.logger.warning(
+            f"Keyword category filter DISABLED — passing all {total_markets_pre_filter} markets "
+            f"(if enabled, only {would_pass_filter}/{total_markets_pre_filter} would pass)."
+        )
+
         # Process all markets from all categories
         all_bets: List[Dict[str, Any]] = []
         total_markets = 0
@@ -385,6 +400,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for market in markets:
                 market_id = market.get("id", "unknown")
                 is_category_valid = market.get("category_valid", False)
+                # keyword filter disabled — accept all categories
+                is_category_valid = True
                 market_closed = market.get("closed", False)
 
                 is_market_valid = is_category_valid and not market_closed
