@@ -892,16 +892,26 @@ class PolymarketClientConnection(BaseSyncConnection):
                     category_markets
                 )
                 self.logger.info(
-                    f"  Filtered to {len(markets_after_cutoff)} markets with createdAt > {MARKETS_MIN_CREATED_AT}"
+                    f"[POLYSTRAT] filter=createdAt_cutoff category={category} "
+                    f"input={len(category_markets)} "
+                    f"dropped={len(category_markets) - len(markets_after_cutoff)} "
+                    f"kept={len(markets_after_cutoff)} "
+                    f"cutoff={MARKETS_MIN_CREATED_AT}"
                 )
                 yes_no_markets = self._filter_yes_no_markets(markets_after_cutoff)
-                self.logger.info(f"  Filtered to {len(yes_no_markets)} Yes/No markets")
+                self.logger.info(
+                    f"[POLYSTRAT] filter=yes_no_outcomes category={category} "
+                    f"input={len(markets_after_cutoff)} "
+                    f"dropped={len(markets_after_cutoff) - len(yes_no_markets)} "
+                    f"kept={len(yes_no_markets)}"
+                )
 
                 tradeable_markets = self._filter_tradeable_markets(yes_no_markets)
                 self.logger.info(
-                    f"  Filtered to {len(tradeable_markets)} tradeable markets "
-                    f"(dropped {len(yes_no_markets) - len(tradeable_markets)} "
-                    f"inactive / unpriced)"
+                    f"[POLYSTRAT] filter=tradeable category={category} "
+                    f"input={len(yes_no_markets)} "
+                    f"dropped={len(yes_no_markets) - len(tradeable_markets)} "
+                    f"kept={len(tradeable_markets)}"
                 )
                 if yes_no_markets and not tradeable_markets:
                     self.logger.warning(

@@ -144,9 +144,15 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
     def _blacklist_expired_bets(self) -> None:
         """Blacklist bets that are older than the opening margin or have resolved/over outcome prices."""
+        pre_non_expired = sum(1 for b in self.bets if not b.queue_status.is_expired())
+        past_opening_margin_drops = 0
+        extreme_outcome_price_drops = 0
         for bet in self.bets:
+            was_expired = bet.queue_status.is_expired()
             if self.synced_time >= bet.openingTimestamp - self.params.opening_margin:
                 bet.blacklist_forever()
+                if not was_expired:
+                    past_opening_margin_drops += 1
                 continue
             # Blacklist binary markets with extreme outcome prices (>= 0.99) indicating resolved/over markets
             if len(bet.outcomeTokenMarginalPrices) == 2:
@@ -155,6 +161,18 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     for price in bet.outcomeTokenMarginalPrices
                 ):
                     bet.blacklist_forever()
+                    if not was_expired:
+                        extreme_outcome_price_drops += 1
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=past_opening_margin_blacklist "
+            f"input={pre_non_expired} dropped={past_opening_margin_drops} "
+            f"kept={pre_non_expired - past_opening_margin_drops}"
+        )
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=extreme_outcome_price_blacklist "
+            f"input={pre_non_expired - past_opening_margin_drops} dropped={extreme_outcome_price_drops} "
+            f"kept={pre_non_expired - past_opening_margin_drops - extreme_outcome_price_drops}"
+        )
 
     @staticmethod
     def _validate_market_category(market_title: str, category: str) -> bool:
@@ -220,12 +238,15 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             total_invalid += invalid_count
 
             self.context.logger.info(
-                f"Category '{category}': {valid_count}/{len(markets)} validated "
-                f"({invalid_count} failed)"
+                f"[POLYSTRAT] filter=keyword_category category={category} "
+                f"input={len(markets)} dropped={invalid_count} "
+                f"kept={valid_count} mode=annotate"
             )
 
         self.context.logger.info(
-            f"Total validated: {total_validated} markets, {total_invalid} failed validation"
+            f"[POLYSTRAT] filter=keyword_category stage=total "
+            f"input={total_validated + total_invalid} "
+            f"dropped={total_invalid} kept={total_validated} mode=annotate"
         )
 
         return marked_markets_by_category
@@ -288,8 +309,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             deduplicated_by_category[category].append(market)
 
         self.context.logger.info(
-            f"After deduplication: {len(selected_markets)} unique markets "
-            f"({duplicate_count} duplicates removed) across {len(deduplicated_by_category)} categories"
+            f"[POLYSTRAT] filter=cross_category_dedup "
+            f"input={len(selected_markets) + duplicate_count} "
+            f"dropped={duplicate_count} kept={len(selected_markets)} "
+            f"categories={len(deduplicated_by_category)}"
         )
 
         return deduplicated_by_category
@@ -326,20 +349,90 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         """Get the index of the bet with the given id, if it exists, otherwise `None`."""
         return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
 
+    @staticmethod
+    def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
+        """Whether the raw bet would trip ``Bet._validate`` (null/mismatch).
+
+        Mirrors the necessary-values null/'null' check and the
+        outcomeSlotCount-vs-list-length check from ``Bet._validate``
+        (bets.py:248). Excludes ``market`` which is injected by the caller.
+
+        :param raw_bet: the raw bet dict prior to ``Bet`` construction.
+        :return: True if the bet would trip ``_validate``; False if it would
+            only trip ``_check_usefulness`` (zero ``scaledLiquidityMeasure``)
+            or not blacklist at all.
+        """
+        necessary_keys = (
+            "id",
+            "title",
+            "collateralToken",
+            "creator",
+            "fee",
+            "openingTimestamp",
+            "outcomeSlotCount",
+            "outcomes",
+            "scaledLiquidityMeasure",
+            "outcomeTokenAmounts",
+            "outcomeTokenMarginalPrices",
+        )
+        for k in necessary_keys:
+            v = raw_bet.get(k)
+            if v is None or v == "null":
+                return True
+        slot_count = raw_bet.get("outcomeSlotCount")
+        for k in ("outcomes", "outcomeTokenAmounts", "outcomeTokenMarginalPrices"):
+            v = raw_bet.get(k)
+            if v is not None and slot_count != len(v):
+                return True
+        return False
+
     def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> None:
         """Process a chunk of bets."""
         if chunk is None:
             return
 
+        new_count = 0
+        update_count = 0
+        null_or_mismatch_drops = 0
+        zero_liquidity_drops = 0
+        update_propagated_drops = 0
         for raw_bet in chunk:
             bet = Bet(**raw_bet, market=self._current_market)
             index = self.get_bet_idx(bet.id)
             if index is None:
+                new_count += 1
+                if bet.queue_status.is_expired():
+                    if self._is_null_or_mismatch_violation(raw_bet):
+                        null_or_mismatch_drops += 1
+                    else:
+                        zero_liquidity_drops += 1
                 self.bets.append(bet)
             else:
+                update_count += 1
+                prev_expired = self.bets[index].queue_status.is_expired()
                 self.bets[index].update_market_info(bet)
+                if not prev_expired and self.bets[index].queue_status.is_expired():
+                    update_propagated_drops += 1
                 if not self.bets[index].market:
                     self.bets[index].market = self._current_market
+
+        if new_count:
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=null_or_mismatch_blacklist "
+                f"input={new_count} dropped={null_or_mismatch_drops} "
+                f"kept={new_count - null_or_mismatch_drops}"
+            )
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=zero_liquidity_blacklist "
+                f"input={new_count - null_or_mismatch_drops} dropped={zero_liquidity_drops} "
+                f"kept={new_count - null_or_mismatch_drops - zero_liquidity_drops}"
+            )
+        if update_count:
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=update_propagated_blacklist "
+                f"input={update_count} dropped={update_propagated_drops} "
+                f"kept={update_count - update_propagated_drops}"
+            )
 
     def _fetch_markets_from_polymarket(self) -> Generator[None, None, Optional[List]]:
         """Fetch the markets from Polymarket using category-based filtering."""
@@ -368,6 +461,21 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # Deduplicate ALL markets across categories (preferring valid ones)
         deduplicated_by_category = self._deduplicate_markets(marked_markets_by_category)
 
+        # Keyword category filter is currently disabled — log what it would have done
+        total_markets_pre_filter = sum(
+            len(m) for m in deduplicated_by_category.values()
+        )
+        would_pass_filter = sum(
+            1
+            for m_list in deduplicated_by_category.values()
+            for m in m_list
+            if m.get("category_valid", False)
+        )
+        self.context.logger.warning(
+            f"Keyword category filter DISABLED — passing all {total_markets_pre_filter} markets "
+            f"(if enabled, only {would_pass_filter}/{total_markets_pre_filter} would pass)."
+        )
+
         # Process all markets from all categories
         all_bets: List[Dict[str, Any]] = []
         total_markets = 0
@@ -381,10 +489,16 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 f"Processing {category_count} markets from category: {category}"
             )
             skipped_in_category = 0
+            parse_error_in_category = 0
+            invalid_or_missing_in_category = 0
+            unexpected_error_in_category = 0
+            closed_in_category = 0
 
             for market in markets:
                 market_id = market.get("id", "unknown")
                 is_category_valid = market.get("category_valid", False)
+                # keyword filter disabled — accept all categories
+                is_category_valid = True
                 market_closed = market.get("closed", False)
 
                 is_market_valid = is_category_valid and not market_closed
@@ -502,11 +616,20 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     # Track blacklisted markets
                     if not is_market_valid:
                         blacklisted_count += 1
+                        closed_in_category += 1
 
-                except (json.JSONDecodeError, ValueError, TypeError) as e:
+                except json.JSONDecodeError as e:
                     self.context.logger.warning(
-                        f"Skipping market {market_id}: Invalid or missing required fields - {e}"
+                        f"Skipping market {market_id}: parse_error - {e}"
                     )
+                    parse_error_in_category += 1
+                    skipped_in_category += 1
+                    continue
+                except (ValueError, TypeError) as e:
+                    self.context.logger.warning(
+                        f"Skipping market {market_id}: invalid_or_missing - {e}"
+                    )
+                    invalid_or_missing_in_category += 1
                     skipped_in_category += 1
                     continue
                 except Exception as e:
@@ -514,22 +637,46 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         f"Unexpected error processing market {market_id}: {e}",
                         exc_info=True,
                     )
+                    unexpected_error_in_category += 1
                     skipped_in_category += 1
                     continue
 
-            # Log summary for this category
-            processed_in_category = category_count - skipped_in_category
-            if skipped_in_category > 0:
+            # Per-reason filter logs for this category (skip zero-drop rows).
+            # These rows are PARALLEL (each market trips at most one bucket
+            # per category pass), not chained — hence stage=reason_bucket
+            # and the shared input=category_count. Downstream funnel parsers
+            # should not chain them with the rest of the [POLYSTRAT] rows.
+            if closed_in_category:
                 self.context.logger.info(
-                    f"Category '{category}': Processed {processed_in_category}/{category_count} markets "
-                    f"({skipped_in_category} skipped due to invalid data)"
+                    f"[POLYSTRAT] filter=closed_flag stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={closed_in_category}"
+                )
+            if parse_error_in_category:
+                self.context.logger.info(
+                    f"[POLYSTRAT] filter=parse_error stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={parse_error_in_category}"
+                )
+            if invalid_or_missing_in_category:
+                self.context.logger.info(
+                    f"[POLYSTRAT] filter=invalid_or_missing stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={invalid_or_missing_in_category}"
+                )
+            if unexpected_error_in_category:
+                self.context.logger.info(
+                    f"[POLYSTRAT] filter=unexpected_error stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={unexpected_error_in_category}"
                 )
             total_skipped += skipped_in_category
 
         # Log overall summary
         self.context.logger.info(
-            f"Constructed {len(all_bets)} bet_dicts from {total_markets} total markets "
-            f"({total_skipped} skipped, {blacklisted_count} blacklisted due to category validation)"
+            f"[POLYSTRAT] filter=per_market_loop stage=total "
+            f"input={total_markets} dropped={total_skipped} "
+            f"kept={len(all_bets)} at_construction_blacklisted={blacklisted_count}"
         )
 
         return all_bets
