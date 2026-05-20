@@ -775,6 +775,20 @@ class TestSample:
                                 result = behaviour._sample()
 
         assert result == 0
+        # No fallback fired here, so the top filter line must report
+        # fallback_activated as False, only the strict breakdown line should
+        # be emitted, and no fallback breakdown line should appear.
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=processable_bet " in call and "fallback_activated=False" in call
+            for call in log_calls
+        )
+        assert any(
+            "filter=processable_bet.breakdown.strict" in call for call in log_calls
+        )
+        assert not any(
+            "filter=processable_bet.breakdown.fallback" in call for call in log_calls
+        )
 
     def test_sample_skips_zero_liquidity(self) -> None:
         """Should skip bets with zero liquidity."""
@@ -1193,6 +1207,21 @@ class TestSample:
                                 result = behaviour._sample()
 
         assert result == 0
+        # When fallback fires, top filter line must carry
+        # fallback_activated=True, and both .breakdown.strict and
+        # .breakdown.fallback must be emitted so operators can reconcile
+        # the strict-mode and post-fallback views.
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=processable_bet " in call and "fallback_activated=True" in call
+            for call in log_calls
+        )
+        assert any(
+            "filter=processable_bet.breakdown.strict" in call for call in log_calls
+        )
+        assert any(
+            "filter=processable_bet.breakdown.fallback" in call for call in log_calls
+        )
 
     def test_sample_multi_bets_fallback_no_bets_found(self) -> None:
         """Should return None when fallback finds no bets either."""

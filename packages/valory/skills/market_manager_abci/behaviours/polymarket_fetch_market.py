@@ -490,7 +490,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             )
             skipped_in_category = 0
             parse_error_in_category = 0
-            missing_required_in_category = 0
+            invalid_or_missing_in_category = 0
             unexpected_error_in_category = 0
             closed_in_category = 0
 
@@ -627,9 +627,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     continue
                 except (ValueError, TypeError) as e:
                     self.context.logger.warning(
-                        f"Skipping market {market_id}: missing_required - {e}"
+                        f"Skipping market {market_id}: invalid_or_missing - {e}"
                     )
-                    missing_required_in_category += 1
+                    invalid_or_missing_in_category += 1
                     skipped_in_category += 1
                     continue
                 except Exception as e:
@@ -641,26 +641,34 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     skipped_in_category += 1
                     continue
 
-            # Per-reason filter logs for this category (skip zero-drop rows)
+            # Per-reason filter logs for this category (skip zero-drop rows).
+            # These rows are PARALLEL (each market trips at most one bucket
+            # per category pass), not chained — hence stage=reason_bucket
+            # and the shared input=category_count. Downstream funnel parsers
+            # should not chain them with the rest of the [POLYSTRAT] rows.
             if closed_in_category:
                 self.context.logger.info(
-                    f"[POLYSTRAT] filter=closed_flag category={category} "
-                    f"input={category_count} dropped={closed_in_category}"
+                    f"[POLYSTRAT] filter=closed_flag stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={closed_in_category}"
                 )
             if parse_error_in_category:
                 self.context.logger.info(
-                    f"[POLYSTRAT] filter=parse_error category={category} "
-                    f"input={category_count} dropped={parse_error_in_category}"
+                    f"[POLYSTRAT] filter=parse_error stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={parse_error_in_category}"
                 )
-            if missing_required_in_category:
+            if invalid_or_missing_in_category:
                 self.context.logger.info(
-                    f"[POLYSTRAT] filter=missing_required category={category} "
-                    f"input={category_count} dropped={missing_required_in_category}"
+                    f"[POLYSTRAT] filter=invalid_or_missing stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={invalid_or_missing_in_category}"
                 )
             if unexpected_error_in_category:
                 self.context.logger.info(
-                    f"[POLYSTRAT] filter=unexpected_error category={category} "
-                    f"input={category_count} dropped={unexpected_error_in_category}"
+                    f"[POLYSTRAT] filter=unexpected_error stage=reason_bucket "
+                    f"category={category} input={category_count} "
+                    f"dropped={unexpected_error_in_category}"
                 )
             total_skipped += skipped_in_category
 

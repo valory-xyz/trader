@@ -1817,6 +1817,14 @@ class TestFetchMarketsFromPolymarket:
         assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["outcomes"] is None
         assert result[0]["queue_status"] == QueueStatus.EXPIRED
+        # closed_flag per-category row must carry stage=reason_bucket so
+        # downstream funnel parsers know it's a parallel reason row, not a
+        # chained filter row.
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=closed_flag" in call and "stage=reason_bucket" in call
+            for call in log_calls
+        )
 
     def test_keyword_filter_disabled_warning_logged(self) -> None:
         """Test that disabled-filter summary warning logs correct counts."""
@@ -2026,9 +2034,14 @@ class TestFetchMarketsFromPolymarket:
         assert result is not None
         assert len(result) == 1  # type: ignore[arg-type]
         # Verify per-reason [POLYSTRAT] funnel line was emitted for the
-        # missing-conditionId skip (raises ValueError → missing_required bucket).
+        # missing-conditionId skip (raises ValueError → invalid_or_missing
+        # bucket). The row must also carry stage=reason_bucket so downstream
+        # funnel parsers don't chain it with the main filter rows.
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("filter=missing_required" in call for call in log_calls)
+        assert any(
+            "filter=invalid_or_missing" in call and "stage=reason_bucket" in call
+            for call in log_calls
+        )
 
     def test_market_without_id_uses_unknown(self) -> None:
         """Test market without id field uses 'unknown'."""

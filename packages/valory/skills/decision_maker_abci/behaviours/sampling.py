@@ -110,14 +110,23 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _classify_processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool
     ) -> str:
-        """Classify the dominant reason ``processable_bet`` would reject the bet.
+        """Classify the dominant rejection reason in the mirror's own precedence.
 
-        Observability-only mirror of ``processable_bet``: returns one of
-        ``expired``, ``wrong_mode``, ``out_of_safe``, ``out_of_open``,
-        ``wrong_queue``, ``processable``. Does NOT call ``blacklist_forever``
-        — the real filter ``processable_bet`` still runs and is the source of
-        truth. Reason precedence matches the order ``processable_bet``
-        short-circuits in.
+        Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
+        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
+        that trips, in that precedence order. Pure read; does NOT call
+        ``blacklist_forever`` and does NOT mutate the bet — the real filter
+        ``processable_bet`` still runs and is the source of truth.
+
+        Caveat: ``processable_bet`` does NOT short-circuit on the last three
+        conditions — it computes ``bet_mode_allowable / within_opening_range
+        / within_safe_range / bet_queue_processable`` independently and ANDs
+        them. It also has a ``blacklist_forever()`` side-effect on
+        ``not within_safe_range`` regardless of the other conditions. So
+        when a bet trips both ``wrong_mode`` and ``out_of_safe``, this
+        classifier reports ``wrong_mode`` (precedence) while the actual
+        side-effect blacklists the bet — and the bet will surface as
+        ``expired`` in the next cycle's breakdown.
 
         :param bet: the bet to classify.
         :param now: current timestamp.
@@ -258,12 +267,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
-        # Pre-filter classification (observability only — does NOT affect
-        # filtering). Captured BEFORE the side-effecting processable_bet call
-        # so out_of_safe bets are not yet blacklisted.
-        processable_breakdown: Dict[str, int] = defaultdict(int)
+        # Strict-mode breakdown (observability only — pure read pass).
+        # Captured BEFORE the side-effecting processable_bet call so
+        # out_of_safe bets are still classified as out_of_safe rather than
+        # the `expired` they'll appear as after blacklist_forever fires.
+        # No bet/list mutation — populates a fresh local dict.
+        strict_breakdown: Dict[str, int] = defaultdict(int)
         for bet in self.bets:
-            processable_breakdown[
+            strict_breakdown[
                 self._classify_processable_bet(
                     bet,
                     now=now,
@@ -282,6 +293,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         # If no bets available and fallback is enabled, try again with fallback
+        fallback_activated = False
         if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
             self.context.logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
@@ -297,25 +309,51 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 )
             )
             if len(available_bets) > 0:
+                fallback_activated = True
                 self.context.logger.info(
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
+
+        # Fallback-mode breakdown (only when fallback actually produced
+        # bets). Pure-read pass, classified with multi_bets_active=True so
+        # the `processable` count reconciles with the post-fallback `kept`.
+        # Bets that strict's blacklist_forever side-effect just killed will
+        # appear here as `expired` rather than `out_of_safe` — that's the
+        # post-filter state, by design.
+        fallback_breakdown: Optional[Dict[str, int]] = None
+        if fallback_activated:
+            fallback_breakdown = defaultdict(int)
+            for bet in self.bets:
+                fallback_breakdown[
+                    self._classify_processable_bet(bet, now=now, multi_bets_active=True)
+                ] += 1
 
         self.context.logger.info(
             f"[POLYSTRAT] filter=processable_bet "
             f"input={len(self.bets)} "
             f"dropped={len(self.bets) - len(available_bets)} "
-            f"kept={len(available_bets)}"
+            f"kept={len(available_bets)} "
+            f"fallback_activated={fallback_activated}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=processable_bet.breakdown "
-            f"expired={processable_breakdown['expired']} "
-            f"wrong_mode={processable_breakdown['wrong_mode']} "
-            f"out_of_safe={processable_breakdown['out_of_safe']} "
-            f"out_of_open={processable_breakdown['out_of_open']} "
-            f"wrong_queue={processable_breakdown['wrong_queue']} "
-            f"processable={processable_breakdown['processable']}"
+            f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
+            f"expired={strict_breakdown['expired']} "
+            f"wrong_mode={strict_breakdown['wrong_mode']} "
+            f"out_of_safe={strict_breakdown['out_of_safe']} "
+            f"out_of_open={strict_breakdown['out_of_open']} "
+            f"wrong_queue={strict_breakdown['wrong_queue']} "
+            f"processable={strict_breakdown['processable']}"
         )
+        if fallback_breakdown is not None:
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=processable_bet.breakdown.fallback "
+                f"expired={fallback_breakdown['expired']} "
+                f"wrong_mode={fallback_breakdown['wrong_mode']} "
+                f"out_of_safe={fallback_breakdown['out_of_safe']} "
+                f"out_of_open={fallback_breakdown['out_of_open']} "
+                f"wrong_queue={fallback_breakdown['wrong_queue']} "
+                f"processable={fallback_breakdown['processable']}"
+            )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
