@@ -431,7 +431,7 @@ class TestGetMechTools:
                 with patch.object(
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
-                    mock_params.return_value = MagicMock(valid_tools={"tool1", "tool2"})
+                    mock_params.return_value = MagicMock()
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )

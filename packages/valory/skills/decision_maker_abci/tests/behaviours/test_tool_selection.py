@@ -23,6 +23,7 @@ import json
 from typing import Any, Callable, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
+from packages.valory.skills.decision_maker_abci.behaviours.base import CID_PREFIX
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
 )
@@ -519,7 +520,7 @@ class TestAsyncActSelectedToolNotNone:
         # benchmarking disabled
         behaviour.benchmarking_mode.enabled = False  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign,assignment]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
@@ -559,7 +560,7 @@ class TestAsyncActSelectedToolNotNone:
         behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
         behaviour.shared_state.last_benchmarking_has_run = False  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign,assignment]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
@@ -590,7 +591,7 @@ class TestAsyncActSelectedToolNotNone:
         behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
         behaviour.synchronized_data.period_count = 1  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign,assignment]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
@@ -622,7 +623,7 @@ class TestAsyncActSelectedToolNotNone:
         behaviour.synchronized_data.period_count = 0  # type: ignore[attr-defined]
         behaviour.shared_state.last_benchmarking_has_run = True  # type: ignore[attr-defined]
 
-        behaviour._store_all = MagicMock()  # type: ignore[method-assign]
+        behaviour._store_all = MagicMock()  # type: ignore[method-assign,assignment]
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
@@ -769,7 +770,7 @@ def _attach_mech_tools_api(behaviour: "_TestableBehaviour") -> MagicMock:
     api = MagicMock()
     api.__dict__["_frozen"] = True
     api.get_spec.return_value = {"method": "GET", "url": "x"}
-    behaviour.mech_tools_api = api  # type: ignore[attr-defined]
+    behaviour.mech_tools_api = api  # type: ignore[attr-defined,assignment]
     return api
 
 
@@ -790,21 +791,49 @@ class TestFetchMechManifests:
         """V1 marketplace path never fetches and leaves the cache empty."""
         behaviour = _make_behaviour(_make_policy("t"), {"t"})
         behaviour.synchronized_data.is_marketplace_v2 = False  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = [  # type: ignore[attr-defined]
+            _StubManifestMech("0xa", "cid-1"),
+        ]
+        _attach_mech_tools_api(behaviour)
         behaviour._tool_metadata = {"stale": {"description": "x"}}
+
+        called = {"n": 0}
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            called["n"] += 1
+            return MagicMock(body=b"{}")
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
 
         _drive_fetch(behaviour)
 
         assert behaviour._tool_metadata == {}
+        assert called["n"] == 0
 
     def test_short_circuits_when_benchmarking_enabled(self) -> None:
         """Benchmark mode never hits IPFS."""
         behaviour = _make_behaviour(_make_policy("t"), {"t"})
         behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = [  # type: ignore[attr-defined]
+            _StubManifestMech("0xa", "cid-1"),
+        ]
+        _attach_mech_tools_api(behaviour)
         behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+
+        called = {"n": 0}
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            called["n"] += 1
+            return MagicMock(body=b"{}")
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
 
         _drive_fetch(behaviour)
 
         assert behaviour._tool_metadata == {}
+        assert called["n"] == 0
 
     def test_fetches_each_unique_cid_once(self) -> None:
         """Mechs that share a CID resolve to a single HTTP fetch."""
@@ -825,7 +854,7 @@ class TestFetchMechManifests:
                 "bad": _PredictionMetadata.resolver(),
             }
         }
-        behaviour.params = MagicMock(  # type: ignore[attr-defined]
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
             ipfs_address="https://ipfs.example/"
         )
 
@@ -836,13 +865,16 @@ class TestFetchMechManifests:
             return MagicMock(body=json.dumps(body).encode())
             yield  # generator function
 
-        behaviour.get_http_response = _http_gen  # type: ignore[method-assign]
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
 
         _drive_fetch(behaviour)
 
-        # 2 unique CIDs → 2 HTTP calls (the dup CID and the None one are skipped).
+        # 2 unique CIDs -> 2 HTTP calls (the dup CID and the None one are skipped).
         assert call_count["n"] == 2
         assert set(behaviour._tool_metadata) == {"good", "bad"}
+        # Final URL must reflect ipfs_address + CID_PREFIX + last CID so a refactor
+        # that drops CID_PREFIX or swaps the concat order trips the test.
+        assert api.url == "https://ipfs.example/" + CID_PREFIX + "cid-2"
         api.reset_retries.assert_called()
 
     def test_extraction_failure_leaves_cache_partially_populated(self) -> None:
@@ -855,7 +887,7 @@ class TestFetchMechManifests:
             _StubManifestMech("0xbad", "cid-bad"),
         ]
         _attach_mech_tools_api(behaviour)
-        behaviour.params = MagicMock(  # type: ignore[attr-defined]
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
             ipfs_address="https://ipfs.example/"
         )
 
@@ -872,11 +904,53 @@ class TestFetchMechManifests:
             return bodies.pop(0)
             yield  # generator function
 
-        behaviour.get_http_response = _http_gen  # type: ignore[method-assign]
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
 
         _drive_fetch(behaviour)
 
         assert set(behaviour._tool_metadata) == {"tool"}
+        # Per-CID warning fires for the failing manifest so the silent skip is
+        # visible in logs.
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("cid-bad" in msg for msg in warnings)
+
+    def test_warns_when_every_manifest_fails(self) -> None:
+        """A summary warning fires when every CID extraction fails.
+
+        Without this warning the classifier-bypass case is silent.
+        """
+        policy = _make_policy("tool")
+        behaviour = _make_behaviour(policy, {"tool"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = [  # type: ignore[attr-defined]
+            _StubManifestMech("0xa", "cid-a"),
+            _StubManifestMech("0xb", "cid-b"),
+        ]
+        _attach_mech_tools_api(behaviour)
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/"
+        )
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(body=b"not-json")
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        _drive_fetch(behaviour)
+
+        assert behaviour._tool_metadata == {}
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any(
+            "no metadata for any of" in msg and "suitability filter" in msg
+            for msg in warnings
+        )
 
 
 class TestCandidateToolsSuitability:

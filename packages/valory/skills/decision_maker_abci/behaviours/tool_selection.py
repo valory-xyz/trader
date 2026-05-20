@@ -72,7 +72,29 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             extracted = self._extract_tool_metadata(res_raw)
             if extracted:
                 self._tool_metadata.update(extracted)
+            else:
+                self.context.logger.warning(
+                    f"Tool-suitability classifier could not extract metadata "
+                    f"for CID {metadata_str!r} "
+                    f"(status={getattr(res_raw, 'status_code', '?')}); "
+                    "this mech manifest will not contribute to the suitability "
+                    "filter."
+                )
             self.mech_tools_api.reset_retries()
+
+        if seen_cids and not self._tool_metadata:
+            self.context.logger.warning(
+                "Tool-suitability classifier has no metadata for any of "
+                f"{len(seen_cids)} mech manifest CIDs; the suitability filter "
+                "will be skipped and the round will proceed against the raw "
+                "mech_tools set."
+            )
+        elif seen_cids:
+            self.context.logger.info(
+                f"Tool-suitability classifier fetched {len(seen_cids)} unique "
+                f"mech manifest CID(s); {len(self._tool_metadata)} tool entries "
+                "available for classification."
+            )
 
     @staticmethod
     def _extract_tool_metadata(res_raw: Any) -> Dict[str, Dict[str, Any]]:
@@ -102,6 +124,13 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 if is_prediction_tool(self._tool_metadata.get(tool))
             }
             if suitable:
+                if suitable != candidate:
+                    dropped = sorted(candidate - suitable)
+                    self.context.logger.info(
+                        "Tool-suitability classifier narrowed "
+                        f"{len(candidate)} -> {len(suitable)} tools; "
+                        f"dropped: {dropped[:10]}"
+                    )
                 candidate = suitable
             elif candidate:
                 self.context.logger.warning(

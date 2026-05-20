@@ -96,13 +96,25 @@ class TestIsPredictionTool:
         assert is_prediction_tool(meta) is False
 
     def test_input_domain_mismatch_vetoes(self) -> None:
-        """Stock-domain input is vetoed even with prediction schema."""
+        """Stock-domain prose is vetoed when no prediction schema is declared."""
         meta = _make_tool(
-            description="Stock prediction tool for equities.",
-            input_description="A question about stock price movement prediction",
-            result_example=_PREDICTION_EXAMPLE,
+            description="Stock price lookup tool for equities.",
+            input_description="A question about stock price movement",
+            result_type="string",
+            result_example="",
         )
         assert is_prediction_tool(meta) is False
+
+    def test_input_domain_mismatch_not_applied_when_schema_predicts(self) -> None:
+        """Top-level prose listing equities cannot veto a valid p_yes/p_no schema."""
+        meta = _make_tool(
+            description=(
+                "Forecasts binary outcomes for politics, sports, and equities."
+            ),
+            input_description="A question to predict on",
+            result_example=_PREDICTION_EXAMPLE,
+        )
+        assert is_prediction_tool(meta) is True
 
     def test_resolver_shape_vetoes(self) -> None:
         """Resolver-shaped example overrides any prediction claim."""
@@ -157,9 +169,10 @@ class TestExplainPredictionTool:
             ),
             (
                 _make_tool(
-                    description="stock prediction tool",
+                    description="stock lookup tool",
                     input_description="stock price question",
-                    result_example=_PREDICTION_EXAMPLE,
+                    result_type="string",
+                    result_example="",
                 ),
                 False,
                 "input_domain_mismatch",

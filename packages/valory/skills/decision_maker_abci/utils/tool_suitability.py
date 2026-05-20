@@ -38,7 +38,7 @@ _PROSE_PREDICT_PREDICATE = re.compile(
 _INPUT_DOMAIN_MISMATCH_RE = re.compile(
     r"\bstock(?:s|\s+price)?\b|"
     r"\bequit(?:y|ies)\b|"
-    r"\bforex|\bfx\s+price\b|"
+    r"\bforex\b|\bfx\s+price\b|"
     r"\bcommodit(?:y|ies)\s+price\b",
     re.IGNORECASE,
 )
@@ -95,8 +95,9 @@ def explain_prediction_tool(
         return False, "schema_prose_corroboration"
 
     input_desc = _input_description(tool_metadata)
-    if _INPUT_DOMAIN_MISMATCH_RE.search(input_desc) or _INPUT_DOMAIN_MISMATCH_RE.search(
-        desc
+    if not schema_claims_predictor and (
+        _INPUT_DOMAIN_MISMATCH_RE.search(input_desc)
+        or _INPUT_DOMAIN_MISMATCH_RE.search(desc)
     ):
         return False, "input_domain_mismatch"
 

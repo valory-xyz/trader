@@ -37,7 +37,7 @@ fingerprint:
   behaviours/sampling.py: bafybeiao42cxdrkkgfxdyknrkpqn5vrjn7v7swsxtvbqjlmrnltwb4mcvq
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeierknztldtbv3py3azpjmhkxy5rebe6amuop2grzfqs2wwdstaehu
-  behaviours/tool_selection.py: bafybeid5pd7dssskoasq34xhmx4q66jq6iz4kjrpje4bh6h2pirwc46pai
+  behaviours/tool_selection.py: bafybeiahetm2jb5bqsbsolcvr2htfrv5ziirmqjzky6wpprvyetuy2obt4
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeier7ttbrdlyh2mzo2wc4yg6zgsz6gha3yihlelgxaguriytcumfiq
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
@@ -80,7 +80,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
-  tests/behaviours/test_base.py: bafybeig752otpqlnqiplhz6mupbcqzzo6izuuxbbho4qtjmwlilbf6te5y
+  tests/behaviours/test_base.py: bafybeighpclhqiisd6ux2fxxg3k4yaaysfcaqrytyijh6n5mydyv5t62ti
   tests/behaviours/test_bet_placement.py: bafybeifum6ilmcohsdci2z447kr7jnlw2hhicjdpxg5y2pr7gwul4rogy4
   tests/behaviours/test_blacklisting.py: bafybeic2jcfxujhto6khwrobnfxx43wh42hx2fmn4xo2hxzlynmavqvbqa
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
@@ -100,8 +100,8 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
   tests/behaviours/test_sampling.py: bafybeihoaia5n72wkecykqktle2hffeovwzs3mbm47krlosem3rgmjfcym
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeihs6xhr4buen6mrogkpfi6cwehmm2p57f55eeyaje5n6tuprcipvm
-  tests/behaviours/test_tool_selection.py: bafybeie7xisxenfn5zs6t7rjewue5wzw24snehjrz6djkmoyw6iyxa5zg4
+  tests/behaviours/test_storage_manager.py: bafybeihovilmmj4d5y3rkxvyxe33uet2xpcboyv4w2as7dabns52qu7kgu
+  tests/behaviours/test_tool_selection.py: bafybeiflnuw4iaj56xfzdne4yrnbcqkb5gxaudktnxr7mv4vmuktzjafry
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
   tests/io_/test_loader.py: bafybeidd2zyzrhhxv75ijofg7mqzobmf4yu32lsscqdi3zd3hwlrwe2kne
@@ -132,11 +132,11 @@ fingerprint:
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
-  tests/utils/test_tool_suitability.py: bafybeibcocvmwpcipdjbsvywqdu3srm47jkq3iq6cygprbqpgf26eg25yu
+  tests/utils/test_tool_suitability.py: bafybeihyp6jqh2g676nlcdyfaboweu3galgrbj5kqqdkxdkoo57b7ngg2a
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/general.py: bafybeiaiszrv22dmqm6h7hoerpg7rpabkpakd4s43ct6p7y5zd2koz7ctq
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
-  utils/tool_suitability.py: bafybeig3vyws43jkdxhfzcs7ax6njvrzomoyr2lqbkrgt5b2pvblvktciu
+  utils/tool_suitability.py: bafybeidyteb4stikunlds7kvrgbqtnhlmwdha4xzrsdkxjicb4md7qnmp4
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
@@ -161,7 +161,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeibvbfkmkqjidukhkzzz7nd33gna64hjhcn3blon5xcleilbt63zn4
 - valory/market_manager_abci:0.1.0:bafybeiful2wriymu6fhdcs6eqydoakwms74oogm5fmxh3ym53izp6loxzy
 - valory/transaction_settlement_abci:0.1.0:bafybeiceijjjlvbq2tnadeqdrm7nka7gqgwzvmlgjuzbacgnkljry5h72a
-- valory/mech_interact_abci:0.1.0:bafybeieceb3pw6curi236q7phfmiuwautcw7piwu6u42mx5ms2athia73y
+- valory/mech_interact_abci:0.1.0:bafybeidrgcavhpsrkzj2pvpybu56aj3sohuzuvdaidj5wr2uf35edchhxi
 - valory/staking_abci:0.1.0:bafybeiggw7bwh3vmtzolcg23idt5kiwkdlggupq3ktk7ssjnixvybtfw5m
 - valory/agent_performance_summary_abci:0.1.0:bafybeicg6kecyjvnegwvxdqt6lhk5pykosdwq4fizafurvucuyvvaz4whi
 - valory/chatui_abci:0.1.0:bafybeih22osp3bht4s7zbxvskoapzhc2mihsutjlwdie3etxtsov6qinne
