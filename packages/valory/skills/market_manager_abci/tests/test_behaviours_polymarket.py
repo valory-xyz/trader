@@ -398,6 +398,124 @@ class TestBlacklistExpiredBets:
         behaviour._blacklist_expired_bets()
         assert bet.queue_status == QueueStatus.EXPIRED
 
+    def test_already_expired_bet_does_not_double_count_opening_margin(self) -> None:
+        """Pre-expired bet hitting opening_margin must NOT increment the drop counter."""
+        bet = _make_bet(id="b1", openingTimestamp=5000000500)  # within margin
+        bet.blacklist_forever()  # mark as already-expired BEFORE the call
+        behaviour = self._setup([bet])
+        behaviour._blacklist_expired_bets()
+        # bet stays expired; counter must NOT have incremented for it
+        assert bet.queue_status == QueueStatus.EXPIRED
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=past_opening_margin_blacklist" in call and "dropped=0" in call
+            for call in log_calls
+        )
+
+    def test_already_expired_bet_does_not_double_count_extreme_price(self) -> None:
+        """Pre-expired bet hitting extreme_price must NOT increment the drop counter."""
+        bet = _make_bet(
+            id="b1",
+            openingTimestamp=9999999999,  # far future so RULE#3 doesn't fire
+            outcomeTokenMarginalPrices=[0.99, 0.01],
+        )
+        bet.blacklist_forever()
+        behaviour = self._setup([bet])
+        behaviour._blacklist_expired_bets()
+        assert bet.queue_status == QueueStatus.EXPIRED
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=extreme_outcome_price_blacklist" in call and "dropped=0" in call
+            for call in log_calls
+        )
+
+
+# ===========================================================================
+# Tests for _is_null_or_mismatch_violation (static)
+# ===========================================================================
+
+
+class TestIsNullOrMismatchViolation:
+    """Tests for _is_null_or_mismatch_violation (mirrors Bet._validate)."""
+
+    @staticmethod
+    def _base_raw_bet() -> Dict[str, Any]:
+        """Minimal valid raw_bet that would NOT trip _validate."""
+        return dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[100, 200],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=10.0,
+        )
+
+    def test_valid_raw_bet_returns_false(self) -> None:
+        """A complete consistent raw_bet does NOT trip the violation check."""
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(
+                self._base_raw_bet()
+            )
+            is False
+        )
+
+    def test_none_value_in_necessary_key_returns_true(self) -> None:
+        """A None value in any necessary key trips the check."""
+        raw = self._base_raw_bet()
+        raw["outcomes"] = None
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is True
+        )
+
+    def test_string_null_value_returns_true(self) -> None:
+        """A literal 'null' string in any necessary key trips the check."""
+        raw = self._base_raw_bet()
+        raw["creator"] = "null"
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is True
+        )
+
+    def test_outcomes_length_mismatch_returns_true(self) -> None:
+        """Length mismatch on outcomes vs outcomeSlotCount trips the check."""
+        raw = self._base_raw_bet()
+        raw["outcomes"] = ["Yes"]  # length 1 vs outcomeSlotCount=2
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is True
+        )
+
+    def test_amounts_length_mismatch_returns_true(self) -> None:
+        """Length mismatch on outcomeTokenAmounts vs outcomeSlotCount trips the check."""
+        raw = self._base_raw_bet()
+        raw["outcomeTokenAmounts"] = [100]  # length 1 vs 2
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is True
+        )
+
+    def test_prices_length_mismatch_returns_true(self) -> None:
+        """Length mismatch on outcomeTokenMarginalPrices vs outcomeSlotCount trips the check."""
+        raw = self._base_raw_bet()
+        raw["outcomeTokenMarginalPrices"] = [0.5]
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is True
+        )
+
+    def test_zero_liquidity_alone_returns_false(self) -> None:
+        """scaledLiquidityMeasure=0 trips RULE#2, not RULE#1; check returns False."""
+        raw = self._base_raw_bet()
+        raw["scaledLiquidityMeasure"] = 0
+        # 0 is neither None nor 'null', and no length mismatch — so this
+        # classifier returns False; the bet would still be blacklisted by
+        # _check_usefulness, which is the zero-liquidity rule (counted in
+        # a separate filter row).
+        assert (
+            PolymarketFetchMarketBehaviour._is_null_or_mismatch_violation(raw) is False
+        )
+
 
 # ===========================================================================
 # Tests for _validate_market_category (static)
@@ -818,6 +936,127 @@ class TestProcessChunk:
         )
         behaviour._process_chunk([raw_bet])
         assert behaviour.bets[0].market == "polymarket_client"
+
+    def test_new_bet_with_null_field_counted_as_null_or_mismatch(self) -> None:
+        """New bet blacklisted at __post_init__ via _validate goes into the null_or_mismatch bucket."""
+        behaviour = _make_behaviour()
+        behaviour._current_market = "polymarket"
+        # outcomes=None trips Bet._validate → blacklist_forever during __post_init__
+        raw_bet = dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[100, 200],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            outcomes=None,
+            scaledLiquidityMeasure=10.0,
+        )
+        behaviour._process_chunk([raw_bet])
+        assert len(behaviour.bets) == 1
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=null_or_mismatch_blacklist" in call and "dropped=1" in call
+            for call in log_calls
+        )
+        # And NOT counted in zero_liquidity
+        assert any(
+            "filter=zero_liquidity_blacklist" in call and "dropped=0" in call
+            for call in log_calls
+        )
+
+    def test_new_bet_with_zero_liquidity_counted_as_zero_liquidity(self) -> None:
+        """New bet blacklisted at __post_init__ via _check_usefulness goes into the zero_liquidity bucket."""
+        behaviour = _make_behaviour()
+        behaviour._current_market = "polymarket"
+        # scaledLiquidityMeasure=0 → _validate passes (no nulls / no length
+        # mismatch) but _check_usefulness blacklists during __post_init__
+        raw_bet = dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[100, 200],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=0.0,
+        )
+        behaviour._process_chunk([raw_bet])
+        assert len(behaviour.bets) == 1
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=zero_liquidity_blacklist" in call and "dropped=1" in call
+            for call in log_calls
+        )
+        assert any(
+            "filter=null_or_mismatch_blacklist" in call and "dropped=0" in call
+            for call in log_calls
+        )
+
+    def test_update_propagated_blacklist_counts(self) -> None:
+        """Alive existing + blacklisted incoming → existing is killed, counter increments."""
+        existing_bet = _make_bet(id="b1", scaledLiquidityMeasure=5.0)
+        # existing is alive at this point (not blacklisted)
+        assert existing_bet.queue_status != QueueStatus.EXPIRED
+        behaviour = _make_behaviour(bets=[existing_bet])
+        behaviour._current_market = "polymarket"
+        # Incoming bet is already blacklisted (processed_timestamp=sys.maxsize)
+        raw_bet = dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[300, 400],
+            outcomeTokenMarginalPrices=[0.6, 0.4],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=20.0,
+            processed_timestamp=sys.maxsize,
+        )
+        behaviour._process_chunk([raw_bet])
+        # Existing was alive; update_market_info propagated the blacklist
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=update_propagated_blacklist" in call and "dropped=1" in call
+            for call in log_calls
+        )
+
+    def test_update_does_not_recount_already_expired_existing(self) -> None:
+        """Already-expired existing → update_propagated counter does NOT increment."""
+        existing_bet = _make_bet(id="b1", scaledLiquidityMeasure=5.0)
+        existing_bet.blacklist_forever()  # pre-expire
+        behaviour = _make_behaviour(bets=[existing_bet])
+        behaviour._current_market = "polymarket"
+        raw_bet = dict(
+            id="b1",
+            title="Test?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=9999999999,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[300, 400],
+            outcomeTokenMarginalPrices=[0.6, 0.4],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=20.0,
+        )
+        behaviour._process_chunk([raw_bet])
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=update_propagated_blacklist" in call and "dropped=0" in call
+            for call in log_calls
+        )
 
 
 # ===========================================================================
@@ -1578,6 +1817,14 @@ class TestFetchMarketsFromPolymarket:
         assert len(result) == 1  # type: ignore[arg-type]
         assert result[0]["outcomes"] is None
         assert result[0]["queue_status"] == QueueStatus.EXPIRED
+        # closed_flag per-category row must carry stage=reason_bucket so
+        # downstream funnel parsers know it's a parallel reason row, not a
+        # chained filter row.
+        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
+        assert any(
+            "filter=closed_flag" in call and "stage=reason_bucket" in call
+            for call in log_calls
+        )
 
     def test_keyword_filter_disabled_warning_logged(self) -> None:
         """Test that disabled-filter summary warning logs correct counts."""
@@ -1786,9 +2033,15 @@ class TestFetchMarketsFromPolymarket:
 
         assert result is not None
         assert len(result) == 1  # type: ignore[arg-type]
-        # Verify logger was called with category skip info
+        # Verify per-reason [POLYSTRAT] funnel line was emitted for the
+        # missing-conditionId skip (raises ValueError → invalid_or_missing
+        # bucket). The row must also carry stage=reason_bucket so downstream
+        # funnel parsers don't chain it with the main filter rows.
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("skipped" in call.lower() for call in log_calls)
+        assert any(
+            "filter=invalid_or_missing" in call and "stage=reason_bucket" in call
+            for call in log_calls
+        )
 
     def test_market_without_id_uses_unknown(self) -> None:
         """Test market without id field uses 'unknown'."""

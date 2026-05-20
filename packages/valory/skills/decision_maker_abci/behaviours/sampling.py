@@ -107,6 +107,63 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
+    def _classify_processable_bet(
+        self, bet: Bet, now: int, multi_bets_active: bool
+    ) -> str:
+        """Classify the dominant rejection reason in the mirror's own precedence.
+
+        Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
+        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
+        that trips, in that precedence order. Pure read; does NOT call
+        ``blacklist_forever`` and does NOT mutate the bet — the real filter
+        ``processable_bet`` still runs and is the source of truth.
+
+        Caveat: ``processable_bet`` does NOT short-circuit on the last three
+        conditions — it computes ``bet_mode_allowable / within_opening_range
+        / within_safe_range / bet_queue_processable`` independently and ANDs
+        them. It also has a ``blacklist_forever()`` side-effect on
+        ``not within_safe_range`` regardless of the other conditions. So
+        when a bet trips both ``wrong_mode`` and ``out_of_safe``, this
+        classifier reports ``wrong_mode`` (precedence) while the actual
+        side-effect blacklists the bet — and the bet will surface as
+        ``expired`` in the next cycle's breakdown.
+
+        :param bet: the bet to classify.
+        :param now: current timestamp.
+        :param multi_bets_active: whether multi-bets mode is active.
+        :return: the dominant rejection reason, or ``processable``.
+        """
+        if bet.queue_status.is_expired():
+            return "expired"
+        selling_specific = self.kpi_is_met and self.review_bets_for_selling
+        bets_placed = bool(bet.n_bets)
+        if not bets_placed and selling_specific:
+            return "wrong_mode"
+        bet_mode_allowable = multi_bets_active or not bets_placed or selling_specific
+        if not bet_mode_allowable:
+            return "wrong_mode"
+        within_safe_range = (
+            now
+            < bet.openingTimestamp
+            - self.params.opening_margin
+            - self.params.safe_voting_range
+        )
+        if not within_safe_range:
+            return "out_of_safe"
+        within_opening_range = bet.openingTimestamp <= (
+            now + self.params.sample_bets_closing_days * UNIX_DAY
+        )
+        if not within_opening_range:
+            return "out_of_open"
+        processable_statuses = {
+            QueueStatus.TO_PROCESS,
+            QueueStatus.PROCESSED,
+            QueueStatus.REPROCESSED,
+        }
+        if bet.queue_status not in processable_statuses:
+            return "wrong_queue"
+        return "processable"
+
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
         """
@@ -210,6 +267,21 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
+        # Strict-mode breakdown (observability only — pure read pass).
+        # Captured BEFORE the side-effecting processable_bet call so
+        # out_of_safe bets are still classified as out_of_safe rather than
+        # the `expired` they'll appear as after blacklist_forever fires.
+        # No bet/list mutation — populates a fresh local dict.
+        strict_breakdown: Dict[str, int] = defaultdict(int)
+        for bet in self.bets:
+            strict_breakdown[
+                self._classify_processable_bet(
+                    bet,
+                    now=now,
+                    multi_bets_active=self.params.use_multi_bets_mode,
+                )
+            ] += 1
+
         # First, try to find bets in strict mode (no fallback) for single bet mode. But allow mutli-bets directly if enabled.
         available_bets = list(
             filter(
@@ -221,6 +293,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
 
         # If no bets available and fallback is enabled, try again with fallback
+        fallback_activated = False
         if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
             self.context.logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
@@ -236,18 +309,56 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 )
             )
             if len(available_bets) > 0:
+                fallback_activated = True
                 self.context.logger.info(
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
+
+        # Fallback-mode breakdown (only when fallback actually produced
+        # bets). Pure-read pass, classified with multi_bets_active=True so
+        # the `processable` count reconciles with the post-fallback `kept`.
+        # Bets that strict's blacklist_forever side-effect just killed will
+        # appear here as `expired` rather than `out_of_safe` — that's the
+        # post-filter state, by design.
+        fallback_breakdown: Optional[Dict[str, int]] = None
+        if fallback_activated:
+            fallback_breakdown = defaultdict(int)
+            for bet in self.bets:
+                fallback_breakdown[
+                    self._classify_processable_bet(bet, now=now, multi_bets_active=True)
+                ] += 1
+
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=processable_bet "
+            f"input={len(self.bets)} "
+            f"dropped={len(self.bets) - len(available_bets)} "
+            f"kept={len(available_bets)} "
+            f"fallback_activated={fallback_activated}"
+        )
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
+            f"expired={strict_breakdown['expired']} "
+            f"wrong_mode={strict_breakdown['wrong_mode']} "
+            f"out_of_safe={strict_breakdown['out_of_safe']} "
+            f"out_of_open={strict_breakdown['out_of_open']} "
+            f"wrong_queue={strict_breakdown['wrong_queue']} "
+            f"processable={strict_breakdown['processable']}"
+        )
+        if fallback_breakdown is not None:
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=processable_bet.breakdown.fallback "
+                f"expired={fallback_breakdown['expired']} "
+                f"wrong_mode={fallback_breakdown['wrong_mode']} "
+                f"out_of_safe={fallback_breakdown['out_of_safe']} "
+                f"out_of_open={fallback_breakdown['out_of_open']} "
+                f"wrong_queue={fallback_breakdown['wrong_queue']} "
+                f"processable={fallback_breakdown['processable']}"
+            )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
             self.context.logger.warning(msg)
             return None
-
-        self.context.logger.info(
-            f"Available bets to sample from: {len(available_bets)}"
-        )
 
         if self.benchmarking_mode.enabled:
             idx = self._sampling_benchmarking_bet(available_bets)
@@ -272,10 +383,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 if not (disabled_tags & {t.strip().lower() for t in bet.poly_tags})
             ]
             skipped = before - len(available_bets)
-            self.context.logger.debug(
-                f"Sampling: pre-filtered {skipped} disabled-tag bets "
-                f"against {len(disabled_tags)} slugs; "
-                f"{len(available_bets)} candidates remain"
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=disabled_tag "
+                f"input={before} dropped={skipped} "
+                f"kept={len(available_bets)} slugs={len(disabled_tags)}"
             )
             if not available_bets:
                 msg = (
@@ -285,8 +396,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.context.logger.warning(msg)
                 return None
 
+        # In-loop drop counters (per-iteration sequential funnel: zero_liq →
+        # outcome_skew → neg_risk). Emitted as [POLYSTRAT] roll-up rows at
+        # both exit paths.
+        in_loop_iterations = 0
+        in_loop_zero_liq = 0
+        in_loop_skew = 0
+        in_loop_neg_risk = 0
+
         # Loop until we find a valid bet or run out of options
         while available_bets:
+            in_loop_iterations += 1
             # sample a bet using the priority logic
             idx = self._sampled_bet_idx(available_bets)
             sampled_bet = self.bets[idx]
@@ -297,6 +417,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 msg = f"Sampled bet {sampled_bet.id} has zero liquidity, skipping"
                 self.context.logger.warning(msg)
                 available_bets.remove(sampled_bet)
+                in_loop_zero_liq += 1
                 continue
 
             # This is to avoid sampling bets where the market is already heavily
@@ -310,6 +431,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     for side in sampled_bet.outcomeTokenMarginalPrices
                 ):
                     available_bets.remove(sampled_bet)
+                    in_loop_skew += 1
                     continue
 
             if (
@@ -320,15 +442,48 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 msg = f"Sampled bet {sampled_bet.id} is a negRisk market, skipping"
                 self.context.logger.info(msg)
                 available_bets.remove(sampled_bet)
+                in_loop_neg_risk += 1
                 continue
 
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=in_loop_zero_liq "
+                f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
+                f"kept={in_loop_iterations - in_loop_zero_liq}"
+            )
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=in_loop_outcome_skew "
+                f"input={in_loop_iterations - in_loop_zero_liq} "
+                f"dropped={in_loop_skew} "
+                f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
+            )
+            self.context.logger.info(
+                f"[POLYSTRAT] filter=in_loop_neg_risk "
+                f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
+                f"dropped={in_loop_neg_risk} kept=1"
+            )
             msg = f"Sampled bet: {sampled_bet}"
             self.context.logger.info(msg)
             return idx
 
         # No valid bets found
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=in_loop_zero_liq "
+            f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
+            f"kept={in_loop_iterations - in_loop_zero_liq}"
+        )
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=in_loop_outcome_skew "
+            f"input={in_loop_iterations - in_loop_zero_liq} "
+            f"dropped={in_loop_skew} "
+            f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
+        )
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=in_loop_neg_risk "
+            f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
+            f"dropped={in_loop_neg_risk} kept=0"
+        )
         msg = "No valid bets found after liquidity validation!"
         self.context.logger.warning(msg)
         return None
