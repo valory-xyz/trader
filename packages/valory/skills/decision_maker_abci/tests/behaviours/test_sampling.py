@@ -345,6 +345,159 @@ class TestProcessableBet:
         assert result is True
 
 
+class TestClassifyProcessableBet:
+    """Tests for _classify_processable_bet (observability mirror of processable_bet)."""
+
+    @staticmethod
+    def _patched(
+        behaviour: SamplingBehaviour,
+        bet: Bet,
+        now: int,
+        kpi_is_met: bool = False,
+        review_bets_for_selling: bool = False,
+        multi_bets_active: bool = False,
+        sample_bets_closing_days: int = 60,
+        opening_margin: int = 100,
+        safe_voting_range: int = 100,
+    ) -> str:
+        """Run _classify_processable_bet with stubbed params/properties."""
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(
+                sample_bets_closing_days=sample_bets_closing_days,
+                opening_margin=opening_margin,
+                safe_voting_range=safe_voting_range,
+            )
+            with patch.object(
+                type(behaviour), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi:
+                mock_kpi.return_value = kpi_is_met
+                with patch.object(
+                    type(behaviour),
+                    "review_bets_for_selling",
+                    new_callable=PropertyMock,
+                ) as mock_rbs:
+                    mock_rbs.return_value = review_bets_for_selling
+                    return behaviour._classify_processable_bet(
+                        bet, now=now, multi_bets_active=multi_bets_active
+                    )
+
+    def test_classify_expired(self) -> None:
+        """Expired bet should classify as 'expired'."""
+        behaviour = _make_behaviour()
+        bet = _make_mock_bet()
+        bet.queue_status = MagicMock()
+        bet.queue_status.is_expired.return_value = True
+
+        assert self._patched(behaviour, bet, now=int(time.time())) == "expired"
+        # observability mirror must NOT have side-effects
+        bet.blacklist_forever.assert_not_called()
+
+    def test_classify_wrong_mode_no_bets_selling_specific(self) -> None:
+        """No bets placed under selling_specific should classify as 'wrong_mode'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 30)
+        bet.queue_status = QueueStatus.TO_PROCESS
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(
+                behaviour,
+                bet,
+                now=now,
+                kpi_is_met=True,
+                review_bets_for_selling=True,
+            )
+            == "wrong_mode"
+        )
+
+    def test_classify_wrong_mode_when_mode_not_allowable(self) -> None:
+        """bets_placed with neither multi-bets nor selling_specific should classify as 'wrong_mode'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        bet = _make_mock_bet(n_bets=1, opening_timestamp=now + 86400 * 30)
+        bet.queue_status = QueueStatus.TO_PROCESS
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(
+                behaviour,
+                bet,
+                now=now,
+                multi_bets_active=False,
+                kpi_is_met=False,
+                review_bets_for_selling=False,
+            )
+            == "wrong_mode"
+        )
+
+    def test_classify_out_of_safe(self) -> None:
+        """Bet too close to opening (inside safe voting range) classifies as 'out_of_safe'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        # bet opens within (opening_margin + safe_voting_range) of now
+        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 10)
+        bet.queue_status = QueueStatus.TO_PROCESS
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(
+                behaviour, bet, now=now, opening_margin=100, safe_voting_range=100
+            )
+            == "out_of_safe"
+        )
+
+    def test_classify_out_of_open(self) -> None:
+        """Bet within safe range but past sample_bets_closing_days classifies as 'out_of_open'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        # safe range OK (far future opening), but past closing window
+        # opening = now + 100 days; closing_days = 10; so within_opening = False
+        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 100)
+        bet.queue_status = QueueStatus.TO_PROCESS
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(
+                behaviour,
+                bet,
+                now=now,
+                sample_bets_closing_days=10,
+                opening_margin=100,
+                safe_voting_range=100,
+            )
+            == "out_of_open"
+        )
+
+    def test_classify_wrong_queue(self) -> None:
+        """Bet in non-processable queue status (e.g. FRESH) classifies as 'wrong_queue'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 5)
+        bet.queue_status = QueueStatus.FRESH
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(behaviour, bet, now=now, sample_bets_closing_days=60)
+            == "wrong_queue"
+        )
+
+    def test_classify_processable(self) -> None:
+        """Bet passing all checks classifies as 'processable'."""
+        behaviour = _make_behaviour()
+        now = int(time.time())
+        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 5)
+        bet.queue_status = QueueStatus.TO_PROCESS
+        bet.queue_status.is_expired = MagicMock(return_value=False)
+
+        assert (
+            self._patched(behaviour, bet, now=now, sample_bets_closing_days=60)
+            == "processable"
+        )
+
+
 class TestSortByPriorityLogic:
     """Tests for _sort_by_priority_logic."""
 
