@@ -26,6 +26,9 @@ packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/agent_mech/
 packages/valory/contracts/mech_marketplace_legacy/
 packages/valory/contracts/multisend/
+packages/valory/contracts/realitio/
+packages/valory/contracts/realitio_proxy/
+packages/valory/contracts/conditional_tokens/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
 packages/valory/contracts/agent_registry/
