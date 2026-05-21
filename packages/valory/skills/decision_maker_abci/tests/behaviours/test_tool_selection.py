@@ -1111,6 +1111,10 @@ class TestCandidateToolsSuitability:
 
         assert candidate == {"good"}
         assert cause is None
+        # The "every candidate unsuitable" fallback WARNING must NOT fire when
+        # any predictor survives; mutating the `elif candidate:` guard to a
+        # plain `if candidate:` would trip this assertion.
+        behaviour.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
 
     def test_suitability_emptied_keeps_raw_mech_tools_and_warns(self) -> None:
         """If classifier rejects every tool, fall back to raw mech_tools + log a warning."""

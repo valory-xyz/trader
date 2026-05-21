@@ -23,7 +23,7 @@ import re
 from typing import Any, Dict, Optional, Tuple
 
 _PRED_NEGATION_RE = re.compile(
-    r"\bnot\s+(?:a\s+)?prediction\b|"
+    r"\bnot\s+(?:a\s+)?prediction\s+(?:tool|model|engine|system)\b|"
     r"\bnever\s+predict(?:ion)?s?\b|"
     r"\bdoes\s+not\s+predict\b|"
     r"\bnot\s+(?:for\s+)?forecast(?:ing)?\b",
@@ -31,7 +31,12 @@ _PRED_NEGATION_RE = re.compile(
 )
 
 _PROSE_PREDICT_PREDICATE = re.compile(
-    r"\bpredict(?:s|ed|ion|ions|or|ors|ing)?\b|\bforecast(?:s|ed|er|ers|ing)?\b",
+    r"\bpredict(?:s|ed|ion|ions|or|ors|ing)?\b|"
+    r"\bforecast(?:s|ed|er|ers|ing)?\b|"
+    r"\bestimat(?:e|es|ed|ing|or|ors)\b|"
+    r"\bassess(?:es|ed|ing|ment|ments)?\b|"
+    r"\blikelihood(?:s)?\b|"
+    r"\bprobabilit(?:y|ies)\b",
     re.IGNORECASE,
 )
 

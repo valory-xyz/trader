@@ -653,9 +653,10 @@ class TestGetMechTools:
         """Mixed-case manifest tools are lowercased before being stored.
 
         The mech IPFS manifest can return tool names in any case; the
-        downstream tool-suitability classifier and ChatUI pin lookup
-        both key on lowercased names, so normalization here is required
-        even though there is no longer an operator allowlist intersect.
+        downstream tool-suitability classifier, the ChatUI pin lookup,
+        and the V1 `mech_marketplace_v1_suitable_tools` allowlist all
+        key on lowercased names, so normalization on the consumer side
+        is required for any of those filters to match.
         """
         behaviour = _make_behaviour()
         behaviour._mech_hash = "valid_hash"

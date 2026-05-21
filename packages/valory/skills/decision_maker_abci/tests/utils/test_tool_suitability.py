@@ -58,6 +58,9 @@ _PREDICTION_EXAMPLE = (
     '{"p_yes": 0.6, "p_no": 0.4, "confidence": 0.8, "info_utility": 0.6}'
 )
 _RESOLVER_EXAMPLE = '{"is_valid": true, "is_determinable": true, "has_occurred": true}'
+_RESOLVER_EXAMPLE_JURY = (
+    '{"agreement_ratio": 0.83, "votes": 5, "judge_reasoning": "..."}'
+)
 
 
 class TestIsPredictionTool:
@@ -95,10 +98,20 @@ class TestIsPredictionTool:
         )
         assert is_prediction_tool(meta) is False
 
-    def test_input_domain_mismatch_vetoes(self) -> None:
-        """Stock-domain prose is vetoed when no prediction schema is declared."""
+    def test_input_domain_mismatch_vetoes_on_description_only(self) -> None:
+        """Top-level description with equities is vetoed when schema is bare."""
         meta = _make_tool(
             description="Stock price lookup tool for equities.",
+            input_description="A neutral input prompt.",
+            result_type="string",
+            result_example="",
+        )
+        assert is_prediction_tool(meta) is False
+
+    def test_input_domain_mismatch_vetoes_on_input_description_only(self) -> None:
+        """Input description with equities is vetoed when schema is bare."""
+        meta = _make_tool(
+            description="A neutral top-level description.",
             input_description="A question about stock price movement",
             result_type="string",
             result_example="",
@@ -121,6 +134,14 @@ class TestIsPredictionTool:
         meta = _make_tool(
             description="Multi-model jury tool for resolving prediction markets.",
             result_example=_RESOLVER_EXAMPLE,
+        )
+        assert is_prediction_tool(meta) is False
+
+    def test_resolver_jury_shape_vetoes(self) -> None:
+        """Jury-shaped resolver (agreement_ratio/votes/judge_reasoning) vetoes too."""
+        meta = _make_tool(
+            description="Jury-of-LLMs resolver for prediction markets.",
+            result_example=_RESOLVER_EXAMPLE_JURY,
         )
         assert is_prediction_tool(meta) is False
 

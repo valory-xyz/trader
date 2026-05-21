@@ -37,7 +37,7 @@ fingerprint:
   behaviours/sampling.py: bafybeiao42cxdrkkgfxdyknrkpqn5vrjn7v7swsxtvbqjlmrnltwb4mcvq
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeicgfgah5fx4ddwgcqpvs6dudjfhlpuaq3emvfxvplfkxmlmwtpfwi
-  behaviours/tool_selection.py: bafybeiaxlh2elm3wnnvvmpx4ev3vza5iumx3ksuxjieplifewqdgtan7nm
+  behaviours/tool_selection.py: bafybeih7g7rtxwlmbv2bp3yaqph3alb7tq2kwb4437aglr2s5hrnxjxply
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeier7ttbrdlyh2mzo2wc4yg6zgsz6gha3yihlelgxaguriytcumfiq
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
@@ -100,8 +100,8 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
   tests/behaviours/test_sampling.py: bafybeihoaia5n72wkecykqktle2hffeovwzs3mbm47krlosem3rgmjfcym
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeic7olnqgxo2aoqmnnhlmp4pmti5oker2kxwc2w6zlvytkkdghlxay
-  tests/behaviours/test_tool_selection.py: bafybeigznmd4ybb3c3om76sy3sqivssk4sct4lxw44yqq7eduqxhxjbb7i
+  tests/behaviours/test_storage_manager.py: bafybeihisdsool3etuqujxcjyeo3qasa5ddvuv7ocn3te4wxo37blegequ
+  tests/behaviours/test_tool_selection.py: bafybeias2w6mog2k3hx7idwkdl43z6u2wydink7hgdfu5y4syvmi4zdp7m
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
   tests/io_/test_loader.py: bafybeidd2zyzrhhxv75ijofg7mqzobmf4yu32lsscqdi3zd3hwlrwe2kne
@@ -122,7 +122,7 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeif2iygll3b53ouy4mnkzxwdemfoj3dw3zrj267b225musrgfuuyhq
-  tests/test_models.py: bafybeied2cuebehqeutupsweh64wsqdcvr334cwtlvh7lgpzq5jrttdr5m
+  tests/test_models.py: bafybeif3ebmwqfysrzuvj22hdzvtzph4llvo7652xjf3vipjrptcfgnqti
   tests/test_payloads.py: bafybeibw4y4eowsfj4wlsoghc7lxosedt5l4uhgxs6y5t2jshdtdkzncbe
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
@@ -132,11 +132,11 @@ fingerprint:
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
-  tests/utils/test_tool_suitability.py: bafybeihyp6jqh2g676nlcdyfaboweu3galgrbj5kqqdkxdkoo57b7ngg2a
+  tests/utils/test_tool_suitability.py: bafybeibrgb7j7fm2dxfnm3qvtxswmej5nhi6fayef5x2s5uoqy45l2iv4y
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/general.py: bafybeiaiszrv22dmqm6h7hoerpg7rpabkpakd4s43ct6p7y5zd2koz7ctq
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
-  utils/tool_suitability.py: bafybeidyteb4stikunlds7kvrgbqtnhlmwdha4xzrsdkxjicb4md7qnmp4
+  utils/tool_suitability.py: bafybeiht4l6nslp3eivq2zz3yjoi5zmrt6eg6geklwmzotwox2aokgwx7q
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle

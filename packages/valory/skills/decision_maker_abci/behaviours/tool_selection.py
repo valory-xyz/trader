@@ -61,7 +61,9 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
         seen_cids: Set[str] = set()
         for mech in self.synchronized_data.mechs_info:
-            metadata_str = mech.service.metadata_str
+            metadata_str = (
+                mech.service.metadata_str if mech.service is not None else None
+            )
             if metadata_str is None or metadata_str in seen_cids:
                 continue
             seen_cids.add(metadata_str)
@@ -91,8 +93,15 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             return True
 
         self.mech_tools_api.__dict__["_frozen"] = False
-        self.mech_tools_api.url = self.params.ipfs_address + CID_PREFIX + metadata_str
-        self.mech_tools_api.__dict__["_frozen"] = True
+        try:
+            self.mech_tools_api.url = (
+                self.params.ipfs_address + CID_PREFIX + metadata_str
+            )
+        finally:
+            # Restore the freeze even if `url` setting raises, so the shared
+            # `mech_tools_api` on `self.context` stays consistent for the rest
+            # of the round.
+            self.mech_tools_api.__dict__["_frozen"] = True
 
         specs = self.mech_tools_api.get_spec()
         res_raw = yield from self.get_http_response(**specs)
@@ -133,7 +142,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         """Pull `toolMetadata` from the IPFS body, keyed by lowercased name."""
         try:
             body = json.loads(res_raw.body.decode())
-        except (AttributeError, json.JSONDecodeError, UnicodeDecodeError):
+        except (AttributeError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
             return {}
         raw = body.get("toolMetadata") if isinstance(body, dict) else None
         if not isinstance(raw, dict):
