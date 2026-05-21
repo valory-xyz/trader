@@ -35,6 +35,7 @@ from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
 )
 from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
+    explain_prediction_tool,
     is_prediction_tool,
 )
 
@@ -156,12 +157,27 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             }
             if suitable:
                 if suitable != candidate:
-                    dropped = sorted(candidate - suitable)
+                    rejected: Dict[str, list] = {}
+                    no_manifest: list = []
+                    for tool in sorted(candidate - suitable):
+                        meta = self._tool_metadata.get(tool)
+                        if meta is None:
+                            no_manifest.append(tool)
+                        else:
+                            _, reason = explain_prediction_tool(meta)
+                            rejected.setdefault(reason, []).append(tool)
                     self.context.logger.info(
                         "Tool-suitability classifier narrowed "
                         f"{len(candidate)} -> {len(suitable)} tools; "
-                        f"dropped: {dropped[:10]}"
+                        f"rejected by classifier: {dict(sorted(rejected.items()))}"
                     )
+                    if no_manifest:
+                        self.context.logger.warning(
+                            f"{len(no_manifest)} tool(s) dropped because no "
+                            "manifest data was available (CID fetch failed or "
+                            "empty toolMetadata entry); see per-CID WARNINGs. "
+                            f"Tools: {no_manifest[:10]}"
+                        )
                 candidate = suitable
             elif candidate:
                 self.context.logger.warning(

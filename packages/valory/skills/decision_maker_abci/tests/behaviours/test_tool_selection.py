@@ -1134,3 +1134,38 @@ class TestCandidateToolsSuitability:
 
         assert candidate == {"a", "b"}
         assert cause is None
+
+    def test_drop_partition_separates_classifier_from_missing_manifest(
+        self,
+    ) -> None:
+        """Dropped tools are split into rejected vs no-manifest WARNINGs."""
+        policy = _make_policy("predictor", "resolver", "ghost")
+        behaviour = _make_behaviour(policy, {"predictor", "resolver", "ghost"})
+        behaviour._tool_metadata = {
+            "predictor": _PredictionMetadata.predictor(),
+            "resolver": _PredictionMetadata.resolver(),
+            # "ghost" intentionally absent: its CID failed to fetch
+        }
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"predictor"}
+        assert cause is None
+        infos = [
+            call.args[0]
+            for call in behaviour.context.logger.info.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any(
+            "rejected by classifier" in msg
+            and "schema_resolver_shape" in msg
+            and "resolver" in msg
+            for msg in infos
+        )
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any(
+            "no manifest data was available" in msg and "ghost" in msg
+            for msg in warnings
+        )
