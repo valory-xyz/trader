@@ -431,7 +431,9 @@ class TestGetMechTools:
                 with patch.object(
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
-                    mock_params.return_value = MagicMock()
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset()
+                    )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )
@@ -448,6 +450,50 @@ class TestGetMechTools:
 
         assert result is True
         assert behaviour._mech_tools == {"tool1", "tool2"}
+
+    def test_get_mech_tools_intersects_with_v1_suitable_tools(self) -> None:
+        """V1 path intersects on-chain tools with the V1 operator allowlist."""
+        behaviour = _make_behaviour()
+        behaviour._mech_hash = "valid_hash"
+
+        mock_api = MagicMock()
+        mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
+        mock_api.process_response.return_value = ["tool1", "tool2", "tool3"]
+        mock_api.is_retries_exceeded.return_value = False
+
+        mock_response = MagicMock()
+
+        with patch.object(
+            type(behaviour), "mech_tools_api", new_callable=PropertyMock
+        ) as api_mock:
+            api_mock.return_value = mock_api
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(is_marketplace_v2=False)
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset({"tool1", "tool3"})
+                    )
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                        return_value=_return_gen(mock_response)
+                    )
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+
+                    gen = behaviour._get_mech_tools()
+                    result = None
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration as e:
+                        result = e.value
+
+        assert result is True
+        # tool2 dropped: not in the operator allowlist
+        assert behaviour._mech_tools == {"tool1", "tool3"}
 
     def test_get_mech_tools_retries_exceeded(self) -> None:
         """Should return True with error log when retries exceeded."""
@@ -580,19 +626,25 @@ class TestGetMechTools:
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
             ) as mock_sd:
                 mock_sd.return_value = MagicMock(is_marketplace_v2=True)
-                behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
-                    return_value=_return_gen(MagicMock())
-                )
-                behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
-                behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset()
+                    )
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                        return_value=_return_gen(MagicMock())
+                    )
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
 
-                gen = behaviour._get_mech_tools()
-                result = None
-                try:
-                    while True:
-                        next(gen)
-                except StopIteration as e:
-                    result = e.value
+                    gen = behaviour._get_mech_tools()
+                    result = None
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration as e:
+                        result = e.value
 
         assert result is True
         assert behaviour._mech_tools == {"prediction-offline", "superforcaster"}

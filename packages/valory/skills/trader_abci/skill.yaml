@@ -56,8 +56,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeiceijjjlvbq2tnadeqdrm7nka7gqgwzvmlgjuzbacgnkljry5h72a
 - valory/termination_abci:0.1.0:bafybeibduc7hdi3xu7ahpumgew6es33jcadbrbipboyc7sbuyzds45fmve
 - valory/market_manager_abci:0.1.0:bafybeiful2wriymu6fhdcs6eqydoakwms74oogm5fmxh3ym53izp6loxzy
-- valory/decision_maker_abci:0.1.0:bafybeiekkhafut7zuxeoukqgq3zp4u26givzcyarmk3rtfe6shj24c2iie
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiav3anxue3hbd56v2jntgjbgegwgapufqfpk2mdpjp2zcz4dj7ifm
+- valory/decision_maker_abci:0.1.0:bafybeihpuiqthbl43igjb7jxrkfpf4cso2543gla3vlrc6baidlxbhgvae
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig62unx5j4ok4kf4mtafjuusklb46gwaafownne5b6hlhj3jjix6i
 - valory/staking_abci:0.1.0:bafybeiggw7bwh3vmtzolcg23idt5kiwkdlggupq3ktk7ssjnixvybtfw5m
 - valory/check_stop_trading_abci:0.1.0:bafybeibuku2gjqor7yga4k7szx3rndaxreh2wm6jnxfdc3gvazacwsttoe
 - valory/mech_interact_abci:0.1.0:bafybeidrgcavhpsrkzj2pvpybu56aj3sohuzuvdaidj5wr2uf35edchhxi
@@ -332,6 +332,7 @@ models:
       polymarket_ctf_collateral_adapter_address: '0xAdA100Db00Ca00073811820692005400218FcE1f'
       polymarket_neg_risk_ctf_collateral_adapter_address: '0xadA2005600Dec949baf300f4C6120000bDB6eAab'
       valid_mechs: []
+      mech_marketplace_v1_suitable_tools: []
       penalize_mech_time_window: 1800
       pol_threshold_for_swap: 2000000000000000000
       slippages_for_swap: {}

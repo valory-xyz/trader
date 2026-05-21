@@ -217,6 +217,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if len(res) == 0:
             self.context.logger.error("The mech agent's manifest is empty!")
             return False
+        # V1-only operator allowlist intersection. V2 short-circuits this
+        # method entirely and applies the suitability classifier instead.
+        if self.params.mech_marketplace_v1_suitable_tools:
+            res &= self.params.mech_marketplace_v1_suitable_tools
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
         return True

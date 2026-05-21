@@ -36,14 +36,14 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeihauyieaox7d77wz3ofjflvhicsnhzitvcgnysoral5l4m5gluglm
   behaviours/sampling.py: bafybeiao42cxdrkkgfxdyknrkpqn5vrjn7v7swsxtvbqjlmrnltwb4mcvq
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeierknztldtbv3py3azpjmhkxy5rebe6amuop2grzfqs2wwdstaehu
+  behaviours/storage_manager.py: bafybeih2jps3gh4poor2w45reysealumhtgrj6zw7tgauv3neufcbi7hiy
   behaviours/tool_selection.py: bafybeiaxlh2elm3wnnvvmpx4ev3vza5iumx3ksuxjieplifewqdgtan7nm
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeier7ttbrdlyh2mzo2wc4yg6zgsz6gha3yihlelgxaguriytcumfiq
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeib6hymvpaqbzbaev6awqlkika5ngb2knpq5otwtxt33un76sd5lxe
+  models.py: bafybeihynbsssgh4t2jid775v5dkhsxzlq4ajfrfknkjmb6weq6uoalv5a
   payloads.py: bafybeiea6so7habmfuy6y7krl3ajgfilkbii6er5bfzcucy324d6crf72q
   policy.py: bafybeici2ywdlwzpftbibv2uyzymdlraj6wovjana37ujkdwn5wna6bbvq
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
@@ -80,7 +80,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
-  tests/behaviours/test_base.py: bafybeighpclhqiisd6ux2fxxg3k4yaaysfcaqrytyijh6n5mydyv5t62ti
+  tests/behaviours/test_base.py: bafybeiakeyreiopykp6gp6up5l5y5h4snfrdydgt3uj6gu4sfyht4byfni
   tests/behaviours/test_bet_placement.py: bafybeifum6ilmcohsdci2z447kr7jnlw2hhicjdpxg5y2pr7gwul4rogy4
   tests/behaviours/test_blacklisting.py: bafybeic2jcfxujhto6khwrobnfxx43wh42hx2fmn4xo2hxzlynmavqvbqa
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
@@ -100,7 +100,7 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeibethmzkihznht2g5jptv6sgrb5yh5fdytq5kmhetxsbtbe7acwla
   tests/behaviours/test_sampling.py: bafybeihoaia5n72wkecykqktle2hffeovwzs3mbm47krlosem3rgmjfcym
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeihovilmmj4d5y3rkxvyxe33uet2xpcboyv4w2as7dabns52qu7kgu
+  tests/behaviours/test_storage_manager.py: bafybeifj4tcfmzpmuuv2g44uoj37f37y4khvjkc2ehwflfcaatnaxi2coy
   tests/behaviours/test_tool_selection.py: bafybeigznmd4ybb3c3om76sy3sqivssk4sct4lxw44yqq7eduqxhxjbb7i
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
@@ -320,6 +320,7 @@ models:
       the_graph_error_message_key: message
       the_graph_payment_required_error: payment required for subsequent requests for
         this API key
+      mech_marketplace_v1_suitable_tools: []
       sample_bets_closing_days: 10
       trading_strategy: strategy_name
       use_fallback_strategy: true
