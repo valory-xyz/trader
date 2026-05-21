@@ -217,9 +217,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if len(res) == 0:
             self.context.logger.error("The mech agent's manifest is empty!")
             return False
-        # V1-only operator allowlist intersection. V2 short-circuits this
-        # method entirely and applies the suitability classifier instead.
-        if self.params.mech_marketplace_v1_suitable_tools:
+        # V1-only operator allowlist intersection. The V2 marketplace path
+        # branches early in `_get_tools` and never reaches this method; V2
+        # sets `mech_tools` from `synchronized_data.mech_tools` and applies
+        # the suitability classifier downstream in
+        # `tool_selection._fetch_mech_manifests`. The `is_marketplace_v2`
+        # guard below mirrors that upstream branch as belt-and-suspenders
+        # so a future refactor of `_get_tools` can't accidentally route V2
+        # through here and apply this V1-shaped allowlist.
+        if (
+            self.params.mech_marketplace_v1_suitable_tools
+            and not self.synchronized_data.is_marketplace_v2
+        ):
             res &= self.params.mech_marketplace_v1_suitable_tools
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
