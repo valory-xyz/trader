@@ -574,6 +574,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "skill_context": mock_context,
         "name": "params",
         "agent_registry_address": "0xaddr",
+        "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
         "trading_strategy": "kelly_criterion",
         "use_fallback_strategy": False,

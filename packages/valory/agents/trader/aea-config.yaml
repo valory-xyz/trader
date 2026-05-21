@@ -65,13 +65,13 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeiakhczviqep47o5txatkdbzui6bk5o554cnspdkauapvmdykk2tkm
 - valory/termination_abci:0.1.0:bafybeibduc7hdi3xu7ahpumgew6es33jcadbrbipboyc7sbuyzds45fmve
 - valory/transaction_settlement_abci:0.1.0:bafybeiceijjjlvbq2tnadeqdrm7nka7gqgwzvmlgjuzbacgnkljry5h72a
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeies4vwkrkbcklbpdxkux3ahc6aa2cfqe4damqjwtv4sswozdcjvwy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaogsterk5q3soul3kmkgvj4evfrhgkctfarq6t3bvhgekqo5caba
 - valory/market_manager_abci:0.1.0:bafybeiful2wriymu6fhdcs6eqydoakwms74oogm5fmxh3ym53izp6loxzy
-- valory/decision_maker_abci:0.1.0:bafybeiat3shgqi2aycjpbhqswcmsauvs7d5yzuxta3bzxw2xvmts26cesu
-- valory/trader_abci:0.1.0:bafybeibmrn2lebmfxwhmkoakd3b7fpv5f7ta2jcfzvbf353pwcymkmpcea
+- valory/decision_maker_abci:0.1.0:bafybeiechraf4eug5bagy3ub6j3bccz7izcphmf6mxkt3g3rloxe74jnxm
+- valory/trader_abci:0.1.0:bafybeifyz65kzytpxu7vw2bqubgxvf2cdmtaxdkwfrir57dtytjl2xlzdu
 - valory/staking_abci:0.1.0:bafybeiggw7bwh3vmtzolcg23idt5kiwkdlggupq3ktk7ssjnixvybtfw5m
-- valory/check_stop_trading_abci:0.1.0:bafybeicfxhgi4ydi7s2qde7hhnmosorgqbvj6cewt2ii6igxesicbqcdsq
-- valory/mech_interact_abci:0.1.0:bafybeiexvtbft2iupqojaeodfr6cdn3kmhzbrqa4exeb7vhjs2m7j43hfm
+- valory/check_stop_trading_abci:0.1.0:bafybeibuku2gjqor7yga4k7szx3rndaxreh2wm6jnxfdc3gvazacwsttoe
+- valory/mech_interact_abci:0.1.0:bafybeidrgcavhpsrkzj2pvpybu56aj3sohuzuvdaidj5wr2uf35edchhxi
 - valory/chatui_abci:0.1.0:bafybeih22osp3bht4s7zbxvskoapzhc2mihsutjlwdie3etxtsov6qinne
 - valory/agent_performance_summary_abci:0.1.0:bafybeicg6kecyjvnegwvxdqt6lhk5pykosdwq4fizafurvucuyvvaz4whi
 - valory/funds_manager:0.1.0:bafybeibazva7pwzra4joxeburpvw6snk2dsjakyfhefe4jwuvs6f7juxaq
@@ -198,7 +198,7 @@ models:
       slot_count: ${int:2}
       opening_margin: ${int:86400}
       languages: ${list:["en_US"]}
-      disabled_polymarket_tags: ${list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
+      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
       the_graph_error_message_key: ${str:message}
@@ -227,9 +227,9 @@ models:
       max_filtering_retries: ${int:6}
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
-      withdrawal_slippage: ${float:0.01}
-      withdrawal_return_buffer: ${float:0.05}
-      dust_epsilon_wxdai: ${int:10000000000000000}
+      withdrawal_slippage: ${WITHDRAWAL_SLIPPAGE:float:0.01}
+      withdrawal_return_buffer: ${WITHDRAWAL_RETURN_BUFFER:float:0.05}
+      dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.25}
       store_path: ${STORE_PATH:str:/data/}
@@ -281,8 +281,8 @@ models:
       polymarket_ctf_exchange_address: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
       polymarket_neg_risk_ctf_exchange_address: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
       polymarket_neg_risk_adapter_address: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-      valid_mechs: ${list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
-      valid_tools: ${list:["superforcaster","factual_research","prediction-request-reasoning-claude"]}
+      valid_mechs: ${VALID_MECHS:list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
+      mech_marketplace_v1_suitable_tools: ${MECH_MARKETPLACE_V1_SUITABLE_TOOLS:list:["prediction-offline","prediction-offline-sme","prediction-online","prediction-online-sme","prediction-request-reasoning","prediction-request-reasoning-claude"]}
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}

@@ -21,14 +21,22 @@
 
 import copy
 import json
-from typing import Generator, Optional, Tuple
+from typing import Any, Dict, Generator, Optional, Set, Tuple
 
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    CID_PREFIX,
+    WaitableConditionType,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPayload
 from packages.valory.skills.decision_maker_abci.states.tool_selection import (
     ToolSelectionRound,
+)
+from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
+    explain_prediction_tool,
+    is_prediction_tool,
 )
 
 
@@ -37,20 +45,164 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
     matching_round = ToolSelectionRound
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize."""
+        super().__init__(**kwargs)
+        self._tool_metadata: Dict[str, Dict[str, Any]] = {}
+        self._pending_cid: Optional[str] = None
+
+    def _fetch_mech_manifests(self) -> Generator[None, None, None]:
+        """Populate `self._tool_metadata` from each unique mech manifest."""
+        self._tool_metadata = {}
+        if not self.synchronized_data.is_marketplace_v2:
+            return
+        if self.benchmarking_mode.enabled:
+            return
+
+        seen_cids: Set[str] = set()
+        for mech in self.synchronized_data.mechs_info:
+            metadata_str = (
+                mech.service.metadata_str if mech.service is not None else None
+            )
+            if metadata_str is None or metadata_str in seen_cids:
+                continue
+            seen_cids.add(metadata_str)
+            self._pending_cid = metadata_str
+            yield from self.wait_for_condition_with_sleep(self._fetch_one_manifest)
+
+        self._pending_cid = None
+
+        if seen_cids and not self._tool_metadata:
+            self.context.logger.warning(
+                "Tool-suitability classifier has no metadata for any of "
+                f"{len(seen_cids)} mech manifest CIDs; the suitability filter "
+                "will be skipped and the round will proceed against the raw "
+                "mech_tools set."
+            )
+        elif seen_cids:
+            self.context.logger.info(
+                f"Tool-suitability classifier fetched {len(seen_cids)} unique "
+                f"mech manifest CID(s); {len(self._tool_metadata)} tool entries "
+                "available for classification."
+            )
+
+    def _fetch_one_manifest(self) -> WaitableConditionType:
+        """Fetch the manifest for `self._pending_cid`, with bounded retries."""
+        metadata_str = self._pending_cid
+        if metadata_str is None:
+            return True
+
+        self.mech_tools_api.__dict__["_frozen"] = False
+        try:
+            self.mech_tools_api.url = (
+                self.params.ipfs_address + CID_PREFIX + metadata_str
+            )
+        finally:
+            # Restore the freeze even if `url` setting raises, so the shared
+            # `mech_tools_api` on `self.context` stays consistent for the rest
+            # of the round.
+            self.mech_tools_api.__dict__["_frozen"] = True
+
+        specs = self.mech_tools_api.get_spec()
+        res_raw = yield from self.get_http_response(**specs)
+        extracted = self._extract_tool_metadata(res_raw)
+
+        if extracted:
+            self._tool_metadata.update(extracted)
+            self.mech_tools_api.reset_retries()
+            return True
+
+        # `AgentToolsSpecs` extends `ApiSpecs` directly and does NOT define
+        # `is_permanent_error` (only `MechToolsSpecs` does, on the mech-interact
+        # side). Inline a minimal status-code classifier: 2xx is permanent
+        # because we already failed `process_response`/extract on a 2xx body
+        # (malformed content, not a flake); 4xx is a gateway rejection. 5xx
+        # falls through to the transient retry path.
+        status = getattr(res_raw, "status_code", None)
+        is_permanent = status is not None and (
+            200 <= status < 300 or 400 <= status < 500
+        )
+        if is_permanent:
+            self.context.logger.warning(
+                f"Tool-suitability classifier could not extract metadata "
+                f"for CID {metadata_str!r} "
+                f"(status={status}, permanent error); this mech manifest "
+                "will not contribute to the suitability filter."
+            )
+            self.mech_tools_api.reset_retries()
+            return True
+
+        self.mech_tools_api.increment_retries()
+        if self.mech_tools_api.is_retries_exceeded():
+            self.context.logger.warning(
+                f"Tool-suitability classifier could not extract metadata "
+                f"for CID {metadata_str!r} "
+                f"(status={getattr(res_raw, 'status_code', '?')}); "
+                "retries exhausted, this mech manifest will not contribute "
+                "to the suitability filter."
+            )
+            self.mech_tools_api.reset_retries()
+            return True
+
+        return False
+
+    @staticmethod
+    def _extract_tool_metadata(res_raw: Any) -> Dict[str, Dict[str, Any]]:
+        """Pull `toolMetadata` from the IPFS body, keyed by lowercased name."""
+        try:
+            body = json.loads(res_raw.body.decode())
+        except (AttributeError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            return {}
+        raw = body.get("toolMetadata") if isinstance(body, dict) else None
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            str(name).lower(): meta
+            for name, meta in raw.items()
+            if isinstance(meta, dict)
+        }
+
     def _candidate_tools(self) -> Tuple[set, Optional[str]]:
-        """Compute the candidate tool set after applying ChatUI restrictions.
-
-        Layers two filters on top of `self.mech_tools`:
-
-        1. `selected_mechs` — keep only tools served by at least one pinned
-           mech. Skipped in benchmarking mode.
-        2. `allowed_tools` — keep only tools the user pinned by name.
-
-        :return: (candidate set, name of the constraint that emptied the
-            set, or ``None`` if no constraint emptied it).
-        """
+        """Apply suitability, ChatUI mech pin, ChatUI tool pin (in order)."""
         candidate = set(self.mech_tools)
         cause: Optional[str] = None
+
+        if self._tool_metadata:
+            suitable = {
+                tool
+                for tool in candidate
+                if is_prediction_tool(self._tool_metadata.get(tool))
+            }
+            if suitable:
+                if suitable != candidate:
+                    rejected: Dict[str, list] = {}
+                    no_manifest: list = []
+                    for tool in sorted(candidate - suitable):
+                        meta = self._tool_metadata.get(tool)
+                        if meta is None:
+                            no_manifest.append(tool)
+                        else:
+                            _, reason = explain_prediction_tool(meta)
+                            rejected.setdefault(reason, []).append(tool)
+                    self.context.logger.info(
+                        "Tool-suitability classifier narrowed "
+                        f"{len(candidate)} -> {len(suitable)} tools; "
+                        f"rejected by classifier: {dict(sorted(rejected.items()))}"
+                    )
+                    if no_manifest:
+                        self.context.logger.warning(
+                            f"{len(no_manifest)} tool(s) dropped because no "
+                            "manifest data was available (CID fetch failed or "
+                            "empty toolMetadata entry); see per-CID WARNINGs. "
+                            f"Tools: {no_manifest[:10]}"
+                        )
+                candidate = suitable
+            elif candidate:
+                self.context.logger.warning(
+                    "Tool-suitability classifier marked every candidate as "
+                    "unsuitable; keeping the raw mech_tools set so the round "
+                    "can proceed."
+                )
 
         selected_mechs = self.shared_state.chatui_config.selected_mechs
         if selected_mechs and not self.benchmarking_mode.enabled:
@@ -74,16 +226,12 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         return candidate, cause
 
     def _select_tool(self) -> Generator[None, None, Optional[str]]:
-        """Select a Mech tool based on an e-greedy policy and return its index.
-
-        :yield: behaviour-utility yields while awaiting policy setup.
-        :return: the chosen tool name, or ``None`` when a ChatUI
-            restriction has collapsed the candidate set so the round
-            should fail closed.
-        """
+        """Pick a tool via e-greedy policy on the candidate set."""
         success = yield from self._setup_policy_and_tools()
         if not success:
             return None
+
+        yield from self._fetch_mech_manifests()
 
         randomness = (
             (self.benchmarking_mode.randomness if self.is_first_period else None)
