@@ -23,7 +23,10 @@ import copy
 import json
 from typing import Any, Dict, Generator, Optional, Set, Tuple
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import CID_PREFIX
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    CID_PREFIX,
+    WaitableConditionType,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -45,6 +48,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         """Initialize."""
         super().__init__(**kwargs)
         self._tool_metadata: Dict[str, Dict[str, Any]] = {}
+        self._pending_cid: Optional[str] = None
 
     def _fetch_mech_manifests(self) -> Generator[None, None, None]:
         """Populate `self._tool_metadata` from each unique mech manifest."""
@@ -60,27 +64,10 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if metadata_str is None or metadata_str in seen_cids:
                 continue
             seen_cids.add(metadata_str)
+            self._pending_cid = metadata_str
+            yield from self.wait_for_condition_with_sleep(self._fetch_one_manifest)
 
-            self.mech_tools_api.__dict__["_frozen"] = False
-            self.mech_tools_api.url = (
-                self.params.ipfs_address + CID_PREFIX + metadata_str
-            )
-            self.mech_tools_api.__dict__["_frozen"] = True
-
-            specs = self.mech_tools_api.get_spec()
-            res_raw = yield from self.get_http_response(**specs)
-            extracted = self._extract_tool_metadata(res_raw)
-            if extracted:
-                self._tool_metadata.update(extracted)
-            else:
-                self.context.logger.warning(
-                    f"Tool-suitability classifier could not extract metadata "
-                    f"for CID {metadata_str!r} "
-                    f"(status={getattr(res_raw, 'status_code', '?')}); "
-                    "this mech manifest will not contribute to the suitability "
-                    "filter."
-                )
-            self.mech_tools_api.reset_retries()
+        self._pending_cid = None
 
         if seen_cids and not self._tool_metadata:
             self.context.logger.warning(
@@ -95,6 +82,50 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 f"mech manifest CID(s); {len(self._tool_metadata)} tool entries "
                 "available for classification."
             )
+
+    def _fetch_one_manifest(self) -> WaitableConditionType:
+        """Fetch the manifest for `self._pending_cid`, with bounded retries."""
+        metadata_str = self._pending_cid
+        if metadata_str is None:
+            return True
+
+        self.mech_tools_api.__dict__["_frozen"] = False
+        self.mech_tools_api.url = self.params.ipfs_address + CID_PREFIX + metadata_str
+        self.mech_tools_api.__dict__["_frozen"] = True
+
+        specs = self.mech_tools_api.get_spec()
+        res_raw = yield from self.get_http_response(**specs)
+        extracted = self._extract_tool_metadata(res_raw)
+
+        if extracted:
+            self._tool_metadata.update(extracted)
+            self.mech_tools_api.reset_retries()
+            return True
+
+        if self.mech_tools_api.is_permanent_error(res_raw):
+            self.context.logger.warning(
+                f"Tool-suitability classifier could not extract metadata "
+                f"for CID {metadata_str!r} "
+                f"(status={getattr(res_raw, 'status_code', '?')}, "
+                "permanent error); this mech manifest will not contribute "
+                "to the suitability filter."
+            )
+            self.mech_tools_api.reset_retries()
+            return True
+
+        self.mech_tools_api.increment_retries()
+        if self.mech_tools_api.is_retries_exceeded():
+            self.context.logger.warning(
+                f"Tool-suitability classifier could not extract metadata "
+                f"for CID {metadata_str!r} "
+                f"(status={getattr(res_raw, 'status_code', '?')}); "
+                "retries exhausted, this mech manifest will not contribute "
+                "to the suitability filter."
+            )
+            self.mech_tools_api.reset_retries()
+            return True
+
+        return False
 
     @staticmethod
     def _extract_tool_metadata(res_raw: Any) -> Dict[str, Dict[str, Any]]:

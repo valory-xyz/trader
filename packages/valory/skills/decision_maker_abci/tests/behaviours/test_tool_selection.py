@@ -953,6 +953,148 @@ class TestFetchMechManifests:
         )
 
 
+def _drive_fetch_one(behaviour: "_TestableBehaviour") -> bool:
+    """Drive _fetch_one_manifest to completion and return its bool value."""
+    gen = behaviour._fetch_one_manifest()
+    try:
+        while True:
+            next(gen)
+    except StopIteration as exc:
+        return bool(exc.value)
+    return False  # unreachable; keeps mypy happy
+
+
+class TestFetchOneManifest:
+    """_fetch_one_manifest implements the canonical retry contract."""
+
+    def test_success_resets_retries_and_returns_true(self) -> None:
+        """A valid manifest updates the cache, resets retries, returns True."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour._pending_cid = "cid-ok"
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/"
+        )
+        api = _attach_mech_tools_api(behaviour)
+        body = {"toolMetadata": {"t": _PredictionMetadata.predictor()}}
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(body=json.dumps(body).encode())
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        done = _drive_fetch_one(behaviour)
+
+        assert done is True
+        assert behaviour._tool_metadata == {"t": _PredictionMetadata.predictor()}
+        api.reset_retries.assert_called()
+        api.increment_retries.assert_not_called()
+
+    def test_permanent_error_resets_and_returns_true(self) -> None:
+        """A permanent error skips retries, logs a warning, returns True."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour._pending_cid = "cid-bad"
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/"
+        )
+        api = _attach_mech_tools_api(behaviour)
+        api.is_permanent_error.return_value = True
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(body=b"not-json", status_code=404)
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        done = _drive_fetch_one(behaviour)
+
+        assert done is True
+        assert behaviour._tool_metadata == {}
+        api.reset_retries.assert_called()
+        api.increment_retries.assert_not_called()
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("permanent error" in msg for msg in warnings)
+
+    def test_transient_error_within_budget_returns_false(self) -> None:
+        """A transient error increments retries and yields a re-invoke.
+
+        The outer driver re-invokes on False until the budget burns.
+        """
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour._pending_cid = "cid-flaky"
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/"
+        )
+        api = _attach_mech_tools_api(behaviour)
+        api.is_permanent_error.return_value = False
+        api.is_retries_exceeded.return_value = False
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(body=b"not-json", status_code=503)
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        done = _drive_fetch_one(behaviour)
+
+        assert done is False
+        assert behaviour._tool_metadata == {}
+        api.increment_retries.assert_called_once()
+        api.reset_retries.assert_not_called()
+
+    def test_transient_error_when_retries_exceeded_returns_true(self) -> None:
+        """When the retry budget is burned, the warning fires and we give up."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour._pending_cid = "cid-dead"
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/"
+        )
+        api = _attach_mech_tools_api(behaviour)
+        api.is_permanent_error.return_value = False
+        api.is_retries_exceeded.return_value = True
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            return MagicMock(body=b"not-json", status_code=503)
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        done = _drive_fetch_one(behaviour)
+
+        assert done is True
+        assert behaviour._tool_metadata == {}
+        api.increment_retries.assert_called_once()
+        api.reset_retries.assert_called()
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("retries exhausted" in msg for msg in warnings)
+
+    def test_returns_true_when_no_pending_cid(self) -> None:
+        """A None pending_cid short-circuits without hitting the network."""
+        behaviour = _make_behaviour(_make_policy("t"), {"t"})
+        behaviour._pending_cid = None
+        _attach_mech_tools_api(behaviour)
+
+        called = {"n": 0}
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            called["n"] += 1
+            return MagicMock(body=b"{}")
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+
+        done = _drive_fetch_one(behaviour)
+
+        assert done is True
+        assert called["n"] == 0
+
+
 class TestCandidateToolsSuitability:
     """_candidate_tools applies the suitability classifier when metadata exists."""
 
