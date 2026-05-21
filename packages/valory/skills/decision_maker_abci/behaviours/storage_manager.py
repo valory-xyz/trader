@@ -230,6 +230,15 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             and not self.synchronized_data.is_marketplace_v2
         ):
             res &= self.params.mech_marketplace_v1_suitable_tools
+            if not res:
+                self.context.logger.error(
+                    "V1 operator allowlist "
+                    "`mech_marketplace_v1_suitable_tools` produced an empty "
+                    "intersection with the on-chain tool set; check the "
+                    "allowlist against the mech's actual tool list. Returning "
+                    "False so the retry loop handles the misconfiguration."
+                )
+                return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
         return True

@@ -112,13 +112,22 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             self.mech_tools_api.reset_retries()
             return True
 
-        if self.mech_tools_api.is_permanent_error(res_raw):
+        # `AgentToolsSpecs` extends `ApiSpecs` directly and does NOT define
+        # `is_permanent_error` (only `MechToolsSpecs` does, on the mech-interact
+        # side). Inline a minimal status-code classifier: 2xx is permanent
+        # because we already failed `process_response`/extract on a 2xx body
+        # (malformed content, not a flake); 4xx is a gateway rejection. 5xx
+        # falls through to the transient retry path.
+        status = getattr(res_raw, "status_code", None)
+        is_permanent = status is not None and (
+            200 <= status < 300 or 400 <= status < 500
+        )
+        if is_permanent:
             self.context.logger.warning(
                 f"Tool-suitability classifier could not extract metadata "
                 f"for CID {metadata_str!r} "
-                f"(status={getattr(res_raw, 'status_code', '?')}, "
-                "permanent error); this mech manifest will not contribute "
-                "to the suitability filter."
+                f"(status={status}, permanent error); this mech manifest "
+                "will not contribute to the suitability filter."
             )
             self.mech_tools_api.reset_retries()
             return True

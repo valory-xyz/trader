@@ -106,7 +106,7 @@ def explain_prediction_tool(
     ):
         return False, "input_domain_mismatch"
 
-    if example and _RESOLVER_FIELD_RE.search(example):
+    if not schema_claims_predictor and example and _RESOLVER_FIELD_RE.search(example):
         return False, "schema_resolver_shape"
 
     if _result_field(tool_metadata, "type") == "string" and not example:

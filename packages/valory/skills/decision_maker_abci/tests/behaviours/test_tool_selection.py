@@ -897,7 +897,7 @@ class TestFetchMechManifests:
                     {"toolMetadata": {"tool": _PredictionMetadata.predictor()}}
                 ).encode()
             ),
-            MagicMock(body=b"not-json"),  # extraction failure
+            MagicMock(body=b"not-json", status_code=404),  # extraction failure
         ]
 
         def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
@@ -935,7 +935,7 @@ class TestFetchMechManifests:
         )
 
         def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
-            return MagicMock(body=b"not-json")
+            return MagicMock(body=b"not-json", status_code=404)
             yield  # generator function
 
         behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]

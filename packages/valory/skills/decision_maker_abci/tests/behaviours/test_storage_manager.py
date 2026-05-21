@@ -652,11 +652,12 @@ class TestGetMechTools:
     def test_get_mech_tools_normalizes_case(self) -> None:
         """Mixed-case manifest tools are lowercased before being stored.
 
-        The mech IPFS manifest can return tool names in any case; the
-        downstream tool-suitability classifier, the ChatUI pin lookup,
-        and the V1 `mech_marketplace_v1_suitable_tools` allowlist all
-        key on lowercased names, so normalization on the consumer side
-        is required for any of those filters to match.
+        Verifies the lowercasing happens regardless of whether the V1
+        allowlist intersection runs (allowlist is empty here, so the
+        intersection branch is skipped). The downstream suitability
+        classifier, ChatUI pin lookup, and V1 allowlist all key on
+        lowercased names, so this normalization is the consumer-side
+        contract every filter downstream depends on.
         """
         behaviour = _make_behaviour()
         behaviour._mech_hash = "valid_hash"
