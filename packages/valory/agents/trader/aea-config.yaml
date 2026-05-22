@@ -135,7 +135,7 @@ type: skill
 models:
   benchmark_tool:
     args:
-      log_dir: ${BENCHMARKS_DIR:str:/benchmarks}
+      log_dir: ${LOG_DIR:str:/benchmarks}
   params:
     args:
       setup:
@@ -165,7 +165,7 @@ models:
       keeper_allowed_retries: ${int:3}
       keeper_timeout: ${float:30.0}
       max_attempts: ${int:10}
-      reset_tendermint_after: ${RESET_TENDERMINT_AFTER:int:2}
+      reset_tendermint_after: ${RESET_TM_AFTER:int:2}
       retry_attempts: ${int:400}
       retry_timeout: ${int:3}
       request_retry_delay: ${float:1.0}
@@ -451,7 +451,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${GNOSIS_STAKING_SUBGRAPH:str:https://staking-gnosis.subgraph.autonolas.tech}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
   mech_tools:
     args:
       headers:
