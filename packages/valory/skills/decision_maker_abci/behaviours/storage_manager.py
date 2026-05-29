@@ -212,12 +212,33 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return False
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
-        res = {str(tool).lower() for tool in res} & self.params.valid_tools
-        self.context.logger.info(f"Relevant tools to the prediction task: {res}.")
+        res = {str(tool).lower() for tool in res}
 
         if len(res) == 0:
-            self.context.logger.error("The relevant mech agent's tools are empty!")
+            self.context.logger.error("The mech agent's manifest is empty!")
             return False
+        # V1-only operator allowlist intersection. The V2 marketplace path
+        # branches early in `_get_tools` and never reaches this method; V2
+        # sets `mech_tools` from `synchronized_data.mech_tools` and applies
+        # the suitability classifier downstream in
+        # `tool_selection._fetch_mech_manifests`. The `is_marketplace_v2`
+        # guard below mirrors that upstream branch as belt-and-suspenders
+        # so a future refactor of `_get_tools` can't accidentally route V2
+        # through here and apply this V1-shaped allowlist.
+        if (
+            self.params.mech_marketplace_v1_suitable_tools
+            and not self.synchronized_data.is_marketplace_v2
+        ):
+            res &= self.params.mech_marketplace_v1_suitable_tools
+            if not res:
+                self.context.logger.error(
+                    "V1 operator allowlist "
+                    "`mech_marketplace_v1_suitable_tools` produced an empty "
+                    "intersection with the on-chain tool set; check the "
+                    "allowlist against the mech's actual tool list. Returning "
+                    "False so the retry loop handles the misconfiguration."
+                )
+                return False
         self.mech_tools = res
         self.mech_tools_api.reset_retries()
         return True

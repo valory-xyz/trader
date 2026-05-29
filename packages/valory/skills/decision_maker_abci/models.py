@@ -24,7 +24,19 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
@@ -389,6 +401,17 @@ class DecisionMakerParams(
             "Agent registry address not specified!",
         )
         agent_registry_address = cast(str, agent_registry_address)
+
+        # V1-only operator allowlist applied in `_get_mech_tools`. On the V2
+        # marketplace path the suitability classifier in
+        # `behaviours/tool_selection.py::_fetch_mech_manifests` replaces it
+        # and this set is loaded but unused.
+        self.mech_marketplace_v1_suitable_tools: FrozenSet[str] = frozenset(
+            str(tool).lower()
+            for tool in self._ensure(
+                "mech_marketplace_v1_suitable_tools", kwargs, List[str]
+            )
+        )
 
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
