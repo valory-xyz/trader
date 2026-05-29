@@ -42,13 +42,13 @@ fingerprint:
   tests/test_save_performance_summary.py: bafybeibgyx3n4dn7zhb7vfcc4wwq7nuyfep723cyqfrpnwqgsvhhwagure
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeidhafsjqsj7umr5mgb3v4t52sbcnwhlfk7hqgulbdvui4yhfrgrjy
+- valory/erc20:0.1.0:bafybeig4tin5v5ahiiz4fysocl7gjhpjtgzko3w6cr2iz3q5a4bxutwewu
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeibvbfkmkqjidukhkzzz7nd33gna64hjhcn3blon5xcleilbt63zn4
+- valory/abstract_round_abci:0.1.0:bafybeicioxhbhnsoqyqvkeevd7df7r2vubbiglyf7ucps2el73objazjsq
 connections:
 - valory/polymarket_client:0.1.0:bafybeih443m6zq7hgdlgehy4quq4xjklxd5h3mpoxwfzs4reqn4zntgap4
 handlers:
