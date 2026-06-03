@@ -1634,6 +1634,12 @@ class PolymarketClientConnection(BaseSyncConnection):
                 return {"swept": False, "amount": 0, "transaction_id": None}, None
             nonce = self._dw_nonce(dw)
             tx_id = self.relayer_proxy.exec_wallet_batch(dw, nonce, calls)
+            # ``swept=True`` means the relayer ACCEPTED the batch submission, not
+            # that it settled on-chain. The relayed tx can still fail later
+            # (out-of-gas, nonce race); settlement is polled by the behaviour via
+            # RELAYER_TX, and any CTF left in the DW is reclaimed on the next
+            # withdrawal/top-up pass. Treat the paired ``transaction_id`` as a
+            # submission handle, not a settlement confirmation.
             return {
                 "swept": True,
                 "amount": swept_collateral,

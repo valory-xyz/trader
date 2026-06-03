@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
 - valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
-- valory/polymarket_client:0.1.0:bafybeidxzgmidtahufxhvzao2srk7g5bvgq6fgk2y24ck5dydno7vnanui
+- valory/polymarket_client:0.1.0:bafybeiaxjvqisafocuerh3hro5irmccc5igtneufiitaeczuzq7tlfhocq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeif6cfjeruji2ovns6dhc5qivvjr7t7rh5mmudgh5gvumezin26qne
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeifzd3duzsvbl76wzippvkqqvtn3shf7p57n43ffduxbsdreu3q4oy
@@ -66,15 +66,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihc4ruh25s7wuunfy2b3k2n4eypyhvtry3usgom44wsymagbcr3ki
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih5vfmwaqznpkgpmblsmns74sqbcporknagohrd2y35ohoa2btccu
-- valory/market_manager_abci:0.1.0:bafybeib4pnx5ofxibznbd7akznkxnvdkbj4bphravwp7x2n3fbtrerejf4
-- valory/decision_maker_abci:0.1.0:bafybeibv76ymcudi44xoz3x6pgxnc526k6crt24747u65nvobtbscikmmq
-- valory/trader_abci:0.1.0:bafybeiegjzi5i2qh4ryxpdg5uslhki6p3afy665j72fzd6yzsajtsx2pai
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidqvnrz5rsznbnuqrdoq7ndp5eeaocvhghyg7cml43emcao3vozie
+- valory/market_manager_abci:0.1.0:bafybeiekzwog77mickk6ylt6zl3y4e7hqpz2h4sd7dpeq4jjeohmpkbz5a
+- valory/decision_maker_abci:0.1.0:bafybeibx6fdlohedgvrk6vl44pexq7svq7tlnypex3epm5pnzwxfk3ge3e
+- valory/trader_abci:0.1.0:bafybeifwzutdgx2tyug6ej6vqgjnvp7xidsxe5l5ywlc4ryuefydshs2ua
 - valory/staking_abci:0.1.0:bafybeibcekskbxua2fk4d5lnvt5kyhalbz4d7dyopjjns5bakqjvjpjxfq
-- valory/check_stop_trading_abci:0.1.0:bafybeifjj7lyuzeul37wf2mld4qusp76ux6ufgubc6lht7yj5btpasnuqe
+- valory/check_stop_trading_abci:0.1.0:bafybeih3gifscs7okdcbkpwkf42dwc7tmdd3rfn6hsvrqp7r3klptfloye
 - valory/mech_interact_abci:0.1.0:bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy
-- valory/chatui_abci:0.1.0:bafybeibmvfufkcwkjptnjtb5w7xh7ucfr4j2ybdru3nwo3xv3lcjnlcily
-- valory/agent_performance_summary_abci:0.1.0:bafybeiau4e3bxmcw4iwpmwecyptkrhnomn5kxgttqpo2hfcacq3sy6h7ga
+- valory/chatui_abci:0.1.0:bafybeicblfieh3ugkayucnt2i6mz74mnaqcviskipak4io2zbdtmadd2c4
+- valory/agent_performance_summary_abci:0.1.0:bafybeibi6lrnsabnm2x7c6y76q4ifnpym7mubmusgqcq5cmwn3azg6ea5m
 - valory/funds_manager:0.1.0:bafybeibne4vkmbper3ryn7q6kt7lclbyylgorziscyn6msr5qt46aihv4m
 customs:
 - valory/kelly_criterion:0.1.0:bafybeia4jbzn5bmzii72l43y6wxdw57dy3wndsozdvmeiz5dzqmlvga664

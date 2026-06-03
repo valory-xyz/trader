@@ -20,6 +20,7 @@
 """Shared DepositWallet state and relayer helpers for the Polymarket behaviours."""
 
 import json
+import os
 from abc import ABC
 from typing import Any, Generator, Optional, cast
 
@@ -148,9 +149,11 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             "dw_owner": dw_owner,
             "approvals_done": approvals_done,
         }
+        tmp = f"{path}.tmp"
         try:
-            with open(path, "w") as f:
+            with open(tmp, "w") as f:
                 json.dump(data, f, indent=2)
+            os.replace(tmp, path)
         except OSError as e:
             self.context.logger.error(f"Failed to write {DEPOSIT_WALLET_STORE}: {e}")
 
