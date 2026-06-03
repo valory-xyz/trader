@@ -39,3 +39,12 @@ class RequestType(Enum):
     FETCH_ORDER_BOOK = "fetch_order_book"
     SELL_POSITION = "sell_position"
     GET_ORDER = "get_order"
+    # CLOB v2 DepositWallet operations. These route through the
+    # wildcard predict-api relayer proxy rather than the legacy Safe relayer.
+    DEPLOY_DW = "deploy_dw"
+    EXEC_WALLET_BATCH = "exec_wallet_batch"
+    SWEEP_DW = "sweep_dw"
+    # Cooperative poll of a relayer transaction's mining state (one shot per
+    # request; the behaviour drives the retry/backoff loop). When the polled
+    # tx is a DW deploy, the response also carries the discovered DW address.
+    RELAYER_TX = "relayer_tx"

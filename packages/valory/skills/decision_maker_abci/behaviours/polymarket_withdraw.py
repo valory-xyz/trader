@@ -139,12 +139,67 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         for position in sellable:
             yield from self._sell_one_position_with_retry(position)
 
+        # CLOB v2: realized pUSD from the sells lands in the DepositWallet.
+        # Sweep it back to the Safe before the cycle wraps up (idempotent —
+        # a failed/empty sweep is non-fatal; the next top-up reclaims any
+        # residual via its opportunistic sweep). Pass the sold token ids so any
+        # CTF that did NOT fully sell (dust / in-flight / permanent-failure
+        # positions) is also returned to the Safe rather than stranded in the
+        # transient DW — there may be no subsequent buy to reclaim it.
+        token_ids = self._sellable_token_ids(sellable)
+        yield from self._sweep_dw_to_safe(token_ids)
+
         store = self._read_store()
         if store.get("withdrawal_errors"):
             self._set_state(WITHDRAWAL_STATE_ERRORED)
         else:
             self._set_state(WITHDRAWAL_STATE_COMPLETE)
         yield from self._finish()
+
+    @staticmethod
+    def _sellable_token_ids(sellable: List[Dict[str, Any]]) -> List[int]:
+        """Integer CTF token ids of the positions the sweep should reclaim.
+
+        :param sellable: the filtered sellable position records.
+        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
+        """
+        token_ids: List[int] = []
+        for p in sellable:
+            try:
+                token_ids.append(int(p["asset"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return token_ids
+
+    def _sweep_dw_to_safe(
+        self, token_ids: Optional[List[int]] = None
+    ) -> Generator[None, None, None]:
+        """Sweep the DepositWallet's pUSD (and any unsold CTF) back to the Safe.
+
+        :param token_ids: CTF token ids whose residual DW balance to also sweep;
+            ``None`` sweeps only pUSD (the opportunistic post-buy path).
+        :yield: framework yields between dispatch and the connection response.
+        """
+        dw_address = self.synchronized_data.deposit_wallet_address
+        if not dw_address:
+            # No DW means nothing was funded Safe→DW this cycle, so nothing to
+            # reclaim. Skip the dispatch (and its misleading "sweep failed"
+            # warning) — mirrors the dw_address guards in the fetch/sell paths.
+            self.context.logger.warning(
+                "withdrawal: DepositWallet address unknown; skipping sweep."
+            )
+            return
+        payload = {
+            "request_type": RequestType.SWEEP_DW.value,
+            "params": {"dw_address": dw_address, "token_ids": token_ids or []},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        if response is None or (isinstance(response, dict) and response.get("error")):
+            self.context.logger.warning(
+                "withdrawal: DepositWallet sweep failed; residual reclaimed next cycle."
+            )
+        else:
+            self.context.logger.info(f"withdrawal: DepositWallet sweep: {response}")
 
     # ------------------------------------------------------------------ #
     # Top-level retry helper                                             #
@@ -191,10 +246,24 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
     def _request_fetch_positions(
         self,
     ) -> Generator[None, None, Tuple[Optional[List[Dict[str, Any]]], Optional[str]]]:
-        """Send FETCH_ALL_POSITIONS with ``redeemable=False``."""
+        """Send FETCH_ALL_POSITIONS with ``redeemable=False`` against the DW.
+
+        The withdrawal top-up round has already moved every sellable CTF
+        position Safe→DepositWallet, so the positions now live under the DW —
+        querying the Safe (the connection default) would return nothing. Pass
+        the DW address so the sell-loop and locked-funds snapshot see the
+        shares they are about to sell.
+
+        :yield: framework yields between dispatch and the connection response.
+        :return: ``(positions_or_none, error_or_none)``.
+        """
+        params: Dict[str, Any] = {"redeemable": False}
+        dw_address = self.synchronized_data.deposit_wallet_address
+        if dw_address:
+            params["address"] = dw_address
         payload = {
             "request_type": RequestType.FETCH_ALL_POSITIONS.value,
-            "params": {"redeemable": False},
+            "params": params,
         }
         response = yield from self.send_polymarket_connection_request(payload)
         # The connection returns either a list of positions on success or an
@@ -219,6 +288,12 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         :return: normalized ``(payload_dict, error_or_none)``.
         """
         params: Dict[str, Any] = {"token_id": token_id, "amount": amount}
+        # CLOB v2: the sell is funded by the DepositWallet (the CTF shares were
+        # moved Safe→DW by the withdrawal top-up round). Pass it so the
+        # connection signs with signature_type=3 / funder=DW.
+        dw_address = self.synchronized_data.deposit_wallet_address
+        if dw_address:
+            params["funder"] = dw_address
         payload = {
             "request_type": RequestType.SELL_POSITION.value,
             "params": params,
@@ -440,95 +515,24 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
                 last_error = error
             else:
                 resp = response or {}
-                # Async-match path: post_order returned ``delayed``. Drive
-                # the cooperative poll loop here (rather than blocking the
-                # connection's worker thread); transform the terminal
-                # payload into the same shape the synchronous path would
-                # return so the rest of the loop body is unaware of which
-                # path produced ``resp``.
                 if resp.get("status") == "delayed" and resp.get("order_id"):
-                    order_id = resp["order_id"]
-                    terminal, poll_error = (
-                        yield from self._poll_order_until_terminal_cooperative(order_id)
+                    # Async-match path: post_order returned ``delayed``. Resolve
+                    # it via the cooperative poll loop; a ``True`` second element
+                    # means a terminal/defer condition already flushed records so
+                    # the caller returns. Otherwise ``delayed_resp`` is the
+                    # terminal fill payload processed like the synchronous path.
+                    delayed_resp, should_return = (
+                        yield from self._resolve_delayed_order(
+                            resp["order_id"],
+                            token_id,
+                            total_filled,
+                            total_usdc,
+                            residual,
+                        )
                     )
-                    if poll_error is not None:
-                        # Every poll attempt errored — distinct from an
-                        # in-flight defer. The Polymarket API was unreachable
-                        # for the entire poll window, so retrying the SELL
-                        # would race whatever the chain settled. Record a
-                        # distinct reason so the diagnostic doesn't masquerade
-                        # as an in-flight match.
-                        self._flush_position_records(
-                            token_id,
-                            total_filled,
-                            total_usdc,
-                            residual,
-                            error_reason=(
-                                f"polymarket API unreachable during poll: {poll_error}"
-                            ),
-                        )
+                    if should_return:
                         return
-                    if terminal is None:
-                        # Poll exhausted while still LIVE: retrying with the
-                        # full residual would race the in-flight match and
-                        # hit ``not enough balance`` once it lands. Defer
-                        # this position to the next sweep cycle. Record a
-                        # deferred error so the sweep ends ``errored`` and
-                        # operator restart does NOT auto-resume betting
-                        # before the in-flight order resolves.
-                        self.context.logger.info(
-                            f"withdrawal: order {order_id} in-flight after poll "
-                            f"exhausted; deferring {token_id} to next sweep cycle"
-                        )
-                        self._flush_position_records(
-                            token_id,
-                            total_filled,
-                            total_usdc,
-                            residual,
-                            error_reason=(
-                                "in-flight after CLOB delayed-poll exhausted; "
-                                "will resolve next sweep cycle"
-                            ),
-                        )
-                        return
-                    resp = self._fill_from_terminal_get_order(terminal, order_id)
-                    # Parse failure on the terminal payload: surface as a
-                    # position-level error rather than silently dropping
-                    # to a "no fill" iteration. The on-chain state is now
-                    # ambiguous (we received a payload but couldn't read
-                    # it), so retrying with the full residual would risk
-                    # racing whatever the chain settled. Record and move on.
-                    if resp.get("error"):
-                        self._flush_position_records(
-                            token_id,
-                            total_filled,
-                            total_usdc,
-                            residual,
-                            error_reason=f"sdk error: {resp['error']}",
-                        )
-                        return
-                    # Permanent-failure terminal statuses: retrying is
-                    # mathematically guaranteed to fail. INVALID = signer
-                    # mismatch (re-signing produces an identical payload,
-                    # same rejection). MARKET_RESOLVED = market settled,
-                    # liquidity is gone forever. Short-circuit the FAK
-                    # retry loop and record an error for the residual.
-                    if resp.get("status") in PERMANENT_FAILURE_STATUSES:
-                        permanent_status = resp.get("status")
-                        self.context.logger.info(
-                            f"withdrawal: terminal status={permanent_status} "
-                            f"for {token_id}; short-circuiting retry loop"
-                        )
-                        self._flush_position_records(
-                            token_id,
-                            total_filled,
-                            total_usdc,
-                            residual,
-                            error_reason=(
-                                f"permanent terminal status: {permanent_status}"
-                            ),
-                        )
-                        return
+                    resp = delayed_resp or {}
                 filled = float(resp.get("filled_shares") or 0.0)
                 if filled > 0:
                     total_filled += filled
@@ -570,6 +574,104 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         self._flush_position_records(
             token_id, total_filled, total_usdc, residual, error_reason=reason
         )
+
+    def _resolve_delayed_order(
+        self,
+        order_id: str,
+        token_id: str,
+        total_filled: float,
+        total_usdc: float,
+        residual: float,
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], bool]]:
+        """Resolve a ``delayed`` FAK order via the cooperative poll loop.
+
+        Drives ``_poll_order_until_terminal_cooperative`` and normalizes the
+        outcome to the same shape the synchronous path returns. The accumulated
+        ``total_filled``/``total_usdc``/``residual`` are needed so the terminal
+        and defer paths flush a complete position record before signalling the
+        caller to return.
+
+        :param order_id: the CLOB order id to poll.
+        :param token_id: the CTF token id being sold (for record/logging).
+        :param total_filled: filled shares accumulated across prior attempts.
+        :param total_usdc: USDC received accumulated across prior attempts.
+        :param residual: shares still unsold at this attempt.
+        :yield: framework yields between cooperative polls.
+        :return: ``(fill_resp, should_return)`` — when ``should_return`` is
+            ``True`` the records were already flushed and the caller must
+            ``return``; otherwise ``fill_resp`` is the terminal fill payload to
+            process normally.
+        """
+        terminal, poll_error = yield from self._poll_order_until_terminal_cooperative(
+            order_id
+        )
+        if poll_error is not None:
+            # Every poll attempt errored — distinct from an in-flight defer. The
+            # Polymarket API was unreachable for the entire poll window, so
+            # retrying the SELL would race whatever the chain settled. Record a
+            # distinct reason so the diagnostic doesn't masquerade as a match.
+            self._flush_position_records(
+                token_id,
+                total_filled,
+                total_usdc,
+                residual,
+                error_reason=f"polymarket API unreachable during poll: {poll_error}",
+            )
+            return None, True
+        if terminal is None:
+            # Poll exhausted while still LIVE: retrying with the full residual
+            # would race the in-flight match and hit ``not enough balance`` once
+            # it lands. Defer to the next sweep cycle and record a deferred error
+            # so the sweep ends ``errored`` and an operator restart does NOT
+            # auto-resume betting before the in-flight order resolves.
+            self.context.logger.info(
+                f"withdrawal: order {order_id} in-flight after poll exhausted; "
+                f"deferring {token_id} to next sweep cycle"
+            )
+            self._flush_position_records(
+                token_id,
+                total_filled,
+                total_usdc,
+                residual,
+                error_reason=(
+                    "in-flight after CLOB delayed-poll exhausted; "
+                    "will resolve next sweep cycle"
+                ),
+            )
+            return None, True
+        resp = self._fill_from_terminal_get_order(terminal, order_id)
+        # Parse failure on the terminal payload: surface as a position-level
+        # error rather than silently dropping to a "no fill" iteration. The
+        # on-chain state is now ambiguous, so retrying with the full residual
+        # would risk racing whatever the chain settled. Record and move on.
+        if resp.get("error"):
+            self._flush_position_records(
+                token_id,
+                total_filled,
+                total_usdc,
+                residual,
+                error_reason=f"sdk error: {resp['error']}",
+            )
+            return None, True
+        # Permanent-failure terminal statuses: retrying is mathematically
+        # guaranteed to fail. INVALID = signer mismatch (re-signing yields an
+        # identical payload, same rejection). MARKET_RESOLVED = market settled,
+        # liquidity gone forever. Short-circuit the FAK retry loop.
+        if resp.get("status") in PERMANENT_FAILURE_STATUSES:
+            permanent_status = resp.get("status")
+            self.context.logger.info(
+                f"withdrawal: terminal status={permanent_status} for {token_id}; "
+                "short-circuiting retry loop"
+            )
+            self._flush_position_records(
+                token_id,
+                total_filled,
+                total_usdc,
+                residual,
+                error_reason=f"permanent terminal status: {permanent_status}",
+            )
+            return None, True
+        return resp, False
 
     @staticmethod
     def _stuck_reason(last_error: Optional[str]) -> str:

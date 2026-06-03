@@ -71,6 +71,10 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
             return
 
         token_id = self.sampled_bet.outcome_token_ids[outcome]
+        # The Polymarket CLOB fee is reserved connection-side: the order is sized
+        # to ``amount - exact_fee`` against the DepositWallet's live pUSD balance
+        # using Polymarket's documented per-market fee (``GET /fee-rate`` + market
+        # fee exponent), so the full topped-up ``investment_amount`` is offered.
         amount = self.usdc_to_native(self.investment_amount)
 
         if self.investment_amount > self.token_balance:
@@ -94,11 +98,16 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
         cached_orders = self.synchronized_data.cached_signed_orders
         cached_signed_order_json = cached_orders.get(cache_key)
 
-        # Prepare payload data
+        # Prepare payload data. Under CLOB v2 the order is funded by
+        # the DepositWallet (signature_type=3); pass it so the connection signs
+        # with funder=DW even if it learned a different/no DW at startup.
         params = {
             "token_id": token_id,
             "amount": amount,
         }
+        dw_address = self.synchronized_data.deposit_wallet_address
+        if dw_address:
+            params["funder"] = dw_address
 
         # Add cached order if available
         if cached_signed_order_json:

@@ -1,0 +1,37 @@
+name: deposit_wallet
+author: valory
+version: 0.1.0
+type: contract
+description: Polymarket CLOB v2 DepositWallet proxy contract interface.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeiftojy2tgo7vyseende27eoxawewjqzk7u6febjrj75ahz2atmnvi
+  build/DepositWallet.json: bafybeibywfbfbtqoymquesnhnrsx5hc7w2y4r2km2upoq7ep76lzpcbvma
+  contract.py: bafybeihlzkdzzntrqy3izhzal5gguv5hgryvlicajfc7btrrp7m2iegob4
+  tests/__init__.py: bafybeiaxwnabaxg3rtbgcndasoemngw2ti7ykq2hfyyqi5dydve6t6ett4
+  tests/test_contract.py: bafybeiax7na72jzjubkl5mjwhimj7hx4pilunr22jerebjrabb2towvljm
+fingerprint_ignore_patterns: []
+class_name: DepositWalletContract
+contract_interface_paths:
+  ethereum: build/DepositWallet.json
+contracts: []
+dependencies:
+  ecdsa:
+    version: '>=0.15'
+  eth-abi:
+    version: ==5.2.0
+  eth-utils:
+    version: ==5.3.0
+  eth_typing: {}
+  hexbytes: {}
+  open-aea-ledger-ethereum:
+    version: ==2.2.7
+  open-aea-test-autonomy:
+    version: ==0.21.23
+  packaging: {}
+  py-eth-sig-utils: {}
+  requests:
+    version: <2.33.0,>=2.28.1
+  web3:
+    version: <8,>=7.0.0

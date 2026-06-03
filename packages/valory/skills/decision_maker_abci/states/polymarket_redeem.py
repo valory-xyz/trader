@@ -54,8 +54,7 @@ class PolymarketRedeemRound(TxPreparationRound):
     )
     none_event = Event.NO_REDEEMING
 
-    # This needs to be mentioned for static checkers
-    # Event.PREPARE_TX
+    # fsm-specs: returns(PREPARE_TX)
 
     @property
     def most_voted_payload_values(
