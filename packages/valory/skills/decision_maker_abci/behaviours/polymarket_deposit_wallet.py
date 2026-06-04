@@ -174,18 +174,17 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _resolve_deposit_wallet(self) -> Optional[str]:
         """Resolve the DepositWallet address for the agent EOA.
 
-        Prefers the address agreed in synchronized data; otherwise falls back
-        to the persisted ``deposit_wallet.json`` (owner-checked) written by the
-        setup round. Provisioning (deploy + trading approvals) is owned by
-        ``PolymarketSetApprovalBehaviour`` and guaranteed by the setup gate to
-        have run; this only resolves the recorded DW and defers (returns
-        ``None``) when it is not yet available.
+        Reads the persisted ``deposit_wallet.json`` (owner-checked) written by
+        the setup round — the single, durable source of truth for the DW. The
+        address is NOT threaded through synchronized data: Polystrat is a
+        single-agent (sovereign) deployment, so the local store is authoritative
+        and avoids passing the funder through every round's payload. Provisioning
+        (deploy + trading approvals) is owned by ``PolymarketSetApprovalBehaviour``
+        and guaranteed by the setup gate to have run; this only resolves the
+        recorded DW and defers (returns ``None``) when it is not yet available.
 
         :return: the DepositWallet address, or ``None`` if not yet available.
         """
-        dw = self.synchronized_data.deposit_wallet_address
-        if dw:
-            return dw
         persisted = self._read_deposit_wallet_file()
         agent_eoa = self.context.agent_address
         if (

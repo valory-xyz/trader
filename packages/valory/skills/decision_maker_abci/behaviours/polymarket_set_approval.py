@@ -174,10 +174,23 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         persisted = self._read_deposit_wallet_file()
         owner = yield from self._verify_dw_owner(dw_address)
         if owner is not None and owner.lower() != agent_eoa.lower():
+            # Agent-EOA rotation (mnemonic recovery): the old DW is owned by the
+            # previous EOA, which the current signer can no longer authorize, so
+            # we abandon it and deploy a fresh DW under the new EOA. The DW is
+            # empty at rest, but if a prior cycle stranded funds and rotation
+            # happened before the next opportunistic sweep reclaimed them, any
+            # residual pUSD/CTF in the old DW is ORPHANED — unrecoverable under
+            # the new key. Surface it loudly so an operator can manually sweep
+            # the old DW with the previous key. (We cannot auto-sweep here: the
+            # relayer ``execute`` must be owner-signed by the old EOA, which this
+            # process no longer holds after rotation.)
             self.context.logger.warning(
                 f"DepositWallet {dw_address} on-chain owner {owner} != agent EOA "
-                f"{agent_eoa} (rotation / stale state); invalidating persisted "
-                "state to force a fresh deploy on the next pass."
+                f"{agent_eoa} (agent-EOA rotation / stale state). Abandoning the "
+                f"old DW and provisioning a fresh one under {agent_eoa}. WARNING: "
+                f"any residual pUSD/CTF in old DepositWallet {dw_address} (owner "
+                f"{owner}) is now UNRECOVERABLE under the new EOA — manually sweep "
+                "it with the previous key (and password) if funds remain."
             )
             self._invalidate_deposit_wallet_file()
             return

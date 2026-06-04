@@ -19,9 +19,13 @@
 
 """Tests for PolymarketWithdrawTopUpBehaviour."""
 
+import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    DEPOSIT_WALLET_STORE,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw_top_up import (
     CTF_DECIMAL_FACTOR,
     PolymarketWithdrawTopUpBehaviour,
@@ -33,8 +37,12 @@ DW = "0xAbCdEf0123456789AbCdEf0123456789AbCdEf01"
 SAFE = "0x1111111111111111111111111111111111111111"
 
 
-def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
-    """Return a PolymarketWithdrawTopUpBehaviour with mocked context."""
+def _make_behaviour(tmp_path, with_dw=True):  # type: ignore[no-untyped-def]
+    """Return a PolymarketWithdrawTopUpBehaviour with mocked context.
+
+    When ``with_dw`` is set, a persisted ``deposit_wallet.json`` (owner-matched)
+    is written so ``_resolve_deposit_wallet`` resolves the DW from the store.
+    """
     behaviour = object.__new__(PolymarketWithdrawTopUpBehaviour)
     behaviour.multisend_batches = []
     context = MagicMock()
@@ -42,6 +50,10 @@ def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
     context.params.store_path = tmp_path
     context.params.polymarket_ctf_address = CTF
     behaviour.__dict__["_context"] = context
+    if with_dw:
+        (tmp_path / DEPOSIT_WALLET_STORE).write_text(
+            json.dumps({"dw_address": DW, "dw_owner": "agent", "approvals_done": True})
+        )
     return behaviour
 
 
@@ -174,7 +186,7 @@ class TestPolymarketWithdrawTopUpBehaviour:
 
     def test_unresolvable_dw_emits_none(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """An unresolvable DW → NONE."""
-        behaviour = _make_behaviour(tmp_path)
+        behaviour = _make_behaviour(tmp_path, with_dw=False)
         _install_send(behaviour, deploy_dw={"dw_address": None}, positions=[])
         with patch.object(
             PolymarketWithdrawTopUpBehaviour,

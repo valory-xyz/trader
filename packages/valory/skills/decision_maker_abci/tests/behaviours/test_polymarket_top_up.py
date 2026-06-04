@@ -34,8 +34,12 @@ COLLAT = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
 DW = "0xAbCdEf0123456789AbCdEf0123456789AbCdEf01"
 
 
-def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
-    """Return a PolymarketTopUpBehaviour with mocked context."""
+def _make_behaviour(tmp_path, with_dw=True):  # type: ignore[no-untyped-def]
+    """Return a PolymarketTopUpBehaviour with mocked context.
+
+    When ``with_dw`` is set, a persisted ``deposit_wallet.json`` (owner-matched)
+    is written so ``_resolve_deposit_wallet`` resolves the DW from the store.
+    """
     behaviour = object.__new__(PolymarketTopUpBehaviour)
     behaviour.dw_address = None
     behaviour.multisend_batches = []
@@ -45,6 +49,10 @@ def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
     context.params.polymarket_collateral_address = COLLAT
     context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
     behaviour.__dict__["_context"] = context
+    if with_dw:
+        (tmp_path / DEPOSIT_WALLET_STORE).write_text(
+            json.dumps({"dw_address": DW, "dw_owner": "agent", "approvals_done": True})
+        )
     return behaviour
 
 
@@ -127,7 +135,6 @@ class TestPolymarketTopUpBehaviour:
             payload = _drive(behaviour)
         assert payload.event == Event.PREPARE_TX.value
         assert payload.tx_hash == "0xsafehash"
-        assert payload.dw_address == DW
 
     def test_insufficient_safe_balance(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """A Safe pUSD balance below the buy amount → INSUFFICIENT_BALANCE."""
@@ -185,7 +192,7 @@ class TestPolymarketTopUpBehaviour:
 
     def test_unresolvable_dw_insufficient(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """No DW recorded (synced empty, no persisted file) → INSUFFICIENT_BALANCE."""
-        behaviour = _make_behaviour(tmp_path)
+        behaviour = _make_behaviour(tmp_path, with_dw=False)
         with patch.object(
             PolymarketTopUpBehaviour,
             "synchronized_data",

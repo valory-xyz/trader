@@ -40,8 +40,8 @@ def _round():  # type: ignore[no-untyped-def]
 
 
 def _values(event):  # type: ignore[no-untyped-def]
-    """Payload-values tuple: (tx_submitter, tx_hash, mocking, event, dw)."""
-    return (None, None, False, event, "0xDW")
+    """Payload-values tuple: (tx_submitter, tx_hash, mocking, event)."""
+    return (None, None, False, event)
 
 
 class TestPolymarketSweepRoundEndBlock:

@@ -24,6 +24,9 @@ from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    PolymarketDepositWalletBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -41,7 +44,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 CLOB_VERSION = "v2"
 
 
-class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
+class PolymarketBetPlacementBehaviour(
+    PolymarketDepositWalletBehaviour, StorageManagerBehaviour
+):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = PolymarketBetPlacementRound
@@ -105,7 +110,7 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
             "token_id": token_id,
             "amount": amount,
         }
-        dw_address = self.synchronized_data.deposit_wallet_address
+        dw_address = self._resolve_deposit_wallet()
         if dw_address:
             params["funder"] = dw_address
 

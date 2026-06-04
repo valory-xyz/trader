@@ -349,9 +349,7 @@ class RelayerProxyClient:
             )
         )
         digest = keccak(b"\x19\x01" + domain_separator + struct_hash)
-        signature = Account._sign_hash(  # noqa: SLF001
-            digest, self._account.key
-        ).signature.hex()
+        signature = Account.unsafe_sign_hash(digest, self._account.key).signature.hex()
         return _as_0x(signature)
 
     def transaction(self, tx_id: str) -> Tuple[str, Optional[str]]:

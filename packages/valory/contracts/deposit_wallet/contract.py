@@ -22,10 +22,11 @@
 The DepositWallet (DW) is an ERC-1967 proxy owned by the agent EOA. Under
 CLOB v2 it is the transient CLOB funder: the canonical Safe holds persistent
 assets and the DW is empty at rest. This interface exposes only the two
-on-chain surfaces the trader needs locally — the ``owner()`` read (used by
-the setup gate to detect agent-EOA rotation and self-heal lost DW state) and
-``execute`` encoding (single-call sweep helper). DW provisioning and relayed
-batches go through the wildcard predict-api proxy, not this contract class.
+on-chain reads the trader needs locally — ``get_owner`` (used by the setup
+gate to detect agent-EOA rotation and self-heal lost DW state) and
+``get_nonce`` (the DW's batch nonce, read before owner-signing a relayed
+batch). DW provisioning and the relayed ``execute`` batches themselves go
+through the wildcard predict-api proxy, not this contract class.
 """
 
 from typing import Any

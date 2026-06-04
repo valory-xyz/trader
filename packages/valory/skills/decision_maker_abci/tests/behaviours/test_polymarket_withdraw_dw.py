@@ -67,13 +67,8 @@ class TestRequestSellFunder:
 
         b.send_polymarket_connection_request = _send  # type: ignore[method-assign]
         b._extract_response_or_error = lambda r: (r, None)  # type: ignore[method-assign]
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._request_sell("123", 2.0))
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._request_sell("123", 2.0))
         assert captured["payload"]["params"]["funder"] == DW
 
     def test_no_funder_when_dw_absent(self) -> None:
@@ -112,13 +107,8 @@ class TestRequestFetchPositionsAddress:
             return []
 
         b.send_polymarket_connection_request = _send  # type: ignore[method-assign]
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._request_fetch_positions())
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._request_fetch_positions())
         assert captured["payload"]["params"]["address"] == DW
 
     def test_no_address_when_dw_absent(self) -> None:
@@ -156,13 +146,8 @@ class TestSweepDwToSafe:
             return {"swept": True, "amount": 5}
 
         b.send_polymarket_connection_request = _send  # type: ignore[method-assign]
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._sweep_dw_to_safe([42, 43]))
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._sweep_dw_to_safe([42, 43]))
         b.context.logger.info.assert_called()
         assert captured["payload"]["params"]["token_ids"] == [42, 43]
 
@@ -177,13 +162,8 @@ class TestSweepDwToSafe:
             return {"swept": False}
 
         b.send_polymarket_connection_request = _send  # type: ignore[method-assign]
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._sweep_dw_to_safe())
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._sweep_dw_to_safe())
         assert captured["payload"]["params"]["token_ids"] == []
 
     def test_unknown_dw_skips_dispatch(self) -> None:
@@ -223,13 +203,8 @@ class TestSweepDwToSafe:
         """A missing sweep response logs a warning (non-fatal)."""
         b = _make_behaviour()
         b.send_polymarket_connection_request = lambda p: ((yield) or None)  # type: ignore[method-assign]
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._sweep_dw_to_safe())
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._sweep_dw_to_safe())
         b.context.logger.warning.assert_called()
 
     def test_error_response_warns(self) -> None:
@@ -238,11 +213,6 @@ class TestSweepDwToSafe:
         b.send_polymarket_connection_request = lambda p: (  # type: ignore[method-assign]
             (yield) or {"error": "boom"}
         )
-        with patch.object(
-            PolymarketWithdrawBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=_synced(DW),
-        ):
-            _run(b._sweep_dw_to_safe())
+        b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
+        _run(b._sweep_dw_to_safe())
         b.context.logger.warning.assert_called()

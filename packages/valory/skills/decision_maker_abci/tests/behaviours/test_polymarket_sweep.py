@@ -81,7 +81,6 @@ class TestPolymarketSweepBehaviour:
         ):
             payload = _drive(behaviour)
         assert payload.event == Event.DONE.value
-        assert payload.dw_address == "0xDW"
 
     def test_sweep_failure_emits_none(self) -> None:
         """A failed sweep (no response) emits the NONE event (loop)."""

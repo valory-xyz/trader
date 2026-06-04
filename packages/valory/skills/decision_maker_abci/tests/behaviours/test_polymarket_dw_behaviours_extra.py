@@ -141,6 +141,10 @@ class TestTopUpTxHashFailure:
         b.dw_address = None
         b.multisend_batches = []
         b.context.params.store_path = tmp_path
+        b.context.agent_address = "agent"
+        (tmp_path / DEPOSIT_WALLET_STORE).write_text(
+            json.dumps({"dw_address": DW, "dw_owner": "agent", "approvals_done": True})
+        )
         b.context.params.polymarket_collateral_address = (
             "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"
         )
@@ -181,19 +185,6 @@ class TestWithdrawHelpers:
         assert isinstance(data, bytes)
         assert data.startswith(SAFE_BATCH_TRANSFER_SELECTOR)
 
-    def test_resolve_uses_synced_dw(self) -> None:
-        """_resolve_deposit_wallet returns the synced DW without a deploy call."""
-        b = _bare(PolymarketWithdrawTopUpBehaviour)
-        synced = MagicMock()
-        synced.deposit_wallet_address = DW
-        with patch.object(
-            PolymarketWithdrawTopUpBehaviour,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=synced,
-        ):
-            assert b._resolve_deposit_wallet() == DW
-
     def test_fetch_sellable_error(self) -> None:
         """_fetch_sellable returns None when the connection errors."""
         b = _bare(PolymarketWithdrawTopUpBehaviour)
@@ -216,6 +207,10 @@ class TestWithdrawHelpers:
         b = _bare(PolymarketWithdrawTopUpBehaviour)
         b.multisend_batches = []
         b.context.params.store_path = tmp_path
+        b.context.agent_address = "agent"
+        (tmp_path / DEPOSIT_WALLET_STORE).write_text(
+            json.dumps({"dw_address": DW, "dw_owner": "agent", "approvals_done": True})
+        )
         b.context.params.polymarket_ctf_address = (
             "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045"
         )

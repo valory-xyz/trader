@@ -134,12 +134,11 @@ class PolymarketTopUpPayload(MultisigTxPayload):
     ``event`` carries the short-circuit signal: ``Event.PREPARE_TX.value``
     when a pUSD transfer to the DW must settle (``tx_hash`` populated), or
     ``Event.DONE.value`` when the DW is already funded (no tx settles; jump
-    straight to bet placement). ``dw_address`` propagates the DepositWallet
-    so the funder is available to the bet-placement / sweep rounds.
+    straight to bet placement). The DepositWallet address is not carried here:
+    the bet-placement / sweep rounds resolve it from the persisted store.
     """
 
     event: Optional[str] = None
-    dw_address: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -153,7 +152,6 @@ class PolymarketSweepPayload(MultisigTxPayload):
     """
 
     event: Optional[str] = None
-    dw_address: Optional[str] = None
 
 
 @dataclass(frozen=True)

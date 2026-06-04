@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeiftojy2tgo7vyseende27eoxawewjqzk7u6febjrj75ahz2atmnvi
   build/DepositWallet.json: bafybeibywfbfbtqoymquesnhnrsx5hc7w2y4r2km2upoq7ep76lzpcbvma
-  contract.py: bafybeihlzkdzzntrqy3izhzal5gguv5hgryvlicajfc7btrrp7m2iegob4
+  contract.py: bafybeibq6l5vjx5abr2v7k7mdzsk7r56fgcnaxpqgwbsnaxyaf3qvwwiq4
   tests/__init__.py: bafybeiaxwnabaxg3rtbgcndasoemngw2ti7ykq2hfyyqi5dydve6t6ett4
   tests/test_contract.py: bafybeiax7na72jzjubkl5mjwhimj7hx4pilunr22jerebjrabb2towvljm
 fingerprint_ignore_patterns: []

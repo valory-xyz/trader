@@ -205,12 +205,6 @@ class SynchronizedData(
         return json.loads(cached)
 
     @property
-    def deposit_wallet_address(self) -> Optional[str]:
-        """Get the Polymarket CLOB v2 DepositWallet address."""
-        dw = self.db.get("deposit_wallet_address", None)
-        return str(dw) if dw is not None else None
-
-    @property
     def weighted_accuracy(self) -> float:
         """Get the weighted accuracy of the selected tool."""
         tool_name = self.mech_tool

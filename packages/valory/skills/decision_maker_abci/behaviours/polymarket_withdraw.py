@@ -31,8 +31,8 @@ from packages.valory.skills.chatui_abci.models import (
     WITHDRAWAL_STATE_ERRORED,
     WITHDRAWAL_STATE_SELLING,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    DecisionMakerBaseBehaviour,
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import WithdrawalPayload
 from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
@@ -86,7 +86,7 @@ PERMANENT_FAILURE_STATUSES = frozenset({"invalid", "market_resolved"})
 CTF_DECIMAL_FACTOR = 10**6
 
 
-class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
+class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     """Sells every unredeemable Polymarket position via market FAK orders.
 
     Lifecycle (see WITHDRAWAL_POLYMARKET_IMPL_SPEC.md §3.1):
@@ -180,7 +180,7 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
             ``None`` sweeps only pUSD (the opportunistic post-buy path).
         :yield: framework yields between dispatch and the connection response.
         """
-        dw_address = self.synchronized_data.deposit_wallet_address
+        dw_address = self._resolve_deposit_wallet()
         if not dw_address:
             # No DW means nothing was funded Safe→DW this cycle, so nothing to
             # reclaim. Skip the dispatch (and its misleading "sweep failed"
@@ -258,7 +258,7 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         :return: ``(positions_or_none, error_or_none)``.
         """
         params: Dict[str, Any] = {"redeemable": False}
-        dw_address = self.synchronized_data.deposit_wallet_address
+        dw_address = self._resolve_deposit_wallet()
         if dw_address:
             params["address"] = dw_address
         payload = {
@@ -291,7 +291,7 @@ class PolymarketWithdrawBehaviour(DecisionMakerBaseBehaviour):
         # CLOB v2: the sell is funded by the DepositWallet (the CTF shares were
         # moved Safe→DW by the withdrawal top-up round). Pass it so the
         # connection signs with signature_type=3 / funder=DW.
-        dw_address = self.synchronized_data.deposit_wallet_address
+        dw_address = self._resolve_deposit_wallet()
         if dw_address:
             params["funder"] = dw_address
         payload = {

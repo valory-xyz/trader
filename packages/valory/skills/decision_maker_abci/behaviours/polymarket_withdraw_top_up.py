@@ -140,17 +140,17 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self.context.logger.warning(
                 "DepositWallet not yet available; deferring withdrawal top-up."
             )
-            self._set_payload(Event.NONE, None, None)
+            self._set_payload(Event.NONE, None)
             return
 
         sellable = yield from self._fetch_sellable()
         if sellable is None:
             self.context.logger.warning("Failed to fetch positions for withdrawal.")
-            self._set_payload(Event.NONE, None, dw_address)
+            self._set_payload(Event.NONE, None)
             return
         if not sellable:
             self.context.logger.info("No sellable positions; withdrawal complete.")
-            self._set_payload(Event.WITHDRAWAL_DONE, None, dw_address)
+            self._set_payload(Event.WITHDRAWAL_DONE, None)
             return
 
         token_ids = [t for t, _ in sellable]
@@ -171,23 +171,20 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         )
         if not (yield from self._build_multisend_data()):
             self.context.logger.error("Failed to build withdrawal top-up multisend.")
-            self._set_payload(Event.NONE, None, dw_address)
+            self._set_payload(Event.NONE, None)
             return
         if not (yield from self._build_multisend_safe_tx_hash()):
             self.context.logger.error("Failed to build withdrawal top-up tx hash.")
-            self._set_payload(Event.NONE, None, dw_address)
+            self._set_payload(Event.NONE, None)
             return
 
-        self._set_payload(Event.PREPARE_TX, self.tx_hex, dw_address)
+        self._set_payload(Event.PREPARE_TX, self.tx_hex)
 
-    def _set_payload(
-        self, event: Event, tx_hash: Optional[str], dw_address: Optional[str]
-    ) -> None:
-        """Build the top-up payload carrying the onward event and DW address.
+    def _set_payload(self, event: Event, tx_hash: Optional[str]) -> None:
+        """Build the top-up payload carrying the onward event.
 
         :param event: the FSM event to emit.
         :param tx_hash: the prepared safe tx hash (``None`` when not preparing).
-        :param dw_address: the resolved DepositWallet address.
         """
         # PolymarketWithdrawTopUpRound reuses PolymarketTopUpPayload (via its
         # PolymarketTopUpRound base); keep this in sync if the round ever
@@ -198,7 +195,6 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
             tx_hash,
             False,
             event.value,
-            dw_address,
         )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:

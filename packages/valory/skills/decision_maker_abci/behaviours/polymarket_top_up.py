@@ -90,13 +90,17 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self.context.logger.warning(
                 "DepositWallet not yet available; deferring top-up."
             )
-            self._set_payload(Event.INSUFFICIENT_BALANCE, None, None)
+            self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
         self.dw_address = dw_address
 
-        # Opportunistic sweep: reclaim any pUSD AND CTF stranded in the DW by a
-        # prior crash (e.g. a matched buy that never swept) before topping it up
-        # again. Best-effort — failures are logged and do not block the top-up.
+        # Opportunistic sweep before re-funding the DW. The connection sweeps
+        # the DW's pUSD by live balance (token-id-independent), so any pUSD
+        # stranded by a prior crash is fully reclaimed. CTF is only swept for
+        # the CURRENTLY sampled bet's outcome token ids, so a position stranded
+        # from a DIFFERENT market by an earlier crashed cycle is NOT reclaimed
+        # here (ERC-1155 has no cheap enumeration); only its pUSD is. Best-effort
+        # — failures are logged and do not block the top-up.
         yield from self._send_polymarket_request(
             RequestType.SWEEP_DW,
             {"dw_address": dw_address, "token_ids": self._position_token_ids()},
@@ -107,7 +111,7 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self.context.logger.warning(
                 f"Non-positive buy amount ({buy_amount}); cannot top up the DW."
             )
-            self._set_payload(Event.INSUFFICIENT_BALANCE, None, dw_address)
+            self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
 
         # Guard against an under-funded Safe: a pUSD transfer for more than the
@@ -118,7 +122,7 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
                 f"Safe pUSD balance ({self.token_balance}) below the buy amount "
                 f"({buy_amount}); deferring top-up."
             )
-            self._set_payload(Event.INSUFFICIENT_BALANCE, None, dw_address)
+            self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
 
         # Build the Safe multisend: a single pUSD transfer Safe→DW.
@@ -131,23 +135,20 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
         )
         if not (yield from self._build_multisend_data()):
             self.context.logger.error("Failed to build top-up multisend data.")
-            self._set_payload(Event.INSUFFICIENT_BALANCE, None, dw_address)
+            self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
         if not (yield from self._build_multisend_safe_tx_hash()):
             self.context.logger.error("Failed to build top-up safe tx hash.")
-            self._set_payload(Event.INSUFFICIENT_BALANCE, None, dw_address)
+            self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
 
-        self._set_payload(Event.PREPARE_TX, self.tx_hex, dw_address)
+        self._set_payload(Event.PREPARE_TX, self.tx_hex)
 
-    def _set_payload(
-        self, event: Event, tx_hash: Optional[str], dw_address: Optional[str]
-    ) -> None:
-        """Build the top-up payload carrying the onward event and DW address.
+    def _set_payload(self, event: Event, tx_hash: Optional[str]) -> None:
+        """Build the top-up payload carrying the onward event.
 
         :param event: the FSM event to emit.
         :param tx_hash: the prepared safe tx hash (``None`` when not preparing).
-        :param dw_address: the resolved DepositWallet address.
         """
         self.payload = PolymarketTopUpPayload(
             self.context.agent_address,
@@ -155,7 +156,6 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
             tx_hash,
             False,
             event.value,
-            dw_address,
         )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:

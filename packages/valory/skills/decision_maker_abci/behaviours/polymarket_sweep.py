@@ -19,7 +19,7 @@
 
 """This module contains the Polymarket (CLOB v2) DepositWallet sweep behaviour."""
 
-from typing import Generator, Optional
+from typing import Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -60,7 +60,7 @@ class PolymarketSweepBehaviour(PolymarketDepositWalletBehaviour):
 
         :yield: framework yields between dispatch and the connection response.
         """
-        dw_address = self.synchronized_data.deposit_wallet_address
+        dw_address = self._resolve_deposit_wallet()
         response = yield from self._send_polymarket_request(
             RequestType.SWEEP_DW,
             {"dw_address": dw_address, "token_ids": self._position_token_ids()},
@@ -70,17 +70,16 @@ class PolymarketSweepBehaviour(PolymarketDepositWalletBehaviour):
             self.context.logger.warning(
                 "DepositWallet sweep failed; looping until the next pass."
             )
-            self._set_payload(Event.NONE, dw_address)
+            self._set_payload(Event.NONE)
             return
 
         self.context.logger.info(f"DepositWallet sweep result: {response}")
-        self._set_payload(Event.DONE, dw_address)
+        self._set_payload(Event.DONE)
 
-    def _set_payload(self, event: Event, dw_address: Optional[str]) -> None:
+    def _set_payload(self, event: Event) -> None:
         """Build the sweep payload carrying the onward event.
 
         :param event: the FSM event to emit.
-        :param dw_address: the swept DepositWallet address.
         """
         self.payload = PolymarketSweepPayload(
             self.context.agent_address,
@@ -88,7 +87,6 @@ class PolymarketSweepBehaviour(PolymarketDepositWalletBehaviour):
             None,
             False,
             event.value,
-            dw_address,
         )
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:

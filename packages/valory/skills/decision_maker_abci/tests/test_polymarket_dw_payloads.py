@@ -31,46 +31,42 @@ class TestPolymarketTopUpPayload:
     """Tests for PolymarketTopUpPayload."""
 
     def test_fields(self) -> None:
-        """The payload carries event and dw_address dataclass fields."""
+        """The payload carries the event dataclass field (no dw_address)."""
         names = {f.name for f in dataclasses.fields(PolymarketTopUpPayload)}
-        assert {"event", "dw_address"} <= names
+        assert "event" in names
+        assert "dw_address" not in names
 
     def test_construction_and_data(self) -> None:
-        """Event and dw_address are part of the consensus data dict."""
+        """Event is part of the consensus data dict."""
         payload = PolymarketTopUpPayload(
             sender="agent",
             tx_submitter="round",
             tx_hash="0xhash",
             mocking_mode=False,
             event="prepare_tx",
-            dw_address="0xDW",
         )
         assert payload.event == "prepare_tx"
-        assert payload.dw_address == "0xDW"
         assert payload.data["event"] == "prepare_tx"
-        assert payload.data["dw_address"] == "0xDW"
 
     def test_defaults_none(self) -> None:
-        """Event and dw_address default to None."""
+        """Event defaults to None."""
         payload = PolymarketTopUpPayload(sender="agent")
         assert payload.event is None
-        assert payload.dw_address is None
 
 
 class TestPolymarketSweepPayload:
     """Tests for PolymarketSweepPayload."""
 
     def test_fields(self) -> None:
-        """The payload carries event and dw_address dataclass fields."""
+        """The payload carries the event dataclass field (no dw_address)."""
         names = {f.name for f in dataclasses.fields(PolymarketSweepPayload)}
-        assert {"event", "dw_address"} <= names
+        assert "event" in names
+        assert "dw_address" not in names
 
     def test_construction_and_data(self) -> None:
-        """Event and dw_address are part of the consensus data dict."""
+        """Event is part of the consensus data dict."""
         payload = PolymarketSweepPayload(
             sender="agent",
             event="done",
-            dw_address="0xDW",
         )
         assert payload.data["event"] == "done"
-        assert payload.data["dw_address"] == "0xDW"

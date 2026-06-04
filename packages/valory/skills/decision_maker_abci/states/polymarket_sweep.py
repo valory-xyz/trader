@@ -61,6 +61,6 @@ class PolymarketSweepRound(TxPreparationRound):
         if event == self.no_majority_event:
             return res
 
-        # PolymarketSweepPayload trailing fields: ... , event(-2), dw_address(-1)
-        actual_event = Event(self.most_voted_payload_values[-2])
+        # PolymarketSweepPayload trailing field: event(-1).
+        actual_event = Event(self.most_voted_payload_values[-1])
         return synced_data, actual_event

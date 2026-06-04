@@ -46,8 +46,8 @@ class PolymarketTopUpRound(TxPreparationRound):
       - The Safe cannot fund the buy → ``Event.INSUFFICIENT_BALANCE``
         (``RefillRequiredRound``).
 
-    The DepositWallet address agreed this round is persisted to the
-    synchronized data so the bet-placement and sweep rounds share the funder.
+    The DepositWallet address is not carried in the payload: the bet-placement
+    and sweep rounds resolve the funder from the persisted store.
     """
 
     payload_class: Type[MultisigTxPayload] = PolymarketTopUpPayload
@@ -66,17 +66,6 @@ class PolymarketTopUpRound(TxPreparationRound):
         if event == self.no_majority_event:
             return res
 
-        # PolymarketTopUpPayload trailing fields: ... , event(-2), dw_address(-1)
-        actual_event = Event(self.most_voted_payload_values[-2])
-        dw_address = self.most_voted_payload_values[-1]
-
-        if dw_address is not None:
-            synced_data = cast(
-                SynchronizedData,
-                synced_data.update(
-                    synchronized_data_class=self.synchronized_data_class,
-                    **{"deposit_wallet_address": dw_address},
-                ),
-            )
-
+        # PolymarketTopUpPayload trailing field: event(-1).
+        actual_event = Event(self.most_voted_payload_values[-1])
         return synced_data, actual_event

@@ -46,9 +46,9 @@ def _round(cls):  # type: ignore[no-untyped-def]
     return r
 
 
-def _values(event, dw):  # type: ignore[no-untyped-def]
-    """Build a payload-values tuple: (tx_submitter, tx_hash, mocking, event, dw)."""
-    return (None, None, False, event, dw)
+def _values(event):  # type: ignore[no-untyped-def]
+    """Build a payload-values tuple: (tx_submitter, tx_hash, mocking, event)."""
+    return (None, None, False, event)
 
 
 class TestPolymarketTopUpRoundEndBlock:
@@ -68,8 +68,8 @@ class TestPolymarketTopUpRoundEndBlock:
             out = r.end_block()
         assert out == (synced, Event.NO_MAJORITY)
 
-    def test_emits_payload_event_and_persists_dw(self) -> None:
-        """The payload-carried event is emitted and the DW is persisted."""
+    def test_emits_payload_event(self) -> None:
+        """The payload-carried event is emitted (DW is not persisted/threaded)."""
         r = _round(PolymarketTopUpRound)
         synced = MagicMock(spec=SynchronizedData)
         synced.update.return_value = synced
@@ -79,18 +79,17 @@ class TestPolymarketTopUpRoundEndBlock:
                 PolymarketTopUpRound,
                 "most_voted_payload_values",
                 new_callable=PropertyMock,
-                return_value=_values(Event.PREPARE_TX.value, DW),
+                return_value=_values(Event.PREPARE_TX.value),
             ),
         ):
-            _out_synced, event = r.end_block()
+            out_synced, event = r.end_block()
         assert event == Event.PREPARE_TX
-        update_kwargs = {}
+        assert out_synced is synced
         for call in synced.update.call_args_list:
-            update_kwargs.update(call.kwargs)
-        assert update_kwargs.get("deposit_wallet_address") == DW
+            assert "deposit_wallet_address" not in call.kwargs
 
-    def test_no_dw_not_persisted(self) -> None:
-        """When the payload carries no DW, nothing is persisted."""
+    def test_emits_insufficient_balance_event(self) -> None:
+        """An INSUFFICIENT_BALANCE payload event is emitted unchanged."""
         r = _round(PolymarketTopUpRound)
         synced = MagicMock(spec=SynchronizedData)
         synced.update.return_value = synced
@@ -100,13 +99,11 @@ class TestPolymarketTopUpRoundEndBlock:
                 PolymarketTopUpRound,
                 "most_voted_payload_values",
                 new_callable=PropertyMock,
-                return_value=_values(Event.INSUFFICIENT_BALANCE.value, None),
+                return_value=_values(Event.INSUFFICIENT_BALANCE.value),
             ),
         ):
             _out_synced, event = r.end_block()
         assert event == Event.INSUFFICIENT_BALANCE
-        for call in synced.update.call_args_list:
-            assert "deposit_wallet_address" not in call.kwargs
 
 
 class TestPolymarketWithdrawTopUpRound:
@@ -128,7 +125,7 @@ class TestPolymarketWithdrawTopUpRound:
                 PolymarketWithdrawTopUpRound,
                 "most_voted_payload_values",
                 new_callable=PropertyMock,
-                return_value=_values(Event.WITHDRAWAL_DONE.value, DW),
+                return_value=_values(Event.WITHDRAWAL_DONE.value),
             ),
         ):
             _, event = r.end_block()
