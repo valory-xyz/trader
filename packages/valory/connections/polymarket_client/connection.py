@@ -369,6 +369,11 @@ class PolymarketClientConnection(BaseSyncConnection):
             funder=to_checksum_address(funder),
             builder_config=self.builder_config,
         )
+        # create_or_derive_api_key tries to create first and falls back to
+        # deriving the existing key. On an already-onboarded wallet the create
+        # attempt is rejected by Polymarket with a benign 400 ("Could not create
+        # api key") that the SDK itself logs at ERROR before the derive succeeds;
+        # the returned credentials are valid either way.
         client.set_api_creds(client.create_or_derive_api_key())
         return client
 
