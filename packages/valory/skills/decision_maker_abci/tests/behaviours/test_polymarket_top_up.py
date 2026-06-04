@@ -39,6 +39,10 @@ def _make_behaviour(tmp_path, with_dw=True):  # type: ignore[no-untyped-def]
 
     When ``with_dw`` is set, a persisted ``deposit_wallet.json`` (owner-matched)
     is written so ``_resolve_deposit_wallet`` resolves the DW from the store.
+
+    :param tmp_path: the temporary store directory.
+    :param with_dw: whether to persist a ``deposit_wallet.json`` in the store.
+    :return: the constructed behaviour.
     """
     behaviour = object.__new__(PolymarketTopUpBehaviour)
     behaviour.dw_address = None

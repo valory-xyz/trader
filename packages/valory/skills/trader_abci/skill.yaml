@@ -56,8 +56,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/market_manager_abci:0.1.0:bafybeih5sor57du6vfsihfld2bogkrcjchkzf7x4hy7cnbqr2sqoqfaxde
-- valory/decision_maker_abci:0.1.0:bafybeibi2dcy5fw3mfobm2ron2j54fivp66rg5nj7ofrzc6wzeqsb5gpei
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidsviwlgun4n27rechsmu3b7r6q77t4fsgqxcgxhoj422crdf6bpi
+- valory/decision_maker_abci:0.1.0:bafybeigkgxqvptsnlyx2uh5h55qtyxmtd4fc4wpmaiaz3lx5rfbnfmlf4y
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibf6egyn4oaujeis36hbhomspwbukt5nq5vfhrrzxvw7hhhrtejle
 - valory/staking_abci:0.1.0:bafybeibcekskbxua2fk4d5lnvt5kyhalbz4d7dyopjjns5bakqjvjpjxfq
 - valory/check_stop_trading_abci:0.1.0:bafybeicaghinosjl6yjdika4obc2ar5gjqsz4wlhexcqawr75u7oqylxyi
 - valory/mech_interact_abci:0.1.0:bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy
