@@ -121,6 +121,21 @@ ROUNDS_INFO = {
         "description": "Attempts to open a trade on a Polymarket prediction market.",
         "transitions": {},
     },
+    "polymarket_top_up_round": {
+        "name": "Funding the Polymarket DepositWallet",
+        "description": "Transfers funds from the Safe to the DepositWallet before a trade.",
+        "transitions": {},
+    },
+    "polymarket_sweep_round": {
+        "name": "Sweeping the Polymarket DepositWallet",
+        "description": "Returns DepositWallet funds to the Safe after a trade.",
+        "transitions": {},
+    },
+    "polymarket_withdraw_top_up_round": {
+        "name": "Funding the DepositWallet for withdrawal",
+        "description": "Moves sellable positions from the Safe to the DepositWallet before withdrawing.",
+        "transitions": {},
+    },
     "polymarket_set_approval_round": {
         "name": "Setting approval on Polymarket",
         "description": "Attempts to set approval on a Polymarket prediction market.",

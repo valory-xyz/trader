@@ -62,6 +62,8 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedMechRequestTxRound,
     FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
+    FinishedPolymarketTopUpTxRound,
+    FinishedPolymarketWithdrawTopUpTxRound,
     FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
@@ -628,6 +630,8 @@ class TestTxSettlementMultiplexerAbciApp:
                 Event.SUBSCRIPTION_DONE: FinishedSubscriptionTxRound,
                 Event.SET_APPROVAL_DONE: FinishedSetApprovalTxRound,
                 Event.WITHDRAW_OMEN_DONE: FinishedOmenWithdrawTxRound,
+                Event.TOP_UP_DONE: FinishedPolymarketTopUpTxRound,
+                Event.WITHDRAW_TOP_UP_DONE: FinishedPolymarketWithdrawTopUpTxRound,
                 Event.ROUND_TIMEOUT: PostTxSettlementRound,
                 Event.UNRECOGNIZED: FailedMultiplexerRound,
             },
@@ -641,6 +645,8 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedPolymarketSwapTxRound: {},
             FinishedPolymarketWrapCollateralTxRound: {},
             FinishedOmenWithdrawTxRound: {},
+            FinishedPolymarketTopUpTxRound: {},
+            FinishedPolymarketWithdrawTopUpTxRound: {},
             FinishedStakingTxRound: {},
             FailedMultiplexerRound: {},
         }
@@ -657,6 +663,8 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedPolymarketSwapTxRound,
             FinishedPolymarketWrapCollateralTxRound,
             FinishedOmenWithdrawTxRound,
+            FinishedPolymarketTopUpTxRound,
+            FinishedPolymarketWithdrawTopUpTxRound,
             FinishedStakingTxRound,
             FinishedSubscriptionTxRound,
             FinishedSetApprovalTxRound,
@@ -687,6 +695,8 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedPolymarketSwapTxRound: set(),
             FinishedPolymarketWrapCollateralTxRound: set(),
             FinishedOmenWithdrawTxRound: set(),
+            FinishedPolymarketTopUpTxRound: set(),
+            FinishedPolymarketWithdrawTopUpTxRound: set(),
             FinishedStakingTxRound: set(),
             FailedMultiplexerRound: set(),
             FinishedSubscriptionTxRound: set(),
@@ -695,8 +705,8 @@ class TestTxSettlementMultiplexerAbciApp:
         assert abci_app.db_post_conditions == expected
 
     def test_final_states_count(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
-        """Test that there are exactly 12 final states."""
-        assert len(abci_app.final_states) == 12
+        """Test that there are exactly 14 final states."""
+        assert len(abci_app.final_states) == 14
 
     def test_degenerate_rounds_have_empty_transitions(
         self, abci_app: TxSettlementMultiplexerAbciApp

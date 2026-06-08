@@ -76,6 +76,12 @@ def _make_connection() -> _TestableConnection:
     conn.logger = MagicMock()
     conn.client = MagicMock()
     conn.relayer_client = MagicMock()
+    conn.relayer_proxy = MagicMock()
+    conn.dw_address = None
+    conn._client_funder = SAFE_ADDRESS
+    conn._host = "https://clob.example"
+    conn._chain_id = 137
+    conn.builder_config = None
     conn.w3 = MagicMock()
     conn.collateral_address = COLLATERAL_ADDRESS
     conn.usdc_e_address = USDC_E_ADDRESS
@@ -360,6 +366,10 @@ class TestRouteRequest:
             "_fetch_order_book",
             "_sell_position",
             "_get_order",
+            "_deploy_dw",
+            "_exec_wallet_batch",
+            "_sweep_dw",
+            "_relayer_tx",
         ]:
             setattr(conn, method, MagicMock(return_value=({"ok": True}, None)))
 
@@ -1911,6 +1921,20 @@ class TestGetPositions:
         call_kwargs = mock_get.call_args[1]
         assert call_kwargs["params"]["user"] == SAFE_ADDRESS
 
+    def test_address_override_sent_as_user_param(self) -> None:
+        """An explicit address overrides the Safe as the 'user' query param."""
+        conn = _make_connection()
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = []
+        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        dw = "0x5AE1AA40AB7790b7eEE44a780Ef34FF217F8785C"
+
+        with patch("requests.get", return_value=mock_resp) as mock_get:
+            conn._get_positions(address=dw)
+
+        call_kwargs = mock_get.call_args[1]
+        assert call_kwargs["params"]["user"] == dw
+
     def test_request_exception_returns_error(self) -> None:
         """Returns (None, error) on RequestException."""
         conn = _make_connection()
@@ -2003,6 +2027,16 @@ class TestFetchAllPositions:
         result, error = conn._fetch_all_positions()
         assert result is None
         assert "Unexpected error" in error
+
+    def test_address_threaded_to_get_positions(self) -> None:
+        """An explicit address is forwarded to every _get_positions page call."""
+        conn = _make_connection()
+        conn._get_positions = MagicMock(return_value=([], None))
+        dw = "0x5AE1AA40AB7790b7eEE44a780Ef34FF217F8785C"
+
+        conn._fetch_all_positions(address=dw)
+
+        assert conn._get_positions.call_args[1]["address"] == dw
 
 
 # ---------------------------------------------------------------------------

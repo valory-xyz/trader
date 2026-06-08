@@ -61,8 +61,17 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approv
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     PolymarketSwapUsdcBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_sweep import (
+    PolymarketSweepBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_top_up import (
+    PolymarketTopUpBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
     PolymarketWithdrawBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw_top_up import (
+    PolymarketWithdrawTopUpBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_wrap_collateral import (
     PolymarketWrapCollateralBehaviour,
@@ -112,6 +121,9 @@ class AgentDecisionMakerRoundBehaviour(AbstractRoundBehaviour):
         BenchmarkingRandomnessBehaviour,  # type: ignore
         CheckBenchmarkingModeBehaviour,  # type: ignore
         PolymarketBetPlacementBehaviour,  # type: ignore
+        PolymarketTopUpBehaviour,  # type: ignore
+        PolymarketSweepBehaviour,  # type: ignore
+        PolymarketWithdrawTopUpBehaviour,  # type: ignore
         PolymarketRedeemBehaviour,  # type: ignore
         PostBetUpdateBehaviour,  # type: ignore
         RedeemRouterBehaviour,  # type: ignore

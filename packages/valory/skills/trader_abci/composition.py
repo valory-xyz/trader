@@ -62,6 +62,8 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPolymarketTopUpTxPreparationRound,
+    FinishedPolymarketWithdrawTopUpTxPreparationRound,
     FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
@@ -76,11 +78,17 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
     OmenWithdrawRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
     PolymarketWithdrawRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw_top_up import (
+    PolymarketWithdrawTopUpRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
@@ -154,6 +162,8 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedMechRequestTxRound,
     FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
+    FinishedPolymarketTopUpTxRound,
+    FinishedPolymarketWithdrawTopUpTxRound,
     FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
@@ -224,7 +234,9 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     # rounds in decision_maker_abci. The Omen branch is a stub today (D27 —
     # POST /api/v1/withdrawal returns 501 on Omenstrat), but the wiring is in
     # place so the FSM is symmetric across services.
-    FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawRound,
+    # Polymarket withdrawal first moves all sellable CTF positions Safe→DW
+    # (settled), then the sell-loop runs DW-funded.
+    FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawTopUpRound,
     FinishedWithWithdrawalOmenRound: OmenWithdrawRound,
     # Omen sweep takes the same two-hop tx-settlement route as the other
     # tx-preparing rounds: OmenWithdrawRound prepares the multisend ->
@@ -253,6 +265,14 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedPolymarketWrapCollateralTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketWrapCollateralTxRound: FetchMarketsRouterRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
+    # Top-up: Safe→DW pUSD transfer is prepared by decision_maker_abci,
+    # settled by the multiplexer, and returns to bet placement once mined.
+    FinishedPolymarketTopUpTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketTopUpTxRound: PolymarketBetPlacementRound,
+    # Withdrawal CTF top-up: prepared by decision_maker_abci, settled by the
+    # multiplexer, returns to the sell-loop once the positions reach the DW.
+    FinishedPolymarketWithdrawTopUpTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketWithdrawTopUpTxRound: PolymarketWithdrawRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: CallCheckpointRound,

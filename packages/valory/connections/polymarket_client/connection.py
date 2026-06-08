@@ -46,6 +46,13 @@ from py_clob_client_v2.order_utils.model.signature_type_v2 import SignatureTypeV
 from web3 import Web3
 from web3.middleware.proof_of_authority import ExtraDataToPOAMiddleware
 
+from packages.valory.connections.polymarket_client.relayer_proxy import (
+    DW_FACTORY,
+    RelayerProxyClient,
+    RelayerProxyError,
+    TX_TERMINAL_FAIL,
+    TX_TERMINAL_OK,
+)
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.srr.dialogues import SrrDialogue
 from packages.valory.protocols.srr.dialogues import SrrDialogues as BaseSrrDialogues
@@ -55,7 +62,16 @@ PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 RELAYER_URL = "https://relayer-v2.polymarket.com/"
+# Default wildcard predict-api proxy that fronts the CLOB v2 DepositWallet
+# relayer (the deploy, exec-batch, deployed and transaction calls). Empirically
+# verified endpoint; overridable via ``polymarket_relayer_proxy_url``.
+DEFAULT_RELAYER_PROXY_URL = "https://mpp.valory.xyz"
+# CLOB v2 order-signing scheme: POLY_1271 (smart-contract 1271 signatures)
+# with the DepositWallet as funder, replacing the legacy POLY_GNOSIS_SAFE (2).
+SIGNATURE_TYPE_POLY_1271 = 3
+SIGNATURE_TYPE_POLY_GNOSIS_SAFE = 2
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
+ZERO_ADDRESS = "0x" + "0" * 40
 CHAIN_ID = 137  # Polygon
 MAX_UINT256 = (
     115792089237316195423570985008687907853269984665640564039457584007913129639935
@@ -221,7 +237,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         host = self.configuration.config.get("host")
         chain_id = self.configuration.config.get("chain_id")
         builder_program_enabled = self.configuration.config.get(
-            "polymarket_builder_program_enabled", True
+            "polymarket_builder_program_enabled", False
         )
         builder_code = _validate_builder_code(
             self.configuration.config.get("builder_code"), self.logger
@@ -245,24 +261,47 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "orders will be posted without attribution."
             )
 
-        # Relayer client is kept for Safe execTransaction gas relay (approvals,
-        # redemptions, bet placements). v2 only deprecates the builder-signing
-        # relay, not the tx-execution relay.
+        # Legacy Safe relayer is retained ONLY for the redemption path, which
+        # is still executed by the Safe (the DepositWallet is
+        # never involved in redeem).
         self.relayer_client = RelayClient(
             relayer_url=RELAYER_URL,
             chain_id=chain_id,
             private_key=self.connection_private_key,
             builder_config=None,
         )
-        self.client = ClobClient(
-            host,
-            chain_id=chain_id,
-            key=self.connection_private_key,
-            signature_type=2,
-            funder=self.safe_address,
-            builder_config=self.builder_config,
+
+        # CLOB v2. Trading is funded by a sibling DepositWallet (DW)
+        # owned by the agent EOA, provisioned and driven through the wildcard
+        # predict-api relayer proxy, and orders are signed with
+        # signature_type=3 (POLY_1271) + funder=DW. The DW address is learned
+        # at runtime (config pre-seed or proxy /deployed lookup), so the
+        # ClobClient is (re)built against it on demand via _ensure_dw_funder.
+        self._host = host
+        self._chain_id = chain_id
+        self.relayer_proxy_url = self.configuration.config.get(
+            "polymarket_relayer_proxy_url", DEFAULT_RELAYER_PROXY_URL
         )
-        self.client.set_api_creds(self.client.create_or_derive_api_key())
+        self.relayer_proxy = RelayerProxyClient(
+            base_url=self.relayer_proxy_url,
+            private_key=self.connection_private_key,
+            chain_id=chain_id,
+            logger=self.logger,
+        )
+        # The DepositWallet is provisioned at runtime via the relayer proxy and
+        # learned from the deploy receipt / per-request ``funder``,
+        # so it starts unknown.
+        self.dw_address: Optional[str] = None
+
+        # Bootstrap the CLOB client with the legacy Safe funder so read-only
+        # calls (markets, order book, get_order) work before the DW is
+        # provisioned. Order placement always calls _ensure_dw_funder first to
+        # (re)point the client at the runtime-resolved DepositWallet.
+        self._client_funder = self.safe_address
+        self.client = self._build_clob_client(
+            funder=self.safe_address,
+            signature_type=SIGNATURE_TYPE_POLY_GNOSIS_SAFE,
+        )
 
         # Load contract addresses. In v2 the collateral token is pUSD; USDC.e
         # is kept only as a wrap-source. The onramp contract exposes
@@ -310,6 +349,55 @@ class PolymarketClientConnection(BaseSyncConnection):
     def safe_address(self) -> Address:
         """Return the safe address."""
         return self.configuration.config.get("safe_contract_addresses").get("polygon")
+
+    def _build_clob_client(self, funder: str, signature_type: int) -> ClobClient:
+        """Build a CLOB client bound to a funder and signing scheme.
+
+        Re-derives the API creds (which are tied to the signer EOA, not the
+        funder) so the returned client is immediately usable.
+
+        :param funder: the address that funds matched orders (DW under v2).
+        :param signature_type: POLY_1271 (3) for the DW funder, or the legacy
+            POLY_GNOSIS_SAFE (2) bootstrap before a DW is provisioned.
+        :return: a ready-to-use ClobClient.
+        """
+        client = ClobClient(
+            self._host,
+            chain_id=self._chain_id,
+            key=self.connection_private_key,
+            signature_type=signature_type,
+            funder=to_checksum_address(funder),
+            builder_config=self.builder_config,
+        )
+        # create_or_derive_api_key tries to create first and falls back to
+        # deriving the existing key. On an already-onboarded wallet the create
+        # attempt is rejected by Polymarket with a benign 400 ("Could not create
+        # api key") that the SDK itself logs at ERROR before the derive succeeds;
+        # the returned credentials are valid either way.
+        client.set_api_creds(client.create_or_derive_api_key())
+        return client
+
+    def _ensure_dw_funder(self, dw_address: Optional[str]) -> None:
+        """Rebuild the CLOB client to sign POLY_1271 orders funded by the DW.
+
+        No-op when the client already targets ``dw_address``. Called before
+        every order placement / sell so the funder matches the just-topped-up
+        DepositWallet even if the DW was provisioned after connection start.
+
+        :param dw_address: the DepositWallet address to fund orders from.
+        """
+        if not dw_address:
+            return
+        dw_address = to_checksum_address(dw_address)
+        if self._client_funder == dw_address:
+            return
+        self.dw_address = dw_address
+        self.client = self._build_clob_client(
+            funder=dw_address,
+            signature_type=SIGNATURE_TYPE_POLY_1271,
+        )
+        self._client_funder = dw_address
+        self.logger.info(f"CLOB client funder set to DepositWallet {dw_address}")
 
     def main(self) -> None:
         """
@@ -434,6 +522,10 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
             RequestType.SELL_POSITION: self._sell_position,
             RequestType.GET_ORDER: self._get_order,
+            RequestType.DEPLOY_DW: self._deploy_dw,
+            RequestType.EXEC_WALLET_BATCH: self._exec_wallet_batch,
+            RequestType.SWEEP_DW: self._sweep_dw,
+            RequestType.RELAYER_TX: self._relayer_tx,
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
@@ -475,9 +567,22 @@ class PolymarketClientConnection(BaseSyncConnection):
             return False
 
     def _place_bet(
-        self, token_id: str, amount: float, cached_signed_order_json: str = None
+        self,
+        token_id: str,
+        amount: float,
+        cached_signed_order_json: str = None,
+        funder: Optional[str] = None,
     ) -> Tuple[Any, Any]:
-        """Place a bet on Polymarket."""
+        """Place a bet on Polymarket.
+
+        :param token_id: CTF token id of the outcome to buy.
+        :param amount: USDC (pUSD) amount to spend.
+        :param cached_signed_order_json: optional cached signed order to retry.
+        :param funder: DepositWallet address to fund the order. When
+            given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
+        :return: ``(response_payload, error_or_none)``.
+        """
+        self._ensure_dw_funder(funder or self.dw_address)
         signed_order_json = None
 
         try:
@@ -506,11 +611,22 @@ class PolymarketClientConnection(BaseSyncConnection):
                     )
 
             if signed is None:
+                # Pass the DepositWallet's live pUSD balance so the SDK sizes the
+                # order to ``amount - exact_fee`` using Polymarket's documented,
+                # per-market CLOB fee (``GET /fee-rate`` base rate + market fee
+                # exponent: ``fee = (amount/price) * rate * (price*(1-price))**e``).
+                # The fee is price-dependent (≈0.5%–3.7% over the price range) so a flat
+                # reserve both over- and under-shoots. Falls back to ``amount`` so
+                # the fee is still reserved if the balance read is unavailable.
+                user_balance = self._dw_collateral_balance(
+                    funder or self.dw_address, amount
+                )
                 mo = MarketOrderArgs(
                     token_id=token_id,
                     amount=amount,
                     side=BUY,
                     order_type=OrderType.FOK,
+                    user_usdc_balance=user_balance,
                 )
                 signed = self.client.create_market_order(mo)
                 signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
@@ -539,6 +655,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         self,
         token_id: str,
         amount: float,
+        funder: Optional[str] = None,
     ) -> Tuple[Any, Any]:
         """Submit a market SELL against the CLOB.
 
@@ -560,8 +677,11 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         :param token_id: CTF token id of the outcome to sell.
         :param amount: shares (CTF token units) to sell, not USDC.
+        :param funder: DepositWallet address funding the sell. When
+            given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
         :return: ``(response_payload, error_or_none)``.
         """
+        self._ensure_dw_funder(funder or self.dw_address)
         try:
             mo = MarketOrderArgs(
                 token_id=token_id,
@@ -972,8 +1092,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         sort_direction: str = "DESC",
         redeemable: Optional[bool] = None,
         offset: int = 0,
+        address: Optional[str] = None,
     ) -> Tuple[Any, Any]:
-        """Get positions from Polymarket for the safe address.
+        """Get positions from Polymarket for the safe (or a given) address.
 
         :param size_threshold: Minimum position size threshold
         :param limit: Maximum number of positions to return
@@ -981,8 +1102,12 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param sort_direction: Sort direction (ASC or DESC)
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
         :param offset: Pagination offset (default: 0)
+        :param address: holder address to query; defaults to the Safe. The
+            CLOB v2 withdrawal sell-loop passes the DepositWallet here because
+            the sellable CTF has been moved Safe→DW by the withdrawal top-up.
         :return: Tuple of (positions_data, error_message)
         """
+        user = address or self.safe_address
         try:
             url = f"{DATA_API_BASE_URL}/positions"
             params = {
@@ -991,7 +1116,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "sortBy": sort_by,
                 "sortDirection": sort_direction,
                 "offset": offset,
-                "user": self.safe_address,
+                "user": user,
             }
             # Only include redeemable parameter if explicitly provided
             if redeemable is not None:
@@ -1001,9 +1126,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             response.raise_for_status()
 
             positions = response.json()
-            self.logger.info(
-                f"Fetched {len(positions)} positions for {self.safe_address}"
-            )
+            self.logger.info(f"Fetched {len(positions)} positions for {user}")
             return positions, None
 
         except requests.exceptions.RequestException as e:
@@ -1021,15 +1144,20 @@ class PolymarketClientConnection(BaseSyncConnection):
         sort_by: str = "TOKENS",
         sort_direction: str = "DESC",
         redeemable: Optional[bool] = None,
+        address: Optional[str] = None,
     ) -> Tuple[Any, Any]:
-        """Fetch all positions from Polymarket by paginating through all results for the safe address.
+        """Fetch all positions from Polymarket by paginating through all results for an address.
 
         :param size_threshold: Minimum position size threshold
         :param sort_by: Field to sort by (e.g., TOKENS)
         :param sort_direction: Sort direction (ASC or DESC)
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
+        :param address: holder address to query; defaults to the Safe. The
+            CLOB v2 withdrawal sell-loop passes the DepositWallet (the CTF was
+            moved Safe→DW by the withdrawal top-up, so the Safe now reads 0).
         :return: Tuple of (all_positions_data, error_message)
         """
+        user = address or self.safe_address
         all_positions = []
         limit = 100  # Max limit per request
         offset = 0
@@ -1043,6 +1171,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                     sort_direction=sort_direction,
                     redeemable=redeemable,
                     offset=offset,
+                    address=user,
                 )
 
                 if error:
@@ -1061,7 +1190,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 offset += limit
 
             self.logger.info(
-                f"Fetched total of {len(all_positions)} positions for {self.safe_address}"
+                f"Fetched total of {len(all_positions)} positions for {user}"
             )
             return all_positions, None
 
@@ -1271,6 +1400,333 @@ class PolymarketClientConnection(BaseSyncConnection):
         selector = keccak(text="setApprovalForAll(address,bool)")[:4]
         encoded_args = encode(["address", "bool"], [operator, approved])
         return "0x" + (selector + encoded_args).hex()
+
+    def _encode_erc20_transfer(self, to: str, amount: int) -> str:
+        """Encode ERC20 transfer(address,uint256) calldata.
+
+        :param to: recipient address.
+        :param amount: token amount (base units).
+        :return: Encoded calldata as a 0x hex string.
+        """
+        selector = keccak(text="transfer(address,uint256)")[:4]
+        encoded_args = encode(["address", "uint256"], [to_checksum_address(to), amount])
+        return "0x" + (selector + encoded_args).hex()
+
+    def _erc1155_balance_of(self, token_address: str, owner: str, token_id: int) -> int:
+        """Read an ERC1155 (CTF) balance for a single token id via eth_call.
+
+        :param token_address: the ERC1155 token (the Conditional Tokens / CTF).
+        :param owner: the holder address.
+        :param token_id: the CTF position (outcome) token id.
+        :return: the balance in base units.
+        """
+        selector = self.w3.keccak(text="balanceOf(address,uint256)")[:4].hex()
+        data = (
+            selector
+            + encode(
+                ["address", "uint256"], [to_checksum_address(owner), int(token_id)]
+            ).hex()
+        )
+        result = self.w3.eth.call(
+            {"to": self.w3.to_checksum_address(token_address), "data": data}
+        )
+        return int.from_bytes(result, byteorder="big")
+
+    def _encode_erc1155_safe_transfer(
+        self, from_addr: str, to: str, token_id: int, amount: int
+    ) -> str:
+        """Encode ERC1155 ``safeTransferFrom(address,address,uint256,uint256,bytes)``.
+
+        The DepositWallet is the token owner and executes the call itself, so
+        ``msg.sender == from`` satisfies the CTF transfer authorization.
+
+        :param from_addr: the token sender (the DepositWallet).
+        :param to: the recipient (the Safe).
+        :param token_id: the CTF position (outcome) token id.
+        :param amount: the number of position tokens to transfer.
+        :return: Encoded calldata as a 0x hex string.
+        """
+        selector = keccak(
+            text="safeTransferFrom(address,address,uint256,uint256,bytes)"
+        )[:4]
+        encoded_args = encode(
+            ["address", "address", "uint256", "uint256", "bytes"],
+            [
+                to_checksum_address(from_addr),
+                to_checksum_address(to),
+                int(token_id),
+                amount,
+                b"",
+            ],
+        )
+        return "0x" + (selector + encoded_args).hex()
+
+    def _dw_collateral_balance(self, dw: Optional[str], fallback: float) -> float:
+        """Return the DepositWallet's pUSD balance in float USDC for fee sizing.
+
+        Used as ``MarketOrderArgs.user_usdc_balance`` so the CLOB SDK shrinks a
+        market buy to ``amount - exact_fee`` against the live balance. Best-
+        effort: on a missing DW or an RPC failure it returns ``fallback`` (the
+        nominal order amount), so the documented fee is still reserved from the
+        intended spend rather than risking a "not enough balance" rejection.
+
+        :param dw: the DepositWallet address, or ``None``.
+        :param fallback: the value to return when the balance cannot be read.
+        :return: the DW pUSD balance in float USDC, or ``fallback``.
+        """
+        if not dw:
+            return fallback
+        try:
+            return self._erc20_balance_of(self.collateral_address, dw) / 10**6
+        except Exception as e:  # noqa: BLE001 - best-effort on-chain read
+            self.logger.warning(
+                f"Could not read DepositWallet pUSD balance ({e}); "
+                "reserving the fee from the nominal order amount."
+            )
+            return fallback
+
+    def _erc20_balance_of(self, token_address: str, owner: str) -> int:
+        """Read an ERC20 balance via eth_call.
+
+        :param token_address: the ERC20 token.
+        :param owner: the holder address.
+        :return: the balance in base units.
+        """
+        selector = self.w3.keccak(text="balanceOf(address)")[:4].hex()
+        data = selector + encode(["address"], [to_checksum_address(owner)]).hex()
+        result = self.w3.eth.call(
+            {"to": self.w3.to_checksum_address(token_address), "data": data}
+        )
+        return int.from_bytes(result, byteorder="big")
+
+    def _dw_nonce(self, dw_address: str) -> int:
+        """Read the DepositWallet's batch nonce on-chain (replay protection).
+
+        :param dw_address: the DepositWallet to read.
+        :return: the current ``nonce()`` value.
+        """
+        selector = self.w3.keccak(text="nonce()")[:4].hex()
+        result = self.w3.eth.call(
+            {"to": self.w3.to_checksum_address(dw_address), "data": selector}
+        )
+        return int.from_bytes(result, byteorder="big")
+
+    def _deploy_dw(self) -> Tuple[Any, Any]:
+        """Provision a DepositWallet owned by the agent EOA (idempotent).
+
+        If the DW (the deterministic per-owner wallet) is already registered it
+        is returned without a redeploy; otherwise a relayer deploy is submitted
+        and its transaction id is returned for the behaviour to poll, which
+        reads the resulting DW address from the mined receipt.
+
+        :return: ``({"dw_address", "deployed", "transaction_id", "owner"},
+            error_or_none)``.
+        """
+        try:
+            dw = self.dw_address
+            if dw and self.relayer_proxy.deployed(dw):
+                self._ensure_dw_funder(dw)
+                return (
+                    {
+                        "dw_address": dw,
+                        "deployed": True,
+                        "transaction_id": None,
+                        "owner": self.relayer_proxy.address,
+                    },
+                    None,
+                )
+            tx_id = self.relayer_proxy.deploy_dw()
+            return (
+                {
+                    "dw_address": dw,
+                    "deployed": False,
+                    "transaction_id": tx_id,
+                    "owner": self.relayer_proxy.address,
+                },
+                None,
+            )
+        except RelayerProxyError as e:
+            self.logger.error(str(e))
+            return {"error": str(e)}, str(e)
+
+    def _exec_wallet_batch(
+        self,
+        transactions: list,
+        dw_address: Optional[str] = None,
+    ) -> Tuple[Any, Any]:
+        """Relay a batch of calls from the DepositWallet via the proxy.
+
+        A generic relay: the caller supplies exactly the calls to execute (the
+        setup path builds the DW trading approvals behaviour-side). Reads the
+        DW's on-chain ``nonce()`` so the proxy client can owner-sign the
+        EIP-712 ``Batch``.
+
+        :param transactions: list of ``{"to", "data", "value"}`` calls to relay.
+        :param dw_address: the DW to execute from; defaults to the known DW.
+        :return: ``({"transaction_id", "dw_address"}, error_or_none)``.
+        """
+        target_dw = dw_address or self.dw_address
+        if not target_dw:
+            return {"error": "DepositWallet address not available"}, (
+                "DepositWallet address not available"
+            )
+        try:
+            dw = to_checksum_address(target_dw)
+            if dw == ZERO_ADDRESS:
+                return {"error": "DepositWallet address not available"}, (
+                    "DepositWallet address not available"
+                )
+            calls = [{"target": t["to"], "data": t["data"]} for t in transactions]
+            nonce = self._dw_nonce(dw)
+            tx_id = self.relayer_proxy.exec_wallet_batch(dw, nonce, calls)
+            return {"transaction_id": tx_id, "dw_address": dw}, None
+        except (RelayerProxyError, ValueError, TypeError, KeyError) as e:
+            self.logger.error(f"exec_wallet_batch failed: {e}")
+            return {"error": str(e)}, str(e)
+
+    def _sweep_dw(
+        self, dw_address: Optional[str] = None, token_ids: Optional[list] = None
+    ) -> Tuple[Any, Any]:
+        """Sweep the DepositWallet's pUSD AND CTF positions back to the Safe.
+
+        "Transfer whatever's there": reads the DW's current pUSD balance and the
+        CTF balance for each supplied ``token_ids`` (the bet's outcome tokens),
+        then relays a single ``execute`` batch moving every non-zero balance
+        DW→Safe through the relayer proxy. The Safe is the canonical store of
+        persistent assets, so the bought CTF position must not linger in the
+        transient DW (otherwise withdrawal/redeem, which act on the Safe, can
+        never see it). Nothing to move is a successful no-op so the round can
+        converge after a crash/empty DW.
+
+        :param dw_address: the DW to sweep; defaults to the known DW.
+        :param token_ids: CTF (outcome) token ids whose DW balance to sweep.
+        :return: ``({"swept", "amount", "transaction_id"}, error_or_none)``.
+        """
+        target_dw = dw_address or self.dw_address
+        if not target_dw:
+            return {"error": "DepositWallet address not available"}, (
+                "DepositWallet address not available"
+            )
+        try:
+            dw = to_checksum_address(target_dw)
+            if dw == ZERO_ADDRESS:
+                return {"error": "DepositWallet address not available"}, (
+                    "DepositWallet address not available"
+                )
+            calls = []
+            swept_collateral = self._erc20_balance_of(self.collateral_address, dw)
+            if swept_collateral > 0:
+                calls.append(
+                    {
+                        "target": self.collateral_address,
+                        "data": self._encode_erc20_transfer(
+                            self.safe_address, swept_collateral
+                        ),
+                    }
+                )
+            for token_id in token_ids or []:
+                ctf_balance = self._erc1155_balance_of(self.ctf_address, dw, token_id)
+                if ctf_balance > 0:
+                    calls.append(
+                        {
+                            "target": self.ctf_address,
+                            "data": self._encode_erc1155_safe_transfer(
+                                dw, self.safe_address, token_id, ctf_balance
+                            ),
+                        }
+                    )
+            if not calls:
+                return {"swept": False, "amount": 0, "transaction_id": None}, None
+            nonce = self._dw_nonce(dw)
+            tx_id = self.relayer_proxy.exec_wallet_batch(dw, nonce, calls)
+            # ``swept=True`` means the relayer ACCEPTED the batch submission, not
+            # that it settled on-chain. The relayed tx can still fail later
+            # (out-of-gas, nonce race); settlement is polled by the behaviour via
+            # RELAYER_TX, and any CTF left in the DW is reclaimed on the next
+            # withdrawal/top-up pass. Treat the paired ``transaction_id`` as a
+            # submission handle, not a settlement confirmation.
+            return {
+                "swept": True,
+                "amount": swept_collateral,
+                "transaction_id": tx_id,
+            }, None
+        except (RelayerProxyError, ValueError, TypeError) as e:
+            self.logger.error(f"sweep_dw failed: {e}")
+            return {"error": str(e)}, str(e)
+
+    def _extract_dw_from_receipt(self, tx_hash: str) -> Optional[str]:
+        """Parse a DepositWallet deploy receipt for the newly created DW.
+
+        The factory's deploy event carries the DW address in ``topic1`` (and
+        the owner in ``topic3``); the DW is sourced from the matching factory
+        log rather than a relayer response field.
+
+        :param tx_hash: the mined deploy transaction hash.
+        :return: the checksummed DW address, or ``None`` if not found.
+        """
+        try:
+            receipt = self.w3.eth.get_transaction_receipt(tx_hash)
+        except Exception as e:  # pragma: no cover - defensive RPC guard
+            self.logger.warning(f"Could not fetch deploy receipt {tx_hash}: {e}")
+            return None
+        # The RPC returns ``None`` (not an exception) when the tx is not yet
+        # indexed; treat it as "address not available yet", not a crash.
+        if receipt is None:
+            return None
+        for log in receipt["logs"]:
+            address = log["address"]
+            topics = log["topics"]
+            if address.lower() == DW_FACTORY.lower() and len(topics) >= 2:
+                topic1 = topics[1]
+                topic1_hex = topic1.hex() if hasattr(topic1, "hex") else str(topic1)
+                topic1_hex = topic1_hex.removeprefix("0x")
+                return to_checksum_address("0x" + topic1_hex[-40:])
+        return None
+
+    def _relayer_tx(
+        self, transaction_id: str, is_deploy: bool = False
+    ) -> Tuple[Any, Any]:
+        """Poll a relayer transaction's mining state (one cooperative shot).
+
+        The behaviour drives the retry/backoff loop; each call returns the
+        current state. When the polled tx is a mined DW deploy, the discovered
+        DW address is returned and bound as the CLOB funder.
+
+        :param transaction_id: the relayer transaction id to poll.
+        :param is_deploy: whether this poll tracks a DW deploy. Only then is the
+            receipt scanned for the new DW. Deploy AND ``exec_wallet_batch``
+            (approval/sweep) txs both submit ``to=DW_FACTORY``, so an
+            approval-batch receipt also carries factory logs — scanning it could
+            otherwise bind a non-DW address as the CLOB funder.
+        :return: ``({"state", "transaction_hash", "terminal", "ok",
+            "dw_address"}, error_or_none)``.
+        """
+        if not transaction_id:
+            # Guard a degenerate poll (e.g. a behaviour bug yielding ``""``):
+            # skip the pointless proxy round-trip and surface a clear error.
+            return {"error": "transaction_id is required"}, "transaction_id is required"
+        try:
+            state, tx_hash = self.relayer_proxy.transaction(transaction_id)
+            terminal = state in TX_TERMINAL_OK or state in TX_TERMINAL_FAIL
+            ok = state in TX_TERMINAL_OK
+            dw = None
+            if is_deploy and ok and tx_hash:
+                dw = self._extract_dw_from_receipt(tx_hash)
+                if dw:
+                    self._ensure_dw_funder(dw)
+            return (
+                {
+                    "state": state,
+                    "transaction_hash": tx_hash,
+                    "terminal": terminal,
+                    "ok": ok,
+                    "dw_address": dw,
+                },
+                None,
+            )
+        except RelayerProxyError as e:
+            self.logger.error(str(e))
+            return {"error": str(e)}, str(e)
 
     def _set_approval(self) -> Tuple[Any, Any]:
         """Set all required approvals for Polymarket trading.

@@ -1,0 +1,61 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "DepositWallet",
+  "sourceName": "contracts/DepositWallet.sol",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        { "internalType": "address", "name": "", "type": "address" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nonce",
+      "outputs": [
+        { "internalType": "uint256", "name": "", "type": "uint256" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            { "internalType": "address", "name": "target", "type": "address" },
+            { "internalType": "uint256", "name": "value", "type": "uint256" },
+            { "internalType": "bytes", "name": "data", "type": "bytes" }
+          ],
+          "internalType": "struct DepositWallet.Call[]",
+          "name": "calls",
+          "type": "tuple[]"
+        },
+        { "internalType": "uint256", "name": "deadline", "type": "uint256" },
+        { "internalType": "bytes", "name": "signature", "type": "bytes" }
+      ],
+      "name": "execute",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        { "internalType": "bytes32", "name": "hash", "type": "bytes32" },
+        { "internalType": "bytes", "name": "signature", "type": "bytes" }
+      ],
+      "name": "isValidSignature",
+      "outputs": [
+        { "internalType": "bytes4", "name": "magicValue", "type": "bytes4" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig7mmo52e36kfhwveohjuj34m4ypbdg2cbtv3wozuczx46xovyqtu
+agent: valory/trader:0.1.0:bafybeif6opfvgby4ribjfgwhp7xjsfzkyabkmnb4r4kjcu4tc2w4asum2i
 number_of_agents: 1
 deployment:
   agent:
@@ -407,3 +407,4 @@ config:
   neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
+  polymarket_relayer_proxy_url: ${POLYMARKET_RELAYER_PROXY_URL:str:https://mpp.valory.xyz}

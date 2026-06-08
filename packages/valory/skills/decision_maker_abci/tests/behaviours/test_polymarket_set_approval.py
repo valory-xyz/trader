@@ -71,7 +71,7 @@ class TestPolymarketSetApprovalBehaviour:
     def test_init(self) -> None:
         """__init__ should set buy_amount to 0."""
         with patch(
-            "packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval.DecisionMakerBaseBehaviour.__init__",
+            "packages.valory.skills.decision_maker_abci.behaviours.base.DecisionMakerBaseBehaviour.__init__",
             return_value=None,
         ):
             behaviour = PolymarketSetApprovalBehaviour(
@@ -131,6 +131,7 @@ class TestPolymarketSetApprovalBehaviour:
             return "0xhash"
 
         behaviour._prepare_approval_tx = mock_prepare  # type: ignore[method-assign]
+        behaviour._provision_deposit_wallet = lambda: (yield)  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
@@ -178,6 +179,7 @@ class TestPolymarketSetApprovalBehaviour:
             yield
 
         behaviour._set_approval = mock_set_approval  # type: ignore[method-assign]
+        behaviour._provision_deposit_wallet = lambda: (yield)  # type: ignore[method-assign]
 
         behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = True
 

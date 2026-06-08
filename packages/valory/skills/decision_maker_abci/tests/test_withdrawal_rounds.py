@@ -466,6 +466,10 @@ def _make_request_router(
             return sell.pop(0) if sell else None
         if rt == RequestType.GET_ORDER.value:
             return get_order.pop(0) if get_order else None
+        if rt == RequestType.SWEEP_DW.value:
+            # CLOB v2: the behaviour sweeps the DepositWallet back to the Safe
+            # after the sell-loop; a benign success keeps the loop tests focused.
+            return {"swept": False, "amount": 0, "transaction_id": None}
         raise AssertionError(f"unexpected request_type: {rt}")
 
     def gen_router(payload: Dict[str, Any]) -> Generator[None, None, Any]:
@@ -2843,9 +2847,17 @@ class TestComposition:
     def test_withdrawal_polymarket_routes_to_polymarket_withdraw_round(
         self,
     ) -> None:
-        """Verify FinishedWithWithdrawalPolymarketRound enters PolymarketWithdrawRound."""
+        """The FinishedWithWithdrawalPolymarketRound enters the CTF top-up first.
+
+        CLOB v2: the withdrawal moves all sellable CTF positions Safe→DW
+        (settled) before the DW-funded sell-loop runs, so the entry round is
+        ``PolymarketWithdrawTopUpRound``.
+        """
         from packages.valory.skills.check_stop_trading_abci.rounds import (
             FinishedWithWithdrawalPolymarketRound,
+        )
+        from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw_top_up import (
+            PolymarketWithdrawTopUpRound,
         )
         from packages.valory.skills.trader_abci.composition import (
             abci_app_transition_mapping,
@@ -2853,7 +2865,7 @@ class TestComposition:
 
         assert (
             abci_app_transition_mapping[FinishedWithWithdrawalPolymarketRound]
-            is PolymarketWithdrawRound
+            is PolymarketWithdrawTopUpRound
         )
 
     def test_withdrawal_omen_routes_to_omen_withdraw_round(self) -> None:

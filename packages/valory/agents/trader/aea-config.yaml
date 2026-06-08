@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
 - valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
-- valory/polymarket_client:0.1.0:bafybeih443m6zq7hgdlgehy4quq4xjklxd5h3mpoxwfzs4reqn4zntgap4
+- valory/polymarket_client:0.1.0:bafybeibqdhwczb7pbz7mp4n62mlysdhgig4waf2nmka6y5qmx7procd5ru
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeif6cfjeruji2ovns6dhc5qivvjr7t7rh5mmudgh5gvumezin26qne
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeifzd3duzsvbl76wzippvkqqvtn3shf7p57n43ffduxbsdreu3q4oy
@@ -47,6 +47,7 @@ contracts:
 - valory/agreement_store_manager:0.1.0:bafybeign6u6635cpp7z2rws7uaaxgzvyokdyzztnadmivbt2qsvw2q2vza
 - valory/transfer_nft_condition:0.1.0:bafybeib6wigs3ufiuzkj6twlthcya67lswm3qosikrg4ez7jjgkam4kz5m
 - valory/subscription_provider:0.1.0:bafybeia7fmpemztyjwu4pu4p3q2udy7ymrxz4p5eklegdlc2bgnfi2zoae
+- valory/deposit_wallet:0.1.0:bafybeidjkryojg7cv4hrjvrd2hm5cv5kdoqrmhdsxyjriwtdpo4v3avoia
 protocols:
 - open_aea/signing:1.0.0:bafybeifsjmldwyki3beqyvdt5lzenrg6wyrqaar5plc5rpnvtc4zlentye
 - valory/abci:0.1.0:bafybeiak4pwac3pwjtd7weskxdhkrcopckr32vtazfbuteu6yqjkwarpte
@@ -65,15 +66,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihc4ruh25s7wuunfy2b3k2n4eypyhvtry3usgom44wsymagbcr3ki
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiej3lfiz43nq5ni3sio2vcctix57vzn4q3st22ev5mfqieg6s5bey
-- valory/market_manager_abci:0.1.0:bafybeihyt5ufrqkoaqv6ms745dmtylw7uuawljfaaxkz3o2tfw5yekotkm
-- valory/decision_maker_abci:0.1.0:bafybeihryzbo7xiinkjy7w2rhrcr53ynaz2vlmdmidavjhfkdgd3h5f7fm
-- valory/trader_abci:0.1.0:bafybeicfgdv37h4a6ygqv5vxcfhlnklzwaadz4rntwyla5isb3opokmpha
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig3rvhtilz5fduzahowdmqsyexymgr45mjwmi34g5xgu3l47tdvka
+- valory/market_manager_abci:0.1.0:bafybeiga27ewbquu5jtinbfrg3qrsquytfdyrwrg2rrgvm3ctkxu4pmfiu
+- valory/decision_maker_abci:0.1.0:bafybeih25jpxbpd4wtle345oyxso5rhlppcglgd7nadcwdikrgwevtdrv4
+- valory/trader_abci:0.1.0:bafybeicgyi5pr3wbr45fqzj2uu46lrn7r2n4tqlequ5dgkw6treoeiwhua
 - valory/staking_abci:0.1.0:bafybeibcekskbxua2fk4d5lnvt5kyhalbz4d7dyopjjns5bakqjvjpjxfq
-- valory/check_stop_trading_abci:0.1.0:bafybeiagmqmeoah3f6tf25ojzcgf6hamc4viabzvcibfavwnn5xqzoggai
+- valory/check_stop_trading_abci:0.1.0:bafybeic3bb35twx2vaauqhff5vc73tyu2h5grsmig7fbqo3xewclimeige
 - valory/mech_interact_abci:0.1.0:bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy
-- valory/chatui_abci:0.1.0:bafybeiddr4itrcvwgcm565rruvoqedev4d6cri3gayejtks6453diitnni
-- valory/agent_performance_summary_abci:0.1.0:bafybeiduabiq5f45arudt2dwpo2f3kgohjfdu2jx7il4sjnevagiupg5mm
+- valory/chatui_abci:0.1.0:bafybeibtek65k4easub2m3yynyd2ycwdt77rixa34l4xpo3swbhoi3bxbi
+- valory/agent_performance_summary_abci:0.1.0:bafybeifqyvxwfnocgcp6pd6gv72xfosmq22oa4gstdn5qlzzlqpw4g7a6i
 - valory/funds_manager:0.1.0:bafybeibne4vkmbper3ryn7q6kt7lclbyylgorziscyn6msr5qt46aihv4m
 customs:
 - valory/kelly_criterion:0.1.0:bafybeia4jbzn5bmzii72l43y6wxdw57dy3wndsozdvmeiz5dzqmlvga664
@@ -272,7 +273,7 @@ models:
       is_agent_performance_summary_enabled: ${bool:true}
       is_achievement_checker_enabled: ${bool:true}
       is_running_on_polymarket: ${bool:false}
-      polymarket_builder_program_enabled: ${bool:true}
+      polymarket_builder_program_enabled: ${bool:false}
       polymarket_collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
       polymarket_usdc_e_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
       polymarket_collateral_onramp_address: ${str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
@@ -584,7 +585,7 @@ config:
   chain_id: 137
   safe_contract_addresses:
     polygon: ${str:0x}
-  polymarket_builder_program_enabled: ${bool:true}
+  polymarket_builder_program_enabled: ${bool:false}
   builder_code: ${str:}
   clob_version: ${str:v2}
   collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
