@@ -32,6 +32,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     BinaryOutcome,
     DAY_IN_SECONDS,
     MARKET_TO_PLATFORM,
+    MAX_REQUEST_CONTEXT_DESCRIPTION_LEN,
     PredictionResponse,
     QueueStatus,
     get_default_prediction_response,
@@ -1167,6 +1168,35 @@ class TestBetToRequestContext:
         ctx = bet.to_request_context()
         assert ctx is not None
         assert "description" not in ctx
+
+    def test_description_truncated_when_over_limit(self) -> None:
+        """Oversized descriptions are capped before entering request_context.
+
+        request_context rides the consensus payload, so an unbounded external
+        string is truncated to MAX_REQUEST_CONTEXT_DESCRIPTION_LEN.
+        """
+        original = "x" * (MAX_REQUEST_CONTEXT_DESCRIPTION_LEN + 500)
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description=original,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert len(ctx["description"]) == MAX_REQUEST_CONTEXT_DESCRIPTION_LEN
+        assert ctx["description"] == original[:MAX_REQUEST_CONTEXT_DESCRIPTION_LEN]
+
+    def test_description_at_limit_not_truncated(self) -> None:
+        """A description exactly at the limit passes through unchanged."""
+        original = "y" * MAX_REQUEST_CONTEXT_DESCRIPTION_LEN
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description=original,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["description"] == original
 
     def test_omen_bet_falls_back_to_id_when_no_condition_id(self) -> None:
         """Test that Omen bets (no condition_id) use bet.id as market_id."""

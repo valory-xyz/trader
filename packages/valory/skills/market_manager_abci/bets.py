@@ -36,6 +36,11 @@ INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
 DAY_IN_SECONDS = 24 * 60 * 60
 WEI = 10**18
+# Upper bound on the market description carried in the mech `request_context`.
+# request_context is serialized into the consensus payload, so this caps an
+# otherwise unbounded external string. Set well above the observed Gamma max
+# (~2.5k chars) so it never truncates real markets and only guards outliers.
+MAX_REQUEST_CONTEXT_DESCRIPTION_LEN = 5000
 MARKET_TO_PLATFORM = {
     "omen_subgraph": "omen",
     "polymarket_client": "polymarket",
@@ -472,6 +477,10 @@ class Bet:
         if spread is not None and not (0 <= spread <= 1):
             spread = None
 
+        description = self.description
+        if description is not None:
+            description = description[:MAX_REQUEST_CONTEXT_DESCRIPTION_LEN]
+
         context: Dict[str, Any] = {
             "market_id": market_id,
             "type": platform,
@@ -480,7 +489,7 @@ class Bet:
             "market_close_at": market_close_at,
             "amm_fee": amm_fee,
             "market_spread": spread,
-            "description": self.description,
+            "description": description,
         }
         return {k: v for k, v in context.items() if v is not None}
 
