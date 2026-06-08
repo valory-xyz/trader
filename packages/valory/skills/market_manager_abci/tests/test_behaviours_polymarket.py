@@ -1976,6 +1976,40 @@ class TestFetchMarketsFromPolymarket:
         bet_dict = result[0]
         assert bet_dict["market_spread"] == 0.04
 
+    def test_valid_market_reads_description(self) -> None:
+        """Test that description from the Gamma API response is included in bet_dict."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(
+            description="This market resolves YES if the event occurs."
+        )
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert (
+            bet_dict["description"] == "This market resolves YES if the event occurs."
+        )
+
+    def test_valid_market_missing_description_is_none(self) -> None:
+        """Test that a market without a description yields description=None in bet_dict."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market()  # no description key
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert len(result) == 1  # type: ignore[arg-type]
+        bet_dict = result[0]
+        assert bet_dict["description"] is None
+
     def test_valid_market_invalid_spread_ignored(self) -> None:
         """Test that an invalid spread value results in None."""
         behaviour = self._setup_behaviour()

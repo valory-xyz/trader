@@ -179,6 +179,9 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
+    # Polymarket-only long-form market description (resolution rules). Omen bets
+    # leave this None. Sent to the mech via `to_request_context`.
+    description: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -383,6 +386,9 @@ class Bet:
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
         self.neg_risk = bet.neg_risk
         self.poly_tags = list(bet.poly_tags)
+        # Resolution rules can be edited on Polymarket's side after discovery;
+        # refresh so already-queued bets carry the latest description.
+        self.description = bet.description
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""
@@ -474,6 +480,7 @@ class Bet:
             "market_close_at": market_close_at,
             "amm_fee": amm_fee,
             "market_spread": spread,
+            "description": self.description,
         }
         return {k: v for k, v in context.items() if v is not None}
 
