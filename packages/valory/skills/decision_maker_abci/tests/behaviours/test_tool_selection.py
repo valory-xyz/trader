@@ -266,18 +266,20 @@ class TestSelectToolWithAllowedTools:
         assert result == "tool-c"
 
 
-class TestSelectToolEmptyIntersection:
-    """Tests for _select_tool when allowed_tools has no intersection with mech_tools."""
+class TestSelectToolStaleAllowedTools:
+    """allowed_tools with no selectable overlap is relaxed, not a hard stall.
 
-    def test_returns_none_and_names_constraint(self) -> None:
-        """An unsatisfiable allowed_tools pin must fail closed.
+    Variant (b) read-side revalidation: rather than emptying ``candidate`` and
+    self-looping on ``Event.NONE``, an ``allowed_tools`` pin whose entries are
+    all outside the current selectable set (drifted out of suitability, pinned
+    through a cold-start / IPFS-outage fallback window, or no longer served) is
+    ignored for the round. The round proceeds on the full selectable set, the
+    stored pin is left intact (it re-applies once a tool is selectable again),
+    and the policy/accuracy_store is never altered.
+    """
 
-        Previously the round silently fell back to the unrestricted
-        policy, which could violate the user's pin for that iteration.
-        The warning must name the constraint (allowed_tools, not the
-        more general "ChatUI restrictions") so a user-reported "my pin
-        didn't work" can be correlated to the right config field.
-        """
+    def test_all_stale_relaxes_and_warns(self) -> None:
+        """A fully unsatisfiable pin relaxes to the full set + warns, not None."""
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
@@ -288,17 +290,20 @@ class TestSelectToolEmptyIntersection:
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(policy, "select_tool") as mock_select:
+            with patch.object(
+                policy, "select_tool", return_value="tool-a"
+            ) as mock_select:
                 result = _run_select_tool(behaviour)
 
-        assert result is None
-        mock_select.assert_not_called()
+        # Relaxed to the full selectable set rather than returning None.
+        assert result == "tool-a"
+        mock_select.assert_called_once_with(RANDOMNESS)
         behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
         warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
         assert "allowed_tools" in warning_msg
 
-    def test_original_policy_store_not_mutated_on_collapse(self) -> None:
-        """A pin-collapse round must leave the original accuracy_store untouched."""
+    def test_pin_left_intact_and_policy_untouched(self) -> None:
+        """Relaxing must mutate neither the stored pin nor the accuracy_store."""
         policy = _make_policy("tool-a", "tool-b")
         original_keys = set(policy.accuracy_store.keys())
         behaviour = _make_behaviour(
@@ -312,7 +317,64 @@ class TestSelectToolEmptyIntersection:
         ):
             _run_select_tool(behaviour)
 
+        # Non-destructive: the stored pin and the policy accuracy store are
+        # both exactly as they were.
+        pin = behaviour.shared_state.chatui_config.allowed_tools  # type: ignore[attr-defined]
+        assert pin == ["ghost-tool"]
         assert set(policy.accuracy_store.keys()) == original_keys
+
+
+class TestCandidateToolsStaleAllowedTools:
+    """`_candidate_tools` read-side handling of stale allowed_tools pins."""
+
+    def test_all_stale_returns_full_set_no_cause(self) -> None:
+        """All-stale pin: relax to the selectable set with no `cause` set.
+
+        ``cause`` staying None is what stops `_select_tool` from emitting
+        Event.NONE — i.e. no self-loop.
+        """
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"}, allowed_tools=["x", "y"])
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"a", "b"}
+        assert cause is None
+        behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_partial_stale_keeps_valid_subset_silently(self) -> None:
+        """Partial-stale pin: keep the still-selectable entries, no warning."""
+        policy = _make_policy("a", "b", "c")
+        behaviour = _make_behaviour(
+            policy, {"a", "b", "c"}, allowed_tools=["c", "ghost"]
+        )
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"c"}
+        assert cause is None
+        behaviour.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_selected_mechs_collapse_keeps_its_cause(self) -> None:
+        """A `selected_mechs` collapse is not masked by the allowed_tools relax.
+
+        When the mech pin empties `candidate` upstream, the allowed_tools block
+        is skipped (guarded on a non-empty `candidate`) so `cause` stays
+        `selected_mechs` — that stall is tracked separately (issue #991).
+        """
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(
+            policy,
+            {"a", "b"},
+            allowed_tools=["a"],
+            selected_mechs=["0xa"],
+            mechs_info=[_StubMech("0xa", {"c"})],  # serves neither a nor b
+        )
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == set()
+        assert cause == "selected_mechs"
 
 
 class _StubMech:
@@ -1138,6 +1200,53 @@ class TestCandidateToolsSuitability:
 
         assert candidate == {"a", "b"}
         assert cause is None
+
+    def test_publishes_filtered_set_to_shared_state(self) -> None:
+        """The post-suitability set is published for the ChatUI to read."""
+        policy = _make_policy("good", "bad")
+        behaviour = _make_behaviour(policy, {"good", "bad"})
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "bad": _PredictionMetadata.resolver(),
+        }
+
+        behaviour._candidate_tools()
+
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good"})
+
+    def test_published_set_is_pre_pin(self) -> None:
+        """The published set is the suitable universe, not the pinned subset.
+
+        An ``allowed_tools`` pin narrows the returned candidate but must not
+        shrink the published set — the ChatUI validates pins against the full
+        selectable universe, and the policy keeps learning across it.
+        """
+        policy = _make_policy("good", "also-good")
+        behaviour = _make_behaviour(
+            policy, {"good", "also-good"}, allowed_tools=["good"]
+        )
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "also-good": _PredictionMetadata.predictor(),
+        }
+
+        candidate, _ = behaviour._candidate_tools()
+
+        assert candidate == {"good"}  # pin applied to the returned set
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good", "also-good"})
+
+    def test_publishes_raw_set_when_classifier_cannot_run(self) -> None:
+        """With no manifest data the published set falls back to raw mech_tools."""
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"})
+        behaviour._tool_metadata = {}
+
+        behaviour._candidate_tools()
+
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"a", "b"})
 
     def test_drop_partition_separates_classifier_from_missing_manifest(
         self,

@@ -92,6 +92,7 @@ def _make_handler(
     available_tools: set = AVAILABLE_TOOLS,
     current_config: Optional[ChatuiConfig] = None,
     available_mechs: Optional[set] = None,
+    prediction_tools: Optional[set] = None,
 ) -> _TestableHttpHandler:
     """Return a _TestableHttpHandler wired with minimal mocks."""
     handler = object.__new__(_TestableHttpHandler)
@@ -106,6 +107,9 @@ def _make_handler(
 
     shared_state = MagicMock()
     shared_state.chatui_config = current_config or ChatuiConfig()
+    shared_state.available_prediction_tools = (
+        frozenset(prediction_tools) if prediction_tools is not None else None
+    )
     handler.shared_state = shared_state  # type: ignore[assignment]
 
     sync_data = MagicMock()
@@ -237,6 +241,57 @@ class TestAllowedTools:
         params, issues = handler._process_updated_agent_config({})
         assert ALLOWED_TOOLS_FIELD not in params
         handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_non_prediction_tool_rejected_when_prediction_set_published(self) -> None:
+        """A tool the classifier rejected must be unpinnable.
+
+        ``resolve-market`` is advertised on-chain (in available_mech_tools) but
+        excluded from the suitability-filtered set, so the policy would never
+        select it. Validating against the filtered set must reject the pin
+        rather than store a tool that silently stalls tool selection.
+        """
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools={"prediction-online"},
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["resolve-market"]}
+        )
+        assert len(issues) == 1
+        assert "resolve-market" in issues[0]
+        handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+        assert ALLOWED_TOOLS_FIELD not in params
+
+    def test_prediction_tool_stored_against_filtered_set(self) -> None:
+        """A tool in the suitability-filtered set must be accepted."""
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools={"prediction-online"},
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["prediction-online"]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == ["prediction-online"]
+        handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
+
+    def test_validation_falls_back_to_mech_tools_when_unpublished(self) -> None:
+        """With no filtered set published, validation uses available_mech_tools.
+
+        Guards the cold-start / V1 / manifest-failure window: the user can still
+        pin any advertised tool rather than being blocked by an absent filtered
+        set.
+        """
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools=None,
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["resolve-market"]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == ["resolve-market"]
+        handler._store_allowed_tools.assert_called_once_with(["resolve-market"])  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -794,6 +849,43 @@ class TestGetAvailableTools:
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
         assert result == AVAILABLE_TOOLS
+
+    def test_prefers_filtered_set_when_published(self) -> None:
+        """The filtered set wins over the raw synced set when present."""
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools={"prediction-online"},
+        )
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        result = handler._get_available_tools(http_msg, http_dialogue)
+        assert result == {"prediction-online"}
+
+    def test_falls_back_to_mech_tools_when_unpublished(self) -> None:
+        """With no filtered set published, return the raw synced set."""
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools=None,
+        )
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        result = handler._get_available_tools(http_msg, http_dialogue)
+        assert result == {"prediction-online", "resolve-market"}
+
+    def test_falls_back_to_mech_tools_when_published_set_empty(self) -> None:
+        """An empty published set must fall back to raw, not "reject everything".
+
+        An empty ``frozenset`` would otherwise make every pin invalid and brick
+        ``configure_strategies``; it must read as "nothing published, fall back".
+        """
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools=set(),  # published an empty frozenset
+        )
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        result = handler._get_available_tools(http_msg, http_dialogue)
+        assert result == {"prediction-online", "resolve-market"}
 
     def test_returns_none_and_sends_too_early_on_type_error(self) -> None:
         """When synchronized_data raises TypeError, return None and send 425."""
