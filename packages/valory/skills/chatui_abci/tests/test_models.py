@@ -429,6 +429,18 @@ class TestSharedStateInit:
             state = _TestableSharedState(skill_context=mock_skill_context)
         assert state._chatui_config is None
 
+    def test_init_sets_available_prediction_tools_to_none(self) -> None:
+        """__init__ must initialise available_prediction_tools to None.
+
+        The ChatUI falls back to the raw available_mech_tools set while this is
+        None, so the default must be None (not an empty set, which would read as
+        "no tools are selectable") until the decision-maker publishes.
+        """
+        mock_skill_context = MagicMock()
+        with patch.object(BaseSharedState, "__init__", return_value=None):
+            state = _TestableSharedState(skill_context=mock_skill_context)
+        assert state.available_prediction_tools is None
+
     def test_init_calls_super(self) -> None:
         """SharedState.__init__ must call BaseSharedState.__init__."""
         mock_skill_context = MagicMock()
