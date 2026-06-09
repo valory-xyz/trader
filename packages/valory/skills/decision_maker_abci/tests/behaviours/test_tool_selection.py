@@ -1150,9 +1150,8 @@ class TestCandidateToolsSuitability:
 
         behaviour._candidate_tools()
 
-        assert behaviour.shared_state.available_prediction_tools == frozenset(
-            {"good"}
-        )  # type: ignore[attr-defined]
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good"})
 
     def test_published_set_is_pre_pin(self) -> None:
         """The published set is the suitable universe, not the pinned subset.
@@ -1173,9 +1172,9 @@ class TestCandidateToolsSuitability:
         candidate, _ = behaviour._candidate_tools()
 
         assert candidate == {"good"}  # pin applied to the returned set
-        assert behaviour.shared_state.available_prediction_tools == frozenset(
-            {"good", "also-good"}
-        )  # type: ignore[attr-defined]  # published set is pre-pin
+        # published set is pre-pin (full suitable universe, not the pinned subset)
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good", "also-good"})
 
     def test_publishes_raw_set_when_classifier_cannot_run(self) -> None:
         """With no manifest data the published set falls back to raw mech_tools."""
@@ -1185,9 +1184,8 @@ class TestCandidateToolsSuitability:
 
         behaviour._candidate_tools()
 
-        assert behaviour.shared_state.available_prediction_tools == frozenset(
-            {"a", "b"}
-        )  # type: ignore[attr-defined]
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"a", "b"})
 
     def test_drop_partition_separates_classifier_from_missing_manifest(
         self,
