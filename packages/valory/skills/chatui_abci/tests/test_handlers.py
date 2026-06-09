@@ -107,9 +107,6 @@ def _make_handler(
 
     shared_state = MagicMock()
     shared_state.chatui_config = current_config or ChatuiConfig()
-    # None (default) makes _available_tools fall back to the raw
-    # available_mech_tools synced-data set; pass a set to exercise the
-    # suitability-filtered path.
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )

@@ -346,6 +346,10 @@ class HttpHandler(BaseHttpHandler):
         """
         prediction_tools = self.shared_state.available_prediction_tools
         if prediction_tools is not None:
+            # Materialise to a plain ``set``: this value is str-formatted into
+            # the LLM prompt ("Available tools: {available_tools}"), where a
+            # ``frozenset`` renders as "frozenset({...})". The copy keeps the
+            # rendering consistent with the ``available_mech_tools`` fallback.
             return set(prediction_tools)
         return self.synchronized_data.available_mech_tools
 
@@ -355,7 +359,7 @@ class HttpHandler(BaseHttpHandler):
         """Get available mech tools, handle errors if not available."""
         try:
             return self._available_tools()
-        except TypeError as e:
+        except (TypeError, AttributeError) as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
             )

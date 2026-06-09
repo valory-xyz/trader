@@ -1172,7 +1172,6 @@ class TestCandidateToolsSuitability:
         candidate, _ = behaviour._candidate_tools()
 
         assert candidate == {"good"}  # pin applied to the returned set
-        # published set is pre-pin (full suitable universe, not the pinned subset)
         published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
         assert published == frozenset({"good", "also-good"})
 

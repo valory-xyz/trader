@@ -209,9 +209,13 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         # ``candidate`` here is the suitability-filtered universe with the
         # raw-set fallback already applied above, so a manifest outage degrades
         # to the full set rather than blocking the user from pinning anything.
-        # The user pins (selected_mechs / allowed_tools) applied below stay
-        # non-destructive at the selection layer, so the policy keeps learning
-        # across the full ``mech_tools`` set regardless of this published view.
+        # It is only ever empty if ``mech_tools`` itself is empty (no tools
+        # discovered); the ``None`` default on the shared field instead means
+        # "not published yet, fall back to ``available_mech_tools``".
+        # Publishing pre-pin is deliberate: the user pins applied below do not
+        # mutate the main policy object — only an ephemeral deepcopy is
+        # restricted in ``_select_tool`` — so accuracy keeps accumulating across
+        # all tools between rounds.
         self.shared_state.available_prediction_tools = frozenset(candidate)
 
         selected_mechs = self.shared_state.chatui_config.selected_mechs
