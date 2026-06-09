@@ -36,6 +36,11 @@ INFO_UTILITY_FIELD = "info_utility"
 BINARY_N_SLOTS = 2
 DAY_IN_SECONDS = 24 * 60 * 60
 WEI = 10**18
+# Upper bound on the market description carried in the mech `request_context`.
+# request_context is serialized into the consensus payload, so this caps an
+# otherwise unbounded external string. Set well above the observed Gamma max
+# (~2.5k chars) so it never truncates real markets and only guards outliers.
+MAX_REQUEST_CONTEXT_DESCRIPTION_LEN = 5000
 MARKET_TO_PLATFORM = {
     "omen_subgraph": "omen",
     "polymarket_client": "polymarket",
@@ -179,6 +184,9 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
+    # Polymarket-only long-form market description (resolution rules). Omen bets
+    # leave this None. Sent to the mech via `to_request_context`.
+    description: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -383,6 +391,9 @@ class Bet:
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
         self.neg_risk = bet.neg_risk
         self.poly_tags = list(bet.poly_tags)
+        # Resolution rules can be edited on Polymarket's side after discovery;
+        # refresh so already-queued bets carry the latest description.
+        self.description = bet.description
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""
@@ -466,6 +477,10 @@ class Bet:
         if spread is not None and not (0 <= spread <= 1):
             spread = None
 
+        description = self.description
+        if description is not None:
+            description = description[:MAX_REQUEST_CONTEXT_DESCRIPTION_LEN]
+
         context: Dict[str, Any] = {
             "market_id": market_id,
             "type": platform,
@@ -474,6 +489,7 @@ class Bet:
             "market_close_at": market_close_at,
             "amm_fee": amm_fee,
             "market_spread": spread,
+            "description": description,
         }
         return {k: v for k, v in context.items() if v is not None}
 

@@ -32,6 +32,7 @@ from packages.valory.skills.market_manager_abci.bets import (
     BinaryOutcome,
     DAY_IN_SECONDS,
     MARKET_TO_PLATFORM,
+    MAX_REQUEST_CONTEXT_DESCRIPTION_LEN,
     PredictionResponse,
     QueueStatus,
     get_default_prediction_response,
@@ -724,6 +725,18 @@ class TestBetUpdateMarketInfo:
         existing.update_market_info(incoming)
         assert existing.poly_tags == ["politics", "trump-iran"]
 
+    def test_update_market_info_overwrites_description(self) -> None:
+        """update_market_info refreshes description from the incoming bet.
+
+        Polymarket resolution rules live in the market description and can be
+        edited mid-life; overwriting on each refresh keeps already-queued bets
+        current rather than pinned to the description seen at discovery.
+        """
+        existing = _make_bet(id="b1", description="old resolution rules")
+        incoming = _make_bet(id="b1", description="new resolution rules")
+        existing.update_market_info(incoming)
+        assert existing.description == "new resolution rules"
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""
@@ -1014,6 +1027,25 @@ class TestBetsDecoder:
         assert isinstance(decoded, Bet)
         assert decoded.poly_tags == ["politics", "trump-iran"]
 
+    def test_old_json_without_description_deserializes(self) -> None:
+        """Legacy bet JSON missing description should deserialize with None default."""
+        bet = _make_bet()
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        data = json.loads(encoded)
+        data.pop("description", None)
+        legacy_json = json.dumps(data)
+        decoded = json.loads(legacy_json, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.description is None
+
+    def test_new_json_with_description_round_trips(self) -> None:
+        """New bet JSON with description should round-trip correctly."""
+        bet = _make_bet(description="resolution rules here")
+        encoded = json.dumps(bet, cls=BetsEncoder)
+        decoded = json.loads(encoded, cls=BetsDecoder)
+        assert isinstance(decoded, Bet)
+        assert decoded.description == "resolution rules here"
+
 
 # ===========================================================================
 # 8. serialize_bets
@@ -1114,6 +1146,57 @@ class TestBetToRequestContext:
         assert ctx["market_liquidity_usd"] == 450000.0
         assert ctx["market_spread"] == 0.03
         assert "amm_fee" not in ctx
+
+    def test_polymarket_bet_includes_description(self) -> None:
+        """Test that a Polymarket bet's description is included in request_context."""
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description="This market resolves YES if the event occurs.",
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["description"] == "This market resolves YES if the event occurs."
+
+    def test_description_omitted_when_none(self) -> None:
+        """Test that a bet without a description omits it from request_context."""
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description=None,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert "description" not in ctx
+
+    def test_description_truncated_when_over_limit(self) -> None:
+        """Oversized descriptions are capped before entering request_context.
+
+        request_context rides the consensus payload, so an unbounded external
+        string is truncated to MAX_REQUEST_CONTEXT_DESCRIPTION_LEN.
+        """
+        original = "x" * (MAX_REQUEST_CONTEXT_DESCRIPTION_LEN + 500)
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description=original,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert len(ctx["description"]) == MAX_REQUEST_CONTEXT_DESCRIPTION_LEN
+        assert ctx["description"] == original[:MAX_REQUEST_CONTEXT_DESCRIPTION_LEN]
+
+    def test_description_at_limit_not_truncated(self) -> None:
+        """A description exactly at the limit passes through unchanged."""
+        original = "y" * MAX_REQUEST_CONTEXT_DESCRIPTION_LEN
+        bet = _make_bet(
+            market="polymarket_client",
+            condition_id="0xcond",
+            description=original,
+        )
+        ctx = bet.to_request_context()
+        assert ctx is not None
+        assert ctx["description"] == original
 
     def test_omen_bet_falls_back_to_id_when_no_condition_id(self) -> None:
         """Test that Omen bets (no condition_id) use bet.id as market_id."""
