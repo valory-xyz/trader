@@ -329,12 +329,32 @@ class HttpHandler(BaseHttpHandler):
         """
         return self.synchronized_data.available_valid_mechs
 
+    def _available_tools(self) -> Set[str]:
+        """Resolve the user-selectable mech tool set.
+
+        Prefers the suitability-filtered set the decision-maker's
+        ToolSelectionBehaviour publishes on shared state
+        (``available_prediction_tools``) so the ChatUI displays and validates
+        tool pins against the same universe the policy can actually select
+        from. Falls back to the raw ``available_mech_tools`` synced-data set
+        when the filtered set has not been published yet: cold start before the
+        first ``ToolSelectionRound``, a round where every manifest fetch failed,
+        or the V1 marketplace path (which has no classifier and already filters
+        at the feed point).
+
+        :return: the set of tool names the user may pin / that are advertised.
+        """
+        prediction_tools = self.shared_state.available_prediction_tools
+        if prediction_tools is not None:
+            return set(prediction_tools)
+        return self.synchronized_data.available_mech_tools
+
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> Optional[Set[str]]:
         """Get available mech tools, handle errors if not available."""
         try:
-            return self.synchronized_data.available_mech_tools
+            return self._available_tools()
         except TypeError as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
@@ -483,7 +503,7 @@ class HttpHandler(BaseHttpHandler):
             self._store_allowed_tools(None)
 
         elif updated_allowed_tools is not None:
-            available = self.synchronized_data.available_mech_tools
+            available = self._available_tools()
             unknown = [t for t in updated_allowed_tools if t not in available]
             valid = [t for t in updated_allowed_tools if t in available]
             if unknown:

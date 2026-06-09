@@ -204,6 +204,16 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                     "can proceed."
                 )
 
+        # Publish the post-suitability, pre-pin set for the ChatUI to validate
+        # and display tool pins against (see chatui handler ``_available_tools``).
+        # ``candidate`` here is the suitability-filtered universe with the
+        # raw-set fallback already applied above, so a manifest outage degrades
+        # to the full set rather than blocking the user from pinning anything.
+        # The user pins (selected_mechs / allowed_tools) applied below stay
+        # non-destructive at the selection layer, so the policy keeps learning
+        # across the full ``mech_tools`` set regardless of this published view.
+        self.shared_state.available_prediction_tools = frozenset(candidate)
+
         selected_mechs = self.shared_state.chatui_config.selected_mechs
         if selected_mechs and not self.benchmarking_mode.enabled:
             selected_lower = {m.lower() for m in selected_mechs}

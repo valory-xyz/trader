@@ -1139,6 +1139,56 @@ class TestCandidateToolsSuitability:
         assert candidate == {"a", "b"}
         assert cause is None
 
+    def test_publishes_filtered_set_to_shared_state(self) -> None:
+        """The post-suitability set is published for the ChatUI to read."""
+        policy = _make_policy("good", "bad")
+        behaviour = _make_behaviour(policy, {"good", "bad"})
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "bad": _PredictionMetadata.resolver(),
+        }
+
+        behaviour._candidate_tools()
+
+        assert behaviour.shared_state.available_prediction_tools == frozenset(
+            {"good"}
+        )  # type: ignore[attr-defined]
+
+    def test_published_set_is_pre_pin(self) -> None:
+        """The published set is the suitable universe, not the pinned subset.
+
+        An ``allowed_tools`` pin narrows the returned candidate but must not
+        shrink the published set — the ChatUI validates pins against the full
+        selectable universe, and the policy keeps learning across it.
+        """
+        policy = _make_policy("good", "also-good")
+        behaviour = _make_behaviour(
+            policy, {"good", "also-good"}, allowed_tools=["good"]
+        )
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "also-good": _PredictionMetadata.predictor(),
+        }
+
+        candidate, _ = behaviour._candidate_tools()
+
+        assert candidate == {"good"}  # pin applied to the returned set
+        assert behaviour.shared_state.available_prediction_tools == frozenset(
+            {"good", "also-good"}
+        )  # type: ignore[attr-defined]  # published set is pre-pin
+
+    def test_publishes_raw_set_when_classifier_cannot_run(self) -> None:
+        """With no manifest data the published set falls back to raw mech_tools."""
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"})
+        behaviour._tool_metadata = {}
+
+        behaviour._candidate_tools()
+
+        assert behaviour.shared_state.available_prediction_tools == frozenset(
+            {"a", "b"}
+        )  # type: ignore[attr-defined]
+
     def test_drop_partition_separates_classifier_from_missing_manifest(
         self,
     ) -> None:
