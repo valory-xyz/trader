@@ -872,6 +872,21 @@ class TestGetAvailableTools:
         result = handler._get_available_tools(http_msg, http_dialogue)
         assert result == {"prediction-online", "resolve-market"}
 
+    def test_falls_back_to_mech_tools_when_published_set_empty(self) -> None:
+        """An empty published set must fall back to raw, not "reject everything".
+
+        An empty ``frozenset`` would otherwise make every pin invalid and brick
+        ``configure_strategies``; it must read as "nothing published, fall back".
+        """
+        handler = _make_handler(
+            available_tools={"prediction-online", "resolve-market"},
+            prediction_tools=set(),  # published an empty frozenset
+        )
+        http_msg = MagicMock()
+        http_dialogue = MagicMock()
+        result = handler._get_available_tools(http_msg, http_dialogue)
+        assert result == {"prediction-online", "resolve-market"}
+
     def test_returns_none_and_sends_too_early_on_type_error(self) -> None:
         """When synchronized_data raises TypeError, return None and send 425."""
         handler = _make_handler()

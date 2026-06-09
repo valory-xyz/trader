@@ -232,10 +232,28 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 cause = "selected_mechs"
 
         allowed_tools = self.shared_state.chatui_config.allowed_tools
-        if allowed_tools:
-            candidate &= set(allowed_tools)
-            if not candidate and cause is None:
-                cause = "allowed_tools"
+        if allowed_tools and candidate:
+            # Non-destructive read-side revalidation. Intersect only with the
+            # pinned tools that are actually selectable this round. If every
+            # pinned tool has dropped out of the selectable set -- drifted out
+            # of suitability, pinned through a cold-start / IPFS-outage fallback
+            # window, or the serving mechs stopped offering it -- ignore the pin
+            # this round so the round proceeds instead of self-looping on
+            # Event.NONE. The stored pin is left untouched (it re-applies
+            # automatically once a pinned tool becomes selectable again) and the
+            # policy/accuracy_store is never altered. Genuine mech-pin conflicts
+            # that empty ``candidate`` upstream keep their ``selected_mechs``
+            # cause (handled separately; see issue #991).
+            effective = candidate & set(allowed_tools)
+            if effective:
+                candidate = effective
+            else:
+                self.context.logger.warning(
+                    f"None of the pinned allowed_tools {sorted(allowed_tools)} "
+                    "are in the current selectable set; ignoring the tool pin "
+                    "this round so selection can proceed. The pin is left intact "
+                    "and re-applies once a pinned tool becomes selectable again."
+                )
 
         return candidate, cause
 
@@ -243,6 +261,14 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         """Pick a tool via e-greedy policy on the candidate set."""
         success = yield from self._setup_policy_and_tools()
         if not success:
+            # No tools available this round (transient mech-info outage, V2 cold
+            # start before MechInformationRound, etc.), so ``_candidate_tools``
+            # does not run and ``available_prediction_tools`` is left at its
+            # prior value. That is deliberate: leaving the last-known-good set is
+            # safer than clearing it, since clearing makes the ChatUI fall back
+            # to the raw ``available_mech_tools`` (re-exposing unsuitable tools).
+            # Any pin that goes stale in the meantime is caught non-destructively
+            # by the read-side revalidation in ``_candidate_tools`` next round.
             return None
 
         yield from self._fetch_mech_manifests()

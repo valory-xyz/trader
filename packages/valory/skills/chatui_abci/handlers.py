@@ -337,15 +337,17 @@ class HttpHandler(BaseHttpHandler):
         (``available_prediction_tools``) so the ChatUI displays and validates
         tool pins against the same universe the policy can actually select
         from. Falls back to the raw ``available_mech_tools`` synced-data set
-        when the filtered set has not been published yet: cold start before the
-        first ``ToolSelectionRound``, a round where every manifest fetch failed,
-        or the V1 marketplace path (which has no classifier and already filters
-        at the feed point).
+        when the filtered set has not been published *or is empty*: cold start
+        before the first ``ToolSelectionRound``, a round where every manifest
+        fetch failed, or the V1 marketplace path (which has no classifier and
+        already filters at the feed point). The empty-set case falls back too —
+        an empty ``frozenset`` ("nothing selectable") must not be read as a hard
+        "reject every pin", which would brick ``configure_strategies``.
 
         :return: the set of tool names the user may pin / that are advertised.
         """
         prediction_tools = self.shared_state.available_prediction_tools
-        if prediction_tools is not None:
+        if prediction_tools:
             # Materialise to a plain ``set``: this value is str-formatted into
             # the LLM prompt ("Available tools: {available_tools}"), where a
             # ``frozenset`` renders as "frozenset({...})". The copy keeps the
