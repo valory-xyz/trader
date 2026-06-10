@@ -40,8 +40,8 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeiaxn7lofhbwjwbm5x6i47k2s5u4f3o3xcs4zek3agwgatwwknu5iu
   behaviours/sampling.py: bafybeiao42cxdrkkgfxdyknrkpqn5vrjn7v7swsxtvbqjlmrnltwb4mcvq
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeigmn4rtipozbcnt5t2ihbk6nxfxbukidkqufpinu25ve4fk24hzle
-  behaviours/tool_selection.py: bafybeifqbmr24rqer2jpznladdlo4r7eosu4c567fccvel7566viuvtvni
+  behaviours/storage_manager.py: bafybeihg6yy73dbivmgioynhvup3afp45pxe6t2apbcn4pabqlicebko5y
+  behaviours/tool_selection.py: bafybeieogfwehxkac4mfqxtichutbfr3h7b5zrrfccvn2rvm5yvvzlhifm
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeicqku5zjvyyvg3qz3x3yxrkq7ilsnpj5rorw5ehw5ecddmg24o7fa
   handlers.py: bafybeiebvaqc45rkq6shz6tcpbtezgbkhn2d2tkdxwgcdpnl2ycewrgmee
@@ -114,7 +114,7 @@ fingerprint:
   tests/behaviours/test_sampling.py: bafybeihoaia5n72wkecykqktle2hffeovwzs3mbm47krlosem3rgmjfcym
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
   tests/behaviours/test_storage_manager.py: bafybeigcqkys5jqioxvu7auvbkozz4stc6o5h2xp6ssavaznjtwykn3pwi
-  tests/behaviours/test_tool_selection.py: bafybeihy3d2tj3lyosju5thmcq7ukwedc7nwq2tttog7stavk6dx6t7jnu
+  tests/behaviours/test_tool_selection.py: bafybeietrj23srx2s2ukrpie7wec5x5uzcslpaiaati2qaz3pgxih5lwky
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
   tests/io_/test_loader.py: bafybeidd2zyzrhhxv75ijofg7mqzobmf4yu32lsscqdi3zd3hwlrwe2kne
