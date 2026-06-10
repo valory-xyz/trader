@@ -600,11 +600,21 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         Gated on ``is None`` so ``ToolSelectionRound``'s richer per-round publish
         (with its mech/tool-pin narrowing) wins whenever the agent is actually
-        trading; this only fills the stop-trading gap and re-runs each boot
-        because ``is_policy_set`` resets. V2-only (the classifier needs the mech
-        manifest) and skipped in benchmarking mode. On a manifest fetch failure
-        or an all-unsuitable verdict it leaves the field unpublished, so the
-        ChatUI degrades to the raw set rather than hiding every tool.
+        trading; this only fills the stop-trading gap. The ``is None`` gate is
+        what makes it re-run once per boot: ``available_prediction_tools`` is
+        in-memory shared state, so it is ``None`` again after any restart. (On a
+        Tendermint-reset restart ``is_policy_set`` also resets, routing the
+        redeem behaviour through ``super()``; on a db-replay restart it does not,
+        which is why the redeem overrides also call this from their
+        ``is_policy_set`` short-circuit branch.)
+
+        V2-only (the classifier needs the mech manifest) and skipped in
+        benchmarking mode. It now sits on the redeem path, so a persistent IPFS
+        outage costs up to ``retries`` x ``rpc_sleep_time`` per manifest CID
+        before the redeem behaviour can proceed -- tune ``retries`` if that boot
+        stall matters. On a manifest fetch failure or an all-unsuitable verdict
+        it leaves the field unpublished (both cases logged), so the ChatUI
+        degrades to the raw set rather than hiding every tool.
         ``available_mech_tools`` is never narrowed here, so the e-greedy policy
         keeps learning across all tools.
 
@@ -615,6 +625,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if not self.synchronized_data.is_marketplace_v2:
             return
         if self.benchmarking_mode.enabled:
+            return
+        # The redeem short-circuit can call this with an empty tool set; guard
+        # before the fetch so the `self.mech_tools` property below never raises.
+        if not self._mech_tools:
             return
 
         yield from self._fetch_mech_manifests()
@@ -627,6 +641,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             if is_prediction_tool(self._tool_metadata.get(tool))
         }
         if not suitable:
+            self.context.logger.warning(
+                f"Tool-suitability classifier marked all {len(self.mech_tools)} "
+                "tool(s) as unsuitable during setup; the ChatUI will fall back "
+                "to the raw mech_tools set."
+            )
             return
 
         self.context.logger.info(

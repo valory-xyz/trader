@@ -127,9 +127,12 @@ def _make_behaviour(
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy / mech_tools / classifier cache. `object.__new__` above skips
-    # __init__, so we set `_tool_metadata` explicitly.
+    # __init__, so we set `_tool_metadata` explicitly. `mech_tools` is shadowed
+    # by a plain attr on the double, so set the `_mech_tools` backing field too
+    # for code (e.g. the empty-tools guard) that reads it directly.
     behaviour.policy = policy  # type: ignore[assignment]
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
+    behaviour._mech_tools = mech_tools  # type: ignore[attr-defined]
     behaviour._tool_metadata = {}  # type: ignore[attr-defined]
 
     return behaviour
@@ -1394,7 +1397,7 @@ class TestMaybePublishSuitableTools:
         assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
 
     def test_no_publish_when_all_unsuitable(self) -> None:
-        """If every raw tool is unsuitable, keep None so ChatUI falls back to raw."""
+        """If every raw tool is unsuitable, keep None (logged) so ChatUI falls back."""
         behaviour = _make_behaviour(_make_policy("resolver"), {"resolver"})
         behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
         behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
@@ -1402,4 +1405,23 @@ class TestMaybePublishSuitableTools:
 
         _drive_publish(behaviour)
 
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+        # The all-unsuitable path must be observable, not silent.
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("marked all 1 tool(s) as unsuitable" in msg for msg in warnings)
+
+    def test_skips_when_no_mech_tools(self) -> None:
+        """An empty mech_tools set (e.g. redeem short-circuit) short-circuits safely."""
+        behaviour = _make_behaviour(_make_policy("predictor"), set())
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        # Guarded before the fetch; never touches the raising mech_tools property.
+        assert called[0] is False
         assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]

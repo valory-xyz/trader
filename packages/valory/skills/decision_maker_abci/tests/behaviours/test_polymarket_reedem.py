@@ -390,6 +390,36 @@ class TestSetupPolicyAndTools:
         assert result is True
         assert behaviour._policy is mock_policy
 
+    def test_short_circuit_publishes_suitable_tools(self) -> None:
+        """The is_policy_set short-circuit must still publish for the ChatUI."""
+        behaviour = _make_behaviour()
+        called = []
+
+        def fake_publish():  # type: ignore[no-untyped-def]
+            """Spy standing in for _maybe_publish_suitable_tools."""
+            called.append(True)
+            yield
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(
+                is_policy_set=True,
+                policy=_make_policy(),
+                available_mech_tools={"tool1"},
+            )
+            behaviour._maybe_publish_suitable_tools = fake_publish  # type: ignore[method-assign]
+            gen = behaviour._setup_policy_and_tools()
+            result = None
+            try:
+                while True:
+                    next(gen)
+            except StopIteration as e:
+                result = e.value
+
+        assert result is True
+        assert called == [True]
+
     def test_falls_back_to_super_when_policy_not_set(self) -> None:
         """Should call super()._setup_policy_and_tools when is_policy_set is False."""
         behaviour = _make_behaviour()
