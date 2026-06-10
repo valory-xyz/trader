@@ -20,7 +20,7 @@
 """Tests for ToolSelectionBehaviour._select_tool and async_act."""
 
 import json
-from typing import Any, Callable, Generator, List, Optional
+from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import CID_PREFIX
@@ -127,9 +127,12 @@ def _make_behaviour(
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy / mech_tools / classifier cache. `object.__new__` above skips
-    # __init__, so we set `_tool_metadata` explicitly.
+    # __init__, so we set `_tool_metadata` explicitly. `mech_tools` is shadowed
+    # by a plain attr on the double, so set the `_mech_tools` backing field too
+    # for code (e.g. the empty-tools guard) that reads it directly.
     behaviour.policy = policy  # type: ignore[assignment]
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
+    behaviour._mech_tools = mech_tools  # type: ignore[attr-defined]
     behaviour._tool_metadata = {}  # type: ignore[attr-defined]
 
     return behaviour
@@ -1282,3 +1285,143 @@ class TestCandidateToolsSuitability:
             "no manifest data was available" in msg and "ghost" in msg
             for msg in warnings
         )
+
+
+# ---------------------------------------------------------------------------
+# _maybe_publish_suitable_tools — the stop-trading publish path.
+#
+# Lives on StorageManagerBehaviour (the shared base) so the redeem path
+# publishes the suitability-filtered set even when ToolSelectionRound never
+# runs. Exercised here through ToolSelectionBehaviour, which inherits it.
+# ---------------------------------------------------------------------------
+
+
+def _drive_publish(behaviour: "ToolSelectionBehaviour") -> None:
+    """Drive _maybe_publish_suitable_tools() to completion."""
+    gen = behaviour._maybe_publish_suitable_tools()
+    try:
+        while True:
+            next(gen)
+    except StopIteration:
+        pass
+
+
+def _stub_fetch(
+    behaviour: "_TestableBehaviour", metadata: Dict[str, Dict[str, Any]]
+) -> List[bool]:
+    """Stub _fetch_mech_manifests to seed _tool_metadata; returns a run flag."""
+    # The returned single-element list flips to True when the stub runs, so a
+    # test can assert whether the (expensive) fetch was reached or skipped.
+    called = [False]
+
+    def _gen() -> Generator[None, None, None]:
+        called[0] = True
+        behaviour._tool_metadata = dict(metadata)  # type: ignore[attr-defined]
+        return
+        yield  # make it a generator function
+
+    behaviour._fetch_mech_manifests = _gen  # type: ignore[assignment,method-assign]
+    return called
+
+
+class TestMaybePublishSuitableTools:
+    """The setup-path publish that covers the stop-trading window."""
+
+    def _v2_behaviour(self) -> "_TestableBehaviour":
+        behaviour = _make_behaviour(
+            _make_policy("predictor"), {"predictor", "resolver"}
+        )
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        return behaviour
+
+    def test_publishes_suitable_subset_when_unset(self) -> None:
+        """A v2 boot with no prior publish narrows raw -> suitable and publishes."""
+        behaviour = self._v2_behaviour()
+        called = _stub_fetch(
+            behaviour,
+            {
+                "predictor": _PredictionMetadata.predictor(),
+                "resolver": _PredictionMetadata.resolver(),
+            },
+        )
+
+        _drive_publish(behaviour)
+
+        assert called[0] is True
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"predictor"})
+
+    def test_skips_and_keeps_value_when_already_published(self) -> None:
+        """An already-populated set (e.g. ToolSelectionRound this boot) is not touched."""
+        behaviour = self._v2_behaviour()
+        behaviour.shared_state.available_prediction_tools = frozenset({"predictor"})  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        # No re-fetch, value left intact.
+        assert called[0] is False
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"predictor"})
+
+    def test_skips_for_marketplace_v1(self) -> None:
+        """v1 has no manifest classifier; never publish, never fetch."""
+        behaviour = self._v2_behaviour()
+        behaviour.synchronized_data.is_marketplace_v2 = False  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_skips_when_benchmarking(self) -> None:
+        """Benchmarking mode short-circuits the fetch and the publish."""
+        behaviour = self._v2_behaviour()
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_no_publish_on_fetch_failure(self) -> None:
+        """An empty metadata cache (IPFS outage) leaves the field unpublished."""
+        behaviour = self._v2_behaviour()
+        _stub_fetch(behaviour, {})  # fetch yields no metadata
+
+        _drive_publish(behaviour)
+
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_no_publish_when_all_unsuitable(self) -> None:
+        """If every raw tool is unsuitable, keep None (logged) so ChatUI falls back."""
+        behaviour = _make_behaviour(_make_policy("resolver"), {"resolver"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        _stub_fetch(behaviour, {"resolver": _PredictionMetadata.resolver()})
+
+        _drive_publish(behaviour)
+
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+        # The all-unsuitable path must be observable, not silent.
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("marked all 1 tool(s) as unsuitable" in msg for msg in warnings)
+
+    def test_skips_when_no_mech_tools(self) -> None:
+        """An empty mech_tools set (e.g. redeem short-circuit) short-circuits safely."""
+        behaviour = _make_behaviour(_make_policy("predictor"), set())
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        # Guarded before the fetch; never touches the raising mech_tools property.
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
