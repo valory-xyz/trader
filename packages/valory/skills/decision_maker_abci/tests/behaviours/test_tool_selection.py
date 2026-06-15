@@ -20,7 +20,7 @@
 """Tests for ToolSelectionBehaviour._select_tool and async_act."""
 
 import json
-from typing import Any, Callable, Generator, List, Optional
+from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import CID_PREFIX
@@ -127,9 +127,12 @@ def _make_behaviour(
     behaviour.shared_state = shared_state  # type: ignore[assignment]
 
     # policy / mech_tools / classifier cache. `object.__new__` above skips
-    # __init__, so we set `_tool_metadata` explicitly.
+    # __init__, so we set `_tool_metadata` explicitly. `mech_tools` is shadowed
+    # by a plain attr on the double, so set the `_mech_tools` backing field too
+    # for code (e.g. the empty-tools guard) that reads it directly.
     behaviour.policy = policy  # type: ignore[assignment]
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
+    behaviour._mech_tools = mech_tools  # type: ignore[attr-defined]
     behaviour._tool_metadata = {}  # type: ignore[attr-defined]
 
     return behaviour
@@ -266,18 +269,20 @@ class TestSelectToolWithAllowedTools:
         assert result == "tool-c"
 
 
-class TestSelectToolEmptyIntersection:
-    """Tests for _select_tool when allowed_tools has no intersection with mech_tools."""
+class TestSelectToolStaleAllowedTools:
+    """allowed_tools with no selectable overlap is relaxed, not a hard stall.
 
-    def test_returns_none_and_names_constraint(self) -> None:
-        """An unsatisfiable allowed_tools pin must fail closed.
+    Variant (b) read-side revalidation: rather than emptying ``candidate`` and
+    self-looping on ``Event.NONE``, an ``allowed_tools`` pin whose entries are
+    all outside the current selectable set (drifted out of suitability, pinned
+    through a cold-start / IPFS-outage fallback window, or no longer served) is
+    ignored for the round. The round proceeds on the full selectable set, the
+    stored pin is left intact (it re-applies once a tool is selectable again),
+    and the policy/accuracy_store is never altered.
+    """
 
-        Previously the round silently fell back to the unrestricted
-        policy, which could violate the user's pin for that iteration.
-        The warning must name the constraint (allowed_tools, not the
-        more general "ChatUI restrictions") so a user-reported "my pin
-        didn't work" can be correlated to the right config field.
-        """
+    def test_all_stale_relaxes_and_warns(self) -> None:
+        """A fully unsatisfiable pin relaxes to the full set + warns, not None."""
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
@@ -288,17 +293,20 @@ class TestSelectToolEmptyIntersection:
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(policy, "select_tool") as mock_select:
+            with patch.object(
+                policy, "select_tool", return_value="tool-a"
+            ) as mock_select:
                 result = _run_select_tool(behaviour)
 
-        assert result is None
-        mock_select.assert_not_called()
+        # Relaxed to the full selectable set rather than returning None.
+        assert result == "tool-a"
+        mock_select.assert_called_once_with(RANDOMNESS)
         behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
         warning_msg: str = behaviour.context.logger.warning.call_args[0][0]  # type: ignore[attr-defined]
         assert "allowed_tools" in warning_msg
 
-    def test_original_policy_store_not_mutated_on_collapse(self) -> None:
-        """A pin-collapse round must leave the original accuracy_store untouched."""
+    def test_pin_left_intact_and_policy_untouched(self) -> None:
+        """Relaxing must mutate neither the stored pin nor the accuracy_store."""
         policy = _make_policy("tool-a", "tool-b")
         original_keys = set(policy.accuracy_store.keys())
         behaviour = _make_behaviour(
@@ -312,7 +320,64 @@ class TestSelectToolEmptyIntersection:
         ):
             _run_select_tool(behaviour)
 
+        # Non-destructive: the stored pin and the policy accuracy store are
+        # both exactly as they were.
+        pin = behaviour.shared_state.chatui_config.allowed_tools  # type: ignore[attr-defined]
+        assert pin == ["ghost-tool"]
         assert set(policy.accuracy_store.keys()) == original_keys
+
+
+class TestCandidateToolsStaleAllowedTools:
+    """`_candidate_tools` read-side handling of stale allowed_tools pins."""
+
+    def test_all_stale_returns_full_set_no_cause(self) -> None:
+        """All-stale pin: relax to the selectable set with no `cause` set.
+
+        ``cause`` staying None is what stops `_select_tool` from emitting
+        Event.NONE — i.e. no self-loop.
+        """
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"}, allowed_tools=["x", "y"])
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"a", "b"}
+        assert cause is None
+        behaviour.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_partial_stale_keeps_valid_subset_silently(self) -> None:
+        """Partial-stale pin: keep the still-selectable entries, no warning."""
+        policy = _make_policy("a", "b", "c")
+        behaviour = _make_behaviour(
+            policy, {"a", "b", "c"}, allowed_tools=["c", "ghost"]
+        )
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {"c"}
+        assert cause is None
+        behaviour.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_selected_mechs_collapse_keeps_its_cause(self) -> None:
+        """A `selected_mechs` collapse is not masked by the allowed_tools relax.
+
+        When the mech pin empties `candidate` upstream, the allowed_tools block
+        is skipped (guarded on a non-empty `candidate`) so `cause` stays
+        `selected_mechs` — that stall is tracked separately (issue #991).
+        """
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(
+            policy,
+            {"a", "b"},
+            allowed_tools=["a"],
+            selected_mechs=["0xa"],
+            mechs_info=[_StubMech("0xa", {"c"})],  # serves neither a nor b
+        )
+
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == set()
+        assert cause == "selected_mechs"
 
 
 class _StubMech:
@@ -1139,6 +1204,53 @@ class TestCandidateToolsSuitability:
         assert candidate == {"a", "b"}
         assert cause is None
 
+    def test_publishes_filtered_set_to_shared_state(self) -> None:
+        """The post-suitability set is published for the ChatUI to read."""
+        policy = _make_policy("good", "bad")
+        behaviour = _make_behaviour(policy, {"good", "bad"})
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "bad": _PredictionMetadata.resolver(),
+        }
+
+        behaviour._candidate_tools()
+
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good"})
+
+    def test_published_set_is_pre_pin(self) -> None:
+        """The published set is the suitable universe, not the pinned subset.
+
+        An ``allowed_tools`` pin narrows the returned candidate but must not
+        shrink the published set — the ChatUI validates pins against the full
+        selectable universe, and the policy keeps learning across it.
+        """
+        policy = _make_policy("good", "also-good")
+        behaviour = _make_behaviour(
+            policy, {"good", "also-good"}, allowed_tools=["good"]
+        )
+        behaviour._tool_metadata = {
+            "good": _PredictionMetadata.predictor(),
+            "also-good": _PredictionMetadata.predictor(),
+        }
+
+        candidate, _ = behaviour._candidate_tools()
+
+        assert candidate == {"good"}  # pin applied to the returned set
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"good", "also-good"})
+
+    def test_publishes_raw_set_when_classifier_cannot_run(self) -> None:
+        """With no manifest data the published set falls back to raw mech_tools."""
+        policy = _make_policy("a", "b")
+        behaviour = _make_behaviour(policy, {"a", "b"})
+        behaviour._tool_metadata = {}
+
+        behaviour._candidate_tools()
+
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"a", "b"})
+
     def test_drop_partition_separates_classifier_from_missing_manifest(
         self,
     ) -> None:
@@ -1173,3 +1285,143 @@ class TestCandidateToolsSuitability:
             "no manifest data was available" in msg and "ghost" in msg
             for msg in warnings
         )
+
+
+# ---------------------------------------------------------------------------
+# _maybe_publish_suitable_tools — the stop-trading publish path.
+#
+# Lives on StorageManagerBehaviour (the shared base) so the redeem path
+# publishes the suitability-filtered set even when ToolSelectionRound never
+# runs. Exercised here through ToolSelectionBehaviour, which inherits it.
+# ---------------------------------------------------------------------------
+
+
+def _drive_publish(behaviour: "ToolSelectionBehaviour") -> None:
+    """Drive _maybe_publish_suitable_tools() to completion."""
+    gen = behaviour._maybe_publish_suitable_tools()
+    try:
+        while True:
+            next(gen)
+    except StopIteration:
+        pass
+
+
+def _stub_fetch(
+    behaviour: "_TestableBehaviour", metadata: Dict[str, Dict[str, Any]]
+) -> List[bool]:
+    """Stub _fetch_mech_manifests to seed _tool_metadata; returns a run flag."""
+    # The returned single-element list flips to True when the stub runs, so a
+    # test can assert whether the (expensive) fetch was reached or skipped.
+    called = [False]
+
+    def _gen() -> Generator[None, None, None]:
+        called[0] = True
+        behaviour._tool_metadata = dict(metadata)  # type: ignore[attr-defined]
+        return
+        yield  # make it a generator function
+
+    behaviour._fetch_mech_manifests = _gen  # type: ignore[assignment,method-assign]
+    return called
+
+
+class TestMaybePublishSuitableTools:
+    """The setup-path publish that covers the stop-trading window."""
+
+    def _v2_behaviour(self) -> "_TestableBehaviour":
+        behaviour = _make_behaviour(
+            _make_policy("predictor"), {"predictor", "resolver"}
+        )
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        return behaviour
+
+    def test_publishes_suitable_subset_when_unset(self) -> None:
+        """A v2 boot with no prior publish narrows raw -> suitable and publishes."""
+        behaviour = self._v2_behaviour()
+        called = _stub_fetch(
+            behaviour,
+            {
+                "predictor": _PredictionMetadata.predictor(),
+                "resolver": _PredictionMetadata.resolver(),
+            },
+        )
+
+        _drive_publish(behaviour)
+
+        assert called[0] is True
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"predictor"})
+
+    def test_skips_and_keeps_value_when_already_published(self) -> None:
+        """An already-populated set (e.g. ToolSelectionRound this boot) is not touched."""
+        behaviour = self._v2_behaviour()
+        behaviour.shared_state.available_prediction_tools = frozenset({"predictor"})  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        # No re-fetch, value left intact.
+        assert called[0] is False
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"predictor"})
+
+    def test_skips_for_marketplace_v1(self) -> None:
+        """v1 has no manifest classifier; never publish, never fetch."""
+        behaviour = self._v2_behaviour()
+        behaviour.synchronized_data.is_marketplace_v2 = False  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_skips_when_benchmarking(self) -> None:
+        """Benchmarking mode short-circuits the fetch and the publish."""
+        behaviour = self._v2_behaviour()
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_no_publish_on_fetch_failure(self) -> None:
+        """An empty metadata cache (IPFS outage) leaves the field unpublished."""
+        behaviour = self._v2_behaviour()
+        _stub_fetch(behaviour, {})  # fetch yields no metadata
+
+        _drive_publish(behaviour)
+
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+
+    def test_no_publish_when_all_unsuitable(self) -> None:
+        """If every raw tool is unsuitable, keep None (logged) so ChatUI falls back."""
+        behaviour = _make_behaviour(_make_policy("resolver"), {"resolver"})
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        _stub_fetch(behaviour, {"resolver": _PredictionMetadata.resolver()})
+
+        _drive_publish(behaviour)
+
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]
+        # The all-unsuitable path must be observable, not silent.
+        warnings = [
+            call.args[0]
+            for call in behaviour.context.logger.warning.call_args_list  # type: ignore[attr-defined]
+        ]
+        assert any("marked all 1 tool(s) as unsuitable" in msg for msg in warnings)
+
+    def test_skips_when_no_mech_tools(self) -> None:
+        """An empty mech_tools set (e.g. redeem short-circuit) short-circuits safely."""
+        behaviour = _make_behaviour(_make_policy("predictor"), set())
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        called = _stub_fetch(behaviour, {"predictor": _PredictionMetadata.predictor()})
+
+        _drive_publish(behaviour)
+
+        # Guarded before the fetch; never touches the raising mech_tools property.
+        assert called[0] is False
+        assert behaviour.shared_state.available_prediction_tools is None  # type: ignore[attr-defined]

@@ -2504,18 +2504,19 @@ dependencies = [
 
 [[package]]
 name = "py-clob-client-v2"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "eth-abi" },
     { name = "eth-account" },
     { name = "eth-utils" },
     { name = "httpx", extra = ["http2"] },
     { name = "poly-eip712-structs" },
     { name = "py-order-utils" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/3a/62b7a1d8476023b09d48dc3edd0557fe2d5e450c2242219b7da1b2419bd2/py_clob_client_v2-1.0.0.tar.gz", hash = "sha256:ccbba4fbd0b4beba03dac1265421fe52aeb0141809fce7aabc03df9879313a66", size = 40426, upload-time = "2026-04-17T15:02:55.768Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/cf/3b0761a5e1715b52f927b0fbc7c8e545736e8c53811065ee2da7a8b51779/py_clob_client_v2-1.0.1.tar.gz", hash = "sha256:4d2e4bf6873719d3f9c8bcdc1f1590ec5e9597d6859d93f53d24dd3521c6fb2d", size = 45436, upload-time = "2026-05-09T13:00:52.752Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/42/1822c6a6a540bd12e4b41cdb27e17f6850f97a06c08460e43789b887661d/py_clob_client_v2-1.0.0-py3-none-any.whl", hash = "sha256:f9fa3315f154ceeb9e3084284a1bfc792df74f12b9441612e545a2480f603453", size = 46700, upload-time = "2026-04-17T15:02:53.641Z" },
+    { url = "https://files.pythonhosted.org/packages/85/7b/04c1d94e71a0c2ef0b228f2b3e98e2815d1e9f92fb291ec6b2321fab27b5/py_clob_client_v2-1.0.1-py3-none-any.whl", hash = "sha256:6f288f8078878779d7a30cdcf0ecd196b57c94627fa0bfabf24ed8ab787b8b1d", size = 49042, upload-time = "2026-05-09T13:00:51.076Z" },
 ]
 
 [[package]]
@@ -3659,7 +3660,7 @@ requires-dist = [
     { name = "protobuf", specifier = "==5.29.6" },
     { name = "py-builder-relayer-client", specifier = "==0.0.1" },
     { name = "py-builder-signing-sdk", git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git?rev=487579780479676d20867ead63db968bf460ea38" },
-    { name = "py-clob-client-v2", specifier = "==1.0.0" },
+    { name = "py-clob-client-v2", specifier = "==1.0.1" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pyinstaller", specifier = "==6.19.0" },
     { name = "pytest", specifier = "==8.4.2" },

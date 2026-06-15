@@ -77,10 +77,28 @@ class CheckBenchmarkingModeRound(VotingRound):
                         allowances_set
                         and file_version == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
                     ):
+                        # Allowances are current, but setup may still be
+                        # required: skipping is only safe when a DepositWallet
+                        # is recorded under the current agent EOA. A missing DW
+                        # (fresh / grandfathered service) or an owner mismatch
+                        # (agent EOA rotation) re-enters SET_APPROVAL to
+                        # (re)provision and (re)approve it.
+                        if self._deposit_wallet_ready():
+                            self.context.logger.info(
+                                "Polymarket allowances set and DepositWallet "
+                                "present for the current agent EOA. Skipping "
+                                "approval round."
+                            )
+                            return (
+                                self.synchronized_data,
+                                Event.BENCHMARKING_DISABLED,
+                            )
                         self.context.logger.info(
-                            "Polymarket allowances already set. Skipping approval round."
+                            "Polymarket allowances set but no DepositWallet is "
+                            "recorded for the current agent EOA (fresh / "
+                            "grandfathered service or EOA rotation); proceeding "
+                            "to SET_APPROVAL to (re)provision it."
                         )
-                        return self.synchronized_data, Event.BENCHMARKING_DISABLED
                     elif allowances_set:
                         self.context.logger.info(
                             f"Polymarket allowances file was stamped with "
@@ -107,3 +125,27 @@ class CheckBenchmarkingModeRound(VotingRound):
         # Normal flow: check if benchmarking is enabled
         res = super().end_block()
         return res
+
+    def _deposit_wallet_ready(self) -> bool:
+        """Whether a DepositWallet is recorded for the current agent EOA.
+
+        The setup gate may only be skipped when, on top of allowances being
+        recorded, a DepositWallet has been provisioned whose owner is the
+        current agent EOA. A missing record (fresh / grandfathered service) or
+        an owner mismatch (mnemonic-recovery rotation, which rotates the agent
+        EOA) must re-enter SET_APPROVAL so the DW is (re)provisioned and
+        (re)approved under the current EOA.
+
+        :return: True if ``deposit_wallet.json`` records a DepositWallet owned
+            by the current agent EOA.
+        """
+        dw_path = Path(self.context.params.store_path) / "deposit_wallet.json"
+        try:
+            with open(dw_path, "r") as f:
+                dw_data = json.load(f)
+        except (OSError, ValueError):
+            return False
+        dw_address = dw_data.get("dw_address")
+        dw_owner = str(dw_data.get("dw_owner") or "")
+        agent_eoa = self.context.agent_address
+        return bool(dw_address) and dw_owner.lower() == agent_eoa.lower()

@@ -8,10 +8,13 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeiba6w5uqtpdzmsr3qtxqkgp4yebqjhro6bsqanx64h54qa2lxk5b4
-  request_types.py: bafybeidnylvsz45xk2pvpzh4q2pp2e42idphyop3niroqva5hbmqw23bvm
+  connection.py: bafybeibez7oyrgmktvuzwx2fp2npkgoxndbd5goaawj5lmjtpskfhmgihm
+  relayer_proxy.py: bafybeifayzte6v3nacqvckrkqlgvafkagpbbx2vi5jkr2m4npuuxoguyvq
+  request_types.py: bafybeic75gqdkmp7ncvucdjmhcregysa4i6eags2eef3ohgc3zsv4yn5g4
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeidi5isdpcmquocxkks72ianxmcl5tt3iigkz2vqzusni5yqfgykza
+  tests/test_connection.py: bafybeidy3uz6gugyzqp2gxz7ch3bj5n2aqttk6emv3ni6gqyf6iwwvp544
+  tests/test_connection_dw.py: bafybeibielnqsrevdw34pwq3nnzlqy2akopctt2e5lkegntnp3gczbsb5q
+  tests/test_relayer_proxy.py: bafybeidsgcstp2evlzmfrrghjdiku4lyi3lvkgrutie2rd4b5okwsjcmui
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
@@ -22,7 +25,7 @@ config:
   chain_id: 137
   safe_contract_addresses:
     polygon: 0x
-  polymarket_builder_program_enabled: true
+  polymarket_builder_program_enabled: false
   builder_code: ${POLYMARKET_BUILDER_CODE:str:}
   clob_version: v2
   collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'
@@ -36,6 +39,7 @@ config:
   neg_risk_ctf_collateral_adapter_address: '0xadA2005600Dec949baf300f4C6120000bDB6eAab'
   polygon_ledger_rpc: https://polygon-rpc.com
   is_running_on_polymarket: true
+  polymarket_relayer_proxy_url: https://mpp.valory.xyz
 excluded_protocols: []
 restricted_to_protocols: []
 dependencies:
@@ -43,12 +47,14 @@ dependencies:
     version: <8,>=7.15.0
   eth-abi:
     version: ==5.2.0
+  eth-account:
+    version: <0.14.0,>=0.13.0
   requests:
     version: <2.33.0,>=2.32.5
   eth-utils:
     version: ==5.3.0
   py_clob_client_v2:
-    version: ==1.0.0
+    version: ==1.0.1
   py-order-utils:
     version: ==0.3.2
   py-builder-relayer-client:

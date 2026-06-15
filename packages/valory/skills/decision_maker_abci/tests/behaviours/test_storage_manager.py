@@ -1546,6 +1546,43 @@ class TestSetupPolicyAndTools:
 
         assert result is True
 
+    def test_invokes_maybe_publish_suitable_tools(self) -> None:
+        """Setup must invoke _maybe_publish_suitable_tools, after the policy is set."""
+        behaviour = _make_behaviour()
+        calls = []
+
+        def fake_get_tools() -> None:  # type: ignore[no-untyped-def, misc]
+            """Fake _get_tools that sets mech_tools."""
+            behaviour._mech_tools = {"tool1"}  # type: ignore[no-untyped-def]
+            yield
+
+        def fake_set_policy() -> None:  # type: ignore[no-untyped-def, misc]
+            """Fake _set_policy."""
+            calls.append("set_policy")  # type: ignore[no-untyped-def]
+            behaviour._policy = _make_policy()
+            yield
+
+        def fake_publish() -> None:  # type: ignore[no-untyped-def, misc]
+            """Spy for _maybe_publish_suitable_tools."""
+            calls.append("publish")  # type: ignore[no-untyped-def]
+            yield
+
+        behaviour._get_tools = fake_get_tools  # type: ignore[method-assign]
+        behaviour._set_policy = fake_set_policy  # type: ignore[method-assign]
+        behaviour._maybe_publish_suitable_tools = fake_publish  # type: ignore[method-assign]
+
+        gen = behaviour._setup_policy_and_tools()
+        result = None
+        try:
+            while True:
+                next(gen)
+        except StopIteration as e:
+            result = e.value
+
+        assert result is True
+        # Wiring: publish is invoked, and only after the policy is set.
+        assert calls == ["set_policy", "publish"]
+
 
 # ---------------------------------------------------------------------------
 # Tests for store methods

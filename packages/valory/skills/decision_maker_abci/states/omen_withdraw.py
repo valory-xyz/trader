@@ -53,9 +53,7 @@ class OmenWithdrawRound(TxPreparationRound):
     selection_key: Tuple[str, ...] = TxPreparationRound.selection_key
     none_event = Event.WITHDRAWAL_DONE
 
-    # This needs to be mentioned for static checkers
-    # Event.PREPARE_TX
-    # Event.WITHDRAWAL_DONE
+    # fsm-specs: returns(PREPARE_TX, WITHDRAWAL_DONE)
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Switch the emitted event to the one carried in the payload."""

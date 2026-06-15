@@ -24,7 +24,7 @@ import enum
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, FrozenSet, List, Optional, Type
 
 from aea.skills.base import SkillContext
 
@@ -90,6 +90,14 @@ class SharedState(BaseSharedState):
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
         self._chatui_config: Optional[ChatuiConfig] = None
+
+        # Suitability-filtered tool set published by the decision-maker's
+        # ToolSelectionBehaviour each round (the post-classifier, pre-pin
+        # universe). The ChatUI validates and displays tool pins against this
+        # so a user cannot pin a tool the policy would never select. It stays
+        # None until the first ToolSelectionRound runs; consumers fall back to
+        # the raw `available_mech_tools` synced-data set in that window.
+        self.available_prediction_tools: Optional[FrozenSet[str]] = None
 
     def setup(self) -> None:
         """Set up the shared state and apply boot-time withdrawal flag auto-clear.

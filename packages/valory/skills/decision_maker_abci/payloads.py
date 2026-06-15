@@ -128,6 +128,33 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
+class PolymarketTopUpPayload(MultisigTxPayload):
+    """Represents a payload for the Safe→DepositWallet top-up.
+
+    ``event`` carries the short-circuit signal: ``Event.PREPARE_TX.value``
+    when a pUSD transfer to the DW must settle (``tx_hash`` populated), or
+    ``Event.DONE.value`` when the DW is already funded (no tx settles; jump
+    straight to bet placement). The DepositWallet address is not carried here:
+    the bet-placement / sweep rounds resolve it from the persisted store.
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PolymarketSweepPayload(MultisigTxPayload):
+    """Represents a payload for the DepositWallet→Safe sweep.
+
+    The sweep runs through the relayer proxy (no on-chain tx settles here),
+    so ``tx_hash`` is unused. ``event`` carries the onward terminal event
+    propagated from the preceding bet-placement / withdrawal result
+    (``DONE`` / ``BLACKLIST`` / ``INSUFFICIENT_BALANCE``).
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class PolymarketSetApprovalPayload(MultisigTxPayload):
     """Represents a transaction payload for setting approval."""
 
