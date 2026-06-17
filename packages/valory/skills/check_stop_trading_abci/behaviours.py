@@ -20,7 +20,7 @@
 """This module contains the behaviours for the check stop trading skill."""
 
 import math
-from typing import Any, Generator, Set, Type, cast
+from typing import Any, Generator, NamedTuple, Set, Tuple, Type, cast
 
 from packages.valory.contracts.agent_mech.contract import AgentMech
 from packages.valory.contracts.mech.contract import Mech as MechContract
@@ -47,6 +47,22 @@ LIVENESS_RATIO_SCALE_FACTOR = 10**18
 # A safety margin in case there is a delay between the moment the KPI condition is
 # satisfied, and the moment where the checkpoint is called.
 REQUIRED_MECH_REQUESTS_SAFETY_MARGIN = 1
+
+
+class StopTradingResult(NamedTuple):
+    """The outcome of a stop-trading evaluation for one cycle.
+
+    ``stop``                — the vote (drives ``SKIP_TRADING`` / ``DONE``).
+    ``staking_kpi_met``     — on-chain (livenessRatio-derived) KPI; healthcheck only.
+    ``activity_target_met`` — regime-aware "epoch work done"; the rotation signal.
+    ``target`` / ``completed`` — per-epoch progress (target source differs by regime).
+    """
+
+    stop: bool
+    staking_kpi_met: bool
+    activity_target_met: bool
+    target: int
+    completed: int
 
 
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
@@ -98,78 +114,143 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         """Return the params."""
         return cast(CheckStopTradingParams, self.context.params)
 
-    def is_staking_kpi_met(self) -> Generator[None, None, bool]:
-        """Return whether the staking KPI has been met (only for staked services)."""
-        yield from self.wait_for_condition_with_sleep(self._check_service_staked)
-        self.context.logger.debug(f"{self.service_staking_state=}")
-        if self.service_staking_state != StakingState.STAKED:
-            return False
+    def _required_mech_requests(
+        self,
+        last_ts_checkpoint: int,
+        liveness_period: int,
+        liveness_ratio: int,
+    ) -> int:
+        """The on-chain (livenessRatio-derived) requirement.
 
-        # Get request count from the appropriate source using unified method
-        yield from self.wait_for_condition_with_sleep(
-            self._get_staking_kpi_request_count
-        )
-        staking_kpi_request_count = self.staking_kpi_request_count
-        self.context.logger.debug(f"{staking_kpi_request_count=}")
+        Pure function of already-read inputs — the same arithmetic the on-chain
+        KPI has always used, extracted so the reads can be shared with the
+        activity-target branch.
 
-        yield from self.wait_for_condition_with_sleep(self._get_service_info)
-        mech_request_count_on_last_checkpoint = self.service_info[2][1]
-        self.context.logger.debug(f"{mech_request_count_on_last_checkpoint=}")
-
-        yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
-        last_ts_checkpoint = self.ts_checkpoint
-        self.context.logger.debug(f"{last_ts_checkpoint=}")
-
-        yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
-        liveness_period = self.liveness_period
-        self.context.logger.debug(f"{liveness_period=}")
-
-        yield from self.wait_for_condition_with_sleep(self._get_liveness_ratio)
-        liveness_ratio = self.liveness_ratio
-        self.context.logger.debug(f"{liveness_ratio=}")
-
-        mech_requests_since_last_cp = (
-            staking_kpi_request_count - mech_request_count_on_last_checkpoint
-        )
-        self.context.logger.debug(f"{mech_requests_since_last_cp=}")
-
-        current_timestamp = self.synced_timestamp
-        self.context.logger.debug(f"{current_timestamp=}")
-
-        required_mech_requests = (
+        :param last_ts_checkpoint: timestamp of the last checkpoint.
+        :param liveness_period: the staking liveness period.
+        :param liveness_ratio: the staking liveness ratio.
+        :return: the required number of mech requests this epoch.
+        """
+        return (
             math.ceil(
-                max(liveness_period, (current_timestamp - last_ts_checkpoint))
+                max(liveness_period, (self.synced_timestamp - last_ts_checkpoint))
                 * liveness_ratio
                 / LIVENESS_RATIO_SCALE_FACTOR
             )
             + REQUIRED_MECH_REQUESTS_SAFETY_MARGIN
         )
-        self.context.logger.debug(f"{required_mech_requests=}")
 
-        if mech_requests_since_last_cp >= required_mech_requests:
-            return True
-        return False
+    def _compute_activity_status(
+        self,
+    ) -> Generator[None, None, Tuple[bool, bool, int, int]]:
+        """Read activity once and derive every coherent quantity for the cycle.
 
-    def _compute_stop_trading(self) -> Generator[None, None, bool]:
-        """Compute the stop trading condition."""
+        Returns ``(staking_kpi_met, activity_target_met, target, completed)``:
+
+        * ``staking_kpi_met`` — the ON-CHAIN KPI (livenessRatio-derived), both
+          regimes; surfaced on ``/healthcheck`` only.
+        * ``activity_target_met`` — the regime-aware "agent has done its epoch
+          work" signal that drives the stop vote and Pearl auto-run rotation.
+        * ``target`` / ``completed`` — per-epoch progress; ``target`` is the
+          off-chain config target in the new regime, the derived on-chain
+          requirement in the old.
+
+        Every on-chain read happens exactly once here, so all derived values are
+        mutually coherent even if a mech request lands mid-cycle.
+
+        :return: the activity status tuple.
+        :yield: contract-read steps.
+        """
+        yield from self.wait_for_condition_with_sleep(self._check_service_staked)
+        self.context.logger.debug(f"{self.service_staking_state=}")
+        if self.service_staking_state != StakingState.STAKED:
+            return False, False, 0, 0
+
+        # --- single read of every input (shared across KPI + activity target) ---
+        yield from self.wait_for_condition_with_sleep(
+            self._get_staking_kpi_request_count
+        )
+        yield from self.wait_for_condition_with_sleep(self._get_service_info)
+        yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
+        yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
+        yield from self.wait_for_condition_with_sleep(self._get_liveness_ratio)
+
+        # length-2 ``getMultisigNonces`` on both V1 and V2 ⇒ index 1 is requests
+        completed = self.staking_kpi_request_count - self.service_info[2][1]
+        self.context.logger.debug(f"{completed=}")
+        required = self._required_mech_requests(
+            self.ts_checkpoint, self.liveness_period, self.liveness_ratio
+        )
+        self.context.logger.debug(f"{required=}")
+        staking_kpi_met = completed >= required
+
+        new_regime = yield from self._is_new_staking_regime()
+        if new_regime:
+            target = self.params.activity_target
+            activity_target_met = completed >= target
+        else:
+            target = required
+            activity_target_met = staking_kpi_met
+
+        self.context.logger.debug(
+            f"{staking_kpi_met=} {activity_target_met=} {target=}"
+        )
+        return staking_kpi_met, activity_target_met, target, completed
+
+    def is_staking_kpi_met(self) -> Generator[None, None, bool]:
+        """Return whether the on-chain staking KPI has been met (staked services only).
+
+        Thin public wrapper retained for existing callers; the arithmetic now
+        lives in :meth:`_compute_activity_status` so the reads are shared.
+
+        :return: whether the on-chain staking KPI is met.
+        :yield: contract-read steps.
+        """
+        staking_kpi_met, _, _, _ = yield from self._compute_activity_status()
+        return staking_kpi_met
+
+    def _compute_stop_trading(self) -> Generator[None, None, StopTradingResult]:
+        """Compute the stop-trading decision and the activity signals for the cycle.
+
+        :return: the :class:`StopTradingResult` for this cycle.
+        :yield: contract-read steps.
+        """
         self.context.logger.debug(f"{self.params.disable_trading=}")
         if self.params.disable_trading:
-            return True
+            return StopTradingResult(
+                stop=True,
+                staking_kpi_met=False,
+                activity_target_met=False,
+                target=0,
+                completed=0,
+            )
 
+        (
+            staking_kpi_met,
+            activity_target_met,
+            target,
+            completed,
+        ) = yield from self._compute_activity_status()
         self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
-        if self.params.stop_trading_if_staking_kpi_met:
-            staking_kpi_met = yield from self.is_staking_kpi_met()
-            self.context.logger.debug(f"{staking_kpi_met=}")
-            return staking_kpi_met
-
-        return False
+        stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
+        return StopTradingResult(
+            stop, staking_kpi_met, activity_target_met, target, completed
+        )
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            stop_trading = yield from self._compute_stop_trading()
+            result = yield from self._compute_stop_trading()
+            stop_trading = result.stop
             self.context.logger.info(f"Computed {stop_trading=}")
-            payload = CheckStopTradingPayload(self.context.agent_address, stop_trading)
+            payload = CheckStopTradingPayload(
+                self.context.agent_address,
+                result.stop,
+                is_staking_kpi_met=result.staking_kpi_met,
+                is_activity_target_met=result.activity_target_met,
+                activity_target=result.target,
+                activity_completed=result.completed,
+            )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

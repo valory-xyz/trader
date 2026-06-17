@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeia5blcsjfffmepythlrtfoabitq23mjbqf3o35vpq5xla7jbtdrca
+agent: valory/trader:0.1.0:bafybeigfethr3e6zb62uxca57g6m5g3fh4caefqbdeor22kiuqqiehlsfm
 number_of_agents: 1
 deployment:
   agent:
@@ -120,6 +120,7 @@ models:
       staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
       disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
+      activity_target: ${ACTIVITY_TARGET:int:8}
       enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
       review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
       withdrawal_max_fak_attempts: ${WITHDRAWAL_MAX_FAK_ATTEMPTS:int:3}

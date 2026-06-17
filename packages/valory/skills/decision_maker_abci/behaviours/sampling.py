@@ -54,8 +54,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     @property
     def kpi_is_met(self) -> bool:
-        """Whether the kpi is met."""
-        return self.synchronized_data.is_staking_kpi_met
+        """Whether the agent has done its required work this epoch.
+
+        Tracks the regime-aware activity target: in the old regime this equals
+        the on-chain staking KPI, while in the new (decoupled-activity) regime
+        it follows the off-chain target so multi-bets fallback and sell-review
+        continue until the target (e.g. 8) is reached rather than stopping at
+        the on-chain ~1.
+
+        :return: whether the regime-aware activity target is met.
+        """
+        return self.synchronized_data.is_activity_target_met
 
     @property
     def review_bets_for_selling(self) -> bool:

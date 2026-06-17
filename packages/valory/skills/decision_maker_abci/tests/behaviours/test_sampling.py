@@ -145,12 +145,15 @@ class TestSamplingBehaviourProperties:
     """Tests for SamplingBehaviour properties."""
 
     def test_kpi_is_met(self) -> None:
-        """kpi_is_met should return synchronized_data value."""
+        """kpi_is_met should follow the regime-aware activity-target signal."""
         behaviour = _make_behaviour()
         with patch.object(
             type(behaviour), "synchronized_data", new_callable=PropertyMock
         ) as mock_sd:
-            mock_sd.return_value = MagicMock(is_staking_kpi_met=True)
+            # tracks is_activity_target_met, NOT is_staking_kpi_met
+            mock_sd.return_value = MagicMock(
+                is_activity_target_met=True, is_staking_kpi_met=False
+            )
             assert behaviour.kpi_is_met is True
 
     def test_review_bets_for_selling(self) -> None:
