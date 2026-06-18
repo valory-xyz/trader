@@ -213,6 +213,16 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+        # Process-lifetime cache for the staking-regime detection seam
+        # (``staking_abci.behaviours.StakingInteractBaseBehaviour._is_new_staking_regime``).
+        # Lives here, NOT on ``staking_abci``'s SharedState: in the composed agent
+        # there is exactly one live ``context.state`` instance shared by every
+        # sub-skill — ``trader_abci.SharedState`` (MRO includes
+        # ``decision_maker_abci.models.SharedState``). The sub-skill SharedState
+        # subclasses are never instantiated as the live state, so a field placed
+        # there would ``AttributeError`` on the live instance. ``None`` = not yet
+        # detected; set once per process (Pearl restarts on a contract switch).
+        self.staking_regime_is_new: Optional[bool] = None
         self.strategy_to_filehash: Dict[str, str] = {}
         self.strategies_executables: Dict[str, Tuple[str, str]] = {}
         self.in_flight_req: bool = False

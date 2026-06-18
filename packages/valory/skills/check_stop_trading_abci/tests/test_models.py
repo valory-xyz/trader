@@ -91,6 +91,7 @@ class TestCheckStopTradingParamsInit:
                 use_mech_marketplace=False,
                 enable_position_review=True,
                 review_period_seconds=3600,
+                activity_target=8,
             )
         assert params.mech_contract_address == "0xabc"
         assert params.disable_trading is False
@@ -98,6 +99,7 @@ class TestCheckStopTradingParamsInit:
         assert params.use_mech_marketplace is False
         assert params.enable_position_review is True
         assert params.review_period_seconds == 3600
+        assert params.activity_target == 8
         assert params.staking_kpi_mech_count_request_address == "0xabc"
 
     def test_init_with_marketplace(self) -> None:
@@ -112,6 +114,7 @@ class TestCheckStopTradingParamsInit:
                 use_mech_marketplace=True,
                 enable_position_review=True,
                 review_period_seconds=3600,
+                activity_target=8,
                 mech_marketplace_config={
                     "mech_marketplace_address": "0xMarketplace",
                     "response_timeout": 300,

@@ -24,6 +24,9 @@ import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+from web3.exceptions import BadFunctionCallOutput, ContractLogicError
+
 from packages.valory.contracts.mech_activity.contract import MechActivityContract
 
 
@@ -50,6 +53,157 @@ class TestMechActivityContract:
 
         assert result == {"data": 42}
         mock_contract_instance.functions.livenessRatio.assert_called_once()
+
+    def test_get_activity_checker(self) -> None:
+        """get_activity_checker returns the activity checker address on the staking contract."""
+        checker = "0x3514EeA47C03dF8d9FdD68A469908755d2870c48"
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.activityChecker.return_value.call.return_value = (
+            checker
+        )
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            result = MechActivityContract.get_activity_checker(
+                ledger_api=mock_ledger_api,
+                contract_address="0x1234567890abcdef1234567890abcdef12345678",
+            )
+
+        assert result == {"data": checker}
+        mock_contract_instance.functions.activityChecker.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            BadFunctionCallOutput("empty data"),
+            ContractLogicError("execution reverted"),
+        ],
+    )
+    def test_get_activity_checker_absent_returns_none(self, exc: Exception) -> None:
+        """A genuine missing-function failure degrades to ``data=None`` (old contract)."""
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.activityChecker.return_value.call.side_effect = (
+            exc
+        )
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            result = MechActivityContract.get_activity_checker(
+                ledger_api=mock_ledger_api,
+                contract_address="0x1234567890abcdef1234567890abcdef12345678",
+            )
+
+        assert result == {"data": None}
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            ConnectionError("RPC unavailable"),
+            # web3 raises a ``ValueError`` subclass for transient RPC blips; it
+            # must propagate, not degrade to ``data=None`` (regression: #993).
+            ValueError("Skipping the filtering operation as the RPC is misbehaving."),
+        ],
+    )
+    def test_get_activity_checker_transient_error_propagates(
+        self, exc: Exception
+    ) -> None:
+        """A transient RPC/connection error must NOT be swallowed as ``None``."""
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.activityChecker.return_value.call.side_effect = (
+            exc
+        )
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            with pytest.raises(type(exc)):
+                MechActivityContract.get_activity_checker(
+                    ledger_api=mock_ledger_api,
+                    contract_address="0x1234567890abcdef1234567890abcdef12345678",
+                )
+
+    def test_version_present(self) -> None:
+        """A new checker exposes ``VERSION`` and the value is returned verbatim."""
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.VERSION.return_value.call.return_value = (
+            "0.2.0"
+        )
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            result = MechActivityContract.version(
+                ledger_api=mock_ledger_api,
+                contract_address="0x1234567890abcdef1234567890abcdef12345678",
+            )
+
+        assert result == {"data": "0.2.0"}
+        mock_contract_instance.functions.VERSION.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            BadFunctionCallOutput("empty data"),
+            ContractLogicError("execution reverted"),
+        ],
+    )
+    def test_version_absent_returns_none(self, exc: Exception) -> None:
+        """A genuine missing-function failure degrades to ``data=None`` (old checker)."""
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.VERSION.return_value.call.side_effect = exc
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            result = MechActivityContract.version(
+                ledger_api=mock_ledger_api,
+                contract_address="0x1234567890abcdef1234567890abcdef12345678",
+            )
+
+        assert result == {"data": None}
+
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            ConnectionError("RPC unavailable"),
+            # web3 raises a ``ValueError`` subclass for transient RPC blips; it
+            # must propagate, not degrade to ``data=None`` (regression: #993).
+            ValueError("Skipping the filtering operation as the RPC is misbehaving."),
+        ],
+    )
+    def test_version_transient_error_propagates(self, exc: Exception) -> None:
+        """A transient RPC/connection error must NOT be swallowed as ``None``."""
+        mock_ledger_api = MagicMock()
+        mock_contract_instance = MagicMock()
+        mock_contract_instance.functions.VERSION.return_value.call.side_effect = exc
+
+        with patch.object(
+            MechActivityContract,
+            "get_instance",
+            return_value=mock_contract_instance,
+        ):
+            with pytest.raises(type(exc)):
+                MechActivityContract.version(
+                    ledger_api=mock_ledger_api,
+                    contract_address="0x1234567890abcdef1234567890abcdef12345678",
+                )
 
 
 PACKAGE_DIR = Path(__file__).parent.parent

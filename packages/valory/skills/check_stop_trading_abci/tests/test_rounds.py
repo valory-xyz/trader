@@ -83,7 +83,10 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_participant_to_votes(
-    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
+    participants: FrozenSet[str],
+    vote: bool,
+    review_bets_for_selling: bool,
+    is_activity_target_met: bool = False,
 ) -> Dict[str, CheckStopTradingPayload]:
     """participant_to_votes"""
 
@@ -92,18 +95,24 @@ def get_participant_to_votes(
             sender=participant,
             vote=vote,
             review_bets_for_selling=review_bets_for_selling,
+            is_activity_target_met=is_activity_target_met,
         )
         for participant in participants
     }
 
 
 def get_participant_to_votes_serialized(
-    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
+    participants: FrozenSet[str],
+    vote: bool,
+    review_bets_for_selling: bool,
+    is_activity_target_met: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """participant_to_votes"""
 
     return CollectionRound.serialize_collection(
-        get_participant_to_votes(participants, vote, review_bets_for_selling)
+        get_participant_to_votes(
+            participants, vote, review_bets_for_selling, is_activity_target_met
+        )
     )
 
 
@@ -173,12 +182,14 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
                     self.participants,
                     vote=vote,
                     review_bets_for_selling=should_review_bets,
+                    is_activity_target_met=should_review_bets,
                 ),
                 synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
                         self.participants,
                         vote=vote,
                         review_bets_for_selling=should_review_bets,
+                        is_activity_target_met=should_review_bets,
                     ),
                     review_bets_for_selling=should_review_bets,
                 ),
@@ -383,6 +394,40 @@ class TestSynchronizedDataProperties:
         data = SynchronizedData(db=AbciAppDB(setup_data={"is_staking_kpi_met": [True]}))
         assert data.is_staking_kpi_met is True
 
+    def test_is_activity_target_met_default(self) -> None:
+        """is_activity_target_met defaults to False."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.is_activity_target_met is False
+
+    def test_is_activity_target_met_true(self) -> None:
+        """is_activity_target_met returns True when set."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"is_activity_target_met": [True]})
+        )
+        assert data.is_activity_target_met is True
+
+    def test_activity_target_default_and_value(self) -> None:
+        """activity_target defaults to 0 and reflects the stored value."""
+        assert SynchronizedData(db=AbciAppDB(setup_data={})).activity_target == 0
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_target": [8]}))
+        assert data.activity_target == 8
+
+    def test_activity_target_none_coerced_to_zero(self) -> None:
+        """A stored ``None`` is coerced to 0 (None-safe, mirrors states/base.py)."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_target": [None]}))
+        assert data.activity_target == 0
+
+    def test_activity_completed_default_and_value(self) -> None:
+        """activity_completed defaults to 0 and reflects the stored value."""
+        assert SynchronizedData(db=AbciAppDB(setup_data={})).activity_completed == 0
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_completed": [5]}))
+        assert data.activity_completed == 5
+
+    def test_activity_completed_none_coerced_to_zero(self) -> None:
+        """A stored ``None`` is coerced to 0 (None-safe, mirrors states/base.py)."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_completed": [None]}))
+        assert data.activity_completed == 0
+
     def test_review_bets_for_selling_default(self) -> None:
         """review_bets_for_selling defaults to False when not set."""
         data = SynchronizedData(db=AbciAppDB(setup_data={}))
@@ -407,19 +452,19 @@ class TestCheckStopTradingRoundShouldReviewBets:
     """Tests for CheckStopTradingRound.should_review_bets."""
 
     def test_not_kpi_met(self) -> None:
-        """When KPI is not met, should not review bets."""
+        """When the activity target is not met, should not review bets."""
         round_ = CheckStopTradingRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
-        assert round_.should_review_bets(is_staking_kpi_met=False) is False
+        assert round_.should_review_bets(is_activity_target_met=False) is False
 
     def test_kpi_met_review_disabled(self) -> None:
-        """When KPI met but position review disabled, should not review."""
+        """When the activity target met but position review disabled, should not review."""
         round_ = CheckStopTradingRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
         round_.context.params.enable_position_review = False
-        assert round_.should_review_bets(is_staking_kpi_met=True) is False
+        assert round_.should_review_bets(is_activity_target_met=True) is False
 
 
 # ---------------------------------------------------------------------------
@@ -518,6 +563,11 @@ def _make_round_with_disk_flag(
     context.params.review_period_seconds = 60 * 60 * 24
     context.params.store_path = "/dev/null"
     round_ = CheckStopTradingRound(synchronized_data=sync_data, context=context)
+    # end_block reads a representative payload from the collection (single-agent);
+    # populate it so the new payload-sourced fields can be read.
+    round_.collection = {
+        "agent_0": CheckStopTradingPayload(sender="agent_0", vote=False)
+    }
     round_._read_withdrawal_flag = MagicMock(  # type: ignore[method-assign]
         return_value=(withdrawal_mode, withdrawal_state)
     )
@@ -718,6 +768,82 @@ class TestEndBlockWithdrawalBranching:
         result = self._run_end_block(round_, None)
 
         assert result is None
+
+
+class TestEndBlockPersistsActivityFields:
+    """end_block must persist the payload-sourced activity fields, and only on convergence."""
+
+    @staticmethod
+    def _make_round(payload: CheckStopTradingPayload) -> CheckStopTradingRound:
+        """Build a round over a real DB so the persisted fields can be read back.
+
+        :param payload: the representative payload to seed the collection with.
+        :return: a ``CheckStopTradingRound`` ready for ``end_block`` calls.
+        """
+        context = MagicMock()
+        context.params.enable_position_review = False
+        context.params.store_path = "/dev/null"
+        round_ = CheckStopTradingRound(
+            synchronized_data=SynchronizedData(db=AbciAppDB(setup_data={})),
+            context=context,
+        )
+        round_.collection = {payload.sender: payload}
+        round_._read_withdrawal_flag = MagicMock(  # type: ignore[method-assign]
+            return_value=(False, "idle")
+        )
+        return round_
+
+    def _run(self, round_: CheckStopTradingRound, super_event: Optional[Event]) -> None:
+        """Drive end_block with super() returning ``(sync, super_event)``."""
+        sync = MagicMock()
+        sync.update = MagicMock(return_value=sync)
+        super_value = None if super_event is None else (sync, super_event)
+        with patch.object(VotingRound, "end_block", return_value=super_value):
+            round_.end_block()
+
+    def test_converged_round_persists_payload_fields(self) -> None:
+        """On a converged event the four fields are written from the payload.
+
+        The vote/KPI decoupling lives here: ``vote`` (stop) can disagree with
+        ``is_staking_kpi_met``, and ``is_activity_target_met`` is the separate
+        rotation signal. Asserts each lands in synced data verbatim.
+        """
+        payload = CheckStopTradingPayload(
+            sender="agent_0",
+            vote=True,
+            is_staking_kpi_met=False,
+            is_activity_target_met=True,
+            activity_target=8,
+            activity_completed=9,
+        )
+        round_ = self._make_round(payload)
+        self._run(round_, Event.SKIP_TRADING)
+
+        synced = round_.synchronized_data
+        assert synced.is_staking_kpi_met is False
+        assert synced.is_activity_target_met is True
+        assert synced.activity_target == 8
+        assert synced.activity_completed == 9
+
+    def test_no_consensus_event_does_not_persist_fields(self) -> None:
+        """On NONE/NO_MAJORITY the fields are NOT written (no partial data)."""
+        payload = CheckStopTradingPayload(
+            sender="agent_0",
+            vote=True,
+            is_staking_kpi_met=True,
+            is_activity_target_met=True,
+            activity_target=8,
+            activity_completed=9,
+        )
+        round_ = self._make_round(payload)
+        self._run(round_, Event.NO_MAJORITY)
+
+        # Nothing persisted ⇒ accessors fall back to their defaults.
+        synced = round_.synchronized_data
+        assert synced.is_staking_kpi_met is False
+        assert synced.is_activity_target_met is False
+        assert synced.activity_target == 0
+        assert synced.activity_completed == 0
 
 
 class TestReadWithdrawalFlag:

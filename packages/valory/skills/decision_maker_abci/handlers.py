@@ -379,6 +379,9 @@ class HttpHandler(BaseHttpHandler):
         has_required_funds = self._check_required_funds()
         is_mech_reliable = self._is_mech_reliable()
         is_staking_kpi_met = self.synchronized_data.is_staking_kpi_met
+        is_activity_target_met = self.synchronized_data.is_activity_target_met
+        activity_target = self.synchronized_data.activity_target
+        activity_completed = self.synchronized_data.activity_completed
         staking_status = self.synchronized_data.service_staking_state.name.lower()
 
         round_sequence = self.round_sequence
@@ -422,6 +425,9 @@ class HttpHandler(BaseHttpHandler):
                 "is_making_on_chain_transactions": is_mech_reliable,
                 "is_mech_reliable": is_mech_reliable,
                 "is_staking_kpi_met": is_staking_kpi_met,
+                "is_activity_target_met": is_activity_target_met,
+                "activity_target": activity_target,
+                "activity_completed": activity_completed,
                 "has_required_funds": has_required_funds,
                 "staking_status": staking_status,
             },

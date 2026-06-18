@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -31,5 +31,32 @@ def test_check_stop_trading_payload() -> None:
     )
 
     assert payload.vote
-    assert payload.data == {"vote": True, "review_bets_for_selling": True}
+    assert payload.data == {
+        "vote": True,
+        "review_bets_for_selling": True,
+        "is_staking_kpi_met": None,
+        "is_activity_target_met": None,
+        "activity_target": None,
+        "activity_completed": None,
+    }
+    assert CheckStopTradingPayload.from_json(payload.json) == payload
+
+
+def test_check_stop_trading_payload_with_activity_fields() -> None:
+    """Test `CheckStopTradingPayload` carrying the activity-decoupling fields."""
+
+    payload = CheckStopTradingPayload(
+        sender="sender",
+        vote=False,
+        is_staking_kpi_met=True,
+        is_activity_target_met=False,
+        activity_target=8,
+        activity_completed=5,
+    )
+
+    assert payload.vote is False
+    assert payload.is_staking_kpi_met is True
+    assert payload.is_activity_target_met is False
+    assert payload.activity_target == 8
+    assert payload.activity_completed == 5
     assert CheckStopTradingPayload.from_json(payload.json) == payload

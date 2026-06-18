@@ -62,6 +62,10 @@ class CheckStopTradingParams(StakingParams):
         self.use_mech_marketplace: bool = bool(kwargs["use_mech_marketplace"])
         self.enable_position_review: bool = bool(kwargs["enable_position_review"])
         self.review_period_seconds: int = int(kwargs["review_period_seconds"])
+        # Per-epoch mech-request target the agent works toward in the new
+        # (decoupled-activity) staking regime. Independent of the on-chain
+        # liveness KPI, which is normalised to ~1 on the new contracts.
+        self.activity_target: int = self._ensure("activity_target", kwargs, int)
         self._read_polymarket_flag(kwargs)
 
         # Default KPI request address is the mech contract

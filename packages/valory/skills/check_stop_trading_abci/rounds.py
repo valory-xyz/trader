@@ -77,8 +77,29 @@ class SynchronizedData(BaseSynchronizedData):
 
     @property
     def is_staking_kpi_met(self) -> bool:
-        """Get the status of the staking kpi."""
+        """Get the status of the on-chain staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def is_activity_target_met(self) -> bool:
+        """Get whether the off-chain activity target is met (the rotation signal)."""
+        return bool(self.db.get("is_activity_target_met", False))
+
+    @property
+    def activity_target(self) -> int:
+        """Get the per-epoch activity target."""
+        activity_target = self.db.get("activity_target", 0)
+        if activity_target is None:
+            return 0
+        return int(activity_target)
+
+    @property
+    def activity_completed(self) -> int:
+        """Get the mech requests completed this epoch."""
+        activity_completed = self.db.get("activity_completed", 0)
+        if activity_completed is None:
+            return 0
+        return int(activity_completed)
 
     @property
     def review_bets_for_selling(self) -> bool:
@@ -113,10 +134,10 @@ class CheckStopTradingRound(VotingRound):
             self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
         )
 
-    def should_review_bets(self, is_staking_kpi_met: bool) -> bool:
+    def should_review_bets(self, is_activity_target_met: bool) -> bool:
         """Check if the bets should be reviewed."""
-        if not is_staking_kpi_met:
-            self.context.logger.info("Staking kpi is not yet met")
+        if not is_activity_target_met:
+            self.context.logger.info("Activity target is not yet met")
             return False
 
         if not self.context.params.enable_position_review:
@@ -159,16 +180,29 @@ class CheckStopTradingRound(VotingRound):
         if res is None:
             return None
 
-        is_staking_kpi_met = self.positive_vote_threshold_reached
-        self.synchronized_data.update(is_staking_kpi_met=is_staking_kpi_met)
-
         synchronized_data, event = res
 
         # No-consensus events flow through unchanged — withdrawal cannot
         # override NONE / NO_MAJORITY because the round needs to retry to
-        # reach consensus before any decision branches.
+        # reach consensus before any decision branches. We also skip persisting
+        # the activity fields below: writing them before the round converges
+        # would surface partial/incomplete data on the healthcheck.
         if event in (Event.NONE, Event.NO_MAJORITY):
             return res
+
+        # The persisted ``is_staking_kpi_met`` must come from the payload, not
+        # the vote: in the new regime the vote tracks the off-chain activity
+        # target while ``is_staking_kpi_met`` stays the on-chain KPI, so the two
+        # can legitimately disagree. Single-agent ⇒ a representative payload is
+        # authoritative.
+        payload = cast(CheckStopTradingPayload, next(iter(self.collection.values())))
+        is_activity_target_met = bool(payload.is_activity_target_met)
+        self.synchronized_data.update(
+            is_staking_kpi_met=bool(payload.is_staking_kpi_met),
+            is_activity_target_met=is_activity_target_met,
+            activity_target=int(payload.activity_target or 0),
+            activity_completed=int(payload.activity_completed or 0),
+        )
 
         # Operator-armed withdrawal trumps both SKIP_TRADING and REVIEW_BETS.
         # Without this, a KPI-met agent emits SKIP_TRADING every cycle and
@@ -188,7 +222,7 @@ class CheckStopTradingRound(VotingRound):
             )
             return synchronized_data, withdrawal_event
 
-        if self.should_review_bets(is_staking_kpi_met):
+        if self.should_review_bets(is_activity_target_met):
             self.context.logger.info(
                 "Updating synchronized data to review bets for selling"
             )

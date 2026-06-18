@@ -307,8 +307,29 @@ class SynchronizedData(
 
     @property
     def is_staking_kpi_met(self) -> bool:
-        """Get the status of the staking kpi."""
+        """Get the status of the on-chain staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def is_activity_target_met(self) -> bool:
+        """Get whether the off-chain activity target is met (the rotation signal)."""
+        return bool(self.db.get("is_activity_target_met", False))
+
+    @property
+    def activity_target(self) -> int:
+        """Get the per-epoch activity target."""
+        activity_target = self.db.get("activity_target", 0)
+        if activity_target is None:
+            return 0
+        return int(activity_target)
+
+    @property
+    def activity_completed(self) -> int:
+        """Get the mech requests completed this epoch."""
+        activity_completed = self.db.get("activity_completed", 0)
+        if activity_completed is None:
+            return 0
+        return int(activity_completed)
 
     @property
     def service_staking_state(self) -> StakingState:
