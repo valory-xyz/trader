@@ -265,6 +265,7 @@ models:
       staking_interaction_sleep_time: 5
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
+      activity_target: 8
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
