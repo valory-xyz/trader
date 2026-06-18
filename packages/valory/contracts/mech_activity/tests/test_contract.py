@@ -81,7 +81,6 @@ class TestMechActivityContract:
         [
             BadFunctionCallOutput("empty data"),
             ContractLogicError("execution reverted"),
-            ValueError("could not decode"),
         ],
     )
     def test_get_activity_checker_absent_returns_none(self, exc: Exception) -> None:
@@ -104,12 +103,23 @@ class TestMechActivityContract:
 
         assert result == {"data": None}
 
-    def test_get_activity_checker_transient_error_propagates(self) -> None:
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            ConnectionError("RPC unavailable"),
+            # web3 raises a ``ValueError`` subclass for transient RPC blips; it
+            # must propagate, not degrade to ``data=None`` (regression: #993).
+            ValueError("Skipping the filtering operation as the RPC is misbehaving."),
+        ],
+    )
+    def test_get_activity_checker_transient_error_propagates(
+        self, exc: Exception
+    ) -> None:
         """A transient RPC/connection error must NOT be swallowed as ``None``."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.functions.activityChecker.return_value.call.side_effect = ConnectionError(
-            "RPC unavailable"
+        mock_contract_instance.functions.activityChecker.return_value.call.side_effect = (
+            exc
         )
 
         with patch.object(
@@ -117,7 +127,7 @@ class TestMechActivityContract:
             "get_instance",
             return_value=mock_contract_instance,
         ):
-            with pytest.raises(ConnectionError):
+            with pytest.raises(type(exc)):
                 MechActivityContract.get_activity_checker(
                     ledger_api=mock_ledger_api,
                     contract_address="0x1234567890abcdef1234567890abcdef12345678",
@@ -149,7 +159,6 @@ class TestMechActivityContract:
         [
             BadFunctionCallOutput("empty data"),
             ContractLogicError("execution reverted"),
-            ValueError("could not decode"),
         ],
     )
     def test_version_absent_returns_none(self, exc: Exception) -> None:
@@ -170,20 +179,27 @@ class TestMechActivityContract:
 
         assert result == {"data": None}
 
-    def test_version_transient_error_propagates(self) -> None:
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            ConnectionError("RPC unavailable"),
+            # web3 raises a ``ValueError`` subclass for transient RPC blips; it
+            # must propagate, not degrade to ``data=None`` (regression: #993).
+            ValueError("Skipping the filtering operation as the RPC is misbehaving."),
+        ],
+    )
+    def test_version_transient_error_propagates(self, exc: Exception) -> None:
         """A transient RPC/connection error must NOT be swallowed as ``None``."""
         mock_ledger_api = MagicMock()
         mock_contract_instance = MagicMock()
-        mock_contract_instance.functions.VERSION.return_value.call.side_effect = (
-            ConnectionError("RPC unavailable")
-        )
+        mock_contract_instance.functions.VERSION.return_value.call.side_effect = exc
 
         with patch.object(
             MechActivityContract,
             "get_instance",
             return_value=mock_contract_instance,
         ):
-            with pytest.raises(ConnectionError):
+            with pytest.raises(type(exc)):
                 MechActivityContract.version(
                     ledger_api=mock_ledger_api,
                     contract_address="0x1234567890abcdef1234567890abcdef12345678",

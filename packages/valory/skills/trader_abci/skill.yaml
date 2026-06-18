@@ -56,10 +56,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/market_manager_abci:0.1.0:bafybeibo5xuvhzkvwz6ug7sslrdkgqqoaf5bjpg5slgznzp6knfxwb4qpm
-- valory/decision_maker_abci:0.1.0:bafybeibtkxeuav2canrnqojzq4lf7kjgfbe7pxt6sbv6wkj5flrfpe447q
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihdgqh2rzy6dyyu2sam5b6kbuxmtnkvhsqyqcwquhyquplzh6m4ta
-- valory/staking_abci:0.1.0:bafybeie5kqgrkclvrwa7vt56d265j3efw4sxhjsaepij4by3vcukqm2ema
-- valory/check_stop_trading_abci:0.1.0:bafybeihtogfdluqrieis522gduf53otarwigqvgakjpuehyxfdyyo44ev4
+- valory/decision_maker_abci:0.1.0:bafybeic2nklj26lboesncvts2x6ea42wcmzblteb3oj3hzsjp45efvffbu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicvp7m55a6gayaau4dwhcsjzgmtg6so4qx7gn4cvabyohrdjb6u4y
+- valory/staking_abci:0.1.0:bafybeihwyron2bv7ierrgxke7xofwjy7x6wtglg5vopon7i7lfdiivweaq
+- valory/check_stop_trading_abci:0.1.0:bafybeicn7jh4yecq3k7bsp7cbmaprb7yzqp2ud44mq2u72lpnbv2lb2hci
 - valory/mech_interact_abci:0.1.0:bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy
 - valory/chatui_abci:0.1.0:bafybeibe4xosp4gpbn4p3vgqjcgmulqcqtaregwkfcoqezxvdr5iidv3ru
 - valory/agent_performance_summary_abci:0.1.0:bafybeifqyvxwfnocgcp6pd6gv72xfosmq22oa4gstdn5qlzzlqpw4g7a6i

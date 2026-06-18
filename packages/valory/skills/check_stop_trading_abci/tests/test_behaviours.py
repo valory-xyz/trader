@@ -29,6 +29,9 @@ from packages.valory.skills.check_stop_trading_abci.behaviours import (
     StopTradingResult,
 )
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
+from packages.valory.skills.check_stop_trading_abci.payloads import (
+    CheckStopTradingPayload,
+)
 from packages.valory.skills.staking_abci.behaviours import StakingInteractBaseBehaviour
 from packages.valory.skills.staking_abci.rounds import StakingState
 
@@ -370,33 +373,24 @@ class TestComputeActivityStatus:
         assert activity_target_met is True  # 3 >= 2
 
 
-class TestIsStakingKpiMet:
-    """Tests for the thin is_staking_kpi_met wrapper."""
-
-    def test_delegates_to_activity_status(self) -> None:
-        """is_staking_kpi_met returns the first element of _compute_activity_status."""
-        behaviour = object.__new__(CheckStopTradingBehaviour)
-        with patch.object(
-            behaviour,
-            "_compute_activity_status",
-            _return_gen((True, False, 8, 3)),
-        ):
-            gen = behaviour.is_staking_kpi_met()
-            with pytest.raises(StopIteration) as exc_info:
-                next(gen)
-            assert exc_info.value.value is True
-
-
 class TestAsyncAct:
     """Tests for CheckStopTradingBehaviour.async_act."""
 
     def test_async_act(self) -> None:
-        """Drives the full async_act generator to completion."""
+        """Drives async_act to completion and asserts the emitted payload fields."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
         mock_context.agent_address = "agent_0"
         mock_set_done = MagicMock()
+
+        sent_payloads = []
+
+        def _capture_send(payload: Any, *args: Any, **kwargs: Any) -> Generator:
+            """Capture the payload handed to send_a2a_transaction."""
+            sent_payloads.append(payload)
+            if False:
+                yield  # pragma: no cover
 
         with (
             patch.object(
@@ -418,13 +412,13 @@ class TestAsyncAct:
                     StopTradingResult(
                         stop=True,
                         staking_kpi_met=True,
-                        activity_target_met=True,
+                        activity_target_met=False,
                         target=8,
                         completed=9,
                     )
                 ),
             ),
-            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(behaviour, "send_a2a_transaction", _capture_send),
             patch.object(behaviour, "wait_until_round_end", _noop_gen),
             patch.object(behaviour, "set_done", mock_set_done),
         ):
@@ -432,3 +426,15 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
             mock_set_done.assert_called_once()
+
+        # the StopTradingResult fields must be threaded into the payload verbatim
+        # and onto the right kwargs (a swapped kwarg would otherwise pass).
+        assert len(sent_payloads) == 1
+        payload = sent_payloads[0]
+        assert isinstance(payload, CheckStopTradingPayload)
+        assert payload.sender == "agent_0"
+        assert payload.vote is True
+        assert payload.is_staking_kpi_met is True
+        assert payload.is_activity_target_met is False
+        assert payload.activity_target == 8
+        assert payload.activity_completed == 9

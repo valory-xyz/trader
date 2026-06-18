@@ -384,6 +384,10 @@ class TestSharedStateInit:
         assert state.bet_id_row_manager == {}
         assert state.benchmarking_mech_calls == 0
         assert state.mech_timed_out is False
+        # Must default to None, not False: the staking-regime cache distinguishes
+        # "never computed" (None ⇒ read on-chain) from a computed OLD verdict
+        # (False ⇒ cache hit). A False default would suppress the first read.
+        assert state.staking_regime_is_new is None
 
 
 class TestSharedState:

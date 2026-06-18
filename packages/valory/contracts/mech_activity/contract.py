@@ -25,12 +25,15 @@ from aea.contracts.base import Contract
 from aea.crypto.base import LedgerApi
 from web3.exceptions import BadFunctionCallOutput, ContractLogicError
 
-# "No such function" surfaces as one of these: an absent ``VERSION`` getter
-# either reverts (``ContractLogicError``) or returns empty data that fails ABI
-# decoding (``BadFunctionCallOutput`` / ``ValueError``). A connection / RPC /
-# timeout error is NOT in this set and must propagate so the caller retries
-# instead of mis-classifying a transient blip as "old checker".
-_NO_SUCH_FUNCTION = (BadFunctionCallOutput, ContractLogicError, ValueError)
+# "No such function" surfaces as one of these: an absent ``VERSION`` /
+# ``activityChecker`` getter either reverts (``ContractLogicError``) or returns
+# empty data that fails ABI decoding (``BadFunctionCallOutput``). We deliberately
+# do NOT catch ``ValueError``: web3 raises a ``ValueError`` subclass for
+# transient RPC blips (e.g. "Skipping the filtering operation as the RPC is
+# misbehaving"), so swallowing it would mis-classify a passing failure as "old
+# checker" and cache that for the whole process lifetime. Connection / RPC /
+# timeout errors (including ``ValueError``) must propagate so the caller retries.
+_NO_SUCH_FUNCTION = (BadFunctionCallOutput, ContractLogicError)
 
 
 class MechActivityContract(Contract):

@@ -175,7 +175,8 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
         yield from self.wait_for_condition_with_sleep(self._get_liveness_ratio)
 
-        # length-2 ``getMultisigNonces`` on both V1 and V2 ⇒ index 1 is requests
+        # ``getServiceInfo()[2]`` is the length-2 ``nonces`` field on both V1 and
+        # V2 ⇒ index 1 is the mech-requests count.
         completed = self.staking_kpi_request_count - self.service_info[2][1]
         self.context.logger.debug(f"{completed=}")
         required = self._required_mech_requests(
@@ -196,18 +197,6 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             f"{staking_kpi_met=} {activity_target_met=} {target=}"
         )
         return staking_kpi_met, activity_target_met, target, completed
-
-    def is_staking_kpi_met(self) -> Generator[None, None, bool]:
-        """Return whether the on-chain staking KPI has been met (staked services only).
-
-        Thin public wrapper retained for existing callers; the arithmetic now
-        lives in :meth:`_compute_activity_status` so the reads are shared.
-
-        :return: whether the on-chain staking KPI is met.
-        :yield: contract-read steps.
-        """
-        staking_kpi_met, _, _, _ = yield from self._compute_activity_status()
-        return staking_kpi_met
 
     def _compute_stop_trading(self) -> Generator[None, None, StopTradingResult]:
         """Compute the stop-trading decision and the activity signals for the cycle.
@@ -232,6 +221,10 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             completed,
         ) = yield from self._compute_activity_status()
         self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
+        # NOTE: post-decoupling this config flag gates on ``activity_target_met``,
+        # not the on-chain staking KPI. The name is retained for config
+        # back-compat, but it now means "stop when the (regime-aware) activity
+        # target is met". See ``StopTradingResult`` for the distinction.
         stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
         return StopTradingResult(
             stop, staking_kpi_met, activity_target_met, target, completed

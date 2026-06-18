@@ -88,12 +88,18 @@ class SynchronizedData(BaseSynchronizedData):
     @property
     def activity_target(self) -> int:
         """Get the per-epoch activity target."""
-        return cast(int, self.db.get("activity_target", 0))
+        activity_target = self.db.get("activity_target", 0)
+        if activity_target is None:
+            return 0
+        return int(activity_target)
 
     @property
     def activity_completed(self) -> int:
         """Get the mech requests completed this epoch."""
-        return cast(int, self.db.get("activity_completed", 0))
+        activity_completed = self.db.get("activity_completed", 0)
+        if activity_completed is None:
+            return 0
+        return int(activity_completed)
 
     @property
     def review_bets_for_selling(self) -> bool:
@@ -174,6 +180,16 @@ class CheckStopTradingRound(VotingRound):
         if res is None:
             return None
 
+        synchronized_data, event = res
+
+        # No-consensus events flow through unchanged — withdrawal cannot
+        # override NONE / NO_MAJORITY because the round needs to retry to
+        # reach consensus before any decision branches. We also skip persisting
+        # the activity fields below: writing them before the round converges
+        # would surface partial/incomplete data on the healthcheck.
+        if event in (Event.NONE, Event.NO_MAJORITY):
+            return res
+
         # The persisted ``is_staking_kpi_met`` must come from the payload, not
         # the vote: in the new regime the vote tracks the off-chain activity
         # target while ``is_staking_kpi_met`` stays the on-chain KPI, so the two
@@ -187,14 +203,6 @@ class CheckStopTradingRound(VotingRound):
             activity_target=int(payload.activity_target or 0),
             activity_completed=int(payload.activity_completed or 0),
         )
-
-        synchronized_data, event = res
-
-        # No-consensus events flow through unchanged — withdrawal cannot
-        # override NONE / NO_MAJORITY because the round needs to retry to
-        # reach consensus before any decision branches.
-        if event in (Event.NONE, Event.NO_MAJORITY):
-            return res
 
         # Operator-armed withdrawal trumps both SKIP_TRADING and REVIEW_BETS.
         # Without this, a KPI-met agent emits SKIP_TRADING every cycle and

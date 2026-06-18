@@ -853,6 +853,28 @@ class TestIsNewStakingRegime:
             assert exc_info.value.value is True
         get_checker.assert_not_called()
 
+    def test_cache_hit_false_skips_reads(self) -> None:
+        """A cached ``False`` is a hit too (not just ``True``) — no read happens.
+
+        The guard is ``cached is not None``, so a prior OLD verdict must be
+        honoured without re-reading; only ``None`` (never computed) triggers a
+        read.
+        """
+        b = self._make()
+        mock_ctx = self._ctx(cached=False)
+        get_checker = MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_get_activity_checker", get_checker),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+        get_checker.assert_not_called()
+
     def test_version_match_is_new_and_caches(self) -> None:
         """VERSION == '0.2.0' ⇒ new regime; verdict cached on shared state."""
         b = self._make()
@@ -929,6 +951,7 @@ class TestIsNewStakingRegime:
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
             assert exc_info.value.value is False
+        assert mock_ctx.state.staking_regime_is_new is False
 
     @pytest.mark.parametrize("checker", [None, NULL_ADDRESS])
     def test_no_activity_checker_is_old_without_version_read(
