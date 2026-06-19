@@ -26,7 +26,7 @@ config:
   safe_contract_addresses:
     polygon: 0x
   polymarket_builder_program_enabled: false
-  builder_code: ${POLYMARKET_BUILDER_CODE:str:}
+  builder_code: ${POLYMARKET_BUILDER_CODE:str:0x0000000000000000000000000000000000000000000000000000000000000000}
   clob_version: v2
   collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'
   usdc_e_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
