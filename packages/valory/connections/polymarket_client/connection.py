@@ -138,7 +138,9 @@ def _validate_builder_code(code: Optional[str], logger: Any) -> str:
     ``0x``-prefixed 64-hex-char bytes32 (leading/trailing whitespace is
     stripped for copy-paste tolerance). Blank out and log a WARNING
     otherwise; an empty/None input is the documented "disabled" case and
-    is tolerated silently.
+    is tolerated silently. An all-zero bytes32 (the connection default) is
+    likewise treated as the "disabled" case and returned as ``""`` so the
+    empty builder_code warning path is preserved.
 
     :param code: the raw value from the connection config.
     :param logger: logger to emit the warning through.
@@ -149,10 +151,16 @@ def _validate_builder_code(code: Optional[str], logger: Any) -> str:
     code = code.strip()
     if code.startswith("0x") and len(code) == 66:
         try:
-            bytes.fromhex(code[2:])
+            decoded = bytes.fromhex(code[2:])
         except ValueError:
             pass
         else:
+            # An all-zero bytes32 is the connection default / "no attribution"
+            # sentinel; treat it as the empty/disabled case so the dedicated
+            # "builder_code is empty" warning fires instead of a misleading
+            # "Using builder_code=0x00000000..." info log.
+            if not any(decoded):
+                return ""
             return code
     logger.warning(
         f"POLYMARKET_BUILDER_CODE has unexpected shape (len={len(code)}, "
