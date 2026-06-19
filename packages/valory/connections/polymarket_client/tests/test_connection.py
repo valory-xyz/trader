@@ -3165,6 +3165,18 @@ class TestValidateBuilderCode:
         assert _validate_builder_code(code, logger) == code
         logger.warning.assert_not_called()
 
+    def test_all_zero_bytes32_returns_empty_no_warning(self) -> None:
+        """The all-zero bytes32 default is the 'disabled' case, not attribution.
+
+        It is the connection-config default, so blanking it (rather than
+        warning) keeps the dedicated 'builder_code is empty' info path intact
+        and avoids a misleading 'Using builder_code=0x00000000...' log.
+        """
+        logger = MagicMock()
+        code = "0x" + "00" * 32
+        assert _validate_builder_code(code, logger) == ""
+        logger.warning.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # SignedOrderV2 serialize / deserialize
