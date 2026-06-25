@@ -75,7 +75,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.params.enable_multi_bets_fallback and not self.kpi_is_met
 
     def processable_bet(
-        self, bet: Bet, now: int, multi_bets_active: bool = False
+        self,
+        bet: Bet,
+        now: int,
+        multi_bets_active: bool = False,
+        apply_horizon: bool = True,
     ) -> bool:
         """Whether we can process the given bet."""
 
@@ -105,14 +109,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # Optional horizon floor (Polymarket-only operator preference): extend
         # the lower bound to the stricter of the safety floor and
-        # ``min_bets_closing_days``. 0 = no-op (lower bound stays the safety
-        # floor; ``within_min_range == within_safe_range``). Liveness-aware:
-        # only applied while the activity target is on track, so a too-tight
-        # window can never starve the staking KPI.
-        apply_horizon = self.params.min_bets_closing_days > 0 and self.kpi_is_met
+        # ``min_bets_closing_days``. 0 = no-op. ``apply_horizon`` lets the
+        # caller (``_sample``) orchestrate a supply-aware relaxation: try the
+        # filtered pass first, then retry without the floor only when the
+        # in-window pool is empty.
+        apply_floor = apply_horizon and self.params.min_bets_closing_days > 0
         lower_offset = max(
             safe_offset,
-            self.params.min_bets_closing_days * UNIX_DAY if apply_horizon else 0,
+            self.params.min_bets_closing_days * UNIX_DAY if apply_floor else 0,
         )
         within_min_range = now < bet.openingTimestamp - lower_offset
         within_ranges = within_opening_range and within_min_range
@@ -128,7 +132,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     def _classify_processable_bet(
-        self, bet: Bet, now: int, multi_bets_active: bool
+        self,
+        bet: Bet,
+        now: int,
+        multi_bets_active: bool,
+        apply_horizon: bool = True,
     ) -> str:
         """Classify the dominant rejection reason in the mirror's own precedence.
 
@@ -152,6 +160,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :param bet: the bet to classify.
         :param now: current timestamp.
         :param multi_bets_active: whether multi-bets mode is active.
+        :param apply_horizon: whether the horizon floor binds on this pass.
         :return: the dominant rejection reason, or ``processable``.
         """
         if bet.queue_status.is_expired():
@@ -177,13 +186,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if not within_opening_range:
             return "out_of_open"
         # Mirror of the optional horizon floor in ``processable_bet``. Only
-        # fires for markets the true safety floor lets through but the
-        # operator's horizon preference rejects (and only while liveness-aware
-        # gate is active — i.e. ``kpi_is_met`` is true). Read-only; no
-        # blacklist.
+        # fires when the caller's pass is the horizon-filtered one. Read-only;
+        # no blacklist.
         if (
-            self.params.min_bets_closing_days > 0
-            and self.kpi_is_met
+            apply_horizon
+            and self.params.min_bets_closing_days > 0
             and bet.openingTimestamp
             < now + self.params.min_bets_closing_days * UNIX_DAY
         ):
@@ -347,6 +354,31 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
 
+        # Horizon relaxation (supply-aware, last-resort): if the strict and
+        # multi-bets passes both returned no candidates AND an operator has
+        # set ``min_bets_closing_days > 0``, retry without the horizon floor
+        # so the agent can still sample (KPI never starves on real scarcity).
+        horizon_relaxed = False
+        if len(available_bets) <= 0 and self.params.min_bets_closing_days > 0:
+            available_bets = list(
+                filter(
+                    lambda bet: self.processable_bet(
+                        bet,
+                        now=now,
+                        multi_bets_active=self.params.use_multi_bets_mode
+                        or fallback_activated,
+                        apply_horizon=False,
+                    ),
+                    self.bets,
+                )
+            )
+            if len(available_bets) > 0:
+                horizon_relaxed = True
+                self.context.logger.info(
+                    f"Horizon floor relaxed: in-window pool empty, "
+                    f"{len(available_bets)} bets available without floor."
+                )
+
         # Fallback-mode breakdown (only when fallback actually produced
         # bets). Pure-read pass, classified with multi_bets_active=True so
         # the `processable` count reconciles with the post-fallback `kept`.
@@ -366,7 +398,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"input={len(self.bets)} "
             f"dropped={len(self.bets) - len(available_bets)} "
             f"kept={len(available_bets)} "
-            f"fallback_activated={fallback_activated}"
+            f"fallback_activated={fallback_activated} "
+            f"horizon_relaxed={horizon_relaxed}"
         )
         self.context.logger.info(
             f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
