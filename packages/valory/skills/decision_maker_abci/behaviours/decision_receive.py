@@ -457,6 +457,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         market_type = "clob" if self.params.is_running_on_polymarket else "fpmm"
         orderbook_asks_yes = None
         orderbook_asks_no = None
+        orderbook_bids_yes = None
+        orderbook_bids_no = None
         min_order_shares = 0.0
 
         prices = bet.outcomeTokenMarginalPrices
@@ -472,12 +474,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     ob_yes = yield from self._fetch_orderbook(yes_token_id)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
+                        orderbook_bids_yes = ob_yes.get("bids", [])
                         if ob_yes.get("min_order_size") is not None:
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
                     ob_no = yield from self._fetch_orderbook(no_token_id)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
+                        orderbook_bids_no = ob_no.get("bids", [])
                         if (
                             min_order_shares == 0.0
                             and ob_no.get("min_order_size") is not None
@@ -517,6 +521,31 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
             return False, 0, None
+
+        # Optional spread gate (Polymarket / CLOB only): skip if the chosen
+        # side's live bid-ask spread is outside
+        # ``[polymarket_spread_min, polymarket_spread_max]``. Defaults
+        # 0.0 / 1.0 widen the band to [0, 1] = no-op. A missing/empty book
+        # passes through silently (the strategy already approved the bet).
+        if market_type == "clob":
+            spread_asks = (
+                orderbook_asks_yes if strategy_vote == 0 else orderbook_asks_no
+            )
+            spread_bids = (
+                orderbook_bids_yes if strategy_vote == 0 else orderbook_bids_no
+            )
+            if spread_asks and spread_bids:
+                best_ask = min(float(a["price"]) for a in spread_asks)
+                best_bid = max(float(b["price"]) for b in spread_bids)
+                spread = best_ask - best_bid
+                lo = self.params.polymarket_spread_min
+                hi = self.params.polymarket_spread_max
+                if not lo <= spread <= hi:
+                    self.context.logger.info(
+                        f"Spread gate: {spread:.4f} outside "
+                        f"[{lo}, {hi}] — skipping bet."
+                    )
+                    return False, 0, None
 
         is_profitable = True
         expected_profit = strategy_result.get("expected_profit", 0)

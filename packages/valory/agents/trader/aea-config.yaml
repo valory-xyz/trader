@@ -66,10 +66,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihc4ruh25s7wuunfy2b3k2n4eypyhvtry3usgom44wsymagbcr3ki
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidj2k4sgfgrz6tzaslvygawqfmnop7sqcsboaedqnmyzu7qqs4nkm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihb574rgl7okozkbui34ups4via7euwyql6iyhlgtolxeoxtiunzy
 - valory/market_manager_abci:0.1.0:bafybeic67hypwetzltnuy3a6y3o2o332lxyvn34buq57gy4n6bfqpbpxjm
-- valory/decision_maker_abci:0.1.0:bafybeicedj5dtoheq4y5ez4ttw72vzdrpouhwxjgth42eyerpneykkejka
-- valory/trader_abci:0.1.0:bafybeihzu6zmblk4c77dv3z53pz3lyawwdpm3i7yu3czrhr6hdzeowzzyq
+- valory/decision_maker_abci:0.1.0:bafybeicyfo6n72bppzznb3qd5wdvsbtp6lzlxijrisl3eofl7orc7hwneq
+- valory/trader_abci:0.1.0:bafybeibbhwnpypsjejm3eidqvdly77kcza6y4c3h3b2wk27iudrzsbhttq
 - valory/staking_abci:0.1.0:bafybeihwyron2bv7ierrgxke7xofwjy7x6wtglg5vopon7i7lfdiivweaq
 - valory/check_stop_trading_abci:0.1.0:bafybeifbiko6p3sqqg2q6qemmcig432s5djcsxm44j35ejittlpyr5f6z4
 - valory/mech_interact_abci:0.1.0:bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy
@@ -77,7 +77,7 @@ skills:
 - valory/agent_performance_summary_abci:0.1.0:bafybeigmmvpncem6i6t57nwjqzajrbnf6rnqgp43mlo6jf6uziq6lrhlca
 - valory/funds_manager:0.1.0:bafybeibne4vkmbper3ryn7q6kt7lclbyylgorziscyn6msr5qt46aihv4m
 customs:
-- valory/kelly_criterion:0.1.0:bafybeia4jbzn5bmzii72l43y6wxdw57dy3wndsozdvmeiz5dzqmlvga664
+- valory/kelly_criterion:0.1.0:bafybeibfex5ssod6maqswhe4ztmiw6kuyavyhdpzlvhdddp7etgyaiul5a
 - valory/fixed_bet:0.1.0:bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim
 default_ledger: ethereum
 required_ledgers:
@@ -210,6 +210,9 @@ models:
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
+      min_bets_closing_days: ${int:0}
+      polymarket_spread_min: ${float:0.0}
+      polymarket_spread_max: ${float:1.0}
       trading_strategy: ${str:kelly_criterion}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}

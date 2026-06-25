@@ -22,7 +22,7 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Any, Generator, Tuple
+from typing import Any, Dict, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
@@ -843,6 +843,8 @@ class TestIsProfitable:
             type(behaviour), "params", new_callable=PropertyMock
         ).start().return_value = MagicMock(
             is_running_on_polymarket=is_polymarket,
+            polymarket_spread_min=0.0,
+            polymarket_spread_max=1.0,
         )
         patch.object(
             behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
@@ -1104,6 +1106,129 @@ class TestIsProfitable:
 
         is_profitable, _, _ = result
         assert is_profitable is True
+
+    def _setup_clob_with_book(
+        self,
+        ob: Dict[str, Any],
+        strategy_vote: int = 0,
+        spread_min: float = 0.0,
+        spread_max: float = 1.0,
+    ) -> Tuple[DecisionReceiveBehaviour, PredictionResponse]:
+        """Build a CLOB-mode behaviour returning ``ob`` for both orderbook fetches."""
+        behaviour = _make_behaviour()
+        bet = _make_bet(
+            outcomeTokenAmounts=[10000, 10000],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            fee=0,
+        )
+        pred = _make_prediction_response(p_yes=0.8, p_no=0.2)
+        behaviour._last_strategy_result = {
+            "bet_amount": 500,
+            "vote": strategy_vote,
+            "expected_profit": 100,
+        }
+
+        patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ).start().return_value = MagicMock(enabled=False)
+        patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ).start().return_value = bet
+        patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ).start().return_value = MagicMock(
+            is_running_on_polymarket=True,
+            polymarket_spread_min=spread_min,
+            polymarket_spread_max=spread_max,
+        )
+        patch.object(behaviour, "convert_to_native", return_value=0.001).start()
+        patch.object(behaviour, "get_token_name", return_value="USDC").start()
+        patch.object(behaviour, "rebet_allowed", return_value=True).start()
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen(ob),
+        ).start()
+
+        def _mock_get_bet_amount(*_a: Any, **_k: Any) -> Generator:
+            yield
+            return 500  # type: ignore[return-value]
+
+        patch.object(
+            behaviour, "get_bet_amount", side_effect=_mock_get_bet_amount
+        ).start()
+        return behaviour, pred
+
+    def test_spread_gate_default_is_noop(self) -> None:
+        """Defaults [0.0, 1.0] pass every spread (no-op)."""
+        ob = {
+            "asks": [{"price": "0.60", "size": "10"}],
+            "bids": [{"price": "0.20", "size": "10"}],  # spread = 0.40
+        }
+        behaviour, pred = self._setup_clob_with_book(ob)
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, _, _ = result
+        assert is_profitable is True
+
+    def test_spread_gate_outside_band_skips(self) -> None:
+        """Spread above band -> (False, 0, None) (no bet)."""
+        ob = {
+            "asks": [{"price": "0.60", "size": "10"}],
+            "bids": [{"price": "0.50", "size": "10"}],  # spread = 0.10
+        }
+        behaviour, pred = self._setup_clob_with_book(
+            ob, spread_min=0.02, spread_max=0.05
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, strategy_vote = result
+        assert is_profitable is False
+        assert bet_amount == 0
+        assert strategy_vote is None
+
+    def test_spread_gate_inside_band_passes(self) -> None:
+        """Spread inside band -> bet accepted."""
+        ob = {
+            "asks": [{"price": "0.55", "size": "10"}],
+            "bids": [{"price": "0.52", "size": "10"}],  # spread = 0.03
+        }
+        behaviour, pred = self._setup_clob_with_book(
+            ob, spread_min=0.02, spread_max=0.05
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is True
+        assert bet_amount == 500
+
+    def test_spread_gate_empty_book_passes_through(self) -> None:
+        """Missing/empty book is silently skipped (no crash, no false rejection)."""
+        ob = {"asks": [{"price": "0.55", "size": "10"}], "bids": []}
+        behaviour, pred = self._setup_clob_with_book(
+            ob, spread_min=0.02, spread_max=0.05
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, _, _ = result
+        assert is_profitable is True
+
+    def test_spread_gate_no_side_no_book(self) -> None:
+        """vote=NO with no bids on the No book passes through (defensive guard)."""
+        ob = {"asks": [{"price": "0.55", "size": "10"}], "bids": []}
+        behaviour, pred = self._setup_clob_with_book(
+            ob, strategy_vote=1, spread_min=0.02, spread_max=0.05
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, _, strategy_vote = result
+        assert is_profitable is True
+        assert strategy_vote == 1
 
     def test_get_bet_amount_receives_new_kwargs(self) -> None:
         """get_bet_amount is called with p_yes, market_type, prices, etc."""

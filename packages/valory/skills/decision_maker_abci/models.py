@@ -431,6 +431,22 @@ class DecisionMakerParams(
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
 
+        # Optional, Polymarket-only horizon floor (lower bound on time-to-resolution
+        # in days). 0 = no-op (lower bound stays the existing safety floor). Gated
+        # by `kpi_is_met` at the call site so a too-tight value can never starve
+        # the staking activity target.
+        self.min_bets_closing_days: int = self._ensure(
+            "min_bets_closing_days", kwargs, int
+        )
+        # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
+        # 0.0 / 1.0 widen the band to the full [0, 1] range = no-op.
+        self.polymarket_spread_min: float = self._ensure(
+            "polymarket_spread_min", kwargs, float
+        )
+        self.polymarket_spread_max: float = self._ensure(
+            "polymarket_spread_max", kwargs, float
+        )
+
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
         self.use_fallback_strategy: bool = self._ensure(

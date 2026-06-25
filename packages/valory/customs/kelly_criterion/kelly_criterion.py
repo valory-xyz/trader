@@ -41,6 +41,7 @@ OPTIONAL_FIELDS = frozenset(
         "min_bet",
         "n_bets",
         "min_edge",
+        "max_edge",
         "min_oracle_prob",
         "fee_per_trade",
         "grid_points",
@@ -64,6 +65,9 @@ DEFAULT_MAX_BET_USDC = int(5e6)  # 5 USDC
 DEFAULT_MIN_BET = 1
 DEFAULT_N_BETS = 1
 DEFAULT_MIN_EDGE = 0.03
+# Optional CLOB-only upper bound on edge. edge = p_oracle - best_ask is
+# always <= 1.0, so 1.0 widens the band to the full range = no-op.
+DEFAULT_MAX_EDGE = 1.0
 DEFAULT_MIN_ORACLE_PROB = 0.5
 DEFAULT_FEE_PER_TRADE_XDAI = int(1e16)  # 0.01 xDAI
 DEFAULT_FEE_PER_TRADE_USDC = int(1e4)  # 0.01 USDC
@@ -273,6 +277,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     fee_per_trade_wei: int = kwargs.get("fee_per_trade", default_fee)
     n_bets: int = kwargs.get("n_bets", DEFAULT_N_BETS)
     min_edge: float = kwargs.get("min_edge", DEFAULT_MIN_EDGE)
+    max_edge: float = kwargs.get("max_edge", DEFAULT_MAX_EDGE)
     min_oracle_prob: float = kwargs.get("min_oracle_prob", DEFAULT_MIN_ORACLE_PROB)
     grid_points: int = kwargs.get("grid_points", DEFAULT_GRID_POINTS)
 
@@ -347,12 +352,14 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
             b_min_side = min_bet
             x_native, y_native = 0.0, 0.0
 
-            # CLOB pre-filter: quick edge check against best ask
+            # CLOB pre-filter: quick edge check against best ask. Edge must
+            # fall inside the [min_edge, max_edge] band; defaults
+            # (0.03, 1.0) reduce to the original floor-only check.
             edge_best_ask = p - best_ask_price
-            if edge_best_ask < min_edge:
+            if edge_best_ask < min_edge or edge_best_ask > max_edge:
                 msg = (
                     f"{label}: edge vs best_ask "
-                    f"{edge_best_ask:+.4f} < min_edge {min_edge}"
+                    f"{edge_best_ask:+.4f} outside [{min_edge}, {max_edge}]"
                 )
                 info.append(msg)
                 all_rejections.append(msg)

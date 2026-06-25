@@ -95,16 +95,27 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
-        within_safe_range = (
-            now
-            < bet.openingTimestamp
-            - self.params.opening_margin
-            - self.params.safe_voting_range
-        )
+        safe_offset = self.params.opening_margin + self.params.safe_voting_range
+        within_safe_range = now < bet.openingTimestamp - safe_offset
         if not within_safe_range:
+            # The blacklist side-effect is tied to the true safety floor ONLY.
+            # A market skipped purely for the optional horizon preference is
+            # NOT blacklisted.
             bet.blacklist_forever()
 
-        within_ranges = within_opening_range and within_safe_range
+        # Optional horizon floor (Polymarket-only operator preference): extend
+        # the lower bound to the stricter of the safety floor and
+        # ``min_bets_closing_days``. 0 = no-op (lower bound stays the safety
+        # floor; ``within_min_range == within_safe_range``). Liveness-aware:
+        # only applied while the activity target is on track, so a too-tight
+        # window can never starve the staking KPI.
+        apply_horizon = self.params.min_bets_closing_days > 0 and self.kpi_is_met
+        lower_offset = max(
+            safe_offset,
+            self.params.min_bets_closing_days * UNIX_DAY if apply_horizon else 0,
+        )
+        within_min_range = now < bet.openingTimestamp - lower_offset
+        within_ranges = within_opening_range and within_min_range
 
         # check if bet queue number is processable
         processable_statuses = {
@@ -122,10 +133,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Classify the dominant rejection reason in the mirror's own precedence.
 
         Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
-        that trips, in that precedence order. Pure read; does NOT call
-        ``blacklist_forever`` and does NOT mutate the bet — the real filter
-        ``processable_bet`` still runs and is the source of truth.
+        ``out_of_open``, ``out_of_open_min``, ``wrong_queue``,
+        ``processable`` — the first one that trips, in that precedence
+        order. Pure read; does NOT call ``blacklist_forever`` and does NOT
+        mutate the bet — the real filter ``processable_bet`` still runs
+        and is the source of truth.
 
         Caveat: ``processable_bet`` does NOT short-circuit on the last three
         conditions — it computes ``bet_mode_allowable / within_opening_range
@@ -164,6 +176,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         if not within_opening_range:
             return "out_of_open"
+        # Mirror of the optional horizon floor in ``processable_bet``. Only
+        # fires for markets the true safety floor lets through but the
+        # operator's horizon preference rejects (and only while liveness-aware
+        # gate is active — i.e. ``kpi_is_met`` is true). Read-only; no
+        # blacklist.
+        if (
+            self.params.min_bets_closing_days > 0
+            and self.kpi_is_met
+            and bet.openingTimestamp
+            < now + self.params.min_bets_closing_days * UNIX_DAY
+        ):
+            return "out_of_open_min"
         processable_statuses = {
             QueueStatus.TO_PROCESS,
             QueueStatus.PROCESSED,
