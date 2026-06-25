@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiayum4h7migc6vzgfne2ahcp47hyk5iy5ladhmuz2fmipr6ob5i6y
+agent: valory/trader:0.1.0:bafybeidh3bszukpqma73tjko5ngyysly76oh4ohfas3vqexsv4stwco46a
 number_of_agents: 1
 deployment:
   agent:
@@ -153,7 +153,7 @@ models:
       coingecko_pol_in_usd_price_url: ${COINGECKO_POL_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
       genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
-      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
@@ -338,7 +338,7 @@ type: connection
 config:
   ledger_apis:
     polygon:
-      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      address: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       chain_id: ${POLYGON_LEDGER_CHAIN_ID:int:137}
       poa_chain: ${POLYGON_LEDGER_IS_POA_CHAIN:bool:true}
       default_gas_price_strategy: ${POLYGON_LEDGER_PRICING:str:eip1559}
@@ -387,7 +387,7 @@ models:
     args:
       fund_requirements: ${FUND_REQUIREMENTS:dict:{"polygon":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":30000000000000000000,"threshold":3200000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":40000000000000000000,"threshold":10000000000000000000},"0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB":{"topup":65000000,"threshold":16000000},"0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174":{"topup":0,"threshold":0},"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359":{"topup":0,"threshold":0}}}}}
       rpc_urls:
-        polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+        polygon: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
 ---
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq

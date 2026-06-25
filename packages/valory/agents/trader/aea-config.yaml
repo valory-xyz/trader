@@ -268,7 +268,7 @@ models:
       genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
-      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
@@ -544,7 +544,7 @@ config:
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
     polygon:
-      address: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+      address: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       chain_id: ${int:137}
       poa_chain: ${bool:true}
       default_gas_price_strategy: ${str:eip1559}
@@ -578,7 +578,7 @@ models:
       fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
       rpc_urls:
         gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
-        polygon: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+        polygon: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
 ---
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
@@ -597,5 +597,5 @@ config:
   ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
   neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
   neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-  polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://1rpc.io/matic}
+  polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
