@@ -19,7 +19,6 @@
 
 """This module contains the models for the skill."""
 
-import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -75,8 +74,6 @@ from packages.valory.skills.mech_interact_abci.models import (
 from packages.valory.skills.mech_interact_abci.models import (
     SharedState as MechInteractSharedState,
 )
-
-_LOGGER = logging.getLogger(__name__)
 
 FromBlockMappingType = Dict[HexBytes, Union[int, str]]
 ClaimParamsType = Tuple[List[bytes], List[str], List[int], List[bytes]]
@@ -434,21 +431,6 @@ class DecisionMakerParams(
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
 
-        # Optional, Polymarket-only horizon floor (lower bound on
-        # time-to-resolution in days). 0 = no-op. The sampling layer applies
-        # a supply-aware fallback: if the in-window candidate pool is empty,
-        # the floor relaxes for that cycle (no KPI risk).
-        self.min_bets_closing_days: int = self._ensure(
-            "min_bets_closing_days", kwargs, int
-        )
-        if self.min_bets_closing_days > self.sample_bets_closing_days:
-            _LOGGER.warning(
-                "min_bets_closing_days (%d) > sample_bets_closing_days (%d): "
-                "horizon gate would match no markets in the strict pass; "
-                "agent will rely on the supply-aware fallback every cycle.",
-                self.min_bets_closing_days,
-                self.sample_bets_closing_days,
-            )
         # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
         # 0.0 / 1.0 widen the band to the full [0, 1] range = no-op.
         self.polymarket_spread_min: float = self._ensure(

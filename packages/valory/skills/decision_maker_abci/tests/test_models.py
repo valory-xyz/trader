@@ -19,7 +19,6 @@
 
 """Tests for the models module of decision_maker_abci."""
 
-import logging
 import time
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -581,7 +580,6 @@ def _build_decision_maker_params_kwargs() -> dict:
         "agent_registry_address": "0xaddr",
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
-        "min_bets_closing_days": 0,
         "polymarket_spread_min": 0.0,
         "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
@@ -663,36 +661,6 @@ class TestDecisionMakerParams:
                 agent_registry_address="0xaddr",
                 sample_bets_closing_days=0,
             )
-
-    def test_min_gt_sample_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        """Misconfig: min_bets_closing_days > sample_bets_closing_days warns at init."""
-        kwargs = _build_decision_maker_params_kwargs()
-        kwargs["sample_bets_closing_days"] = 8
-        kwargs["min_bets_closing_days"] = 80
-        with patch.object(
-            DecisionMakerParams.__mro__[1], "__init__", return_value=None
-        ):
-            with caplog.at_level(
-                logging.WARNING,
-                logger="packages.valory.skills.decision_maker_abci.models",
-            ):
-                DecisionMakerParams(**kwargs)
-        assert "horizon gate would match no markets" in caplog.text
-
-    def test_min_le_sample_no_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        """No warning when min_bets_closing_days <= sample_bets_closing_days."""
-        kwargs = _build_decision_maker_params_kwargs()
-        kwargs["sample_bets_closing_days"] = 8
-        kwargs["min_bets_closing_days"] = 5
-        with patch.object(
-            DecisionMakerParams.__mro__[1], "__init__", return_value=None
-        ):
-            with caplog.at_level(
-                logging.WARNING,
-                logger="packages.valory.skills.decision_maker_abci.models",
-            ):
-                DecisionMakerParams(**kwargs)
-        assert "horizon gate would match no markets" not in caplog.text
 
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""

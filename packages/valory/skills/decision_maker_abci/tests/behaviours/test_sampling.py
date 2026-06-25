@@ -234,7 +234,6 @@ class TestProcessableBet:
         ) as mock_params:
             mock_params.return_value = MagicMock(
                 sample_bets_closing_days=30,
-                min_bets_closing_days=0,
                 opening_margin=100,
                 safe_voting_range=100,
             )
@@ -265,7 +264,6 @@ class TestProcessableBet:
         ) as mock_params:
             mock_params.return_value = MagicMock(
                 sample_bets_closing_days=60,
-                min_bets_closing_days=0,
                 opening_margin=100,
                 safe_voting_range=100,
             )
@@ -299,7 +297,6 @@ class TestProcessableBet:
         ) as mock_params:
             mock_params.return_value = MagicMock(
                 sample_bets_closing_days=60,
-                min_bets_closing_days=0,
                 opening_margin=100,
                 safe_voting_range=100,
             )
@@ -333,7 +330,6 @@ class TestProcessableBet:
         ) as mock_params:
             mock_params.return_value = MagicMock(
                 sample_bets_closing_days=60,
-                min_bets_closing_days=0,
                 opening_margin=100,
                 safe_voting_range=100,
             )
@@ -364,10 +360,8 @@ class TestClassifyProcessableBet:
         review_bets_for_selling: bool = False,
         multi_bets_active: bool = False,
         sample_bets_closing_days: int = 60,
-        min_bets_closing_days: int = 0,
         opening_margin: int = 100,
         safe_voting_range: int = 100,
-        apply_horizon: bool = True,
     ) -> str:
         """Run _classify_processable_bet with stubbed params/properties."""
         with patch.object(
@@ -375,7 +369,6 @@ class TestClassifyProcessableBet:
         ) as mock_params:
             mock_params.return_value = MagicMock(
                 sample_bets_closing_days=sample_bets_closing_days,
-                min_bets_closing_days=min_bets_closing_days,
                 opening_margin=opening_margin,
                 safe_voting_range=safe_voting_range,
             )
@@ -390,10 +383,7 @@ class TestClassifyProcessableBet:
                 ) as mock_rbs:
                     mock_rbs.return_value = review_bets_for_selling
                     return behaviour._classify_processable_bet(
-                        bet,
-                        now=now,
-                        multi_bets_active=multi_bets_active,
-                        apply_horizon=apply_horizon,
+                        bet, now=now, multi_bets_active=multi_bets_active
                     )
 
     def test_classify_expired(self) -> None:
@@ -509,233 +499,6 @@ class TestClassifyProcessableBet:
             self._patched(behaviour, bet, now=now, sample_bets_closing_days=60)
             == "processable"
         )
-
-    def test_classify_out_of_open_min_when_apply_horizon(self) -> None:
-        """Horizon floor: bet closer than floor + apply_horizon=True -> 'out_of_open_min'."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        # bet opens in 3 days; min_bets_closing_days=5 → rejected
-        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 3)
-        bet.queue_status = QueueStatus.TO_PROCESS
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert (
-            self._patched(
-                behaviour,
-                bet,
-                now=now,
-                sample_bets_closing_days=60,
-                min_bets_closing_days=5,
-                apply_horizon=True,
-            )
-            == "out_of_open_min"
-        )
-
-    def test_classify_horizon_floor_relaxed_when_apply_horizon_false(self) -> None:
-        """Mirror of supply-aware fallback: apply_horizon=False -> 'processable'."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        # same bet (3d horizon, floor 5d) but apply_horizon=False -> floor ignored
-        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 3)
-        bet.queue_status = QueueStatus.TO_PROCESS
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert (
-            self._patched(
-                behaviour,
-                bet,
-                now=now,
-                sample_bets_closing_days=60,
-                min_bets_closing_days=5,
-                apply_horizon=False,
-            )
-            == "processable"
-        )
-
-    def test_classify_horizon_floor_default_zero_is_noop(self) -> None:
-        """Horizon floor default (0) -> classifier reports 'processable'."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 3)
-        bet.queue_status = QueueStatus.TO_PROCESS
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert (
-            self._patched(
-                behaviour,
-                bet,
-                now=now,
-                sample_bets_closing_days=60,
-                min_bets_closing_days=0,
-            )
-            == "processable"
-        )
-
-    def test_classify_kpi_is_met_does_not_relax_classifier(self) -> None:
-        """Regression: kpi_is_met no longer relaxes the classifier (supply-aware design)."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(n_bets=0, opening_timestamp=now + 86400 * 3)
-        bet.queue_status = QueueStatus.TO_PROCESS
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert (
-            self._patched(
-                behaviour,
-                bet,
-                now=now,
-                kpi_is_met=True,
-                sample_bets_closing_days=60,
-                min_bets_closing_days=5,
-                apply_horizon=True,
-            )
-            == "out_of_open_min"
-        )
-
-
-class TestHorizonFloorGate:
-    """Tests for the optional horizon-floor gate in processable_bet."""
-
-    @staticmethod
-    def _run(
-        behaviour: SamplingBehaviour,
-        bet: Bet,
-        now: int,
-        min_bets_closing_days: int,
-        apply_horizon: bool = True,
-    ) -> bool:
-        """Run processable_bet with the horizon floor stubbed."""
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(
-                sample_bets_closing_days=60,
-                min_bets_closing_days=min_bets_closing_days,
-                opening_margin=100,
-                safe_voting_range=100,
-            )
-            with patch.object(
-                type(behaviour), "kpi_is_met", new_callable=PropertyMock
-            ) as mock_kpi:
-                mock_kpi.return_value = False
-                with patch.object(
-                    type(behaviour),
-                    "review_bets_for_selling",
-                    new_callable=PropertyMock,
-                ) as mock_rbs:
-                    mock_rbs.return_value = False
-                    return behaviour.processable_bet(
-                        bet, now=now, apply_horizon=apply_horizon
-                    )
-
-    def test_floor_zero_is_noop(self) -> None:
-        """min_bets_closing_days=0 → behaviour identical to original (no-op)."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 86400 * 3,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        # 3 days > safety floor (200s) → processable when floor is off
-        assert self._run(behaviour, bet, now=now, min_bets_closing_days=0)
-        bet.blacklist_forever.assert_not_called()
-
-    def test_floor_blocks_short_horizon(self) -> None:
-        """apply_horizon=True + floor=5 → bet 3d out rejected (no blacklist)."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 86400 * 3,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert not self._run(behaviour, bet, now=now, min_bets_closing_days=5)
-        # critical: horizon-only rejection does NOT blacklist
-        bet.blacklist_forever.assert_not_called()
-
-    def test_floor_relaxed_when_apply_horizon_false(self) -> None:
-        """Supply-aware fallback (apply_horizon=False): bet 3d out is processable."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 86400 * 3,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert self._run(
-            behaviour, bet, now=now, min_bets_closing_days=5, apply_horizon=False
-        )
-        bet.blacklist_forever.assert_not_called()
-
-    def test_floor_passes_compliant_bet(self) -> None:
-        """Bet outside the horizon floor is processable when filter is on."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 86400 * 7,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert self._run(behaviour, bet, now=now, min_bets_closing_days=5)
-
-    def test_safety_floor_still_blacklists_under_horizon_gate(self) -> None:
-        """A bet inside the safety floor still gets blacklisted, even with floor on."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        # opening in 10s -> inside (opening_margin+safe_voting_range)=200s
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 10,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        assert not self._run(behaviour, bet, now=now, min_bets_closing_days=5)
-        bet.blacklist_forever.assert_called_once()
-
-    def test_kpi_is_met_is_not_the_relax_trigger(self) -> None:
-        """Regression: floor binds regardless of kpi_is_met (supply-aware design)."""
-        behaviour = _make_behaviour()
-        now = int(time.time())
-        bet = _make_mock_bet(
-            n_bets=0,
-            opening_timestamp=now + 86400 * 3,
-            queue_status=QueueStatus.TO_PROCESS,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        # kpi_is_met=True used to relax the floor; the new design ignores it.
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = MagicMock(
-                sample_bets_closing_days=60,
-                min_bets_closing_days=5,
-                opening_margin=100,
-                safe_voting_range=100,
-            )
-            with patch.object(
-                type(behaviour), "kpi_is_met", new_callable=PropertyMock
-            ) as mock_kpi:
-                mock_kpi.return_value = True
-                with patch.object(
-                    type(behaviour),
-                    "review_bets_for_selling",
-                    new_callable=PropertyMock,
-                ) as mock_rbs:
-                    mock_rbs.return_value = False
-                    assert not behaviour.processable_bet(
-                        bet, now=now, apply_horizon=True
-                    )
 
 
 class TestSortByPriorityLogic:
@@ -911,9 +674,6 @@ class TestSample:
         params.use_multi_bets_mode = use_multi_bets_mode
         params.enable_multi_bets_fallback = enable_multi_bets_fallback
         params.sample_bets_closing_days = 60
-        params.min_bets_closing_days = 0
-        params.polymarket_spread_min = 0.0
-        params.polymarket_spread_max = 1.0
         params.opening_margin = 100
         params.safe_voting_range = 100
         params.is_outcome_side_threshold_filter_enabled = (
@@ -2034,170 +1794,6 @@ class TestSample:
         assert result == 5
         # Pre-filter collapsed candidates to [bet_ok] → single sort call.
         assert call_counter.call_count == 1
-
-    def test_sample_horizon_floor_strict_pass_binds(self) -> None:
-        """Bet in [floor, ceiling] is sampled on the strict pass; no relaxation."""
-        now = int(time.time())
-        bet = _make_mock_bet(
-            bet_id="in_window",
-            queue_status=QueueStatus.TO_PROCESS,
-            opening_timestamp=now + 86400 * 7,  # 7d ≥ floor 5d
-            liquidity=100.0,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        behaviour, params, bm, ss = self._setup_behaviour_for_sample(bets=[bet])
-        params.min_bets_closing_days = 5
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock, return_value=params
-        ):
-            with patch.object(
-                type(behaviour),
-                "benchmarking_mode",
-                new_callable=PropertyMock,
-                return_value=bm,
-            ):
-                with patch.object(
-                    type(behaviour),
-                    "synced_timestamp",
-                    new_callable=PropertyMock,
-                    return_value=now,
-                ):
-                    with patch.object(
-                        type(behaviour),
-                        "shared_state",
-                        new_callable=PropertyMock,
-                        return_value=ss,
-                    ):
-                        with patch.object(
-                            type(behaviour),
-                            "kpi_is_met",
-                            new_callable=PropertyMock,
-                            return_value=False,
-                        ):
-                            with patch.object(
-                                type(behaviour),
-                                "review_bets_for_selling",
-                                new_callable=PropertyMock,
-                                return_value=False,
-                            ):
-                                result = behaviour._sample()
-
-        assert result == 0
-        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("horizon_relaxed=False" in c for c in log_calls)
-
-    def test_sample_horizon_floor_relax_fallback(self) -> None:
-        """All bets inside the floor → strict pass empty → relax fallback fires."""
-        now = int(time.time())
-        # 3d horizon, floor 5d → strict pass rejects; safety floor passes.
-        bet = _make_mock_bet(
-            bet_id="short",
-            queue_status=QueueStatus.TO_PROCESS,
-            opening_timestamp=now + 86400 * 3,
-            liquidity=100.0,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        behaviour, params, bm, ss = self._setup_behaviour_for_sample(bets=[bet])
-        params.min_bets_closing_days = 5
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock, return_value=params
-        ):
-            with patch.object(
-                type(behaviour),
-                "benchmarking_mode",
-                new_callable=PropertyMock,
-                return_value=bm,
-            ):
-                with patch.object(
-                    type(behaviour),
-                    "synced_timestamp",
-                    new_callable=PropertyMock,
-                    return_value=now,
-                ):
-                    with patch.object(
-                        type(behaviour),
-                        "shared_state",
-                        new_callable=PropertyMock,
-                        return_value=ss,
-                    ):
-                        with patch.object(
-                            type(behaviour),
-                            "kpi_is_met",
-                            new_callable=PropertyMock,
-                            return_value=False,
-                        ):
-                            with patch.object(
-                                type(behaviour),
-                                "review_bets_for_selling",
-                                new_callable=PropertyMock,
-                                return_value=False,
-                            ):
-                                result = behaviour._sample()
-
-        # Fallback must produce a candidate, NOT return None.
-        assert result == 0
-        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("horizon_relaxed=True" in c for c in log_calls)
-        assert any("Horizon floor relaxed" in c for c in log_calls)
-
-    def test_sample_horizon_relax_disabled_when_floor_zero(self) -> None:
-        """Floor=0 → relaxation branch not taken; result is None if pool is empty."""
-        now = int(time.time())
-        # Bet inside safety floor: strict pass rejects + blacklist. With
-        # floor=0 the relaxation branch is short-circuited (no second pass).
-        bet = _make_mock_bet(
-            bet_id="unsafe",
-            queue_status=QueueStatus.TO_PROCESS,
-            opening_timestamp=now + 10,  # inside safety floor
-            liquidity=100.0,
-        )
-        bet.queue_status.is_expired = MagicMock(return_value=False)
-
-        behaviour, params, bm, ss = self._setup_behaviour_for_sample(bets=[bet])
-        params.min_bets_closing_days = 0
-
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock, return_value=params
-        ):
-            with patch.object(
-                type(behaviour),
-                "benchmarking_mode",
-                new_callable=PropertyMock,
-                return_value=bm,
-            ):
-                with patch.object(
-                    type(behaviour),
-                    "synced_timestamp",
-                    new_callable=PropertyMock,
-                    return_value=now,
-                ):
-                    with patch.object(
-                        type(behaviour),
-                        "shared_state",
-                        new_callable=PropertyMock,
-                        return_value=ss,
-                    ):
-                        with patch.object(
-                            type(behaviour),
-                            "kpi_is_met",
-                            new_callable=PropertyMock,
-                            return_value=False,
-                        ):
-                            with patch.object(
-                                type(behaviour),
-                                "review_bets_for_selling",
-                                new_callable=PropertyMock,
-                                return_value=False,
-                            ):
-                                result = behaviour._sample()
-
-        assert result is None
-        log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
-        assert any("horizon_relaxed=False" in c for c in log_calls)
 
 
 class TestBenchmarkingIncDay:

@@ -75,11 +75,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.params.enable_multi_bets_fallback and not self.kpi_is_met
 
     def processable_bet(
-        self,
-        bet: Bet,
-        now: int,
-        multi_bets_active: bool = False,
-        apply_horizon: bool = True,
+        self, bet: Bet, now: int, multi_bets_active: bool = False
     ) -> bool:
         """Whether we can process the given bet."""
 
@@ -99,27 +95,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
-        safe_offset = self.params.opening_margin + self.params.safe_voting_range
-        within_safe_range = now < bet.openingTimestamp - safe_offset
+        within_safe_range = (
+            now
+            < bet.openingTimestamp
+            - self.params.opening_margin
+            - self.params.safe_voting_range
+        )
         if not within_safe_range:
-            # The blacklist side-effect is tied to the true safety floor ONLY.
-            # A market skipped purely for the optional horizon preference is
-            # NOT blacklisted.
             bet.blacklist_forever()
 
-        # Optional horizon floor (Polymarket-only operator preference): extend
-        # the lower bound to the stricter of the safety floor and
-        # ``min_bets_closing_days``. 0 = no-op. ``apply_horizon`` lets the
-        # caller (``_sample``) orchestrate a supply-aware relaxation: try the
-        # filtered pass first, then retry without the floor only when the
-        # in-window pool is empty.
-        apply_floor = apply_horizon and self.params.min_bets_closing_days > 0
-        lower_offset = max(
-            safe_offset,
-            self.params.min_bets_closing_days * UNIX_DAY if apply_floor else 0,
-        )
-        within_min_range = now < bet.openingTimestamp - lower_offset
-        within_ranges = within_opening_range and within_min_range
+        within_ranges = within_opening_range and within_safe_range
 
         # check if bet queue number is processable
         processable_statuses = {
@@ -132,20 +117,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return bet_mode_allowable and within_ranges and bet_queue_processable
 
     def _classify_processable_bet(
-        self,
-        bet: Bet,
-        now: int,
-        multi_bets_active: bool,
-        apply_horizon: bool = True,
+        self, bet: Bet, now: int, multi_bets_active: bool
     ) -> str:
         """Classify the dominant rejection reason in the mirror's own precedence.
 
         Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``out_of_open_min``, ``wrong_queue``,
-        ``processable`` — the first one that trips, in that precedence
-        order. Pure read; does NOT call ``blacklist_forever`` and does NOT
-        mutate the bet — the real filter ``processable_bet`` still runs
-        and is the source of truth.
+        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
+        that trips, in that precedence order. Pure read; does NOT call
+        ``blacklist_forever`` and does NOT mutate the bet — the real filter
+        ``processable_bet`` still runs and is the source of truth.
 
         Caveat: ``processable_bet`` does NOT short-circuit on the last three
         conditions — it computes ``bet_mode_allowable / within_opening_range
@@ -160,7 +140,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :param bet: the bet to classify.
         :param now: current timestamp.
         :param multi_bets_active: whether multi-bets mode is active.
-        :param apply_horizon: whether the horizon floor binds on this pass.
         :return: the dominant rejection reason, or ``processable``.
         """
         if bet.queue_status.is_expired():
@@ -185,16 +164,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         if not within_opening_range:
             return "out_of_open"
-        # Mirror of the optional horizon floor in ``processable_bet``. Only
-        # fires when the caller's pass is the horizon-filtered one. Read-only;
-        # no blacklist.
-        if (
-            apply_horizon
-            and self.params.min_bets_closing_days > 0
-            and bet.openingTimestamp
-            < now + self.params.min_bets_closing_days * UNIX_DAY
-        ):
-            return "out_of_open_min"
         processable_statuses = {
             QueueStatus.TO_PROCESS,
             QueueStatus.PROCESSED,
@@ -354,31 +323,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     f"Multi-bet fallback activated: {len(available_bets)} bets now available"
                 )
 
-        # Horizon relaxation (supply-aware, last-resort): if the strict and
-        # multi-bets passes both returned no candidates AND an operator has
-        # set ``min_bets_closing_days > 0``, retry without the horizon floor
-        # so the agent can still sample (KPI never starves on real scarcity).
-        horizon_relaxed = False
-        if len(available_bets) <= 0 and self.params.min_bets_closing_days > 0:
-            available_bets = list(
-                filter(
-                    lambda bet: self.processable_bet(
-                        bet,
-                        now=now,
-                        multi_bets_active=self.params.use_multi_bets_mode
-                        or fallback_activated,
-                        apply_horizon=False,
-                    ),
-                    self.bets,
-                )
-            )
-            if len(available_bets) > 0:
-                horizon_relaxed = True
-                self.context.logger.info(
-                    f"Horizon floor relaxed: in-window pool empty, "
-                    f"{len(available_bets)} bets available without floor."
-                )
-
         # Fallback-mode breakdown (only when fallback actually produced
         # bets). Pure-read pass, classified with multi_bets_active=True so
         # the `processable` count reconciles with the post-fallback `kept`.
@@ -398,8 +342,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"input={len(self.bets)} "
             f"dropped={len(self.bets) - len(available_bets)} "
             f"kept={len(available_bets)} "
-            f"fallback_activated={fallback_activated} "
-            f"horizon_relaxed={horizon_relaxed}"
+            f"fallback_activated={fallback_activated}"
         )
         self.context.logger.info(
             f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
