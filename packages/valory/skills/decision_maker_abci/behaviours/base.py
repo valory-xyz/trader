@@ -538,6 +538,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if chatui_config.fixed_bet_size is not None:
             strategies_kwargs["bet_amount"] = chatui_config.fixed_bet_size
 
+        # Edge band (Polymarket/CLOB only): override the strategy-level edge filter
+        if chatui_config.min_edge is not None:
+            strategies_kwargs["min_edge"] = chatui_config.min_edge
+        if chatui_config.max_edge is not None:
+            strategies_kwargs["max_edge"] = chatui_config.max_edge
+
         return strategies_kwargs
 
     def _get_decimals_for_token(self, collateral_token: str) -> int:

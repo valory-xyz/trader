@@ -1900,3 +1900,157 @@ class TestWithdrawalRouteRegistration:
         assert any(
             "withdrawal" in p for p in regex_strings
         ), f"no /api/v1/withdrawal GET route registered; found: {regex_strings}"
+
+
+# ---------------------------------------------------------------------------
+# Edge band gate knobs
+# ---------------------------------------------------------------------------
+
+
+class TestEdgeBand:
+    """Tests for min_edge / max_edge field processing."""
+
+    def test_valid_min_edge_stored(self) -> None:
+        """Valid min_edge in [0,1] must be stored."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"min_edge": 0.05})
+        assert issues == []
+        assert params["min_edge"] == 0.05
+        handler._store_chatui_param_to_json.assert_any_call(  # type: ignore[attr-defined]
+            "min_edge", 0.05
+        )
+        assert handler.shared_state.chatui_config.min_edge == 0.05  # type: ignore[attr-defined]
+
+    def test_valid_max_edge_stored(self) -> None:
+        """Valid max_edge in [0,1] must be stored."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"max_edge": 0.5})
+        assert issues == []
+        assert params["max_edge"] == 0.5
+
+    def test_min_edge_out_of_range_adds_issue(self) -> None:
+        """min_edge > 1.0 must add an issue and not store."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"min_edge": 1.5})
+        assert len(issues) == 1
+        assert "out of range" in issues[0]
+        assert "min_edge" not in params
+
+    def test_max_edge_negative_adds_issue(self) -> None:
+        """max_edge < 0.0 must add an issue and not store."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"max_edge": -0.1})
+        assert len(issues) == 1
+        assert "out of range" in issues[0]
+        assert "max_edge" not in params
+
+    def test_remove_min_edge_clears_to_none(self) -> None:
+        """Removing min_edge must set it to None."""
+        handler = _make_handler(current_config=ChatuiConfig(min_edge=0.03))
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.MIN_EDGE.value]}
+        )
+        assert issues == []
+        assert params["min_edge"] is None
+        handler._store_chatui_param_to_json.assert_any_call(  # type: ignore[attr-defined]
+            "min_edge", None
+        )
+        assert handler.shared_state.chatui_config.min_edge is None  # type: ignore[attr-defined]
+
+    def test_remove_max_edge_clears_to_none(self) -> None:
+        """Removing max_edge must set it to None."""
+        handler = _make_handler(current_config=ChatuiConfig(max_edge=0.8))
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.MAX_EDGE.value]}
+        )
+        assert issues == []
+        assert params["max_edge"] is None
+
+    def test_absent_min_edge_is_noop(self) -> None:
+        """Missing min_edge field must be a no-op."""
+        handler = _make_handler()
+        params, _ = handler._process_updated_agent_config({})
+        assert "min_edge" not in params
+
+    def test_min_edge_greater_than_max_edge_is_rejected(self) -> None:
+        """Setting min_edge > existing max_edge must add an issue and roll back."""
+        handler = _make_handler(current_config=ChatuiConfig(max_edge=0.2))
+        params, issues = handler._process_updated_agent_config({"min_edge": 0.5})
+        assert len(issues) == 1
+        assert "must not exceed" in issues[0]
+        assert "min_edge" not in params
+
+
+# ---------------------------------------------------------------------------
+# Spread band gate knobs
+# ---------------------------------------------------------------------------
+
+
+class TestSpreadBand:
+    """Tests for min_spread / max_spread field processing."""
+
+    def test_valid_min_spread_stored(self) -> None:
+        """Valid min_spread in [0,1] must be stored."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"min_spread": 0.02})
+        assert issues == []
+        assert params["min_spread"] == 0.02
+        handler._store_chatui_param_to_json.assert_any_call(  # type: ignore[attr-defined]
+            "min_spread", 0.02
+        )
+
+    def test_valid_max_spread_stored(self) -> None:
+        """Valid max_spread in [0,1] must be stored."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"max_spread": 0.1})
+        assert issues == []
+        assert params["max_spread"] == 0.1
+
+    def test_min_spread_out_of_range_adds_issue(self) -> None:
+        """min_spread > 1.0 must add an issue and not store."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"min_spread": 2.0})
+        assert len(issues) == 1
+        assert "out of range" in issues[0]
+        assert "min_spread" not in params
+
+    def test_max_spread_negative_adds_issue(self) -> None:
+        """max_spread < 0.0 must add an issue and not store."""
+        handler = _make_handler()
+        params, issues = handler._process_updated_agent_config({"max_spread": -0.05})
+        assert len(issues) == 1
+        assert "out of range" in issues[0]
+        assert "max_spread" not in params
+
+    def test_remove_min_spread_clears_to_none(self) -> None:
+        """Removing min_spread must set it to None."""
+        handler = _make_handler(current_config=ChatuiConfig(min_spread=0.01))
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.MIN_SPREAD.value]}
+        )
+        assert issues == []
+        assert params["min_spread"] is None
+        assert handler.shared_state.chatui_config.min_spread is None  # type: ignore[attr-defined]
+
+    def test_remove_max_spread_clears_to_none(self) -> None:
+        """Removing max_spread must set it to None."""
+        handler = _make_handler(current_config=ChatuiConfig(max_spread=0.15))
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": [FieldsThatCanBeRemoved.MAX_SPREAD.value]}
+        )
+        assert issues == []
+        assert params["max_spread"] is None
+
+    def test_absent_min_spread_is_noop(self) -> None:
+        """Missing min_spread field must be a no-op."""
+        handler = _make_handler()
+        params, _ = handler._process_updated_agent_config({})
+        assert "min_spread" not in params
+
+    def test_min_spread_greater_than_max_spread_is_rejected(self) -> None:
+        """Setting min_spread > existing max_spread must add an issue."""
+        handler = _make_handler(current_config=ChatuiConfig(max_spread=0.05))
+        params, issues = handler._process_updated_agent_config({"min_spread": 0.3})
+        assert len(issues) == 1
+        assert "must not exceed" in issues[0]
+        assert "min_spread" not in params

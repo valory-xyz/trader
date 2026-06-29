@@ -66,7 +66,7 @@ Configuration details:
     -- Can be deselected to fall back to the default value if the user says to remove it.
 
 Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
-
+{polymarket_gate_section}
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Use these tags to make your explanation clearer and easier to read.
@@ -76,6 +76,23 @@ When summarizing your actions, include a field called 'behavior' that describes 
 Always refer to actions as a 'trade' when communicating with users; never describe them as a bet.
 
 User prompt: "{user_prompt}"
+"""
+
+
+POLYMARKET_GATE_SECTION = """
+Polymarket / CLOB-only trade gates (only shown when running on Polymarket):
+- Edge band (min_edge / max_edge): the agent only takes a trade when the Kelly-
+  Criterion edge (p_yes - price_yes) falls inside [min_edge, max_edge]. Values
+  are fractions in [0, 1]; min_edge must be <= max_edge. Current: min_edge={current_min_edge}, max_edge={current_max_edge}.
+    -- When null, the configured service default is used.
+    -- Can be cleared to fall back to the configured default if the user says to remove it.
+- Spread band (min_spread / max_spread): the agent only takes a trade when the
+  live bid-ask spread on the chosen side falls inside [min_spread, max_spread].
+  Values are fractions in [0, 1]; min_spread must be <= max_spread.
+  Current: min_spread={current_min_spread}, max_spread={current_max_spread}.
+    -- When null, the configured service default is used.
+    -- Can be cleared to fall back to the configured default if the user says to remove it.
+    -- Both gates apply only to Polymarket (CLOB) markets and are ignored on Omen (FPMM).
 """
 
 
@@ -93,6 +110,10 @@ class FieldsThatCanBeRemoved(enum.Enum):
     SELECTED_MECHS = "selected_mechs"
     FIXED_BET_SIZE = "fixed_bet_size"
     MAX_BET_SIZE = "max_bet_size"
+    MIN_EDGE = "min_edge"
+    MAX_EDGE = "max_edge"
+    MIN_SPREAD = "min_spread"
+    MAX_SPREAD = "max_spread"
 
 
 class UpdatedAgentConfig(BaseModel):
@@ -103,6 +124,10 @@ class UpdatedAgentConfig(BaseModel):
     selected_mechs: typing.Optional[List[str]]
     fixed_bet_size: typing.Optional[float]
     max_bet_size: typing.Optional[float]
+    min_edge: typing.Optional[float] = None
+    max_edge: typing.Optional[float] = None
+    min_spread: typing.Optional[float] = None
+    max_spread: typing.Optional[float] = None
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
     behavior: typing.Optional[str]
 

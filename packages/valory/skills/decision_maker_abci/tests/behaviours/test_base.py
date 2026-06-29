@@ -433,6 +433,8 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.shared_state.chatui_config.trading_strategy = trading_strategy
         behaviour.shared_state.chatui_config.max_bet_size = STRATEGIES_KWARGS["default_max_bet_size"]  # type: ignore[assignment]
         behaviour.shared_state.chatui_config.fixed_bet_size = STRATEGIES_KWARGS["absolute_min_bet_size"]  # type: ignore[assignment]
+        behaviour.shared_state.chatui_config.min_edge = None
+        behaviour.shared_state.chatui_config.max_edge = None
         behaviour.params.use_fallback_strategy = False
         behaviour.params.is_running_on_polymarket = False
         behaviour.shared_state.strategies_executables = get_strategy_executables()
@@ -1154,6 +1156,38 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         result = behaviour._update_with_values_from_chatui(strategies_kwargs)
         assert result["max_bet"] == 5000
         assert result["bet_amount"] == 2000
+
+    def test_update_with_values_from_chatui_min_edge_set(self) -> None:
+        """min_edge from chatui must override the same key in strategies_kwargs."""
+        behaviour = self.behaviour
+        behaviour.shared_state.chatui_config.min_edge = 0.07
+        behaviour.shared_state.chatui_config.max_edge = None
+
+        strategies_kwargs = {"min_edge": 0.03, "max_bet": 1000}
+        result = behaviour._update_with_values_from_chatui(strategies_kwargs)
+        assert result["min_edge"] == 0.07
+        # original dict must not be mutated
+        assert strategies_kwargs["min_edge"] == 0.03
+
+    def test_update_with_values_from_chatui_max_edge_set(self) -> None:
+        """max_edge from chatui must override the same key in strategies_kwargs."""
+        behaviour = self.behaviour
+        behaviour.shared_state.chatui_config.min_edge = None
+        behaviour.shared_state.chatui_config.max_edge = 0.25
+
+        strategies_kwargs = {"max_edge": 0.5}
+        result = behaviour._update_with_values_from_chatui(strategies_kwargs)
+        assert result["max_edge"] == 0.25
+
+    def test_update_with_values_from_chatui_edge_none_is_noop(self) -> None:
+        """None edge values must leave strategies_kwargs keys unchanged."""
+        behaviour = self.behaviour
+        behaviour.shared_state.chatui_config.min_edge = None
+        behaviour.shared_state.chatui_config.max_edge = None
+
+        strategies_kwargs = {"min_edge": 0.03, "max_bet": 1000}
+        result = behaviour._update_with_values_from_chatui(strategies_kwargs)
+        assert result["min_edge"] == 0.03
 
     def test_get_decimals_for_token_usdc(self) -> None:
         """Test `_get_decimals_for_token` for USDC."""
