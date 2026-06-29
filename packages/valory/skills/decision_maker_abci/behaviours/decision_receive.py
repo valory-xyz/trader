@@ -538,8 +538,17 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 best_ask = min(float(a["price"]) for a in spread_asks)
                 best_bid = max(float(b["price"]) for b in spread_bids)
                 spread = best_ask - best_bid
-                lo = self.params.polymarket_spread_min
-                hi = self.params.polymarket_spread_max
+                cfg = self.shared_state.chatui_config
+                lo = (
+                    cfg.min_spread
+                    if cfg.min_spread is not None
+                    else self.params.polymarket_spread_min
+                )
+                hi = (
+                    cfg.max_spread
+                    if cfg.max_spread is not None
+                    else self.params.polymarket_spread_max
+                )
                 if not lo <= spread <= hi:
                     self.context.logger.info(
                         f"Spread gate: {spread:.4f} outside "

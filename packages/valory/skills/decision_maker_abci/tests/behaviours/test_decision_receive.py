@@ -22,7 +22,7 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator, Tuple
+from typing import Any, Dict, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
@@ -1113,8 +1113,23 @@ class TestIsProfitable:
         strategy_vote: int = 0,
         spread_min: float = 0.0,
         spread_max: float = 1.0,
+        chatui_min_spread: Optional[float] = None,
+        chatui_max_spread: Optional[float] = None,
     ) -> Tuple[DecisionReceiveBehaviour, PredictionResponse]:
-        """Build a CLOB-mode behaviour returning ``ob`` for both orderbook fetches."""
+        """Build a CLOB-mode behaviour returning ``ob`` for both fetches.
+
+        ``spread_min``/``spread_max`` set the params-level fallback band.
+        ``chatui_min_spread``/``chatui_max_spread`` override via chatui_config;
+        ``None`` means no chatui override (falls back to the params band).
+
+        :param ob: orderbook dict with ``asks`` and ``bids`` lists.
+        :param strategy_vote: 0 = YES side, 1 = NO side.
+        :param spread_min: params-level spread lower bound.
+        :param spread_max: params-level spread upper bound.
+        :param chatui_min_spread: chatui override for the lower bound.
+        :param chatui_max_spread: chatui override for the upper bound.
+        :return: configured behaviour and prediction response.
+        """
         behaviour = _make_behaviour()
         bet = _make_bet(
             outcomeTokenAmounts=[10000, 10000],
@@ -1141,6 +1156,13 @@ class TestIsProfitable:
             polymarket_spread_min=spread_min,
             polymarket_spread_max=spread_max,
         )
+        # Wire shared_state.chatui_config so the chatui-override path is
+        # exercised (None values fall through to the params fallback).
+        chatui_cfg = MagicMock()
+        chatui_cfg.min_spread = chatui_min_spread
+        chatui_cfg.max_spread = chatui_max_spread
+        behaviour.context.state.chatui_config = chatui_cfg
+
         patch.object(behaviour, "convert_to_native", return_value=0.001).start()
         patch.object(behaviour, "get_token_name", return_value="USDC").start()
         patch.object(behaviour, "rebet_allowed", return_value=True).start()
@@ -1229,6 +1251,69 @@ class TestIsProfitable:
         is_profitable, _, strategy_vote = result
         assert is_profitable is True
         assert strategy_vote == 1
+
+    def test_spread_gate_chatui_override_blocks_bet(self) -> None:
+        """Chatui max_spread=0.05 narrows band; spread=0.10 is skipped."""
+        ob = {
+            "asks": [{"price": "0.60", "size": "10"}],
+            "bids": [{"price": "0.50", "size": "10"}],  # spread = 0.10
+        }
+        # params band is wide (no-op), but chatui narrows it to [0.0, 0.05]
+        behaviour, pred = self._setup_clob_with_book(
+            ob,
+            spread_min=0.0,
+            spread_max=1.0,
+            chatui_min_spread=0.0,
+            chatui_max_spread=0.05,
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is False
+        assert bet_amount == 0
+
+    def test_spread_gate_chatui_override_passes_bet(self) -> None:
+        """Chatui [0.0,0.20] overrides narrow params; spread=0.10 passes."""
+        ob = {
+            "asks": [{"price": "0.60", "size": "10"}],
+            "bids": [{"price": "0.50", "size": "10"}],  # spread = 0.10
+        }
+        # params band would block (0.02-0.05), but chatui widens to [0.0, 0.20]
+        behaviour, pred = self._setup_clob_with_book(
+            ob,
+            spread_min=0.02,
+            spread_max=0.05,
+            chatui_min_spread=0.0,
+            chatui_max_spread=0.20,
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is True
+        assert bet_amount == 500
+
+    def test_spread_gate_chatui_none_falls_back_to_params(self) -> None:
+        """None chatui spread values fall through to the params-level band."""
+        ob = {
+            "asks": [{"price": "0.60", "size": "10"}],
+            "bids": [{"price": "0.50", "size": "10"}],  # spread = 0.10
+        }
+        # chatui=None; params [0.02, 0.05] -> spread 0.10 blocked
+        behaviour, pred = self._setup_clob_with_book(
+            ob,
+            spread_min=0.02,
+            spread_max=0.05,
+            chatui_min_spread=None,
+            chatui_max_spread=None,
+        )
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        is_profitable, bet_amount, _ = result
+        assert is_profitable is False
+        assert bet_amount == 0
 
     def test_get_bet_amount_receives_new_kwargs(self) -> None:
         """get_bet_amount is called with p_yes, market_type, prices, etc."""

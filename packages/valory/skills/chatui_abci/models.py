@@ -74,6 +74,10 @@ class ChatuiConfig:
     selected_mechs: Optional[List[str]] = None
     fixed_bet_size: Optional[int] = None
     max_bet_size: Optional[int] = None
+    min_edge: Optional[float] = None
+    max_edge: Optional[float] = None
+    min_spread: Optional[float] = None
+    max_spread: Optional[float] = None
     withdrawal_mode: bool = False
     withdrawal_state: str = WITHDRAWAL_STATE_IDLE
     withdrawal_fills: List[Dict[str, Any]] = field(default_factory=list)

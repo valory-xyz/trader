@@ -74,6 +74,7 @@ from packages.valory.skills.chatui_abci.models import (
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
+    POLYMARKET_GATE_SECTION,
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
@@ -261,6 +262,37 @@ class HttpHandler(BaseHttpHandler):
         ]
 
         units, decimals = self.get_units_and_decimals()
+        is_polymarket = self.context.params.is_running_on_polymarket
+
+        if is_polymarket:
+            current_min_edge = self.shared_state.chatui_config.min_edge
+            current_max_edge = self.shared_state.chatui_config.max_edge
+            current_min_spread = self.shared_state.chatui_config.min_spread
+            current_max_spread = self.shared_state.chatui_config.max_spread
+            polymarket_gate_section = POLYMARKET_GATE_SECTION.format(
+                current_min_edge=(
+                    current_min_edge
+                    if current_min_edge is not None
+                    else "configured default"
+                ),
+                current_max_edge=(
+                    current_max_edge
+                    if current_max_edge is not None
+                    else "configured default"
+                ),
+                current_min_spread=(
+                    current_min_spread
+                    if current_min_spread is not None
+                    else "configured default"
+                ),
+                current_max_spread=(
+                    current_max_spread
+                    if current_max_spread is not None
+                    else "configured default"
+                ),
+            )
+        else:
+            polymarket_gate_section = ""
 
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
@@ -287,6 +319,7 @@ class HttpHandler(BaseHttpHandler):
             absolute_max_bet_size=absolute_max_bet_size / (10**decimals),
             units=units,
             decimals=decimals,
+            polymarket_gate_section=polymarket_gate_section,
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -630,6 +663,74 @@ class HttpHandler(BaseHttpHandler):
                 issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)
+
+        # Polymarket-only gate knobs: edge band and spread band.
+        # Each pair is validated: value in [0, 1] and min <= max when both set.
+        _gate_pairs = (("min_edge", "max_edge"), ("min_spread", "max_spread"))
+        for lo_key, hi_key in _gate_pairs:
+            removed = updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            lo_remove = FieldsThatCanBeRemoved(lo_key).value in removed
+            hi_remove = FieldsThatCanBeRemoved(hi_key).value in removed
+            updated_lo: Optional[float] = updated_agent_config.get(lo_key)
+            updated_hi: Optional[float] = updated_agent_config.get(hi_key)
+
+            if lo_remove:
+                updated_params[lo_key] = None
+                setattr(self.shared_state.chatui_config, lo_key, None)
+                self._store_chatui_param_to_json(lo_key, None)
+            elif updated_lo is not None:
+                if not 0.0 <= updated_lo <= 1.0:
+                    issue_message = (
+                        f"{lo_key} {updated_lo} is out of range. "
+                        "It must be between 0.0 and 1.0."
+                    )
+                    self.context.logger.warning(issue_message)
+                    issues.append(issue_message)
+                else:
+                    updated_params[lo_key] = updated_lo
+                    setattr(self.shared_state.chatui_config, lo_key, updated_lo)
+                    self._store_chatui_param_to_json(lo_key, updated_lo)
+
+            if hi_remove:
+                updated_params[hi_key] = None
+                setattr(self.shared_state.chatui_config, hi_key, None)
+                self._store_chatui_param_to_json(hi_key, None)
+            elif updated_hi is not None:
+                if not 0.0 <= updated_hi <= 1.0:
+                    issue_message = (
+                        f"{hi_key} {updated_hi} is out of range. "
+                        "It must be between 0.0 and 1.0."
+                    )
+                    self.context.logger.warning(issue_message)
+                    issues.append(issue_message)
+                else:
+                    updated_params[hi_key] = updated_hi
+                    setattr(self.shared_state.chatui_config, hi_key, updated_hi)
+                    self._store_chatui_param_to_json(hi_key, updated_hi)
+
+            # Cross-band: min must not exceed max after applying updates.
+            # Read the post-update in-memory values (None means "not set yet").
+            lo_val: Optional[float] = getattr(
+                self.shared_state.chatui_config, lo_key, None
+            )
+            hi_val: Optional[float] = getattr(
+                self.shared_state.chatui_config, hi_key, None
+            )
+            if lo_val is not None and hi_val is not None and lo_val > hi_val:
+                issue_message = (
+                    f"{lo_key} ({lo_val}) must not exceed {hi_key} ({hi_val})."
+                )
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
+                # Roll back the update that caused the violation.
+                if updated_lo is not None and lo_key in updated_params:
+                    del updated_params[lo_key]
+                    setattr(self.shared_state.chatui_config, lo_key, None)
+                    self._store_chatui_param_to_json(lo_key, None)
+                if updated_hi is not None and hi_key in updated_params:
+                    del updated_params[hi_key]
+                    setattr(self.shared_state.chatui_config, hi_key, None)
+                    self._store_chatui_param_to_json(hi_key, None)
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
