@@ -28,17 +28,17 @@ from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
 from packages.valory.skills.decision_maker_abci.models import (
+    REQUIRED_BET_TEMPLATE_KEYS,
+    ZERO_BYTES,
+    ZERO_HEX,
     AccuracyInfoFields,
     BenchmarkingMockData,
     DecisionMakerParams,
     LiquidityInfo,
     MultisendBatch,
     PromptTemplate,
-    REQUIRED_BET_TEMPLATE_KEYS,
     RedeemingProgress,
     SharedState,
-    ZERO_BYTES,
-    ZERO_HEX,
     _raise_incorrect_config,
     check_prompt_template,
     extract_keys_from_template,
@@ -721,6 +721,23 @@ class TestDecisionMakerParams:
         assert params.is_outcome_side_threshold_filter_enabled is False
         assert params.outcome_side_threshold_filter_threshold == 0.5
         assert params.exclude_neg_risk_markets is False
+        assert params.polymarket_spread_min == 0.0
+        assert params.polymarket_spread_max == 1.0
+
+    def test_inverted_spread_band_raises(self) -> None:
+        """polymarket_spread_min > polymarket_spread_max raises at init.
+
+        An inverted band makes ``not lo <= spread <= hi`` unsatisfiable, which
+        would otherwise silently skip every CLOB bet with no startup error.
+        """
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["polymarket_spread_min"] = 0.5
+        kwargs["polymarket_spread_max"] = 0.1
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="polymarket_spread_min"),
+        ):
+            DecisionMakerParams(**kwargs)
 
     def test_prompt_template_property(self) -> None:
         """Test prompt_template property returns a PromptTemplate."""

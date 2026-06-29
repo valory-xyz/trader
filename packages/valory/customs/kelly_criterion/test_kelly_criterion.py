@@ -439,6 +439,19 @@ class TestRunFilters:
         )
         assert result["bet_amount"] == 0
 
+    def test_inverted_edge_band_rejected(self) -> None:
+        """min_edge > max_edge is rejected up front as an invalid band."""
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "p_yes": 0.62,
+                "min_edge": 0.10,
+                "max_edge": 0.05,  # inverted -> unsatisfiable band
+            }
+        )
+        assert result["bet_amount"] == 0
+        assert any("no valid edge band" in e for e in result["error"])
+
     def test_edge_inside_band_clob(self) -> None:
         """CLOB edge band: edge inside the band is accepted."""
         # YES edge = 0.62 - 0.55 = 0.07, inside [0.05, 0.10].

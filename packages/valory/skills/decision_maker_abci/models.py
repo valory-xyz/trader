@@ -439,6 +439,12 @@ class DecisionMakerParams(
         self.polymarket_spread_max: float = self._ensure(
             "polymarket_spread_max", kwargs, float
         )
+        if self.polymarket_spread_min > self.polymarket_spread_max:
+            msg = (
+                f"polymarket_spread_min ({self.polymarket_spread_min}) must be "
+                f"<= polymarket_spread_max ({self.polymarket_spread_max})"
+            )
+            raise ValueError(msg)
 
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)

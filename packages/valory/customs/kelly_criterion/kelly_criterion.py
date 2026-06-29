@@ -290,8 +290,19 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     token_name = "USDC" if token_decimals == 6 else "xDAI"
     info.append(f"Bankroll: {w_total} {token_name}, floor: {floor} {token_name}")
-    info.append(f"max_bet: {max_bet}, n_bets: {n_bets}, min_edge: {min_edge}")
+    info.append(
+        f"max_bet: {max_bet}, n_bets: {n_bets}, "
+        f"min_edge: {min_edge}, max_edge: {max_edge}"
+    )
     info.append(f"market_type: {market_type}, p_yes: {p_yes}")
+
+    # Reject an inverted edge band up front: min_edge > max_edge makes the
+    # CLOB pre-filter unsatisfiable, which would silently skip every bet.
+    if min_edge > max_edge:
+        error.append(
+            f"min_edge ({min_edge}) > max_edge ({max_edge}): no valid edge band"
+        )
+        return _no_trade(info, error)
 
     # 3. Compute effective wealth
     w = w_total - floor
@@ -354,13 +365,20 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
             # CLOB pre-filter: quick edge check against best ask. Edge must
             # fall inside the [min_edge, max_edge] band; defaults
-            # (0.03, 1.0) reduce to the original floor-only check.
+            # (DEFAULT_MIN_EDGE, DEFAULT_MAX_EDGE) reduce to the original
+            # floor-only check.
             edge_best_ask = p - best_ask_price
-            if edge_best_ask < min_edge or edge_best_ask > max_edge:
-                msg = (
-                    f"{label}: edge vs best_ask "
-                    f"{edge_best_ask:+.4f} outside [{min_edge}, {max_edge}]"
-                )
+            if not min_edge <= edge_best_ask <= max_edge:
+                if edge_best_ask < min_edge:
+                    msg = (
+                        f"{label}: edge vs best_ask "
+                        f"{edge_best_ask:+.4f} < min_edge {min_edge}"
+                    )
+                else:
+                    msg = (
+                        f"{label}: edge vs best_ask "
+                        f"{edge_best_ask:+.4f} > max_edge {max_edge}"
+                    )
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
