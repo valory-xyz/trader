@@ -1123,12 +1123,7 @@ class TestIsProfitable:
         spread_max: float = 1.0,
         ob_no: Optional[Dict[str, Any]] = None,
     ) -> Tuple[DecisionReceiveBehaviour, PredictionResponse]:
-        """Build a CLOB-mode behaviour for the orderbook fetches.
-
-        ``ob`` is returned for both sides unless ``ob_no`` is given, in which
-        case ``ob`` is the YES book and ``ob_no`` the NO book (keyed on the
-        token id), so side-selection by ``strategy_vote`` can be asserted.
-        """
+        """Build a CLOB-mode behaviour; ``ob_no`` (if set) is the NO-side book and ``ob`` the YES-side book (keyed on token id), else ``ob`` serves both sides."""
         behaviour = _make_behaviour()
         bet = _make_bet(
             outcomeTokenAmounts=[10000, 10000],

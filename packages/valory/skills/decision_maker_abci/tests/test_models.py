@@ -28,17 +28,17 @@ from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
 from packages.valory.skills.decision_maker_abci.models import (
-    REQUIRED_BET_TEMPLATE_KEYS,
-    ZERO_BYTES,
-    ZERO_HEX,
     AccuracyInfoFields,
     BenchmarkingMockData,
     DecisionMakerParams,
     LiquidityInfo,
     MultisendBatch,
     PromptTemplate,
+    REQUIRED_BET_TEMPLATE_KEYS,
     RedeemingProgress,
     SharedState,
+    ZERO_BYTES,
+    ZERO_HEX,
     _raise_incorrect_config,
     check_prompt_template,
     extract_keys_from_template,
