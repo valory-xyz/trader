@@ -60,6 +60,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FailedMultiplexerRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedOffchainMechDepositSettledRound,
     FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
     FinishedPolymarketTopUpTxRound,
@@ -420,6 +421,43 @@ class TestPostTxSettlementRoundEndBlock:
         assert event == Event.UNRECOGNIZED
         assert synced_data is mock_synced
         round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
+        # The dispatch logs an UNRECOGNIZED warning so a silently-dropped
+        # tx surfaces in agent logs instead of only in raw Tendermint
+        # state — guards against the off-chain deposit getting routed
+        # to FailedMultiplexerRound without a trail.
+        round_.context.logger.warning.assert_called_once()
+
+    def test_offchain_deposit_submitter_dispatches_to_settled_event(self) -> None:
+        """The off-chain sentinel routes a settled deposit back to MechRequestRound.
+
+        Without this dispatch the multiplexer would not recognise the
+        ``OFFCHAIN_DEPOSIT_TX_SUBMITTER`` sentinel and fall through to
+        ``Event.UNRECOGNIZED``, dropping the settled deposit into
+        ``FailedMultiplexerRound`` so ``_retry_pending`` never fires.
+        Pin the literal sentinel value too: an identity-only check
+        against the imported symbol would let a silent rename move
+        both sides together while the mech-interact-side executor
+        (which hardcodes the string) breaks.
+        """
+        from packages.valory.skills.mech_interact_abci.states.request import (
+            OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+        )
+
+        round_ = self._create_round()
+
+        with patch(
+            "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
+        ) as MockSyncData:
+            mock_synced = MagicMock()
+            mock_synced.tx_submitter = OFFCHAIN_DEPOSIT_TX_SUBMITTER
+            MockSyncData.return_value = mock_synced
+
+            result = round_.end_block()
+
+        assert result is not None
+        _, event = result
+        assert event == Event.OFFCHAIN_MECH_DEPOSIT_SETTLED
+        assert OFFCHAIN_DEPOSIT_TX_SUBMITTER == "mech_request_round_offchain_deposit"
 
     # type: ignore[attr-defined]
     def test_mech_requesting_done_does_not_update_policy(self) -> None:
@@ -632,6 +670,7 @@ class TestTxSettlementMultiplexerAbciApp:
                 Event.WITHDRAW_OMEN_DONE: FinishedOmenWithdrawTxRound,
                 Event.TOP_UP_DONE: FinishedPolymarketTopUpTxRound,
                 Event.WITHDRAW_TOP_UP_DONE: FinishedPolymarketWithdrawTopUpTxRound,
+                Event.OFFCHAIN_MECH_DEPOSIT_SETTLED: FinishedOffchainMechDepositSettledRound,
                 Event.ROUND_TIMEOUT: PostTxSettlementRound,
                 Event.UNRECOGNIZED: FailedMultiplexerRound,
             },
@@ -648,6 +687,7 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedPolymarketTopUpTxRound: {},
             FinishedPolymarketWithdrawTopUpTxRound: {},
             FinishedStakingTxRound: {},
+            FinishedOffchainMechDepositSettledRound: {},
             FailedMultiplexerRound: {},
         }
         assert abci_app.transition_function == expected
@@ -668,6 +708,7 @@ class TestTxSettlementMultiplexerAbciApp:
             FinishedStakingTxRound,
             FinishedSubscriptionTxRound,
             FinishedSetApprovalTxRound,
+            FinishedOffchainMechDepositSettledRound,
             FailedMultiplexerRound,
         }
         assert abci_app.final_states == expected_final
@@ -701,12 +742,13 @@ class TestTxSettlementMultiplexerAbciApp:
             FailedMultiplexerRound: set(),
             FinishedSubscriptionTxRound: set(),
             FinishedSetApprovalTxRound: set(),
+            FinishedOffchainMechDepositSettledRound: set(),
         }
         assert abci_app.db_post_conditions == expected
 
     def test_final_states_count(self, abci_app: TxSettlementMultiplexerAbciApp) -> None:
-        """Test that there are exactly 14 final states."""
-        assert len(abci_app.final_states) == 14
+        """Test that there are exactly 15 final states."""
+        assert len(abci_app.final_states) == 15
 
     def test_degenerate_rounds_have_empty_transitions(
         self, abci_app: TxSettlementMultiplexerAbciApp

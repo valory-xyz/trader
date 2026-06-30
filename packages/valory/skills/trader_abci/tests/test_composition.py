@@ -27,6 +27,9 @@ from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradi
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPostBetUpdateRound,
 )
+from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
+    HandleFailedTxRound,
+)
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
 )
@@ -38,6 +41,13 @@ from packages.valory.skills.market_manager_abci.rounds import (
     FinishedMarketManagerRound,
     FinishedPolymarketFetchMarketRound,
 )
+from packages.valory.skills.mech_interact_abci.states.final_states import (
+    FailedOffchainMechRequestRound,
+    FinishedOffchainMechDepositNeededRound,
+    FinishedOffchainMechRequestRound,
+)
+from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
+from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
@@ -51,12 +61,14 @@ from packages.valory.skills.trader_abci.composition import (
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     FinishedBetPlacementTxRound,
+    FinishedOffchainMechDepositSettledRound,
     FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
+    PreTxSettlementRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 57
+EXPECTED_TRANSITION_MAPPING_LENGTH = 61
 
 # Transitions introduced or rewired by the always-redeem-first /
 # `PostBetUpdateRound` FSM restructure (PR #904). Each pair must hold
@@ -78,6 +90,34 @@ RESTRUCTURE_TRANSITIONS = {
     FinishedSellOutcomeTokensTxRound: PostBetUpdateRound,
     FinishedPostBetUpdateRound: CallCheckpointRound,
 }
+
+# Off-chain mech-interact transitions. Pinned individually because a
+# flat value-set assertion would let a silent swap pass — e.g. routing
+# ``FinishedOffchainMechDepositSettledRound`` to ``MechResponseRound``
+# instead of ``MechRequestRound`` would break ``_retry_pending``,
+# and routing ``FinishedOffchainMechDepositNeededRound`` to
+# ``RandomnessTransactionSubmissionRound`` would skip the
+# refill-required check that ``PreTxSettlementRound`` runs.
+OFFCHAIN_TRANSITIONS = {
+    FinishedOffchainMechRequestRound: MechResponseRound,
+    FinishedOffchainMechDepositNeededRound: PreTxSettlementRound,
+    FinishedOffchainMechDepositSettledRound: MechRequestRound,
+    FailedOffchainMechRequestRound: HandleFailedTxRound,
+}
+
+
+@pytest.mark.parametrize(
+    "src,dst",
+    list(OFFCHAIN_TRANSITIONS.items()),
+    ids=lambda cls: getattr(cls, "__name__", str(cls)),
+)
+def test_offchain_transition(src: type, dst: type) -> None:
+    """Each off-chain mech-interact transition must resolve to its exact target round."""
+    assert src in abci_app_transition_mapping, f"{src.__name__} missing from mapping"
+    assert abci_app_transition_mapping[src] is dst, (
+        f"{src.__name__} -> {abci_app_transition_mapping[src].__name__}, "
+        f"expected {dst.__name__}"
+    )
 
 
 @pytest.mark.parametrize(

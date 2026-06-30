@@ -36,6 +36,10 @@ alphabet_in:
 - NO_MARKETPLACE
 - NO_OP
 - NO_REDEEMING
+- OFFCHAIN_ALL_FAILED
+- OFFCHAIN_DEPOSIT_NEEDED
+- OFFCHAIN_DONE
+- OFFCHAIN_MECH_DEPOSIT_SETTLED
 - POLYMARKET_DONE
 - POLYMARKET_FETCH_MARKETS
 - PREPARE_TX
@@ -44,6 +48,7 @@ alphabet_in:
 - REFILL_REQUIRED
 - RESET_AND_PAUSE_TIMEOUT
 - RESET_TIMEOUT
+- RESPONSE_ROUND_TIMEOUT
 - REVIEW_BETS
 - ROUND_TIMEOUT
 - SELL_OUTCOME_TOKENS_DONE
@@ -239,11 +244,14 @@ transition_func:
     (MechRequestRound, BUY_SUBSCRIPTION): MechPurchaseSubscriptionRound
     (MechRequestRound, DONE): PreTxSettlementRound
     (MechRequestRound, NO_MAJORITY): MechRequestRound
+    (MechRequestRound, OFFCHAIN_ALL_FAILED): HandleFailedTxRound
+    (MechRequestRound, OFFCHAIN_DEPOSIT_NEEDED): PreTxSettlementRound
+    (MechRequestRound, OFFCHAIN_DONE): MechResponseRound
     (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
     (MechRequestRound, SKIP_REQUEST): CallCheckpointRound
     (MechResponseRound, DONE): DecisionReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
-    (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
+    (MechResponseRound, RESPONSE_ROUND_TIMEOUT): HandleFailedTxRound
     (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
     (MechVersionDetectionRound, NO_MARKETPLACE): CheckBenchmarkingModeRound
     (MechVersionDetectionRound, ROUND_TIMEOUT): MechVersionDetectionRound
@@ -329,6 +337,7 @@ transition_func:
     (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): ResetAndPauseRound
     (PostTxSettlementRound, BET_PLACEMENT_DONE): PostBetUpdateRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): MechResponseRound
+    (PostTxSettlementRound, OFFCHAIN_MECH_DEPOSIT_SETTLED): MechRequestRound
     (PostTxSettlementRound, REDEEMING_DONE): CheckStopTradingRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): PostBetUpdateRound
