@@ -93,7 +93,7 @@ models:
       mech_chain_id: ${MECH_CHAIN_ID:str:polygon}
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270}
       sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
-      polymarket_spread_min: ${POLYMARKET_SPREAD_MIN:float:0.02}
+      polymarket_spread_min: ${POLYMARKET_SPREAD_MIN:float:0.0}
       polymarket_spread_max: ${POLYMARKET_SPREAD_MAX:float:0.05}
       trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:false}
@@ -134,7 +134,7 @@ models:
       withdrawal_round_timeout: ${WITHDRAWAL_ROUND_TIMEOUT:float:1800.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
       file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.05,"max_edge":0.1,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"max_edge":0.1,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x343F2B005cF6D70bA610CD9F1F1927049414B582","priority_mech_address":"0x1DCbC9368327776F8B20Dc041D40b8076C8AC173","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":25,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
