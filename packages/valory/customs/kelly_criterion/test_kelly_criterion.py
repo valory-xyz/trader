@@ -426,6 +426,72 @@ class TestRunFilters:
         )
         assert result["bet_amount"] == 0
 
+    def test_edge_above_max_edge_clob(self) -> None:
+        """CLOB edge band: edge above max_edge is rejected."""
+        # YES edge = 0.95 - 0.55 = 0.40; rejected by max_edge=0.10.
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "p_yes": 0.95,
+                "min_edge": 0.05,
+                "max_edge": 0.10,
+            }
+        )
+        assert result["bet_amount"] == 0
+
+    def test_inverted_edge_band_rejected(self) -> None:
+        """min_edge > max_edge is rejected up front as an invalid band."""
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "p_yes": 0.62,
+                "min_edge": 0.10,
+                "max_edge": 0.05,  # inverted -> unsatisfiable band
+            }
+        )
+        assert result["bet_amount"] == 0
+        assert any("no valid edge band" in e for e in result["error"])
+
+    def test_edge_inside_band_clob(self) -> None:
+        """CLOB edge band: edge inside the band is accepted."""
+        # YES edge = 0.62 - 0.55 = 0.07, inside [0.05, 0.10].
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "p_yes": 0.62,
+                "min_edge": 0.05,
+                "max_edge": 0.10,
+            }
+        )
+        assert result["bet_amount"] > 0
+
+    def test_max_edge_default_is_noop(self) -> None:
+        """No max_edge -> default 1.0 -> behaves like the original floor-only check."""
+        # YES edge = 0.40 (well above any narrow band); with default
+        # max_edge=1.0 the band is the full range, so it still passes.
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "p_yes": 0.95,
+                "min_edge": 0.03,
+            }
+        )
+        assert result["bet_amount"] > 0
+
+    def test_max_edge_does_not_apply_to_fpmm(self) -> None:
+        """FPMM edge gate is untouched by max_edge."""
+        # FPMM YES edge = 0.90 - 0.50 = 0.40. On CLOB this would be rejected
+        # by max_edge=0.10; on FPMM the band is ignored (gate uses min_edge only).
+        result = run(
+            **{
+                **FPMM_KWARGS,
+                "p_yes": 0.90,
+                "min_edge": 0.03,
+                "max_edge": 0.10,
+            }
+        )
+        assert result["bet_amount"] > 0
+
     def test_oracle_prob_below_min(self) -> None:
         """Both sides rejected when neither meets min_oracle_prob."""
         result = run(

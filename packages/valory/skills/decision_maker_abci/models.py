@@ -431,6 +431,21 @@ class DecisionMakerParams(
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
 
+        # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
+        # 0.0 / 1.0 widen the band to the full [0, 1] range = no-op.
+        self.polymarket_spread_min: float = self._ensure(
+            "polymarket_spread_min", kwargs, float
+        )
+        self.polymarket_spread_max: float = self._ensure(
+            "polymarket_spread_max", kwargs, float
+        )
+        if self.polymarket_spread_min > self.polymarket_spread_max:
+            msg = (
+                f"polymarket_spread_min ({self.polymarket_spread_min}) must be "
+                f"<= polymarket_spread_max ({self.polymarket_spread_max})"
+            )
+            raise ValueError(msg)
+
         # the trading strategy to use for placing bets
         self.trading_strategy: str = self._ensure("trading_strategy", kwargs, str)
         self.use_fallback_strategy: bool = self._ensure(

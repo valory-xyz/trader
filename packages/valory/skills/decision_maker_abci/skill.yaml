@@ -16,7 +16,7 @@ fingerprint:
   behaviours/bet_placement.py: bafybeiaq357hi3tw3di3tdygv2vudlhmeghdrohbok7zshv2zfn3pluuxu
   behaviours/blacklisting.py: bafybeicn2rq5uwibqnsaw7cpu74es7fcxlhzkqvhercwwofuelpo4rmcyu
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
-  behaviours/decision_receive.py: bafybeihenuhzzpmudwafs7qa455qq2obviikuiupkedn6kej7xjzge4as4
+  behaviours/decision_receive.py: bafybeicrm4xzmws55pvvfbtijaeu53vsh4zy3sqfupugne7ononrkmmaym
   behaviours/decision_request.py: bafybeicqygaiieqnjgawlrm7qo65sgncpuujw2zolmgvjjupnchtoua35q
   behaviours/handle_failed_tx.py: bafybeib7yjysksnc7azr3okvskb62svlyj2qt2t4tsiaiosi3dumdrm6d4
   behaviours/omen_withdraw.py: bafybeibu5dypwmcyitkrpqctkkomlxsvuqkzqvfi6yout5ja2kihu4deie
@@ -47,7 +47,7 @@ fingerprint:
   handlers.py: bafybeiehbneuvyvuwgxeh2sm3gr6lgckixjiblbf4ep5rdb3bkdvh5wcg4
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeidaazmej4p34nxyow6mp5d4ee2bolv64ac2xcltpb5ofvfn3vatm4
+  models.py: bafybeiff5eoz7u2go7oji347gjei5csnyyjplujr7vdzvlgj34sjuabuba
   payloads.py: bafybeibxud2labmxmvggua7oo2fghgobducubqj3ehy7r7j6og5gpqc2jm
   policy.py: bafybeici2ywdlwzpftbibv2uyzymdlraj6wovjana37ujkdwn5wna6bbvq
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
@@ -91,7 +91,7 @@ fingerprint:
   tests/behaviours/test_bet_placement.py: bafybeifum6ilmcohsdci2z447kr7jnlw2hhicjdpxg5y2pr7gwul4rogy4
   tests/behaviours/test_blacklisting.py: bafybeic2jcfxujhto6khwrobnfxx43wh42hx2fmn4xo2hxzlynmavqvbqa
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
-  tests/behaviours/test_decision_receive.py: bafybeid5uya3w4uipai6jsrygk7rzepth4rafejd52iih5lx2yadmmlfpq
+  tests/behaviours/test_decision_receive.py: bafybeicslgo66uln6su5cz4td54rgwyegbvna2gr6h5lg33mlusu2bl6v4
   tests/behaviours/test_decision_request.py: bafybeiacd7ji65apfapxongatdljsne6kl3q3sgmzgkgihtevgz5hfppky
   tests/behaviours/test_handle_failed_tx.py: bafybeicu7km3os7kdlwvvmkj6avscj2gbjwtylpue7o4huiqi4pyb62p7a
   tests/behaviours/test_omen_withdrawal_store.py: bafybeia6oof3z4v5vy4gewcnu5yidmfyew47mln5nv4bridoukhyyt2zcq
@@ -137,7 +137,7 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeibbgirs4uio3iprbs5daorjogkr6ra5gkkgvrvi2plb6c55v5me3u
-  tests/test_models.py: bafybeiahzoihkwlsi3kyj3qcfvrl43jr6zamf2f6qsqe2ojo2h5a5gu6fi
+  tests/test_models.py: bafybeiezmz5e4y5rzoxhbr4l4rtzd3seronzx6cuof775pqnhn36jawg2y
   tests/test_payloads.py: bafybeibw4y4eowsfj4wlsoghc7lxosedt5l4uhgxs6y5t2jshdtdkzncbe
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
@@ -339,6 +339,8 @@ models:
         this API key
       mech_marketplace_v1_suitable_tools: []
       sample_bets_closing_days: 10
+      polymarket_spread_min: 0.0
+      polymarket_spread_max: 1.0
       trading_strategy: strategy_name
       use_fallback_strategy: true
       ipfs_address: https://gateway.autonolas.tech/ipfs/

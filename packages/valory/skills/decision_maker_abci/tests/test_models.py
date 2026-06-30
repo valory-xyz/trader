@@ -580,6 +580,8 @@ def _build_decision_maker_params_kwargs() -> dict:
         "agent_registry_address": "0xaddr",
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
+        "polymarket_spread_min": 0.0,
+        "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
         "use_fallback_strategy": False,
         "tools_accuracy_hash": "hash123",
@@ -719,6 +721,23 @@ class TestDecisionMakerParams:
         assert params.is_outcome_side_threshold_filter_enabled is False
         assert params.outcome_side_threshold_filter_threshold == 0.5
         assert params.exclude_neg_risk_markets is False
+        assert params.polymarket_spread_min == 0.0
+        assert params.polymarket_spread_max == 1.0
+
+    def test_inverted_spread_band_raises(self) -> None:
+        """polymarket_spread_min > polymarket_spread_max raises at init.
+
+        An inverted band makes ``not lo <= spread <= hi`` unsatisfiable, which
+        would otherwise silently skip every CLOB bet with no startup error.
+        """
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["polymarket_spread_min"] = 0.5
+        kwargs["polymarket_spread_max"] = 0.1
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="polymarket_spread_min"),
+        ):
+            DecisionMakerParams(**kwargs)
 
     def test_prompt_template_property(self) -> None:
         """Test prompt_template property returns a PromptTemplate."""
