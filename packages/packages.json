@@ -9,16 +9,16 @@
         "contract/valory/deposit_wallet/0.1.0": "bafybeidjkryojg7cv4hrjvrd2hm5cv5kdoqrmhdsxyjriwtdpo4v3avoia",
         "connection/valory/polymarket_client/0.1.0": "bafybeid4eo37pka4tfhsjs6rb3knrugmokcvihust2dpfrgob56y77xd44",
         "skill/valory/market_manager_abci/0.1.0": "bafybeic67hypwetzltnuy3a6y3o2o332lxyvn34buq57gy4n6bfqpbpxjm",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeigterfcylnzjzxpja6u56gvcq2grcgvia2qcj34yr2ksogss33wuu",
-        "skill/valory/trader_abci/0.1.0": "bafybeifepfhwcrbinv22hlltrf2cfacqybzsdnm63knw73yc5yfoer3ks4",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiglvalfzo744cvxvslx4vo42r4tcozn7hzsn3aa2q3hkm77t77xwe",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeiblakfjutvn2ambiklxccxoe3wuuk7ul3rytjonj3slqsks2jswsu",
+        "skill/valory/trader_abci/0.1.0": "bafybeifda2deiqrpeov477u2qmeimqgite2h3q6b4yvpbf4t23mi5wgwve",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidu6cxgtbxp7fix2giljdezb5rppwwj4ppf533fuw2ggbnpsyn4di",
         "skill/valory/staking_abci/0.1.0": "bafybeihwyron2bv7ierrgxke7xofwjy7x6wtglg5vopon7i7lfdiivweaq",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeigmmvpncem6i6t57nwjqzajrbnf6rnqgp43mlo6jf6uziq6lrhlca",
-        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeifbiko6p3sqqg2q6qemmcig432s5djcsxm44j35ejittlpyr5f6z4",
+        "skill/valory/check_stop_trading_abci/0.1.0": "bafybeiexmdtj3qfjnhh2sy3fa4hwxkvqogsy7u46liobzhgilzogeoezeu",
         "skill/valory/chatui_abci/0.1.0": "bafybeie2kmgihgk3rwpzelaa76ypvchsyg2vy3me4vxlbjttaq4frs3ipa",
-        "agent/valory/trader/0.1.0": "bafybeifdcmuilvxj5gf3d7dumlgcab3qwsp2xkmhqfnfxef3zxulpbthxy",
-        "service/valory/trader_pearl/0.1.0": "bafybeigqqgmku426wk2pr2344s4347qmxozppwuexdup3ugwj36aasdq64",
-        "service/valory/polymarket_trader/0.1.0": "bafybeign7qvajyzxojpd2iokvitfil2ygnazpn5w6uyq2u7aex4s5hf5za"
+        "agent/valory/trader/0.1.0": "bafybeigeanhy3texx7mpnedcdaknwyzo4abf3w6eo2cix33piuflk5vg6u",
+        "service/valory/trader_pearl/0.1.0": "bafybeicccq52q3xbhjrx6qzzacyyyrcyhkuhtdpefl35xf236yrbo5nisy",
+        "service/valory/polymarket_trader/0.1.0": "bafybeiaqgzgiymobbinmif5liojpbsbavorobauujrgnwtjez4etmljwl4"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
@@ -55,6 +55,9 @@
         "contract/valory/agreement_store_manager/0.1.0": "bafybeign6u6635cpp7z2rws7uaaxgzvyokdyzztnadmivbt2qsvw2q2vza",
         "contract/valory/transfer_nft_condition/0.1.0": "bafybeib6wigs3ufiuzkj6twlthcya67lswm3qosikrg4ez7jjgkam4kz5m",
         "contract/valory/subscription_provider/0.1.0": "bafybeia7fmpemztyjwu4pu4p3q2udy7ymrxz4p5eklegdlc2bgnfi2zoae",
+        "contract/valory/mech_marketplace/0.1.0": "bafybeieadbmhzndxe6jcfwujcpjrljpc5kfwffkd3zzpg75uxksufn4l3i",
+        "contract/valory/balance_tracker_fixed_price_native/0.1.0": "bafybeifobvptvc7mkrztfij664dqqegl6qi32773zewvyuftes32faemw4",
+        "contract/valory/balance_tracker_fixed_price_token/0.1.0": "bafybeienpn5nb7mgiw5uitm5mjwcgc2xd7bzx5rxu2mqsvjziwvlg6poxa",
         "connection/valory/http_client/0.23.0": "bafybeihel6sg2yayxu7lqygaswdgciaxpqrgsbl5rwx74c6znu5qz2edd4",
         "connection/valory/p2p_libp2p_client/0.1.0": "bafybeielj3jso3wvrarp5n5rq7llpw4vgxybqiyensgjalb5ubfiawwhhu",
         "connection/valory/x402/0.1.0": "bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi",
@@ -69,7 +72,7 @@
         "skill/valory/registration_abci/0.1.0": "bafybeihjhbn5seffyu5cwugvm26fkamp3svhggmtzh577daijgl2ksxs3e",
         "skill/valory/reset_pause_abci/0.1.0": "bafybeihc4ruh25s7wuunfy2b3k2n4eypyhvtry3usgom44wsymagbcr3ki",
         "skill/valory/termination_abci/0.1.0": "bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq",
-        "skill/valory/mech_interact_abci/0.1.0": "bafybeidnmszufszq3ro4ebgrqzmhqgctrsc6sykeanfsbvotghvt2cgfsy",
+        "skill/valory/mech_interact_abci/0.1.0": "bafybeihhwzpa6x5ypth426tzd2zjsnys6jmjaab4zvk4edisetzktft754",
         "skill/valory/funds_manager/0.1.0": "bafybeibne4vkmbper3ryn7q6kt7lclbyylgorziscyn6msr5qt46aihv4m"
     }
 }

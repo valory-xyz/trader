@@ -40,6 +40,9 @@ contracts:
 - valory/ierc1155:0.1.0:bafybeif3wfclopxa3panep4xzgodlfclgypm3balncxyuxbhhvgz7imulq
 - valory/nvm_balance_tracker_token:0.1.0:bafybeifwxkaobltpm77oh2b54kuclm4vtx2bzpuoowqfdemkex5gb5yyfa
 - valory/nvm_balance_tracker_native:0.1.0:bafybeibou3doazirk637cyey4o33pz7fpdm4hsgdj7vd2kctuqxtjgnmla
+- valory/mech_marketplace:0.1.0:bafybeieadbmhzndxe6jcfwujcpjrljpc5kfwffkd3zzpg75uxksufn4l3i
+- valory/balance_tracker_fixed_price_native:0.1.0:bafybeifobvptvc7mkrztfij664dqqegl6qi32773zewvyuftes32faemw4
+- valory/balance_tracker_fixed_price_token:0.1.0:bafybeienpn5nb7mgiw5uitm5mjwcgc2xd7bzx5rxu2mqsvjziwvlg6poxa
 - valory/escrow_payment_condition:0.1.0:bafybeibux6vafcoevxqz3s7goyv2mdq6pxjlvw62ewclhngo3xcm23i6r4
 - valory/did_registry:0.1.0:bafybeiaz5vsh2qkcbjzteada32kz5l3xfwioo7tsrz5pa3zncz63gj7jye
 - valory/nft_sales:0.1.0:bafybeiacttyhd4re5jaybtvoawlzsoxhy2npavwc7k7isqhuv6s73cc7be
@@ -66,10 +69,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeihc4ruh25s7wuunfy2b3k2n4eypyhvtry3usgom44wsymagbcr3ki
 - valory/termination_abci:0.1.0:bafybeibnnzry5kknci3z46gcjgutv4jid3ir6xn6a5adq3tx6v2e25augq
 - valory/transaction_settlement_abci:0.1.0:bafybeibv3tycpdhphlblu62zpcbjsj7hnwkutexxqagorkelhjlt4t4fii
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiboec4uzlj2yd5oxyg2feh6j26uez55g2d6fxs3xizltchdsqhk5i
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidu6cxgtbxp7fix2giljdezb5rppwwj4ppf533fuw2ggbnpsyn4di
 - valory/market_manager_abci:0.1.0:bafybeic67hypwetzltnuy3a6y3o2o332lxyvn34buq57gy4n6bfqpbpxjm
-- valory/decision_maker_abci:0.1.0:bafybeiewwbtf3w5zzs2u22vudkjz5u2xnmvgx7hygo3bmjgn6q32ae6vne
-- valory/trader_abci:0.1.0:bafybeibfad73kv2ena463bzyg4xxpksebikoz23bcbwvcqb2bwgmyrd6bu
+- valory/decision_maker_abci:0.1.0:bafybeiblakfjutvn2ambiklxccxoe3wuuk7ul3rytjonj3slqsks2jswsu
+- valory/trader_abci:0.1.0:bafybeifda2deiqrpeov477u2qmeimqgite2h3q6b4yvpbf4t23mi5wgwve
 - valory/staking_abci:0.1.0:bafybeihwyron2bv7ierrgxke7xofwjy7x6wtglg5vopon7i7lfdiivweaq
 - valory/check_stop_trading_abci:0.1.0:bafybeiexmdtj3qfjnhh2sy3fa4hwxkvqogsy7u46liobzhgilzogeoezeu
 - valory/mech_interact_abci:0.1.0:bafybeihhwzpa6x5ypth426tzd2zjsnys6jmjaab4zvk4edisetzktft754
