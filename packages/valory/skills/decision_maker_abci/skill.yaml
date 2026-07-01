@@ -144,6 +144,7 @@ fingerprint:
   tests/test_polymarket_states.py: bafybeicgu5zbgw67sdnw4bdbmxvm5hjin46a4outwh75zkhgn2psskpjii
   tests/test_redeem_info.py: bafybeihy4raxbco4sj4z4eu6bb3e255n2m5vsfkckvwlft353rhdhlf2ii
   tests/test_rounds.py: bafybeidstlz37mfr6wxe6n6jwox64bbeh2wfqq5ztbcshdsyclrfiz44s4
+  tests/test_strategy_pointer_consistency.py: bafybeihxyvim7pxvkujhlpoycak77vpejbavt2cr2ovnbhfjeul3hfz5hu
   tests/test_withdrawal_rounds.py: bafybeif5kcaihrxnmiiywnx7txtlwv7c35pvli4zmp2ps3mufwpoeqb2uq
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
