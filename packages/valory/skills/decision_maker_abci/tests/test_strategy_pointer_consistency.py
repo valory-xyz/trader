@@ -33,9 +33,10 @@ import functools
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pytest
+import yaml
 
 
 def _repo_root() -> Path:
@@ -55,8 +56,12 @@ POINTER_FILES = (
     ROOT / "packages/valory/agents/trader/aea-config.yaml",
 )
 
-_POINTER_RE = re.compile(r"file_hash_to_strategies:\s*\$\{[^{]*(\{.*\})\}")
-_ENTRY_RE = re.compile(r'"(bafybei[a-z0-9]+)":\s*\[\s*"([a-z_]+)"\s*\]')
+# The pointer is an aea env-var param whose value is a ``${...}`` string with a
+# ``dict:<json>`` payload -- either ``${dict:{...}}`` (agent default) or
+# ``${VAR:dict:{...}}`` (service override). Read the file as YAML (robust to
+# whitespace / line-formatting), locate the value, then peel the ``dict:``
+# wrapper and JSON-parse the mapping.
+_DICT_RE = re.compile(r"dict:(\{.*\})\}\s*$")
 
 
 def _config_id(path: Path) -> str:
@@ -79,14 +84,39 @@ def _package_cids() -> Dict[str, str]:
     return out
 
 
+def _find_pointer_value(node: Any) -> Any:
+    """Return the ``file_hash_to_strategies`` value from a parsed-YAML tree, else None."""
+    if isinstance(node, dict):
+        if "file_hash_to_strategies" in node:
+            return node["file_hash_to_strategies"]
+        for value in node.values():
+            found = _find_pointer_value(value)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for value in node:
+            found = _find_pointer_value(value)
+            if found is not None:
+                return found
+    return None
+
+
 def _pointer_entries(path: Path) -> List[Tuple[str, str]]:
     """Return ``(strategy_name, runtime_cid)`` pairs from a config's pointer."""
     if not path.is_file():
         return []
-    match = _POINTER_RE.search(path.read_text())
+    value = None
+    for document in yaml.safe_load_all(path.read_text()):
+        value = _find_pointer_value(document)
+        if value is not None:
+            break
+    if not isinstance(value, str):
+        return []
+    match = _DICT_RE.search(value)
     if match is None:
         return []
-    return [(name, cid) for cid, name in _ENTRY_RE.findall(match.group(1))]
+    mapping = json.loads(match.group(1))  # {cid: [strategy_name, ...]}
+    return [(name, cid) for cid, names in mapping.items() for name in names]
 
 
 _CASES = [
