@@ -304,7 +304,7 @@ models:
         use_offchain: false
         offchain_url: null
         offchain_deposit_target_calls: 10
-        auto_deposit_cap_per_cycle: 5000000
+        auto_deposit_cap_per_cycle: 5000000000000000000
         offchain_poll_interval_seconds: 3.0
         offchain_poll_timeout_seconds: 300.0
         offchain_failover_max_retries: 2
