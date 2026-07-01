@@ -137,8 +137,7 @@ class TestHandleFailedTxBehaviour:
         assert payload.tx_submitter == HandleFailedTxRound.auto_round_id()
 
     def test_offchain_deposit_sentinel_treated_as_mech_timeout(self) -> None:
-        """The off-chain deposit sentinel must produce the same bookkeeping as
-        an on-chain mech timeout.
+        """The off-chain deposit sentinel must produce the same bookkeeping as an on-chain mech timeout.
 
         Without this branch the off-chain failure path leaves
         ``shared_state.mech_timed_out`` False and
