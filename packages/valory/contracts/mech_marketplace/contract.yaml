@@ -1,0 +1,21 @@
+name: mech_marketplace
+author: valory
+version: 0.1.0
+type: contract
+description: MechMarketplace contract, read-only client wrapper exposing the marketplace
+  state the off-chain dispatch path needs (nonces, chain id).
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  README.md: bafybeih5pzhyqwgqp6pl4tczjtqcwc5ljg7n5wjxafdo7bv5gozkog4zge
+  __init__.py: bafybeiekag5mesqv7a4dwbn2ztcb33peoqaj5cljsgusw7aajizx2wfqk4
+  build/mech_marketplace.json: bafybeifgu3pmcigfshc3pk6bmuqjmjrk3lilpivwiox5h4g5xlfsclaf6a
+  contract.py: bafybeie237kayoqdgq3yccvacgcr6l2uchmwkepwszggjfchh5l7yrgw5y
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: MechMarketplace
+contract_interface_paths:
+  ethereum: build/mech_marketplace.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.2.7

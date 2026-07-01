@@ -1,0 +1,20 @@
+name: balance_tracker_fixed_price_token
+author: valory
+version: 0.1.0
+type: contract
+description: Balance tracker contract for the fixed-price ERC20 token payment model.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  README.md: bafybeie7v6de6ncc2hrzpafqa3x6rjucedlhrc6ldqondzdckndn5qvkji
+  __init__.py: bafybeiful6vpmllhury2bosawts4h36olgdz7bjuebznjfhkzic5kd74uq
+  build/balance_tracker_fixed_price_token.json: bafybeiavrhhnrvhaxosbxlm7e32a7wtoue4cyekb4k5yd2jlcbq2bs6tdu
+  contract.py: bafybeiewvjspslbrcnppnini67xnaxdpj2azta3flx7or75sowmex4thaq
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: BalanceTrackerFixedPriceToken
+contract_interface_paths:
+  ethereum: build/balance_tracker_fixed_price_token.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.2.7

@@ -1,0 +1,21 @@
+name: balance_tracker_fixed_price_native
+author: valory
+version: 0.1.0
+type: contract
+description: Balance tracker contract for the fixed-price native (xDAI / ETH) payment
+  model.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  README.md: bafybeiaciz6fqemsxoo6vp55kvche6o2sciovo6mx4bwmobmphv5fxj2xa
+  __init__.py: bafybeic26yci54hmmqca43ro7hwxfy5cjwwipt7iheq63cvmko3unldyne
+  build/balance_tracker_fixed_price_native.json: bafybeiapfus4ith6atrc2bgznpltf5zzpjitiwdivlxesw2epjqqdbherm
+  contract.py: bafybeibnr74vswbe4au7kmxeadrt3z2oxxigx4blv7ariyi2oojpjxc7w4
+fingerprint_ignore_patterns: []
+contracts: []
+class_name: BalanceTrackerFixedPriceNative
+contract_interface_paths:
+  ethereum: build/balance_tracker_fixed_price_native.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.2.7

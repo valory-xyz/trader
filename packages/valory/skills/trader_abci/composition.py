@@ -113,6 +113,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
     FailedMechInformationRound,
+    FailedOffchainMechRequestRound,
     FinishedMarketplaceLegacyDetectedRound,
     FinishedMechInformationRound,
     FinishedMechLegacyDetectedRound,
@@ -121,6 +122,8 @@ from packages.valory.skills.mech_interact_abci.states.final_states import (
     FinishedMechRequestSkipRound,
     FinishedMechResponseRound,
     FinishedMechResponseTimeoutRound,
+    FinishedOffchainMechDepositNeededRound,
+    FinishedOffchainMechRequestRound,
 )
 from packages.valory.skills.mech_interact_abci.states.mech_version import (
     MechVersionDetectionRound,
@@ -160,6 +163,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedOffchainMechDepositSettledRound,
     FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
     FinishedPolymarketTopUpTxRound,
@@ -213,6 +217,16 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     # period are picked up by the next cycle's early redeem.
     FinishedMechRequestSkipRound: CallCheckpointRound,
     FinishedPolymarketBetPlacementRound: CallCheckpointRound,
+    # Off-chain mech_interact_abci edges. Happy path skips on-chain tx
+    # settlement and polls HTTP. Deposit-needed settles via the
+    # PreTxSettlementRound gate; the off-chain ``tx_submitter`` sentinel
+    # routes the settled deposit back into MechRequestRound where
+    # ``_retry_pending`` re-POSTs the cached request. Failure mirrors
+    # the on-chain mech timeout recovery wiring.
+    FinishedOffchainMechRequestRound: MechResponseRound,
+    FinishedOffchainMechDepositNeededRound: PreTxSettlementRound,
+    FinishedOffchainMechDepositSettledRound: MechRequestRound,
+    FailedOffchainMechRequestRound: HandleFailedTxRound,
     # Omen on-chain bet placement and sell-outcome-tokens go through
     # `PostBetUpdateRound` first, which runs the local-state bookkeeping
     # (advancing the bet's queue status, processed timestamp, invested
