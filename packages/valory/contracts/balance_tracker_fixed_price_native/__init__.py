@@ -17,4 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""This module contains the BalanceTrackerFixedPriceNative contract."""
+"""BalanceTracker for the fixed-price native (xDAI / ETH) payment model."""

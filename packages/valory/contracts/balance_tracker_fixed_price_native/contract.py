@@ -17,9 +17,9 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Wrapper for the BalanceTrackerFixedPriceNative marketplace contract."""
+"""BalanceTracker for the fixed-price native (xDAI / ETH) payment model."""
 
-from typing import Dict
+import logging
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -29,61 +29,45 @@ from aea_ledger_ethereum import EthereumApi
 
 PUBLIC_ID = PublicId.from_str("valory/balance_tracker_fixed_price_native:0.1.0")
 
+_logger = logging.getLogger(
+    f"aea.packages.{PUBLIC_ID.author}.contracts.{PUBLIC_ID.name}.contract"
+)
 
-class BalanceTrackerFixedPriceNative(Contract):
-    """Balance tracker for the fixed-price native (xDAI / ETH) payment model.
 
-    The native variant of the BalanceTracker contracts. Funds arrive via
-    ``msg.value``; the ``depositFor`` function is ``payable`` and takes only
-    the credited account as a parameter. The Safe-multisend caller supplies
-    the amount through the ``value`` field of the transaction, not through
-    the calldata.
-    """
+class BalanceTrackerFixedPriceNativeContract(Contract):
+    """BalanceTracker for the fixed-price native payment model."""
 
     contract_id = PUBLIC_ID
 
     @classmethod
-    def get_balance(
-        cls,
-        ledger_api: EthereumApi,
-        contract_address: str,
-        account: str,
+    def get_requester_balance(
+        cls, ledger_api: LedgerApi, contract_address: str, requester: str
     ) -> JSONLike:
-        """Read the prepaid balance for ``account`` on this BalanceTracker.
-
-        Mirrors the contract's ``mapRequesterBalances(account)`` getter.
-        Returned value is in wei.
-
-        :param ledger_api: the ledger API object.
-        :param contract_address: the BalanceTracker contract address.
-        :param account: the requester address whose balance to read.
-        :return: ``{"balance": int}`` matching the ``GET_STATE`` shape.
-        """
-        contract_address = ledger_api.api.to_checksum_address(contract_address)
-        account = ledger_api.api.to_checksum_address(account)
+        """Get requester balance."""
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        balance = contract_instance.functions.mapRequesterBalances(account).call()
-        return dict(balance=balance)
+        requester_balance = contract_instance.functions.mapRequesterBalances(
+            requester
+        ).call()
+        return {"requester_balance": requester_balance}
 
     @classmethod
     def build_deposit_for_data(
         cls,
-        ledger_api: LedgerApi,
+        ledger_api: EthereumApi,
         contract_address: str,
         account: str,
-    ) -> Dict[str, bytes]:
-        """Encode the calldata for ``depositFor(account)``.
-
-        Returned as raw bytes ready to be paired with a non-zero ``value``
-        in the Safe-multisend batch. The deposit amount is carried by
-        ``msg.value`` on chain rather than by the calldata.
-
-        :param ledger_api: the ledger API object.
-        :param contract_address: the BalanceTracker contract address.
-        :param account: the requester address being credited.
-        :return: ``{"data": bytes}`` calldata for the multisend batch.
-        """
+        amount: int,
+    ) -> JSONLike:
+        """Encode depositFor(account) calldata plus the tx value the caller must attach."""
+        if amount <= 0:
+            raise ValueError(
+                f"build_deposit_for_data requires amount > 0 (got {amount}); "
+                "the on-chain depositFor(address) is payable with no zero-value "
+                "guard, so a value-less call silently credits zero."
+            )
         contract_instance = cls.get_instance(ledger_api, contract_address)
-        account = ledger_api.api.to_checksum_address(account)
-        data = contract_instance.encode_abi("depositFor", args=(account,))
-        return {"data": bytes.fromhex(data[2:])}
+        data = contract_instance.encode_abi(
+            abi_element_identifier="depositFor",
+            args=[account],
+        )
+        return {"data": bytes.fromhex(data[2:]), "value": amount}  # type: ignore
