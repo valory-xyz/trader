@@ -25,14 +25,14 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/mech:0.1.0:bafybeid2v3rotkylgln5w2udm3nnmsrnw4g4nlkbwhqfwbte4kwlxup5l4
-- valory/agent_mech:0.1.0:bafybeieiqd6n7zfnfq2bq6oqf7tskzw3hwwb3vj4djtipkbne7cybpdrne
+- valory/mech:0.1.0:bafybeih45j4v3ooe6jgrg4u3xnqktb6sklwoaf3w2lgcuohut5rjs32kzu
+- valory/agent_mech:0.1.0:bafybeidrkuruvewbi7xmi7py26ylgpcslmr5yuyu4tw6o7uekolmsj2zqa
 protocols: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeicioxhbhnsoqyqvkeevd7df7r2vubbiglyf7ucps2el73objazjsq
-- valory/chatui_abci:0.1.0:bafybeie2kmgihgk3rwpzelaa76ypvchsyg2vy3me4vxlbjttaq4frs3ipa
-- valory/mech_interact_abci:0.1.0:bafybeihczn26lrrxnb2s4zoct75djtodqfsmna5haol3hcrjhk5wu64i3e
-- valory/staking_abci:0.1.0:bafybeigfy7n2oazqrjobwzrefpd5o6mndkl5hk7smh2uktyrumbcfod7ta
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
+- valory/chatui_abci:0.1.0:bafybeiddfs7fy23e7lidopd67fcvwzul5invz5ngkufbrlh757inmm2a5e
+- valory/mech_interact_abci:0.1.0:bafybeicjuagucpt4veyqbjvo35alj672jl45xi3om4ok6ecbeb36rio7de
+- valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
 behaviours:
   main:
     args: {}
