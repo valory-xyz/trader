@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeihkyer5a6wrmtagv4oymprpnl6scnfiocv25labnh7evupnjmwv6a
+agent: valory/trader:0.1.0:bafybeigadb5q3iz2v56j5zrk7q4a2jzkjjdk2qk7xpszoto2eoegagr5ta
 number_of_agents: 1
 deployment:
   agent:
@@ -160,7 +160,7 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
-      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0xaaFBeef195BDAb1Bb6f3Dc9cEbA875Cd72499230}
+      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}

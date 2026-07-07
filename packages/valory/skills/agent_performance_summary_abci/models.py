@@ -23,6 +23,7 @@
 import builtins
 import json
 import os
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, cast
@@ -230,9 +231,10 @@ class OffchainDepositState:
 
     def __post_init__(self) -> None:
         """Validate the persisted checkpoint fields."""
-        # Legacy JSON may have shipped the wei count as a string when this
-        # dataclass was first introduced; coerce transparently and keep
-        # the invariant intact.
+        # Defensive: some future writer may round-trip the wei count
+        # through JSON as a string; coerce transparently rather than
+        # rejecting. Not driven by any real prior on-disk data — this
+        # dataclass is new in this PR.
         if isinstance(self.total_deposited_wei, str):
             self.total_deposited_wei = int(self.total_deposited_wei)
         if not isinstance(self.total_deposited_wei, int):
@@ -390,13 +392,52 @@ class SharedState(BaseSharedState):
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
+        except (TypeError, ValueError) as e:
+            # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
+            # rejected a persisted value. Previously no field could raise
+            # from the reader; now that we persist typed state, one bad
+            # entry could brick every read. Degrade to a fresh summary
+            # rather than propagate — same behaviour as an unreadable
+            # file. Note this also drops the irreversible
+            # ``offchain_deposits.total_deposited_wei`` if it was the
+            # corrupt field; if that becomes a real problem, split the
+            # checkpoint into its own file.
+            self.context.logger.warning(
+                f"Persisted agent performance summary failed validation ({e}); "
+                "starting from a fresh summary."
+            )
+            return AgentPerformanceSummary()
 
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
-        """Write the agent performance summary to a file."""
+        """Write the agent performance summary to a file atomically.
+
+        Uses a same-directory temp file + ``os.replace`` so a mid-write
+        crash (docker stop -t 0, OOM, disk full) can't leave the file
+        truncated. Matters more than for the previous callers of this
+        method: this PR is the first to persist irreversible state
+        (``offchain_deposits.total_deposited_wei``) that cannot be
+        re-derived from the subgraph.
+        """
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
-        with open(file_path, "w") as f:
-            json.dump(asdict(summary), f, indent=4)
+        # tempfile in the same directory so ``os.replace`` is atomic on
+        # POSIX (both paths on one filesystem).
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=file_path.name + ".", dir=str(file_path.parent)
+        )
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(asdict(summary), f, indent=4)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, file_path)
+        except Exception:
+            # Best-effort cleanup of the stale temp file.
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""

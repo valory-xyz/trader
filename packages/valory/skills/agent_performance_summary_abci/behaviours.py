@@ -375,99 +375,124 @@ class FetchPerformanceSummaryBehaviour(
         exposes no requester-withdraw path — money committed is unrecoverable
         regardless of consumption.
 
-        The helper is a strict no-op for on-chain-only deployments — it
-        short-circuits immediately when ``mech_marketplace_config.use_offchain``
-        is ``False`` or when ``balance_tracker_address`` is missing / the zero
-        address, so no contract call, no persist, no log noise.
+        Under pre-deposit-as-loss the cached total is *irrevocable*: once
+        a deposit has been counted against ROI it stays counted, even if
+        the operator later flips ``use_offchain`` off or clears
+        ``balance_tracker_address``. So the cached total is read before
+        every gate, and every disabled/misconfigured bail returns
+        ``cached_total`` rather than ``0``. Zero-spend on-chain-only
+        agents still see ``0`` because ``cached_total`` defaults to ``0``
+        and the scan path never runs to inflate it.
 
         On off-chain deployments the helper reads
         ``Deposit(indexed account, indexed token, amount)`` events from the
         last-scanned block cached in the performance summary JSON, sums new
-        entries into the running total, updates the checkpoint, and persists
-        both fields under ``offchain_deposits`` for the next cycle. On the
-        very first run (``last_scanned_block is None``) it seeds the
-        checkpoint to the current head block instead of sweeping history.
-        This is a deliberate policy: we only count deposits from the
-        checkpoint forward. Backfilling pre-checkpoint deposits is out of
-        scope, and starting from the current head also avoids RPC
-        ``eth_getLogs`` block-range caps that some providers enforce.
+        entries into the running total, updates the checkpoint to the
+        current head block, and persists both fields under
+        ``offchain_deposits`` for the next cycle. On the very first run
+        (``last_scanned_block is None``) it seeds the checkpoint to the
+        current head block instead of sweeping history. This is a
+        deliberate policy: we only count deposits from the checkpoint
+        forward. Backfilling pre-checkpoint deposits is out of scope, and
+        starting from the current head also avoids RPC ``eth_getLogs``
+        block-range caps that some providers enforce.
+
+        The checkpoint advances to the *scanned* head every successful
+        cycle regardless of whether events matched. That upper bound is
+        resolved via ``get_block_number`` right before the log scan so a
+        deposit-quiet stretch can never grow the range until a provider
+        cap rejects it and freezes future accrual.
 
         :param safe_address: the agent's own Safe address, used as the
             ``account`` filter on the ``Deposit`` event.
         :return: cumulative sum (in wei-scaled units) of every
             ``BalanceTracker.Deposit`` credit to this Safe up to and
-            including the latest block scanned. Zero for on-chain-only
-            deployments, matching pre-migration ROI exactly.
+            including the latest block scanned.
         :yield: contract-API response(s) via the abstract-round-abci
             base behaviour helpers.
         """
-        marketplace_config = self.params.mech_marketplace_config
-        if not marketplace_config.use_offchain:
-            # On-chain-only deployment (default for all production traders).
-            # No contract call, no persist, ROI number is bit-identical to
-            # pre-migration.
-            return 0
-
+        # Read cached_total BEFORE any gate so historical accrued spend
+        # under pre-deposit-as-loss stays counted even if the operator
+        # flips use_offchain off or clears the tracker address. Once
+        # counted, always counted.
         summary = self.shared_state.read_existing_performance_summary()
         state = summary.offchain_deposits or OffchainDepositState()
         cached_total = state.total_deposited_wei
+
+        marketplace_config = self.params.mech_marketplace_config
+        if not marketplace_config.use_offchain:
+            # On-chain-only deployment (default for all production
+            # traders). cached_total is 0 for any agent that never enabled
+            # off-chain accounting, so ROI is bit-identical to pre-migration.
+            return cached_total
 
         balance_tracker_address = self.params.balance_tracker_address
         if (
             not balance_tracker_address
             or balance_tracker_address.lower() == _ZERO_ADDRESS
         ):
-            # Off-chain enabled but the tracker address is missing or the
-            # zero-address placeholder — treat as a misconfiguration, no
-            # RPC every cycle, keep the cached total.
+            # use_offchain=True but tracker address is missing or the
+            # zero-address placeholder — genuine operator misconfiguration
+            # (as opposed to on-chain-only agents, which the previous gate
+            # already caught). Warn loudly so this shows up in logs
+            # instead of silently freezing ROI at cached_total forever.
+            self.context.logger.warning(
+                "[Offchain Deposits] misconfigured: use_offchain=True but "
+                f"balance_tracker_address={balance_tracker_address!r}; "
+                "scan disabled — freezing ROI cost at cached total."
+            )
             return cached_total
 
+        # Resolve current head block. Used both for the first-run seed
+        # and as the concrete upper bound / new checkpoint value on
+        # incremental scans, so the checkpoint advances to head every
+        # successful cycle regardless of whether events matched.
+        block_response = yield from self.get_ledger_api_response(
+            performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
+            ledger_callable="get_block_number",
+            chain_id=self.params.mech_chain_id,
+        )
+        if block_response.performative != LedgerApiMessage.Performative.STATE:
+            self.context.logger.warning(
+                "Failed to resolve head block for offchain-deposit scan "
+                f"(response: {block_response}); leaving cached total."
+            )
+            return cached_total
+
+        body = block_response.state.body
+        raw_head = body.get("get_block_number_result") if body is not None else None
+        # ``< 0`` (not ``<= 0``) so a legitimate genesis-block head on a
+        # fresh devnet/Hardhat chain is accepted, per the
+        # ``OffchainDepositState`` docstring.
+        if raw_head is None or int(raw_head) < 0:
+            self.context.logger.warning(
+                "Offchain-deposit head-block read returned an invalid value "
+                f"({raw_head!r}); leaving checkpoint unchanged."
+            )
+            return cached_total
+        head_block = int(raw_head)
+
         # First-run seed: don't sweep history from block 0. Policy: only
-        # deposits from the checkpoint forward count against ROI;
-        # pre-checkpoint history is deliberately excluded. Also avoids
-        # RPC ``eth_getLogs`` block-range caps some providers enforce.
+        # deposits from the checkpoint forward count against ROI.
         if state.last_scanned_block is None:
-            block_response = yield from self.get_ledger_api_response(
-                performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
-                ledger_callable="get_block_number",
-                chain_id=self.params.mech_chain_id,
-            )
-            if block_response.performative != LedgerApiMessage.Performative.STATE:
-                self.context.logger.warning(
-                    "Failed to seed offchain-deposit checkpoint from current "
-                    f"block (response: {block_response}); leaving cached total."
-                )
-                return cached_total
-
-            body = block_response.state.body
-            raw_block = (
-                body.get("get_block_number_result") if body is not None else None
-            )
-            if raw_block is None or int(raw_block) <= 0:
-                # Malformed STATE response: without a real head block we
-                # would persist a zero checkpoint and re-enter the seed
-                # path every cycle. Log and bail without persisting.
-                self.context.logger.warning(
-                    "Offchain-deposit seed returned an invalid block_number "
-                    f"({raw_block!r}); leaving checkpoint unset for next cycle."
-                )
-                return cached_total
-
-            current_block = int(raw_block)
             summary.offchain_deposits = OffchainDepositState(
                 total_deposited_wei=0,
-                last_scanned_block=current_block,
+                last_scanned_block=head_block,
             )
             summary.timestamp = self.shared_state.synced_timestamp
             self.shared_state.overwrite_performance_summary(summary)
             self.context.logger.info(
                 f"[Offchain Deposits] First run — seeded checkpoint to block "
-                f"{current_block}, cumulative total starts at 0."
+                f"{head_block}, cumulative total starts at 0."
             )
             return 0
 
-        # Subsequent runs: scan strictly forward from the checkpoint.
+        # Subsequent runs: bound the scan range up front.
         from_block = state.last_scanned_block + 1
+        if from_block > head_block:
+            # Chain hasn't moved past the checkpoint (short cycle interval
+            # or empty devnet). Nothing to scan; nothing to persist.
+            return cached_total
 
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
@@ -476,7 +501,7 @@ class FetchPerformanceSummaryBehaviour(
             contract_callable="get_deposit_events_for_requester",
             requester=safe_address,
             from_block=from_block,
-            to_block="latest",
+            to_block=head_block,
             chain_id=self.params.mech_chain_id,
         )
         if response.performative != ContractApiMessage.Performative.STATE:
@@ -499,28 +524,30 @@ class FetchPerformanceSummaryBehaviour(
             return cached_total
 
         # Aggregation lives here (not in the classmethod) by convention:
-        # contract classmethods return processed log entries; sum + max
-        # of the block number happens in the caller.
-        new_wei = 0
-        latest_block = state.last_scanned_block
-        for entry in entries:
-            amount = int(entry.get("args", {}).get("amount", 0))
-            new_wei += amount
-            block_number = int(entry.get("blockNumber", 0))
-            if block_number > latest_block:
-                latest_block = block_number
+        # contract classmethods return processed log entries; sum happens
+        # in the caller.
+        new_wei = sum(
+            int(entry.get("args", {}).get("amount", 0)) for entry in entries
+        )
 
+        # Checkpoint advances to the scanned head every successful cycle,
+        # even with zero matches, so subsequent cycles start from
+        # ``head_block + 1`` (small range) rather than re-scanning the
+        # same growing range every cycle. Without this, a long
+        # deposit-quiet stretch eventually crosses provider ``eth_getLogs``
+        # caps and the ERROR performative freezes future accrual forever
+        # with only warning logs.
         total_wei = cached_total + new_wei
         summary.offchain_deposits = OffchainDepositState(
             total_deposited_wei=total_wei,
-            last_scanned_block=latest_block,
+            last_scanned_block=head_block,
         )
         summary.timestamp = self.shared_state.synced_timestamp
         self.shared_state.overwrite_performance_summary(summary)
 
         self.context.logger.info(
             f"[Offchain Deposits] cached={cached_total}, new_this_cycle={new_wei}, "
-            f"total={total_wei}, last_scanned_block={latest_block}"
+            f"total={total_wei}, last_scanned_block={head_block}"
         )
         return total_wei
 
@@ -2063,6 +2090,14 @@ class FetchPerformanceSummaryBehaviour(
 
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
+
+        # Always preserve offchain_deposits. ``_fetch_offchain_prepaid_wei``
+        # writes this state directly via ``overwrite_performance_summary``
+        # earlier in the cycle, but ``_fetch_agent_performance_summary``
+        # rebuilds this summary without the field (defaults to ``None``).
+        # Without this line the cycle-end write clobbers the just-persisted
+        # checkpoint every cycle and the ROI cost term stays permanently 0.
+        agent_performance_summary.offchain_deposits = existing_data.offchain_deposits
 
         # Track whether any section fell back to existing data
         preserved = False

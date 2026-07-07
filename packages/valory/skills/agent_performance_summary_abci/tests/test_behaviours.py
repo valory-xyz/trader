@@ -2293,6 +2293,20 @@ def _ledger_state_response(body: Any) -> MagicMock:
     return response
 
 
+def _ledger_head_gen(head_block: int) -> Any:
+    """Build a ``get_ledger_api_response`` side_effect that returns ``head_block``.
+
+    Wraps ``_ledger_state_response`` so tests only care about the head value.
+    """
+
+    def _side_effect(*_a: Any, **_kw: Any) -> Generator:
+        return _return_gen(
+            _ledger_state_response({"get_block_number_result": head_block})
+        )()
+
+    return _side_effect
+
+
 class TestFetchOffchainPrepaidWei:
     """Direct tests for the ``_fetch_offchain_prepaid_wei`` helper's branches."""
 
@@ -2312,17 +2326,22 @@ class TestFetchOffchainPrepaidWei:
         shared_state.synced_timestamp = 1_700_000_000
         return shared_state, writes
 
-    def test_use_offchain_false_short_circuit(self) -> None:
-        """When ``use_offchain=False``, the helper returns 0 without any RPC or persist."""
+    def test_use_offchain_false_returns_cached_total_no_rpc(self) -> None:
+        """``use_offchain=False`` returns cached_total (0 when never enabled) without any RPC."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
         shared_state, writes = self._make_shared_state(None)
 
         api_calls: list = []
+        ledger_calls: list = []
 
         def _fail_api(*_a: Any, **_kw: Any) -> Generator:
             api_calls.append(_kw)
+            return _noop_gen()
+
+        def _fail_ledger(*_a: Any, **_kw: Any) -> Generator:
+            ledger_calls.append(_kw)
             return _noop_gen()
 
         with (
@@ -2335,28 +2354,55 @@ class TestFetchOffchainPrepaidWei:
                 return_value=shared_state,
             ),
             patch.object(b, "get_contract_api_response", side_effect=_fail_api),
+            patch.object(b, "get_ledger_api_response", side_effect=_fail_ledger),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
-        assert result == 0
-        assert api_calls == [], "off-chain disabled must not hit the contract API"
+        assert result == 0, "no prior deposits => cached_total=0"
+        assert api_calls == [] and ledger_calls == [], (
+            "off-chain disabled must not hit any RPC"
+        )
         assert writes == [], "off-chain disabled must not persist state"
 
-    def test_zero_address_balance_tracker_short_circuit(self) -> None:
-        """A zero-address ``balance_tracker_address`` bypasses the RPC path."""
+    def test_use_offchain_false_preserves_accrued_cached_total(self) -> None:
+        """Under pre-deposit-as-loss, flipping ``use_offchain`` off must NOT drop accrued cost."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=5000, last_scanned_block=142)
+        )
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        # Once counted, always counted — even after a config rollback.
+        assert result == 5000
+        assert writes == []
+
+    def test_zero_address_returns_cached_total_and_warns(self) -> None:
+        """A zero-address ``balance_tracker_address`` with use_offchain=True is a misconfig — warn AND preserve cached."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
         params.balance_tracker_address = (
             "0x0000000000000000000000000000000000000000"
         )
-        shared_state, writes = self._make_shared_state(None)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=800, last_scanned_block=42)
+        )
 
-        api_calls: list = []
-
-        def _fail_api(*_a: Any, **_kw: Any) -> Generator:
-            api_calls.append(_kw)
-            return _noop_gen()
+        warnings: list = []
+        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2367,29 +2413,24 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
-            patch.object(b, "get_contract_api_response", side_effect=_fail_api),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
-        assert result == 0
-        assert api_calls == [], "zero-address tracker must not trigger an RPC"
+        assert result == 800, "cached_total preserved through misconfig bail"
         assert writes == []
+        assert any("misconfigured" in w for w in warnings), (
+            "misconfig branch must emit a loud warning — otherwise ROI cost "
+            "silently freezes and the operator can't tell it's broken"
+        )
 
     def test_first_run_seeds_current_block_and_returns_zero(self) -> None:
-        """First run seeds ``last_scanned_block`` from current head; total stays 0."""
+        """First run seeds ``last_scanned_block`` from head; total stays 0."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
         shared_state, writes = self._make_shared_state(None)
 
-        ledger_calls_seen: list = []
         contract_calls_seen: list = []
-
-        def _ledger_api(*_a: Any, **kw: Any) -> Generator:
-            ledger_calls_seen.append(kw["ledger_callable"])
-            return _return_gen(
-                _ledger_state_response({"get_block_number_result": 12345})
-            )()
 
         def _fail_contract_api(*_a: Any, **kw: Any) -> Generator:
             contract_calls_seen.append(kw)
@@ -2404,7 +2445,9 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
-            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(12345)
+            ),
             patch.object(
                 b, "get_contract_api_response", side_effect=_fail_contract_api
             ),
@@ -2412,15 +2455,40 @@ class TestFetchOffchainPrepaidWei:
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 0
-        assert ledger_calls_seen == [
-            "get_block_number"
-        ], "first run must fetch head block via ledger_api"
         assert contract_calls_seen == [], (
             "first run must not hit the contract API before checkpoint is set"
         )
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 0
         assert writes[0].last_scanned_block == 12345
+
+    def test_seed_accepts_genesis_block_zero(self) -> None:
+        """Head block 0 is a legitimate value on fresh devnet/Hardhat and must NOT be rejected."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(None)
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(0)
+            ),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 0
+        assert len(writes) == 1
+        assert writes[0].last_scanned_block == 0, (
+            "block 0 must seed the checkpoint at 0, not loop the seed path forever"
+        )
 
     def test_first_run_malformed_seed_response_leaves_checkpoint_unset(self) -> None:
         """A STATE response missing ``get_block_number_result`` must NOT seed a zero checkpoint."""
@@ -2452,8 +2520,8 @@ class TestFetchOffchainPrepaidWei:
             "(would loop the seed path every cycle)"
         )
 
-    def test_incremental_scan_accumulates_and_advances_checkpoint(self) -> None:
-        """Later runs sum new_wei from entries and move the checkpoint forward."""
+    def test_incremental_scan_accumulates_and_advances_checkpoint_to_head(self) -> None:
+        """Later runs sum new_wei from entries and move the checkpoint to the scanned head, not to the max event block."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
@@ -2466,8 +2534,7 @@ class TestFetchOffchainPrepaidWei:
         def _api(*_a: Any, **kw: Any) -> Generator:
             seen["callable"] = kw["contract_callable"]
             seen["from_block"] = kw["from_block"]
-            # Two Deposit entries: 150 wei at block 110, 250 wei at block 120.
-            # Behaviour must sum to 400 and pick 120 as the new checkpoint.
+            seen["to_block"] = kw["to_block"]
             entries = [
                 {"args": {"amount": 150}, "blockNumber": 110},
                 {"args": {"amount": 250}, "blockNumber": 120},
@@ -2483,6 +2550,9 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(130)
+            ),
             patch.object(b, "get_contract_api_response", side_effect=_api),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
@@ -2491,12 +2561,24 @@ class TestFetchOffchainPrepaidWei:
         assert result == 1400
         assert seen["callable"] == "get_deposit_events_for_requester"
         assert seen["from_block"] == 100, "must scan strictly forward (checkpoint+1)"
+        assert seen["to_block"] == 130, (
+            "must pass the resolved head as concrete to_block, not 'latest'"
+        )
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 1400
-        assert writes[0].last_scanned_block == 120
+        assert writes[0].last_scanned_block == 130, (
+            "checkpoint advances to the scanned head (130), not to the max "
+            "event block (120), so future deposits between 121 and 130 are "
+            "not re-scanned"
+        )
 
-    def test_incremental_empty_entries_leaves_checkpoint(self) -> None:
-        """An empty entries list means no new deposits — checkpoint stays put, total unchanged."""
+    def test_incremental_empty_entries_advances_checkpoint_to_head(self) -> None:
+        """Empty entries — no cost change, but the checkpoint MUST still advance to the scanned head.
+
+        Otherwise a long deposit-quiet stretch grows the scan range every
+        cycle until the provider's eth_getLogs cap rejects it and future
+        deposits are silently missed forever.
+        """
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
@@ -2516,17 +2598,58 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(500)
+            ),
             patch.object(b, "get_contract_api_response", side_effect=_api),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
-        # Cached total unchanged; a persist still happens (with the same
-        # checkpoint 99, same total 1000) so downstream readers see a
-        # fresh timestamp — the checkpoint doesn't regress or leap.
-        assert result == 1000
+        assert result == 1000, "cost side unchanged with no deposits"
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 1000
-        assert writes[0].last_scanned_block == 99
+        assert writes[0].last_scanned_block == 500, (
+            "checkpoint must advance to head to prevent unbounded range growth"
+        )
+
+    def test_incremental_from_block_beyond_head_returns_cached_no_scan(self) -> None:
+        """If from_block > head_block (chain hasn't moved), no contract scan and no persist."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=500)
+        )
+
+        contract_calls: list = []
+
+        def _fail_contract_api(*_a: Any, **kw: Any) -> Generator:
+            contract_calls.append(kw)
+            return _noop_gen()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(500)
+            ),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_fail_contract_api
+            ),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 1000
+        assert contract_calls == [], (
+            "no chain progress since checkpoint => nothing to scan"
+        )
+        assert writes == []
 
     def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:
         """Missing ``entries`` key must leave cached total AND checkpoint intact."""
@@ -2549,6 +2672,9 @@ class TestFetchOffchainPrepaidWei:
                 "shared_state",
                 new_callable=PropertyMock,
                 return_value=shared_state,
+            ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
             ),
             patch.object(b, "get_contract_api_response", side_effect=_api),
         ):
@@ -2580,6 +2706,9 @@ class TestFetchOffchainPrepaidWei:
                 "shared_state",
                 new_callable=PropertyMock,
                 return_value=shared_state,
+            ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
             ),
             patch.object(b, "get_contract_api_response", side_effect=_api),
         ):
@@ -4417,6 +4546,28 @@ class TestSaveAgentPerformanceSummary:
         ]
         self._save(new_summary, existing)
         assert new_summary.timestamp == 1700000000
+
+    def test_preserves_offchain_deposits_from_existing(self) -> None:
+        """The persisted ``offchain_deposits`` state must survive the cycle-end save.
+
+        Regression test for the persistence gap where
+        ``_fetch_offchain_prepaid_wei`` writes offchain_deposits earlier in
+        the cycle but ``_fetch_agent_performance_summary`` rebuilds a
+        fresh summary with the field unset. Without carry-forward here
+        every cycle re-enters the first-run seed path and the ROI cost
+        term stays permanently 0.
+        """
+        existing = _default_summary()
+        existing.offchain_deposits = OffchainDepositState(
+            total_deposited_wei=12345,
+            last_scanned_block=987,
+        )
+        new_summary = _default_summary()
+        assert new_summary.offchain_deposits is None
+        self._save(new_summary, existing)
+        assert new_summary.offchain_deposits is not None
+        assert new_summary.offchain_deposits.total_deposited_wei == 12345
+        assert new_summary.offchain_deposits.last_scanned_block == 987
 
 
 # ---------------------------------------------------------------------------
