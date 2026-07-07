@@ -7,8 +7,8 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeieearschnqbcpbecmkvxozipxh3bqktkutnb5tp2to3ko5phrcigm
-  build/BalanceTracker.json: bafybeig2ywevvapgqoprxnnkid3atvq6qg7aqfhyd2uvqokdnydcfp2is4
-  contract.py: bafybeie4okijr53pivy3aeon24bezqutprre5vfl2ejqeqwnccaoccorha
+  build/BalanceTracker.json: bafybeid2decfyw332qxvjnpcoo3sid6h5puxajx3iyeywc4uspvcovc3zm
+  contract.py: bafybeiabdchke7cksiumb4auf4txz3zcxtmf3ve6qgonpp2m4cfc7cki5e
   tests/__init__.py: bafybeiadfytuqaujcf6s34242uiptiwqqp3dprxvcglxtdlnkchaepyvay
 fingerprint_ignore_patterns: []
 class_name: MechPrepaidReaderContract

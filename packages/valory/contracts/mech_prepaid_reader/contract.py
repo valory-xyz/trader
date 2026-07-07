@@ -60,28 +60,30 @@ class MechPrepaidReaderContract(Contract):
         """Sum ``Deposit(account, token, amount)`` events for one requester.
 
         Under pre-deposit-as-loss ROI accounting, every top-up to a Safe's
-        ``mapRequesterBalances`` in the mech marketplace's BalanceTracker is
-        booked as spent the moment it lands on chain — the tracker exposes
-        no requester-withdraw path, so committed funds are unrecoverable
+        ``mapRequesterBalances`` on the BalanceTracker is booked as spent
+        the moment it lands on chain — the tracker exposes no
+        requester-withdraw path, so committed funds are unrecoverable
         regardless of consumption. This helper reads new ``Deposit`` events
         for one requester Safe and returns the cumulative sum plus the
-        highest block scanned so the caller can persist the checkpoint and
-        scan incrementally next cycle.
+        highest block that produced a match, so the caller can persist that
+        block as its new checkpoint and scan incrementally next cycle.
 
         :param ledger_api: the ledger API object.
         :param contract_address: the BalanceTracker contract address.
         :param requester: the Safe address to filter ``Deposit`` events by.
-        :param from_block: block from which to scan; exclusive of the
-            previous run so the caller must persist ``latest_block + 1``
-            (or ``latest_block`` unchanged when the current run found
-            nothing new — the caller can detect this by comparing the
-            returned value with the input).
-        :param to_block: block at which to stop scanning; defaults to
-            ``latest``.
-        :return: ``{"total_wei": int, "latest_block": int}``.
-            ``latest_block`` equals ``from_block`` when no new deposits
-            landed, so the caller can safely persist it as the checkpoint
-            without moving backward.
+        :param from_block: block from which to scan, inclusive.
+            ``eth_getLogs`` includes ``fromBlock`` in the range, so the
+            caller passes ``previous_checkpoint + 1`` (or a seeded head
+            block on first run). The ``+1`` shift lives at the call site,
+            not here.
+        :param to_block: block at which to stop scanning, inclusive.
+            Defaults to ``latest``.
+        :return: ``{"total_wei": int, "latest_block": int}``. The caller
+            persists ``latest_block`` as-is (not ``latest_block + 1``) and
+            computes the next ``from_block`` at the next call. When no
+            deposits matched in ``[from_block, to_block]``, ``latest_block``
+            equals the input ``from_block`` so the checkpoint never
+            regresses.
         """
         contract_address = ledger_api.api.to_checksum_address(contract_address)
         ledger_api = cast(EthereumApi, ledger_api)
@@ -118,22 +120,22 @@ class MechPrepaidReaderContract(Contract):
     def get_current_block_number(
         cls,
         ledger_api: LedgerApi,
-        contract_address: str,
+        contract_address: str,  # noqa: ARG003 - required by AEA contract-callable dispatcher
     ) -> JSONLike:
         """Return the current head block number of the ledger.
 
         Used by the caller as a seed on first run so incremental log scans
-        start from the current block rather than sweeping the full history —
-        pre-migration on-chain-only Safes never emitted ``Deposit`` events for
-        their account, so nothing is lost by skipping the past.
+        start from the current block rather than sweeping the full history.
+        This is a deliberate policy: only deposits from the checkpoint
+        forward count against ROI. Backfilling pre-checkpoint deposits is
+        out of scope.
 
         :param ledger_api: the ledger API object.
-        :param contract_address: the BalanceTracker contract address, retained
-            for framework symmetry with other contract-callable methods; the
-            call itself does not touch the contract.
+        :param contract_address: unused. Required by the AEA contract-callable
+            dispatcher signature; this method is a plain head-block read and
+            does not touch the contract itself.
         :return: ``{"block_number": int}`` where the value is the latest block
             the RPC endpoint reports.
         """
-        del contract_address  # unused — framework requires it in the signature
         ledger_api = cast(EthereumApi, ledger_api)
         return {"block_number": int(ledger_api.api.eth.block_number)}

@@ -81,6 +81,9 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
+_ZERO_ADDRESS = (
+    "0x" + "0" * 40
+)  # placeholder used to disable off-chain deposit scanning
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
@@ -366,27 +369,29 @@ class FetchPerformanceSummaryBehaviour(
     ) -> Generator[None, None, int]:
         """Return the cumulative pre-deposit sum on the BalanceTracker for this Safe.
 
-        Off-chain mech requests draw fees from a per-requester balance in the
-        marketplace's ``BalanceTracker`` contract. Under pre-deposit-as-loss
-        accounting, every ``depositFor(safe, amount)`` on that contract counts
-        as spend the moment it lands on chain, because the tracker exposes no
-        requester-withdraw path — money committed is unrecoverable regardless
-        of consumption.
+        Off-chain mech requests draw fees from a per-requester balance on
+        the ``BalanceTracker`` contract. Under pre-deposit-as-loss accounting,
+        every ``Deposit(account=safe, ..., amount)`` event on that contract
+        counts as spend the moment it lands on chain, because the tracker
+        exposes no requester-withdraw path — money committed is unrecoverable
+        regardless of consumption.
 
         The helper is a strict no-op for on-chain-only deployments — it
         short-circuits immediately when ``mech_marketplace_config.use_offchain``
-        is ``False`` or when no ``balance_tracker_address`` is configured,
-        so no contract call, no persist, no log noise.
+        is ``False`` or when ``balance_tracker_address`` is missing / the zero
+        address, so no contract call, no persist, no log noise.
 
         On off-chain deployments the helper reads
         ``Deposit(indexed account, indexed token, amount)`` events from the
         last-scanned block cached in the performance summary JSON, sums new
         entries into the running total, updates the checkpoint, and persists
         both fields under ``offchain_deposits`` for the next cycle. On the
-        very first run (``last_scanned_block == 0``) it seeds the checkpoint
-        to the current head block instead of sweeping history — off-chain has
-        not shipped in production yet, so there are no pre-existing deposits
-        to backfill, and this avoids RPC ``eth_getLogs`` block-range caps.
+        very first run (``last_scanned_block is None``) it seeds the
+        checkpoint to the current head block instead of sweeping history.
+        This is a deliberate policy: we only count deposits from the
+        checkpoint forward. Backfilling pre-checkpoint deposits is out of
+        scope, and starting from the current head also avoids RPC
+        ``eth_getLogs`` block-range caps that some providers enforce.
 
         :param safe_address: the agent's own Safe address, used as the
             ``account`` filter on the ``Deposit`` event.
@@ -406,20 +411,23 @@ class FetchPerformanceSummaryBehaviour(
 
         summary = self.shared_state.read_existing_performance_summary()
         state = summary.offchain_deposits or OffchainDepositState()
-        cached_total = int(state.total_deposited_wei)
+        cached_total = state.total_deposited_wei
 
         balance_tracker_address = marketplace_config.balance_tracker_address
-        if not balance_tracker_address:
-            # Off-chain enabled but the tracker address is missing from the
-            # config — misconfiguration, treat as zero and keep the cached
-            # total (which will also be zero on first run).
+        if (
+            not balance_tracker_address
+            or balance_tracker_address.lower() == _ZERO_ADDRESS
+        ):
+            # Off-chain enabled but the tracker address is missing or the
+            # zero-address placeholder — treat as a misconfiguration, no
+            # RPC every cycle, keep the cached total.
             return cached_total
 
-        # First-run seed: don't sweep history from block 0. Off-chain hasn't
-        # shipped in production, so there are no pre-existing deposits to
-        # capture, and starting from the current head avoids RPC
-        # ``eth_getLogs`` block-range caps.
-        if state.last_scanned_block == 0:
+        # First-run seed: don't sweep history from block 0. Policy: only
+        # deposits from the checkpoint forward count against ROI;
+        # pre-checkpoint history is deliberately excluded. Also avoids
+        # RPC ``eth_getLogs`` block-range caps some providers enforce.
+        if state.last_scanned_block is None:
             block_response = yield from self.get_contract_api_response(
                 performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
                 contract_address=balance_tracker_address,
@@ -434,9 +442,21 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return cached_total
 
-            current_block = int(block_response.state.body.get("block_number", 0))
+            body = block_response.state.body
+            raw_block = body.get("block_number") if body is not None else None
+            if raw_block is None or int(raw_block) <= 0:
+                # Malformed STATE response: without a real head block we
+                # would persist a zero checkpoint and re-enter the seed
+                # path every cycle. Log and bail without persisting.
+                self.context.logger.warning(
+                    "Offchain-deposit seed returned an invalid block_number "
+                    f"({raw_block!r}); leaving checkpoint unset for next cycle."
+                )
+                return cached_total
+
+            current_block = int(raw_block)
             summary.offchain_deposits = OffchainDepositState(
-                total_deposited_wei="0",
+                total_deposited_wei=0,
                 last_scanned_block=current_block,
             )
             summary.timestamp = self.shared_state.synced_timestamp
@@ -468,14 +488,27 @@ class FetchPerformanceSummaryBehaviour(
             return cached_total
 
         body = response.state.body
-        new_wei = int(body.get("total_wei", 0))
-        latest_block = int(body.get("latest_block", from_block))
+        raw_new_wei = body.get("total_wei") if body is not None else None
+        raw_latest_block = body.get("latest_block") if body is not None else None
+        if raw_new_wei is None or raw_latest_block is None:
+            # Malformed STATE response: refuse to advance the checkpoint
+            # because doing so would silently skip past the requested
+            # scan range without counting its deposits.
+            self.context.logger.warning(
+                "Offchain-deposit scan returned malformed response "
+                f"(total_wei={raw_new_wei!r}, latest_block={raw_latest_block!r}); "
+                "leaving checkpoint and cached total unchanged."
+            )
+            return cached_total
+
+        new_wei = int(raw_new_wei)
+        latest_block = int(raw_latest_block)
 
         # ``latest_block`` never regresses below ``from_block``; the contract
         # helper falls back to ``from_block`` when no new events landed.
         total_wei = cached_total + new_wei
         summary.offchain_deposits = OffchainDepositState(
-            total_deposited_wei=str(total_wei),
+            total_deposited_wei=total_wei,
             last_scanned_block=latest_block,
         )
         summary.timestamp = self.shared_state.synced_timestamp
@@ -582,9 +615,16 @@ class FetchPerformanceSummaryBehaviour(
         offchain_prepaid_wei = yield from self._fetch_offchain_prepaid_wei(
             agent_safe_address
         )
-        # BalanceTracker amounts share the mech-payment token, whose smallest
-        # unit matches the trade-side ``token_divisor`` picked above (USDC 6dp
-        # on Polymarket, wxDAI 18dp on Gnosis).
+        # Load-bearing invariant: the BalanceTracker's payment token must use
+        # the same smallest-unit scale as the trade-side ``token_divisor``
+        # picked above (USDC 6dp on Polymarket, wxDAI 18dp on Gnosis). This
+        # holds for both current deployments because trader/BalanceTracker
+        # share the chain-native payment token. If we ever add a
+        # BalanceTracker variant on a chain whose payment token has different
+        # decimals from the trade collateral, ``offchain_prepaid_usd`` will
+        # silently scale wrong — add an explicit
+        # ``balance_tracker_token_decimals`` to the config and derive the
+        # divisor from that instead of ``is_running_on_polymarket``.
         offchain_prepaid_usd = offchain_prepaid_wei / token_divisor
 
         self.context.logger.info(

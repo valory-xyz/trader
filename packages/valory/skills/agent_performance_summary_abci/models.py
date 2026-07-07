@@ -203,24 +203,57 @@ class OffchainDepositState:
     """Cumulative on-chain BalanceTracker Deposit tracking for pre-deposit-as-loss ROI.
 
     Under the pre-deposit-as-loss decision, every top-up to a Safe's
-    ``mapRequesterBalances`` in the mech marketplace's BalanceTracker is
-    booked as spent the moment it lands on chain — the tracker has no
-    requester-withdraw path, so committed money is unrecoverable
-    regardless of consumption.
+    ``mapRequesterBalances`` on the BalanceTracker contract (the mech
+    marketplace only routes requests; the balance mapping and the
+    ``Deposit`` event live on the tracker) is booked as spent the moment
+    it lands on chain — the tracker has no requester-withdraw path, so
+    committed money is unrecoverable regardless of consumption.
 
-    ``total_deposited_wei`` is stored as a string to preserve full integer
-    precision through the JSON round-trip; behaviours cast back to ``int``
-    when they read it. ``last_scanned_block`` is the highest block already
-    counted, so the next cycle scans only ``last_scanned_block + 1`` and
-    above.
+    ``total_deposited_wei`` is the cumulative wei-scaled sum of Deposit
+    event amounts. ``last_scanned_block`` is the highest block already
+    counted; the next cycle scans only ``last_scanned_block + 1`` and
+    above. ``last_scanned_block is None`` distinguishes "never scanned"
+    from a legitimate genesis-block checkpoint (matters on devnet/Hardhat
+    chains where block 0 is a real block).
 
     For any Safe that has never called ``depositFor`` (i.e. every
-    production on-chain trader today), the state stays at its zero-valued
-    default and contributes nothing to the ROI cost side.
+    production on-chain trader today), the state stays at its default
+    (``None`` checkpoint) and contributes nothing to the ROI cost side.
+
+    Enforced invariants at construction time:
+    - ``total_deposited_wei`` must be a non-negative integer.
+    - ``last_scanned_block`` must be ``None`` or a non-negative integer.
     """
 
-    total_deposited_wei: str = "0"
-    last_scanned_block: int = 0
+    total_deposited_wei: int = 0
+    last_scanned_block: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Validate the persisted checkpoint fields."""
+        # Legacy JSON may have shipped the wei count as a string when this
+        # dataclass was first introduced; coerce transparently and keep
+        # the invariant intact.
+        if isinstance(self.total_deposited_wei, str):
+            self.total_deposited_wei = int(self.total_deposited_wei)
+        if not isinstance(self.total_deposited_wei, int):
+            raise TypeError(
+                f"total_deposited_wei must be int, got {type(self.total_deposited_wei).__name__}"
+            )
+        if self.total_deposited_wei < 0:
+            raise ValueError(
+                f"total_deposited_wei must be non-negative, got {self.total_deposited_wei}"
+            )
+        if self.last_scanned_block is not None:
+            if not isinstance(self.last_scanned_block, int):
+                raise TypeError(
+                    "last_scanned_block must be int or None, "
+                    f"got {type(self.last_scanned_block).__name__}"
+                )
+            if self.last_scanned_block < 0:
+                raise ValueError(
+                    "last_scanned_block must be non-negative, "
+                    f"got {self.last_scanned_block}"
+                )
 
 
 @dataclass

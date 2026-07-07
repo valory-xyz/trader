@@ -59,6 +59,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PredictionHistory,
@@ -2242,6 +2243,293 @@ class TestCalculateRoi:
         # Higher pre-deposit → higher total_costs → lower payout/costs ratio
         assert final_high < final_low
         assert partial_high < partial_low
+
+
+# ---------------------------------------------------------------------------
+# Tests for _fetch_offchain_prepaid_wei — helper's own branches
+# ---------------------------------------------------------------------------
+
+
+def _make_marketplace_config(
+    *,
+    use_offchain: bool,
+    balance_tracker_address: str = "0x000000000000000000000000000000000000BEEF",
+) -> MagicMock:
+    """Build a mech_marketplace_config stub for the helper."""
+    cfg = MagicMock()
+    cfg.use_offchain = use_offchain
+    cfg.balance_tracker_address = balance_tracker_address
+    return cfg
+
+
+def _drive_gen(gen: Any) -> Any:
+    """Drive a generator to completion and return its value."""
+    try:
+        next(gen)
+    except StopIteration as e:
+        return e.value
+    raise AssertionError("Generator did not stop")  # pragma: no cover
+
+
+def _state_response(body: Any) -> MagicMock:
+    """Build a ContractApiMessage.Performative.STATE response with the given body."""
+    response = MagicMock()
+    response.performative = ContractApiMessage.Performative.STATE
+    response.state.body = body
+    return response
+
+
+def _error_response() -> MagicMock:
+    """Build a non-STATE contract-API response (framework wrapping an error)."""
+    response = MagicMock()
+    response.performative = ContractApiMessage.Performative.ERROR
+    return response
+
+
+class TestFetchOffchainPrepaidWei:
+    """Direct tests for the ``_fetch_offchain_prepaid_wei`` helper's branches."""
+
+    def _make_shared_state(
+        self, initial_state: Optional[OffchainDepositState]
+    ) -> Tuple[MagicMock, list]:
+        """Build a shared_state stub that records overwrite calls."""
+        writes: list = []
+        shared_state = MagicMock()
+        summary = AgentPerformanceSummary(offchain_deposits=initial_state)
+        shared_state.read_existing_performance_summary.return_value = summary
+
+        def _record_write(summary_arg: AgentPerformanceSummary) -> None:
+            writes.append(summary_arg.offchain_deposits)
+
+        shared_state.overwrite_performance_summary.side_effect = _record_write
+        shared_state.synced_timestamp = 1_700_000_000
+        return shared_state, writes
+
+    def test_use_offchain_false_short_circuit(self) -> None:
+        """When ``use_offchain=False``, the helper returns 0 without any RPC or persist."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
+        shared_state, writes = self._make_shared_state(None)
+
+        api_calls: list = []
+
+        def _fail_api(*_a: Any, **_kw: Any) -> Generator:
+            api_calls.append(_kw)
+            return _noop_gen()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_fail_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 0
+        assert api_calls == [], "off-chain disabled must not hit the contract API"
+        assert writes == [], "off-chain disabled must not persist state"
+
+    def test_zero_address_balance_tracker_short_circuit(self) -> None:
+        """A zero-address ``balance_tracker_address`` bypasses the RPC path."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(
+            use_offchain=True,
+            balance_tracker_address="0x0000000000000000000000000000000000000000",
+        )
+        shared_state, writes = self._make_shared_state(None)
+
+        api_calls: list = []
+
+        def _fail_api(*_a: Any, **_kw: Any) -> Generator:
+            api_calls.append(_kw)
+            return _noop_gen()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_fail_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 0
+        assert api_calls == [], "zero-address tracker must not trigger an RPC"
+        assert writes == []
+
+    def test_first_run_seeds_current_block_and_returns_zero(self) -> None:
+        """First run seeds ``last_scanned_block`` from current head; total stays 0."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(None)
+
+        callables_seen: list = []
+
+        def _api(*_a: Any, **kw: Any) -> Generator:
+            callables_seen.append(kw["contract_callable"])
+            return _return_gen(_state_response({"block_number": 12345}))()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 0
+        assert callables_seen == [
+            "get_current_block_number"
+        ], "first run must fetch head block, not deposit events"
+        assert len(writes) == 1
+        assert writes[0].total_deposited_wei == 0
+        assert writes[0].last_scanned_block == 12345
+
+    def test_first_run_malformed_seed_response_leaves_checkpoint_unset(self) -> None:
+        """A STATE response missing ``block_number`` must NOT seed a zero checkpoint."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(None)
+
+        def _api(*_a: Any, **_kw: Any) -> Generator:
+            # STATE-performative but body has no ``block_number`` key.
+            return _return_gen(_state_response({}))()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 0
+        assert writes == [], (
+            "malformed seed response must not persist a zero checkpoint "
+            "(would loop the seed path every cycle)"
+        )
+
+    def test_incremental_scan_accumulates_and_advances_checkpoint(self) -> None:
+        """Later runs sum new_wei into cached_total and move the checkpoint forward."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        seen: dict = {}
+
+        def _api(*_a: Any, **kw: Any) -> Generator:
+            seen["callable"] = kw["contract_callable"]
+            seen["from_block"] = kw["from_block"]
+            return _return_gen(
+                _state_response({"total_wei": 400, "latest_block": 120})
+            )()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        # cached (1000) + new (400) = 1400
+        assert result == 1400
+        assert seen["callable"] == "get_deposit_events_for_requester"
+        assert seen["from_block"] == 100, "must scan strictly forward (checkpoint+1)"
+        assert len(writes) == 1
+        assert writes[0].total_deposited_wei == 1400
+        assert writes[0].last_scanned_block == 120
+
+    def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:
+        """Missing ``total_wei`` or ``latest_block`` must leave cached total AND checkpoint intact."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        def _api(*_a: Any, **_kw: Any) -> Generator:
+            # STATE-performative but missing both keys.
+            return _return_gen(_state_response({}))()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 1000, "malformed response must return cached total unchanged"
+        assert writes == [], (
+            "malformed incremental response must not advance the checkpoint "
+            "(would silently skip deposits in the scanned range)"
+        )
+
+    def test_incremental_error_performative_returns_cached(self) -> None:
+        """A non-STATE performative on incremental scan returns cached, no persist."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        def _api(*_a: Any, **_kw: Any) -> Generator:
+            return _return_gen(_error_response())()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 1000
+        assert writes == []
 
 
 # ---------------------------------------------------------------------------
