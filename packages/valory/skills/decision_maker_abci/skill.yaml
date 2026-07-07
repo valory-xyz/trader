@@ -422,6 +422,7 @@ models:
       polymarket_neg_risk_ctf_collateral_adapter_address: '0xadA2005600Dec949baf300f4C6120000bDB6eAab'
       pol_threshold_for_swap: 2000000000000000000
       is_running_on_polymarket: false
+      balance_tracker_address: '0x0000000000000000000000000000000000000000'
       slippages_for_swap: {}
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8
