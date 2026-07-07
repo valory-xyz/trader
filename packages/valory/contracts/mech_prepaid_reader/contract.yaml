@@ -1,0 +1,22 @@
+name: mech_prepaid_reader
+author: valory
+version: 0.1.0
+type: contract
+description: Trader-local reader for BalanceTracker Deposit events (pre-deposit-as-loss
+  ROI).
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  __init__.py: bafybeiayvfd6iw2b633aijydknbo2x7ealbgwspg4hc6noggb67wvchaya
+  build/MechPrepaidReader.json: bafybeih5arnfdscyqsp7zyw2aq5egodxo7ztl5lmrroagkmcmk5s74lz6a
+  contract.py: bafybeiazdq3lpabseeqvvvcn4cwcfztmccclvhfgj5hipar2d4vwc7b46e
+  tests/__init__.py: bafybeih6bqlg5bwqbz65c7midx4ho25xxl46gy4pbzjftvbfqabgxdohg4
+  tests/test_contract.py: bafybeiai7typmlppmvjba4otxcm5i6znzklktu3cgc4jvnocrkmzuwjqqi
+fingerprint_ignore_patterns: []
+class_name: MechPrepaidReaderContract
+contract_interface_paths:
+  ethereum: build/MechPrepaidReader.json
+dependencies:
+  open-aea-ledger-ethereum:
+    version: ==2.2.9
+contracts: []

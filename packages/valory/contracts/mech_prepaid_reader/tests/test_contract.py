@@ -17,22 +17,20 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Encode-assertion tests for the balance_tracker contract package."""
+"""Tests for the trader-local BalanceTracker.Deposit reader."""
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 from web3 import Web3
 
-from packages.valory.contracts.balance_tracker.contract import BalanceTrackerContract
+from packages.valory.contracts.mech_prepaid_reader.contract import (
+    MechPrepaidReaderContract,
+)
 
-_ABI_PATH = Path(__file__).parent.parent / "build" / "BalanceTracker.json"
-_ACCOUNT = "0x1000000000000000000000000000000000000001"
-_AMOUNT = 12345
-_DEPOSIT_FOR_SELECTOR = "2f4f21e2"
+_ABI_PATH = Path(__file__).parent.parent / "build" / "MechPrepaidReader.json"
 _TRACKER_ADDRESS = "0x2000000000000000000000000000000000000002"
 _REQUESTER = "0x3000000000000000000000000000000000000003"
 
@@ -52,50 +50,9 @@ def _mock_ledger_api(logs: List[Dict[str, Any]]) -> MagicMock:
     return ledger_api
 
 
-class TestBuildDepositForData:
-    """`build_deposit_for_data` produces well-formed `depositFor(account, amount)` calldata."""
-
-    def test_calldata_starts_with_deposit_for_selector(self) -> None:
-        """The 4-byte selector matches keccak256("depositFor(address,uint256)")[:4]."""
-        with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=_web3_contract()
-        ):
-            result = BalanceTrackerContract.build_deposit_for_data(
-                ledger_api=None,  # patched away
-                contract_address="0x0000000000000000000000000000000000000000",
-                account=_ACCOUNT,
-                amount=_AMOUNT,
-            )
-        assert result["data"][:4].hex() == _DEPOSIT_FOR_SELECTOR
-
-    def test_calldata_has_expected_length(self) -> None:
-        """4-byte selector + 32-byte address + 32-byte uint256 = 68 bytes."""
-        with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=_web3_contract()
-        ):
-            result = BalanceTrackerContract.build_deposit_for_data(
-                ledger_api=None,
-                contract_address="0x0000000000000000000000000000000000000000",
-                account=_ACCOUNT,
-                amount=_AMOUNT,
-            )
-        assert len(result["data"]) == 68
-
-    def test_calldata_encodes_amount_argument(self) -> None:
-        """The last 32 bytes decode to the supplied amount."""
-        with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=_web3_contract()
-        ):
-            result = BalanceTrackerContract.build_deposit_for_data(
-                ledger_api=None,
-                contract_address="0x0000000000000000000000000000000000000000",
-                account=_ACCOUNT,
-                amount=_AMOUNT,
-            )
-        assert int.from_bytes(result["data"][-32:], "big") == _AMOUNT
-
-
-def _make_deposit_log(*, account: str, amount: int, block_number: int) -> Dict[str, Any]:
+def _make_deposit_log(
+    *, account: str, amount: int, block_number: int
+) -> Dict[str, Any]:
     """Build a raw Deposit log dict matching Web3.py's format.
 
     Deposit(address indexed account, address indexed token, uint256 amount)
@@ -109,7 +66,11 @@ def _make_deposit_log(*, account: str, amount: int, block_number: int) -> Dict[s
     return {
         "address": _TRACKER_ADDRESS,
         "topics": [
-            bytes.fromhex(event_signature[2:] if event_signature.startswith("0x") else event_signature),
+            bytes.fromhex(
+                event_signature[2:]
+                if event_signature.startswith("0x")
+                else event_signature
+            ),
             bytes.fromhex(padded_account[2:]),
             bytes.fromhex(padded_token[2:]),
         ],
@@ -124,16 +85,18 @@ def _make_deposit_log(*, account: str, amount: int, block_number: int) -> Dict[s
 
 
 class TestGetDepositEventsForRequester:
-    """``get_deposit_events_for_requester`` returns decoded Deposit entries filtered by requester."""
+    """``get_deposit_events_for_requester`` filters Deposit logs by requester."""
 
-    def _filter_params_captured(self, logs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Invoke the method with the given returned logs and capture the get_logs call args."""
+    def _filter_params_captured(
+        self, logs: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Invoke the method with returned logs and capture the get_logs call args."""
         instance = _web3_contract()
         ledger_api = _mock_ledger_api(logs)
         with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=instance
+            MechPrepaidReaderContract, "get_instance", return_value=instance
         ):
-            BalanceTrackerContract.get_deposit_events_for_requester(
+            MechPrepaidReaderContract.get_deposit_events_for_requester(
                 ledger_api=ledger_api,
                 contract_address=_TRACKER_ADDRESS,
                 requester=_REQUESTER,
@@ -157,13 +120,13 @@ class TestGetDepositEventsForRequester:
         assert params["toBlock"] == 200
 
     def test_empty_logs_returns_empty_entries(self) -> None:
-        """No matches → empty entries list, no crash."""
+        """No matches -> empty entries list, no crash."""
         instance = _web3_contract()
         ledger_api = _mock_ledger_api([])
         with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=instance
+            MechPrepaidReaderContract, "get_instance", return_value=instance
         ):
-            result = BalanceTrackerContract.get_deposit_events_for_requester(
+            result = MechPrepaidReaderContract.get_deposit_events_for_requester(
                 ledger_api=ledger_api,
                 contract_address=_TRACKER_ADDRESS,
                 requester=_REQUESTER,
@@ -181,9 +144,9 @@ class TestGetDepositEventsForRequester:
         ]
         ledger_api = _mock_ledger_api(logs)
         with patch.object(
-            BalanceTrackerContract, "get_instance", return_value=instance
+            MechPrepaidReaderContract, "get_instance", return_value=instance
         ):
-            result = BalanceTrackerContract.get_deposit_events_for_requester(
+            result = MechPrepaidReaderContract.get_deposit_events_for_requester(
                 ledger_api=ledger_api,
                 contract_address=_TRACKER_ADDRESS,
                 requester=_REQUESTER,

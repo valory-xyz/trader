@@ -25,7 +25,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.contracts.balance_tracker.contract import BalanceTrackerContract
+from packages.valory.contracts.mech_prepaid_reader.contract import (
+    MechPrepaidReaderContract,
+)
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
@@ -497,7 +499,7 @@ class FetchPerformanceSummaryBehaviour(
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
             contract_address=balance_tracker_address,
-            contract_id=str(BalanceTrackerContract.contract_id),
+            contract_id=str(MechPrepaidReaderContract.contract_id),
             contract_callable="get_deposit_events_for_requester",
             requester=safe_address,
             from_block=from_block,

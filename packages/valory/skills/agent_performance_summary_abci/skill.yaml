@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeigqbcvy7fe3apckuscrp4gs5zljppady6bwe6kgjdxxjryyppo6jm
-  behaviours.py: bafybeicqlebz3utg2fffz4ir2efncjnx33aikycirgau6jsm2pkhhuzeem
+  behaviours.py: bafybeia5ta7zl7b4yill7hvxxm25gl34x6fqghn5h4tgwoe4h4aj47t4ge
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -43,7 +43,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
-- valory/balance_tracker:0.1.0:bafybeigrshpwszmuqhdhlqtqkmxmnia4mxpr43r73bu4h7jjtxj7sqamkq
+- valory/mech_prepaid_reader:0.1.0:bafybeibqzxavs2c57a4rumgsrzeg2vhuelwqityncqte5ffh4yofmsjjfe
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
