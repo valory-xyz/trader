@@ -25,6 +25,7 @@ from typing import Any, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
@@ -135,6 +136,9 @@ def _mock_context(
     params.is_agent_performance_summary_enabled = True
     params.is_achievement_checker_enabled = True
     params.mech_chain_id = mech_chain_id
+    # Sensible non-zero default; tests that care about the zero-address
+    # short-circuit override this explicitly.
+    params.balance_tracker_address = "0x000000000000000000000000000000000000BEEF"
     ctx.params = params
 
     synced_data = MagicMock()
@@ -2250,15 +2254,10 @@ class TestCalculateRoi:
 # ---------------------------------------------------------------------------
 
 
-def _make_marketplace_config(
-    *,
-    use_offchain: bool,
-    balance_tracker_address: str = "0x000000000000000000000000000000000000BEEF",
-) -> MagicMock:
+def _make_marketplace_config(*, use_offchain: bool) -> MagicMock:
     """Build a mech_marketplace_config stub for the helper."""
     cfg = MagicMock()
     cfg.use_offchain = use_offchain
-    cfg.balance_tracker_address = balance_tracker_address
     return cfg
 
 
@@ -2283,6 +2282,14 @@ def _error_response() -> MagicMock:
     """Build a non-STATE contract-API response (framework wrapping an error)."""
     response = MagicMock()
     response.performative = ContractApiMessage.Performative.ERROR
+    return response
+
+
+def _ledger_state_response(body: Any) -> MagicMock:
+    """Build a LedgerApiMessage.Performative.STATE response with the given body."""
+    response = MagicMock()
+    response.performative = LedgerApiMessage.Performative.STATE
+    response.state.body = body
     return response
 
 
@@ -2339,9 +2346,9 @@ class TestFetchOffchainPrepaidWei:
         """A zero-address ``balance_tracker_address`` bypasses the RPC path."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
-        params.mech_marketplace_config = _make_marketplace_config(
-            use_offchain=True,
-            balance_tracker_address="0x0000000000000000000000000000000000000000",
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.balance_tracker_address = (
+            "0x0000000000000000000000000000000000000000"
         )
         shared_state, writes = self._make_shared_state(None)
 
@@ -2375,11 +2382,18 @@ class TestFetchOffchainPrepaidWei:
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
         shared_state, writes = self._make_shared_state(None)
 
-        callables_seen: list = []
+        ledger_calls_seen: list = []
+        contract_calls_seen: list = []
 
-        def _api(*_a: Any, **kw: Any) -> Generator:
-            callables_seen.append(kw["contract_callable"])
-            return _return_gen(_state_response({"block_number": 12345}))()
+        def _ledger_api(*_a: Any, **kw: Any) -> Generator:
+            ledger_calls_seen.append(kw["ledger_callable"])
+            return _return_gen(
+                _ledger_state_response({"get_block_number_result": 12345})
+            )()
+
+        def _fail_contract_api(*_a: Any, **kw: Any) -> Generator:
+            contract_calls_seen.append(kw)
+            return _noop_gen()
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2390,28 +2404,34 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
+            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
+            patch.object(
+                b, "get_contract_api_response", side_effect=_fail_contract_api
+            ),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 0
-        assert callables_seen == [
-            "get_current_block_number"
-        ], "first run must fetch head block, not deposit events"
+        assert ledger_calls_seen == [
+            "get_block_number"
+        ], "first run must fetch head block via ledger_api"
+        assert contract_calls_seen == [], (
+            "first run must not hit the contract API before checkpoint is set"
+        )
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 0
         assert writes[0].last_scanned_block == 12345
 
     def test_first_run_malformed_seed_response_leaves_checkpoint_unset(self) -> None:
-        """A STATE response missing ``block_number`` must NOT seed a zero checkpoint."""
+        """A STATE response missing ``get_block_number_result`` must NOT seed a zero checkpoint."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
         shared_state, writes = self._make_shared_state(None)
 
-        def _api(*_a: Any, **_kw: Any) -> Generator:
-            # STATE-performative but body has no ``block_number`` key.
-            return _return_gen(_state_response({}))()
+        def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
+            # STATE-performative but body has no ``get_block_number_result`` key.
+            return _return_gen(_ledger_state_response({}))()
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2422,7 +2442,7 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
-            patch.object(b, "get_contract_api_response", side_effect=_api),
+            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
@@ -2433,7 +2453,7 @@ class TestFetchOffchainPrepaidWei:
         )
 
     def test_incremental_scan_accumulates_and_advances_checkpoint(self) -> None:
-        """Later runs sum new_wei into cached_total and move the checkpoint forward."""
+        """Later runs sum new_wei from entries and move the checkpoint forward."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
@@ -2446,9 +2466,13 @@ class TestFetchOffchainPrepaidWei:
         def _api(*_a: Any, **kw: Any) -> Generator:
             seen["callable"] = kw["contract_callable"]
             seen["from_block"] = kw["from_block"]
-            return _return_gen(
-                _state_response({"total_wei": 400, "latest_block": 120})
-            )()
+            # Two Deposit entries: 150 wei at block 110, 250 wei at block 120.
+            # Behaviour must sum to 400 and pick 120 as the new checkpoint.
+            entries = [
+                {"args": {"amount": 150}, "blockNumber": 110},
+                {"args": {"amount": 250}, "blockNumber": 120},
+            ]
+            return _return_gen(_state_response({"entries": entries}))()
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2463,7 +2487,7 @@ class TestFetchOffchainPrepaidWei:
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
-        # cached (1000) + new (400) = 1400
+        # cached (1000) + sum(150 + 250) = 1400
         assert result == 1400
         assert seen["callable"] == "get_deposit_events_for_requester"
         assert seen["from_block"] == 100, "must scan strictly forward (checkpoint+1)"
@@ -2471,8 +2495,8 @@ class TestFetchOffchainPrepaidWei:
         assert writes[0].total_deposited_wei == 1400
         assert writes[0].last_scanned_block == 120
 
-    def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:
-        """Missing ``total_wei`` or ``latest_block`` must leave cached total AND checkpoint intact."""
+    def test_incremental_empty_entries_leaves_checkpoint(self) -> None:
+        """An empty entries list means no new deposits — checkpoint stays put, total unchanged."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
@@ -2481,7 +2505,40 @@ class TestFetchOffchainPrepaidWei:
         )
 
         def _api(*_a: Any, **_kw: Any) -> Generator:
-            # STATE-performative but missing both keys.
+            return _return_gen(_state_response({"entries": []}))()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        # Cached total unchanged; a persist still happens (with the same
+        # checkpoint 99, same total 1000) so downstream readers see a
+        # fresh timestamp — the checkpoint doesn't regress or leap.
+        assert result == 1000
+        assert len(writes) == 1
+        assert writes[0].total_deposited_wei == 1000
+        assert writes[0].last_scanned_block == 99
+
+    def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:
+        """Missing ``entries`` key must leave cached total AND checkpoint intact."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        def _api(*_a: Any, **_kw: Any) -> Generator:
+            # STATE-performative but body has no ``entries`` key.
             return _return_gen(_state_response({}))()
 
         with (

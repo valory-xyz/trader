@@ -26,7 +26,6 @@ packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/agent_mech/
 packages/valory/contracts/mech_marketplace_legacy/
 packages/valory/contracts/mech_marketplace/
-packages/valory/contracts/balance_tracker/
 packages/valory/contracts/balance_tracker_fixed_price_native/
 packages/valory/contracts/multisend/
 packages/valory/contracts/realitio/

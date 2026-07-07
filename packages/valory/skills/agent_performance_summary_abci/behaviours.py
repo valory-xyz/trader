@@ -25,11 +25,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.contracts.balance_tracker.contract import BalanceTrackerContract
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
-from packages.valory.contracts.mech_prepaid_reader.contract import (
-    MechPrepaidReaderContract,
-)
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
@@ -413,7 +412,7 @@ class FetchPerformanceSummaryBehaviour(
         state = summary.offchain_deposits or OffchainDepositState()
         cached_total = state.total_deposited_wei
 
-        balance_tracker_address = marketplace_config.balance_tracker_address
+        balance_tracker_address = self.params.balance_tracker_address
         if (
             not balance_tracker_address
             or balance_tracker_address.lower() == _ZERO_ADDRESS
@@ -428,14 +427,12 @@ class FetchPerformanceSummaryBehaviour(
         # pre-checkpoint history is deliberately excluded. Also avoids
         # RPC ``eth_getLogs`` block-range caps some providers enforce.
         if state.last_scanned_block is None:
-            block_response = yield from self.get_contract_api_response(
-                performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
-                contract_address=balance_tracker_address,
-                contract_id=str(MechPrepaidReaderContract.contract_id),
-                contract_callable="get_current_block_number",
+            block_response = yield from self.get_ledger_api_response(
+                performative=LedgerApiMessage.Performative.GET_STATE,  # type: ignore
+                ledger_callable="get_block_number",
                 chain_id=self.params.mech_chain_id,
             )
-            if block_response.performative != ContractApiMessage.Performative.STATE:
+            if block_response.performative != LedgerApiMessage.Performative.STATE:
                 self.context.logger.warning(
                     "Failed to seed offchain-deposit checkpoint from current "
                     f"block (response: {block_response}); leaving cached total."
@@ -443,7 +440,9 @@ class FetchPerformanceSummaryBehaviour(
                 return cached_total
 
             body = block_response.state.body
-            raw_block = body.get("block_number") if body is not None else None
+            raw_block = (
+                body.get("get_block_number_result") if body is not None else None
+            )
             if raw_block is None or int(raw_block) <= 0:
                 # Malformed STATE response: without a real head block we
                 # would persist a zero checkpoint and re-enter the seed
@@ -473,7 +472,7 @@ class FetchPerformanceSummaryBehaviour(
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
             contract_address=balance_tracker_address,
-            contract_id=str(MechPrepaidReaderContract.contract_id),
+            contract_id=str(BalanceTrackerContract.contract_id),
             contract_callable="get_deposit_events_for_requester",
             requester=safe_address,
             from_block=from_block,
@@ -488,24 +487,29 @@ class FetchPerformanceSummaryBehaviour(
             return cached_total
 
         body = response.state.body
-        raw_new_wei = body.get("total_wei") if body is not None else None
-        raw_latest_block = body.get("latest_block") if body is not None else None
-        if raw_new_wei is None or raw_latest_block is None:
+        entries = body.get("entries") if body is not None else None
+        if entries is None:
             # Malformed STATE response: refuse to advance the checkpoint
             # because doing so would silently skip past the requested
             # scan range without counting its deposits.
             self.context.logger.warning(
                 "Offchain-deposit scan returned malformed response "
-                f"(total_wei={raw_new_wei!r}, latest_block={raw_latest_block!r}); "
-                "leaving checkpoint and cached total unchanged."
+                f"(entries={entries!r}); leaving checkpoint and cached total unchanged."
             )
             return cached_total
 
-        new_wei = int(raw_new_wei)
-        latest_block = int(raw_latest_block)
+        # Aggregation lives here (not in the classmethod) by convention:
+        # contract classmethods return processed log entries; sum + max
+        # of the block number happens in the caller.
+        new_wei = 0
+        latest_block = state.last_scanned_block
+        for entry in entries:
+            amount = int(entry.get("args", {}).get("amount", 0))
+            new_wei += amount
+            block_number = int(entry.get("blockNumber", 0))
+            if block_number > latest_block:
+                latest_block = block_number
 
-        # ``latest_block`` never regresses below ``from_block``; the contract
-        # helper falls back to ``from_block`` when no new events landed.
         total_wei = cached_total + new_wei
         summary.offchain_deposits = OffchainDepositState(
             total_deposited_wei=total_wei,

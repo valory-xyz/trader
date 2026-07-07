@@ -465,6 +465,7 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "is_agent_performance_summary_enabled": True,
     "is_achievement_checker_enabled": True,
     "is_running_on_polymarket": False,
+    "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
 }
 
 
@@ -518,6 +519,7 @@ class TestAgentPerformanceSummaryParams:
                 is_agent_performance_summary_enabled=True,
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
+                balance_tracker_address="0x000000000000000000000000000000000000BEEF",
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
@@ -534,6 +536,7 @@ class TestAgentPerformanceSummaryParams:
                 is_agent_performance_summary_enabled=True,
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
+                balance_tracker_address="0x000000000000000000000000000000000000BEEF",
             )
         assert params.is_running_on_polymarket is True
 

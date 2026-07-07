@@ -322,6 +322,16 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_achievement_checker_enabled: bool = self._ensure(
             "is_achievement_checker_enabled", kwargs, bool
         )
+        # BalanceTracker contract address for pre-deposit-as-loss ROI
+        # accounting. Empty or the zero address disables the Deposit-event
+        # scan; the helper falls back to the cached total (see
+        # ``_fetch_offchain_prepaid_wei``). Kept as a trader-local skill
+        # param on purpose — this is an ROI-accounting concern, not a
+        # mech-routing concern, so it does not belong on
+        # ``mech_marketplace_config``.
+        self.balance_tracker_address: str = self._ensure(
+            "balance_tracker_address", kwargs, str
+        )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves

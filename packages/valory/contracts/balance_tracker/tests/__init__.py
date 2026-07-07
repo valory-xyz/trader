@@ -17,14 +17,4 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Trader-local reader for BalanceTracker.Deposit events.
-
-Adds a helper on top of the same ABI as the vendored balance_tracker
-contract, kept trader-local so trader's off-chain ROI accounting can read
-per-Safe pre-deposit history without modifying the third-party vendored
-package.
-"""
-
-from aea.configurations.base import PublicId
-
-PUBLIC_ID = PublicId.from_str("valory/mech_prepaid_reader:0.1.0")
+"""Tests for the balance_tracker contract package."""
