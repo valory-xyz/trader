@@ -49,6 +49,11 @@ dependencies = [
     "setuptools==81.0.0",
     # Pinned via git rev in [tool.uv.sources].
     "py-builder-signing-sdk",
+    # cffi 2.1.0 reports its license as MIT-0 (was MIT), which tomte's
+    # PARANOID liccheck rejects. Constrain to the previous minor until
+    # the tomte allowlist covers MIT-0. See [tool.uv].override-dependencies
+    # for the transitive-resolution counterpart.
+    "cffi<2.1.0",
 ]
 
 [project.urls]
@@ -62,6 +67,10 @@ dev = [
 [tool.uv]
 default-groups = "all"
 prerelease = "allow"
+# cffi 2.1.0 (transitive via cryptography << open-aea-ledger-solana)
+# reports its license as MIT-0, which tomte's PARANOID liccheck rejects.
+# Constrain to the previous minor until the tomte allowlist covers MIT-0.
+override-dependencies = ["cffi<2.1"]
 
 [tool.uv.sources]
 py-builder-signing-sdk = { git = "https://github.com/LOCKhart07/py-builder-signing-sdk.git", rev = "487579780479676d20867ead63db968bf460ea38" }
