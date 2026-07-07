@@ -2297,6 +2297,11 @@ def _ledger_head_gen(head_block: int) -> Any:
     """Build a ``get_ledger_api_response`` side_effect that returns ``head_block``.
 
     Wraps ``_ledger_state_response`` so tests only care about the head value.
+
+    :param head_block: block number the fake ``get_block_number`` ledger
+        call resolves to.
+    :return: side_effect callable that yields a generator producing a
+        STATE-performative response with ``get_block_number_result`` set.
     """
 
     def _side_effect(*_a: Any, **_kw: Any) -> Generator:
@@ -2359,9 +2364,9 @@ class TestFetchOffchainPrepaidWei:
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 0, "no prior deposits => cached_total=0"
-        assert api_calls == [] and ledger_calls == [], (
-            "off-chain disabled must not hit any RPC"
-        )
+        assert (
+            api_calls == [] and ledger_calls == []
+        ), "off-chain disabled must not hit any RPC"
         assert writes == [], "off-chain disabled must not persist state"
 
     def test_use_offchain_false_preserves_accrued_cached_total(self) -> None:
@@ -2394,9 +2399,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
-        params.balance_tracker_address = (
-            "0x0000000000000000000000000000000000000000"
-        )
+        params.balance_tracker_address = "0x0000000000000000000000000000000000000000"
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=800, last_scanned_block=42)
         )
@@ -2455,9 +2458,9 @@ class TestFetchOffchainPrepaidWei:
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 0
-        assert contract_calls_seen == [], (
-            "first run must not hit the contract API before checkpoint is set"
-        )
+        assert (
+            contract_calls_seen == []
+        ), "first run must not hit the contract API before checkpoint is set"
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 0
         assert writes[0].last_scanned_block == 12345
@@ -2478,17 +2481,15 @@ class TestFetchOffchainPrepaidWei:
                 new_callable=PropertyMock,
                 return_value=shared_state,
             ),
-            patch.object(
-                b, "get_ledger_api_response", side_effect=_ledger_head_gen(0)
-            ),
+            patch.object(b, "get_ledger_api_response", side_effect=_ledger_head_gen(0)),
         ):
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 0
         assert len(writes) == 1
-        assert writes[0].last_scanned_block == 0, (
-            "block 0 must seed the checkpoint at 0, not loop the seed path forever"
-        )
+        assert (
+            writes[0].last_scanned_block == 0
+        ), "block 0 must seed the checkpoint at 0, not loop the seed path forever"
 
     def test_first_run_malformed_seed_response_leaves_checkpoint_unset(self) -> None:
         """A STATE response missing ``get_block_number_result`` must NOT seed a zero checkpoint."""
@@ -2561,9 +2562,9 @@ class TestFetchOffchainPrepaidWei:
         assert result == 1400
         assert seen["callable"] == "get_deposit_events_for_requester"
         assert seen["from_block"] == 100, "must scan strictly forward (checkpoint+1)"
-        assert seen["to_block"] == 130, (
-            "must pass the resolved head as concrete to_block, not 'latest'"
-        )
+        assert (
+            seen["to_block"] == 130
+        ), "must pass the resolved head as concrete to_block, not 'latest'"
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 1400
         assert writes[0].last_scanned_block == 130, (
@@ -2608,9 +2609,9 @@ class TestFetchOffchainPrepaidWei:
         assert result == 1000, "cost side unchanged with no deposits"
         assert len(writes) == 1
         assert writes[0].total_deposited_wei == 1000
-        assert writes[0].last_scanned_block == 500, (
-            "checkpoint must advance to head to prevent unbounded range growth"
-        )
+        assert (
+            writes[0].last_scanned_block == 500
+        ), "checkpoint must advance to head to prevent unbounded range growth"
 
     def test_incremental_from_block_beyond_head_returns_cached_no_scan(self) -> None:
         """If from_block > head_block (chain hasn't moved), no contract scan and no persist."""
@@ -2646,9 +2647,9 @@ class TestFetchOffchainPrepaidWei:
             result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
 
         assert result == 1000
-        assert contract_calls == [], (
-            "no chain progress since checkpoint => nothing to scan"
-        )
+        assert (
+            contract_calls == []
+        ), "no chain progress since checkpoint => nothing to scan"
         assert writes == []
 
     def test_incremental_malformed_response_does_not_advance_checkpoint(self) -> None:

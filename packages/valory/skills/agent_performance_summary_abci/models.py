@@ -417,6 +417,9 @@ class SharedState(BaseSharedState):
         method: this PR is the first to persist irreversible state
         (``offchain_deposits.total_deposited_wei``) that cannot be
         re-derived from the subgraph.
+
+        :param summary: fully-populated summary to overwrite the persisted
+            copy with.
         """
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
