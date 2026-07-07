@@ -2585,9 +2585,9 @@ class TestFetchOffchainPrepaidWei:
 
         assert result == 1000, "cached_total preserved on ledger malformed value"
         assert writes == []
-        assert any("invalid value" in w for w in warnings), (
-            "must log a warning identifying the invalid head-block value"
-        )
+        assert any(
+            "invalid value" in w for w in warnings
+        ), "must log a warning identifying the invalid head-block value"
 
     def test_incremental_scan_accumulates_and_advances_checkpoint_to_head(self) -> None:
         """Later runs sum new_wei from entries and move the checkpoint to the scanned head, not to the max event block."""
@@ -4504,11 +4504,18 @@ class TestSaveAgentPerformanceSummary:
     ) -> None:
         """Helper: run _save_agent_performance_summary with mocked state.
 
-        ``disk_offchain`` controls what ``read_offchain_deposits_from_disk``
-        (the lenient raw-JSON re-read the save now uses to survive
-        sibling-corruption cascades) returns. Defaults to
-        ``existing.offchain_deposits`` so tests that don't care about
-        that path see the happy behaviour.
+        :param new_summary: the summary the behaviour would build in-flow
+            and pass to ``_save_agent_performance_summary``.
+        :param existing: what the mocked ``read_existing_performance_summary``
+            returns (drives the preserve logic for
+            ``agent_behavior`` / ``metrics`` / etc.).
+        :param disk_offchain: what the mocked
+            ``read_offchain_deposits_from_disk`` (the lenient raw-JSON
+            re-read the save now uses to survive sibling-corruption
+            cascades) returns. Defaults to ``existing.offchain_deposits``
+            so tests that don't care about that path see the happy
+            behaviour; pass explicitly (including ``None``) to exercise
+            the corruption-cascade and first-boot branches.
         """
         b = _make_fetch_behaviour()
         ctx, _, synced_data, state = _mock_context()
