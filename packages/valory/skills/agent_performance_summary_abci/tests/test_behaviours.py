@@ -2133,6 +2133,7 @@ class TestCalculateRoi:
                 "_fetch_olas_in_usd_price",
                 side_effect=_return_gen(1000000000000000000),
             ),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert result == (None, None)
@@ -2159,6 +2160,7 @@ class TestCalculateRoi:
             patch.object(
                 b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
             ),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
@@ -2187,10 +2189,59 @@ class TestCalculateRoi:
             patch.object(
                 b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
             ),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
         ):
             final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
         assert final_roi is not None
         assert partial_roi is not None
+
+    def test_roi_reduces_with_offchain_prepaid(self) -> None:
+        """Off-chain pre-deposit contributes to the cost side and lowers ROI.
+
+        Trader books ``BalanceTracker.Deposit`` sums as spent under the
+        pre-deposit-as-loss rule. Two runs with identical trade / mech /
+        rewards data but different pre-deposit sums must produce the
+        second (higher pre-deposit) as strictly lower ROI.
+        """
+        agent = {
+            "serviceId": "1",
+            "totalTraded": str(WEI_IN_ETH),
+            "totalExpectedPayout": str(int(2 * WEI_IN_ETH)),
+            "totalTradedSettled": str(WEI_IN_ETH),
+            "totalFeesSettled": "0",
+        }
+        staking = {"olasRewardsEarned": "0"}
+        olas_price = int(1 * WEI_IN_ETH)
+
+        def _run(prepaid_wei: int) -> Any:
+            b = _make_fetch_behaviour(_settled_mech_requests_count=1)
+            ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+            with (
+                _patch_context(b, ctx, synced_data)[0],
+                _patch_context(b, ctx, synced_data)[1],
+                patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
+                patch.object(
+                    b, "_fetch_staking_service", side_effect=_return_gen(staking)
+                ),
+                patch.object(
+                    b, "_fetch_olas_in_usd_price", side_effect=_return_gen(olas_price)
+                ),
+                patch.object(
+                    b,
+                    "_fetch_offchain_prepaid_wei",
+                    side_effect=_return_gen(prepaid_wei),
+                ),
+            ):
+                return self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
+
+        final_low, partial_low = _run(0)
+        final_high, partial_high = _run(int(0.25 * WEI_IN_ETH))
+
+        assert final_low is not None and final_high is not None
+        assert partial_low is not None and partial_high is not None
+        # Higher pre-deposit → higher total_costs → lower payout/costs ratio
+        assert final_high < final_low
+        assert partial_high < partial_low
 
 
 # ---------------------------------------------------------------------------

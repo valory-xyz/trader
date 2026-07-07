@@ -199,6 +199,31 @@ class Achievements:
 
 
 @dataclass
+class OffchainDepositState:
+    """Cumulative on-chain BalanceTracker Deposit tracking for pre-deposit-as-loss ROI.
+
+    Under the pre-deposit-as-loss decision, every top-up to a Safe's
+    ``mapRequesterBalances`` in the mech marketplace's BalanceTracker is
+    booked as spent the moment it lands on chain — the tracker has no
+    requester-withdraw path, so committed money is unrecoverable
+    regardless of consumption.
+
+    ``total_deposited_wei`` is stored as a string to preserve full integer
+    precision through the JSON round-trip; behaviours cast back to ``int``
+    when they read it. ``last_scanned_block`` is the highest block already
+    counted, so the next cycle scans only ``last_scanned_block + 1`` and
+    above.
+
+    For any Safe that has never called ``depositFor`` (i.e. every
+    production on-chain trader today), the state stays at its zero-valued
+    default and contributes nothing to the ROI cost side.
+    """
+
+    total_deposited_wei: str = "0"
+    last_scanned_block: int = 0
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -215,6 +240,7 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
+    offchain_deposits: Optional[OffchainDepositState] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -240,6 +266,9 @@ class AgentPerformanceSummary:
 
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)
+
+        if isinstance(self.offchain_deposits, dict):
+            self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
 
 
 class AgentPerformanceSummaryParams(BaseParams):

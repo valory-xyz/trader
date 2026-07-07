@@ -26,6 +26,9 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
+from packages.valory.contracts.mech_prepaid_reader.contract import (
+    MechPrepaidReaderContract,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -58,6 +61,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PerformanceStatsData,
@@ -357,6 +361,88 @@ class FetchPerformanceSummaryBehaviour(
         # where settled = Total - Open
         return total_mech_requests - open_market_requests
 
+    def _fetch_offchain_prepaid_wei(
+        self, safe_address: str
+    ) -> Generator[None, None, int]:
+        """Return the cumulative pre-deposit sum on the BalanceTracker for this Safe.
+
+        Off-chain mech requests draw fees from a per-requester balance in the
+        marketplace's ``BalanceTracker`` contract. Under pre-deposit-as-loss
+        accounting, every ``depositFor(safe, amount)`` on that contract counts
+        as spend the moment it lands on chain, because the tracker exposes no
+        requester-withdraw path — money committed is unrecoverable regardless
+        of consumption.
+
+        This helper reads the ``Deposit(indexed account, indexed token, amount)``
+        event stream from the last-scanned block cached in the performance
+        summary JSON, sums the new entries into the running total, updates
+        the checkpoint, and persists both fields under ``offchain_deposits``
+        for the next cycle.
+
+        On-chain-only deployments (i.e. every production trader today) never
+        emit these events for their Safe, so ``get_logs`` returns an empty
+        list and the running total stays at 0. Existing ROI numbers do not
+        change.
+
+        :param safe_address: the agent's own Safe address, used as the
+            ``account`` filter on the ``Deposit`` event.
+        :return: cumulative sum (in wei-scaled units) of every
+            ``BalanceTracker.Deposit`` credit to this Safe up to and
+            including the latest block scanned.
+        :yield: contract-API response(s) via the abstract-round-abci
+            base behaviour helpers.
+        """
+        # Read the checkpoint from the persisted summary.
+        summary = self.shared_state.read_existing_performance_summary()
+        state = summary.offchain_deposits or OffchainDepositState()
+        cached_total = int(state.total_deposited_wei)
+        from_block = state.last_scanned_block
+
+        balance_tracker_address = (
+            self.params.mech_marketplace_config.balance_tracker_address
+        )
+        if not balance_tracker_address:
+            # No tracker configured (e.g. on-chain-only deployment where the
+            # off-chain wiring was never populated). Nothing to sum.
+            return cached_total
+
+        response = yield from self.get_contract_api_response(
+            performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+            contract_address=balance_tracker_address,
+            contract_id=str(MechPrepaidReaderContract.contract_id),
+            contract_callable="get_deposit_events_for_requester",
+            requester=safe_address,
+            from_block=from_block,
+            to_block="latest",
+            chain_id=self.params.mech_chain_id,
+        )
+        if response.performative != ContractApiMessage.Performative.STATE:
+            self.context.logger.warning(
+                "Failed to fetch BalanceTracker Deposit events "
+                f"(response: {response}); reusing cached offchain pre-deposit total."
+            )
+            return cached_total
+
+        body = response.state.body
+        new_wei = int(body.get("total_wei", 0))
+        latest_block = int(body.get("latest_block", from_block))
+
+        # ``latest_block`` never regresses below ``from_block``; the contract
+        # helper falls back to ``from_block`` when no new events landed.
+        total_wei = cached_total + new_wei
+        summary.offchain_deposits = OffchainDepositState(
+            total_deposited_wei=str(total_wei),
+            last_scanned_block=latest_block,
+        )
+        summary.timestamp = self.shared_state.synced_timestamp
+        self.shared_state.overwrite_performance_summary(summary)
+
+        self.context.logger.info(
+            f"[Offchain Deposits] cached={cached_total}, new_this_cycle={new_wei}, "
+            f"total={total_wei}, last_scanned_block={latest_block}"
+        )
+        return total_wei
+
     def calculate_roi(
         self,
     ) -> Generator[None, None, Tuple[Optional[float], Optional[float]]]:
@@ -436,15 +522,39 @@ class FetchPerformanceSummaryBehaviour(
         settled_mech_costs_usd = settled_mech_costs_raw / WEI_IN_ETH
 
         self.context.logger.info(
-            f"[ROI Calculation] Mech costs: "
+            f"[ROI Calculation] On-chain mech costs: "
             f"settled_mech_requests={settled_mech_requests}, "
             f"settled_mech_costs_raw={settled_mech_costs_raw}, "
             f"settled_mech_costs_usd={settled_mech_costs_usd:.6f}"
         )
 
+        # Off-chain mech spend enters the cost formula only via cumulative
+        # BalanceTracker.Deposit events for the agent's own Safe. Under
+        # pre-deposit-as-loss accounting every ``depositFor`` counts as
+        # spent the moment it lands on chain (the tracker cannot refund).
+        # For an on-chain-only deployment this Safe never appears in a
+        # Deposit event, the helper returns 0, and the ROI number matches
+        # the pre-migration calculation exactly.
+        offchain_prepaid_wei = yield from self._fetch_offchain_prepaid_wei(
+            agent_safe_address
+        )
+        # BalanceTracker amounts share the mech-payment token, whose smallest
+        # unit matches the trade-side ``token_divisor`` picked above (USDC 6dp
+        # on Polymarket, wxDAI 18dp on Gnosis).
+        offchain_prepaid_usd = offchain_prepaid_wei / token_divisor
+
+        self.context.logger.info(
+            f"[ROI Calculation] Off-chain pre-deposits: "
+            f"offchain_prepaid_wei={offchain_prepaid_wei}, "
+            f"offchain_prepaid_usd={offchain_prepaid_usd:.6f}"
+        )
+
         # Calculate total costs in USD
         total_costs_usd = (
-            total_traded_settled_usd + total_fees_settled_usd + settled_mech_costs_usd
+            total_traded_settled_usd
+            + total_fees_settled_usd
+            + settled_mech_costs_usd
+            + offchain_prepaid_usd
         )
 
         self.context.logger.info(
