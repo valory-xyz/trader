@@ -79,6 +79,12 @@ from packages.valory.skills.agent_performance_summary_abci.payloads import (
 SAFE_ADDRESS = "0xSafeAddress"
 SAFE_ADDRESS_LOWER = "0xsafeaddress"
 
+# Sentinel for optional-defaulted params where ``None`` is a real caller
+# value. Used by the save-summary helper to distinguish "caller didn't
+# pass anything, mirror the existing summary's offchain_deposits" from
+# "caller passed ``None`` explicitly (simulating a raw-disk-read miss)".
+_UNSET = object()
+
 
 def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
     """No-op generator for mocking yield-from calls."""
@@ -2535,6 +2541,54 @@ class TestFetchOffchainPrepaidWei:
             "(would loop the seed path every cycle)"
         )
 
+    def test_head_block_non_numeric_string_degrades_with_warning(self) -> None:
+        """A non-numeric ``get_block_number_result`` must degrade with a warning, not raise.
+
+        Consistency regression: every other malformed-input branch in
+        ``_fetch_offchain_prepaid_wei`` degrades to ``cached_total`` with
+        a warning. The ``int(raw_head)`` coerce inside a try/except
+        matches that pattern instead of propagating ``ValueError`` and
+        crashing the behaviour if a future ledger response ever ships a
+        non-numeric string here (mirrors mech_interact_abci's
+        ``_get_native_balance``).
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        warnings: list = []
+        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
+
+        def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
+            return _return_gen(
+                _state_response(
+                    {"get_block_number_result": "not-a-number"},
+                    performative=LedgerApiMessage.Performative.STATE,
+                )
+            )()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(b, "get_ledger_api_response", side_effect=_ledger_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 1000, "cached_total preserved on ledger malformed value"
+        assert writes == []
+        assert any("invalid value" in w for w in warnings), (
+            "must log a warning identifying the invalid head-block value"
+        )
+
     def test_incremental_scan_accumulates_and_advances_checkpoint_to_head(self) -> None:
         """Later runs sum new_wei from entries and move the checkpoint to the scanned head, not to the max event block."""
         b = _make_fetch_behaviour()
@@ -4446,11 +4500,22 @@ class TestSaveAgentPerformanceSummary:
         self,
         new_summary: AgentPerformanceSummary,
         existing: AgentPerformanceSummary,
+        disk_offchain: Optional[OffchainDepositState] = _UNSET,  # type: ignore[assignment]
     ) -> None:
-        """Helper: run _save_agent_performance_summary with mocked state."""
+        """Helper: run _save_agent_performance_summary with mocked state.
+
+        ``disk_offchain`` controls what ``read_offchain_deposits_from_disk``
+        (the lenient raw-JSON re-read the save now uses to survive
+        sibling-corruption cascades) returns. Defaults to
+        ``existing.offchain_deposits`` so tests that don't care about
+        that path see the happy behaviour.
+        """
         b = _make_fetch_behaviour()
         ctx, _, synced_data, state = _mock_context()
         state.read_existing_performance_summary.return_value = existing
+        if disk_offchain is _UNSET:
+            disk_offchain = existing.offchain_deposits
+        state.read_offchain_deposits_from_disk.return_value = disk_offchain
         with _patch_context(b, ctx, synced_data)[0]:
             b._save_agent_performance_summary(new_summary)
 
@@ -4584,35 +4649,67 @@ class TestSaveAgentPerformanceSummary:
         assert new_summary.offchain_deposits.total_deposited_wei == 12345
         assert new_summary.offchain_deposits.last_scanned_block == 987
 
-    def test_does_not_wipe_offchain_deposits_when_existing_read_degraded(
+    def test_offchain_deposits_survives_sibling_corruption_via_raw_reread(
         self,
     ) -> None:
-        """A validation-degraded ``existing_data`` must NOT wipe the just-persisted checkpoint.
+        """Sibling-corruption regression using the raw-JSON re-read path.
 
-        Cross-field corruption regression. If any nested ``__post_init__``
-        on the persisted summary raises (e.g. a bad ``Achievements`` or
-        ``PredictionHistory`` entry), ``read_existing_performance_summary``
-        degrades to a *fresh* ``AgentPerformanceSummary()`` with
-        ``offchain_deposits=None``. Meanwhile
-        ``_fetch_offchain_prepaid_wei`` may have written a real
-        checkpoint into ``new_summary.offchain_deposits`` earlier in the
-        same cycle. The preserve line must NOT clobber that with the
-        degraded read's ``None``: ``total_deposited_wei`` is irreversible
-        and non-re-derivable, so a wipe from unrelated field corruption
-        would permanently destroy ROI cost state.
+        Real-flow reproduction of the corruption cascade Ojus flagged.
+        ``_fetch_offchain_prepaid_wei`` writes the checkpoint to disk
+        earlier in the cycle. ``_fetch_agent_performance_summary`` then
+        builds ``new_summary`` with ``offchain_deposits=None`` (never
+        carrying the helper's value in memory).
+        ``_save_agent_performance_summary`` runs and calls
+        ``read_existing_performance_summary`` which returns a
+        validation-degraded fresh summary (because some *other* nested
+        field on disk, e.g. Achievements, failed ``__post_init__``). The
+        old ``if existing_data.offchain_deposits is not None`` guard would
+        have skipped the preserve, leaving ``new_summary.offchain_deposits``
+        at its construction-time ``None``, and the atomic overwrite would
+        have persisted ``None`` to disk — wiping the just-persisted
+        checkpoint.
+
+        Fix: ``_save_agent_performance_summary`` now calls
+        ``read_offchain_deposits_from_disk`` which parses only the
+        ``offchain_deposits`` sub-dict without ``__post_init__``-ing the
+        rest, so it recovers the real checkpoint even when siblings are
+        corrupt.
         """
         existing = _default_summary()  # simulates the degraded fresh summary
         assert existing.offchain_deposits is None
-        new_summary = _default_summary()
-        new_summary.offchain_deposits = OffchainDepositState(
-            total_deposited_wei=12345,
-            last_scanned_block=987,
+        # The lenient raw-JSON re-read still succeeds — this is the case
+        # the fix targets: file exists, offchain_deposits sub-dict is
+        # valid, but another field's __post_init__ blew up on the
+        # normal read.
+        disk_offchain = OffchainDepositState(
+            total_deposited_wei=12345, last_scanned_block=987
         )
-        self._save(new_summary, existing)
-        # Checkpoint the helper wrote earlier this cycle must survive.
+        # ``_fetch_agent_performance_summary`` builds this without
+        # setting offchain_deposits — this is what the real flow does.
+        new_summary = _default_summary()
+        assert new_summary.offchain_deposits is None
+        self._save(new_summary, existing, disk_offchain=disk_offchain)
         assert new_summary.offchain_deposits is not None
         assert new_summary.offchain_deposits.total_deposited_wei == 12345
         assert new_summary.offchain_deposits.last_scanned_block == 987
+
+    def test_offchain_deposits_stays_none_when_disk_also_missing_field(
+        self,
+    ) -> None:
+        """No cross-field cascade in the *reverse* direction either.
+
+        When the raw-JSON re-read finds no ``offchain_deposits`` sub-dict
+        (first-ever run, or file legitimately doesn't have the field),
+        the save must not fabricate one out of a MagicMock or leave it
+        set to a bogus value. It should stay ``None`` on the outgoing
+        summary.
+        """
+        existing = _default_summary()
+        assert existing.offchain_deposits is None
+        new_summary = _default_summary()
+        assert new_summary.offchain_deposits is None
+        self._save(new_summary, existing, disk_offchain=None)
+        assert new_summary.offchain_deposits is None
 
 
 # ---------------------------------------------------------------------------

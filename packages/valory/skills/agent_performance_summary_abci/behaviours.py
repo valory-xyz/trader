@@ -465,14 +465,22 @@ class FetchPerformanceSummaryBehaviour(
         raw_head = body.get("get_block_number_result") if body is not None else None
         # ``< 0`` (not ``<= 0``) so a legitimate genesis-block head on a
         # fresh devnet/Hardhat chain is accepted, per the
-        # ``OffchainDepositState`` docstring.
-        if raw_head is None or int(raw_head) < 0:
+        # ``OffchainDepositState`` docstring. Coerce inside a
+        # try/except so a non-numeric ledger response degrades with a
+        # warning like every other malformed-input branch in this
+        # helper, rather than raising uncaught and crashing the
+        # behaviour (mirrors ``mech_interact_abci``'s
+        # ``_get_native_balance`` pattern).
+        try:
+            head_block = int(raw_head) if raw_head is not None else -1
+        except (TypeError, ValueError):
+            head_block = -1
+        if head_block < 0:
             self.context.logger.warning(
                 "Offchain-deposit head-block read returned an invalid value "
                 f"({raw_head!r}); leaving checkpoint unchanged."
             )
             return cached_total
-        head_block = int(raw_head)
 
         # First-run seed: don't sweep history from block 0. Policy: only
         # deposits from the checkpoint forward count against ROI.
@@ -2098,24 +2106,22 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
-        # Preserve offchain_deposits ONLY when the read returned a real
-        # value. ``_fetch_offchain_prepaid_wei`` writes this state directly
-        # via ``overwrite_performance_summary`` earlier in the cycle, but
-        # ``_fetch_agent_performance_summary`` rebuilds this summary
-        # without the field (defaults to ``None``); without this preserve
-        # the cycle-end write clobbers the just-persisted checkpoint.
-        # But an unconditional assign is unsafe: a validation raise on any
-        # *other* nested field (e.g. corrupt Achievements or
-        # PredictionHistory) makes ``read_existing_performance_summary``
-        # degrade to a fresh summary with ``offchain_deposits=None``, and
-        # this line would then wipe the correct checkpoint the same-cycle
-        # ``_fetch_offchain_prepaid_wei`` wrote — permanently destroying
-        # the irreversible ``total_deposited_wei``. Only preserve when the
-        # read returned a real value.
-        if existing_data.offchain_deposits is not None:
-            agent_performance_summary.offchain_deposits = (
-                existing_data.offchain_deposits
-            )
+        # Preserve ``offchain_deposits`` via a raw-JSON re-read that
+        # bypasses ``AgentPerformanceSummary.__post_init__`` on sibling
+        # fields. ``_fetch_offchain_prepaid_wei`` writes this state
+        # directly to disk via ``overwrite_performance_summary`` earlier
+        # in the cycle, but ``_fetch_agent_performance_summary`` rebuilds
+        # this summary without the field (defaults to ``None``), and
+        # ``existing_data`` above can silently be a fresh degraded summary
+        # (``offchain_deposits=None``) whenever an *unrelated* nested
+        # ``__post_init__`` — e.g. corrupt Achievements or
+        # PredictionHistory — raised inside
+        # ``read_existing_performance_summary``. Reading directly and
+        # leniently means a bad sibling can't cascade into wiping the
+        # irreversible ``total_deposited_wei``.
+        disk_offchain = self.shared_state.read_offchain_deposits_from_disk()
+        if disk_offchain is not None:
+            agent_performance_summary.offchain_deposits = disk_offchain
 
         # Track whether any section fell back to existing data
         preserved = False

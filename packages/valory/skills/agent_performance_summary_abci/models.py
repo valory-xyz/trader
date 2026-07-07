@@ -398,15 +398,56 @@ class SharedState(BaseSharedState):
             # from the reader; now that we persist typed state, one bad
             # entry could brick every read. Degrade to a fresh summary
             # rather than propagate — same behaviour as an unreadable
-            # file. Note this also drops the irreversible
-            # ``offchain_deposits.total_deposited_wei`` if it was the
-            # corrupt field; if that becomes a real problem, split the
-            # checkpoint into its own file.
+            # file. Callers that persist irreversible state
+            # (``offchain_deposits.total_deposited_wei``) MUST NOT use the
+            # degraded return value to derive an on-disk write for that
+            # state — see ``read_offchain_deposits_from_disk`` for the
+            # sibling-agnostic re-read used in the cycle-end save path.
             self.context.logger.warning(
                 f"Persisted agent performance summary failed validation ({e}); "
                 "starting from a fresh summary."
             )
             return AgentPerformanceSummary()
+
+    def read_offchain_deposits_from_disk(self) -> Optional["OffchainDepositState"]:
+        """Return the persisted ``offchain_deposits`` sub-field with lenient parsing.
+
+        Bypasses ``AgentPerformanceSummary.__post_init__`` so a corrupt
+        sibling field (e.g. a bad ``Achievements`` or ``PredictionHistory``
+        entry that would otherwise degrade
+        ``read_existing_performance_summary`` to a fresh summary) can't
+        cascade into wiping this specific irreversible field.
+        ``_save_agent_performance_summary`` calls this before overwriting
+        so the mid-cycle write from ``_fetch_offchain_prepaid_wei``
+        survives the cycle-end save under any sibling-corruption path.
+
+        :return: the persisted ``OffchainDepositState`` if the file has a
+            valid entry, ``None`` if the file is missing, unreadable,
+            has no ``offchain_deposits`` key, or the field itself fails
+            validation. The final case is logged; the others are silent
+            (they overlap with the legitimate first-boot / never-scanned
+            path).
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+        sub = raw.get("offchain_deposits") if isinstance(raw, dict) else None
+        if not isinstance(sub, dict):
+            return None
+
+        try:
+            return OffchainDepositState(**sub)
+        except (TypeError, ValueError) as e:
+            self.context.logger.warning(
+                f"Persisted offchain_deposits failed validation ({e}); "
+                "leaving it unpreserved on this save."
+            )
+            return None
 
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file atomically.

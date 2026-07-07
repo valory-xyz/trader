@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeigqbcvy7fe3apckuscrp4gs5zljppady6bwe6kgjdxxjryyppo6jm
-  behaviours.py: bafybeih34i6mqx34ma2owzu4ujw4kc5gyh6hxkdmajidrsak5uvfk2kueu
+  behaviours.py: bafybeibrruinbdq5aqbskdruv237v3swnv2sl242kj66otffwcvejwosau
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -20,7 +20,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeifywkkxfmco3baqjuc5w6fkj2cgfs3znpgoowxdjnrhugaxeevapu
   graph_tooling/requests.py: bafybeig35rdi2zpbtlzvgzaymhrsp73t42fuo2sj44fq55fayrs3c2o3j4
   handlers.py: bafybeif3pnrfdyhipmizob7zsn65f7qlf6iwuy3fi7s6ku2dvqyu4mr4am
-  models.py: bafybeibbzfzy4seflj4teyc5m3ywobw2of6ohjpvjwbzbgtyndoqlkalby
+  models.py: bafybeidmuegnfwxusmc5kqnqfuvgvd3nxmpm6rssr6tqyqfxjbjrmr3jsu
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -33,7 +33,7 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeidkmubpjfnxys74bjaqd7ptz4gc6ejfwrrmiodmdjwdovdclvdqhu
   tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
   tests/graph_tooling/test_requests.py: bafybeic2dyqmf7uj42f2f7d3hjxguw4mmlesloci4uaioui2rx3wfjhouq
-  tests/test_behaviours.py: bafybeihiu4wiv5jlzep7grhftuzt5x3blnvmosrcwhtxvhl4k7qa3dqvxe
+  tests/test_behaviours.py: bafybeiagpx6awept5vsy6opemvgx6gqc6yvhuxj5g3nfghyiliwrx5xpmq
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_handlers.py: bafybeigybc6zkku7ldtawjcjjdkndiz3alvckxbeyjj23rsmny5ql7leku
   tests/test_models.py: bafybeibeos6fm67nb3w6d7nb2yrygjttz7zmrwlnjogzp77rj4ttp23wgi
