@@ -2278,6 +2278,15 @@ def _state_response(
     Defaults to the contract-API performative for the incremental-scan
     callers; pass ``LedgerApiMessage.Performative.STATE`` for the
     head-block ledger read.
+
+    :param body: value to place on ``response.state.body`` (usually a
+        dict, sometimes an empty ``{}`` for malformed-response tests).
+    :param performative: response performative; defaults to the
+        contract-API STATE, override to the ledger-API STATE for head
+        block reads.
+    :return: fully-wired ``MagicMock`` response ready to feed into
+        ``get_contract_api_response`` / ``get_ledger_api_response``
+        side_effects.
     """
     response = MagicMock()
     response.performative = performative
@@ -2504,9 +2513,7 @@ class TestFetchOffchainPrepaidWei:
         def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
             # STATE-performative but body has no ``get_block_number_result`` key.
             return _return_gen(
-                _state_response(
-                    {}, performative=LedgerApiMessage.Performative.STATE
-                )
+                _state_response({}, performative=LedgerApiMessage.Performative.STATE)
             )()
 
         with (
