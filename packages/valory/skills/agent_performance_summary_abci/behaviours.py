@@ -373,38 +373,82 @@ class FetchPerformanceSummaryBehaviour(
         requester-withdraw path — money committed is unrecoverable regardless
         of consumption.
 
-        This helper reads the ``Deposit(indexed account, indexed token, amount)``
-        event stream from the last-scanned block cached in the performance
-        summary JSON, sums the new entries into the running total, updates
-        the checkpoint, and persists both fields under ``offchain_deposits``
-        for the next cycle.
+        The helper is a strict no-op for on-chain-only deployments — it
+        short-circuits immediately when ``mech_marketplace_config.use_offchain``
+        is ``False`` or when no ``balance_tracker_address`` is configured,
+        so no contract call, no persist, no log noise.
 
-        On-chain-only deployments (i.e. every production trader today) never
-        emit these events for their Safe, so ``get_logs`` returns an empty
-        list and the running total stays at 0. Existing ROI numbers do not
-        change.
+        On off-chain deployments the helper reads
+        ``Deposit(indexed account, indexed token, amount)`` events from the
+        last-scanned block cached in the performance summary JSON, sums new
+        entries into the running total, updates the checkpoint, and persists
+        both fields under ``offchain_deposits`` for the next cycle. On the
+        very first run (``last_scanned_block == 0``) it seeds the checkpoint
+        to the current head block instead of sweeping history — off-chain has
+        not shipped in production yet, so there are no pre-existing deposits
+        to backfill, and this avoids RPC ``eth_getLogs`` block-range caps.
 
         :param safe_address: the agent's own Safe address, used as the
             ``account`` filter on the ``Deposit`` event.
         :return: cumulative sum (in wei-scaled units) of every
             ``BalanceTracker.Deposit`` credit to this Safe up to and
-            including the latest block scanned.
+            including the latest block scanned. Zero for on-chain-only
+            deployments, matching pre-migration ROI exactly.
         :yield: contract-API response(s) via the abstract-round-abci
             base behaviour helpers.
         """
-        # Read the checkpoint from the persisted summary.
+        marketplace_config = self.params.mech_marketplace_config
+        if not marketplace_config.use_offchain:
+            # On-chain-only deployment (default for all production traders).
+            # No contract call, no persist, ROI number is bit-identical to
+            # pre-migration.
+            return 0
+
         summary = self.shared_state.read_existing_performance_summary()
         state = summary.offchain_deposits or OffchainDepositState()
         cached_total = int(state.total_deposited_wei)
-        from_block = state.last_scanned_block
 
-        balance_tracker_address = (
-            self.params.mech_marketplace_config.balance_tracker_address
-        )
+        balance_tracker_address = marketplace_config.balance_tracker_address
         if not balance_tracker_address:
-            # No tracker configured (e.g. on-chain-only deployment where the
-            # off-chain wiring was never populated). Nothing to sum.
+            # Off-chain enabled but the tracker address is missing from the
+            # config — misconfiguration, treat as zero and keep the cached
+            # total (which will also be zero on first run).
             return cached_total
+
+        # First-run seed: don't sweep history from block 0. Off-chain hasn't
+        # shipped in production, so there are no pre-existing deposits to
+        # capture, and starting from the current head avoids RPC
+        # ``eth_getLogs`` block-range caps.
+        if state.last_scanned_block == 0:
+            block_response = yield from self.get_contract_api_response(
+                performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
+                contract_address=balance_tracker_address,
+                contract_id=str(MechPrepaidReaderContract.contract_id),
+                contract_callable="get_current_block_number",
+                chain_id=self.params.mech_chain_id,
+            )
+            if block_response.performative != ContractApiMessage.Performative.STATE:
+                self.context.logger.warning(
+                    "Failed to seed offchain-deposit checkpoint from current "
+                    f"block (response: {block_response}); leaving cached total."
+                )
+                return cached_total
+
+            current_block = int(block_response.state.body.get("block_number", 0))
+            summary.offchain_deposits = OffchainDepositState(
+                total_deposited_wei="0",
+                last_scanned_block=current_block,
+            )
+            summary.timestamp = self.shared_state.synced_timestamp
+            self.shared_state.overwrite_performance_summary(summary)
+            self.context.logger.info(
+                f"[Offchain Deposits] First run — seeded checkpoint to block "
+                f"{current_block}, cumulative total starts at 0."
+            )
+            return 0
+
+        # Subsequent runs: scan strictly forward from the checkpoint.
+        from_block = state.last_scanned_block + 1
 
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore

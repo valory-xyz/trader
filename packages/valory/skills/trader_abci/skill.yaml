@@ -57,13 +57,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeidel24uozve2ndxmwshhyrzsyv7itcodzqjcfzgqqikr4khpn4eiu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibyonzs6wyvbcks5bztmc7rmdooynxmlfhiaub2cmuamqbtijv3ou
+- valory/decision_maker_abci:0.1.0:bafybeiffplku3zbpzhck7pen7mgbn3pi3tdqlat4j4t5746qx5km5jidyq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicgh5cj75ojwhxttjz6bs7xtghkwekgfixnpw5fvbrpecumhrqhc4
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeidzz3x3m3cc2z76lqdhwacgrswjgbenc53ljx6ihmra2nnkg2khjm
+- valory/check_stop_trading_abci:0.1.0:bafybeid4dlfnxg7lo2wz4pilpavz2mfpwwjosmrueelrbtniuy22iw3xuq
 - valory/mech_interact_abci:0.1.0:bafybeici5tsgtlypnyrnp5colj7katnsyjfdzt6js4xdbnpdms4232muje
-- valory/chatui_abci:0.1.0:bafybeic6isfmqxmwswrgiuwzlyvmivnxkmwfhkgwzoc226753hcij6c3f4
-- valory/agent_performance_summary_abci:0.1.0:bafybeicejhpfa6cth6hmz5yxbpbp3awbaxk26sulw6xk3lkzp7ruxov3ni
+- valory/chatui_abci:0.1.0:bafybeicdkch7riy2bui3j34rfjm57d4dbdqja6mkf5n5htpvets5gxa36e
+- valory/agent_performance_summary_abci:0.1.0:bafybeibtuq7refjfnvzap4usjxnjwpgxpd5xbeeqwxut5nbnr7sjpo5nfi
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:
   main:
@@ -300,6 +300,7 @@ models:
         priority_mech_service_id: 0
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
+        balance_tracker_address: '0x0000000000000000000000000000000000000000'
         use_offchain: false
         offchain_url: null
         offchain_deposit_target_calls: 10

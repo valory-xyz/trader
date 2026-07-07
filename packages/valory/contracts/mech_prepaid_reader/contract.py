@@ -113,3 +113,27 @@ class MechPrepaidReaderContract(Contract):
                 latest_block = block_number
 
         return {"total_wei": total_wei, "latest_block": latest_block}
+
+    @classmethod
+    def get_current_block_number(
+        cls,
+        ledger_api: LedgerApi,
+        contract_address: str,
+    ) -> JSONLike:
+        """Return the current head block number of the ledger.
+
+        Used by the caller as a seed on first run so incremental log scans
+        start from the current block rather than sweeping the full history —
+        pre-migration on-chain-only Safes never emitted ``Deposit`` events for
+        their account, so nothing is lost by skipping the past.
+
+        :param ledger_api: the ledger API object.
+        :param contract_address: the BalanceTracker contract address, retained
+            for framework symmetry with other contract-callable methods; the
+            call itself does not touch the contract.
+        :return: ``{"block_number": int}`` where the value is the latest block
+            the RPC endpoint reports.
+        """
+        del contract_address  # unused — framework requires it in the signature
+        ledger_api = cast(EthereumApi, ledger_api)
+        return {"block_number": int(ledger_api.api.eth.block_number)}
