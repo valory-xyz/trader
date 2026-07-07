@@ -178,10 +178,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/mech_interact_abci:0.1.0:bafybeifsxbiyiobqbn2lmjxnzp6pfk3fete2qmyonoyzj25cdebnzurria
+- valory/mech_interact_abci:0.1.0:bafybeigjdl23b5lzezzjvdetc2pacuv4sf33mgpa6qnt3amwlb5bxpcv3e
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/agent_performance_summary_abci:0.1.0:bafybeieql4drlisw6uz4mqxx2phemguj7owuokqbh2qgs6256iyfco5d5e
-- valory/chatui_abci:0.1.0:bafybeicxyyhbf5doo722tokplr6rnkz4vrnundzouzwlc43s36m65jnqaa
+- valory/agent_performance_summary_abci:0.1.0:bafybeigtygrucpxw37goo375woy6iwn2un5epdi6x4zgiv4e5sjpep5vby
+- valory/chatui_abci:0.1.0:bafybeicdakxeqrv7ajhw55wgksjyneac6rzxd3v4mamlfghqf6msvw7awq
 behaviours:
   main:
     args: {}
