@@ -449,6 +449,62 @@ class SharedState(BaseSharedState):
             )
             return None
 
+    def write_offchain_deposits_to_disk(self, state: "OffchainDepositState") -> None:
+        """Atomic-write ``offchain_deposits`` to disk, preserving sibling fields.
+
+        Mirrors ``read_offchain_deposits_from_disk`` on the write side.
+        Reads the raw JSON dict (bypassing every dataclass
+        ``__post_init__``), updates only the ``offchain_deposits`` key,
+        writes back atomically via tempfile + ``os.replace``.
+        ``_fetch_offchain_prepaid_wei`` uses this instead of
+        ``overwrite_performance_summary(summary)`` because the summary
+        read it would otherwise pair with can silently degrade to a
+        fresh dataclass on any nested-field ``__post_init__`` raise,
+        which would then wipe every sibling field on disk (metrics,
+        agent_details, prediction_history, ...) during the mid-cycle
+        checkpoint write. Split-write keeps our checkpoint safe without
+        depending on other fields' validation state.
+
+        If the file is missing or unreadable, writes a minimal
+        ``{"offchain_deposits": ...}`` — the operator has explicitly
+        opted in to off-chain accounting at this point, so keeping the
+        checkpoint alive is more important than refusing to write over
+        a corrupt file. The next cycle-end
+        ``_save_agent_performance_summary`` will re-populate the sibling
+        fields from live data.
+
+        :param state: the ``OffchainDepositState`` to persist.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raw = {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            raw = {}
+
+        raw["offchain_deposits"] = asdict(state)
+
+        # tempfile in the same directory so ``os.replace`` is atomic on
+        # POSIX (both paths on one filesystem).
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=file_path.name + ".", dir=str(file_path.parent)
+        )
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(raw, f, indent=4)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, file_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file atomically.
 

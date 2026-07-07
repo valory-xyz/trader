@@ -85,6 +85,15 @@ DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.
 _ZERO_ADDRESS = (
     "0x" + "0" * 40
 )  # placeholder used to disable off-chain deposit scanning
+
+# Upper bound on the ``eth_getLogs`` block range per cycle. Safely
+# below common public-provider caps (Alchemy / Infura ~10k). When an
+# agent has been offline long enough that the catchup range exceeds
+# this, subsequent cycles march the checkpoint forward one chunk at
+# a time until it reaches head — instead of the pre-fix behaviour
+# where the range grew unbounded and every scan hit the provider cap,
+# permanently freezing the checkpoint.
+OFFCHAIN_MAX_SCAN_RANGE = 5_000
 QUESTION_DATA_SEPARATOR = "\u241f"
 PREDICT_MARKET_DURATION_DAYS = 4
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"  # wxDAI on Gnosis Chain
@@ -417,8 +426,22 @@ class FetchPerformanceSummaryBehaviour(
         # under pre-deposit-as-loss stays counted even if the operator
         # flips use_offchain off or clears the tracker address. Once
         # counted, always counted.
-        summary = self.shared_state.read_existing_performance_summary()
-        state = summary.offchain_deposits or OffchainDepositState()
+        #
+        # Source ``state`` from the raw-JSON re-read helper, not from the
+        # full-summary read. ``read_existing_performance_summary`` degrades
+        # to a fresh dataclass on ANY nested ``__post_init__`` raise
+        # (e.g. a rollback where a newer release added an
+        # ``Achievements`` sub-field that a downgraded reader can't
+        # validate). If we sourced ``state`` from that degraded summary,
+        # ``state.last_scanned_block`` would be ``None`` and the seed
+        # branch below would re-seed from head — wiping a still-valid
+        # on-disk checkpoint. Reading only the ``offchain_deposits``
+        # sub-dict leniently insulates this helper from sibling
+        # ``__post_init__`` failures.
+        state = (
+            self.shared_state.read_offchain_deposits_from_disk()
+            or OffchainDepositState()
+        )
         cached_total = state.total_deposited_wei
 
         marketplace_config = self.params.mech_marketplace_config
@@ -484,13 +507,18 @@ class FetchPerformanceSummaryBehaviour(
 
         # First-run seed: don't sweep history from block 0. Policy: only
         # deposits from the checkpoint forward count against ROI.
+        # Split-write via ``write_offchain_deposits_to_disk`` (see the
+        # sourcing note above and the model docstring): mid-cycle
+        # writes update only the ``offchain_deposits`` sub-dict on
+        # disk, so a fresh degraded summary read from another site
+        # can't cascade into wiping sibling fields at this write.
         if state.last_scanned_block is None:
-            summary.offchain_deposits = OffchainDepositState(
-                total_deposited_wei=0,
-                last_scanned_block=head_block,
+            self.shared_state.write_offchain_deposits_to_disk(
+                OffchainDepositState(
+                    total_deposited_wei=0,
+                    last_scanned_block=head_block,
+                )
             )
-            summary.timestamp = self.shared_state.synced_timestamp
-            self.shared_state.overwrite_performance_summary(summary)
             self.context.logger.info(
                 f"[Offchain Deposits] First run — seeded checkpoint to block "
                 f"{head_block}, cumulative total starts at 0."
@@ -504,6 +532,16 @@ class FetchPerformanceSummaryBehaviour(
             # or empty devnet). Nothing to scan; nothing to persist.
             return cached_total
 
+        # Cap the scan range so an agent that has been offline for
+        # longer than the provider's ``eth_getLogs`` block-range cap
+        # (a Pearl laptop closed over a weekend, ~14h+ of Gnosis
+        # blocks) catches up in chunks over successive cycles rather
+        # than every scan hitting the cap and permanently freezing the
+        # checkpoint. Each cycle marches ``last_scanned_block`` forward
+        # by at most ``OFFCHAIN_MAX_SCAN_RANGE`` blocks until it reaches
+        # head.
+        to_block = min(head_block, from_block + OFFCHAIN_MAX_SCAN_RANGE - 1)
+
         response = yield from self.get_contract_api_response(
             performative=ContractApiMessage.Performative.GET_STATE,  # type: ignore
             contract_address=balance_tracker_address,
@@ -511,7 +549,7 @@ class FetchPerformanceSummaryBehaviour(
             contract_callable="get_deposit_events_for_requester",
             requester=safe_address,
             from_block=from_block,
-            to_block=head_block,
+            to_block=to_block,
             chain_id=self.params.mech_chain_id,
         )
         if response.performative != ContractApiMessage.Performative.STATE:
@@ -535,34 +573,39 @@ class FetchPerformanceSummaryBehaviour(
 
         # Aggregation lives here (not in the classmethod) by convention:
         # contract classmethods return processed log entries; sum happens
-        # in the caller.
-        # Hard-index the flat entry shape returned by
-        # ``get_deposit_events_for_requester`` (``{"amount": int,
-        # "block_number": int}`` per entry). ``.get(..., 0)`` would
-        # silently zero-fill a shape drift while still advancing the
-        # checkpoint below to ``head_block`` — an irreversible under-count
-        # that would flatter ROI. Raise loudly instead so the ERROR
-        # performative arm above catches it and the checkpoint stays put.
-        new_wei = sum(int(entry["amount"]) for entry in entries)
+        # in the caller. Wrap the hard-index in
+        # ``(KeyError, TypeError, ValueError)`` so a shape drift on the
+        # entries wire format routes into the malformed-response branch
+        # instead of raising uncaught: the ``if response.performative
+        # != STATE`` gate above only catches API performatives, and with
+        # ``skill_exception_policy: stop_and_exit`` an unhandled skill
+        # exception terminates the whole agent — a harder failure than
+        # freezing the checkpoint.
+        try:
+            new_wei = sum(int(entry["amount"]) for entry in entries)
+        except (KeyError, TypeError, ValueError) as exc:
+            self.context.logger.warning(
+                "Offchain-deposit scan returned entries with unexpected "
+                f"shape ({exc!r}); leaving checkpoint and cached total unchanged."
+            )
+            return cached_total
 
-        # Checkpoint advances to the scanned head every successful cycle,
-        # even with zero matches, so subsequent cycles start from
-        # ``head_block + 1`` (small range) rather than re-scanning the
-        # same growing range every cycle. Without this, a long
-        # deposit-quiet stretch eventually crosses provider ``eth_getLogs``
-        # caps and the ERROR performative freezes future accrual forever
-        # with only warning logs.
+        # Checkpoint advances to the scanned upper bound every successful
+        # cycle, even with zero matches, so subsequent cycles start from
+        # ``to_block + 1`` (small range for a caught-up agent, bounded
+        # by ``OFFCHAIN_MAX_SCAN_RANGE`` for one still catching up)
+        # rather than re-scanning the same growing range every cycle.
         total_wei = cached_total + new_wei
-        summary.offchain_deposits = OffchainDepositState(
-            total_deposited_wei=total_wei,
-            last_scanned_block=head_block,
+        self.shared_state.write_offchain_deposits_to_disk(
+            OffchainDepositState(
+                total_deposited_wei=total_wei,
+                last_scanned_block=to_block,
+            )
         )
-        summary.timestamp = self.shared_state.synced_timestamp
-        self.shared_state.overwrite_performance_summary(summary)
 
         self.context.logger.info(
             f"[Offchain Deposits] cached={cached_total}, new_this_cycle={new_wei}, "
-            f"total={total_wei}, last_scanned_block={head_block}"
+            f"total={total_wei}, last_scanned_block={to_block}"
         )
         return total_wei
 

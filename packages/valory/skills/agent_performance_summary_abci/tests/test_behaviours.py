@@ -35,6 +35,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     MIN_TRADES_FOR_ROI_DISPLAY,
     MORE_TRADES_NEEDED_TEXT,
     NA,
+    OFFCHAIN_MAX_SCAN_RANGE,
     PERCENTAGE_FACTOR,
     POLYGON_CHAIN_ID,
     POLYGON_NATIVE_TOKEN_ADDRESS,
@@ -2336,16 +2337,40 @@ class TestFetchOffchainPrepaidWei:
     def _make_shared_state(
         self, initial_state: Optional[OffchainDepositState]
     ) -> Tuple[MagicMock, list]:
-        """Build a shared_state stub that records overwrite calls."""
+        """Build a shared_state stub that records offchain-deposit writes.
+
+        The helper reads via ``read_offchain_deposits_from_disk`` (raw
+        JSON, sibling-agnostic) and writes via
+        ``write_offchain_deposits_to_disk`` (split write, no whole-summary
+        touch). The mock mirrors that shape so we exercise the actual
+        code path, not the deprecated
+        ``read_existing_performance_summary`` /
+        ``overwrite_performance_summary`` pair.
+
+        :param initial_state: value the mocked
+            ``read_offchain_deposits_from_disk`` returns.
+        :return: tuple of ``(shared_state MagicMock, writes list)``
+            where the writes list records the ``OffchainDepositState``
+            argument to every ``write_offchain_deposits_to_disk`` call.
+        """
         writes: list = []
         shared_state = MagicMock()
-        summary = AgentPerformanceSummary(offchain_deposits=initial_state)
-        shared_state.read_existing_performance_summary.return_value = summary
+        shared_state.read_offchain_deposits_from_disk.return_value = initial_state
 
-        def _record_write(summary_arg: AgentPerformanceSummary) -> None:
-            writes.append(summary_arg.offchain_deposits)
+        def _record_write(state_arg: OffchainDepositState) -> None:
+            writes.append(state_arg)
 
-        shared_state.overwrite_performance_summary.side_effect = _record_write
+        shared_state.write_offchain_deposits_to_disk.side_effect = _record_write
+        # Fail loudly if the helper regresses to full-summary I/O — it
+        # must NOT touch the whole-file read/write paths mid-cycle.
+        shared_state.read_existing_performance_summary.side_effect = AssertionError(
+            "_fetch_offchain_prepaid_wei must not read the whole summary; "
+            "use read_offchain_deposits_from_disk"
+        )
+        shared_state.overwrite_performance_summary.side_effect = AssertionError(
+            "_fetch_offchain_prepaid_wei must not overwrite the whole summary; "
+            "use write_offchain_deposits_to_disk"
+        )
         shared_state.synced_timestamp = 1_700_000_000
         return shared_state, writes
 
@@ -2680,6 +2705,122 @@ class TestFetchOffchainPrepaidWei:
         assert (
             writes[0].last_scanned_block == 500
         ), "checkpoint must advance to head to prevent unbounded range growth"
+
+    def test_scan_range_capped_at_offchain_max_scan_range(self) -> None:
+        """After a long offline stretch the scan must chunk, not blow past the provider cap.
+
+        Regression: without the ``min(head, from_block + MAX - 1)`` cap
+        an agent offline over a weekend (~14h+ of Gnosis blocks) would
+        scan ``[checkpoint+1, head]`` which exceeds public providers'
+        ``eth_getLogs`` block-range cap (Alchemy / Infura ~10k). The
+        provider rejects, the response arrives as ERROR performative,
+        the helper returns cached_total, no checkpoint advance — same
+        rejection next cycle, forever. With the cap the checkpoint
+        marches forward by ``OFFCHAIN_MAX_SCAN_RANGE`` blocks per
+        cycle until it catches up to head.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        seen: dict = {}
+
+        def _api(*_a: Any, **kw: Any) -> Generator:
+            seen["from_block"] = kw["from_block"]
+            seen["to_block"] = kw["to_block"]
+            return _return_gen(_state_response({"entries": []}))()
+
+        # Head far ahead — >> MAX_SCAN_RANGE — simulating a very long
+        # offline stretch. Only the cap protects the scan.
+        head_block = 100 + OFFCHAIN_MAX_SCAN_RANGE * 20  # 20 chunks worth
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(
+                b,
+                "get_ledger_api_response",
+                side_effect=_ledger_head_gen(head_block),
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert seen["from_block"] == 100
+        # ``to_block`` clamped to ``from_block + MAX_SCAN_RANGE - 1``, so
+        # this cycle only asks the provider for a bounded range no
+        # matter how far behind we are.
+        expected_to_block = 100 + OFFCHAIN_MAX_SCAN_RANGE - 1
+        assert seen["to_block"] == expected_to_block
+        assert (
+            seen["to_block"] < head_block
+        ), "cap must have kicked in for this test to be meaningful"
+        assert len(writes) == 1
+        # Checkpoint advances only to the scanned upper bound, so the
+        # next cycle picks up at ``expected_to_block + 1``.
+        assert writes[0].last_scanned_block == expected_to_block
+
+    def test_malformed_entry_shape_returns_cached_total_no_raise(self) -> None:
+        """A shape drift on entry dicts must NOT raise — degrades like every other malformed branch.
+
+        Regression: the previous ``sum(int(entry["amount"]) for entry
+        in entries)`` would raise ``KeyError`` on a missing ``amount``
+        key and propagate out through ``calculate_roi`` → framework;
+        with ``skill_exception_policy: stop_and_exit`` in
+        ``aea-config.yaml`` that terminates the whole agent. The
+        ``ContractApiMessage.Performative`` gate above does NOT wrap
+        the sum in a ``try/except``. Wrapping the coerce in
+        ``(KeyError, TypeError, ValueError)`` routes into the
+        malformed-response branch instead (return cached_total, no
+        checkpoint advance) so the agent survives a wire-format
+        change.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        shared_state, writes = self._make_shared_state(
+            OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
+        )
+
+        def _api(*_a: Any, **_kw: Any) -> Generator:
+            # STATE-performative and ``entries`` present, but the entry
+            # dict itself lacks the ``amount`` field.
+            entries = [{"block_number": 110}]  # missing ``amount``
+            return _return_gen(_state_response({"entries": entries}))()
+
+        warnings: list = []
+        ctx.logger.warning.side_effect = lambda msg, *a, **k: warnings.append(msg)
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                type(b),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+            patch.object(
+                b, "get_ledger_api_response", side_effect=_ledger_head_gen(200)
+            ),
+            patch.object(b, "get_contract_api_response", side_effect=_api),
+        ):
+            result = _drive_gen(b._fetch_offchain_prepaid_wei("0xSafe"))
+
+        assert result == 1000, "cached_total preserved on entry shape drift"
+        assert writes == [], "checkpoint stays put on a shape drift"
+        assert any(
+            "unexpected" in w for w in warnings
+        ), "must log a warning identifying the shape drift"
 
     def test_incremental_from_block_beyond_head_returns_cached_no_scan(self) -> None:
         """If from_block > head_block (chain hasn't moved), no contract scan and no persist."""
