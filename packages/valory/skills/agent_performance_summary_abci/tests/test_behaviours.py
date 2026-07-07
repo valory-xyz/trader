@@ -2270,10 +2270,17 @@ def _drive_gen(gen: Any) -> Any:
     raise AssertionError("Generator did not stop")  # pragma: no cover
 
 
-def _state_response(body: Any) -> MagicMock:
-    """Build a ContractApiMessage.Performative.STATE response with the given body."""
+def _state_response(
+    body: Any, performative: Any = ContractApiMessage.Performative.STATE
+) -> MagicMock:
+    """Build a STATE-performative response with the given body.
+
+    Defaults to the contract-API performative for the incremental-scan
+    callers; pass ``LedgerApiMessage.Performative.STATE`` for the
+    head-block ledger read.
+    """
     response = MagicMock()
-    response.performative = ContractApiMessage.Performative.STATE
+    response.performative = performative
     response.state.body = body
     return response
 
@@ -2285,18 +2292,11 @@ def _error_response() -> MagicMock:
     return response
 
 
-def _ledger_state_response(body: Any) -> MagicMock:
-    """Build a LedgerApiMessage.Performative.STATE response with the given body."""
-    response = MagicMock()
-    response.performative = LedgerApiMessage.Performative.STATE
-    response.state.body = body
-    return response
-
-
 def _ledger_head_gen(head_block: int) -> Any:
     """Build a ``get_ledger_api_response`` side_effect that returns ``head_block``.
 
-    Wraps ``_ledger_state_response`` so tests only care about the head value.
+    Wraps ``_state_response`` (with the ledger-API performative) so
+    tests only care about the head value.
 
     :param head_block: block number the fake ``get_block_number`` ledger
         call resolves to.
@@ -2306,7 +2306,10 @@ def _ledger_head_gen(head_block: int) -> Any:
 
     def _side_effect(*_a: Any, **_kw: Any) -> Generator:
         return _return_gen(
-            _ledger_state_response({"get_block_number_result": head_block})
+            _state_response(
+                {"get_block_number_result": head_block},
+                performative=LedgerApiMessage.Performative.STATE,
+            )
         )()
 
     return _side_effect
@@ -2500,7 +2503,11 @@ class TestFetchOffchainPrepaidWei:
 
         def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
             # STATE-performative but body has no ``get_block_number_result`` key.
-            return _return_gen(_ledger_state_response({}))()
+            return _return_gen(
+                _state_response(
+                    {}, performative=LedgerApiMessage.Performative.STATE
+                )
+            )()
 
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -2537,8 +2544,8 @@ class TestFetchOffchainPrepaidWei:
             seen["from_block"] = kw["from_block"]
             seen["to_block"] = kw["to_block"]
             entries = [
-                {"args": {"amount": 150}, "blockNumber": 110},
-                {"args": {"amount": 250}, "blockNumber": 120},
+                {"amount": 150, "block_number": 110},
+                {"amount": 250, "block_number": 120},
             ]
             return _return_gen(_state_response({"entries": entries}))()
 
@@ -4566,6 +4573,36 @@ class TestSaveAgentPerformanceSummary:
         new_summary = _default_summary()
         assert new_summary.offchain_deposits is None
         self._save(new_summary, existing)
+        assert new_summary.offchain_deposits is not None
+        assert new_summary.offchain_deposits.total_deposited_wei == 12345
+        assert new_summary.offchain_deposits.last_scanned_block == 987
+
+    def test_does_not_wipe_offchain_deposits_when_existing_read_degraded(
+        self,
+    ) -> None:
+        """A validation-degraded ``existing_data`` must NOT wipe the just-persisted checkpoint.
+
+        Cross-field corruption regression. If any nested ``__post_init__``
+        on the persisted summary raises (e.g. a bad ``Achievements`` or
+        ``PredictionHistory`` entry), ``read_existing_performance_summary``
+        degrades to a *fresh* ``AgentPerformanceSummary()`` with
+        ``offchain_deposits=None``. Meanwhile
+        ``_fetch_offchain_prepaid_wei`` may have written a real
+        checkpoint into ``new_summary.offchain_deposits`` earlier in the
+        same cycle. The preserve line must NOT clobber that with the
+        degraded read's ``None``: ``total_deposited_wei`` is irreversible
+        and non-re-derivable, so a wipe from unrelated field corruption
+        would permanently destroy ROI cost state.
+        """
+        existing = _default_summary()  # simulates the degraded fresh summary
+        assert existing.offchain_deposits is None
+        new_summary = _default_summary()
+        new_summary.offchain_deposits = OffchainDepositState(
+            total_deposited_wei=12345,
+            last_scanned_block=987,
+        )
+        self._save(new_summary, existing)
+        # Checkpoint the helper wrote earlier this cycle must survive.
         assert new_summary.offchain_deposits is not None
         assert new_summary.offchain_deposits.total_deposited_wei == 12345
         assert new_summary.offchain_deposits.last_scanned_block == 987

@@ -111,7 +111,7 @@ class TestGetDepositEventsForRequester:
         return call_args[0]
 
     def test_topic_filter_pads_requester_to_32_bytes(self) -> None:
-        """topics[1] is the requester right-padded to 32 bytes for indexed-arg matching."""
+        """topics[1] is the requester left-padded to 32 bytes for indexed-arg matching."""
         params = self._filter_params_captured([])
         assert len(params["topics"]) == 2
         expected_padded = "0x" + _REQUESTER[2:].lower().rjust(64, "0")
@@ -158,8 +158,7 @@ class TestGetDepositEventsForRequester:
                 to_block=200,
             )
         entries = result["entries"]
-        assert len(entries) == 2
-        assert int(entries[0]["args"]["amount"]) == 1500
-        assert int(entries[0]["blockNumber"]) == 142
-        assert int(entries[1]["args"]["amount"]) == 250
-        assert int(entries[1]["blockNumber"]) == 175
+        assert entries == [
+            {"amount": 1500, "block_number": 142},
+            {"amount": 250, "block_number": 175},
+        ]

@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeigqbcvy7fe3apckuscrp4gs5zljppady6bwe6kgjdxxjryyppo6jm
-  behaviours.py: bafybeih6x2jqv3wlnsks7mkxdyhwmfpekhu4vgdz4m7si4sfp2n74cxqky
+  behaviours.py: bafybeih34i6mqx34ma2owzu4ujw4kc5gyh6hxkdmajidrsak5uvfk2kueu
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -33,7 +33,7 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeidkmubpjfnxys74bjaqd7ptz4gc6ejfwrrmiodmdjwdovdclvdqhu
   tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
   tests/graph_tooling/test_requests.py: bafybeic2dyqmf7uj42f2f7d3hjxguw4mmlesloci4uaioui2rx3wfjhouq
-  tests/test_behaviours.py: bafybeicduwnuvxix3hklpir4iaaxllvx3fludncmjayu2ihfyfylz2yipi
+  tests/test_behaviours.py: bafybeiawkenruh6rwr4iinupjrn7c2lr6jr47g3s663ghmgxdubf3extqm
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_handlers.py: bafybeigybc6zkku7ldtawjcjjdkndiz3alvckxbeyjj23rsmny5ql7leku
   tests/test_models.py: bafybeibeos6fm67nb3w6d7nb2yrygjttz7zmrwlnjogzp77rj4ttp23wgi
@@ -43,7 +43,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
-- valory/mech_prepaid_reader:0.1.0:bafybeig4fv2es6teska2vgjp6kjgquecslr32odxti3t6bn2i7i3qzzlcm
+- valory/mech_prepaid_reader:0.1.0:bafybeiaitnqi4kc2wiltj3k6a3iujxritwkh5w2a2xoff7dosoqy7p3sou
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la

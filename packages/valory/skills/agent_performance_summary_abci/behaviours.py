@@ -528,7 +528,14 @@ class FetchPerformanceSummaryBehaviour(
         # Aggregation lives here (not in the classmethod) by convention:
         # contract classmethods return processed log entries; sum happens
         # in the caller.
-        new_wei = sum(int(entry.get("args", {}).get("amount", 0)) for entry in entries)
+        # Hard-index the flat entry shape returned by
+        # ``get_deposit_events_for_requester`` (``{"amount": int,
+        # "block_number": int}`` per entry). ``.get(..., 0)`` would
+        # silently zero-fill a shape drift while still advancing the
+        # checkpoint below to ``head_block`` — an irreversible under-count
+        # that would flatter ROI. Raise loudly instead so the ERROR
+        # performative arm above catches it and the checkpoint stays put.
+        new_wei = sum(int(entry["amount"]) for entry in entries)
 
         # Checkpoint advances to the scanned head every successful cycle,
         # even with zero matches, so subsequent cycles start from
@@ -2091,13 +2098,24 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
-        # Always preserve offchain_deposits. ``_fetch_offchain_prepaid_wei``
-        # writes this state directly via ``overwrite_performance_summary``
-        # earlier in the cycle, but ``_fetch_agent_performance_summary``
-        # rebuilds this summary without the field (defaults to ``None``).
-        # Without this line the cycle-end write clobbers the just-persisted
-        # checkpoint every cycle and the ROI cost term stays permanently 0.
-        agent_performance_summary.offchain_deposits = existing_data.offchain_deposits
+        # Preserve offchain_deposits ONLY when the read returned a real
+        # value. ``_fetch_offchain_prepaid_wei`` writes this state directly
+        # via ``overwrite_performance_summary`` earlier in the cycle, but
+        # ``_fetch_agent_performance_summary`` rebuilds this summary
+        # without the field (defaults to ``None``); without this preserve
+        # the cycle-end write clobbers the just-persisted checkpoint.
+        # But an unconditional assign is unsafe: a validation raise on any
+        # *other* nested field (e.g. corrupt Achievements or
+        # PredictionHistory) makes ``read_existing_performance_summary``
+        # degrade to a fresh summary with ``offchain_deposits=None``, and
+        # this line would then wipe the correct checkpoint the same-cycle
+        # ``_fetch_offchain_prepaid_wei`` wrote — permanently destroying
+        # the irreversible ``total_deposited_wei``. Only preserve when the
+        # read returned a real value.
+        if existing_data.offchain_deposits is not None:
+            agent_performance_summary.offchain_deposits = (
+                existing_data.offchain_deposits
+            )
 
         # Track whether any section fell back to existing data
         preserved = False

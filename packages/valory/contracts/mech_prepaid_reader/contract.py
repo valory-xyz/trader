@@ -21,15 +21,19 @@
 
 Exists as a distinct package so trader's pre-deposit-as-loss ROI
 accounting can attach an ``eth_getLogs`` classmethod without editing
-the third_party ``valory/balance_tracker`` contract. Editing that
-package in place would ripple into ``mech_interact_abci``'s dependency
-list and force a locally-computed hash for a third_party skill (the
-hash would never be published to IPFS, so CI's ``autonomy packages
-sync`` would hang trying to fetch it).
+the third_party ``valory/balance_tracker`` contract package. Editing
+that package in place would ripple into ``mech_interact_abci``'s
+declared ``contracts:`` dependency list and force a locally-computed
+hash for ``mech_interact_abci`` itself (a third_party skill, synced
+via ``autonomy packages sync --source valory-xyz/mech-interact``).
+That hash would never be published to IPFS, so CI's package sync would
+hang trying to fetch it.
 
 When the reader classmethod gets ported upstream into
-``valory-xyz/mech``'s ``balance_tracker``, cut a mech release, bump
-``upstream_pins`` in trader's ``pyproject.toml``, and drop this package.
+``valory-xyz/mech-interact``'s vendored ``balance_tracker`` (which is
+where ``Makefile:135`` actually syncs this package from), cut a
+``mech-interact`` release, bump ``upstream_pins`` in trader's
+``pyproject.toml``, and drop this package.
 """
 
 from typing import Any, Dict, Union, cast
@@ -64,14 +68,16 @@ class MechPrepaidReaderContract(Contract):
         from_block: int,
         to_block: Union[int, str] = "latest",
     ) -> JSONLike:
-        """Return processed ``Deposit`` events for one requester.
+        """Return decoded ``Deposit`` events for one requester.
 
         Filters ``Deposit(address indexed account, address indexed token,
         uint256 amount)`` by ``account == requester`` over
-        ``[from_block, to_block]`` inclusive. Aggregation (summing amounts,
-        tracking the latest matched block) lives in the caller by
-        convention (see ``mech_marketplace.contract``); this classmethod
-        only issues the ``eth_getLogs`` call and returns decoded entries.
+        ``[from_block, to_block]`` inclusive. Only the two fields the
+        pre-deposit-as-loss caller in
+        ``agent_performance_summary_abci`` reads (``amount``,
+        ``block_number``) are surfaced, as plain-Python ints. Aggregation
+        (summing amounts, tracking the latest matched block) is
+        deliberately left to that caller.
 
         :param ledger_api: Ethereum ledger API to issue the log filter through.
         :param contract_address: BalanceTracker address on the target chain.
@@ -80,8 +86,9 @@ class MechPrepaidReaderContract(Contract):
         :param from_block: inclusive lower bound on the log filter range.
         :param to_block: inclusive upper bound; ``"latest"`` at the current
             head by default.
-        :return: ``{"entries": [<decoded log>, ...]}`` in
-            ``eth_event.process_log`` shape.
+        :return: ``{"entries": [{"amount": int, "block_number": int}, ...]}``.
+            Plain dicts and primitives so the response survives
+            ``ContractApiMessage.encode()`` at any transport boundary.
         """
         contract_address = ledger_api.api.to_checksum_address(contract_address)
         ledger_api = cast(EthereumApi, ledger_api)
@@ -97,4 +104,24 @@ class MechPrepaidReaderContract(Contract):
             ],
         }
         logs = ledger_api.api.eth.get_logs(filter_params)
-        return {"entries": [event.process_log(log) for log in logs]}
+        # Flatten to plain-dict entries. ``event.process_log`` returns a
+        # web3 ``AttributeDict`` with nested ``HexBytes`` in
+        # ``transactionHash`` / ``blockHash``, which violates the
+        # ``JSONLike`` contract and would raise
+        # ``NotImplementedError: DictProtobufStructSerializer doesn't
+        # support dict value type <class 'web3.datastructures.AttributeDict'>``
+        # if ``ContractApiMessage(STATE, ...).encode()`` were ever called
+        # over a real wire boundary. It only works today because the
+        # ledger connection dispatches this callable in-process and the
+        # caller pulls the two int fields it needs. Fold to primitives
+        # here so the response is protobuf-safe regardless of transport.
+        entries = []
+        for log in logs:
+            decoded = event.process_log(log)
+            entries.append(
+                {
+                    "amount": int(decoded["args"]["amount"]),
+                    "block_number": int(log["blockNumber"]),
+                }
+            )
+        return {"entries": entries}
