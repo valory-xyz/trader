@@ -11,6 +11,9 @@ resolution-markers = [
 [options]
 prerelease-mode = "allow"
 
+[manifest]
+overrides = [{ name = "cffi", specifier = "<2.1" }]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
@@ -847,7 +850,7 @@ name = "cryptography"
 version = "47.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi" },
     { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ef/b2/7ffa7fe8207a8c42147ffe70c3e360b228160c1d85dc3faff16aaa3244c0/cryptography-47.0.0.tar.gz", hash = "sha256:9f8e55fe4e63613a5e1cc5819030f27b97742d720203a087802ce4ce9ceb52bb", size = 830863, upload-time = "2026-04-24T19:54:57.056Z" }
@@ -2823,7 +2826,7 @@ name = "pynacl"
 version = "1.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "cffi" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d9/9a/4019b524b03a13438637b11538c82781a5eda427394380381af8f04f467a/pynacl-1.6.2.tar.gz", hash = "sha256:018494d6d696ae03c7e656e5e74cdfd8ea1326962cc401bcf018f1ed8436811c", size = 3511692, upload-time = "2026-01-01T17:48:10.851Z" }
 wheels = [
@@ -3588,6 +3591,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "asn1crypto" },
     { name = "certifi" },
+    { name = "cffi" },
     { name = "ecdsa" },
     { name = "eth-abi" },
     { name = "eth-typing" },
@@ -3635,6 +3639,7 @@ requires-dist = [
     { name = "aiohttp", specifier = "==3.13.4" },
     { name = "asn1crypto", specifier = "==1.4.0" },
     { name = "certifi", specifier = "==2026.2.25" },
+    { name = "cffi", specifier = "<2.1.0" },
     { name = "ecdsa", specifier = "==0.19.2" },
     { name = "eth-abi", specifier = "==5.2.0" },
     { name = "eth-typing", specifier = "==6.0.0" },

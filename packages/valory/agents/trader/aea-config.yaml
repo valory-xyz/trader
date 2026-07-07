@@ -43,6 +43,7 @@ contracts:
 - valory/mech_marketplace:0.1.0:bafybeigrcnjaycggulxyx2tsjub4ssjij66d7nfzsavo6gd54hm7beliiu
 - valory/balance_tracker:0.1.0:bafybeiayyxl643qfpw57vopytxgyd6flxxmwassswuxen7myekqaxdxxvi
 - valory/balance_tracker_fixed_price_native:0.1.0:bafybeihyaxqkyw2ulroqlhpfcgkrwtrwkhshn35fdq2ystraezwyco3k4u
+- valory/mech_prepaid_reader:0.1.0:bafybeiaitnqi4kc2wiltj3k6a3iujxritwkh5w2a2xoff7dosoqy7p3sou
 - valory/escrow_payment_condition:0.1.0:bafybeifghaewxrhssktvscpxpvydq3xvjd5rxx37oz54lhzsg2kelmwkai
 - valory/did_registry:0.1.0:bafybeianxf7gjparfype4xesfdep362odimhgriviweluinnexwuglm2ku
 - valory/nft_sales:0.1.0:bafybeidlzxmxpx25zcn5nhi3lb4kvfhfjsaw2dul2hogghshnxzmurfiom
@@ -69,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeic67t7ndzwzekacof7nvk7zgr6dhl6yrqqcashqq3pxjjhhwcilju
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigzpmxt7glz76tdm62k2mcm7drhyeomgl6euf4nbq6q2l75xopjfu
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeib67kekwmnprt44es47lg4oecy6prxqmv6m5k5zqw4hvrskawlifu
-- valory/trader_abci:0.1.0:bafybeie2mant7aierij5zcq57iyiizbdpqoj7pkodvt2n5m2mvwrtmewca
+- valory/decision_maker_abci:0.1.0:bafybeigwwaumxabujrtouaq2sphjusnex57doqofx625zuwdyxdqh3en4e
+- valory/trader_abci:0.1.0:bafybeigtsnje4cn624bm27ssrwhwctckeud6etxpixmloj4chnehbnpinq
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeie5ag4baxeqvp4impypnkcxi2wgmoym2udchei45ovqcydauoyyje
+- valory/check_stop_trading_abci:0.1.0:bafybeieelax7wbwhpmk2vmcbackin52nahyu6wuv3dtfzmdgyvjpwibtiu
 - valory/mech_interact_abci:0.1.0:bafybeici5tsgtlypnyrnp5colj7katnsyjfdzt6js4xdbnpdms4232muje
-- valory/chatui_abci:0.1.0:bafybeiddfs7fy23e7lidopd67fcvwzul5invz5ngkufbrlh757inmm2a5e
-- valory/agent_performance_summary_abci:0.1.0:bafybeibdudllr3t7lpxwqtipqjpygk5kg64cohpdd5pafr7vcfjcocow6y
+- valory/chatui_abci:0.1.0:bafybeig4qckyl7exilbd4egapsttvfrecfu4buywx632gixuvkwcjqqssu
+- valory/agent_performance_summary_abci:0.1.0:bafybeiagxj4awrr7shhawqfblyhdrcpbb7rvsexxm7k2l3wp3odsmvfa7u
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -278,6 +279,7 @@ models:
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
+      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       polymarket_collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
