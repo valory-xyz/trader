@@ -25,10 +25,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.mech_prepaid_reader.contract import (
     MechPrepaidReaderContract,
 )
-from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
@@ -528,9 +528,7 @@ class FetchPerformanceSummaryBehaviour(
         # Aggregation lives here (not in the classmethod) by convention:
         # contract classmethods return processed log entries; sum happens
         # in the caller.
-        new_wei = sum(
-            int(entry.get("args", {}).get("amount", 0)) for entry in entries
-        )
+        new_wei = sum(int(entry.get("args", {}).get("amount", 0)) for entry in entries)
 
         # Checkpoint advances to the scanned head every successful cycle,
         # even with zero matches, so subsequent cycles start from

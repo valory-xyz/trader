@@ -9,9 +9,9 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeiayvfd6iw2b633aijydknbo2x7ealbgwspg4hc6noggb67wvchaya
   build/MechPrepaidReader.json: bafybeih5arnfdscyqsp7zyw2aq5egodxo7ztl5lmrroagkmcmk5s74lz6a
-  contract.py: bafybeiazdq3lpabseeqvvvcn4cwcfztmccclvhfgj5hipar2d4vwc7b46e
+  contract.py: bafybeicnsu4flxpk74fbztikppussuvmsypawilmf4dir27tp7fh6vr7gq
   tests/__init__.py: bafybeih6bqlg5bwqbz65c7midx4ho25xxl46gy4pbzjftvbfqabgxdohg4
-  tests/test_contract.py: bafybeiai7typmlppmvjba4otxcm5i6znzklktu3cgc4jvnocrkmzuwjqqi
+  tests/test_contract.py: bafybeifxmgspvymjzvfrx7zpd26z5sv7x7zrmkb66qiyzzhriocmrjgsxa
 fingerprint_ignore_patterns: []
 class_name: MechPrepaidReaderContract
 contract_interface_paths:

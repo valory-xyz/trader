@@ -58,6 +58,12 @@ def _make_deposit_log(
     Deposit(address indexed account, address indexed token, uint256 amount)
     => topic[0]=event sig, topic[1]=padded account, topic[2]=padded token,
        data=abi-encoded amount (single uint256, 32 bytes hex).
+
+    :param account: requester address that appears in ``topics[1]``
+        (left-padded to 32 bytes).
+    :param amount: deposit amount encoded as the 32-byte ``data`` field.
+    :param block_number: block number stamped on the log entry.
+    :return: log dict shaped exactly like the Web3.py get_logs response.
     """
     padded_account = "0x" + account[2:].lower().rjust(64, "0")
     padded_token = "0x" + "0" * 64  # zero token for tests
@@ -87,9 +93,7 @@ def _make_deposit_log(
 class TestGetDepositEventsForRequester:
     """``get_deposit_events_for_requester`` filters Deposit logs by requester."""
 
-    def _filter_params_captured(
-        self, logs: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _filter_params_captured(self, logs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Invoke the method with returned logs and capture the get_logs call args."""
         instance = _web3_contract()
         ledger_api = _mock_ledger_api(logs)
@@ -103,7 +107,7 @@ class TestGetDepositEventsForRequester:
                 from_block=100,
                 to_block=200,
             )
-        (call_args, _) = ledger_api.api.eth.get_logs.call_args
+        call_args, _ = ledger_api.api.eth.get_logs.call_args
         return call_args[0]
 
     def test_topic_filter_pads_requester_to_32_bytes(self) -> None:
