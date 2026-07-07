@@ -34,7 +34,10 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
-from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
+from packages.valory.skills.mech_interact_abci.states.request import (
+    MechRequestRound,
+    OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -132,3 +135,59 @@ class TestHandleFailedTxBehaviour:
         payload = _run_async_act(behaviour, "some_round")
 
         assert payload.tx_submitter == HandleFailedTxRound.auto_round_id()
+
+    def test_offchain_deposit_sentinel_treated_as_mech_timeout(self) -> None:
+        """The off-chain deposit sentinel must produce the same bookkeeping as an on-chain mech timeout.
+
+        Without this branch the off-chain failure path leaves
+        ``shared_state.mech_timed_out`` False and
+        ``after_bet_attempt`` False, so the tool-quarantine bookkeeping
+        that the on-chain mech-timeout path relies on silently skips.
+        Pin the literal sentinel value (not just identity against the
+        imported symbol) — a rename that moves both sides together would
+        still break the mech-interact executor, which hardcodes the string.
+        """
+        # Capture the shared_state.mech_timed_out assignment so we can
+        # assert on it (the base MagicMock accepts anything silently).
+        shared_state = MagicMock()
+
+        behaviour = _make_behaviour()
+
+        payloads_sent = []  # type: ignore[no-untyped-def]
+
+        def mock_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
+            payloads_sent.append(payload)
+            yield  # type: ignore[no-untyped-def]
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            sd = MagicMock()
+            sd.tx_submitter = OFFCHAIN_DEPOSIT_TX_SUBMITTER
+            mock_sd.return_value = sd
+
+            with patch.object(
+                type(behaviour), "shared_state", new_callable=PropertyMock
+            ) as mock_ss:
+                mock_ss.return_value = shared_state
+
+                gen = behaviour.async_act()
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration:
+                    pass
+
+        assert len(payloads_sent) == 1
+        payload = payloads_sent[0]
+        assert isinstance(payload, HandleFailedTxPayload)
+        # Symmetric with the on-chain mech timeout: after_bet_attempt True.
+        assert payload.vote is True
+        # And the mech-timed-out flag was actually raised so the tool
+        # quarantine bookkeeping runs on the next cycle.
+        assert shared_state.mech_timed_out is True
+        # Pin the literal sentinel value so a silent rename in
+        # mech-interact fails a trader test instead of a runtime warning.
+        assert OFFCHAIN_DEPOSIT_TX_SUBMITTER == "mech_request_round_offchain_deposit"

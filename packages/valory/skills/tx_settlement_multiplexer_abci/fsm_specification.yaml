@@ -3,6 +3,7 @@ alphabet_in:
 - CHECKS_PASSED
 - MECH_REQUESTING_DONE
 - NO_MAJORITY
+- OFFCHAIN_MECH_DEPOSIT_SETTLED
 - REDEEMING_DONE
 - REFILL_REQUIRED
 - ROUND_TIMEOUT
@@ -22,6 +23,7 @@ final_states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedOffchainMechDepositSettledRound
 - FinishedOmenWithdrawTxRound
 - FinishedPolymarketSwapTxRound
 - FinishedPolymarketTopUpTxRound
@@ -41,6 +43,7 @@ states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedOffchainMechDepositSettledRound
 - FinishedOmenWithdrawTxRound
 - FinishedPolymarketSwapTxRound
 - FinishedPolymarketTopUpTxRound
@@ -56,6 +59,7 @@ states:
 transition_func:
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): FinishedMechRequestTxRound
+    (PostTxSettlementRound, OFFCHAIN_MECH_DEPOSIT_SETTLED): FinishedOffchainMechDepositSettledRound
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound

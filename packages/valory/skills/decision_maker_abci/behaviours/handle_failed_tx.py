@@ -34,7 +34,10 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
-from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
+from packages.valory.skills.mech_interact_abci.states.request import (
+    MechRequestRound,
+    OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+)
 
 
 class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
@@ -47,7 +50,16 @@ class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             tx_submitter = self.synchronized_data.tx_submitter
-            mech_timed_out = tx_submitter == MechRequestRound.auto_round_id()
+            # An off-chain mech cycle exhausts its failover budget after
+            # the deposit has settled (sentinel set by the executor); a
+            # cycle that fails before any deposit carries the
+            # MechRequestRound id. Treat both as a mech timeout so the
+            # tool-quarantine / retry bookkeeping fires identically to
+            # the on-chain mech-timeout path.
+            mech_timed_out = tx_submitter in (
+                MechRequestRound.auto_round_id(),
+                OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+            )
             self.shared_state.mech_timed_out = mech_timed_out
             after_bet_attempt = mech_timed_out or tx_submitter in (
                 BetPlacementRound.auto_round_id(),
