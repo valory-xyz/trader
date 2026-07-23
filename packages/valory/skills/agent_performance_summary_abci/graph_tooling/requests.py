@@ -22,6 +22,7 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, Generator, List, Optional, cast
 
@@ -32,6 +33,14 @@ from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, Requests
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    MAX_PAGES,
+    build_scored_rows_url,
+    chain_id_for_platform,
+    is_flag_enabled,
+    parse_scored_rows_page,
+    rows_as_subgraph_mech_requests,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_REQUESTS_BY_TITLES_QUERY,
@@ -198,6 +207,74 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         )
 
         return result
+
+    def _page_mech_analytics_scored_rows(
+        self,
+        requester: str,
+        since: Optional[Any] = None,
+        until: Optional[Any] = None,
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Page ``/v1/data/scored-rows`` for one Safe (async HTTP).
+
+        Uses the framework's async HTTP protocol so the FSM round
+        doesn't block on synchronous I/O — Tendermint heartbeats and
+        ABCI message pumps stall while a sync ``requests.get`` is
+        waiting.
+
+        Chain scope is derived from ``self.params.is_running_on_polymarket``.
+        Loop capped at ``MAX_PAGES`` (mech_analytics_client) so a broken
+        cursor cycle can't hang a live agent. Returns ``None`` on any
+        failure (transport, non-200, JSON parse, shape drift, or
+        MAX_PAGES exceeded) so callers can distinguish that from an
+        empty result and NOT bake a wrong 0 into their cost math.
+
+        :param requester: the Safe address.
+        :param since: optional lower bound on ``requested_at``
+            (inclusive per the endpoint contract).
+        :param until: optional upper bound on ``requested_at``
+            (exclusive per the endpoint contract).
+        :return: list of scored-row dicts on success, ``None`` on any
+            failure (including MAX_PAGES exceeded).
+        :yield: framework yields for each paginated request.
+        """
+        chain_id = chain_id_for_platform(self.params.is_running_on_polymarket)
+        cursor: Optional[str] = None
+        all_rows: List[Dict[str, Any]] = []
+        for page_index in range(MAX_PAGES):
+            url = build_scored_rows_url(
+                base_url=self.params.mech_analytics_url,
+                requester=requester,
+                chain_id=chain_id,
+                since=since,
+                until=until,
+                cursor=cursor,
+            )
+            response = yield from self.get_http_response(method="GET", url=url)
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"mech-analytics scored-rows responded {response.status_code} "
+                    f"(page {page_index + 1})"
+                )
+                return None
+            try:
+                payload = json.loads(response.body.decode())
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                self.context.logger.error(
+                    f"mech-analytics scored-rows JSON parse failed: {exc}"
+                )
+                return None
+            page = parse_scored_rows_page(payload, self.context.logger)
+            if page is None:
+                return None
+            all_rows.extend(page["rows"])
+            cursor = page["next_cursor"]
+            if cursor is None:
+                return all_rows
+        self.context.logger.error(
+            f"mech-analytics scored-rows exceeded MAX_PAGES={MAX_PAGES}; "
+            "endpoint may be returning a cursor cycle"
+        )
+        return None
 
     def _fetch_mech_sender(
         self, agent_safe_address: str, timestamp_gt: int
@@ -641,6 +718,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[List]]:
         """Fetch all mech requests for the agent with pagination support."""
+        # Flag-on path: read the per-Safe request list from mech-analytics'
+        # /v1/data/scored-rows instead of the marketplace subgraph. Same
+        # downstream shape via ``rows_as_subgraph_mech_requests`` so the
+        # day-bucketing / title-matching in behaviours.py is untouched.
+        # chain_id is passed explicitly — a Safe address can exist on
+        # multiple chains and an unfiltered call would sum them silently.
+        if is_flag_enabled(self.params):
+            # Async pagination via the framework HTTP protocol (see
+            # ``_page_mech_analytics_scored_rows`` docstring for why
+            # sync ``requests.get`` inside the FSM round is unsafe).
+            rows = yield from self._page_mech_analytics_scored_rows(
+                requester=agent_safe_address,
+            )
+            if rows is None:
+                return None
+            return rows_as_subgraph_mech_requests(rows)
+
         all_requests = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
@@ -702,6 +796,26 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """
         if not question_titles:
             return []
+
+        # Flag-on path: pull scored rows since the watermark from
+        # mech-analytics and filter to the requested titles client-side.
+        # This is the per-tick incremental fetch path used by
+        # ``_perform_incremental_update`` — without a flag branch here,
+        # off-chain days would silently attribute zero fees even when
+        # the flag is on for the initial backfill.
+        if is_flag_enabled(self.params):
+            since = None
+            if block_timestamp_gt > 0:
+                since = datetime.fromtimestamp(int(block_timestamp_gt), tz=timezone.utc)
+            rows = yield from self._page_mech_analytics_scored_rows(
+                requester=agent_safe_address,
+                since=since,
+            )
+            if rows is None:
+                return None
+            title_set = set(question_titles)
+            filtered = [row for row in rows if row.get("question_title") in title_set]
+            return rows_as_subgraph_mech_requests(filtered)
 
         # Determine which subgraph to use based on platform
         if self.params.is_running_on_polymarket:

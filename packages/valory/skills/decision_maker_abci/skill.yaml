@@ -181,8 +181,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeifbkpgivxjexlhrptn2iaju7vyzeusevvucsin6tbjwveniykad2q
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/agent_performance_summary_abci:0.1.0:bafybeiagxj4awrr7shhawqfblyhdrcpbb7rvsexxm7k2l3wp3odsmvfa7u
-- valory/chatui_abci:0.1.0:bafybeig4qckyl7exilbd4egapsttvfrecfu4buywx632gixuvkwcjqqssu
+- valory/agent_performance_summary_abci:0.1.0:bafybeibbdhh6g24bmw3nwzneuj4hyetrno5ir3ad3oirqkhcmobxi3x7ay
+- valory/chatui_abci:0.1.0:bafybeif2igcq26it4p2lj6owbp4xbm46svnqezt64vtm6ij4bfldfmjpu4
 behaviours:
   main:
     args: {}
@@ -424,6 +424,8 @@ models:
       pol_threshold_for_swap: 2000000000000000000
       is_running_on_polymarket: false
       balance_tracker_address: '0x0000000000000000000000000000000000000000'
+      mech_analytics_url: ''
+      use_mech_analytics: false
       slippages_for_swap: {}
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8

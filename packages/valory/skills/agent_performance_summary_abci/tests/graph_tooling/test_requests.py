@@ -21,7 +21,8 @@
 
 import json
 from abc import ABC
-from typing import Any, Dict, Generator
+from types import SimpleNamespace
+from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
@@ -1990,3 +1991,227 @@ class TestFetchCTHeldPositionKeys:
         _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
 
         assert 'balance_gt: "0"' in captured["query"], captured["query"]
+
+
+# ---------------------------------------------------------------------------
+# Mech-analytics flag-on tests: cover the async-HTTP paths on the
+# behaviour helper (``_page_mech_analytics_scored_rows``) and the two
+# consumers that route through it (``_fetch_all_mech_requests`` and
+# ``_fetch_mech_requests_by_titles``). Without these, the flag-on
+# branches would ship with zero unit coverage, which is exactly the
+# ROI-affecting key-chain the reviewer flagged as a coverage gate hard
+# fail.
+# ---------------------------------------------------------------------------
+
+
+def _http_response(status: int, body: Any) -> MagicMock:
+    """Build a MagicMock that mirrors an Autonomy HttpMessage.
+
+    The framework's ``get_http_response`` returns an object with
+    ``.status_code`` and ``.body`` (bytes); the pagination helper reads
+    both, so this fixture pins the same interface.
+
+    :param status: HTTP status code the mock should report.
+    :param body: response body; ``bytes`` are copied as-is, anything
+        else is JSON-serialised.
+    :return: MagicMock with ``.status_code`` and ``.body`` set.
+    """
+    resp = MagicMock()
+    resp.status_code = status
+    if isinstance(body, (bytes, bytearray)):
+        resp.body = bytes(body)
+    else:
+        resp.body = json.dumps(body).encode()
+    return resp
+
+
+def _mech_analytics_ctx(is_polymarket: bool = False) -> MagicMock:
+    """Context with params.mech_analytics_url + is_running_on_polymarket set."""
+    ctx = MagicMock()
+    ctx.params = SimpleNamespace(
+        mech_analytics_url="https://mech-analytics.test",
+        use_mech_analytics=True,
+        is_running_on_polymarket=is_polymarket,
+    )
+    return ctx
+
+
+def _queued_get_http_response(pages: List[MagicMock]) -> Any:
+    """Return a fake ``get_http_response`` that pops one response per call.
+
+    Each call yields once (matching the real generator contract) and
+    returns the next queued response. Used to drive the pagination
+    loop with a predictable sequence of pages / failures.
+
+    :param pages: sequence of response mocks to serve, one per call.
+    :return: a generator-factory suitable for monkey-patching onto a
+        behaviour instance's ``get_http_response`` attribute.
+    """
+    queue = list(pages)
+
+    def _gen(*args: Any, **kwargs: Any) -> "Generator[Any, Any, MagicMock]":
+        yield
+        if not queue:
+            raise AssertionError(
+                "get_http_response called more times than pages queued"
+            )
+        return queue.pop(0)
+
+    return _gen
+
+
+class TestPageMechAnalyticsScoredRows:
+    """Async pagination helper on ``APTQueryingBehaviour``: failures return None."""
+
+    def test_single_page_success(self) -> None:
+        """Single-page response returns the rows as a list."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, {"rows": [{"a": 1}, {"a": 2}], "next_cursor": None})]
+        )
+        result = _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe"))
+        assert result == [{"a": 1}, {"a": 2}]
+
+    def test_multi_page_concatenates_in_order(self) -> None:
+        """Cursor is followed across pages, rows concatenated in order."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(200, {"rows": [{"i": 1}], "next_cursor": "c1"}),
+                _http_response(200, {"rows": [{"i": 2}], "next_cursor": "c2"}),
+                _http_response(200, {"rows": [{"i": 3}], "next_cursor": None}),
+            ]
+        )
+        result = _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe"))
+        assert result == [{"i": 1}, {"i": 2}, {"i": 3}]
+
+    def test_non_2xx_returns_none(self) -> None:
+        """Non-200 response returns None (fetch failure, not empty)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(502, {})]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_json_parse_failure_returns_none(self) -> None:
+        """Malformed JSON body surfaces as None, not silent empty."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, b"not json at all")]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_shape_drift_missing_rows_returns_none(self) -> None:
+        """Payload with no ``rows`` list MUST NOT be treated as empty."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, {"detail": "server error"})]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_mid_pagination_failure_returns_none(self) -> None:
+        """Partial result from a mid-loop failure MUST be discarded."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(200, {"rows": [{"i": 1}], "next_cursor": "c1"}),
+                _http_response(502, {}),
+            ]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+
+class TestFetchAllMechRequestsFlagOn:
+    """``_fetch_all_mech_requests`` flag-on branch — uses async pagination + adapter."""
+
+    def test_flag_on_success_returns_subgraph_shaped_rows(self) -> None:
+        """Successful fetch returns rows in the trader's subgraph shape."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(
+                    200,
+                    {
+                        "rows": [
+                            {
+                                "question_title": "Q1",
+                                "requested_at": "2026-07-10T12:00:00+00:00",
+                                "tool": "t",
+                            }
+                        ],
+                        "next_cursor": None,
+                    },
+                )
+            ]
+        )
+        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
+        assert result is not None
+        assert result[0]["parsedRequest"]["questionTitle"] == "Q1"
+
+    def test_flag_on_failure_returns_none(self) -> None:
+        """Fetch failure propagates as None (distinct from empty ``[]``)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(500, {})]
+        )
+        assert _exhaust(b._fetch_all_mech_requests("0xsafe")) is None
+
+
+class TestFetchMechRequestsByTitlesFlagOn:
+    """``_fetch_mech_requests_by_titles`` flag-on branch — client-side title filter."""
+
+    def test_flag_on_filters_to_requested_titles_only(self) -> None:
+        """Titles not in the caller's list are dropped from the result."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(
+                    200,
+                    {
+                        "rows": [
+                            {
+                                "question_title": "wanted",
+                                "requested_at": "2026-07-10T00:00:00Z",
+                            },
+                            {
+                                "question_title": "other",
+                                "requested_at": "2026-07-10T00:00:00Z",
+                            },
+                        ],
+                        "next_cursor": None,
+                    },
+                )
+            ]
+        )
+        result = _exhaust(
+            b._fetch_mech_requests_by_titles("0xsafe", question_titles=["wanted"])
+        )
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["parsedRequest"]["questionTitle"] == "wanted"
+
+    def test_flag_on_empty_titles_short_circuits_without_fetch(self) -> None:
+        """Empty title list means no work, no HTTP call."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = MagicMock()  # type: ignore[method-assign]  # would fail if called
+        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", [])) == []
+        assert b.get_http_response.call_count == 0
+
+    def test_flag_on_fetch_failure_returns_none(self) -> None:
+        """Fetch failure propagates as None (distinct from empty list)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(503, {})]
+        )
+        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", ["t"])) is None

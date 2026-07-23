@@ -30,6 +30,12 @@ import requests
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    chain_id_for_platform,
+    fetch_scored_rows,
+    find_latest_row_for_title,
+    is_flag_enabled,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     BetStatus,
     TradingStrategy,
@@ -580,6 +586,32 @@ class PolymarketPredictionsFetcher(
         :return: The tool name or None if not found
         """
         ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
+
+        # Flag-on path: post-switch, ``parsedRequest.tool`` is empty for
+        # off-chain requests on the marketplace subgraph. Read the tool
+        # field from mech-analytics' scored rows so per-position tool
+        # attribution keeps working.
+        params = getattr(self.context, "params", None)
+        if is_flag_enabled(params):
+            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+            # +1s to map subgraph blockTimestamp_lte (inclusive) onto
+            # the endpoint's until (exclusive) boundary — a mech request
+            # timestamped exactly at ts would be dropped by strict-less-than.
+            until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
+            rows = fetch_scored_rows(
+                base_url=params.mech_analytics_url,
+                requester=sender_address,
+                chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                until=until,
+                logger=self.logger,
+            )
+            if rows is None:
+                return None
+            matched = find_latest_row_for_title(rows, question_title)
+            if matched is None:
+                return None
+            return matched.get("tool")
+
         query_payload = {
             "query": GET_MECH_TOOL_FOR_QUESTION_QUERY,
             "variables": {
@@ -634,6 +666,41 @@ class PolymarketPredictionsFetcher(
             return None
 
         ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
+
+        # Flag-on path: read prediction fields directly off the scored row.
+        # ``info_utility`` is a nullable column added by mech-analytics
+        # PR #14; downstream ``.get(field, 0)`` handles a NULL as 0.
+        params = getattr(self.context, "params", None)
+        if is_flag_enabled(params):
+            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+            # +1s to map subgraph blockTimestamp_lte (inclusive) onto
+            # the endpoint's until (exclusive) boundary — a mech request
+            # timestamped exactly at ts would be dropped by strict-less-than.
+            until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
+            rows = fetch_scored_rows(
+                base_url=params.mech_analytics_url,
+                requester=sender_address,
+                chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                until=until,
+                logger=self.logger,
+            )
+            if rows is None:
+                return None
+            matched = find_latest_row_for_title(rows, question_title)
+            if matched is None:
+                return None
+            # Coalesce None → 0 per field. Downstream
+            # ``_format_bet_for_position`` does ``.get(field, 0) * 100``
+            # which only substitutes when the KEY is absent; a
+            # present-but-None value raises TypeError that
+            # ``fetch_position_details`` silently swallows.
+            return {
+                "p_yes": matched.get("p_yes") or 0,
+                "p_no": matched.get("p_no") or 0,
+                "confidence": matched.get("confidence") or 0,
+                "info_utility": matched.get("info_utility") or 0,
+            }
+
         query_payload = {
             "query": GET_MECH_RESPONSE_QUERY,
             "variables": {

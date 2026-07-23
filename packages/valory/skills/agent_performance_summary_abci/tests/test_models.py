@@ -467,6 +467,8 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "is_achievement_checker_enabled": True,
     "is_running_on_polymarket": False,
     "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
+    "mech_analytics_url": "",
+    "use_mech_analytics": False,
 }
 
 
@@ -490,6 +492,8 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_agent_performance_summary_enabled is True
         assert params.is_achievement_checker_enabled is True
         assert params.is_running_on_polymarket is False
+        assert params.mech_analytics_url == ""
+        assert params.use_mech_analytics is False
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -521,6 +525,8 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
@@ -538,6 +544,8 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         assert params.is_running_on_polymarket is True
 

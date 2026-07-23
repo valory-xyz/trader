@@ -334,6 +334,23 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.balance_tracker_address: str = self._ensure(
             "balance_tracker_address", kwargs, str
         )
+        # Mech-analytics migration: base URL of the read-only mech-analytics
+        # API and a feature flag gating whether the trader reads request
+        # data from that API instead of the marketplace subgraph. Empty URL
+        # disables the flag-on path defensively (throws in the client rather
+        # than silently returning zero rows and inflating ROI). Both default
+        # to the safe pre-migration behaviour: flag off, subgraph read
+        # unchanged. See docs (consumer migration §7 in mech-analytics repo).
+        self.mech_analytics_url: str = self._ensure("mech_analytics_url", kwargs, str)
+        self.use_mech_analytics: bool = self._ensure("use_mech_analytics", kwargs, bool)
+        # Enforce the pairing at startup — fail loudly rather than
+        # silently no-op'ing back to the subgraph path when an operator
+        # enables the flag but forgets the URL.
+        if self.use_mech_analytics and not self.mech_analytics_url:
+            raise ValueError(
+                "use_mech_analytics is true but mech_analytics_url is empty; "
+                "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
+            )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves
