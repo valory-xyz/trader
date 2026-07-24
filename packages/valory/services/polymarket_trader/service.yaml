@@ -302,17 +302,6 @@ models:
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${OLAS_AGENTS_SUBGRAPH_RETRIES:int:5}
       url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket}
-  olas_mech_subgraph:
-    args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
-      method: ${OLAS_MECH_SUBGRAPH_METHOD:str:POST}
-      response_key: ${OLAS_MECH_SUBGRAPH_RESPONSE_KEY:str:data:sender}
-      response_type: ${OLAS_MECH_SUBGRAPH_RESPONSE_TYPE:str:dict}
-      error_key: ${NETWORK_SUBGRAPH_ERROR_KEY:str:errors}
-      error_index: ${NETWORK_SUBGRAPH_ERROR_INDEX:int:0}
-      error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
-      retries: ${OLAS_MECH_SUBGRAPH_RETRIES:int:5}
-      url: ${OLAS_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/mech}
   gnosis_staking_subgraph:
     args:
       headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
