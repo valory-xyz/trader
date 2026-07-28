@@ -806,7 +806,20 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if is_flag_enabled(self.params):
             since = None
             if block_timestamp_gt > 0:
-                since = datetime.fromtimestamp(int(block_timestamp_gt), tz=timezone.utc)
+                # The subgraph query below uses ``blockTimestamp_gt``
+                # (strictly greater than); mech-analytics' ``since`` is
+                # inclusive. ``block_timestamp_gt`` is the timestamp of a
+                # row already consumed in a prior round — passing it
+                # straight through would re-fetch that boundary row every
+                # tick, and because the incremental settled-count aggregation
+                # is a monotonic ``max(prev, new)``, any recurrence in
+                # ``question_titles`` would inflate ``fees_by_day`` /
+                # ``unplaced_count`` permanently. ``+1`` keeps the semantics
+                # aligned across the two backends. Same treatment as the
+                # ``ts + 1`` on ``until`` in the per-position helpers.
+                since = datetime.fromtimestamp(
+                    int(block_timestamp_gt) + 1, tz=timezone.utc
+                )
             rows = yield from self._page_mech_analytics_scored_rows(
                 requester=agent_safe_address,
                 since=since,

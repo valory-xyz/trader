@@ -21,9 +21,11 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -2215,3 +2217,68 @@ class TestFetchMechRequestsByTitlesFlagOn:
             [_http_response(503, {})]
         )
         assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", ["t"])) is None
+
+    def test_flag_on_since_offsets_watermark_by_one_second(self) -> None:
+        """``block_timestamp_gt`` is a row already consumed; ``since`` must skip it.
+
+        The subgraph query uses ``blockTimestamp_gt`` (strictly greater
+        than); mech-analytics' ``since`` is inclusive. Passing
+        ``last_mech_timestamp`` straight through re-fetches the boundary
+        row each tick, and the monotonic ``max(prev, new)`` aggregation
+        would then never let the resulting overcount self-correct. The
+        ``+1`` offset keeps the two backends semantically aligned.
+        """
+        watermark = 1_700_000_000
+        captured: Dict[str, Any] = {}
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            captured.setdefault("url", kwargs.get("url"))
+            yield
+            return _http_response(200, {"rows": [], "next_cursor": None})
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        _exhaust(
+            b._fetch_mech_requests_by_titles(
+                "0xsafe",
+                question_titles=["wanted"],
+                block_timestamp_gt=watermark,
+            )
+        )
+
+        expected_since = datetime.fromtimestamp(
+            watermark + 1, tz=timezone.utc
+        ).isoformat()
+        # ``build_scored_rows_url`` URL-encodes the ISO string; unquote
+        # for a substring check that's readable in case of failure.
+        assert captured.get("url") is not None
+        assert f"since={quote(expected_since, safe='')}" in captured["url"]
+
+    def test_flag_on_no_watermark_sends_no_since_bound(self) -> None:
+        """Backfill entry point (``block_timestamp_gt=0``) omits ``since`` entirely.
+
+        Guards against a symmetric bug where always adding +1 would
+        skip epoch on the initial backfill path.
+        """
+        captured: Dict[str, Any] = {}
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            captured.setdefault("url", kwargs.get("url"))
+            yield
+            return _http_response(200, {"rows": [], "next_cursor": None})
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        _exhaust(
+            b._fetch_mech_requests_by_titles(
+                "0xsafe",
+                question_titles=["wanted"],
+                block_timestamp_gt=0,
+            )
+        )
+        assert captured.get("url") is not None
+        assert "since=" not in captured["url"]
