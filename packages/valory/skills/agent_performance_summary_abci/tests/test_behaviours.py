@@ -1997,6 +1997,34 @@ class TestGetOpenMarketRequests:
                 # Only Q1 matches; null/missing entries are skipped
                 assert e.value == 1
 
+    def test_flag_on_scored_rows_fetch_failure_returns_none(self) -> None:
+        """Flag-on scored-rows fetch failure returns ``None``, not ``0``.
+
+        Guards against the silent-zero cost bug: returning ``0`` would
+        make ``_calculate_settled_mech_requests`` compute
+        ``settled = total - 0 = total`` and over-inflate
+        ``settled_mech_costs``. ``None`` propagates through to a
+        Total ROI = ``NA``, which the NA-preservation fallback
+        substitutes with the last persisted good value.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.use_mech_analytics = True
+        params.mech_analytics_url = "https://mech-analytics.test"
+        params.is_running_on_polymarket = False
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_page_mech_analytics_scored_rows", side_effect=_return_gen(None)
+            ),
+        ):
+            gen = b._get_open_market_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                assert e.value is None
+
 
 # ---------------------------------------------------------------------------
 # Tests for _calculate_settled_mech_requests - generator method
@@ -2027,6 +2055,25 @@ class TestCalculateSettledMechRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 7
+
+    def test_settled_is_none_when_open_fetch_fails(self) -> None:
+        """Open-request fetch failure (``None``) propagates as settled ``None``.
+
+        Without this propagation, ``settled = total - 0 = total`` would
+        count every open request as settled and over-inflate
+        ``settled_mech_costs``. Mirrors the total-fetch-failure guard
+        one branch up.
+        """
+        b = _make_fetch_behaviour()
+        with (
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(500)),
+            patch.object(b, "_get_open_market_requests", side_effect=_return_gen(None)),
+        ):
+            gen = b._calculate_settled_mech_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                assert e.value is None
 
 
 # ---------------------------------------------------------------------------

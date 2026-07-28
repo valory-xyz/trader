@@ -368,11 +368,19 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_open_market_requests(
         self, agent_safe_address: str
-    ) -> Generator[None, None, int]:
+    ) -> Generator[None, None, Optional[int]]:
         """Get number of mech requests for open markets (cached).
 
         :param agent_safe_address: The agent's safe address
-        :return: Number of open market requests
+        :return: Number of open market requests, or ``None`` when the
+            flag-on scored-rows fetch failed and no cached value is
+            available. Callers MUST distinguish ``None`` (unknown) from
+            ``0`` (no open-market requests) — treating unknown as 0 in
+            ``_calculate_settled_mech_requests`` would compute
+            ``settled = total - 0 = total``, counting every open request
+            as settled and over-inflating ``settled_mech_costs`` (the
+            mirror silent-zero of the total-fetch failure that
+            ``_get_total_mech_requests`` already handles).
         :yield: None
         """
         if self._open_market_requests is not None:
@@ -398,7 +406,13 @@ class FetchPerformanceSummaryBehaviour(
                     "mech-analytics scored-rows fetch failed; skipping "
                     "open_market_requests for this round"
                 )
-                return 0
+                # ``None`` propagates through
+                # ``_calculate_settled_mech_requests`` →
+                # ``self._settled_mech_requests_count = None`` →
+                # ``calculate_roi`` / ``_calculate_performance_metrics``
+                # short-circuit → Total ROI metric = ``NA`` →
+                # NA-preservation keeps the last persisted good value.
+                return None
             last_four_days_requests = rows_as_subgraph_mech_requests(rows)
         else:
             # Fetch mech sender to get recent requests
@@ -474,6 +488,13 @@ class FetchPerformanceSummaryBehaviour(
         open_market_requests = yield from self._get_open_market_requests(
             agent_safe_address
         )
+        # ``None`` = fetch failure for the open-request side. Propagate
+        # so ``self._settled_mech_requests_count`` stays ``None`` and
+        # the ROI guards funnel the failure into ``NA`` (rather than
+        # ``settled = total - 0 = total``, which would silently
+        # over-inflate ``settled_mech_costs``).
+        if open_market_requests is None:
+            return None
 
         # where settled = Total - Open
         return total_mech_requests - open_market_requests
@@ -2124,9 +2145,15 @@ class FetchPerformanceSummaryBehaviour(
             if self._total_mech_requests is not None
             else (yield from self._get_total_mech_requests(agent_safe_address))
         )
+        # ``max_settled = None`` if EITHER count is unknown — the
+        # incremental scan then skips the monotonic ceiling for this
+        # tick rather than treating an unknown open count as ``0``,
+        # which would loosen the ceiling to ``total`` and let a stale
+        # sum leak through.
         max_settled = (
-            max((total_mech_requests or 0) - (self._open_market_requests or 0), 0)
+            max(total_mech_requests - self._open_market_requests, 0)
             if total_mech_requests is not None
+            and self._open_market_requests is not None
             else None
         )
         pre_bounds = settled_mech_requests_count
