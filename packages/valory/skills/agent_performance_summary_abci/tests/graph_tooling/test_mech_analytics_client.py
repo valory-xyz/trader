@@ -434,11 +434,54 @@ class TestRowsAsSubgraphMechRequests:
         adapted = rows_as_subgraph_mech_requests(rows)
         assert adapted[0]["blockTimestamp"] == 0
 
+    def test_unparseable_timestamp_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Unparseable requested_at is logged, not silently dropped.
+
+        Without the log a systematic endpoint format drift would zero
+        every row's blockTimestamp and dump fee attribution into the
+        unmatched-day bucket with no operator signal.
+
+        :param caplog: pytest fixture capturing WARNING-level logs.
+        """
+        rows = [{"question_title": "Q", "requested_at": "not-a-date"}]
+        with caplog.at_level(
+            "WARNING",
+            logger=(
+                "packages.valory.skills.agent_performance_summary_abci."
+                "graph_tooling.mech_analytics_client"
+            ),
+        ):
+            rows_as_subgraph_mech_requests(rows)
+        assert any(
+            "unparseable requested_at" in rec.message and "not-a-date" in rec.message
+            for rec in caplog.records
+        )
+
     def test_missing_requested_at_becomes_zero(self) -> None:
         """Missing requested at becomes zero."""
         rows = [{"question_title": "Q"}]
         adapted = rows_as_subgraph_mech_requests(rows)
         assert adapted[0]["blockTimestamp"] == 0
+
+    def test_missing_requested_at_does_not_log_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Missing/None is expected and stays quiet; only parse *failures* log.
+
+        :param caplog: pytest fixture capturing WARNING-level logs.
+        """
+        rows = [{"question_title": "Q"}]  # requested_at absent → None
+        with caplog.at_level(
+            "WARNING",
+            logger=(
+                "packages.valory.skills.agent_performance_summary_abci."
+                "graph_tooling.mech_analytics_client"
+            ),
+        ):
+            rows_as_subgraph_mech_requests(rows)
+        assert not any(
+            "unparseable requested_at" in rec.message for rec in caplog.records
+        )
 
     def test_empty_input_returns_empty_list(self) -> None:
         """Empty list in → empty list out; no items to reshape."""

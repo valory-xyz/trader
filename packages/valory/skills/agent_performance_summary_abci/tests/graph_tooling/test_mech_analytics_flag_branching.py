@@ -26,11 +26,16 @@ matched scored row — so a future refactor that silently made the flag a
 no-op would fail here.
 """
 
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, Mapping
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    PER_POSITION_LOOKUP_WINDOW_DAYS,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
 )
@@ -242,3 +247,83 @@ class TestPolymarketFetcherFlagOn:
             fetcher.fetch_mech_tool_for_question(TITLE, SAFE)
             fetcher._fetch_prediction_response_from_mech(TITLE, SAFE)
         assert mock_fetch.call_count == 0
+
+
+class TestPerPositionLookbackWindow:
+    """Per-position fetches must send a bounded ``since`` window.
+
+    Without a ``since`` bound the client would page the Safe's full
+    mech history on every position, which blocks cold-start reports on
+    long-history Safes. These assertions pin the guard in place so a
+    future refactor that drops the ``since=`` kwarg (or widens the
+    window without justification) fails loudly instead of silently
+    slowing every report.
+    """
+
+    _BET_TS = 1_700_000_000  # 2023-11-14T22:13:20Z
+
+    def _assert_since_window(
+        self, kwargs: Mapping[str, Any], expected_until_ts: int, expected_days: int
+    ) -> None:
+        assert "since" in kwargs, "per-position fetch must send a since bound"
+        assert "until" in kwargs, "per-position fetch must send an until bound"
+        expected_until = datetime.fromtimestamp(expected_until_ts + 1, tz=timezone.utc)
+        expected_since = expected_until - timedelta(days=expected_days)
+        assert kwargs["until"] == expected_until
+        assert kwargs["since"] == expected_since
+
+    def test_omen_path_2_sends_bounded_since_from_bet_timestamp(self) -> None:
+        """Omen fetch_mech_tool_for_question sends since = until - 30d."""
+        fetcher = PredictionsFetcher(_make_context(use_flag=True), MagicMock())
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.fetch_scored_rows",
+            return_value=[_matching_row()],
+        ) as mock_fetch:
+            fetcher.fetch_mech_tool_for_question(TITLE, SAFE, bet_timestamp=self._BET_TS)
+        self._assert_since_window(
+            mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
+        )
+
+    def test_omen_path_3_sends_bounded_since_from_bet_timestamp(self) -> None:
+        """Omen _fetch_prediction_response_from_mech sends since = until - 30d."""
+        fetcher = PredictionsFetcher(_make_context(use_flag=True), MagicMock())
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.fetch_scored_rows",
+            return_value=[_matching_row()],
+        ) as mock_fetch:
+            fetcher._fetch_prediction_response_from_mech(
+                TITLE, SAFE, bet_timestamp=self._BET_TS
+            )
+        self._assert_since_window(
+            mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
+        )
+
+    def test_polymarket_path_2_sends_bounded_since_from_bet_timestamp(self) -> None:
+        """Polymarket fetch_mech_tool_for_question sends since = until - 30d."""
+        fetcher = PolymarketPredictionsFetcher(
+            _make_context(use_flag=True, is_polymarket=True), MagicMock()
+        )
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.fetch_scored_rows",
+            return_value=[_matching_row()],
+        ) as mock_fetch:
+            fetcher.fetch_mech_tool_for_question(TITLE, SAFE, bet_timestamp=self._BET_TS)
+        self._assert_since_window(
+            mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
+        )
+
+    def test_polymarket_path_3_sends_bounded_since_from_bet_timestamp(self) -> None:
+        """Polymarket _fetch_prediction_response_from_mech sends since = until - 30d."""
+        fetcher = PolymarketPredictionsFetcher(
+            _make_context(use_flag=True, is_polymarket=True), MagicMock()
+        )
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.fetch_scored_rows",
+            return_value=[_matching_row()],
+        ) as mock_fetch:
+            fetcher._fetch_prediction_response_from_mech(
+                TITLE, SAFE, bet_timestamp=self._BET_TS
+            )
+        self._assert_since_window(
+            mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
+        )

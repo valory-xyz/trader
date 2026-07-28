@@ -24,7 +24,7 @@ import enum
 import json
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -33,6 +33,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_pr
     PredictionsFetcher as BasePredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    PER_POSITION_LOOKUP_WINDOW_DAYS,
     chain_id_for_platform,
     fetch_scored_rows,
     find_latest_row_for_title,
@@ -685,10 +686,15 @@ class PredictionsFetcher(BasePredictionsFetcher):
             # the endpoint's until (exclusive) boundary — a mech request
             # timestamped exactly at ts would be dropped by strict-less-than.
             until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
+            # Cap the lookback window (see PER_POSITION_LOOKUP_WINDOW_DAYS
+            # in mech_analytics_client): without a ``since`` bound each
+            # per-position call pages the Safe's full mech history.
+            since = until - timedelta(days=PER_POSITION_LOOKUP_WINDOW_DAYS)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
                 requester=sender_address,
                 chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                since=since,
                 until=until,
                 logger=self.logger,
             )
@@ -766,10 +772,15 @@ class PredictionsFetcher(BasePredictionsFetcher):
             # the endpoint's until (exclusive) boundary — a mech request
             # timestamped exactly at ts would be dropped by strict-less-than.
             until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
+            # Cap the lookback window (see PER_POSITION_LOOKUP_WINDOW_DAYS
+            # in mech_analytics_client): without a ``since`` bound each
+            # per-position call pages the Safe's full mech history.
+            since = until - timedelta(days=PER_POSITION_LOOKUP_WINDOW_DAYS)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
                 requester=sender_address,
                 chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                since=since,
                 until=until,
                 logger=self.logger,
             )

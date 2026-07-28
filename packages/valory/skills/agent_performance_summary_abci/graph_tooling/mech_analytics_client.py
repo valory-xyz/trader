@@ -40,6 +40,8 @@ from urllib.parse import urlencode
 
 import requests
 
+_LOGGER = logging.getLogger(__name__)
+
 GNOSIS_CHAIN_ID = 100
 POLYGON_CHAIN_ID = 137
 
@@ -54,6 +56,15 @@ MAX_PAGES = 200
 # Per-request timeout. Matches the trader's existing pattern of 30s on
 # direct HTTP calls to mech-related endpoints (see predictions_helper.py).
 REQUEST_TIMEOUT_SECONDS = 30
+
+# Lookback window for per-position mech-request lookups
+# (``fetch_mech_tool_for_question``, ``_fetch_prediction_response_from_mech``
+# on both Omen and Polymarket fetchers). Without a ``since`` bound each
+# per-position call pages the Safe's full mech history, which blows up
+# on cold-start / long-history Safes. 30 days is a large safety margin
+# over the typical trader prediction-to-bet lag (seconds to minutes)
+# while trimming the fetch to a small window for most positions.
+PER_POSITION_LOOKUP_WINDOW_DAYS = 30
 
 
 def is_flag_enabled(params: Any) -> bool:
@@ -481,15 +492,30 @@ def _iso_to_unix_seconds(iso_string: Optional[str]) -> int:
     ``+00:00``, so the parser is portable across Python versions and
     does not depend on native ``Z``-suffix support.
 
+    Every parse failure is logged at WARNING via the module logger so
+    a systematic endpoint format-drift is visible in ops output
+    instead of silently zeroing every row's ``blockTimestamp`` and
+    dumping fee attribution into the unmatched bucket.
+
     :param iso_string: an ISO-8601 UTC timestamp, ``Z`` or ``+00:00``
         suffix accepted, or ``None``.
     :return: Unix seconds since epoch, or 0 if the input is
         None / empty / unparseable.
     """
-    if not iso_string:
+    if iso_string is None:
+        return 0
+    if iso_string == "":
+        # Empty is expected when the row genuinely has no
+        # ``requested_at`` set; not worth a log line each time.
         return 0
     try:
         normalised = iso_string.replace("Z", "+00:00")
         return int(datetime.fromisoformat(normalised).timestamp())
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError) as exc:
+        _LOGGER.warning(
+            "mech-analytics: unparseable requested_at %r (%s); row lands in "
+            "the unmatched-day bucket",
+            iso_string if len(str(iso_string)) < 100 else f"{str(iso_string)[:100]}...",
+            exc.__class__.__name__,
+        )
         return 0
