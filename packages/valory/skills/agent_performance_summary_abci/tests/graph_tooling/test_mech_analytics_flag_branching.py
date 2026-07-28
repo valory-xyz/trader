@@ -279,7 +279,9 @@ class TestPerPositionLookbackWindow:
             "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.fetch_scored_rows",
             return_value=[_matching_row()],
         ) as mock_fetch:
-            fetcher.fetch_mech_tool_for_question(TITLE, SAFE, bet_timestamp=self._BET_TS)
+            fetcher.fetch_mech_tool_for_question(
+                TITLE, SAFE, bet_timestamp=self._BET_TS
+            )
         self._assert_since_window(
             mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
         )
@@ -307,7 +309,9 @@ class TestPerPositionLookbackWindow:
             "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper.fetch_scored_rows",
             return_value=[_matching_row()],
         ) as mock_fetch:
-            fetcher.fetch_mech_tool_for_question(TITLE, SAFE, bet_timestamp=self._BET_TS)
+            fetcher.fetch_mech_tool_for_question(
+                TITLE, SAFE, bet_timestamp=self._BET_TS
+            )
         self._assert_since_window(
             mock_fetch.call_args.kwargs, self._BET_TS, PER_POSITION_LOOKUP_WINDOW_DAYS
         )

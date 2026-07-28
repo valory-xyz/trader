@@ -434,7 +434,9 @@ class TestRowsAsSubgraphMechRequests:
         adapted = rows_as_subgraph_mech_requests(rows)
         assert adapted[0]["blockTimestamp"] == 0
 
-    def test_unparseable_timestamp_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_unparseable_timestamp_logs_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Unparseable requested_at is logged, not silently dropped.
 
         Without the log a systematic endpoint format drift would zero
