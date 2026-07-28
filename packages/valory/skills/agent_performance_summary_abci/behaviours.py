@@ -159,7 +159,16 @@ class FetchPerformanceSummaryBehaviour(
         self._mech_request_lookup: Optional[dict] = None
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
-        self._settled_mech_requests_count: int = 0
+        # ``None`` = "unknown this round" (fetch failure); ``0`` = "genuinely no
+        # requests". The distinction is load-bearing: ``FetchPerformanceSummaryBehaviour``
+        # is re-instantiated on every entry into its round, so there is no prior-round
+        # ``self.`` state to fall back on. If this defaulted to ``0`` a fetch failure
+        # would silently pass through ``calculate_roi`` as ``settled_mech_costs = 0``,
+        # producing a real (undercounted) ROI float that would then overwrite the
+        # previously-persisted Total ROI (the ``is_primary=True`` metric users see).
+        # Keeping it ``None`` funnels the failure through ``calculate_roi`` →
+        # ``final_roi=None`` → metric value = ``NA`` → NA-preservation triggers.
+        self._settled_mech_requests_count: Optional[int] = None
         self._placed_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
         # Cache for POL to USDC conversion rate
@@ -739,6 +748,19 @@ class FetchPerformanceSummaryBehaviour(
             return None, None
 
         settled_mech_requests = self._settled_mech_requests_count
+        if settled_mech_requests is None:
+            # ``None`` means ``_calculate_settled_mech_requests`` failed
+            # this round; propagate as ``(None, None)`` so the caller
+            # sets the Total ROI metric to ``NA``, which lets
+            # ``_save_agent_performance_summary``'s NA-preservation
+            # fallback keep the previously-persisted good value instead
+            # of overwriting with a cost-undercounted number.
+            self.context.logger.warning(
+                "Settled mech-request count unknown this round; "
+                "skipping ROI computation to preserve the previously-"
+                "persisted Total ROI."
+            )
+            return None, None
 
         # Use appropriate divisor based on platform
         # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
@@ -1127,6 +1149,11 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalExpectedPayout", 0))
 
         settled_mech_requests = self._settled_mech_requests_count
+        # ``None`` = ``_calculate_settled_mech_requests`` fetch failed
+        # this round; short-circuit rather than treat as 0 (which would
+        # zero ``settled_mech_costs`` and inflate ``all_time_profit``).
+        if settled_mech_requests is None:
+            return None
 
         # Get mech request counts (uses caches populated earlier)
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)
@@ -1206,7 +1233,9 @@ class FetchPerformanceSummaryBehaviour(
             ),
             roi=roi_decimal,
             # Settled mech requests cover placed + unplaced, excluding open markets.
-            settled_mech_request_count=self._settled_mech_requests_count,
+            # Reads the narrowed local (int) rather than the instance
+            # attribute (Optional[int]) so mypy sees the None-guard above.
+            settled_mech_request_count=settled_mech_requests,
             total_mech_request_count=total_mech_requests,
             open_mech_request_count=open_mech_requests,
             placed_mech_request_count=placed_mech_requests,
@@ -2196,9 +2225,14 @@ class FetchPerformanceSummaryBehaviour(
 
         agent_safe_address = self.synchronized_data.safe_contract_address
         # ``None`` from ``_calculate_settled_mech_requests`` means the
-        # total-count fetch failed this round. Leave the cached value
-        # in place (previous round's known-good count) rather than
-        # overwriting with 0, which would inflate settled costs.
+        # total-count fetch failed this round. Leave ``self.``'s init-time
+        # ``None`` in place so downstream (``calculate_roi`` /
+        # ``_build_performance_metrics``) can short-circuit to ``(None,
+        # None)`` / ``None``. This behaviour is re-instantiated per round,
+        # so there is no prior-round ``self._settled_mech_requests_count``
+        # to fall back on — the propagation-to-NA route is the only one
+        # that keeps the previously-persisted Total ROI intact via
+        # ``_save_agent_performance_summary``'s NA-preservation fallback.
         settled = yield from self._calculate_settled_mech_requests(agent_safe_address)
         if settled is not None:
             self._settled_mech_requests_count = settled
