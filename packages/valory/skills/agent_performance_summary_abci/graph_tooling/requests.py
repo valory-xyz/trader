@@ -211,8 +211,8 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _page_mech_analytics_scored_rows(
         self,
         requester: str,
-        since: Optional[Any] = None,
-        until: Optional[Any] = None,
+        since: Optional[datetime] = None,
+        until: Optional[datetime] = None,
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
         """Page ``/v1/data/scored-rows`` for one Safe (async HTTP).
 

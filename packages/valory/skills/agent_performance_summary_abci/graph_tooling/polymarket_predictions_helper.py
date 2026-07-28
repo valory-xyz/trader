@@ -22,7 +22,7 @@
 
 import json
 from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -36,6 +36,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     fetch_scored_rows,
     find_latest_row_for_title,
     is_flag_enabled,
+    per_position_lookup_window,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
     BetStatus,
@@ -595,14 +596,7 @@ class PolymarketPredictionsFetcher(
         params = getattr(self.context, "params", None)
         if is_flag_enabled(params):
             assert params is not None  # narrowed by is_flag_enabled  # nosec B101
-            # +1s to map subgraph blockTimestamp_lte (inclusive) onto
-            # the endpoint's until (exclusive) boundary — a mech request
-            # timestamped exactly at ts would be dropped by strict-less-than.
-            until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
-            # Cap the lookback window (see PER_POSITION_LOOKUP_WINDOW_DAYS
-            # in mech_analytics_client): without a ``since`` bound each
-            # per-position call pages the Safe's full mech history.
-            since = until - timedelta(days=PER_POSITION_LOOKUP_WINDOW_DAYS)
+            since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
                 requester=sender_address,
@@ -615,6 +609,14 @@ class PolymarketPredictionsFetcher(
                 return None
             matched = find_latest_row_for_title(rows, question_title)
             if matched is None:
+                self.logger.info(
+                    "mech-analytics: no scored row matched %r for %s within "
+                    "the last %sd window; consider widening "
+                    "PER_POSITION_LOOKUP_WINDOW_DAYS if this recurs.",
+                    question_title,
+                    sender_address,
+                    PER_POSITION_LOOKUP_WINDOW_DAYS,
+                )
                 return None
             return matched.get("tool")
 
@@ -679,14 +681,7 @@ class PolymarketPredictionsFetcher(
         params = getattr(self.context, "params", None)
         if is_flag_enabled(params):
             assert params is not None  # narrowed by is_flag_enabled  # nosec B101
-            # +1s to map subgraph blockTimestamp_lte (inclusive) onto
-            # the endpoint's until (exclusive) boundary — a mech request
-            # timestamped exactly at ts would be dropped by strict-less-than.
-            until = datetime.fromtimestamp(ts + 1, tz=timezone.utc)
-            # Cap the lookback window (see PER_POSITION_LOOKUP_WINDOW_DAYS
-            # in mech_analytics_client): without a ``since`` bound each
-            # per-position call pages the Safe's full mech history.
-            since = until - timedelta(days=PER_POSITION_LOOKUP_WINDOW_DAYS)
+            since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
                 requester=sender_address,
@@ -699,6 +694,14 @@ class PolymarketPredictionsFetcher(
                 return None
             matched = find_latest_row_for_title(rows, question_title)
             if matched is None:
+                self.logger.info(
+                    "mech-analytics: no scored row matched %r for %s within "
+                    "the last %sd window; consider widening "
+                    "PER_POSITION_LOOKUP_WINDOW_DAYS if this recurs.",
+                    question_title,
+                    sender_address,
+                    PER_POSITION_LOOKUP_WINDOW_DAYS,
+                )
                 return None
             # Coalesce None → 0 per field. Downstream
             # ``_format_bet_for_position`` does ``.get(field, 0) * 100``

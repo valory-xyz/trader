@@ -41,7 +41,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     build_requester_url,
     build_scored_rows_url,
     chain_id_for_platform,
-    fetch_requester_usage,
     fetch_scored_rows,
     find_latest_row_for_title,
     is_flag_enabled,
@@ -79,101 +78,6 @@ class TestChainIdForPlatform:
     def test_polymarket_returns_polygon(self) -> None:
         """Polymarket returns polygon."""
         assert chain_id_for_platform(True) == POLYGON_CHAIN_ID == 137
-
-
-class TestFetchRequesterUsage:
-    """fetch_requester_usage hits /v1/metrics/requester/{chain}/{address}."""
-
-    def _sample_payload(self) -> dict:
-        return {
-            "chain_id": GNOSIS_CHAIN_ID,
-            "address": SAFE.lower(),
-            "windows": {
-                "7d": {"n_mech_requests": 12, "tool_accuracy": 0.75},
-                "30d": {"n_mech_requests": 42, "tool_accuracy": 0.7},
-                "90d": {"n_mech_requests": 100, "tool_accuracy": 0.68},
-                "all": {"n_mech_requests": 500, "tool_accuracy": 0.71},
-            },
-            "days": [],
-        }
-
-    def test_returns_none_when_base_url_empty(self) -> None:
-        """Returns none when base url empty."""
-        assert fetch_requester_usage("", GNOSIS_CHAIN_ID, SAFE) is None
-
-    def test_returns_full_payload_on_success(self) -> None:
-        """Returns full payload on success."""
-        expected = self._sample_payload()
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            return_value=_mock_response(json_body=expected),
-        ):
-            result = fetch_requester_usage(BASE_URL, GNOSIS_CHAIN_ID, SAFE)
-        assert result == expected
-
-    def test_sends_chain_and_address_in_url_path(self) -> None:
-        """Sends chain and address in url path."""
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            return_value=_mock_response(json_body=self._sample_payload()),
-        ) as mock_get:
-            fetch_requester_usage(BASE_URL, POLYGON_CHAIN_ID, SAFE)
-        called_url = mock_get.call_args.args[0]
-        assert (
-            called_url == f"{BASE_URL}/v1/metrics/requester/{POLYGON_CHAIN_ID}/{SAFE}"
-        )
-
-    def test_returns_zero_shaped_payload_for_unknown_safe(self) -> None:
-        """Returns zero shaped payload for unknown safe."""
-        # Endpoint returns zero-shaped body (not 404) for never-seen
-        # addresses. Caller distinguishes "no activity" (payload with
-        # n_mech_requests=0) from "fetch failure" (None), so a real
-        # zero still caches correctly.
-        zero_payload = {
-            "chain_id": GNOSIS_CHAIN_ID,
-            "address": SAFE.lower(),
-            "windows": {
-                "7d": {"n_mech_requests": 0, "tool_accuracy": None},
-                "30d": {"n_mech_requests": 0, "tool_accuracy": None},
-                "90d": {"n_mech_requests": 0, "tool_accuracy": None},
-                "all": {"n_mech_requests": 0, "tool_accuracy": None},
-            },
-            "days": [],
-        }
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            return_value=_mock_response(json_body=zero_payload),
-        ):
-            result = fetch_requester_usage(BASE_URL, GNOSIS_CHAIN_ID, SAFE)
-        assert result == zero_payload
-        assert result is not None  # not None: caller sees explicit zero
-
-    def test_returns_none_on_non_2xx(self) -> None:
-        """Returns none on non 2xx."""
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            return_value=_mock_response(status_code=503),
-        ):
-            assert fetch_requester_usage(BASE_URL, GNOSIS_CHAIN_ID, SAFE) is None
-
-    def test_returns_none_when_windows_field_missing(self) -> None:
-        """Returns none when windows field missing."""
-        # Proxy error / upstream shape drift MUST NOT be silently treated
-        # as "Safe has zero requests" — that would zero the mech-fee cost
-        # leg and inflate ROI.
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            return_value=_mock_response(json_body={"detail": "server error"}),
-        ):
-            assert fetch_requester_usage(BASE_URL, GNOSIS_CHAIN_ID, SAFE) is None
-
-    def test_returns_none_on_request_exception(self) -> None:
-        """Returns none on request exception."""
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
-            side_effect=requests.ConnectionError("network down"),
-        ):
-            assert fetch_requester_usage(BASE_URL, GNOSIS_CHAIN_ID, SAFE) is None
 
 
 class TestIsFlagEnabled:
@@ -265,30 +169,38 @@ class TestFetchScoredRows:
         assert mock_get.call_count == 1
 
     def test_passes_requester_chain_id_and_limit_on_first_page(self) -> None:
-        """Passes requester chain id and limit on first page."""
+        """Passes requester chain id and limit on first page.
+
+        Post-refactor to route through ``build_scored_rows_url``,
+        params are encoded onto the URL rather than passed as a
+        ``params=`` kwarg to ``requests.get`` — the assertions now
+        check the URL directly, mirroring what the endpoint sees.
+        """
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
             return_value=_mock_response(json_body={"rows": [], "next_cursor": None}),
         ) as mock_get:
             fetch_scored_rows(BASE_URL, SAFE, GNOSIS_CHAIN_ID)
-        _, kwargs = mock_get.call_args
-        assert kwargs["params"]["requester"] == SAFE
-        assert kwargs["params"]["chain_id"] == GNOSIS_CHAIN_ID
-        assert kwargs["params"]["limit"] == 5000
-        assert "cursor" not in kwargs["params"]
-        assert "since" not in kwargs["params"]
-        assert "until" not in kwargs["params"]
+        called_url = mock_get.call_args.args[0]
+        assert f"requester={SAFE}" in called_url
+        assert f"chain_id={GNOSIS_CHAIN_ID}" in called_url
+        assert "limit=5000" in called_url
+        assert "cursor=" not in called_url
+        assert "since=" not in called_url
+        assert "until=" not in called_url
 
     def test_passes_since_and_until_iso_when_provided(self) -> None:
-        """Passes since and until iso when provided."""
+        """Passes since and until iso when provided (URL-encoded)."""
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client.requests.get",
             return_value=_mock_response(json_body={"rows": [], "next_cursor": None}),
         ) as mock_get:
             fetch_scored_rows(BASE_URL, SAFE, GNOSIS_CHAIN_ID, since=SINCE, until=UNTIL)
-        _, kwargs = mock_get.call_args
-        assert kwargs["params"]["since"] == "2026-07-01T00:00:00+00:00"
-        assert kwargs["params"]["until"] == "2026-07-15T00:00:00+00:00"
+        called_url = mock_get.call_args.args[0]
+        # ISO strings are URL-encoded by ``urlencode`` — the ``:`` and
+        # ``+`` in ``2026-07-01T00:00:00+00:00`` become ``%3A`` / ``%2B``.
+        assert "since=2026-07-01T00%3A00%3A00%2B00%3A00" in called_url
+        assert "until=2026-07-15T00%3A00%3A00%2B00%3A00" in called_url
 
     def test_forwards_cursor_on_subsequent_pages(self) -> None:
         """Forwards cursor on subsequent pages."""
@@ -301,9 +213,9 @@ class TestFetchScoredRows:
             side_effect=pages,
         ) as mock_get:
             fetch_scored_rows(BASE_URL, SAFE, GNOSIS_CHAIN_ID)
-        # First call has no cursor, second call has cursor="abc"
-        assert "cursor" not in mock_get.call_args_list[0].kwargs["params"]
-        assert mock_get.call_args_list[1].kwargs["params"]["cursor"] == "abc"
+        # First call has no cursor, second has cursor=abc.
+        assert "cursor=" not in mock_get.call_args_list[0].args[0]
+        assert "cursor=abc" in mock_get.call_args_list[1].args[0]
 
     def test_trailing_slash_on_base_url_produces_single_slash_path(self) -> None:
         """Trailing slash on base url produces single slash path."""
@@ -313,7 +225,8 @@ class TestFetchScoredRows:
         ) as mock_get:
             fetch_scored_rows(BASE_URL + "//", SAFE, GNOSIS_CHAIN_ID)
         called_url = mock_get.call_args.args[0]
-        assert called_url == f"{BASE_URL}/v1/data/scored-rows"
+        # Path portion (before ``?``) has no double slash.
+        assert called_url.split("?")[0] == f"{BASE_URL}/v1/data/scored-rows"
 
     def test_returns_none_on_non_2xx(self) -> None:
         """Returns none on non 2xx."""
@@ -513,8 +426,7 @@ class TestFindLatestRowForTitle:
         assert find_latest_row_for_title([], "Q") is None
 
     def test_picks_latest_matching_row_by_requested_at(self) -> None:
-        """Picks lamatching row by requested at."""
-        """Picks la."""
+        """Picks latest matching row by requested_at."""
         rows = [
             {
                 "question_title": "Q",

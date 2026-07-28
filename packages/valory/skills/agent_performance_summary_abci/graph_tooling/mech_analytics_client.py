@@ -34,7 +34,7 @@ Pagination is keyset via the opaque ``cursor`` the endpoint returns.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
@@ -65,6 +65,36 @@ REQUEST_TIMEOUT_SECONDS = 30
 # over the typical trader prediction-to-bet lag (seconds to minutes)
 # while trimming the fetch to a small window for most positions.
 PER_POSITION_LOOKUP_WINDOW_DAYS = 30
+
+
+def per_position_lookup_window(bet_timestamp: int) -> "tuple[datetime, datetime]":
+    """Return the ``(since, until)`` bounds for a per-position mech lookup.
+
+    Centralises the two boundary decisions the per-position helpers
+    both need to get right and were previously duplicating verbatim at
+    four call sites:
+
+    - ``+1s`` on ``until`` maps the subgraph's ``blockTimestamp_lte``
+      (inclusive) onto mech-analytics' ``until`` (exclusive), so a mech
+      request timestamped exactly at ``bet_timestamp`` is still
+      included instead of being dropped by strict-less-than.
+    - ``since = until - PER_POSITION_LOOKUP_WINDOW_DAYS`` caps the
+      fetch so each per-position call pages a bounded window rather
+      than the Safe's full mech history.
+
+    Keeping the two boundaries in one place means a future tweak (e.g.
+    widening the window on operator feedback) lands in every call site
+    at once.
+
+    :param bet_timestamp: Unix seconds; the ``blockTimestamp_lte``-style
+        upper bound before the ``+1s`` inclusive adjustment.
+    :return: ``(since, until)`` as timezone-aware UTC datetimes ready
+        to hand to ``fetch_scored_rows`` /
+        ``_page_mech_analytics_scored_rows``.
+    """
+    until = datetime.fromtimestamp(bet_timestamp + 1, tz=timezone.utc)
+    since = until - timedelta(days=PER_POSITION_LOOKUP_WINDOW_DAYS)
+    return since, until
 
 
 def is_flag_enabled(params: Any) -> bool:
@@ -293,25 +323,27 @@ def fetch_scored_rows(
             logger.warning("fetch_scored_rows called with empty base_url")
         return None
 
+    # Route through the shared ``build_scored_rows_url`` +
+    # ``parse_scored_rows_page`` helpers rather than hand-rolling URL /
+    # payload extraction: the async ``_page_mech_analytics_scored_rows``
+    # already uses them, and keeping the two paths on the same helpers
+    # means a future rename of a query param or a cursor-normalisation
+    # tweak lands in both places at once.
     all_rows: List[Dict[str, Any]] = []
     cursor: Optional[str] = None
-    url = f"{base_url.rstrip('/')}/v1/data/scored-rows"
 
     for page_index in range(MAX_PAGES):
-        params: Dict[str, Any] = {
-            "requester": requester,
-            "chain_id": chain_id,
-            "limit": SCORED_ROWS_PAGE_LIMIT,
-        }
-        if since is not None:
-            params["since"] = since.isoformat()
-        if until is not None:
-            params["until"] = until.isoformat()
-        if cursor is not None:
-            params["cursor"] = cursor
+        url = build_scored_rows_url(
+            base_url=base_url,
+            requester=requester,
+            chain_id=chain_id,
+            since=since,
+            until=until,
+            cursor=cursor,
+        )
 
         try:
-            response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
+            response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
         except requests.RequestException as exc:
             if logger is not None:
                 logger.error(f"mech-analytics fetch_scored_rows request failed: {exc}")
@@ -334,24 +366,11 @@ def fetch_scored_rows(
                 )
             return None
 
-        rows = payload.get("rows")
-        if not isinstance(rows, list):
-            if logger is not None:
-                logger.error(
-                    "mech-analytics fetch_scored_rows: unexpected response shape "
-                    "(rows is not a list)"
-                )
+        page = parse_scored_rows_page(payload, logger)
+        if page is None:
             return None
-
-        all_rows.extend(rows)
-
-        # Endpoint returns ``next_cursor: null`` (JSON null → Python
-        # None) when the page is the last one. ``.get("next_cursor")``
-        # already returns None for an absent key; the ``or None`` here
-        # additionally coerces a present-but-falsy value (empty string,
-        # 0) so a schema-drift edge case can't leak a non-None-but-
-        # empty cursor into the next request's params.
-        cursor = payload.get("next_cursor") or None
+        all_rows.extend(page["rows"])
+        cursor = page["next_cursor"]
         if cursor is None:
             return all_rows
 
@@ -406,91 +425,6 @@ def rows_as_subgraph_mech_requests(
             }
         )
     return adapted
-
-
-def fetch_requester_usage(
-    base_url: str,
-    chain_id: int,
-    address: str,
-    logger: Optional[logging.Logger] = None,
-) -> Optional[Dict[str, Any]]:
-    """Fetch the per-address mech-usage summary for one Safe on one chain.
-
-    Hits ``/v1/metrics/requester/{chain_id}/{address}`` (mech-analytics
-    PR #14). The endpoint works for any address on the given chain
-    (Safe or EOA, registered under a blueprint or not), so the trader
-    passes only its own chain and Safe address — no blueprint name,
-    no on-chain agent_id lookup.
-
-    Response shape:
-
-    .. code-block:: json
-
-        {
-          "chain_id": 100,
-          "address": "0x...",
-          "windows": {
-            "7d":  {"n_mech_requests": <int>, "tool_accuracy": <float|null>},
-            "30d": {...},
-            "90d": {...},
-            "all": {...}
-          },
-          "days": [{"date": "YYYY-MM-DD", ...}, ...]
-        }
-
-    An address with no activity returns a zero-shaped body rather than
-    a 404, so ``None`` from this helper means transport / schema failure
-    only. A real zero-count Safe still returns the payload with
-    ``windows.all.n_mech_requests == 0``.
-
-    :param base_url: mech-analytics base URL. Trailing slash tolerated.
-    :param chain_id: chain id the Safe belongs to. Passed in the URL
-        path; the endpoint scopes the aggregate to this chain only.
-    :param address: the Safe address (or any EOA). Endpoint lowercases
-        before matching, so mixed-case checksummed addresses work.
-    :param logger: optional logger for non-2xx / shape errors.
-    :return: the endpoint payload dict (``{chain_id, address, windows,
-        days}``) on success, or ``None`` on transport / schema failure.
-    """
-    if not base_url:
-        if logger is not None:
-            logger.warning("fetch_requester_usage called with empty base_url")
-        return None
-
-    url = f"{base_url.rstrip('/')}/v1/metrics/requester/{chain_id}/{address}"
-
-    try:
-        response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-    except requests.RequestException as exc:
-        if logger is not None:
-            logger.error(f"mech-analytics fetch_requester_usage request failed: {exc}")
-        return None
-
-    if response.status_code != 200:
-        if logger is not None:
-            logger.error(
-                f"mech-analytics fetch_requester_usage responded {response.status_code}"
-            )
-        return None
-
-    try:
-        payload = response.json()
-    except ValueError as exc:
-        if logger is not None:
-            logger.error(
-                f"mech-analytics fetch_requester_usage JSON parse failed: {exc}"
-            )
-        return None
-
-    windows = payload.get("windows")
-    if not isinstance(windows, dict):
-        if logger is not None:
-            logger.error(
-                "mech-analytics fetch_requester_usage: unexpected response shape "
-                "(windows is not a dict)"
-            )
-        return None
-    return payload
 
 
 def find_latest_row_for_title(
