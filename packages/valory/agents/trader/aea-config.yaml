@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihqcyixppaivt2eic5dkck3tldg5ec5rgx4hm4fl3cntz7mz2tmni
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih4yuwo3y7qxtdd56n3gtqs4ajuudsme5clbvkjlncc4revdb3cx4
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeiampbrkorwtr3tnn62neu2nyiheuanht4zhmhcbswbk72gulnv5w4
-- valory/trader_abci:0.1.0:bafybeig5brlh5yurvoyhbi3gfam2ihzntg2xkzdpcwszqrpvwxnxg2xn7e
+- valory/decision_maker_abci:0.1.0:bafybeia7kthilv43ryg4hvg6v5ytexn4z6cucnuenqz7fiiviggaeup27m
+- valory/trader_abci:0.1.0:bafybeifu2bjzp5kf4op74wc6ymr34yennkolgffvomogvx56b72sj5arkq
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeihr3gg5wm6de6yh7ujsfulahgvrmf5lxwzxqxbggm7g62s2qtjphe
+- valory/check_stop_trading_abci:0.1.0:bafybeieceomplkpt7ltjwm4piu7alm7ngx3pvqzpbuokm4smewz4373eua
 - valory/mech_interact_abci:0.1.0:bafybeifbkpgivxjexlhrptn2iaju7vyzeusevvucsin6tbjwveniykad2q
-- valory/chatui_abci:0.1.0:bafybeig4qckyl7exilbd4egapsttvfrecfu4buywx632gixuvkwcjqqssu
-- valory/agent_performance_summary_abci:0.1.0:bafybeiagxj4awrr7shhawqfblyhdrcpbb7rvsexxm7k2l3wp3odsmvfa7u
+- valory/chatui_abci:0.1.0:bafybeiazlrn2su5p5sql4u65vkuawqg54kzqpgtvmg2wc3tjalnxmdcqua
+- valory/agent_performance_summary_abci:0.1.0:bafybeidi2b6srtakjylczapjnqzmgh6o5l7jrveamktlndf2xuerz5gppm
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -280,6 +280,8 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
+      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
+      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       polymarket_collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}

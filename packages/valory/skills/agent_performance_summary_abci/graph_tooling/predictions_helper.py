@@ -32,6 +32,14 @@ import requests
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher as BasePredictionsFetcher,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    PER_POSITION_LOOKUP_WINDOW_DAYS,
+    chain_id_for_platform,
+    fetch_scored_rows,
+    find_latest_row_for_title,
+    is_flag_enabled,
+    per_position_lookup_window,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
@@ -667,6 +675,45 @@ class PredictionsFetcher(BasePredictionsFetcher):
         :return: The tool name or None if not found
         """
         ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
+
+        # Flag-on path: post-switch, ``parsedRequest.tool`` is empty for
+        # off-chain requests on the marketplace subgraph. Read the tool
+        # field from mech-analytics' scored rows so per-position tool
+        # attribution keeps working.
+        params = getattr(self.context, "params", None)
+        if is_flag_enabled(params):
+            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+            since, until = per_position_lookup_window(ts)
+            rows = fetch_scored_rows(
+                base_url=params.mech_analytics_url,
+                requester=sender_address,
+                chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                since=since,
+                until=until,
+                logger=self.logger,
+            )
+            if rows is None:
+                return None
+            matched = find_latest_row_for_title(rows, question_title)
+            if matched is None:
+                # Fetch succeeded but no title match inside the window.
+                # Emit at INFO so a fleet-wide "window too narrow"
+                # pattern (e.g. a mech request older than
+                # PER_POSITION_LOOKUP_WINDOW_DAYS after extended trader
+                # downtime) is diagnosable in ops output — otherwise
+                # this looks indistinguishable from "the mech request
+                # never existed".
+                self.logger.info(
+                    "mech-analytics: no scored row matched %r for %s within "
+                    "the last %sd window; consider widening "
+                    "PER_POSITION_LOOKUP_WINDOW_DAYS if this recurs.",
+                    question_title,
+                    sender_address,
+                    PER_POSITION_LOOKUP_WINDOW_DAYS,
+                )
+                return None
+            return matched.get("tool")
+
         query_payload = {
             "query": GET_MECH_TOOL_FOR_QUESTION_QUERY,
             "variables": {
@@ -720,6 +767,54 @@ class PredictionsFetcher(BasePredictionsFetcher):
             return None
 
         ts = bet_timestamp or int(datetime.now(timezone.utc).timestamp())
+
+        # Flag-on path: read prediction fields directly off the scored row.
+        # ``p_yes``/``p_no``/``confidence``/``info_utility`` are all columns
+        # on ``per_request_scores`` (info_utility added in mech-analytics
+        # PR #14). Downstream consumers (e.g. position-details display) use
+        # ``.get(field, 0)`` so a NULL column lands as a graceful 0 rather
+        # than a KeyError, matching the old JSON-parse-tolerant behaviour.
+        params = getattr(self.context, "params", None)
+        if is_flag_enabled(params):
+            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+            since, until = per_position_lookup_window(ts)
+            rows = fetch_scored_rows(
+                base_url=params.mech_analytics_url,
+                requester=sender_address,
+                chain_id=chain_id_for_platform(params.is_running_on_polymarket),
+                since=since,
+                until=until,
+                logger=self.logger,
+            )
+            if rows is None:
+                return None
+            matched = find_latest_row_for_title(rows, question_title)
+            if matched is None:
+                self.logger.info(
+                    "mech-analytics: no scored row matched %r for %s within "
+                    "the last %sd window; consider widening "
+                    "PER_POSITION_LOOKUP_WINDOW_DAYS if this recurs.",
+                    question_title,
+                    sender_address,
+                    PER_POSITION_LOOKUP_WINDOW_DAYS,
+                )
+                return None
+            # Coalesce None → 0 per field. ``per_request_scores`` allows
+            # NULL for each of these columns (info_utility is added in
+            # PR#14 with backfill; p_yes/p_no/confidence can be NULL when
+            # the tool response failed to parse). Downstream consumers
+            # do ``prediction_response.get(field, 0) * 100`` which only
+            # substitutes when the KEY is absent — a present-but-None
+            # value slips through and raises TypeError, which
+            # ``fetch_position_details``'s broad except swallows,
+            # silently dropping the position from the report.
+            return {
+                "p_yes": matched.get("p_yes") or 0,
+                "p_no": matched.get("p_no") or 0,
+                "confidence": matched.get("confidence") or 0,
+                "info_utility": matched.get("info_utility") or 0,
+            }
+
         query_payload = {
             "query": GET_MECH_RESPONSE_QUERY,
             "variables": {

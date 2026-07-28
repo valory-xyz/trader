@@ -467,6 +467,8 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "is_achievement_checker_enabled": True,
     "is_running_on_polymarket": False,
     "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
+    "mech_analytics_url": "",
+    "use_mech_analytics": False,
 }
 
 
@@ -490,6 +492,8 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_agent_performance_summary_enabled is True
         assert params.is_achievement_checker_enabled is True
         assert params.is_running_on_polymarket is False
+        assert params.mech_analytics_url == ""
+        assert params.use_mech_analytics is False
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -521,9 +525,83 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
+
+    def test_flag_on_with_empty_url_raises_at_init(self, tmp_path: Path) -> None:
+        """Flag on + empty URL fails loudly at ``__init__``, not at first fetch.
+
+        Guards the fail-loud pairing: an operator that flips
+        ``USE_MECH_ANALYTICS=true`` but forgets ``MECH_ANALYTICS_URL``
+        would otherwise silently no-op back onto the subgraph path, or
+        (if the sync client is later reintroduced) issue a GET to the
+        empty base URL. Coverage on this line was previously missing.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": True,
+            "mech_analytics_url": "",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            with pytest.raises(
+                ValueError,
+                match="use_mech_analytics is true but mech_analytics_url is empty",
+            ):
+                AgentPerformanceSummaryParams(
+                    skill_context=mock_skill_context,
+                    store_path=str(tmp_path),
+                    **kwargs,
+                )
+
+    def test_flag_off_with_empty_url_does_not_raise(self, tmp_path: Path) -> None:
+        """Flag off + empty URL is the pre-migration default and MUST NOT raise.
+
+        Sanity partner: proves the guard only trips on the specific
+        misconfiguration (flag on without URL), not on any Safe
+        deployment that hasn't opted in to the migration yet.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": False,
+            "mech_analytics_url": "",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=mock_skill_context,
+                store_path=str(tmp_path),
+                **kwargs,
+            )
+        assert params.use_mech_analytics is False
+        assert params.mech_analytics_url == ""
+
+    def test_flag_on_with_populated_url_does_not_raise(self, tmp_path: Path) -> None:
+        """Flag on + valid URL is the intended production configuration.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": True,
+            "mech_analytics_url": "https://mech-analytics.autonolas.tech",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=mock_skill_context,
+                store_path=str(tmp_path),
+                **kwargs,
+            )
+        assert params.use_mech_analytics is True
+        assert params.mech_analytics_url == "https://mech-analytics.autonolas.tech"
 
     def test_is_running_on_polymarket_not_set(self, tmp_path: Path) -> None:
         """When is_running_on_polymarket is not set, set it from kwargs."""
@@ -538,6 +616,8 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         assert params.is_running_on_polymarket is True
 

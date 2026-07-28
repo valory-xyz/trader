@@ -42,6 +42,13 @@ from packages.valory.skills.agent_performance_summary_abci.achievements_checker.
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher as BasePredictionsFetcher,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    build_requester_url,
+    chain_id_for_platform,
+    is_flag_enabled,
+    parse_requester_payload,
+    rows_as_subgraph_mech_requests,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
 )
@@ -152,7 +159,16 @@ class FetchPerformanceSummaryBehaviour(
         self._mech_request_lookup: Optional[dict] = None
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
-        self._settled_mech_requests_count: int = 0
+        # ``None`` = "unknown this round" (fetch failure); ``0`` = "genuinely no
+        # requests". The distinction is load-bearing: ``FetchPerformanceSummaryBehaviour``
+        # is re-instantiated on every entry into its round, so there is no prior-round
+        # ``self.`` state to fall back on. If this defaulted to ``0`` a fetch failure
+        # would silently pass through ``calculate_roi`` as ``settled_mech_costs = 0``,
+        # producing a real (undercounted) ROI float that would then overwrite the
+        # previously-persisted Total ROI (the ``is_primary=True`` metric users see).
+        # Keeping it ``None`` funnels the failure through ``calculate_roi`` →
+        # ``final_roi=None`` → metric value = ``NA`` → NA-preservation triggers.
+        self._settled_mech_requests_count: Optional[int] = None
         self._placed_mech_requests_count: int = 0
         self._unplaced_mech_requests_count: int = 0
         # Cache for POL to USDC conversion rate
@@ -268,14 +284,73 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_total_mech_requests(
         self, agent_safe_address: str
-    ) -> Generator[None, None, int]:
+    ) -> Generator[None, None, Optional[int]]:
         """Get total number of mech requests (cached).
 
         :param agent_safe_address: The agent's safe address
-        :return: Total number of mech requests
+        :return: Total number of mech requests, or ``None`` when the
+            fetch failed and no cached value is available. Callers MUST
+            distinguish ``None`` (unknown, cannot compute) from ``0``
+            (genuinely no requests) — multiplying ``None`` into
+            ``all_mech_costs`` inflates ROI silently.
         :yield: None
         """
         if self._total_mech_requests is not None:
+            return self._total_mech_requests
+
+        # Flag-on path: read the cumulative count from mech-analytics'
+        # per-address usage endpoint. The subgraph counter this used to
+        # read (``sender.totalMarketplaceRequests``) is only incremented
+        # on the on-chain MarketplaceRequest event and freezes for
+        # off-chain volume post-switch, so the pre-migration read
+        # undercounts ``all_mech_costs`` as off-chain adoption grows.
+        # ``/v1/metrics/requester/{chain_id}/{address}`` returns the
+        # per-window rollups for this exact Safe on this exact chain
+        # (Gnosis Safe proxies CREATE2 to the same address on every
+        # chain, so ``chain_id`` scoping is required).
+        if is_flag_enabled(self.params):
+            # Async GET via the framework's ``get_http_response`` — the
+            # sync ``requests.get`` path would block the FSM round
+            # (Tendermint heartbeats + ABCI message pumps stall while
+            # the socket is waiting). ``mech_analytics_client`` still
+            # exposes the URL builder and payload parser so the sync
+            # (helper-side) and async (behaviour-side) call sites share
+            # the same URL and validation rules.
+            url = build_requester_url(
+                base_url=self.params.mech_analytics_url,
+                chain_id=chain_id_for_platform(self.params.is_running_on_polymarket),
+                address=agent_safe_address,
+            )
+            response = yield from self.get_http_response(method="GET", url=url)
+            usage = None
+            if response.status_code == 200:
+                try:
+                    usage = parse_requester_payload(
+                        json.loads(response.body.decode()), self.context.logger
+                    )
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                    self.context.logger.error(
+                        f"mech-analytics /requester JSON parse failed: {exc}"
+                    )
+            else:
+                self.context.logger.error(
+                    f"mech-analytics /requester responded {response.status_code}"
+                )
+            # ``None`` = transport / schema failure. An unknown Safe
+            # returns a zero-shaped body (not None), so a real 0 count
+            # still caches correctly. Return ``None`` (not 0) so callers
+            # short-circuit cost math this round instead of computing
+            # ``all_mech_costs = 0 * DEFAULT_MECH_FEE`` and reporting
+            # inflated ROI.
+            if usage is None:
+                self.context.logger.warning(
+                    "mech-analytics /requester fetch failed; skipping "
+                    "total_mech_requests for this round"
+                )
+                return None
+            all_window = (usage.get("windows") or {}).get("all") or {}
+            self._total_mech_requests = int(all_window.get("n_mech_requests") or 0)
+            self.context.logger.info(f"{self._total_mech_requests=}")
             return self._total_mech_requests
 
         mech_sender = yield from self._fetch_mech_sender(
@@ -293,27 +368,64 @@ class FetchPerformanceSummaryBehaviour(
 
     def _get_open_market_requests(
         self, agent_safe_address: str
-    ) -> Generator[None, None, int]:
+    ) -> Generator[None, None, Optional[int]]:
         """Get number of mech requests for open markets (cached).
 
         :param agent_safe_address: The agent's safe address
-        :return: Number of open market requests
+        :return: Number of open market requests, or ``None`` when the
+            flag-on scored-rows fetch failed and no cached value is
+            available. Callers MUST distinguish ``None`` (unknown) from
+            ``0`` (no open-market requests) — treating unknown as 0 in
+            ``_calculate_settled_mech_requests`` would compute
+            ``settled = total - 0 = total``, counting every open request
+            as settled and over-inflating ``settled_mech_costs`` (the
+            mirror silent-zero of the total-fetch failure that
+            ``_get_total_mech_requests`` already handles).
         :yield: None
         """
         if self._open_market_requests is not None:
             return self._open_market_requests
 
-        # Fetch mech sender to get recent requests
-        mech_sender = yield from self._fetch_mech_sender(
-            agent_safe_address=agent_safe_address,
-            timestamp_gt=self.market_open_timestamp,
-        )
+        # Flag-on path: pull the per-Safe request list from
+        # mech-analytics scored rows instead of the marketplace
+        # subgraph's ``sender.requests`` (which stops seeing the
+        # content of off-chain requests post-switch). Without this
+        # branch, an on-chain ``total`` from mech-analytics minus an
+        # ``open`` from the frozen subgraph over-states ``settled``.
+        if is_flag_enabled(self.params):
+            since = datetime.fromtimestamp(self.market_open_timestamp, tz=timezone.utc)
+            # Async paginate via the framework HTTP protocol (defined
+            # on the parent ``APTQueryingBehaviour``) so the FSM round
+            # doesn't block on synchronous ``requests.get``.
+            rows = yield from self._page_mech_analytics_scored_rows(
+                requester=agent_safe_address,
+                since=since,
+            )
+            if rows is None:
+                self.context.logger.warning(
+                    "mech-analytics scored-rows fetch failed; skipping "
+                    "open_market_requests for this round"
+                )
+                # ``None`` propagates through
+                # ``_calculate_settled_mech_requests`` →
+                # ``self._settled_mech_requests_count = None`` →
+                # ``calculate_roi`` / ``_calculate_performance_metrics``
+                # short-circuit → Total ROI metric = ``NA`` →
+                # NA-preservation keeps the last persisted good value.
+                return None
+            last_four_days_requests = rows_as_subgraph_mech_requests(rows)
+        else:
+            # Fetch mech sender to get recent requests
+            mech_sender = yield from self._fetch_mech_sender(
+                agent_safe_address=agent_safe_address,
+                timestamp_gt=self.market_open_timestamp,
+            )
 
-        if not mech_sender:
-            self._open_market_requests = 0
-            return 0
+            if not mech_sender:
+                self._open_market_requests = 0
+                return 0
 
-        last_four_days_requests = mech_sender.get("requests", [])
+            last_four_days_requests = mech_sender.get("requests", [])
 
         # Platform-specific: get open markets
         if self.params.is_running_on_polymarket:
@@ -351,11 +463,13 @@ class FetchPerformanceSummaryBehaviour(
 
     def _calculate_settled_mech_requests(
         self, agent_safe_address: str
-    ) -> Generator[None, None, int]:
+    ) -> Generator[None, None, Optional[int]]:
         """Calculate the number of settled mech requests (excludes open markets).
 
         :param agent_safe_address: The agent's safe address
-        :return: Number of settled mech requests
+        :return: Number of settled mech requests, or ``None`` when
+            ``total_mech_requests`` could not be fetched. Callers MUST
+            treat ``None`` as "unknown, skip cost math" rather than 0.
         :yield: None
         """
         # Get total mech requests (uses cache if available)
@@ -363,13 +477,24 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address
         )
 
-        if not total_mech_requests:
+        # ``None`` = fetch failure, propagate so callers short-circuit
+        # cost math. ``0`` = genuinely no requests, return 0.
+        if total_mech_requests is None:
+            return None
+        if total_mech_requests == 0:
             return 0
 
         # Get open market requests (uses cache if available)
         open_market_requests = yield from self._get_open_market_requests(
             agent_safe_address
         )
+        # ``None`` = fetch failure for the open-request side. Propagate
+        # so ``self._settled_mech_requests_count`` stays ``None`` and
+        # the ROI guards funnel the failure into ``NA`` (rather than
+        # ``settled = total - 0 = total``, which would silently
+        # over-inflate ``settled_mech_costs``).
+        if open_market_requests is None:
+            return None
 
         # where settled = Total - Open
         return total_mech_requests - open_market_requests
@@ -644,6 +769,19 @@ class FetchPerformanceSummaryBehaviour(
             return None, None
 
         settled_mech_requests = self._settled_mech_requests_count
+        if settled_mech_requests is None:
+            # ``None`` means ``_calculate_settled_mech_requests`` failed
+            # this round; propagate as ``(None, None)`` so the caller
+            # sets the Total ROI metric to ``NA``, which lets
+            # ``_save_agent_performance_summary``'s NA-preservation
+            # fallback keep the previously-persisted good value instead
+            # of overwriting with a cost-undercounted number.
+            self.context.logger.warning(
+                "Settled mech-request count unknown this round; "
+                "skipping ROI computation to preserve the previously-"
+                "persisted Total ROI."
+            )
+            return None, None
 
         # Use appropriate divisor based on platform
         # For Polymarket: USDC has 6 decimals; For Gnosis: xDAI has 18 decimals
@@ -987,8 +1125,16 @@ class FetchPerformanceSummaryBehaviour(
                 stats=PerformanceStatsData(),
             )
 
-        # Calculate metrics
+        # Calculate metrics — returns None when mech-analytics fetch
+        # fails and no cached total is available. In that case we render
+        # an empty structure (same as trader_agent-fetch failure above)
+        # rather than a partially-computed one that would misreport ROI.
         metrics = yield from self._calculate_performance_metrics(trader_agent)
+        if metrics is None:
+            return AgentPerformanceData(
+                metrics=PerformanceMetricsData(),
+                stats=PerformanceStatsData(),
+            )
         stats = yield from self._calculate_performance_stats(trader_agent)
 
         return AgentPerformanceData(
@@ -1000,8 +1146,21 @@ class FetchPerformanceSummaryBehaviour(
 
     def _calculate_performance_metrics(
         self, trader_agent: dict
-    ) -> Generator[None, None, PerformanceMetricsData]:
-        """Calculate performance metrics from trader agent data."""
+    ) -> Generator[None, None, Optional[PerformanceMetricsData]]:
+        """Calculate performance metrics from trader agent data.
+
+        Returns ``None`` when ``total_mech_requests`` could not be
+        fetched (mech-analytics transport / schema failure). The caller
+        renders an empty structure in that case rather than a
+        partially-computed one that would misreport ROI.
+
+        :param trader_agent: the raw trader-agent dict as returned by
+            ``_fetch_trader_agent_performance``.
+        :return: a populated ``PerformanceMetricsData`` on success, or
+            ``None`` when the cost-affecting total-count fetch failed.
+        :yield: framework yields for the mech-request-count fetches
+            and (Omen only) the CT-balance lookup.
+        """
         safe_address = self.synchronized_data.safe_contract_address.lower()
 
         total_traded = int(trader_agent.get("totalTraded", 0))
@@ -1011,13 +1170,22 @@ class FetchPerformanceSummaryBehaviour(
         total_payout = int(trader_agent.get("totalExpectedPayout", 0))
 
         settled_mech_requests = self._settled_mech_requests_count
+        # ``None`` = ``_calculate_settled_mech_requests`` fetch failed
+        # this round; short-circuit rather than treat as 0 (which would
+        # zero ``settled_mech_costs`` and inflate ``all_time_profit``).
+        if settled_mech_requests is None:
+            return None
 
         # Get mech request counts (uses caches populated earlier)
         total_mech_requests = yield from self._get_total_mech_requests(safe_address)
+        # ``None`` = fetch failure — short-circuit ROI computation for
+        # this round rather than treating it as 0 and inflating ROI.
+        if total_mech_requests is None:
+            return None
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = self._placed_mech_requests_count
         unplaced_mech_requests = max(
-            (total_mech_requests or 0) - open_mech_requests - placed_mech_requests,
+            total_mech_requests - open_mech_requests - placed_mech_requests,
             0,
         )
 
@@ -1086,7 +1254,9 @@ class FetchPerformanceSummaryBehaviour(
             ),
             roi=roi_decimal,
             # Settled mech requests cover placed + unplaced, excluding open markets.
-            settled_mech_request_count=self._settled_mech_requests_count,
+            # Reads the narrowed local (int) rather than the instance
+            # attribute (Optional[int]) so mypy sees the None-guard above.
+            settled_mech_request_count=settled_mech_requests,
             total_mech_request_count=total_mech_requests,
             open_mech_request_count=open_mech_requests,
             placed_mech_request_count=placed_mech_requests,
@@ -1476,8 +1646,17 @@ class FetchPerformanceSummaryBehaviour(
 
         all_mech_requests = yield from self._fetch_all_mech_requests(agent_safe_address)
 
+        # Distinguish fetch failure (``None``) from genuinely empty
+        # (``[]``): the caller currently would treat both as an empty
+        # lookup and blame the missing fee attribution on "no requests"
+        # rather than surfacing that the request-list fetch dropped.
+        if all_mech_requests is None:
+            self.context.logger.warning(
+                "mech request fetch failed; skipping lookup this round"
+            )
+            return {}
         if not all_mech_requests:
-            self.context.logger.warning("No mech requests found for agent")
+            self.context.logger.info("No mech requests found for agent")
             return {}
 
         # Build lookup map: question_title -> sorted timestamps
@@ -1966,9 +2145,15 @@ class FetchPerformanceSummaryBehaviour(
             if self._total_mech_requests is not None
             else (yield from self._get_total_mech_requests(agent_safe_address))
         )
+        # ``max_settled = None`` if EITHER count is unknown — the
+        # incremental scan then skips the monotonic ceiling for this
+        # tick rather than treating an unknown open count as ``0``,
+        # which would loosen the ceiling to ``total`` and let a stale
+        # sum leak through.
         max_settled = (
-            max((total_mech_requests or 0) - (self._open_market_requests or 0), 0)
+            max(total_mech_requests - self._open_market_requests, 0)
             if total_mech_requests is not None
+            and self._open_market_requests is not None
             else None
         )
         pre_bounds = settled_mech_requests_count
@@ -2066,9 +2251,18 @@ class FetchPerformanceSummaryBehaviour(
         """Fetch the agent performance summary"""
 
         agent_safe_address = self.synchronized_data.safe_contract_address
-        self._settled_mech_requests_count = (
-            yield from self._calculate_settled_mech_requests(agent_safe_address)
-        )
+        # ``None`` from ``_calculate_settled_mech_requests`` means the
+        # total-count fetch failed this round. Leave ``self.``'s init-time
+        # ``None`` in place so downstream (``calculate_roi`` /
+        # ``_build_performance_metrics``) can short-circuit to ``(None,
+        # None)`` / ``None``. This behaviour is re-instantiated per round,
+        # so there is no prior-round ``self._settled_mech_requests_count``
+        # to fall back on — the propagation-to-NA route is the only one
+        # that keeps the previously-persisted Total ROI intact via
+        # ``_save_agent_performance_summary``'s NA-preservation fallback.
+        settled = yield from self._calculate_settled_mech_requests(agent_safe_address)
+        if settled is not None:
+            self._settled_mech_requests_count = settled
 
         current_timestamp = self.shared_state.synced_timestamp
         profit_over_time = yield from self._build_profit_over_time_data()

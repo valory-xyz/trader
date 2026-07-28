@@ -315,7 +315,9 @@ class TestFetchPerformanceSummaryBehaviourInit:
         assert b._mech_request_lookup is None
         assert b._update_interval == UPDATE_INTERVAL
         assert b._last_update_timestamp == 0
-        assert b._settled_mech_requests_count == 0
+        # ``None`` = "unknown this round"; distinguishes fetch failure
+        # from a genuine zero. See init comment on the attribute.
+        assert b._settled_mech_requests_count is None
         assert b._placed_mech_requests_count == 0
         assert b._unplaced_mech_requests_count == 0
         assert b._pol_usdc_rate is None
@@ -1995,6 +1997,34 @@ class TestGetOpenMarketRequests:
                 # Only Q1 matches; null/missing entries are skipped
                 assert e.value == 1
 
+    def test_flag_on_scored_rows_fetch_failure_returns_none(self) -> None:
+        """Flag-on scored-rows fetch failure returns ``None``, not ``0``.
+
+        Guards against the silent-zero cost bug: returning ``0`` would
+        make ``_calculate_settled_mech_requests`` compute
+        ``settled = total - 0 = total`` and over-inflate
+        ``settled_mech_costs``. ``None`` propagates through to a
+        Total ROI = ``NA``, which the NA-preservation fallback
+        substitutes with the last persisted good value.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.use_mech_analytics = True
+        params.mech_analytics_url = "https://mech-analytics.test"
+        params.is_running_on_polymarket = False
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_page_mech_analytics_scored_rows", side_effect=_return_gen(None)
+            ),
+        ):
+            gen = b._get_open_market_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                assert e.value is None
+
 
 # ---------------------------------------------------------------------------
 # Tests for _calculate_settled_mech_requests - generator method
@@ -2025,6 +2055,25 @@ class TestCalculateSettledMechRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 7
+
+    def test_settled_is_none_when_open_fetch_fails(self) -> None:
+        """Open-request fetch failure (``None``) propagates as settled ``None``.
+
+        Without this propagation, ``settled = total - 0 = total`` would
+        count every open request as settled and over-inflate
+        ``settled_mech_costs``. Mirrors the total-fetch-failure guard
+        one branch up.
+        """
+        b = _make_fetch_behaviour()
+        with (
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(500)),
+            patch.object(b, "_get_open_market_requests", side_effect=_return_gen(None)),
+        ):
+            gen = b._calculate_settled_mech_requests("0xaddr")
+            try:
+                next(gen)
+            except StopIteration as e:
+                assert e.value is None
 
 
 # ---------------------------------------------------------------------------
@@ -2254,6 +2303,121 @@ class TestCalculateRoi:
         # Higher pre-deposit → higher total_costs → lower payout/costs ratio
         assert final_high < final_low
         assert partial_high < partial_low
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for the ``_settled_mech_requests_count is None`` path
+#
+# Behaviours are re-instantiated per round, so ``self._settled_mech_requests_count``
+# always starts at its ``__init__`` default. Before the fix the default was
+# ``0``, which passed straight through ``calculate_roi`` on a settled-count
+# fetch failure and yielded a real (undercounted) ROI float — silently
+# overwriting the previously-persisted good ``Total ROI``. These tests pin
+# the ``None``-propagation route so the failure surfaces as ``NA`` and the
+# NA-preservation fallback in ``_save_agent_performance_summary`` keeps
+# the last known-good value.
+# ---------------------------------------------------------------------------
+
+
+class TestSettledCountUnknownPropagation:
+    """``_settled_mech_requests_count is None`` short-circuits ROI to (None, None)."""
+
+    def _run_gen(self, gen: Generator) -> Any:
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def test_calculate_roi_returns_none_none_on_unknown_settled_count(self) -> None:
+        """``calculate_roi`` returns ``(None, None)`` when settled count is None.
+
+        Guards against the regression where a fetch failure defaulted
+        ``settled_mech_requests_count`` to ``0`` and produced a real
+        float ROI (overwriting the last persisted good value).
+        """
+        b = _make_fetch_behaviour(_settled_mech_requests_count=None)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        # Non-degenerate trader-agent payload so the earlier
+        # ``(None, None)`` short-circuits do NOT fire; the only reason
+        # this test can return ``(None, None)`` is the settled-count guard.
+        agent = {
+            "serviceId": "1",
+            "totalTraded": str(WEI_IN_ETH),
+            "totalExpectedPayout": str(WEI_IN_ETH),
+            "totalTradedSettled": str(WEI_IN_ETH),
+            "totalFeesSettled": "0",
+        }
+        staking = {"olasRewardsEarned": "0"}
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
+            patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
+            patch.object(
+                b, "_fetch_olas_in_usd_price", side_effect=_return_gen(WEI_IN_ETH)
+            ),
+        ):
+            result = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
+        assert result == (None, None)
+
+    def test_calculate_roi_produces_real_float_when_settled_count_is_zero(self) -> None:
+        """``0`` is genuinely zero and MUST produce a real ROI, not ``(None, None)``.
+
+        Sanity partner for the ``None`` test above: proves the guard
+        only trips on ``None``, so a real ``0`` settled-count Safe
+        still gets its ROI computed instead of silently returning NA.
+        """
+        b = _make_fetch_behaviour(_settled_mech_requests_count=0)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        agent = {
+            "serviceId": "1",
+            "totalTraded": str(WEI_IN_ETH),
+            "totalExpectedPayout": str(int(1.5 * WEI_IN_ETH)),
+            "totalTradedSettled": str(WEI_IN_ETH),
+            "totalFeesSettled": "0",
+        }
+        staking = {"olasRewardsEarned": "0"}
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_trader_agent", side_effect=_return_gen(agent)),
+            patch.object(b, "_fetch_staking_service", side_effect=_return_gen(staking)),
+            patch.object(
+                b, "_fetch_olas_in_usd_price", side_effect=_return_gen(WEI_IN_ETH)
+            ),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
+        ):
+            final_roi, partial_roi = self._run_gen(b.calculate_roi())  # type: ignore[arg-type]
+        assert final_roi is not None
+        assert partial_roi is not None
+
+    def test_calculate_performance_metrics_returns_none_on_unknown_settled_count(
+        self,
+    ) -> None:
+        """``_calculate_performance_metrics`` returns None when settled count unknown.
+
+        The instance attribute is checked before any other work — mirrors
+        the existing ``total_mech_requests is None → return None`` guard
+        one branch down.
+        """
+        b = _make_fetch_behaviour(_settled_mech_requests_count=None)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        trader_agent = {
+            "totalTraded": "0",
+            "totalFees": "0",
+            "totalTradedSettled": "0",
+            "totalFeesSettled": "0",
+            "totalExpectedPayout": "0",
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            # None of the below should ever be reached; leaving them
+            # un-patched surfaces the bug if the guard is ever removed.
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
