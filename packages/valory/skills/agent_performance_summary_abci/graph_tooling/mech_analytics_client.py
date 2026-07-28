@@ -196,10 +196,25 @@ def parse_requester_payload(
 ) -> Optional[Dict[str, Any]]:
     """Validate the ``/requester`` payload and return it, or ``None`` on drift.
 
+    Validation depth matters: the consumer chain in
+    ``_get_total_mech_requests`` reads
+    ``payload["windows"]["all"]["n_mech_requests"]`` with permissive
+    ``.get() or 0`` fallbacks at every step, which turns any missing key
+    into a silent ``0``. A ``0`` then flows into
+    ``self._total_mech_requests`` (**cached**), short-circuits
+    ``_calculate_settled_mech_requests`` to ``0``, and zeroes
+    ``all_mech_costs`` — silently inflating ROI. Worse, that outcome is
+    indistinguishable from the genuine zero-shaped payload the endpoint
+    returns for an unknown Safe. So a shallow "``windows`` is a dict"
+    check is not enough: schema drift on ``all`` or ``n_mech_requests``
+    must land in the failure lane (``None`` + log), not the success one.
+
     :param payload: parsed JSON body (dict expected).
     :param logger: optional logger for shape-drift warnings.
     :return: the payload dict on success; ``None`` if ``windows`` is
-        missing or not a dict.
+        missing, its ``all`` window is missing or non-dict, or
+        ``n_mech_requests`` is missing / not an int-compatible value
+        on the ``all`` window.
     """
     if not isinstance(payload, dict):
         if logger is not None:
@@ -214,6 +229,32 @@ def parse_requester_payload(
             logger.error(
                 "mech-analytics /requester: unexpected response shape "
                 "(windows is not a dict)"
+            )
+        return None
+    all_window = windows.get("all")
+    if not isinstance(all_window, dict):
+        if logger is not None:
+            logger.error(
+                "mech-analytics /requester: unexpected response shape "
+                "(``windows.all`` is missing or not a dict); refusing "
+                "to fall through to a silent 0 count"
+            )
+        return None
+    if "n_mech_requests" not in all_window:
+        if logger is not None:
+            logger.error(
+                "mech-analytics /requester: unexpected response shape "
+                "(``windows.all.n_mech_requests`` missing); refusing to "
+                "fall through to a silent 0 count"
+            )
+        return None
+    n_mech = all_window.get("n_mech_requests")
+    if not isinstance(n_mech, (int, float)) or isinstance(n_mech, bool):
+        if logger is not None:
+            logger.error(
+                "mech-analytics /requester: unexpected response shape "
+                f"(``windows.all.n_mech_requests`` is {type(n_mech).__name__}, "
+                "not a number); refusing to fall through to a silent 0 count"
             )
         return None
     return payload

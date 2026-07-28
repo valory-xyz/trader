@@ -28,7 +28,7 @@ drift, a cursor cycle).
 
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Optional
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -646,3 +646,52 @@ class TestParseRequesterPayload:
         """A missing or non-dict windows field means shape drift."""
         assert parse_requester_payload({"windows": []}) is None
         assert parse_requester_payload({"chain_id": 100}) is None
+
+    def test_windows_missing_all_returns_none(self) -> None:
+        """Missing ``all`` window is schema drift, not "zero requests"."""
+        # Endpoint contract requires ``windows.all`` on every payload
+        # (even for unknown Safes, which return zero-shaped entries).
+        # A drift that dropped ``all`` would otherwise short-circuit
+        # ``_get_total_mech_requests`` to a cached 0 with no log signal.
+        payload = {"windows": {"7d": {"n_mech_requests": 5}}}
+        assert parse_requester_payload(payload) is None
+
+    def test_windows_all_not_a_dict_returns_none(self) -> None:
+        """A non-dict ``all`` window means shape drift."""
+        # ``Any``-typed to hold both None and list-shaped drift values.
+        payload_none: Dict[str, Any] = {"windows": {"all": None}}
+        assert parse_requester_payload(payload_none) is None
+        payload_list: Dict[str, Any] = {"windows": {"all": [1, 2]}}
+        assert parse_requester_payload(payload_list) is None
+
+    def test_all_missing_n_mech_requests_returns_none(self) -> None:
+        """Missing ``n_mech_requests`` on ``all`` window is shape drift.
+
+        Guards against the exact silent-zero bug: without this, a
+        rename to ``mech_request_count`` on the endpoint would pass
+        the ``windows``/``all`` checks, cache 0, and inflate ROI
+        indistinguishably from a genuine zero-count Safe.
+        """
+        payload = {"windows": {"all": {"tool_accuracy": 0.7}}}
+        assert parse_requester_payload(payload) is None
+
+    def test_n_mech_requests_wrong_type_returns_none(self) -> None:
+        """A non-numeric ``n_mech_requests`` is shape drift, not zero."""
+        # Strings would be silently coerced to 0 by
+        # ``int(all_window.get("n_mech_requests") or 0)`` on some inputs
+        # ("" → 0) and raise on others ("42" → 42), so an explicit type
+        # check is the only way to keep the guarantee consistent.
+        payload_str = {"windows": {"all": {"n_mech_requests": "42"}}}
+        assert parse_requester_payload(payload_str) is None
+        payload_bool = {"windows": {"all": {"n_mech_requests": True}}}
+        # ``True`` is technically an ``int`` subclass; the explicit
+        # bool-reject keeps a schema-drift boolean from silently caching
+        # as ``1``.
+        assert parse_requester_payload(payload_bool) is None
+        payload_dict = {"windows": {"all": {"n_mech_requests": {"count": 1}}}}
+        assert parse_requester_payload(payload_dict) is None
+
+    def test_zero_n_mech_requests_is_valid(self) -> None:
+        """A real 0-count Safe returns 0 payload; MUST NOT be treated as drift."""
+        payload = {"windows": {"all": {"n_mech_requests": 0}}}
+        assert parse_requester_payload(payload) == payload
