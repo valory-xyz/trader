@@ -73,6 +73,14 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
 
         :param redeemable_positions: list of position dicts from the Polymarket API.
         """
+        # See issue #970: degrade gracefully on non-list payload.
+        if not isinstance(redeemable_positions, list):
+            self.context.logger.error(
+                f"Expected list of redeemable positions, got "
+                f"{type(redeemable_positions).__name__}: {redeemable_positions!r}"
+            )
+            return
+
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
             if condition_id is None:
@@ -271,6 +279,14 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             return None
 
         # Redeem each position
+        # See issue #970: degrade gracefully on non-list payload.
+        if not isinstance(redeemable_positions, list):
+            self.context.logger.error(
+                f"Expected list of redeemable positions, got "
+                f"{type(redeemable_positions).__name__}: {redeemable_positions!r}"
+            )
+            return None
+
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
             outcome_index = position.get("outcomeIndex")
@@ -319,6 +335,14 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             return ""
 
         # Build redemption transactions and add to multisend_batches
+        # See issue #970: degrade gracefully on non-list payload.
+        if not isinstance(redeemable_positions, list):
+            self.context.logger.error(
+                f"Expected list of redeemable positions, got "
+                f"{type(redeemable_positions).__name__}: {redeemable_positions!r}"
+            )
+            return ""
+
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
             outcome_index = position.get("outcomeIndex")
