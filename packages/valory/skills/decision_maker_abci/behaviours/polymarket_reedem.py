@@ -262,6 +262,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         current_utilized_tools: Optional[str] = None,
     ) -> Generator:
         """Redeem positions via builder flow (connection request)."""
+        # See issue #970: degrade gracefully on non-list payload.
+        if not isinstance(redeemable_positions, list):
+            self.context.logger.error(
+                f"Expected list of redeemable positions, got "
+                f"{type(redeemable_positions).__name__}: {redeemable_positions!r}"
+            )
+            return None
 
         # Redeem each position
         for position in redeemable_positions:
