@@ -41,6 +41,17 @@ jobs:
       - name: Snyk Open Source monitor
         run: snyk monitor --remote-repo-url=https://github.com/${{ github.repository }} --file=requirements.txt --package-manager=pip --skip-unresolved
 
+      # TEMPORARY — do not merge. Creates a second, brand-new Snyk project from
+      # the same scan so we can tell whether a project *created* while
+      # --remote-repo-url is present is still metered against the free-plan
+      # private test quota. Every existing project in the org predates that flag
+      # (newest: 2026-07-15; flag landed 2026-07-22), so this has never been
+      # tested. The step above monitors the pre-flag project and acts as the
+      # control: one run, two monitors, one old project and one new.
+      - name: Snyk monitor (flag classification test)
+        run: snyk monitor --remote-repo-url=https://github.com/${{ github.repository }} --file=requirements.txt --package-manager=pip --skip-unresolved --project-name=zz-flagtest
+        continue-on-error: true
+
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
