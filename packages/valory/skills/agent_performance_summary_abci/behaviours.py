@@ -2036,11 +2036,15 @@ class FetchPerformanceSummaryBehaviour(
                     list(new_question_titles),
                     block_timestamp_gt=lookback_ts,
                 )
+                # Requests with ``blockTimestamp <= last_mech_timestamp``
+                # were already ingested on a previous tick; including them
+                # would let each subsequent tick re-attribute the same
+                # mech and inflate ``placed_mech_requests_count``.
                 for request in fallback_requests or []:
                     parsed = request.get("parsedRequest", {}) or {}
                     title = parsed.get("questionTitle", "")
                     ts = int(request.get("blockTimestamp", 0))
-                    if title and ts:
+                    if title and ts > existing_data.last_mech_timestamp:
                         mech_request_lookup.setdefault(title, []).append(ts)
                 for title in mech_request_lookup:
                     mech_request_lookup[title].sort()
@@ -2064,12 +2068,17 @@ class FetchPerformanceSummaryBehaviour(
         prev_settled = existing_data.settled_mech_requests_count or sum(
             dp.daily_mech_requests for dp in new_data_points
         )
+        # Preserve the popped last day's mech attributions so that they
+        # accumulate across ticks rather than being overwritten by the
+        # single-slice ``fees_by_day`` produced by this run.
+        carry_by_day: Dict[int, int] = {}
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
             if (
                 last_dp_day in incoming_days
             ):  # pragma: no cover  # defensive: replace_last guarantees membership
+                carry_by_day[int(last_dp.timestamp)] = last_dp.daily_mech_requests
                 new_data_points.pop()
                 prev_settled -= last_dp.daily_mech_requests
         cumulative_profit = (
@@ -2095,10 +2104,15 @@ class FetchPerformanceSummaryBehaviour(
             mech_fees, daily_mech_count = self._apply_mech_fees(
                 fees_by_day, date_timestamp
             )
+            # Add the popped day's stored count so it does not get
+            # overwritten by this slice's fresh matches alone.
+            carried = carry_by_day.pop(date_timestamp, 0)
+            daily_mech_count += carried
+            mech_fees = daily_mech_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
-            new_mech_sum += daily_mech_count
+            new_mech_sum += daily_mech_count - carried
 
             new_data_points.append(
                 ProfitDataPoint(
@@ -2111,15 +2125,30 @@ class FetchPerformanceSummaryBehaviour(
                 )
             )
 
-        # R2: Emit data points for mech-only days in the incremental window
+        # R2: Attribute mech-only days that fell outside the incremental
+        # window. Days already present in ``new_data_points`` (carried over
+        # from prior ticks) must be merged rather than duplicated, otherwise
+        # the same day would appear twice in the sorted series and its fees
+        # would be double-counted in the cumulative sum.
         visited_days = {int(s["date"]) for s in filtered_daily_stats if "date" in s}
+        existing_by_ts = {int(dp.timestamp): dp for dp in new_data_points}
         for mech_day_ts in sorted(fees_by_day.keys() - visited_days):
             count = fees_by_day[mech_day_ts]
             date_str = datetime.fromtimestamp(mech_day_ts, tz=timezone.utc).strftime(
                 "%Y-%m-%d"
             )
-            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             new_mech_sum += count
+            existing_dp = existing_by_ts.get(mech_day_ts)
+            if existing_dp is not None:
+                existing_dp.daily_mech_requests += count
+                merged_fees = existing_dp.daily_mech_requests * (
+                    DEFAULT_MECH_FEE / WEI_IN_ETH
+                )
+                existing_dp.daily_profit = round(
+                    (existing_dp.daily_profit_raw or 0.0) - merged_fees, 3
+                )
+                continue
+            mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             new_data_points.append(
                 ProfitDataPoint(
                     date=date_str,
@@ -2138,50 +2167,35 @@ class FetchPerformanceSummaryBehaviour(
             cumulative_profit += dp.daily_profit
             dp.cumulative_profit = round(cumulative_profit, 3)
 
-        # Calculate updated settled mech requests count incrementally (monotonic, bounded by total-open)
-        settled_mech_requests_count = prev_settled + new_mech_sum
-        total_mech_requests = (
-            self._total_mech_requests
-            if self._total_mech_requests is not None
-            else (yield from self._get_total_mech_requests(agent_safe_address))
+        # Tie the settled counter to the stored per-day data so the two
+        # cannot drift. Any counter that is maintained separately from
+        # ``data_points`` (via ``prev + delta`` arithmetic) is vulnerable
+        # to the fallback re-fetch + replace_last interaction that has
+        # inflated stored counters ~3x in production.
+        settled_mech_requests_count = sum(
+            dp.daily_mech_requests for dp in new_data_points
         )
-        # ``max_settled = None`` if EITHER count is unknown — the
-        # incremental scan then skips the monotonic ceiling for this
-        # tick rather than treating an unknown open count as ``0``,
-        # which would loosen the ceiling to ``total`` and let a stale
-        # sum leak through.
-        max_settled = (
-            max(total_mech_requests - self._open_market_requests, 0)
-            if total_mech_requests is not None
-            and self._open_market_requests is not None
-            else None
-        )
-        pre_bounds = settled_mech_requests_count
-        if max_settled is not None:
-            settled_mech_requests_count = min(settled_mech_requests_count, max_settled)
-        settled_mech_requests_count = max(prev_settled, settled_mech_requests_count)
-        self.context.logger.info(
-            f"Incremental settled counts: prev={prev_settled}, delta={new_mech_sum}, pre_bounds={pre_bounds}, "
-            f"bounded_settled={settled_mech_requests_count}, max_settled={max_settled}"
-        )
-        # Recompute placed/unplaced totals using persisted counts + deltas
-        placed_total = prev_placed + placed_delta
+        # ``placed_total`` still accumulates because we do not persist a
+        # per-day placed-vs-unplaced split; clamp it to settled so it
+        # cannot exceed the total attributed count under any drift.
+        placed_total = min(prev_placed + placed_delta, settled_mech_requests_count)
         prev_unplaced = getattr(existing_data, "unplaced_mech_requests_count", 0)
-        unplaced_mech_requests_count = prev_unplaced + unplaced_delta
-        # Safety clamp to settled - placed if somehow over
         unplaced_mech_requests_count = min(
-            unplaced_mech_requests_count,
+            prev_unplaced + unplaced_delta,
             max(settled_mech_requests_count - placed_total, 0),
         )
         self._placed_mech_requests_count = placed_total
         self._unplaced_mech_requests_count = unplaced_mech_requests_count
         self.context.logger.info(
-            f"Incremental totals => placed_total={placed_total}, unplaced_total={unplaced_mech_requests_count}, "
-            f"settled_total={settled_mech_requests_count}"
+            f"Incremental totals => placed_total={placed_total}, "
+            f"unplaced_total={unplaced_mech_requests_count}, "
+            f"settled_total={settled_mech_requests_count}, "
+            f"delta_new_attributions={new_mech_sum}"
         )
         self.context.logger.info(
-            f"Incremental end snapshot: settled={settled_mech_requests_count}, placed={placed_total}, "
-            f"unplaced={unplaced_mech_requests_count}, days={len(new_data_points)}"
+            f"Incremental end snapshot: settled={settled_mech_requests_count}, "
+            f"placed={placed_total}, unplaced={unplaced_mech_requests_count}, "
+            f"days={len(new_data_points)}"
         )
 
         # If we only reprocessed the last day and nothing changed (profits AND mech counts), skip writing.
