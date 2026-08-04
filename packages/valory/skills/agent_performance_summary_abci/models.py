@@ -46,7 +46,7 @@ AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 # Bump when on-disk profit_over_time must be rebuilt against the current
 # subgraph endpoint/schema. Files with a lower version are rebuilt once on
 # first run via _perform_initial_backfill.
-PROFIT_OVER_TIME_SCHEMA_VERSION = 1
+PROFIT_OVER_TIME_SCHEMA_VERSION = 2
 
 
 @dataclass
