@@ -6628,3 +6628,388 @@ class TestComputeOmenFundsLocked:
             ]
         }
         assert self._drive(b._compute_omen_funds_locked(trader_agent, self.SAFE)) == 1.0
+
+
+class TestIncrementalAttributionInvariants:
+    """Invariants the incremental update must preserve.
+
+    Each test asserts one property of the stored profit_over_time
+    series that has to hold across successive incremental runs so
+    the per-day mech-request counts stay aligned with the actual
+    number of mech requests made by the agent.
+    """  # type: ignore[no-untyped-def]
+
+    def _run_gen(self, gen: Generator) -> Any:
+        """Drive generator to completion and return its value."""
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def _existing_data(
+        self,
+        day_ts: int,
+        stored_mech_count: int,
+        last_mech_timestamp: int,
+    ) -> ProfitOverTimeData:
+        """Build a one-day existing series pinned at ``day_ts``."""
+        return ProfitOverTimeData(
+            last_updated=day_ts,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=day_ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=stored_mech_count,
+                    daily_profit_raw=1.0
+                    + stored_mech_count * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                )
+            ],
+            settled_mech_requests_count=stored_mech_count,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=stored_mech_count,
+            includes_unplaced_mech_fees=True,
+            last_mech_timestamp=last_mech_timestamp,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+
+    def test_replace_last_preserves_prior_daily_mech_count(self) -> None:
+        """Same-day refresh adds this tick's matches to the stored count.
+
+        Before the fix, the popped day's ``daily_mech_requests`` was
+        discarded and the re-appended row carried only this tick's
+        matches, so most attributions to the currently-active day
+        were lost as soon as it stopped being ``today``.
+        """
+        day_ts = 1700000000
+        current_ts = day_ts + 100
+        stored = 5  # already attributed on prior ticks
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        existing = self._existing_data(
+            day_ts=day_ts,
+            stored_mech_count=stored,
+            last_mech_timestamp=day_ts - 200,
+        )
+        new_stats = [
+            {
+                "date": str(day_ts),
+                "dailyProfit": str(2 * WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        # One brand-new mech since the watermark.
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(day_ts - 50),
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(new_mech_requests),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        (last_dp,) = result.data_points
+        assert last_dp.timestamp == day_ts
+        assert last_dp.daily_mech_requests == stored + 1
+
+    def test_settled_counter_equals_sum_of_stored_daily_counts(self) -> None:
+        """Stored counter equals the sum of per-day mech attributions.
+
+        Tying the counter to the series by construction is what stops
+        it from drifting when the mech lookup is re-fetched and the
+        last day is replaced across multiple ticks.
+        """
+        day_ts = 1700000000
+        current_ts = day_ts + 100
+        stored = 3
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        existing = self._existing_data(
+            day_ts=day_ts,
+            stored_mech_count=stored,
+            last_mech_timestamp=day_ts - 200,
+        )
+        new_stats = [
+            {
+                "date": str(day_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(day_ts - 30),
+            },
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(day_ts - 20),
+            },
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(new_mech_requests),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        assert result.settled_mech_requests_count == sum(
+            dp.daily_mech_requests for dp in result.data_points
+        )
+
+    def test_fallback_lookback_ignores_requests_older_than_watermark(self) -> None:
+        """Fallback query drops requests at or below the watermark.
+
+        Before the fix, those requests were re-attributed on every
+        tick after the primary query returned empty, so the same
+        physical mech contributed to ``placed_mech_requests_count``
+        many times.
+        """
+        day_ts = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        current_ts = day_ts + 100
+        watermark = day_ts - 200
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        existing = self._existing_data(
+            day_ts=day_ts,
+            stored_mech_count=2,
+            last_mech_timestamp=watermark,
+        )
+        new_stats = [
+            {
+                "date": str(day_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        # First call: primary query returns empty (no truly new mechs).
+        # Second call: fallback returns a mix of one truly new mech
+        # (ts > watermark) and two already-processed mechs (ts <=
+        # watermark). Only the new one should reach the lookup.
+        fresh_mech_ts = watermark + 10  # after watermark
+        fallback_payload = [
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(fresh_mech_ts),
+            },
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(watermark),
+            },
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(watermark - 100),
+            },
+        ]
+        call_returns = [[], fallback_payload]
+
+        def fetch_stub(*_a: Any, **_kw: Any) -> Any:
+            """Return a fresh generator that yields the next queued payload."""
+            payload = call_returns.pop(0)
+            return _return_gen(payload)()
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=fetch_stub),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        # Only the mech newer than the watermark should have been
+        # attributed to the (replaced) last day: 2 stored + 1 fresh.
+        assert result is not None
+        (last_dp,) = result.data_points
+        assert last_dp.daily_mech_requests == 3
+
+    def test_stale_schema_version_forces_rebuild(self) -> None:
+        """A stale on-disk schema version routes through initial backfill.
+
+        When the on-disk profit_over_time carries an older schema
+        version than the code, ``_build_profit_over_time_data`` must
+        route to ``_perform_initial_backfill`` instead of the
+        incremental path.
+        """
+        b = _make_fetch_behaviour(_settled_mech_requests_count=5)
+        ctx, _, synced_data, state = _mock_context()
+        summary = _default_summary()
+        stale = ProfitOverTimeData(
+            last_updated=1700000000,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=2,
+                )
+            ],
+            settled_mech_requests_count=2,
+            includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION - 1,
+        )
+        summary.profit_over_time = stale
+        summary.agent_performance = MagicMock()
+        summary.agent_performance.metrics = MagicMock()
+        summary.agent_performance.metrics.settled_mech_request_count = 2
+        state.read_existing_performance_summary.return_value = summary
+        backfill_sentinel = ProfitOverTimeData(
+            last_updated=1700000000, total_days=0, data_points=[]
+        )
+        incr_sentinel = ProfitOverTimeData(
+            last_updated=1700000000, total_days=99, data_points=[]
+        )
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_perform_initial_backfill",
+                side_effect=_return_gen(backfill_sentinel),
+            ) as mock_backfill,
+            patch.object(
+                b, "_perform_incremental_update", side_effect=_return_gen(incr_sentinel)
+            ) as mock_incr,
+        ):
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+        mock_backfill.assert_called_once()
+        mock_incr.assert_not_called()
+        assert result is backfill_sentinel
+
+    def test_r2_merges_into_existing_day_instead_of_duplicating(self) -> None:
+        """Unplaced mech on an existing day merges into that row.
+
+        Without merging, R2 appends a second entry for the same day and
+        the cumulative-sum recomputation double-counts that day's fees.
+        """
+        # Both anchor timestamps are day boundaries so that
+        # ``mech_ts // SECONDS_PER_DAY * SECONDS_PER_DAY`` in R2 lands
+        # on the same key present in ``new_data_points``.
+        older_day = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        current_day = older_day + SECONDS_PER_DAY
+        current_ts = current_day + 100
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        # Existing series has the older day already stored.
+        existing = ProfitOverTimeData(
+            last_updated=older_day,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=older_day,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=1,
+                    daily_profit_raw=1.0 + (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                )
+            ],
+            settled_mech_requests_count=1,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=1,
+            includes_unplaced_mech_fees=True,
+            last_mech_timestamp=older_day - 100,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+        # New stats cover only the current day; the mech we return has a
+        # title that does NOT match today's participants, so it goes to
+        # ``unplaced`` and its fee lands on the older day via R2.
+        new_stats = [
+            {
+                "date": str(current_day),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"NEWQ{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "NEWQ"},
+                "blockTimestamp": str(older_day + 10),  # falls on the older day
+            }
+        ]
+        # This request has a title with no matching bet, so it stays in
+        # ``remaining`` and lands on ``older_day`` as unplaced.
+        # Wrap by returning a lookup where NEWQ has TWO timestamps: one
+        # placed to today's bet, one that falls on older_day as unplaced.
+        # Simpler: provide two mechs, only one matchable.
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "NEWQ"},
+                "blockTimestamp": str(current_day - 50),
+            },
+            {
+                "parsedRequest": {"questionTitle": "OLDQ"},
+                "blockTimestamp": str(older_day + 10),
+            },
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(new_mech_requests),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        # Exactly one row per unique day, no duplicate for older_day.
+        timestamps = [dp.timestamp for dp in result.data_points]
+        assert len(timestamps) == len(set(timestamps))
+        older_row = next(dp for dp in result.data_points if dp.timestamp == older_day)
+        # The unplaced OLDQ mech merged into the pre-existing older_day row.
+        assert older_row.daily_mech_requests == 2
