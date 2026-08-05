@@ -760,6 +760,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
 
+            # ``None`` = transport / schema failure on this page. A
+            # well-formed empty page returns ``{}`` (falsy but not
+            # ``None``). Coercing ``None`` to "no more pages" here
+            # returned partial data indistinguishable from a complete
+            # result, which the caller (``_build_mech_request_lookup``)
+            # would then write to disk alongside ``schema_version=2``
+            # — locking the agent into a permanent undercount that no
+            # rebuild path can revisit. Propagate ``None`` so the
+            # caller's empty-lookup guard suppresses the write and
+            # the next FSM cycle re-attempts the full rebuild.
+            if result is None:
+                self.context.logger.error(
+                    f"mech request pagination failed at skip={skip}; "
+                    f"aborting lookup so the rebuild can retry"
+                )
+                return None
+
             if not result:
                 break
 

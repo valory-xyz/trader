@@ -1523,8 +1523,17 @@ class TestFetchAllMechRequests:
 
         assert result == requests_data
 
-    def test_empty_result(self) -> None:
-        """When fetch returns None, returns empty list."""
+    def test_first_page_transport_failure_returns_none(self) -> None:
+        """Transport failure on the first page propagates as ``None``.
+
+        The caller (``_build_mech_request_lookup``) uses ``None`` to
+        distinguish "fetch failed, preserve prior data" from ``[]``
+        ("agent genuinely has no mech requests yet"). Coercing to
+        ``[]`` here would let the schema-v2 rebuild consume an empty
+        lookup, write a zero-attribution series, and persist
+        ``schema_version=2`` — locking the agent out of the rebuild
+        it needs.
+        """
         b = _make_behaviour()
         b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg = MagicMock()
@@ -1539,7 +1548,37 @@ class TestFetchAllMechRequests:
         gen = b._fetch_all_mech_requests("0xagent")
         result = _exhaust(gen)  # type: ignore[arg-type]
 
-        assert result == []
+        assert result is None
+
+    def test_mid_pagination_failure_returns_none(self) -> None:
+        """Transport failure on page N propagates as ``None`` too.
+
+        Same rationale as first-page failure: returning the partial
+        prefix would be indistinguishable from a complete result, and
+        the caller has no way to tell the rebuild is undercounting.
+        """
+        b = _make_behaviour()
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        first_full_batch = [{"id": f"r{i}"} for i in range(QUERY_BATCH_SIZE)]
+        self._setup_subgraph(
+            b,
+            # Page 1: full batch (forces pagination). Page 2: transport
+            # failure (``None``).
+            [
+                {"sender": {"requests": first_full_batch}},
+                None,
+            ],
+            is_polymarket=False,
+        )
+        # ``_setup_subgraph`` wires ``get_http_response`` non-retry;
+        # give the retry sleep something to yield.
+        b.context.olas_mech_subgraph.api_id = "test"
+        b.context.olas_mech_subgraph.retries_info.suggested_sleep_time = 1.0
+
+        gen = b._fetch_all_mech_requests("0xagent")
+        result = _exhaust(gen)  # type: ignore[arg-type]
+
+        assert result is None
 
     def test_empty_requests_list(self) -> None:
         """When requests list is empty, returns empty list."""
