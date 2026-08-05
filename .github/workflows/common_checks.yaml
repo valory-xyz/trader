@@ -121,11 +121,13 @@ jobs:
         # editing tomte's upstream tox config. ``tox-uv`` creates
         # venvs without a bootstrap ``pip``, so ``ensurepip`` runs
         # first to install one, then the upgrade lands a patched
-        # version.
+        # version. The ``+=`` form appends to whatever tomte declares
+        # so a future tomte bump adding its own passenv/commands_pre
+        # entries is not silently dropped.
         run: |
           tomte tox -e safety \
-            -x 'testenv:safety.passenv=NLTK_DISABLE_IMPORT_SECURITY' \
-            -x 'testenv:safety.commands_pre=python -m ensurepip --upgrade
+            -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
+            -x 'testenv:safety.commands_pre+=python -m ensurepip --upgrade
                 python -m pip install --upgrade pip>=26.1.2'
       - name: Bandit scan
         # ``if: always()`` runs bandit even when the safety scan above
