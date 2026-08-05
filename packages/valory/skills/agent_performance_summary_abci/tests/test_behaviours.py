@@ -7087,25 +7087,8 @@ class TestIncrementalAttributionInvariants:
         day1 = day0 + SECONDS_PER_DAY
 
         # Seed with a day0 row carrying 5 stored attributions.
-        existing = ProfitOverTimeData(
-            last_updated=day0,
-            total_days=1,
-            data_points=[
-                ProfitDataPoint(
-                    date="2023-11-14",
-                    timestamp=day0,
-                    daily_profit=1.0,
-                    cumulative_profit=1.0,
-                    daily_mech_requests=5,
-                    daily_profit_raw=1.0 + 5 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
-                )
-            ],
-            settled_mech_requests_count=5,
-            unplaced_mech_requests_count=0,
-            placed_mech_requests_count=5,
-            includes_unplaced_mech_fees=True,
-            last_mech_timestamp=day0 - 200,
-            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        existing = self._existing_data(
+            day_ts=day0, stored_mech_count=5, last_mech_timestamp=day0 - 200
         )
 
         b = _make_fetch_behaviour(_total_mech_requests=20, _open_market_requests=2)
@@ -7179,12 +7162,250 @@ class TestIncrementalAttributionInvariants:
                 )
             # Empty-primary tick must not stall the series.
             assert result is not None, f"tick at {current_ts} returned None"
-            # Counter tracks the stored data at every step.
-            assert result.settled_mech_requests_count == sum(
-                dp.daily_mech_requests for dp in result.data_points
-            )
             state = result
 
-        # 3 truly new mechs across all ticks (1 in tick1, 0 in tick2, 2
-        # in tick3) plus the 5 already stored on day0 = 8 total.
-        assert sum(dp.daily_mech_requests for dp in state.data_points) == 8
+        # Direct assertion on the stored counter (independent of the
+        # sum(daily_mech_requests) derivation the implementation uses,
+        # so a refactor that decouples the two still trips this).
+        # 3 truly new mechs across all ticks (1 in tick1, 0 in tick2,
+        # 2 in tick3) plus the 5 already stored on day0 = 8 total.
+        assert state.settled_mech_requests_count == 8
+        # Per-day: day0 keeps 5 stored + 1 tick1 placed + 1 tick3
+        # unplaced (the second day1-window mech has no matching bet and
+        # lands on its clock-time day, which is day0 since ``day1 - 60``
+        # is 86340 seconds past midnight) = 7. day1 gets 1 placed
+        # attribution from the mech at ``day1 - 30``. A bug that
+        # shifted counts between days while preserving the total would
+        # pass the aggregate assertion above but fail these.
+        by_day = {dp.timestamp: dp.daily_mech_requests for dp in state.data_points}
+        assert by_day == {day0: 7, day1: 1}
+
+    def test_r2_merge_reconstructs_missing_daily_profit_raw(self) -> None:
+        """R2 merge reconstructs ``daily_profit_raw`` from ``daily_profit``.
+
+        Legacy rows persisted before the ``daily_profit_raw`` field
+        existed leave that field ``None``. The R2 merge branch must
+        derive ``raw = net + old_count * fee`` so today's gross profit
+        is not silently zeroed when an unplaced mech lands on that
+        older day.
+        """
+        older_day = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        current_day = older_day + SECONDS_PER_DAY
+        current_ts = current_day + 100
+        # Legacy older_day row: ``daily_profit_raw`` intentionally None,
+        # ``daily_profit`` already reflects the stored count's fees.
+        stored_count = 3
+        stored_net = 1.0
+        existing = ProfitOverTimeData(
+            last_updated=older_day,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=older_day,
+                    daily_profit=stored_net,
+                    cumulative_profit=stored_net,
+                    daily_mech_requests=stored_count,
+                    daily_profit_raw=None,  # legacy shape
+                )
+            ],
+            settled_mech_requests_count=stored_count,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=stored_count,
+            includes_unplaced_mech_fees=True,
+            last_mech_timestamp=older_day - 100,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        new_stats = [
+            {
+                "date": str(current_day),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"NEWQ{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        # One placed to today's bet, one unplaced landing on older_day.
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "NEWQ"},
+                "blockTimestamp": str(current_day - 50),
+            },
+            {
+                "parsedRequest": {"questionTitle": "OLDQ"},
+                "blockTimestamp": str(older_day + 10),
+            },
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(new_mech_requests),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        older_row = next(dp for dp in result.data_points if dp.timestamp == older_day)
+        # After merge: mech count went from 3 to 4. daily_profit_raw
+        # reconstructed as net + stored_count * fee = 1.0 + 3 * 0.01 = 1.03.
+        # New daily_profit = raw - merged_fees = 1.03 - 4 * 0.01 = 0.99.
+        assert older_row.daily_mech_requests == stored_count + 1
+        assert older_row.daily_profit_raw == round(
+            stored_net + stored_count * (DEFAULT_MECH_FEE / WEI_IN_ETH), 3
+        )
+        assert older_row.daily_profit == round(
+            (older_row.daily_profit_raw or 0.0)
+            - older_row.daily_mech_requests * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+            3,
+        )
+
+    def test_drift_warnings_fire_on_inflated_prior_counter(self) -> None:
+        """Both drift warnings fire on an inflated prior counter.
+
+        The clamp warning and the settled-decrease warning together
+        cover the state that agents this PR repairs are entering the
+        rebuild from.
+        """
+        day_ts = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        current_ts = day_ts + 100
+        # Legitimate day count: 2. Prior stored counters inflated to
+        # 100 (as observed on the reported agent, where the pre-fix
+        # counter was ~3.7x the true value). After the recompute
+        # settled becomes 3 (2 stored + 1 new), so:
+        #   - prev_placed(100) + delta(1) = 101 > settled(3) -> clamp warn
+        #   - settled(3) < prev_settled_total(100)           -> decrease warn
+        existing = ProfitOverTimeData(
+            last_updated=day_ts,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=day_ts,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=2,
+                    daily_profit_raw=1.0 + 2 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                )
+            ],
+            settled_mech_requests_count=100,
+            unplaced_mech_requests_count=0,
+            placed_mech_requests_count=100,
+            includes_unplaced_mech_fees=True,
+            last_mech_timestamp=day_ts - 200,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        logger = MagicMock()
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        ctx.logger = logger
+        new_stats = [
+            {
+                "date": str(day_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        new_mech_requests = [
+            {
+                "parsedRequest": {"questionTitle": "Q1"},
+                "blockTimestamp": str(day_ts - 30),
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            patch.object(
+                b,
+                "_fetch_mech_requests_by_titles",
+                side_effect=_return_gen(new_mech_requests),
+            ),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        assert result is not None
+        warning_msgs = [str(call.args[0]) for call in logger.warning.call_args_list]
+        assert any(
+            "placed_total clamped to settled" in m for m in warning_msgs
+        ), warning_msgs
+        assert any("Settled count decreased" in m for m in warning_msgs), warning_msgs
+
+    def test_subgraph_failure_propagates_through_fetch_and_returns_none(self) -> None:
+        """A subgraph transport failure is fail-closed end-to-end.
+
+        Drives the update through the real
+        ``_fetch_mech_requests_by_titles`` so a transport failure at
+        the subgraph layer is treated as a failure by the incremental
+        path, not as "nothing new".
+
+        Sibling ``test_lookback_recovers_mech_data_after_primary_fetch_fails``
+        patches ``_fetch_mech_requests_by_titles`` directly and injects
+        ``None``. That contract is only honored by the flag-on branch;
+        the shipped flag-off subgraph branch used to coerce ``None`` to
+        ``[]``, which made ``primary_fetch_failed`` unreachable in
+        production. This test patches ``_fetch_from_subgraph`` (the
+        real boundary below the wrapper) so the contract is exercised
+        end-to-end.
+        """
+        day_ts = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+        current_ts = day_ts + 100
+        existing = self._existing_data(
+            day_ts=day_ts, stored_mech_count=3, last_mech_timestamp=day_ts - 200
+        )
+        b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=current_ts
+        )
+        # Same-day stats with a bet whose title is new, so the update
+        # would query mech data (this is what triggers the fetch under
+        # test). No mech-analytics flag → the flag-off subgraph branch
+        # of ``_fetch_mech_requests_by_titles`` runs.
+        ctx.params.use_mech_analytics = False
+        new_stats = [
+            {
+                "date": str(day_ts),
+                "dailyProfit": str(WEI_IN_ETH),
+                "profitParticipants": [
+                    {"question": f"Q1{QUESTION_DATA_SEPARATOR}data"}
+                ],
+            }
+        ]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
+            ),
+            # Simulate a subgraph outage: both the primary and the H6
+            # lookback go through this same boundary and both fail.
+            patch.object(b, "_fetch_from_subgraph", side_effect=_return_gen(None)),
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", current_ts, existing)  # type: ignore[arg-type]
+            )
+        # Subgraph outage must be fail-closed: no write, preserve
+        # existing data. The pre-fix behaviour returned a truncated
+        # series with ``daily_mech_requests=0`` on today, which then
+        # froze permanently once the day rolled over.
+        assert result is None
