@@ -849,10 +849,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             res_context=res_context,
         )
 
-        if result:
-            if isinstance(result, dict) and "sender" in result:
-                result = result.get("sender") or {}
-            return result.get("requests", []) if isinstance(result, dict) else []
+        # Honor the docstring contract: ``None`` on transport / schema
+        # failure, empty list on a well-formed empty response. Callers
+        # rely on this distinction to gate the H6 fail-closed path;
+        # coercing ``None`` to ``[]`` here would silently let a subgraph
+        # outage look identical to "nothing new since watermark" and
+        # write zero-attribution days that never self-heal.
+        if result is None:
+            return None
+        if isinstance(result, dict):
+            if "sender" in result:
+                sender = result.get("sender")
+                if sender is None:
+                    return []
+                return sender.get("requests", []) if isinstance(sender, dict) else []
+            return result.get("requests", [])
         return []
 
     def clean_up(self) -> None:

@@ -1676,8 +1676,16 @@ class TestFetchMechRequestsByTitles:
 
         assert result == [{"id": "req3"}]
 
-    def test_none_result(self) -> None:
-        """When fetch returns None, returns empty list."""
+    def test_transport_failure_returns_none(self) -> None:
+        """Transport failure propagates as ``None``, not coerced to ``[]``.
+
+        The incremental-update path in ``behaviours.py`` distinguishes
+        ``None`` (fail-closed, preserve existing profit data via the
+        H6 lookback) from ``[]`` (legitimate "nothing new since
+        watermark", proceed). Silently coercing ``None`` to ``[]``
+        here made every subgraph outage look like a normal empty tick
+        and wrote zero-attribution days that never self-heal.
+        """
         b = _make_behaviour()
         b.sleep = _noop_gen  # type: ignore[method-assign]
         b.context.params.is_running_on_polymarket = False
@@ -1694,7 +1702,7 @@ class TestFetchMechRequestsByTitles:
         gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
         result = _exhaust(gen)  # type: ignore[arg-type]
 
-        assert result == []
+        assert result is None
 
     def test_result_not_dict(self) -> None:
         """When result is not a dict, returns empty list."""
