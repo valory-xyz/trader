@@ -112,15 +112,19 @@ jobs:
           # ``NLTK_DISABLE_IMPORT_SECURITY=1``.
           NLTK_DISABLE_IMPORT_SECURITY: "1"
         # The ``-x`` overrides (a) forward the escape-hatch env var
-        # into the safety tox venv, and (b) upgrade the venv's ``pip``
-        # past SFTY-20260601-69199 (pip Path Traversal in ``<26.1.2``)
-        # before ``safety check`` runs, without editing tomte's
-        # upstream tox config. ``bandit`` is run in a separate
-        # invocation because per-env ``-x`` targets one env at a time.
+        # into the safety tox venv, and (b) bootstrap+upgrade ``pip``
+        # inside the venv past SFTY-20260601-69199 (pip Path Traversal
+        # in ``<26.1.2``) before ``safety check`` runs, without
+        # editing tomte's upstream tox config. ``tox-uv`` creates
+        # venvs without a bootstrap ``pip``, so ``ensurepip`` runs
+        # first to install one, then the upgrade lands a patched
+        # version. ``bandit`` is run in a separate invocation because
+        # per-env ``-x`` targets one env at a time.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv=NLTK_DISABLE_IMPORT_SECURITY' \
-            -x 'testenv:safety.commands_pre=python -m pip install --upgrade "pip>=26.1.2"'
+            -x 'testenv:safety.commands_pre=python -m ensurepip --upgrade
+                python -m pip install --upgrade pip>=26.1.2'
           tomte tox -e bandit
       - name: Check packages
         run: tomte tox -e check-packages
