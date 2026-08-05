@@ -1749,20 +1749,34 @@ class FetchPerformanceSummaryBehaviour(
             )
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
-            # M5: Log mismatch between series-attributed and snapshot counts as
-            # diagnostic only.  These are produced by different models and benign
-            # drift is expected; only rebuild on missing fields or storage migration.
+            # M5: Log the residual between the series counter and the
+            # snapshot counter (``total - open``). By construction the
+            # two differ by roughly ``open_market_requests`` — every
+            # mech attached to a still-open market is in the series
+            # sum but excluded from the KPI's snapshot — so a raw
+            # ``series != snapshot`` warning fires on every tick for
+            # every healthy agent holding open markets and drowns the
+            # rare genuine anomalies. Warn only on the *unexplained*
+            # portion.
             settled_reference = self._settled_mech_requests_count
             stored_settled = existing_profit_data.settled_mech_requests_count
+            open_requests = self._open_market_requests
             if (
                 settled_reference is not None
                 and stored_settled
-                and stored_settled != settled_reference
+                and open_requests is not None
             ):
-                self.context.logger.warning(
-                    f"Settled mech count drift (series={stored_settled}, "
-                    f"snapshot={settled_reference}); diagnostic only, no rebuild."
-                )
+                residual = stored_settled - settled_reference - open_requests
+                # Small residuals happen: e.g. a mech landing on an
+                # open market between the two subgraph snapshots.
+                # Warn only when the gap is materially larger than the
+                # open-market offset can explain.
+                if abs(residual) > max(open_requests, 1):
+                    self.context.logger.warning(
+                        f"Settled mech count residual (series={stored_settled}, "
+                        f"snapshot={settled_reference}, open={open_requests}, "
+                        f"residual={residual}); diagnostic only, no rebuild."
+                    )
             self.context.logger.info(
                 "Checking for incremental profit over time updates..."
             )
