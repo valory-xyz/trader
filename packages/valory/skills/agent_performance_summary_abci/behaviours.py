@@ -1994,6 +1994,7 @@ class FetchPerformanceSummaryBehaviour(
                     new_question_titles.add(title)
 
         mech_request_lookup: Dict[str, List[int]] = {}
+        primary_fetch_failed = False
         if new_question_titles:
             self.context.logger.info(
                 f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats"
@@ -2003,31 +2004,41 @@ class FetchPerformanceSummaryBehaviour(
                 list(new_question_titles),
                 block_timestamp_gt=existing_data.last_mech_timestamp,
             )
-            new_mech_requests = new_mech_requests if new_mech_requests else []
-            for request in new_mech_requests:
-                parsed = request.get("parsedRequest", {}) or {}
-                title = parsed.get("questionTitle", "")
-                ts = int(request.get("blockTimestamp", 0))
-                if title and ts:
-                    mech_request_lookup.setdefault(title, []).append(ts)
-            for title in mech_request_lookup:
-                mech_request_lookup[title].sort()
+            if new_mech_requests is None:
+                # Fetch actually errored. ``[]`` is a legitimate "nothing new
+                # since watermark" result and must not be conflated with a
+                # transport / schema failure — the fail-closed guard below
+                # only trips on the latter.
+                primary_fetch_failed = True
+            else:
+                for request in new_mech_requests:
+                    parsed = request.get("parsedRequest", {}) or {}
+                    title = parsed.get("questionTitle", "")
+                    ts = int(request.get("blockTimestamp", 0))
+                    if title and ts:
+                        mech_request_lookup.setdefault(title, []).append(ts)
+                for title in mech_request_lookup:
+                    mech_request_lookup[title].sort()
         total_requests_in_lookup = sum(len(v) for v in mech_request_lookup.values())
         self.context.logger.info(
-            f"Incremental mech lookup size={len(mech_request_lookup)}, total_requests_in_lookup={total_requests_in_lookup}"
+            f"Incremental mech lookup size={len(mech_request_lookup)}, "
+            f"total_requests_in_lookup={total_requests_in_lookup}, "
+            f"primary_fetch_failed={primary_fetch_failed}"
         )
 
-        # Fail-closed (H6): new bets without mech data may indicate subgraph
-        # indexing lag rather than true unavailability.  Retry with a lookback
-        # window before giving up so that a slow mech subgraph does not
-        # freeze the profit-over-time series.
-        if new_question_titles and not mech_request_lookup:
+        # H6 retry: only fire on a genuine primary failure. The primary query
+        # already filters ``blockTimestamp_gt: last_mech_timestamp`` server
+        # side, so an empty primary result is not evidence of indexing lag
+        # and re-querying with a wider window would only reintroduce the
+        # double-attribution pattern this file is trying to eliminate. The
+        # lookback still helps when the primary transport / schema errored.
+        if new_question_titles and primary_fetch_failed:
             if existing_data.last_mech_timestamp > 0:
                 lookback_ts = max(
                     existing_data.last_mech_timestamp - MECH_LOOKBACK_SECONDS, 0
                 )
                 self.context.logger.info(
-                    f"Primary mech query returned no results; retrying with "
+                    f"Primary mech query failed; retrying with "
                     f"lookback window (watermark {existing_data.last_mech_timestamp} "
                     f"→ {lookback_ts})"
                 )
@@ -2036,10 +2047,9 @@ class FetchPerformanceSummaryBehaviour(
                     list(new_question_titles),
                     block_timestamp_gt=lookback_ts,
                 )
-                # Requests with ``blockTimestamp <= last_mech_timestamp``
-                # were already ingested on a previous tick; including them
-                # would let each subsequent tick re-attribute the same
-                # mech and inflate ``placed_mech_requests_count``.
+                # Only entries strictly past the watermark are truly new;
+                # anything at or below it was already attributed in a
+                # previous tick.
                 for request in fallback_requests or []:
                     parsed = request.get("parsedRequest", {}) or {}
                     title = parsed.get("questionTitle", "")
@@ -2051,7 +2061,8 @@ class FetchPerformanceSummaryBehaviour(
 
             if not mech_request_lookup:
                 self.context.logger.warning(
-                    "Mech data unavailable for new bets — preserving existing profit data"
+                    "Mech fetch failed and lookback did not recover — "
+                    "preserving existing profit data"
                 )
                 return None
 
@@ -2065,22 +2076,19 @@ class FetchPerformanceSummaryBehaviour(
 
         # Process new daily statistics
         new_data_points = list(existing_data.data_points)  # Copy existing points
-        prev_settled = existing_data.settled_mech_requests_count or sum(
-            dp.daily_mech_requests for dp in new_data_points
-        )
         # Preserve the popped last day's mech attributions so that they
         # accumulate across ticks rather than being overwritten by the
-        # single-slice ``fees_by_day`` produced by this run.
-        carry_by_day: Dict[int, int] = {}
+        # single-slice ``fees_by_day`` produced by this run. Keyed by
+        # day-index (``timestamp // SECONDS_PER_DAY``) so it lines up
+        # with the ``incoming_days`` membership test above and with the
+        # per-day pop below, whatever exact timestamps the two sides use.
+        carry_by_day_idx: Dict[int, int] = {}
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
-            if (
-                last_dp_day in incoming_days
-            ):  # pragma: no cover  # defensive: replace_last guarantees membership
-                carry_by_day[int(last_dp.timestamp)] = last_dp.daily_mech_requests
+            if last_dp_day in incoming_days:
+                carry_by_day_idx[last_dp_day] = last_dp.daily_mech_requests
                 new_data_points.pop()
-                prev_settled -= last_dp.daily_mech_requests
         cumulative_profit = (
             new_data_points[-1].cumulative_profit if new_data_points else 0.0
         )
@@ -2100,19 +2108,17 @@ class FetchPerformanceSummaryBehaviour(
             )
             daily_profit_raw = float(stat.get("dailyProfit", 0)) / profit_divisor
 
-            # Look up pre-computed mech fees for this day
-            mech_fees, daily_mech_count = self._apply_mech_fees(
-                fees_by_day, date_timestamp
-            )
-            # Add the popped day's stored count so it does not get
-            # overwritten by this slice's fresh matches alone.
-            carried = carry_by_day.pop(date_timestamp, 0)
-            daily_mech_count += carried
+            # Combine this run's fresh attributions with the popped day's
+            # stored count. Direct ``fees_by_day`` lookup avoids the
+            # discarded ``mech_fees`` return from ``_apply_mech_fees``.
+            fresh_count = fees_by_day.get(date_timestamp, 0)
+            carried = carry_by_day_idx.pop(date_timestamp // SECONDS_PER_DAY, 0)
+            daily_mech_count = fresh_count + carried
             mech_fees = daily_mech_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
 
             daily_profit_net = daily_profit_raw - mech_fees
             cumulative_profit += daily_profit_net
-            new_mech_sum += daily_mech_count - carried
+            new_mech_sum += fresh_count
 
             new_data_points.append(
                 ProfitDataPoint(
@@ -2123,6 +2129,14 @@ class FetchPerformanceSummaryBehaviour(
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
                 )
+            )
+
+        # Any carry not popped by the main loop means the guard-and-pop
+        # keys have drifted apart. That would silently decrease the stored
+        # per-day count. Log loudly so it never goes unnoticed.
+        if carry_by_day_idx:
+            self.context.logger.error(
+                f"Unconsumed carry after incremental loop: {carry_by_day_idx}"
             )
 
         # R2: Attribute mech-only days that fell outside the incremental
@@ -2140,13 +2154,21 @@ class FetchPerformanceSummaryBehaviour(
             new_mech_sum += count
             existing_dp = existing_by_ts.get(mech_day_ts)
             if existing_dp is not None:
-                existing_dp.daily_mech_requests += count
+                old_count = existing_dp.daily_mech_requests
+                old_fees = old_count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
+                # Legacy points (persisted before ``daily_profit_raw`` was
+                # added) leave the field ``None``. Reconstruct it from the
+                # stored net so the merge does not silently zero the day's
+                # gross profit.
+                raw = existing_dp.daily_profit_raw
+                if raw is None:
+                    raw = existing_dp.daily_profit + old_fees
+                    existing_dp.daily_profit_raw = round(raw, 3)
+                existing_dp.daily_mech_requests = old_count + count
                 merged_fees = existing_dp.daily_mech_requests * (
                     DEFAULT_MECH_FEE / WEI_IN_ETH
                 )
-                existing_dp.daily_profit = round(
-                    (existing_dp.daily_profit_raw or 0.0) - merged_fees, 3
-                )
+                existing_dp.daily_profit = round(raw - merged_fees, 3)
                 continue
             mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             new_data_points.append(
@@ -2178,12 +2200,27 @@ class FetchPerformanceSummaryBehaviour(
         # ``placed_total`` still accumulates because we do not persist a
         # per-day placed-vs-unplaced split; clamp it to settled so it
         # cannot exceed the total attributed count under any drift.
-        placed_total = min(prev_placed + placed_delta, settled_mech_requests_count)
+        placed_pre_clamp = prev_placed + placed_delta
+        placed_total = min(placed_pre_clamp, settled_mech_requests_count)
+        if placed_pre_clamp > settled_mech_requests_count:
+            self.context.logger.warning(
+                f"placed_total clamped to settled: prev({prev_placed}) + "
+                f"delta({placed_delta}) = {placed_pre_clamp} > "
+                f"settled({settled_mech_requests_count})"
+            )
         prev_unplaced = getattr(existing_data, "unplaced_mech_requests_count", 0)
         unplaced_mech_requests_count = min(
             prev_unplaced + unplaced_delta,
             max(settled_mech_requests_count - placed_total, 0),
         )
+        # Legitimate downward moves happen (e.g. right after a rebuild).
+        # Log so a stuck agent is visible rather than silently ratcheting
+        # the KPI's mech-cost subtraction down.
+        if settled_mech_requests_count < prev_settled_total:
+            self.context.logger.warning(
+                f"Settled count decreased: {prev_settled_total} -> "
+                f"{settled_mech_requests_count}"
+            )
         self._placed_mech_requests_count = placed_total
         self._unplaced_mech_requests_count = unplaced_mech_requests_count
         self.context.logger.info(
