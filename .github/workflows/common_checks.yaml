@@ -102,8 +102,11 @@ jobs:
           pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.0' tox-uv
           pip install marshmallow==3.26.2
 
-      - name: Security checks
+      - name: Safety scan
         env:
+          # TODO: remove this env var once ``nltk``'s ``inisec`` upstream
+          # fix (or a ``safety`` release that pins around it) lands and
+          # tomte bumps its ``safety`` extra past that release.
           # ``safety`` transitively imports ``nltk`` >=3.10.1, whose
           # ``inisec`` guard blocks the ``regex`` import via a stack-frame
           # check that ``-P`` / ``PYTHONSAFEPATH`` cannot satisfy (the
@@ -118,14 +121,18 @@ jobs:
         # editing tomte's upstream tox config. ``tox-uv`` creates
         # venvs without a bootstrap ``pip``, so ``ensurepip`` runs
         # first to install one, then the upgrade lands a patched
-        # version. ``bandit`` is run in a separate invocation because
-        # per-env ``-x`` targets one env at a time.
+        # version.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv=NLTK_DISABLE_IMPORT_SECURITY' \
             -x 'testenv:safety.commands_pre=python -m ensurepip --upgrade
                 python -m pip install --upgrade pip>=26.1.2'
-          tomte tox -e bandit
+      - name: Bandit scan
+        # ``if: always()`` runs bandit even when the safety scan above
+        # fails, so a scanner-tooling regression can never silently
+        # take our first-party SAST offline.
+        if: always()
+        run: tomte tox -e bandit
       - name: Check packages
         run: tomte tox -e check-packages
       - name: Check hash
