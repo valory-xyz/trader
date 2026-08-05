@@ -2026,12 +2026,19 @@ class FetchPerformanceSummaryBehaviour(
             f"primary_fetch_failed={primary_fetch_failed}"
         )
 
-        # H6 retry: only fire on a genuine primary failure. The primary query
-        # already filters ``blockTimestamp_gt: last_mech_timestamp`` server
-        # side, so an empty primary result is not evidence of indexing lag
-        # and re-querying with a wider window would only reintroduce the
-        # double-attribution pattern this file is trying to eliminate. The
-        # lookback still helps when the primary transport / schema errored.
+        # H6 retry: only fire on a genuine primary failure (``None``).
+        # ``[]`` cannot be distinguished from a healthy-but-lagging
+        # indexer, and re-querying with a wider window would only
+        # reintroduce the double-attribution pattern this file is
+        # trying to eliminate. The lookback still helps when the primary
+        # transport / schema actually errored.
+        #
+        # Follow-up: a day that finalises with zero attributions because
+        # its bets' mechs were still indexing at write time is *not*
+        # revisited on subsequent ticks, since ``start_ts`` is pinned
+        # to the last stored day. The proper fix is to revisit a
+        # bounded window of recent days rather than only ``today``, and
+        # is out of scope for this PR.
         if new_question_titles and primary_fetch_failed:
             if existing_data.last_mech_timestamp > 0:
                 lookback_ts = max(
@@ -2086,7 +2093,12 @@ class FetchPerformanceSummaryBehaviour(
         if replace_last and new_data_points:
             last_dp = new_data_points[-1]
             last_dp_day = last_dp.timestamp // SECONDS_PER_DAY
-            if last_dp_day in incoming_days:
+            if last_dp_day in incoming_days:  # pragma: no branch
+                # False branch is unreachable: ``replace_last`` is only
+                # set True when ``last_point_day in incoming_days``
+                # earlier, and ``last_point_day == last_dp_day`` by
+                # construction (both derived from the same last data
+                # point's timestamp).
                 carry_by_day_idx[last_dp_day] = last_dp.daily_mech_requests
                 new_data_points.pop()
         cumulative_profit = (
@@ -2129,14 +2141,6 @@ class FetchPerformanceSummaryBehaviour(
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
                 )
-            )
-
-        # Any carry not popped by the main loop means the guard-and-pop
-        # keys have drifted apart. That would silently decrease the stored
-        # per-day count. Log loudly so it never goes unnoticed.
-        if carry_by_day_idx:
-            self.context.logger.error(
-                f"Unconsumed carry after incremental loop: {carry_by_day_idx}"
             )
 
         # R2: Attribute mech-only days that fell outside the incremental
