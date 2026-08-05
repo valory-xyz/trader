@@ -26,8 +26,12 @@ import pytest
 
 from packages.valory.skills.check_stop_trading_abci.behaviours import (
     CheckStopTradingBehaviour,
+    StopTradingResult,
 )
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
+from packages.valory.skills.check_stop_trading_abci.payloads import (
+    CheckStopTradingPayload,
+)
 from packages.valory.skills.staking_abci.behaviours import StakingInteractBaseBehaviour
 from packages.valory.skills.staking_abci.rounds import StakingState
 
@@ -103,7 +107,7 @@ class TestComputeStopTrading:
     """Tests for CheckStopTradingBehaviour._compute_stop_trading."""
 
     def test_disabled(self) -> None:
-        """When disable_trading is True, returns True."""
+        """When disable_trading is True, stop is True and signals are reset."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
@@ -117,28 +121,44 @@ class TestComputeStopTrading:
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            assert exc_info.value.value is True
+            result = exc_info.value.value
+            assert result.stop is True
+            assert result.staking_kpi_met is False
+            assert result.activity_target_met is False
+            assert result.target == 0
+            assert result.completed == 0
 
     def test_not_disabled_no_kpi_check(self) -> None:
-        """When both disable and kpi check are False, returns False."""
+        """When stop_trading_if_staking_kpi_met is False, never stop, but report signals."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
         mock_context.params.disable_trading = False
         mock_context.params.stop_trading_if_staking_kpi_met = False
-        with patch.object(
-            type(behaviour),
-            "context",
-            new_callable=PropertyMock,
-            return_value=mock_context,
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=mock_context,
+            ),
+            # activity target met, but the stop switch is off
+            patch.object(
+                behaviour, "_compute_activity_status", _return_gen((True, True, 8, 9))
+            ),
         ):
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            assert exc_info.value.value is False
+            result = exc_info.value.value
+            assert result.stop is False
+            assert result.staking_kpi_met is True
+            assert result.activity_target_met is True
+            assert result.target == 8
+            assert result.completed == 9
 
     def test_kpi_check_met(self) -> None:
-        """When stop_trading_if_staking_kpi_met=True and KPI met, returns True."""
+        """When the switch is on and the activity target is met, stop is True."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
@@ -151,15 +171,23 @@ class TestComputeStopTrading:
                 new_callable=PropertyMock,
                 return_value=mock_context,
             ),
-            patch.object(behaviour, "is_staking_kpi_met", _return_gen(True)),
+            patch.object(
+                behaviour, "_compute_activity_status", _return_gen((True, True, 8, 8))
+            ),
         ):
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            assert exc_info.value.value is True
+            result = exc_info.value.value
+            assert result.stop is True
+            assert result.activity_target_met is True
 
     def test_kpi_check_not_met(self) -> None:
-        """When stop_trading_if_staking_kpi_met=True and KPI not met, returns False."""
+        """When the switch is on but the activity target is not met, stop is False.
+
+        Models the new regime: on-chain KPI met (farming) but the off-chain
+        activity target not yet reached, so the agent keeps trading.
+        """
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
@@ -172,12 +200,17 @@ class TestComputeStopTrading:
                 new_callable=PropertyMock,
                 return_value=mock_context,
             ),
-            patch.object(behaviour, "is_staking_kpi_met", _return_gen(False)),
+            patch.object(
+                behaviour, "_compute_activity_status", _return_gen((True, False, 8, 3))
+            ),
         ):
             gen = behaviour._compute_stop_trading()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            assert exc_info.value.value is False
+            result = exc_info.value.value
+            assert result.stop is False
+            assert result.staking_kpi_met is True
+            assert result.activity_target_met is False
 
 
 class TestGetStakingKpiRequestCount:
@@ -222,8 +255,31 @@ class TestGetStakingKpiRequestCount:
         self._run(use_marketplace=False)
 
 
-class TestIsStakingKpiMet:
-    """Tests for CheckStopTradingBehaviour.is_staking_kpi_met."""
+class TestRequiredMechRequests:
+    """Tests for CheckStopTradingBehaviour._required_mech_requests."""
+
+    def test_pure_arithmetic(self) -> None:
+        """The requirement is the livenessRatio-derived value plus the safety margin."""
+        behaviour = object.__new__(CheckStopTradingBehaviour)
+        with patch.object(
+            type(behaviour),
+            "synced_timestamp",
+            new_callable=PropertyMock,
+            return_value=1010,
+        ):
+            # ceil(max(10, 1010-1000) * 10^18 / 10^18) + 1 = 10 + 1 = 11
+            assert (
+                behaviour._required_mech_requests(
+                    last_ts_checkpoint=1000,
+                    liveness_period=10,
+                    liveness_ratio=10**18,
+                )
+                == 11
+            )
+
+
+class TestComputeActivityStatus:
+    """Tests for CheckStopTradingBehaviour._compute_activity_status."""
 
     def _make_behaviour(self) -> CheckStopTradingBehaviour:
         """Create a behaviour instance with pre-set state attributes."""
@@ -232,11 +288,10 @@ class TestIsStakingKpiMet:
         return behaviour
 
     def test_not_staked(self) -> None:
-        """When service is not staked, returns False."""
+        """When service is not staked, returns the all-zero / all-false tuple."""
         behaviour = self._make_behaviour()
         behaviour.service_staking_state = StakingState.UNSTAKED
         mock_context = MagicMock()
-
         with (
             patch.object(
                 type(behaviour),
@@ -246,55 +301,22 @@ class TestIsStakingKpiMet:
             ),
             patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
         ):
-            gen = behaviour.is_staking_kpi_met()
+            gen = behaviour._compute_activity_status()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            assert exc_info.value.value is False
+            assert exc_info.value.value == (False, False, 0, 0)
 
-    def test_staked_kpi_met(self) -> None:
-        """When staked and enough mech requests, returns True."""
+    def _staked_status(self, new_regime: bool, activity_target: int) -> tuple:
+        """Drive _compute_activity_status for a staked service in the given regime."""
         behaviour = self._make_behaviour()
         behaviour.service_staking_state = StakingState.STAKED
-        behaviour.staking_kpi_request_count = 100
-        behaviour.service_info = [None, None, [None, 5]]  # type: ignore[assignment]
-        behaviour.ts_checkpoint = 1000
-        behaviour.liveness_period = 10
-        behaviour.liveness_ratio = 10**18  # 1 request per second
-        mock_context = MagicMock()
-
-        with (
-            patch.object(
-                type(behaviour),
-                "context",
-                new_callable=PropertyMock,
-                return_value=mock_context,
-            ),
-            patch.object(
-                type(behaviour),
-                "synced_timestamp",
-                new_callable=PropertyMock,
-                return_value=1010,
-            ),
-            patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
-        ):
-            gen = behaviour.is_staking_kpi_met()
-            with pytest.raises(StopIteration) as exc_info:
-                next(gen)
-            # mech_requests_since_last_cp = 100 - 5 = 95
-            # required = ceil(max(10, 10) * 10^18 / 10^18) + 1 = 11
-            # 95 >= 11 → True
-            assert exc_info.value.value is True
-
-    def test_staked_kpi_not_met(self) -> None:
-        """When staked but not enough mech requests, returns False."""
-        behaviour = self._make_behaviour()
-        behaviour.service_staking_state = StakingState.STAKED
-        behaviour.staking_kpi_request_count = 6
+        behaviour.staking_kpi_request_count = 8
         behaviour.service_info = [None, None, [None, 5]]  # type: ignore[assignment]
         behaviour.ts_checkpoint = 1000
         behaviour.liveness_period = 10
         behaviour.liveness_ratio = 10**18
         mock_context = MagicMock()
+        mock_context.params.activity_target = activity_target
 
         with (
             patch.object(
@@ -310,26 +332,65 @@ class TestIsStakingKpiMet:
                 return_value=1010,
             ),
             patch.object(behaviour, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(behaviour, "_is_new_staking_regime", _return_gen(new_regime)),
         ):
-            gen = behaviour.is_staking_kpi_met()
+            gen = behaviour._compute_activity_status()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-            # mech_requests_since_last_cp = 6 - 5 = 1
-            # required = ceil(max(10, 10) * 10^18 / 10^18) + 1 = 11
-            # 1 >= 11 → False
-            assert exc_info.value.value is False
+            return exc_info.value.value
+
+    def test_old_regime_tracks_on_chain_requirement(self) -> None:
+        """Old regime: target is the derived requirement and activity == KPI."""
+        # completed = 8 - 5 = 3; required = ceil(max(10,10)) + 1 = 11
+        staking_kpi_met, activity_target_met, target, completed = self._staked_status(
+            new_regime=False, activity_target=8
+        )
+        assert completed == 3
+        assert target == 11  # the derived on-chain requirement
+        assert staking_kpi_met is False  # 3 >= 11
+        assert activity_target_met is False  # mirrors the on-chain KPI
+
+    def test_new_regime_tracks_off_chain_target(self) -> None:
+        """New regime: target is the off-chain config value, independent of the KPI."""
+        # completed = 8 - 5 = 3; off-chain target = 8 ⇒ not met
+        staking_kpi_met, activity_target_met, target, completed = self._staked_status(
+            new_regime=True, activity_target=8
+        )
+        assert completed == 3
+        assert target == 8  # the off-chain configured target
+        assert activity_target_met is False  # 3 >= 8 is False
+        # on-chain KPI is still computed independently (3 >= 11 is False here)
+        assert staking_kpi_met is False
+
+    def test_new_regime_target_met(self) -> None:
+        """New regime: activity target met once completed reaches the off-chain target."""
+        # completed = 8 - 5 = 3; lower the target to 2 ⇒ met
+        staking_kpi_met, activity_target_met, target, completed = self._staked_status(
+            new_regime=True, activity_target=2
+        )
+        assert completed == 3
+        assert target == 2
+        assert activity_target_met is True  # 3 >= 2
 
 
 class TestAsyncAct:
     """Tests for CheckStopTradingBehaviour.async_act."""
 
     def test_async_act(self) -> None:
-        """Drives the full async_act generator to completion."""
+        """Drives async_act to completion and asserts the emitted payload fields."""
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
         mock_context = MagicMock()
         mock_context.agent_address = "agent_0"
         mock_set_done = MagicMock()
+
+        sent_payloads = []
+
+        def _capture_send(payload: Any, *args: Any, **kwargs: Any) -> Generator:
+            """Capture the payload handed to send_a2a_transaction."""
+            sent_payloads.append(payload)
+            if False:
+                yield  # pragma: no cover
 
         with (
             patch.object(
@@ -344,8 +405,20 @@ class TestAsyncAct:
                 new_callable=PropertyMock,
                 return_value="test_behaviour",
             ),
-            patch.object(behaviour, "_compute_stop_trading", _return_gen(True)),
-            patch.object(behaviour, "send_a2a_transaction", _noop_gen),
+            patch.object(
+                behaviour,
+                "_compute_stop_trading",
+                _return_gen(
+                    StopTradingResult(
+                        stop=True,
+                        staking_kpi_met=True,
+                        activity_target_met=False,
+                        target=8,
+                        completed=9,
+                    )
+                ),
+            ),
+            patch.object(behaviour, "send_a2a_transaction", _capture_send),
             patch.object(behaviour, "wait_until_round_end", _noop_gen),
             patch.object(behaviour, "set_done", mock_set_done),
         ):
@@ -353,3 +426,15 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
             mock_set_done.assert_called_once()
+
+        # the StopTradingResult fields must be threaded into the payload verbatim
+        # and onto the right kwargs (a swapped kwarg would otherwise pass).
+        assert len(sent_payloads) == 1
+        payload = sent_payloads[0]
+        assert isinstance(payload, CheckStopTradingPayload)
+        assert payload.sender == "agent_0"
+        assert payload.vote is True
+        assert payload.is_staking_kpi_met is True
+        assert payload.is_activity_target_met is False
+        assert payload.activity_target == 8
+        assert payload.activity_completed == 9

@@ -100,7 +100,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             existing_investments = deepcopy(bet.investments)
 
             bet.reset_investments()
-            for outcome, value in balances[bet.id].items():
+            for outcome, value in balances.get(bet.id, {}).items():
                 outcome_is_no = BinaryOutcome.from_string(outcome) is BinaryOutcome.NO
                 outcome_int = 0 if outcome_is_no else 1
                 self.context.logger.debug(f"Outcome {outcome_int} value {value}")

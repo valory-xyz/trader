@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2025 Valory AG
+#   Copyright 2025-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 
 """This package contains round behaviours of ChatUIAbciApp."""
 
+import json
 from typing import Generator, Set, Type, cast
 
 from packages.valory.skills.abstract_round_abci.behaviours import (
@@ -29,7 +30,11 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
 )
 from packages.valory.skills.chatui_abci.models import ChatuiParams, SharedState
 from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
-from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp, ChatuiLoadRound
+from packages.valory.skills.chatui_abci.rounds import (
+    ChatuiAbciApp,
+    ChatuiLoadRound,
+    SERIALIZED_EMPTY_PIN,
+)
 
 
 class ChatuiLoadBehaviour(BaseBehaviour):
@@ -50,13 +55,19 @@ class ChatuiLoadBehaviour(BaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            payload = ChatuiPayload(sender=self.context.agent_address, vote=True)
-            self.shared_state._ensure_chatui_store()
-            if self.shared_state._chatui_config is None:
-                raise ValueError("The chat UI config has not been set!")
-            self.context.logger.info(
-                f"Loaded chat UI parameters: {self.shared_state._chatui_config}"
+            chatui_config = self.shared_state.chatui_config
+            pinned = chatui_config.selected_mechs or []
+            selected_mechs_payload = (
+                json.dumps([str(m).lower() for m in pinned])
+                if pinned
+                else SERIALIZED_EMPTY_PIN
             )
+            payload = ChatuiPayload(
+                sender=self.context.agent_address,
+                vote=True,
+                selected_mechs=selected_mechs_payload,
+            )
+            self.context.logger.info(f"Loaded chat UI parameters: {chatui_config}")
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
             yield from self.send_a2a_transaction(payload)

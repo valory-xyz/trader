@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2024-2025 Valory AG
+#   Copyright 2024-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -29,5 +29,9 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 class CheckStopTradingPayload(BaseTxPayload):
     """A transaction payload for the check stop trading abci."""
 
-    vote: bool
+    vote: bool  # == stop_trading (drives SKIP_TRADING / DONE)
     review_bets_for_selling: Optional[bool] = None
+    is_staking_kpi_met: Optional[bool] = None  # on-chain KPI (decoupled from vote)
+    is_activity_target_met: Optional[bool] = None  # regime-aware rotation signal
+    activity_target: Optional[int] = None
+    activity_completed: Optional[int] = None

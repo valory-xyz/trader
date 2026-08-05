@@ -9,44 +9,49 @@ fingerprint:
   __init__.py: bafybeighcq4pmuzte6vhvvprrvo563vzghkoit2h6qdqxf2ma5bghevkee
 fingerprint_ignore_patterns: []
 connections:
-- valory/abci:0.1.0:bafybeibcpvyteijct4rz3zl63sn5zwuiwtn6gt6guvr5gufko4332ybgcu
+- valory/abci:0.1.0:bafybeiafvaguchnkp2fmhf6gtayc3gpnxkglagghb4ukbqtouni5tveigi
 - valory/http_client:0.23.0:bafybeihel6sg2yayxu7lqygaswdgciaxpqrgsbl5rwx74c6znu5qz2edd4
-- valory/ipfs:0.1.0:bafybeic4cubtc6jbejq7yt7fjlibuixofb6wqpfoc5vt2h4wpaahi5y5bi
-- valory/ledger:0.19.0:bafybeidqf5dmueqm655z3bkw36mviobpcpuek4bhha7iq2nnz6sfu32kva
+- valory/ipfs:0.1.0:bafybeidob3tcdebjbm4ovwqoz4v2egf7nvoui3hu5on4o3apfchr6rpwwa
+- valory/ledger:0.19.0:bafybeicynh5l5f5f5jpx72qwzis7jvmxk5p4eqltk32uxbj2pgu2x4rqz4
 - valory/p2p_libp2p_client:0.1.0:bafybeielj3jso3wvrarp5n5rq7llpw4vgxybqiyensgjalb5ubfiawwhhu
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
-- valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
-- valory/x402:0.1.0:bafybeibg4a4drxliwba6ortn5xvqpgnhf6e5e5ji35gufaeg5jx55yrrci
-- valory/polymarket_client:0.1.0:bafybeia5bkcws4liogkstnx3ximg3bp4vo5zoae3eduxrxtkor3o546c24
+- valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
+- valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
+- valory/polymarket_client:0.1.0:bafybeid4eo37pka4tfhsjs6rb3knrugmokcvihust2dpfrgob56y77xd44
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihljnuo6jiyqfvow4vgxy5ih4eha2pjtguh7o6pabe24lbd6mwjaa
-- valory/gnosis_safe_proxy_factory:0.1.0:bafybeihpzvi2rxvdzujrqivnynsoqezklval6j3qeoxaitquktvwscqgra
-- valory/service_registry:0.1.0:bafybeifuexvcj6w3j2lludzxi3rgu2nn2b3toyifxiy46hv726o2bxivjm
-- valory/market_maker:0.1.0:bafybeie6uf3d75nh6vxx3kkie7k62nbpszjzieoqfy2nyawqq34z5zjqey
-- valory/multisend:0.1.0:bafybeic4534fd4axozjmykpstgjynxzpkpfvnvyjt7hz32ajfe3fmwhn7m
-- valory/mech:0.1.0:bafybeiedil4txl33ot7lfqf2j3w25lzickfruquh37s2bzbdby4eewysty
-- valory/conditional_tokens:0.1.0:bafybeieumljzqj6dw3aifiza4msx6m4etyqhsthvcgw3s26kn73oktxdk4
-- valory/realitio:0.1.0:bafybeibthnl5gmuxehkwwseevyuier4iewcx2qd5wk4p7besvhea2kducy
-- valory/realitio_proxy:0.1.0:bafybeiehe26tllwbni57zomdyxtwipmdvmrirgc54fp5gwtg324lbfl7im
-- valory/agent_registry:0.1.0:bafybeihix534wbt7nq5qaneww5j4b74ce6rf33xgbochpc6xcogzhmnv7q
-- valory/service_staking_token:0.1.0:bafybeifzjbauofbshdt64hndx3nudf3kfm2db744tmefbrwmhuapjtk5de
-- valory/erc20:0.1.0:bafybeigjxwhx4li5hmyv3hrtatwq65gl4wihqysaq5pqlpmw5o4lymfv6y
-- valory/staking_token:0.1.0:bafybeibdn7ntkijvsco224ehm3bk6i4r7zhlre4ns4mzlmohlqgnw325bu
-- valory/mech_activity:0.1.0:bafybeih5mdmjnvtaxbpqpdmikim6t2jvefcnsp62uzxcmzxodh2gzyf2eq
-- valory/agent_mech:0.1.0:bafybeieehgxkc3mosiramapon4u7qkhihxa52actku4wlykypovgcjsjde
-- valory/relayer:0.1.0:bafybeih5poqtawkobavqpjljjqmdvjyk7exy33gawbppystyb4oukfjkue
-- valory/mech_marketplace_legacy:0.1.0:bafybeiagaql3kt3mjt6le4rw7mwi5twawojr7anm26bvommb4i7ll7u2zq
-- valory/mech_mm:0.1.0:bafybeiew5cp7zlzsk34btkytgqdxl3bjile6chlnxsi7s3t242aelrmycu
-- valory/ierc1155:0.1.0:bafybeie54mrzlup5q6ovgcae35f2aecb6l6ekwa6dhrkgrmotojkyqd2ji
-- valory/nvm_balance_tracker_token:0.1.0:bafybeie5lciwhzieuzbpgejx37dtrmj4q6r2x6omv2ekiwrfeyhjzyje7e
-- valory/nvm_balance_tracker_native:0.1.0:bafybeiepuod5ffnf5wrfqpshkzdbl76ccqdtedqhf7wc7dx47gkmt7jrhu
-- valory/escrow_payment_condition:0.1.0:bafybeicgywmuy3a4xke5rmca26mmquspn6uzcn2hahwa77phvbirpqv3qu
-- valory/did_registry:0.1.0:bafybeidgbl5i2uwh6kxjb2wbbnvgv776gb73cnblxy5xlv4wrawczyyrvi
-- valory/nft_sales:0.1.0:bafybeihvi4d3h7az3qjrdsni5yyvqzjwz3hiqpcdupr5dx4g5nvphfqcbi
-- valory/lock_payment_condition:0.1.0:bafybeia63svtiioyh634qst7jnx43qy6nu6srxapocp3zkut3z2f67oc3q
-- valory/agreement_store_manager:0.1.0:bafybeifip7e6al6nwtwbyqol4xm2iqnuycrdefdie7vyxlxeh33ubqeooa
-- valory/transfer_nft_condition:0.1.0:bafybeie267gridf6z2yxk7cvt5fdy66cocyg5dn3rj7zvnvl3otnk6iw34
-- valory/subscription_provider:0.1.0:bafybeibulnegkf7jsz4lrhvsvai65wytjspl6itkhb6dhbl3fwsbpbyh6u
+- valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
+- valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
+- valory/service_registry:0.1.0:bafybeicbfffywnaaehptzasxsdoyguuurpleirsnor5xf7rqk57isjkury
+- valory/market_maker:0.1.0:bafybeiaogkujiilubosloromkikuhltgiiadjvtzw2b5p5hc3klzi4m4nq
+- valory/multisend:0.1.0:bafybeifqtf24h7lhhbairveqmq2klhvbswajmbpoyqj4xrgye7c22pxubi
+- valory/mech:0.1.0:bafybeih45j4v3ooe6jgrg4u3xnqktb6sklwoaf3w2lgcuohut5rjs32kzu
+- valory/conditional_tokens:0.1.0:bafybeifqpw3hnllwy3s2ktcsfup3usgaykh5gbhieyf2wb2s4iwemykn2i
+- valory/realitio:0.1.0:bafybeibfy6dqkwsz4xersouotswcug27awkvtsmjlo3r7b476qgeujn3eu
+- valory/realitio_proxy:0.1.0:bafybeibutej7uzucill5ohb3xxu245vo32kg5vchpqondwdfomixx2psba
+- valory/agent_registry:0.1.0:bafybeia6gfxdfpr4apeqd6s4777d7yf6qya2slu3ccqmwiapxe72ckvsiq
+- valory/service_staking_token:0.1.0:bafybeibb2f7vuflavba4pbcd4kse7grsdtcvvhoilvbeupc2ymspwfkrwy
+- valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
+- valory/staking_token:0.1.0:bafybeihqnd5ot5w56i37pvzucsfoljhl5oi36ridluvtikzzbczqjztffi
+- valory/mech_activity:0.1.0:bafybeibsvqydfecckfxdd267fo6ebow6skdnub6axt3tuwiye6qo3avna4
+- valory/agent_mech:0.1.0:bafybeidrkuruvewbi7xmi7py26ylgpcslmr5yuyu4tw6o7uekolmsj2zqa
+- valory/relayer:0.1.0:bafybeifrvzmwkumdachm7wuesfdqvz52xsybpnvdlelltm3qowosgd6tp4
+- valory/mech_marketplace_legacy:0.1.0:bafybeicog7f2e6ibrpcsunxqmgx62o4bcf4hdb2tfn5ahebpciile5yr3y
+- valory/mech_mm:0.1.0:bafybeig6gcy2tsh2mpatojiydd7copk3epdkevijyqi2ltmcoyvy6ssc74
+- valory/ierc1155:0.1.0:bafybeifzl3xd3va2otvkda5netav3xbcj7pyxzyhsx2cpfgk4eq5abq3ky
+- valory/nvm_balance_tracker_token:0.1.0:bafybeibh7dcomhz4ytowykbw2opwi3g7ypfc65bxxccdcvz3q7awmtqmle
+- valory/nvm_balance_tracker_native:0.1.0:bafybeieyvmkuwbj3i32yp66hwbx2avsyubufipbwbvufqyv6apoalmfgwy
+- valory/mech_marketplace:0.1.0:bafybeigrcnjaycggulxyx2tsjub4ssjij66d7nfzsavo6gd54hm7beliiu
+- valory/balance_tracker:0.1.0:bafybeiayyxl643qfpw57vopytxgyd6flxxmwassswuxen7myekqaxdxxvi
+- valory/balance_tracker_fixed_price_native:0.1.0:bafybeihyaxqkyw2ulroqlhpfcgkrwtrwkhshn35fdq2ystraezwyco3k4u
+- valory/mech_prepaid_reader:0.1.0:bafybeiaitnqi4kc2wiltj3k6a3iujxritwkh5w2a2xoff7dosoqy7p3sou
+- valory/escrow_payment_condition:0.1.0:bafybeifghaewxrhssktvscpxpvydq3xvjd5rxx37oz54lhzsg2kelmwkai
+- valory/did_registry:0.1.0:bafybeianxf7gjparfype4xesfdep362odimhgriviweluinnexwuglm2ku
+- valory/nft_sales:0.1.0:bafybeidlzxmxpx25zcn5nhi3lb4kvfhfjsaw2dul2hogghshnxzmurfiom
+- valory/lock_payment_condition:0.1.0:bafybeifptcyzgvj2bhsthimb3u2uylw6fgr3qpfij2aocsksbvxqk4syaa
+- valory/agreement_store_manager:0.1.0:bafybeigvyl4plxgsp5cmoeweyywqz5piznys6nbf2rwiwxqsxxoyottydu
+- valory/transfer_nft_condition:0.1.0:bafybeidosats5u2bkt43bcu6crvyp6c5goep2iovjxnbeaxxktxxjpl6sm
+- valory/subscription_provider:0.1.0:bafybeidp2oegn5clyhw5yteiu4zd5idu5f3uhnlmsafzlbj4bxgemoyor4
+- valory/deposit_wallet:0.1.0:bafybeifmw77pznzla6zwq7mfncdzboxmlmm5ffmkvlxlqfg442oypfqjje
 protocols:
 - open_aea/signing:1.0.0:bafybeifsjmldwyki3beqyvdt5lzenrg6wyrqaar5plc5rpnvtc4zlentye
 - valory/abci:0.1.0:bafybeiak4pwac3pwjtd7weskxdhkrcopckr32vtazfbuteu6yqjkwarpte
@@ -57,27 +62,27 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
 - valory/tendermint:0.1.0:bafybeihzb7e32f7jcrzvubilqaxzmyk7ea6ss3pg3tliatdlrr76qeknyq
 - valory/acn_data_share:0.1.0:bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i
-- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
+- valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
-- valory/abstract_abci:0.1.0:bafybeib5qjkpfsxjcur4asube6kctmy2xsrg2hzcele2tmvsstula4lt54
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/registration_abci:0.1.0:bafybeidywralavqvrmzxomdgnthngqfzhbpop6n23pwf67lg2p6ndvt3fy
-- valory/reset_pause_abci:0.1.0:bafybeiahbkc4gfcmcvifbs6dvhtcj6wtjr7bvvdxunhxxquglkv365lu3e
-- valory/termination_abci:0.1.0:bafybeic7wo6vp7ag2yhirxgftim6mjmo225v2lixfxuj5q6rdp7mj6ujqy
-- valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibd5qceh5whz7e6fsrptgrjfvltxwljhz7u4hoynkql33c722hofi
-- valory/market_manager_abci:0.1.0:bafybeig744oo6xwzdik4gpcdl3a3ya7b4azk3vdqryxghmbhepwfmuansa
-- valory/decision_maker_abci:0.1.0:bafybeicnpolx3jw2pzljdploc7ilww256kkvkk7du422sdogi25a4mdl6y
-- valory/trader_abci:0.1.0:bafybeiccvnogrqhmlx2chyp4wpj6srllkga2bofezvmud5yzmcs6ai5sx4
-- valory/staking_abci:0.1.0:bafybeibg24qtvxhkvyk2iliefdquoawlf6xejsjesokpn7ljxxxqhpboha
-- valory/check_stop_trading_abci:0.1.0:bafybeigkx3zumwsl3sziadjxkyof4yjv45mfvnhccf7sbogyha2rmlf2hq
-- valory/mech_interact_abci:0.1.0:bafybeibzmqjyggvnvbuutmk2a7ju7cfdydj3qthenhojcf6olwweuhu6oy
-- valory/chatui_abci:0.1.0:bafybeibkpytqj6b5jpvvgmagc6xoigonlmaobh35tqsbrt34te6azlalvi
-- valory/agent_performance_summary_abci:0.1.0:bafybeigkhuzwfuhve43gl6tmn7jaxiqaesmpjj726eaywsorzyw7wpxkea
-- valory/funds_manager:0.1.0:bafybeiebmb72sxx3odmxzpn7qy4la3i6n5vf4di4vbkt4mt4kuybosftay
+- valory/abstract_abci:0.1.0:bafybeie5et43th2nta76cd3kpm3fmurd7oyzk3qxim76octvt56m6r2poi
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
+- valory/registration_abci:0.1.0:bafybeif4n2esdjvquomdkwktv7eolepskpo5jlqrfda2abxjqzy2ljsxzi
+- valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
+- valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
+- valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih4yuwo3y7qxtdd56n3gtqs4ajuudsme5clbvkjlncc4revdb3cx4
+- valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
+- valory/decision_maker_abci:0.1.0:bafybeia7kthilv43ryg4hvg6v5ytexn4z6cucnuenqz7fiiviggaeup27m
+- valory/trader_abci:0.1.0:bafybeifu2bjzp5kf4op74wc6ymr34yennkolgffvomogvx56b72sj5arkq
+- valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
+- valory/check_stop_trading_abci:0.1.0:bafybeieceomplkpt7ltjwm4piu7alm7ngx3pvqzpbuokm4smewz4373eua
+- valory/mech_interact_abci:0.1.0:bafybeifbkpgivxjexlhrptn2iaju7vyzeusevvucsin6tbjwveniykad2q
+- valory/chatui_abci:0.1.0:bafybeiazlrn2su5p5sql4u65vkuawqg54kzqpgtvmg2wc3tjalnxmdcqua
+- valory/agent_performance_summary_abci:0.1.0:bafybeidi2b6srtakjylczapjnqzmgh6o5l7jrveamktlndf2xuerz5gppm
+- valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
-- valory/kelly_criterion:0.1.0:bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa
-- valory/fixed_bet:0.1.0:bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm
+- valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
+- valory/fixed_bet:0.1.0:bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim
 default_ledger: ethereum
 required_ledgers:
 - ethereum
@@ -111,11 +116,11 @@ logging_config:
       propagate: true
 dependencies:
   open-aea-ledger-cosmos:
-    version: ==2.2.1
+    version: ==2.2.9
   open-aea-ledger-ethereum:
-    version: ==2.2.1
+    version: ==2.2.9
   open-aea-test-autonomy:
-    version: ==0.21.18
+    version: ==0.21.26
   typing_extensions:
     version: <=4.15.0,>=3.10.0.2
 skill_exception_policy: stop_and_exit
@@ -135,7 +140,7 @@ type: skill
 models:
   benchmark_tool:
     args:
-      log_dir: ${str:/benchmarks}
+      log_dir: ${LOG_DIR:str:/benchmarks}
   params:
     args:
       setup:
@@ -165,7 +170,7 @@ models:
       keeper_allowed_retries: ${int:3}
       keeper_timeout: ${float:30.0}
       max_attempts: ${int:10}
-      reset_tendermint_after: ${int:2}
+      reset_tendermint_after: ${RESET_TM_AFTER:int:2}
       retry_attempts: ${int:400}
       retry_timeout: ${int:3}
       request_retry_delay: ${float:1.0}
@@ -198,24 +203,26 @@ models:
       slot_count: ${int:2}
       opening_margin: ${int:86400}
       languages: ${list:["en_US"]}
-      disabled_polymarket_tags: ${list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
+      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${int:5}
       abt_error_mult: ${int:5}
       the_graph_error_message_key: ${str:message}
       the_graph_payment_required_error: ${str:payment required for subsequent requests
         for this API key}
-      mech_contract_address: ${str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
-      mech_chain_id: ${str:gnosis}
+      mech_contract_address: ${MECH_CONTRACT_ADDRESS:str:0x77af31De935740567Cf4fF1986D04B2c964A786a}
+      mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
       mech_activity_checker_contract: ${str:0x0000000000000000000000000000000000000000}
-      mech_wrapped_native_token_address: ${str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
+      mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
+      polymarket_spread_min: ${float:0.0}
+      polymarket_spread_max: ${float:1.0}
       trading_strategy: ${str:kelly_criterion}
-      use_fallback_strategy: ${bool:true}
+      use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
-      tools_accuracy_hash: ${str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
-      prompt_template: ${str:With the given question "@{question}" and the `yes` option
-        represented by `@{yes}` and the `no` option represented by `@{no}`, what are
-        the respective probabilities of `p_yes` and `p_no` occurring?}
+      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+      prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
+        and the `yes` option represented by `@{yes}` and the `no` option represented
+        by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}
       dust_threshold: ${int:10000000000000}
       conditional_tokens_address: ${str:0xCeAfDD6bc0bEF976fdCd1112955828E00543c0Ce}
       realitio_proxy_address: ${str:0xAB16D643bA051C11962DA645f74632d3130c81E2}
@@ -227,68 +234,72 @@ models:
       max_filtering_retries: ${int:6}
       redeeming_batch_size: ${int:5}
       slippage: ${float:0.01}
+      withdrawal_slippage: ${WITHDRAWAL_SLIPPAGE:float:0.01}
+      withdrawal_return_buffer: ${WITHDRAWAL_RETURN_BUFFER:float:0.05}
+      dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.25}
-      store_path: ${str:/data/}
-      irrelevant_tools: ${list:["openai-text-davinci-002", "openai-text-davinci-003",
-        "openai-gpt-3.5-turbo", "openai-gpt-4", "stabilityai-stable-diffusion-v1-5",
-        "stabilityai-stable-diffusion-xl-beta-v2-2-2", "stabilityai-stable-diffusion-512-v2-1",
-        "stabilityai-stable-diffusion-768-v2-1"]}
-      staking_contract_address: ${str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
+      store_path: ${STORE_PATH:str:/data/}
+      staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       staking_interaction_sleep_time: ${int:5}
-      disable_trading: ${bool:false}
+      disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${bool:true}
+      activity_target: ${ACTIVITY_TARGET:int:8}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
       contract_timeout: ${float:300.0}
-      file_hash_to_strategies: ${dict:{"bafybeididlcixparvundh76gajplac2ab4ftzcom4cyaeli2ofl5dkdhaa":["kelly_criterion"],"bafybeigp65doxrfukxdndsyflukyf6tjigvobig42334e2gfncczteujvm":["fixed_bet"]}}
-      strategies_kwargs: ${dict:{"floor_balance":500000000000000000,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
+      file_hash_to_strategies: ${dict:{"bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe":["kelly_criterion"],"bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim":["fixed_bet"]}}
+      strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":500000000000000000,"default_max_bet_size":2000000000000000000,"absolute_min_bet_size":25000000000000000,"absolute_max_bet_size":2000000000000000000,"n_bets":1,"min_edge":0.03,"min_oracle_prob":0.5,"fee_per_trade":10000000000000000,"grid_points":500}}
       service_endpoint: ${str:https://trader.autonolas.tech/}
       rpc_sleep_time: ${int:10}
       safe_voting_range: ${int:600}
       rebet_chance: ${float:0.6}
       mech_interaction_sleep_time: ${int:10}
-      use_mech_marketplace: ${bool:false}
+      use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       policy_store_update_offset: ${int:259200}
-      mech_marketplace_config: ${dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
       expected_mech_response_time: ${int:300}
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
       tool_quarantine_duration: ${int:10800}
-      default_chain_id: ${str:gnosis}
+      default_chain_id: ${DEFAULT_CHAIN_ID:str:gnosis}
       mech_interact_round_timeout_seconds: ${int:5400}
-      enable_position_review: ${bool:true}
+      enable_position_review: ${ENABLE_POSITION_REVIEW:bool:true}
       review_period_seconds: ${int:86400}
-      use_multi_bets_mode: ${bool:true}
-      enable_multi_bets_fallback: ${bool:false}
+      use_multi_bets_mode: ${USE_MULTI_BETS_MODE:bool:true}
+      enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       coingecko_pol_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
-      genai_api_key: ${str:""}
+      genai_api_key: ${GENAI_API_KEY:str:""}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
-      polygon_ledger_rpc: ${str:https://1rpc.io/matic}
+      polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
-      use_x402: ${bool:false}
-      is_agent_performance_summary_enabled: ${bool:true}
-      is_achievement_checker_enabled: ${bool:true}
-      is_running_on_polymarket: ${bool:false}
-      polymarket_builder_program_enabled: ${bool:true}
-      polymarket_collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
-      polymarket_usdc_e_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
-      polymarket_collateral_onramp_address: ${str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
-      polymarket_usdc_e_wrap_dust_threshold: ${int:1000000}
-      polymarket_ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
-      polymarket_ctf_exchange_address: ${str:0xE111180000d2663C0091e4f400237545B87B996B}
-      polymarket_neg_risk_ctf_exchange_address: ${str:0xe2222d279d744050d28e00520010520000310F59}
-      polymarket_neg_risk_adapter_address: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-      ignored_mechs: ${list:[]}
+      use_x402: ${USE_X402:bool:false}
+      is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
+      is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
+      balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
+      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
+      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
+      is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
+      polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+      polymarket_collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+      polymarket_usdc_e_address: ${POLYMARKET_USDC_E_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+      polymarket_collateral_onramp_address: ${POLYMARKET_COLLATERAL_ONRAMP_ADDRESS:str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+      polymarket_usdc_e_wrap_dust_threshold: ${POLYMARKET_USDC_E_WRAP_DUST_THRESHOLD:int:1000000}
+      polymarket_ctf_address: ${POLYMARKET_CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+      polymarket_ctf_exchange_address: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
+      polymarket_neg_risk_ctf_exchange_address: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
+      polymarket_neg_risk_adapter_address: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+      valid_mechs: ${VALID_MECHS:list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
+      mech_marketplace_v1_suitable_tools: ${MECH_MARKETPLACE_V1_SUITABLE_TOOLS:list:["prediction-offline","prediction-offline-sme","prediction-online","prediction-online-sme","prediction-request-reasoning","prediction-request-reasoning-claude"]}
       penalize_mech_time_window: ${int:1800}
       pol_threshold_for_swap: ${int:2000000000000000000}
       slippages_for_swap: ${dict:{"xDAI-USDC":0.003,"POL-USDC":0.004}}
-      is_outcome_side_threshold_filter_enabled: ${bool:false}
-      outcome_side_threshold_filter_threshold: ${float:0.8}
-      exclude_neg_risk_markets: ${bool:false}
+      is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
+      outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
+      exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
       deliveries_lookback_days: ${int:30}
   benchmarking_mode:
     args:
@@ -330,7 +341,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
+      url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
   omen_subgraph:
     args:
       headers:
@@ -342,7 +353,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+      url: ${OMEN_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   randomness_api:
     args:
       method: ${str:GET}
@@ -379,7 +390,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
+      url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   conditional_tokens_subgraph:
     args:
       headers:
@@ -391,7 +402,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
+      url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
   realitio_subgraph:
     args:
       headers:
@@ -403,7 +414,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
+      url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
   open_markets_subgraph:
     args:
       headers:
@@ -451,7 +462,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: ${str:https://staking-gnosis.subgraph.autonolas.tech}
+      url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
   mech_tools:
     args:
       headers:
@@ -537,12 +548,12 @@ config:
       default_gas_price_strategy: ${str:eip1559}
       poa_chain: ${bool:false}
     gnosis:
-      address: ${str:https://rpc.gnosischain.com}
+      address: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
       chain_id: ${int:100}
       poa_chain: ${bool:false}
       default_gas_price_strategy: ${str:eip1559}
     polygon:
-      address: ${str:https://1rpc.io/matic}
+      address: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       chain_id: ${int:137}
       poa_chain: ${bool:true}
       default_gas_price_strategy: ${str:eip1559}
@@ -564,35 +575,36 @@ config:
 public_id: valory/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  genai_api_key: ${str:""}
-  genai_x402_server_base_url: ${str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
-  use_x402: ${bool:false}
+  genai_api_key: ${GENAI_API_KEY:str:""}
+  genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
+  use_x402: ${USE_X402:bool:false}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
 models:
   params:
     args:
-      fund_requirements: ${dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
-      rpc_urls: ${dict:{"gnosis":"https://rpc.gnosischain.com"}}
-      safe_contract_addresses: ${dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+      fund_requirements: ${FUND_REQUIREMENTS:dict:{"gnosis":{"agent":{"0x0000000000000000000000000000000000000000":{"topup":2000000000000000000,"threshold":210000000000000000}},"safe":{"0x0000000000000000000000000000000000000000":{"topup":5000000000000000000,"threshold":1000000000000000000},"0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d":{"topup":0,"threshold":0}}}}}
+      rpc_urls:
+        gnosis: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com}
+        polygon: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
+      safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
 ---
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
   host: https://clob.polymarket.com
   chain_id: 137
-  safe_contract_addresses:
-    polygon: ${str:0x}
-  polymarket_builder_program_enabled: ${bool:true}
-  builder_code: ${str:}
-  clob_version: ${str:v2}
-  collateral_address: ${str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
-  usdc_e_address: ${str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
-  collateral_onramp_address: ${str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
-  ctf_address: ${str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
-  ctf_exchange: ${str:0xE111180000d2663C0091e4f400237545B87B996B}
-  neg_risk_ctf_exchange: ${str:0xe2222d279d744050d28e00520010520000310F59}
-  neg_risk_adapter: ${str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
-  polygon_ledger_rpc: ${str:https://1rpc.io/matic}
-  is_running_on_polymarket: ${bool:false}
+  safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
+  builder_code: ${POLYMARKET_BUILDER_CODE:str:0x0000000000000000000000000000000000000000000000000000000000000000}
+  clob_version: ${CLOB_VERSION:str:v2}
+  collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
+  usdc_e_address: ${POLYMARKET_USDC_E_ADDRESS:str:0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174}
+  collateral_onramp_address: ${POLYMARKET_COLLATERAL_ONRAMP_ADDRESS:str:0x93070a847efEf7F70739046A929D47a521F5B8ee}
+  ctf_address: ${POLYMARKET_CTF_ADDRESS:str:0x4D97DCd97eC945f40cF65F87097ACe5EA0476045}
+  ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
+  neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
+  neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+  polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
+  is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}

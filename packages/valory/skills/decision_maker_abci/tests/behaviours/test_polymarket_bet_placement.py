@@ -253,6 +253,141 @@ class TestPolymarketBetPlacementBehaviour:
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
 
+    def test_async_act_with_deposit_wallet_adds_funder(self) -> None:
+        """When the store resolves a DepositWallet, the bet request adds funder."""
+        behaviour = _make_behaviour()
+        behaviour.token_balance = 1000
+        behaviour._resolve_deposit_wallet = lambda: "0xDW"  # type: ignore[method-assign]
+
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock wait for condition."""
+            yield  # type: ignore[no-untyped-def]
+
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
+
+        mock_bet = MagicMock()
+        mock_bet.get_outcome.return_value = "Yes"
+        mock_bet.outcome_token_ids = {"Yes": "token123"}
+        mock_bet.condition_id = "0xcond123"
+
+        sent = {}
+
+        def _capture(payload):  # type: ignore[no-untyped-def]
+            sent["payload"] = payload
+            yield
+            return {"success": True, "transactionsHashes": ["0xh"], "status": "matched"}
+
+        behaviour.send_polymarket_connection_request = _capture  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ) as mock_sb:
+            mock_sb.return_value = mock_bet
+            with patch.object(
+                type(behaviour), "outcome_index", new_callable=PropertyMock
+            ) as mock_oi:
+                mock_oi.return_value = 0
+                with patch.object(
+                    type(behaviour), "investment_amount", new_callable=PropertyMock
+                ) as mock_inv:
+                    mock_inv.return_value = 100
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd:
+                        mock_sd.return_value = MagicMock(
+                            period_count=1,
+                            cached_signed_orders={},
+                            mech_tool="tool1",
+                            is_policy_set=False,
+                        )
+                        with patch.object(
+                            type(behaviour), "get_active_sampled_bet"
+                        ) as mock_gasb:
+                            mock_gasb.return_value = mock_bet
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (yield)  # type: ignore[method-assign]
+                            gen = behaviour.async_act()
+                            try:
+                                while True:
+                                    next(gen)
+                            except StopIteration:
+                                pass
+
+        assert sent["payload"]["params"]["funder"] == "0xDW"
+
+    def test_async_act_no_deposit_wallet_omits_funder(self) -> None:
+        """When no DepositWallet is known, the bet request omits funder."""
+        behaviour = _make_behaviour()
+        behaviour.token_balance = 1000
+        behaviour._resolve_deposit_wallet = lambda: None  # type: ignore[method-assign]
+
+        def mock_wait(condition) -> None:  # type: ignore[no-untyped-def, misc]
+            """Mock wait for condition."""
+            yield  # type: ignore[no-untyped-def]
+
+        behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
+        behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
+
+        mock_bet = MagicMock()
+        mock_bet.get_outcome.return_value = "Yes"
+        mock_bet.outcome_token_ids = {"Yes": "token123"}
+        mock_bet.condition_id = "0xcond123"
+
+        sent = {}
+
+        def _capture(payload):  # type: ignore[no-untyped-def]
+            sent["payload"] = payload
+            yield
+            return {"success": True, "transactionsHashes": ["0xh"], "status": "matched"}
+
+        behaviour.send_polymarket_connection_request = _capture  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "sampled_bet", new_callable=PropertyMock
+        ) as mock_sb:
+            mock_sb.return_value = mock_bet
+            with patch.object(
+                type(behaviour), "outcome_index", new_callable=PropertyMock
+            ) as mock_oi:
+                mock_oi.return_value = 0
+                with patch.object(
+                    type(behaviour), "investment_amount", new_callable=PropertyMock
+                ) as mock_inv:
+                    mock_inv.return_value = 100
+                    with patch.object(
+                        type(behaviour),
+                        "synchronized_data",
+                        new_callable=PropertyMock,
+                    ) as mock_sd:
+                        mock_sd.return_value = MagicMock(
+                            period_count=1,
+                            cached_signed_orders={},
+                            mech_tool="tool1",
+                            is_policy_set=False,
+                            deposit_wallet_address=None,
+                        )
+                        with patch.object(
+                            type(behaviour), "get_active_sampled_bet"
+                        ) as mock_gasb:
+                            mock_gasb.return_value = mock_bet
+                            behaviour.usdc_to_native = lambda x: x / 10**6  # type: ignore[method-assign]
+                            behaviour.finish_behaviour = lambda payload: (yield)  # type: ignore[method-assign]
+                            gen = behaviour.async_act()
+                            try:
+                                while True:
+                                    next(gen)
+                            except StopIteration:
+                                pass
+
+        assert "funder" not in sent["payload"]["params"]
+
     def test_async_act_no_response(self) -> None:
         """When no response from connection, should send failed payload."""
         behaviour = _make_behaviour()

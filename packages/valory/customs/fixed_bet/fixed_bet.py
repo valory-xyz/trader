@@ -21,7 +21,6 @@
 
 from typing import Any, Dict, List
 
-
 REQUIRED_FIELDS = frozenset({"bankroll", "floor_balance", "p_yes"})
 OPTIONAL_FIELDS = frozenset({"bet_amount", "min_bet", "max_bet", "token_decimals"})
 

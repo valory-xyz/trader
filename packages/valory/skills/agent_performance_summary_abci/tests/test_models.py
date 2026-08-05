@@ -40,6 +40,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     AgentPerformanceSummaryParams,
     GnosisStakingSubgraph,
+    OffchainDepositState,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
     OmenSubgraph,
@@ -465,6 +466,9 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "is_agent_performance_summary_enabled": True,
     "is_achievement_checker_enabled": True,
     "is_running_on_polymarket": False,
+    "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
+    "mech_analytics_url": "",
+    "use_mech_analytics": False,
 }
 
 
@@ -488,6 +492,8 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_agent_performance_summary_enabled is True
         assert params.is_achievement_checker_enabled is True
         assert params.is_running_on_polymarket is False
+        assert params.mech_analytics_url == ""
+        assert params.use_mech_analytics is False
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -518,9 +524,84 @@ class TestAgentPerformanceSummaryParams:
                 is_agent_performance_summary_enabled=True,
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
+                balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
+
+    def test_flag_on_with_empty_url_raises_at_init(self, tmp_path: Path) -> None:
+        """Flag on + empty URL fails loudly at ``__init__``, not at first fetch.
+
+        Guards the fail-loud pairing: an operator that flips
+        ``USE_MECH_ANALYTICS=true`` but forgets ``MECH_ANALYTICS_URL``
+        would otherwise silently no-op back onto the subgraph path, or
+        (if the sync client is later reintroduced) issue a GET to the
+        empty base URL. Coverage on this line was previously missing.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": True,
+            "mech_analytics_url": "",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            with pytest.raises(
+                ValueError,
+                match="use_mech_analytics is true but mech_analytics_url is empty",
+            ):
+                AgentPerformanceSummaryParams(
+                    skill_context=mock_skill_context,
+                    store_path=str(tmp_path),
+                    **kwargs,
+                )
+
+    def test_flag_off_with_empty_url_does_not_raise(self, tmp_path: Path) -> None:
+        """Flag off + empty URL is the pre-migration default and MUST NOT raise.
+
+        Sanity partner: proves the guard only trips on the specific
+        misconfiguration (flag on without URL), not on any Safe
+        deployment that hasn't opted in to the migration yet.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": False,
+            "mech_analytics_url": "",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=mock_skill_context,
+                store_path=str(tmp_path),
+                **kwargs,
+            )
+        assert params.use_mech_analytics is False
+        assert params.mech_analytics_url == ""
+
+    def test_flag_on_with_populated_url_does_not_raise(self, tmp_path: Path) -> None:
+        """Flag on + valid URL is the intended production configuration.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": True,
+            "mech_analytics_url": "https://mech-analytics.autonolas.tech",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=mock_skill_context,
+                store_path=str(tmp_path),
+                **kwargs,
+            )
+        assert params.use_mech_analytics is True
+        assert params.mech_analytics_url == "https://mech-analytics.autonolas.tech"
 
     def test_is_running_on_polymarket_not_set(self, tmp_path: Path) -> None:
         """When is_running_on_polymarket is not set, set it from kwargs."""
@@ -534,6 +615,9 @@ class TestAgentPerformanceSummaryParams:
                 is_agent_performance_summary_enabled=True,
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
+                balance_tracker_address="0x000000000000000000000000000000000000BEEF",
+                mech_analytics_url="",
+                use_mech_analytics=False,
             )
         assert params.is_running_on_polymarket is True
 
@@ -714,6 +798,140 @@ class TestSharedState:
         assert result.timestamp is None
         state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
+    def test_write_offchain_deposits_preserves_sibling_fields(
+        self, tmp_path: Path
+    ) -> None:
+        """Split-write must update only ``offchain_deposits`` and leave siblings on disk untouched.
+
+        Regression against the write-side of the sibling-corruption
+        cascade. If ``_fetch_offchain_prepaid_wei`` wrote the whole
+        summary via ``overwrite_performance_summary`` and the paired
+        summary read had degraded to a fresh dataclass (any nested
+        ``__post_init__`` raise), sibling fields like ``achievements``
+        and ``prediction_history`` would be wiped mid-cycle. The split
+        write reads the raw JSON, updates the sub-dict, writes back —
+        so unrelated on-disk state survives.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        # Seed the file with real data across several fields, including
+        # a stale ``offchain_deposits`` that the split write will
+        # overwrite. Everything else must round-trip.
+        initial = {
+            "timestamp": 1_700_000_000,
+            "agent_behavior": "observing",
+            "prediction_history": {
+                "total_predictions": 42,
+                "stored_count": 42,
+                "last_updated": 1_700_000_000,
+                "items": [],
+            },
+            "achievements": {"items": {}},
+            "offchain_deposits": {
+                "total_deposited_wei": 100,
+                "last_scanned_block": 50,
+            },
+        }
+        with open(file_path, "w") as f:
+            json.dump(initial, f)
+
+        state.write_offchain_deposits_to_disk(
+            OffchainDepositState(total_deposited_wei=999, last_scanned_block=200)
+        )
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        # New offchain_deposits.
+        assert data["offchain_deposits"] == {
+            "total_deposited_wei": 999,
+            "last_scanned_block": 200,
+        }
+        # Siblings untouched.
+        assert data["timestamp"] == 1_700_000_000
+        assert data["agent_behavior"] == "observing"
+        assert data["prediction_history"] == initial["prediction_history"]
+        assert data["achievements"] == initial["achievements"]
+
+    def test_write_offchain_deposits_writes_minimal_file_when_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """First-run split-write when no summary file exists yet.
+
+        The operator has just enabled off-chain accounting and the
+        seed branch fires before any other write has produced a
+        summary. The split-write helper must create a minimal
+        ``{"offchain_deposits": ...}`` file rather than refusing
+        because no file exists — the next cycle-end
+        ``_save_agent_performance_summary`` will fill in the siblings.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        assert not file_path.exists()
+
+        state.write_offchain_deposits_to_disk(
+            OffchainDepositState(total_deposited_wei=0, last_scanned_block=12345)
+        )
+
+        assert file_path.exists()
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data == {
+            "offchain_deposits": {
+                "total_deposited_wei": 0,
+                "last_scanned_block": 12345,
+            }
+        }
+
+    def test_write_offchain_deposits_recovers_from_corrupt_json(
+        self, tmp_path: Path
+    ) -> None:
+        """A truncated / malformed JSON file must not block the checkpoint write.
+
+        If the previous ``_save_agent_performance_summary`` write was
+        interrupted (docker stop -t 0, OOM, disk full) and left the
+        file truncated, the helper still needs to persist the mid-cycle
+        checkpoint — otherwise ROI cost state gets permanently
+        under-counted for that cycle. Sibling recovery is out of scope
+        for this write: the atomic ``_save`` at cycle-end will rebuild
+        siblings from live data.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            f.write('{"offchain_deposits": {"total_deposited_wei":')  # truncated
+
+        state.write_offchain_deposits_to_disk(
+            OffchainDepositState(total_deposited_wei=777, last_scanned_block=42)
+        )
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data == {
+            "offchain_deposits": {
+                "total_deposited_wei": 777,
+                "last_scanned_block": 42,
+            }
+        }
+
     def test_overwrite_performance_summary(self, tmp_path: Path) -> None:
         """overwrite_performance_summary writes JSON to file."""
         state = self._make_state()
@@ -760,6 +978,160 @@ class TestSharedState:
             data = json.load(f)
         assert data["agent_behavior"] == "active"
         assert data["timestamp"] == 1700000100
+
+    def test_update_funds_locked_in_markets_creates_summary_if_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """First-ever call (no file yet) initializes the nested dataclasses.
+
+        Withdrawal completion may run before any normal performance
+        summary round has populated the file, so the helper must be
+        defensive: ``read_existing_performance_summary`` returns a
+        default ``AgentPerformanceSummary()`` with
+        ``agent_performance=None``; the helper must lazily build the
+        nested chain (AgentPerformanceData → PerformanceMetricsData)
+        before writing the field.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        state.update_funds_locked_in_markets(123.45)
+
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        assert file_path.exists()
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["agent_performance"] is not None
+        assert data["agent_performance"]["metrics"] is not None
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 123.45
+
+    def test_update_funds_locked_in_markets_preserves_other_fields(
+        self, tmp_path: Path
+    ) -> None:
+        """The helper updates only the target field; other fields are preserved.
+
+        Falsifies a regression where the helper accidentally clobbers
+        unrelated parts of the summary (e.g., agent_details, stats,
+        or other metrics fields).
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        # Pre-populate a summary with multiple non-trivial fields.
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_behavior="active",
+            agent_details=AgentDetails(
+                id="agent-x",
+                created_at="2025-01-01T00:00:00Z",
+                last_active_at="2025-12-01T00:00:00Z",
+            ),
+            agent_performance=AgentPerformanceData(
+                metrics=PerformanceMetricsData(
+                    all_time_funds_used=500.0,
+                    all_time_profit=42.0,
+                    funds_locked_in_markets=200.0,
+                    available_funds=300.0,
+                    roi=0.084,
+                ),
+                stats=PerformanceStatsData(
+                    predictions_made=10,
+                    prediction_accuracy=0.7,
+                ),
+            ),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(150.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        # Target field updated.
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 150.0
+        # Sibling fields untouched.
+        assert data["agent_performance"]["metrics"]["all_time_funds_used"] == 500.0
+        assert data["agent_performance"]["metrics"]["all_time_profit"] == 42.0
+        assert data["agent_performance"]["metrics"]["available_funds"] == 300.0
+        assert data["agent_performance"]["metrics"]["roi"] == 0.084
+        assert data["agent_performance"]["stats"]["predictions_made"] == 10
+        assert data["agent_performance"]["stats"]["prediction_accuracy"] == 0.7
+        assert data["agent_behavior"] == "active"
+        assert data["agent_details"]["id"] == "agent-x"
+
+    def test_update_funds_locked_in_markets_updates_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """The helper bumps the summary's top-level ``timestamp`` field.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        initial = AgentPerformanceSummary(timestamp=1700000000)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(50.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["timestamp"] == 1700000100
+
+    def test_update_funds_locked_in_markets_handles_existing_metrics_none(
+        self, tmp_path: Path
+    ) -> None:
+        """A pre-populated summary with ``metrics=None`` initializes lazily.
+
+        Mid-state where ``agent_performance`` exists (set by an earlier
+        round) but ``metrics`` is None — the helper must not crash.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1700000100.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_performance=AgentPerformanceData(metrics=None),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        state.update_funds_locked_in_markets(75.0)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["agent_performance"]["metrics"] is not None
+        assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 75.0
 
 
 class _TestableSubgraph(Subgraph):

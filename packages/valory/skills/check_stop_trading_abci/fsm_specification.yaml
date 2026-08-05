@@ -5,11 +5,15 @@ alphabet_in:
 - REVIEW_BETS
 - ROUND_TIMEOUT
 - SKIP_TRADING
+- WITHDRAW_OMEN
+- WITHDRAW_POLYMARKET
 default_start_state: CheckStopTradingRound
 final_states:
 - FinishedCheckStopTradingRound
 - FinishedWithSkipTradingRound
 - FinishedWithReviewBetsRound
+- FinishedWithWithdrawalOmenRound
+- FinishedWithWithdrawalPolymarketRound
 label: CheckStopTradingAbciApp
 start_states:
 - CheckStopTradingRound
@@ -18,6 +22,8 @@ states:
 - FinishedCheckStopTradingRound
 - FinishedWithSkipTradingRound
 - FinishedWithReviewBetsRound
+- FinishedWithWithdrawalOmenRound
+- FinishedWithWithdrawalPolymarketRound
 transition_func:
     (CheckStopTradingRound, DONE): FinishedCheckStopTradingRound
     (CheckStopTradingRound, NONE): CheckStopTradingRound
@@ -25,3 +31,5 @@ transition_func:
     (CheckStopTradingRound, ROUND_TIMEOUT): CheckStopTradingRound
     (CheckStopTradingRound, REVIEW_BETS): FinishedWithReviewBetsRound
     (CheckStopTradingRound, SKIP_TRADING): FinishedWithSkipTradingRound
+    (CheckStopTradingRound, WITHDRAW_OMEN): FinishedWithWithdrawalOmenRound
+    (CheckStopTradingRound, WITHDRAW_POLYMARKET): FinishedWithWithdrawalPolymarketRound

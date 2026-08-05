@@ -57,6 +57,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 from packages.valory.skills.decision_maker_abci.states.polymarket_swap import (
     PolymarketSwapUsdcRound,
 )
+from packages.valory.skills.decision_maker_abci.states.polymarket_sweep import (
+    PolymarketSweepRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_wrap_collateral import (
     PolymarketWrapCollateralRound,
 )
@@ -218,11 +221,11 @@ def test_polymarket_bet_placement_round_transition(
     app = setup_app
     transition_function = app.transition_function[PolymarketBetPlacementRound]
 
-    assert transition_function[Event.DONE] == FinishedPolymarketBetPlacementRound
-    assert (
-        transition_function[Event.BET_PLACEMENT_DONE]
-        == FinishedPolymarketBetPlacementRound
-    )
+    # CLOB v2: a matched order leaves funds in the DepositWallet, so success
+    # routes through the sweep round (which returns them to the Safe) before
+    # the cycle wraps up. A mocked tx still exits directly.
+    assert transition_function[Event.DONE] == PolymarketSweepRound
+    assert transition_function[Event.BET_PLACEMENT_DONE] == PolymarketSweepRound
     assert transition_function[Event.MOCK_TX] == FinishedPolymarketBetPlacementRound
 
 

@@ -26,7 +26,8 @@ def test_chatui_payload() -> None:
     """Test ChatuiPayload with vote=True."""
     payload = ChatuiPayload(sender="sender", vote=True)
     assert payload.vote is True
-    assert payload.data == {"vote": True}
+    assert payload.selected_mechs is None
+    assert payload.data == {"vote": True, "selected_mechs": None}
     assert ChatuiPayload.from_json(payload.json) == payload
 
 
@@ -34,5 +35,24 @@ def test_chatui_payload_false_vote() -> None:
     """Test ChatuiPayload with vote=False."""
     payload = ChatuiPayload(sender="sender", vote=False)
     assert payload.vote is False
-    assert payload.data == {"vote": False}
+    assert payload.selected_mechs is None
+    assert payload.data == {"vote": False, "selected_mechs": None}
+    assert ChatuiPayload.from_json(payload.json) == payload
+
+
+def test_chatui_payload_carries_selected_mechs() -> None:
+    """selected_mechs JSON ride-along must round-trip through (de)serialization.
+
+    ChatuiLoadRound.end_block reads this field to publish a fresh pin
+    into synced data alongside the vote, so any drift between the
+    payload field name and the round consumer would silently regress to
+    the stale-pin loop the round override fixes.
+    """
+    payload = ChatuiPayload(
+        sender="sender",
+        vote=True,
+        selected_mechs='["0xabc","0xdef"]',
+    )
+    assert payload.selected_mechs == '["0xabc","0xdef"]'
+    assert payload.data == {"vote": True, "selected_mechs": '["0xabc","0xdef"]'}
     assert ChatuiPayload.from_json(payload.json) == payload

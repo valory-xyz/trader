@@ -33,9 +33,12 @@ import requests
 from aea_ledger_ethereum.ethereum import EthereumCrypto
 from eth_account import Account
 from web3 import Web3
+from web3.exceptions import ContractLogicError
 
 from packages.valory.protocols.http.message import HttpMessage
-from packages.valory.skills.abstract_round_abci.handlers import ABCIRoundHandler
+from packages.valory.skills.abstract_round_abci.handlers import (
+    ABCIRoundHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -58,7 +61,9 @@ from packages.valory.skills.chatui_abci.prompts import TradingStrategy
 from packages.valory.skills.decision_maker_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
-from packages.valory.skills.decision_maker_abci.handlers import HttpMethod
+from packages.valory.skills.decision_maker_abci.handlers import (
+    HttpMethod,
+)
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
@@ -119,6 +124,8 @@ TRADING_STRATEGY_EXPLANATION = {
 COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 
 FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
+
+X402_SWAP_MAX_ROUTE_ATTEMPTS = 3
 
 
 class HttpHandler(BaseHttpHandler):
@@ -223,6 +230,7 @@ class HttpHandler(BaseHttpHandler):
             rf"{hostname_regex}\/api\/v1\/agent\/trading-details"
         )
         is_enabled_url = rf"{hostname_regex}\/features"
+        withdrawal_url = rf"{hostname_regex}\/api\/v1\/withdrawal"
         position_details_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
@@ -245,6 +253,13 @@ class HttpHandler(BaseHttpHandler):
                 (agent_predictions_url_regex, self._handle_get_predictions),
                 (trading_details_url_regex, self._handle_get_trading_details),
                 (is_enabled_url, self._handle_get_features),
+                # The withdrawal handler lives in chatui_abci.HttpHandler but is
+                # only registered there under the (GET,) key, which sits AFTER
+                # this (GET, HEAD) entry in iteration order — so the
+                # static-files catch-all below shadows it. Re-register here so
+                # it resolves before the catch-all (matches how /features is
+                # handled).
+                (withdrawal_url, self._handle_get_withdrawal),
                 (agent_profit_over_time_url_regex, self._handle_get_profit_over_time),
                 (
                     position_details_url_regex,
@@ -414,7 +429,16 @@ class HttpHandler(BaseHttpHandler):
                 # On Polygon: USDC balance needs to be converted to POL equivalent
                 # Using CoinGecko to get real-time exchange rate since USDC and POL have different prices
                 usdc_status = safe_balances.tokens[chain_config["usdc_address"]]
-                usdc_balance = int(usdc_status.balance or 0)
+
+                if usdc_status.balance is None:
+                    self.context.logger.warning(
+                        "USDC balance unknown (sub-call reverted); "
+                        "skipping USDC->POL adjustment and clearing native deficit."
+                    )
+                    native_status.deficit = None
+                    return funds_status
+
+                usdc_balance = int(usdc_status.balance)
                 usdc_decimals = usdc_status.decimals
                 pol_decimals = native_status.decimals
 
@@ -461,7 +485,14 @@ class HttpHandler(BaseHttpHandler):
                 wrapped_native_status = safe_balances.tokens[
                     chain_config["wrapped_native_address"]
                 ]
-                adjustment_balance = int(wrapped_native_status.balance or 0)
+                if wrapped_native_status.balance is None:
+                    self.context.logger.warning(
+                        "Wrapped-native balance unknown (sub-call reverted); "
+                        "skipping wxDAI->xDAI consolidation and clearing native deficit."
+                    )
+                    native_status.deficit = None
+                    return funds_status
+                adjustment_balance = int(wrapped_native_status.balance)
 
         except KeyError:
             self.context.logger.error(
@@ -469,7 +500,14 @@ class HttpHandler(BaseHttpHandler):
             )
             return funds_status
 
-        actual_considered_balance = int(native_status.balance or 0) + adjustment_balance
+        if native_status.balance is None:
+            self.context.logger.warning(
+                "Native balance unknown (sub-call reverted); "
+                "leaving native deficit unchanged to avoid spurious top-up request."
+            )
+            return funds_status
+
+        actual_considered_balance = int(native_status.balance) + adjustment_balance
 
         actual_deficit = 0
         if native_status.threshold > actual_considered_balance:
@@ -515,7 +553,20 @@ class HttpHandler(BaseHttpHandler):
         usdc_e = safe_balances.tokens[usdc_e_addr]
         pusd = safe_balances.tokens[pusd_addr]
 
-        combined = int(usdc_e.balance or 0) + int(pusd.balance or 0)
+        if usdc_e.balance is None or pusd.balance is None:
+            self.context.logger.warning(
+                "USDC.e or pUSD balance unknown (sub-call reverted); "
+                "skipping merge and clearing pUSD deficit."
+            )
+            pusd.deficit = None
+            # Only drop the USDC.e row when its own balance is unknown — if
+            # USDC.e is readable but pUSD isn't, keep USDC.e visible so the
+            # operator still sees the known balance.
+            if usdc_e.balance is None:
+                del safe_balances.tokens[usdc_e_addr]
+            return
+
+        combined = int(usdc_e.balance) + int(pusd.balance)
         pusd.balance = combined
 
         deficit = max(pusd.topup - combined, 0) if combined < pusd.threshold else 0
@@ -783,6 +834,7 @@ class HttpHandler(BaseHttpHandler):
         from_amount: Optional[str] = None,
         to_amount: Optional[str] = None,
         timeout: int = 30,
+        deny_exchanges: Optional[List[str]] = None,
     ) -> Optional[Dict]:
         """
         Get LiFi quote for token swap.
@@ -795,6 +847,7 @@ class HttpHandler(BaseHttpHandler):
         :param from_amount: Amount to swap from (for standard quote)
         :param to_amount: Desired amount to receive (for toAmount quote)
         :param timeout: Request timeout in seconds
+        :param deny_exchanges: LiFi tool names to exclude from routing
         :return: LiFi quote response or None if failed
         """
         try:
@@ -815,6 +868,8 @@ class HttpHandler(BaseHttpHandler):
                 "slippage": slippage,
                 "integrator": "valory",
             }
+            if deny_exchanges:
+                params["denyExchanges"] = ",".join(deny_exchanges)
 
             # Add amount parameter based on what's provided
             if to_amount is not None:
@@ -915,15 +970,24 @@ class HttpHandler(BaseHttpHandler):
         tx_request: Dict,
         eoa_address: str,
         chain: str,
-    ) -> Optional[int]:
-        """Estimate gas for a transaction"""
+    ) -> Tuple[Optional[int], bool]:
+        """Estimate gas for a transaction.
+
+        :param tx_request: LiFi `transactionRequest` dict with `to`, `data`,
+            and `value` keys.
+        :param eoa_address: EOA that would sign and send the transaction.
+        :param chain: Chain name selecting the RPC endpoint.
+        :return: (gas, route_revert). route_revert is True only when the
+            failure was a contract-side revert, in which case retrying the
+            LiFi quote with the offending route denied may help.
+        """
         try:
             w3 = self._get_web3_instance(chain)
             if not w3:
                 self.context.logger.error(
                     "Failed to get Web3 instance for gas estimation"
                 )
-                return None
+                return None, False
 
             tx_value = (
                 int(tx_request["value"], 16)
@@ -945,11 +1009,18 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.info(
                 f"Estimated gas: {estimated_gas}, with 20% buffer: {tx_gas}"
             )
-            return tx_gas
+            return tx_gas, False
 
+        except ContractLogicError as e:
+            # Demoted to warning: the caller's retry loop turns this into
+            # either a successful swap (after a route swap) or a single ERROR
+            # on "Exhausted LiFi route retries". ERROR-on-recovered-failure
+            # would false-fire alerting wired to ERROR-level logs.
+            self.context.logger.warning(f"Route revert in gas estimation: {e}")
+            return None, True
         except Exception as e:
             self.context.logger.error(f"Error in gas estimation: {str(e)}")
-            return None
+            return None, False
 
     def _submit_x402_swap_if_idle(self) -> None:
         """Submit x402 swap task only if no swap is currently in progress."""
@@ -1005,23 +1076,71 @@ class HttpHandler(BaseHttpHandler):
             )
 
             top_up_usdc_amount = str(top_up)
-            quote = self._get_lifi_quote(
-                from_token=chain_config["native_token_address"],
-                to_token=usdc_address,
-                from_address=eoa_address,
-                to_address=eoa_address,
-                chain_config=chain_config,
-                to_amount=top_up_usdc_amount,
-            )
-            if not quote:
-                self.context.logger.error("Failed to get LiFi quote")
+            denied: List[str] = []
+            tx_request: Optional[Dict] = None
+            tx_gas: Optional[int] = None
+
+            for attempt in range(X402_SWAP_MAX_ROUTE_ATTEMPTS):
+                quote = self._get_lifi_quote(
+                    from_token=chain_config["native_token_address"],
+                    to_token=usdc_address,
+                    from_address=eoa_address,
+                    to_address=eoa_address,
+                    chain_config=chain_config,
+                    to_amount=top_up_usdc_amount,
+                    # Snapshot per call so the assertion-time mock state in
+                    # tests reflects the value at call time.
+                    deny_exchanges=list(denied),
+                )
+                if not quote:
+                    self.context.logger.error(
+                        "Failed to get LiFi quote "
+                        f"(attempt {attempt + 1}/"
+                        f"{X402_SWAP_MAX_ROUTE_ATTEMPTS}, denied={denied})"
+                    )
+                    return False
+
+                tx_request = quote.get("transactionRequest")
+                if not tx_request:
+                    self.context.logger.error("No transactionRequest in quote")
+                    return False
+
+                tx_gas, route_revert = self._estimate_gas(
+                    tx_request, eoa_address, chain
+                )
+                if tx_gas is not None:
+                    break
+
+                if not route_revert:
+                    self.context.logger.error("Failed to estimate gas for transaction")
+                    return False
+
+                tool = quote.get("tool")
+                if not tool or tool in denied:
+                    self.context.logger.error(
+                        "LiFi returned an unusable route; cannot retry "
+                        f"(tool={tool!r}, denied={denied})"
+                    )
+                    return False
+
+                denied = denied + [tool]
+                if attempt + 1 < X402_SWAP_MAX_ROUTE_ATTEMPTS:
+                    self.context.logger.warning(
+                        f"LiFi route via '{tool}' reverted on gas "
+                        f"estimation; retrying with denyExchanges={denied} "
+                        f"(attempt {attempt + 1}/"
+                        f"{X402_SWAP_MAX_ROUTE_ATTEMPTS})"
+                    )
+            else:
+                self.context.logger.error(
+                    "Exhausted LiFi route attempts "
+                    f"({X402_SWAP_MAX_ROUTE_ATTEMPTS}); denied={denied}"
+                )
                 return False
 
-            tx_request: Optional[Dict] = quote.get("transactionRequest")
-            if not tx_request:
-                self.context.logger.error("No transactionRequest in quote")
-                return False
-
+            # tx_gas, tx_request now belong to a route that passed estimation.
+            # Fetch nonce/gas-price only after a working route is found so the
+            # nonce window stays small even if the loop ran multiple LiFi calls.
             nonce, gas_price = self._get_nonce_and_gas_web3(eoa_address, chain)
             if nonce is None or gas_price is None:
                 self.context.logger.error("Failed to get nonce or gas price")
@@ -1032,10 +1151,6 @@ class HttpHandler(BaseHttpHandler):
                 if isinstance(tx_request["value"], str)
                 else tx_request["value"]
             )
-            tx_gas = self._estimate_gas(tx_request, eoa_address, chain)
-            if tx_gas is None:
-                self.context.logger.error("Failed to estimate gas for transaction")
-                return False
 
             tx_data = {
                 "to": Web3.to_checksum_address(tx_request["to"]),

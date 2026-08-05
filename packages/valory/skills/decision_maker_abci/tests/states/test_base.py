@@ -419,6 +419,42 @@ def test_is_staking_kpi_met(sync_data: SynchronizedData, mocked_db: MagicMock) -
     assert sync_data.is_staking_kpi_met is True
 
 
+def test_is_activity_target_met(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Test the is_activity_target_met property."""
+    mocked_db.get.return_value = True
+    assert sync_data.is_activity_target_met is True
+
+
+def test_activity_target(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the activity_target property."""
+    mocked_db.get.return_value = 8
+    assert sync_data.activity_target == 8
+
+
+def test_activity_target_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """activity_target falls back to 0 when stored as None."""
+    mocked_db.get.return_value = None
+    assert sync_data.activity_target == 0
+
+
+def test_activity_completed(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the activity_completed property."""
+    mocked_db.get.return_value = 5
+    assert sync_data.activity_completed == 5
+
+
+def test_activity_completed_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """activity_completed falls back to 0 when stored as None."""
+    mocked_db.get.return_value = None
+    assert sync_data.activity_completed == 0
+
+
 def test_after_bet_attempt(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the after_bet_attempt property."""
     mocked_db.get.return_value = True

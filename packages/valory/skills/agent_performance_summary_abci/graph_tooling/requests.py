@@ -22,6 +22,7 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, Generator, List, Optional, cast
 
@@ -32,6 +33,14 @@ from packages.valory.protocols.srr.dialogues import SrrDialogue, SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs, Requests
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
+    MAX_PAGES,
+    build_scored_rows_url,
+    chain_id_for_platform,
+    is_flag_enabled,
+    parse_scored_rows_page,
+    rows_as_subgraph_mech_requests,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_REQUESTS_BY_TITLES_QUERY,
@@ -199,6 +208,74 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
         return result
 
+    def _page_mech_analytics_scored_rows(
+        self,
+        requester: str,
+        since: Optional[datetime] = None,
+        until: Optional[datetime] = None,
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+        """Page ``/v1/data/scored-rows`` for one Safe (async HTTP).
+
+        Uses the framework's async HTTP protocol so the FSM round
+        doesn't block on synchronous I/O — Tendermint heartbeats and
+        ABCI message pumps stall while a sync ``requests.get`` is
+        waiting.
+
+        Chain scope is derived from ``self.params.is_running_on_polymarket``.
+        Loop capped at ``MAX_PAGES`` (mech_analytics_client) so a broken
+        cursor cycle can't hang a live agent. Returns ``None`` on any
+        failure (transport, non-200, JSON parse, shape drift, or
+        MAX_PAGES exceeded) so callers can distinguish that from an
+        empty result and NOT bake a wrong 0 into their cost math.
+
+        :param requester: the Safe address.
+        :param since: optional lower bound on ``requested_at``
+            (inclusive per the endpoint contract).
+        :param until: optional upper bound on ``requested_at``
+            (exclusive per the endpoint contract).
+        :return: list of scored-row dicts on success, ``None`` on any
+            failure (including MAX_PAGES exceeded).
+        :yield: framework yields for each paginated request.
+        """
+        chain_id = chain_id_for_platform(self.params.is_running_on_polymarket)
+        cursor: Optional[str] = None
+        all_rows: List[Dict[str, Any]] = []
+        for page_index in range(MAX_PAGES):
+            url = build_scored_rows_url(
+                base_url=self.params.mech_analytics_url,
+                requester=requester,
+                chain_id=chain_id,
+                since=since,
+                until=until,
+                cursor=cursor,
+            )
+            response = yield from self.get_http_response(method="GET", url=url)
+            if response.status_code != 200:
+                self.context.logger.error(
+                    f"mech-analytics scored-rows responded {response.status_code} "
+                    f"(page {page_index + 1})"
+                )
+                return None
+            try:
+                payload = json.loads(response.body.decode())
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                self.context.logger.error(
+                    f"mech-analytics scored-rows JSON parse failed: {exc}"
+                )
+                return None
+            page = parse_scored_rows_page(payload, self.context.logger)
+            if page is None:
+                return None
+            all_rows.extend(page["rows"])
+            cursor = page["next_cursor"]
+            if cursor is None:
+                return all_rows
+        self.context.logger.error(
+            f"mech-analytics scored-rows exceeded MAX_PAGES={MAX_PAGES}; "
+            "endpoint may be returning a cursor cycle"
+        )
+        return None
+
     def _fetch_mech_sender(
         self, agent_safe_address: str, timestamp_gt: int
     ) -> Generator[None, None, Optional[Dict]]:
@@ -231,6 +308,127 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if result and isinstance(result, dict) and "sender" in result:
             return result.get("sender")
         return result
+
+    def _fetch_ct_held_position_keys(
+        self, agent_safe_address: str
+    ) -> Generator[None, None, Optional["set[tuple[str, int]]"]]:
+        """Return ``{(condition_id_lower, outcome_index)}`` for CT positions the safe still holds.
+
+        Reads the ConditionalTokens subgraph's ``userPositions`` where
+        ``balance > 0``. Used to gate the per-position
+        ``funds_locked_in_markets`` formula so that positions whose CT
+        shares have been burned by ``redeemPositions`` (or transferred
+        externally) are correctly excluded — without this gate, an
+        already-redeemed winning position is still counted as locked
+        because the bet history is immutable.
+
+        Returns ``None`` on subgraph error (missing context, failed
+        request). The downstream consumer
+        :func:`compute_funds_locked_from_bets` treats ``None`` as
+        "no gate" (fallback to the un-gated sum) rather than collapsing
+        every position out — collapsing would write a phantom ``0.0``
+        to the FE on every transient CT-subgraph hiccup. A legitimate
+        empty set (user genuinely holds nothing on-chain) still gates
+        everything out and yields ``0.0`` correctly.
+
+        :param agent_safe_address: the safe address (lower-cased
+            internally).
+        :yield: framework yields for each paginated CT subgraph request.
+        :return: set of ``(condition_id_lower, outcome_index)`` tuples
+            for every non-zero, single-outcome position, or ``None``
+            on error. Compound positions and non-power-of-2 indexSets
+            are skipped (the trader agent doesn't create those).
+        """
+        held: "set[tuple[str, int]]" = set()
+        try:
+            ct_subgraph = self.context.conditional_tokens_subgraph
+        except AttributeError:
+            self.context.logger.warning(
+                "funds_locked: CT subgraph context unavailable; "
+                "skipping CT-balance gate"
+            )
+            return None
+
+        # Inlined pagination query. The ``balance_gt: "0"`` filter is
+        # critical: trader-agent safes accumulate thousands of
+        # zero-balance ``userPositions`` over their lifetime (every
+        # historical bet that was later redeemed leaves a 0-balance row
+        # behind). Without the filter, the result set easily exceeds
+        # one page (1000 rows) and page-2 fetch failures collapse the
+        # entire gate, falling back to the un-gated sum — exactly the
+        # 110-wxDAI phantom-locked regression motivating this fix.
+        # Filtering server-side keeps the result set tiny (only
+        # actually-held positions) and almost always fits in one page.
+        query = """
+        query CTUserPositions($id: ID!, $first: Int!, $idGt: String!) {
+          user(id: $id) {
+            userPositions(
+              first: $first
+              where: { balance_gt: "0", id_gt: $idGt }
+              orderBy: id
+            ) {
+              balance
+              id
+              position {
+                conditionIds
+                indexSets
+              }
+            }
+          }
+        }
+        """
+        id_gt = ""
+        page_size = 1000
+        while True:
+            response = yield from self._fetch_from_subgraph(
+                query=query,
+                variables={
+                    "id": agent_safe_address.lower(),
+                    "first": page_size,
+                    "idGt": id_gt,
+                },
+                subgraph=ct_subgraph,
+                res_context="ct_user_positions_for_funds_locked",
+            )
+            # The CT subgraph spec sets ``response_key:
+            # data:user:userPositions`` and ``response_type: list``, so
+            # ``_fetch_from_subgraph`` returns the unwrapped positions
+            # list directly. ``None`` means request error; an empty
+            # list means a legitimately exhausted pagination (or
+            # ``user`` doesn't exist on the subgraph — pre-indexing
+            # state, treated as "holds nothing").
+            if response is None:
+                self.context.logger.warning(
+                    "funds_locked: CT subgraph request failed; "
+                    "skipping CT-balance gate"
+                )
+                return None
+            rows = response if isinstance(response, list) else []
+            if not rows:
+                break
+            for row in rows:
+                try:
+                    balance = int(row.get("balance", 0))
+                except (TypeError, ValueError):
+                    continue
+                if balance == 0:
+                    continue
+                pos = row.get("position") or {}
+                cids = pos.get("conditionIds") or []
+                idx_sets = pos.get("indexSets") or []
+                if len(cids) != 1 or len(idx_sets) != 1:
+                    continue  # compound — skip
+                try:
+                    index_set = int(idx_sets[0])
+                except (TypeError, ValueError):
+                    continue
+                if index_set <= 0 or (index_set & (index_set - 1)) != 0:
+                    continue  # not single-bit
+                held.add((cids[0].lower(), index_set.bit_length() - 1))
+            if len(rows) < page_size:
+                break
+            id_gt = rows[-1]["id"]
+        return held
 
     def _fetch_trader_agent(
         self, agent_safe_address: str
@@ -520,6 +718,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[List]]:
         """Fetch all mech requests for the agent with pagination support."""
+        # Flag-on path: read the per-Safe request list from mech-analytics'
+        # /v1/data/scored-rows instead of the marketplace subgraph. Same
+        # downstream shape via ``rows_as_subgraph_mech_requests`` so the
+        # day-bucketing / title-matching in behaviours.py is untouched.
+        # chain_id is passed explicitly — a Safe address can exist on
+        # multiple chains and an unfiltered call would sum them silently.
+        if is_flag_enabled(self.params):
+            # Async pagination via the framework HTTP protocol (see
+            # ``_page_mech_analytics_scored_rows`` docstring for why
+            # sync ``requests.get`` inside the FSM round is unsafe).
+            rows = yield from self._page_mech_analytics_scored_rows(
+                requester=agent_safe_address,
+            )
+            if rows is None:
+                return None
+            return rows_as_subgraph_mech_requests(rows)
+
         all_requests = []
         skip = 0
         batch_size = QUERY_BATCH_SIZE
@@ -581,6 +796,39 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         """
         if not question_titles:
             return []
+
+        # Flag-on path: pull scored rows since the watermark from
+        # mech-analytics and filter to the requested titles client-side.
+        # This is the per-tick incremental fetch path used by
+        # ``_perform_incremental_update`` — without a flag branch here,
+        # off-chain days would silently attribute zero fees even when
+        # the flag is on for the initial backfill.
+        if is_flag_enabled(self.params):
+            since = None
+            if block_timestamp_gt > 0:
+                # The subgraph query below uses ``blockTimestamp_gt``
+                # (strictly greater than); mech-analytics' ``since`` is
+                # inclusive. ``block_timestamp_gt`` is the timestamp of a
+                # row already consumed in a prior round — passing it
+                # straight through would re-fetch that boundary row every
+                # tick, and because the incremental settled-count aggregation
+                # is a monotonic ``max(prev, new)``, any recurrence in
+                # ``question_titles`` would inflate ``fees_by_day`` /
+                # ``unplaced_count`` permanently. ``+1`` keeps the semantics
+                # aligned across the two backends. Same treatment as the
+                # ``ts + 1`` on ``until`` in the per-position helpers.
+                since = datetime.fromtimestamp(
+                    int(block_timestamp_gt) + 1, tz=timezone.utc
+                )
+            rows = yield from self._page_mech_analytics_scored_rows(
+                requester=agent_safe_address,
+                since=since,
+            )
+            if rows is None:
+                return None
+            title_set = set(question_titles)
+            filtered = [row for row in rows if row.get("question_title") in title_set]
+            return rows_as_subgraph_mech_requests(filtered)
 
         # Determine which subgraph to use based on platform
         if self.params.is_running_on_polymarket:

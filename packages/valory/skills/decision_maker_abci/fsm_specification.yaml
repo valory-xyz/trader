@@ -12,7 +12,6 @@ alphabet_in:
 - DONE
 - DONE_NO_SELL
 - DONE_SELL
-- FETCH_ERROR
 - INSUFFICIENT_BALANCE
 - MECH_RESPONSE_ERROR
 - MOCK_MECH_REQUEST
@@ -30,15 +29,20 @@ alphabet_in:
 - SLOTS_UNSUPPORTED_ERROR
 - TIE
 - UNPROFITABLE
+- WITHDRAWAL_DONE
+- WITHDRAWAL_ROUND_TIMEOUT
 default_start_state: CheckBenchmarkingModeRound
 final_states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedOmenWithdrawRound
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPolymarketTopUpTxPreparationRound
+- FinishedPolymarketWithdrawTopUpTxPreparationRound
 - FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
@@ -47,14 +51,20 @@ final_states:
 - FinishedWithoutRedeemingRound
 - ImpossibleRound
 - RefillRequiredRound
+- WithdrawalIdleRound
 label: DecisionMakerAbciApp
 start_states:
 - CheckBenchmarkingModeRound
 - DecisionReceiveRound
 - DecisionRequestRound
 - HandleFailedTxRound
+- OmenWithdrawRound
+- PolymarketBetPlacementRound
 - PolymarketPostSetApprovalRound
+- PolymarketWithdrawRound
+- PolymarketWithdrawTopUpRound
 - PostBetUpdateRound
+- PostOmenWithdrawRound
 - RandomnessRound
 - RedeemRouterRound
 states:
@@ -68,9 +78,12 @@ states:
 - DecisionRequestRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
+- FinishedOmenWithdrawRound
 - FinishedPolymarketBetPlacementRound
 - FinishedPolymarketRedeemRound
 - FinishedPolymarketSwapTxPreparationRound
+- FinishedPolymarketTopUpTxPreparationRound
+- FinishedPolymarketWithdrawTopUpTxPreparationRound
 - FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
 - FinishedRedeemTxPreparationRound
@@ -79,13 +92,19 @@ states:
 - FinishedWithoutRedeemingRound
 - HandleFailedTxRound
 - ImpossibleRound
+- OmenWithdrawRound
 - PolymarketBetPlacementRound
 - PolymarketPostSetApprovalRound
 - PolymarketRedeemRound
 - PolymarketSetApprovalRound
 - PolymarketSwapUsdcRound
+- PolymarketSweepRound
+- PolymarketTopUpRound
+- PolymarketWithdrawRound
+- PolymarketWithdrawTopUpRound
 - PolymarketWrapCollateralRound
 - PostBetUpdateRound
+- PostOmenWithdrawRound
 - RandomnessRound
 - RedeemRound
 - RedeemRouterRound
@@ -93,6 +112,7 @@ states:
 - SamplingRound
 - SellOutcomeTokensRound
 - ToolSelectionRound
+- WithdrawalIdleRound
 transition_func:
     (BenchmarkingRandomnessRound, DONE): SamplingRound
     (BenchmarkingRandomnessRound, NONE): ImpossibleRound
@@ -102,11 +122,9 @@ transition_func:
     (BetPlacementRound, DONE): FinishedDecisionMakerRound
     (BetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (BetPlacementRound, MOCK_TX): RedeemRound
-    (BetPlacementRound, NONE): ImpossibleRound
     (BetPlacementRound, NO_MAJORITY): BetPlacementRound
     (BetPlacementRound, ROUND_TIMEOUT): BetPlacementRound
     (BlacklistingRound, DONE): FinishedWithoutDecisionRound
-    (BlacklistingRound, FETCH_ERROR): ImpossibleRound
     (BlacklistingRound, MOCK_TX): FinishedWithoutDecisionRound
     (BlacklistingRound, NONE): ImpossibleRound
     (BlacklistingRound, NO_MAJORITY): BlacklistingRound
@@ -115,7 +133,6 @@ transition_func:
     (CheckBenchmarkingModeRound, BENCHMARKING_ENABLED): BenchmarkingRandomnessRound
     (CheckBenchmarkingModeRound, NONE): ImpossibleRound
     (CheckBenchmarkingModeRound, NO_MAJORITY): CheckBenchmarkingModeRound
-    (CheckBenchmarkingModeRound, PREPARE_TX): PolymarketSetApprovalRound
     (CheckBenchmarkingModeRound, ROUND_TIMEOUT): CheckBenchmarkingModeRound
     (CheckBenchmarkingModeRound, SET_APPROVAL): PolymarketSetApprovalRound
     (DecisionReceiveRound, DONE): BetPlacementRound
@@ -123,7 +140,7 @@ transition_func:
     (DecisionReceiveRound, DONE_SELL): SellOutcomeTokensRound
     (DecisionReceiveRound, MECH_RESPONSE_ERROR): BlacklistingRound
     (DecisionReceiveRound, NO_MAJORITY): DecisionReceiveRound
-    (DecisionReceiveRound, POLYMARKET_DONE): PolymarketBetPlacementRound
+    (DecisionReceiveRound, POLYMARKET_DONE): PolymarketTopUpRound
     (DecisionReceiveRound, ROUND_TIMEOUT): DecisionReceiveRound
     (DecisionReceiveRound, TIE): BlacklistingRound
     (DecisionReceiveRound, UNPROFITABLE): BlacklistingRound
@@ -135,13 +152,18 @@ transition_func:
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
-    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): FinishedPolymarketBetPlacementRound
+    (OmenWithdrawRound, DONE): WithdrawalIdleRound
+    (OmenWithdrawRound, MOCK_TX): WithdrawalIdleRound
+    (OmenWithdrawRound, NO_MAJORITY): OmenWithdrawRound
+    (OmenWithdrawRound, PREPARE_TX): FinishedOmenWithdrawRound
+    (OmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (OmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
+    (PolymarketBetPlacementRound, BET_PLACEMENT_DONE): PolymarketSweepRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_FAILED): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, BET_PLACEMENT_IMPOSSIBLE): BlacklistingRound
-    (PolymarketBetPlacementRound, DONE): FinishedPolymarketBetPlacementRound
+    (PolymarketBetPlacementRound, DONE): PolymarketSweepRound
     (PolymarketBetPlacementRound, INSUFFICIENT_BALANCE): RefillRequiredRound
     (PolymarketBetPlacementRound, MOCK_TX): FinishedPolymarketBetPlacementRound
-    (PolymarketBetPlacementRound, NONE): ImpossibleRound
     (PolymarketBetPlacementRound, NO_MAJORITY): PolymarketBetPlacementRound
     (PolymarketBetPlacementRound, ROUND_TIMEOUT): PolymarketBetPlacementRound
     (PolymarketPostSetApprovalRound, APPROVAL_FAILED): PolymarketSetApprovalRound
@@ -151,7 +173,6 @@ transition_func:
     (PolymarketPostSetApprovalRound, ROUND_TIMEOUT): PolymarketPostSetApprovalRound
     (PolymarketRedeemRound, DONE): FinishedPolymarketRedeemRound
     (PolymarketRedeemRound, MOCK_TX): FinishedPolymarketRedeemRound
-    (PolymarketRedeemRound, NONE): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_MAJORITY): PolymarketRedeemRound
     (PolymarketRedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (PolymarketRedeemRound, PREPARE_TX): FinishedRedeemTxPreparationRound
@@ -168,6 +189,29 @@ transition_func:
     (PolymarketSwapUsdcRound, NO_MAJORITY): PolymarketSwapUsdcRound
     (PolymarketSwapUsdcRound, PREPARE_TX): FinishedPolymarketSwapTxPreparationRound
     (PolymarketSwapUsdcRound, ROUND_TIMEOUT): PolymarketSwapUsdcRound
+    (PolymarketSweepRound, DONE): FinishedPolymarketBetPlacementRound
+    (PolymarketSweepRound, MOCK_TX): FinishedPolymarketBetPlacementRound
+    (PolymarketSweepRound, NONE): PolymarketSweepRound
+    (PolymarketSweepRound, NO_MAJORITY): PolymarketSweepRound
+    (PolymarketSweepRound, ROUND_TIMEOUT): PolymarketSweepRound
+    (PolymarketTopUpRound, DONE): PolymarketBetPlacementRound
+    (PolymarketTopUpRound, INSUFFICIENT_BALANCE): RefillRequiredRound
+    (PolymarketTopUpRound, MOCK_TX): PolymarketBetPlacementRound
+    (PolymarketTopUpRound, NO_MAJORITY): PolymarketTopUpRound
+    (PolymarketTopUpRound, PREPARE_TX): FinishedPolymarketTopUpTxPreparationRound
+    (PolymarketTopUpRound, ROUND_TIMEOUT): PolymarketTopUpRound
+    (PolymarketWithdrawRound, NONE): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, NO_MAJORITY): PolymarketWithdrawRound
+    (PolymarketWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (PolymarketWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
+    (PolymarketWithdrawTopUpRound, DONE): PolymarketWithdrawRound
+    (PolymarketWithdrawTopUpRound, INSUFFICIENT_BALANCE): WithdrawalIdleRound
+    (PolymarketWithdrawTopUpRound, MOCK_TX): PolymarketWithdrawRound
+    (PolymarketWithdrawTopUpRound, NONE): PolymarketWithdrawTopUpRound
+    (PolymarketWithdrawTopUpRound, NO_MAJORITY): PolymarketWithdrawTopUpRound
+    (PolymarketWithdrawTopUpRound, PREPARE_TX): FinishedPolymarketWithdrawTopUpTxPreparationRound
+    (PolymarketWithdrawTopUpRound, ROUND_TIMEOUT): PolymarketWithdrawTopUpRound
+    (PolymarketWithdrawTopUpRound, WITHDRAWAL_DONE): WithdrawalIdleRound
     (PolymarketWrapCollateralRound, DONE): BenchmarkingModeDisabledRound
     (PolymarketWrapCollateralRound, MOCK_TX): BenchmarkingModeDisabledRound
     (PolymarketWrapCollateralRound, NONE): BenchmarkingModeDisabledRound
@@ -178,13 +222,16 @@ transition_func:
     (PostBetUpdateRound, NONE): PostBetUpdateRound
     (PostBetUpdateRound, NO_MAJORITY): PostBetUpdateRound
     (PostBetUpdateRound, ROUND_TIMEOUT): PostBetUpdateRound
+    (PostOmenWithdrawRound, NONE): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
+    (PostOmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
+    (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
     (RandomnessRound, DONE): SamplingRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
     (RedeemRound, MOCK_TX): SamplingRound
-    (RedeemRound, NONE): ImpossibleRound
     (RedeemRound, NO_MAJORITY): RedeemRound
     (RedeemRound, NO_REDEEMING): FinishedWithoutRedeemingRound
     (RedeemRound, REDEEM_ROUND_TIMEOUT): FinishedWithoutRedeemingRound
@@ -195,7 +242,6 @@ transition_func:
     (SamplingRound, BENCHMARKING_ENABLED): ToolSelectionRound
     (SamplingRound, BENCHMARKING_FINISHED): BenchmarkingDoneRound
     (SamplingRound, DONE): ToolSelectionRound
-    (SamplingRound, FETCH_ERROR): ImpossibleRound
     (SamplingRound, NEW_SIMULATED_RESAMPLE): SamplingRound
     (SamplingRound, NONE): FinishedWithoutDecisionRound
     (SamplingRound, NO_MAJORITY): SamplingRound

@@ -25,6 +25,9 @@ from typing import Any
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import (
     AchievementsChecker,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper import (
+    BetStatus,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     Achievement,
     Achievements,
@@ -66,6 +69,20 @@ class BetPayoutChecker(AchievementsChecker):
 
         achievements_updated = False
         for bet in prediction_history.items:
+            # Sell-aware: only fire on resolved-and-redeemed wins. The
+            # `status == WON` gate intentionally excludes:
+            #   - LOST: a fully-sold-at-loss bet has total_payout > 0
+            #     (realized proceeds) but is not a prediction win.
+            #   - INVALID: a market refund may technically exceed the ROI
+            #     threshold, but the achievement copy ("Agent closed a bet at
+            #     {roi}x ROI") celebrates prediction wins, not cancellations.
+            # The `settled_at is not None` gate excludes WON-via-PnL-sign-pre-
+            # resolution (fully-sold-at-profit before the market resolved).
+            if bet.get("status") != BetStatus.WON.value:
+                continue
+            if bet.get("settled_at") is None:
+                continue
+
             bet_amount = bet.get("bet_amount", 0)
             total_payout = bet.get("total_payout", 0)
 

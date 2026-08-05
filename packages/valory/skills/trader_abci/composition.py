@@ -40,6 +40,8 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedCheckStopTradingRound,
     FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
+    FinishedWithWithdrawalOmenRound,
+    FinishedWithWithdrawalPolymarketRound,
 )
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
@@ -56,9 +58,12 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingModeDisabledRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
+    FinishedOmenWithdrawRound,
     FinishedPolymarketBetPlacementRound,
     FinishedPolymarketRedeemRound,
     FinishedPolymarketSwapTxPreparationRound,
+    FinishedPolymarketTopUpTxPreparationRound,
+    FinishedPolymarketWithdrawTopUpTxPreparationRound,
     FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
     FinishedRedeemTxPreparationRound,
@@ -70,15 +75,33 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
+from packages.valory.skills.decision_maker_abci.states.omen_withdraw import (
+    OmenWithdrawRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement import (
+    PolymarketBetPlacementRound,
+)
 from packages.valory.skills.decision_maker_abci.states.polymarket_post_set_approval import (
     PolymarketPostSetApprovalRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw import (
+    PolymarketWithdrawRound,
+)
+from packages.valory.skills.decision_maker_abci.states.polymarket_withdraw_top_up import (
+    PolymarketWithdrawTopUpRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
 )
+from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import (
+    PostOmenWithdrawRound,
+)
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
+)
+from packages.valory.skills.decision_maker_abci.states.withdrawal_idle import (
+    WithdrawalIdleRound,
 )
 from packages.valory.skills.market_manager_abci.rounds import (
     FailedMarketManagerRound,
@@ -90,6 +113,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
 from packages.valory.skills.mech_interact_abci.rounds import MechInteractAbciApp
 from packages.valory.skills.mech_interact_abci.states.final_states import (
     FailedMechInformationRound,
+    FailedOffchainMechRequestRound,
     FinishedMarketplaceLegacyDetectedRound,
     FinishedMechInformationRound,
     FinishedMechLegacyDetectedRound,
@@ -98,6 +122,8 @@ from packages.valory.skills.mech_interact_abci.states.final_states import (
     FinishedMechRequestSkipRound,
     FinishedMechResponseRound,
     FinishedMechResponseTimeoutRound,
+    FinishedOffchainMechDepositNeededRound,
+    FinishedOffchainMechRequestRound,
 )
 from packages.valory.skills.mech_interact_abci.states.mech_version import (
     MechVersionDetectionRound,
@@ -137,7 +163,11 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
+    FinishedOffchainMechDepositSettledRound,
+    FinishedOmenWithdrawTxRound,
     FinishedPolymarketSwapTxRound,
+    FinishedPolymarketTopUpTxRound,
+    FinishedPolymarketWithdrawTopUpTxRound,
     FinishedPolymarketWrapCollateralTxRound,
     FinishedRedeemingTxRound,
     FinishedSellOutcomeTokensTxRound,
@@ -156,7 +186,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
     FinishedMechLegacyDetectedRound: CheckBenchmarkingModeRound,
     FinishedMechInformationRound: CheckBenchmarkingModeRound,
-    FailedMechInformationRound: MechVersionDetectionRound,
+    FailedMechInformationRound: ChatuiLoadRound,
     BenchmarkingModeDisabledRound: FetchMarketsRouterRound,
     # Always-redeem-first: route the cycle entry through `RedeemRouterRound`
     # so any unclaimed winning positions are redeemed before the agent
@@ -187,6 +217,16 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     # period are picked up by the next cycle's early redeem.
     FinishedMechRequestSkipRound: CallCheckpointRound,
     FinishedPolymarketBetPlacementRound: CallCheckpointRound,
+    # Off-chain mech_interact_abci edges. Happy path skips on-chain tx
+    # settlement and polls HTTP. Deposit-needed settles via the
+    # PreTxSettlementRound gate; the off-chain ``tx_submitter`` sentinel
+    # routes the settled deposit back into MechRequestRound where
+    # ``_retry_pending`` re-POSTs the cached request. Failure mirrors
+    # the on-chain mech timeout recovery wiring.
+    FinishedOffchainMechRequestRound: MechResponseRound,
+    FinishedOffchainMechDepositNeededRound: PreTxSettlementRound,
+    FinishedOffchainMechDepositSettledRound: MechRequestRound,
+    FailedOffchainMechRequestRound: HandleFailedTxRound,
     # Omen on-chain bet placement and sell-outcome-tokens go through
     # `PostBetUpdateRound` first, which runs the local-state bookkeeping
     # (advancing the bet's queue status, processed timestamp, invested
@@ -204,6 +244,31 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedRedeemingTxRound: CheckStopTradingRound,
     FinishedPolymarketRedeemRound: CheckStopTradingRound,
     FinishedWithoutRedeemingRound: CheckStopTradingRound,
+    # Withdrawal gate (CheckStopTradingRound) routes to per-venue withdrawal
+    # rounds in decision_maker_abci. The Omen branch is a stub today (D27 —
+    # POST /api/v1/withdrawal returns 501 on Omenstrat), but the wiring is in
+    # place so the FSM is symmetric across services.
+    # Polymarket withdrawal first moves all sellable CTF positions Safe→DW
+    # (settled), then the sell-loop runs DW-funded.
+    FinishedWithWithdrawalPolymarketRound: PolymarketWithdrawTopUpRound,
+    FinishedWithWithdrawalOmenRound: OmenWithdrawRound,
+    # Omen sweep takes the same two-hop tx-settlement route as the other
+    # tx-preparing rounds: OmenWithdrawRound prepares the multisend ->
+    # PreTxSettlementRound settles it -> FinishedOmenWithdrawTxRound returns
+    # control to PostOmenWithdrawRound for receipt parse + funds_locked
+    # snapshot, before the cycle terminates via WithdrawalIdleRound ->
+    # ResetAndPauseRound.
+    FinishedOmenWithdrawRound: PreTxSettlementRound,
+    FinishedOmenWithdrawTxRound: PostOmenWithdrawRound,
+    # WithdrawalIdleRound is a DegenerateRound — it must map onward in the
+    # composed app or the framework hits NotImplementedError on end_block.
+    # Pause-then-cycle matches the established pattern for halt-like
+    # terminals like FinishedStakingRound and RefillRequiredRound. The
+    # withdrawal gate (CheckStopTradingRound) re-evaluates the flag on each
+    # cycle: state=complete leaves the gate open and resumes normal trading;
+    # state=errored re-diverts into another sweep (auto-retry), so a
+    # transient liquidity outage self-heals once the book refills.
+    WithdrawalIdleRound: ResetAndPauseRound,
     FinishedPolymarketSwapTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketSwapTxRound: DecisionRequestRound,
     # Wrap is prepared by the decision_maker_abci, settled by the multiplexer,
@@ -214,6 +279,14 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedPolymarketWrapCollateralTxPreparationRound: PreTxSettlementRound,
     FinishedPolymarketWrapCollateralTxRound: FetchMarketsRouterRound,
     FinishedRedeemTxPreparationRound: PreTxSettlementRound,
+    # Top-up: Safe→DW pUSD transfer is prepared by decision_maker_abci,
+    # settled by the multiplexer, and returns to bet placement once mined.
+    FinishedPolymarketTopUpTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketTopUpTxRound: PolymarketBetPlacementRound,
+    # Withdrawal CTF top-up: prepared by decision_maker_abci, settled by the
+    # multiplexer, returns to the sell-loop once the positions reach the DW.
+    FinishedPolymarketWithdrawTopUpTxPreparationRound: PreTxSettlementRound,
+    FinishedPolymarketWithdrawTopUpTxRound: PolymarketWithdrawRound,
     FinishedSetApprovalTxPreparationRound: PreTxSettlementRound,
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: CallCheckpointRound,

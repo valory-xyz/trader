@@ -256,6 +256,18 @@ class TestSendPolymarketConnectionRequest:
         assert result == response_payload
         b.context.logger.info.assert_called_once()
 
+    def test_none_response_returns_none(self) -> None:
+        """A dispatch/timeout failure (no response) returns None, not a crash."""
+        b = _make_behaviour()
+        b.context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
+        b.do_connection_request = _return_gen(None)  # type: ignore[method-assign]
+
+        gen = b.send_polymarket_connection_request({"method": "x"})
+        result = _exhaust(gen)
+
+        assert result is None
+        b.context.logger.warning.assert_called_once()
+
 
 # ===========================================================================
 # Tests for store_bets

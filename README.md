@@ -251,12 +251,22 @@ The active strategy is picked by `TRADING_STRATEGY`. All sizing knobs are passed
 | Key | Meaning |
 |---|---|
 | `min_edge` | Minimum AI-Mech edge over market price to consider a bet profitable. Replaces the old `BET_THRESHOLD`. |
+| `max_edge` | Maximum AI-Mech edge to still place a bet (Polymarket / CLOB only). Default `1.0` (no upper bound). With `min_edge` it forms a `[min_edge, max_edge]` band; an edge above `max_edge` is treated as too-good-to-be-true and skipped. Must be `>= min_edge`, or the strategy refuses to trade. |
 | `default_max_bet_size`, `absolute_min_bet_size`, `absolute_max_bet_size` | Per-bet size bounds in collateral units (chain-native wei). |
 | `n_bets` | How many bets to consider per round. |
 | `min_oracle_prob` | Minimum Mech confidence required to enter a position. |
 | `fee_per_trade` | Expected fee deduction in collateral units, used in profitability math. |
 | `floor_balance` | Don't trade if Safe balance would drop below this. |
 | `grid_points` | Resolution of the Kelly search grid. |
+
+**Polymarket-only spread gate.** Two further env vars gate Polymarket / CLOB bets on the *live* bid-ask spread of the chosen outcome's order book (these are standalone params, not part of `STRATEGIES_KWARGS`):
+
+| Env var | Meaning |
+|---|---|
+| `POLYMARKET_SPREAD_MIN` | Lower bound of the acceptable bid-ask spread. Default `0.0`. |
+| `POLYMARKET_SPREAD_MAX` | Upper bound of the acceptable bid-ask spread. Default `1.0`. |
+
+The default `[0.0, 1.0]` band passes every well-formed book (effectively a no-op); a crossed/broken book (spread `< 0`) is rejected as bad data. Tighten the band to skip illiquid or wide-spread markets. `POLYMARKET_SPREAD_MIN` must be `<= POLYMARKET_SPREAD_MAX`, or the agent refuses to start.
 
 To ship a new strategy:
 

@@ -7,31 +7,32 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeihcto4ekkxngcw3me4v42b4aikluhivgf6lnxenho545mq3jz27gi
-  behaviours.py: bafybeicr4jqw3u4u6vnvnueegxzag55tmizcis6zdfj6vet3guguyidrau
+  behaviours.py: bafybeidu4jsysd6mh25cnkxmwunrsis77nqjcz2x4o72gor77fun7h4m4a
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
-  handlers.py: bafybeidmlov54heq2f5ukpnrtzntcfemmtoh5mqznk5ttzuciwrhigmbqa
-  models.py: bafybeidsdrprwtrgvmrahou4lz3z53v2puupolidiuhbctw22hrpxbcvhy
-  payloads.py: bafybeigz4dhwvlwrvmczowphzu37lutqwrxpb6pvunkxwngmwmabhbaozq
-  prompts.py: bafybeib5dc2e67z2qh4fnfezyrnsqbuexwjvxp2czndqsiht3ul5beoiae
-  rounds.py: bafybeigegrvtuktu6ytvvjf5yh4s7ynvnurksdy6uilylvp2imi3ovgjh4
+  fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
+  handlers.py: bafybeib57mlewjl47v5o5jzhtd7pmp6ludxmvjca6bcz2armt5u6trxlhi
+  models.py: bafybeiejoeqw64ehy32zbq6reigdln6mup5fdfz74obqoxp3jpavgw46me
+  payloads.py: bafybeib7q5bppbxctnfonjmats2guu76r4dfc5hghnl3dfdp7vzmapk5ji
+  prompts.py: bafybeicjwd5phk2dcdcfmvwk72n4xhaqlmbq464yzxqht4rwy6tdmphubq
+  rounds.py: bafybeihdszzdalhobudhd6kvyimlspgceaiico5eepqr75ogmpidhicoli
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
-  tests/test_behaviours.py: bafybeib6sil5x6xgwxpe6tyuqk22avfz54s4kwlj5vdhkjfcjh54tphm3q
+  tests/test_behaviours.py: bafybeidqhd3xqqhoych2x3zzz4scs732cdudxx5mefn4dxjml4qagkxsyy
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeifbtpcmmbvh7frmh5ejyvwwsztg6jqdybc7a3em7fqwfyxtnmrpem
-  tests/test_models.py: bafybeiffmqu7auyuuuvfp36ghvl5zi746awe5g6gobhoowvxj7sn2oa6cu
-  tests/test_payloads.py: bafybeib4lcoijon5xjtfrhs2lshf2dbhb3q4qucuhaqysvsibbx7jchpje
-  tests/test_prompts.py: bafybeihmezjrndgdw2aroxokuvexymo2ph5ffgqhjrx6pwgu526zcwcovu
-  tests/test_rounds.py: bafybeigj6j2nrhdtw4tjkxzqwodqwdmzo2slczveajwwj3ifjmuwy2kk7e
+  tests/test_handlers.py: bafybeicqdfsjutm3fjknkcghdyiqp6ju7nht57fmcrmaz7hfe4wivm335a
+  tests/test_models.py: bafybeievfexalcvr2zpz2uhz2uf4stlg3zioxmpy4woxccb4pvgwef6gmi
+  tests/test_payloads.py: bafybeiggrgq7zujlhjpqiefqkwqjiyngs7gcguwiet4n7fkidgjpa5rjni
+  tests/test_prompts.py: bafybeifcdzk6xdhkgq72g2cicqfokqt2wozxekakxxamqaw3zyyymhrx7m
+  tests/test_rounds.py: bafybeicqeykv7okuq3wytlb3h7evqc7smsms7e5yqvidbreirriqopznja
 fingerprint_ignore_patterns: []
 connections:
-- valory/genai:0.1.0:bafybeif37mudnpbd4yhvi2kvqfvlnnp6klhudbrncws5vsha72jydj5raq
+- valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
-- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
+- valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 contracts: []
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/agent_performance_summary_abci:0.1.0:bafybeigkhuzwfuhve43gl6tmn7jaxiqaesmpjj726eaywsorzyw7wpxkea
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
+- valory/agent_performance_summary_abci:0.1.0:bafybeidi2b6srtakjylczapjnqzmgh6o5l7jrveamktlndf2xuerz5gppm
 handlers:
   abci:
     args: {}
@@ -59,16 +60,37 @@ handlers:
     class_name: SrrHandler
 behaviours: {}
 models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
   params:
     args:
       service_endpoint: trader.autonolas.tech/
     class_name: ChatUIParams
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
   srr_dialogues:
     args: {}
     class_name: SrrDialogues
   state:
     args: {}
     class_name: SharedState
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
 dependencies:
   pydantic:
     version: <3,>=2.11.9

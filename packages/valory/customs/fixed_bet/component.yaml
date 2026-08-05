@@ -7,8 +7,8 @@ license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   __init__.py: bafybeibknek5lfb43yiu73qgdlxj7gulb57g7xczfnyhtnqxjp3wn45sje
-  fixed_bet.py: bafybeiazrkdq4nhbhr6dogngpaxdnksgio37ylwpdoqw44dflywavo6bne
-  test_fixed_bet.py: bafybeiczxnvznjtwv65nvrjtxy2nnxqiu7lupmdzy4jdrarxyp5yajsudu
+  fixed_bet.py: bafybeiebkdhsrx3due3f6dce7jllegl4353loego3oh32hqirvzzrtxkrq
+  test_fixed_bet.py: bafybeiducyen2o3bwfafgocvn3f2tbo6adm6dv3xwe5udvgbkezfxwx73m
 fingerprint_ignore_patterns: []
 entry_point: fixed_bet.py
 callable: run

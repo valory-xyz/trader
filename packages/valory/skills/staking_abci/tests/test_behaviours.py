@@ -709,6 +709,279 @@ class TestGetAgentIds:
 
 
 # ---------------------------------------------------------------------------
+# Staking-regime detection seam
+# ---------------------------------------------------------------------------
+
+
+def _gen_set(obj: Any, attr: str, value: Any):  # type: ignore
+    """Factory: a generator that sets ``obj.attr = value`` and returns True."""
+
+    def gen(*args: Any, **kwargs: Any) -> Generator[None, None, bool]:
+        """Set the attribute then return True."""
+        setattr(obj, attr, value)
+        return True
+        yield  # pragma: no cover
+
+    return gen
+
+
+def _fake_wait(condition_gen: Any, timeout: Any = None) -> Generator:
+    """Stand-in for ``wait_for_condition_with_sleep`` that runs the condition once."""
+    yield from condition_gen()
+
+
+class TestReadOptionalContractValue:
+    """Tests for _read_optional_contract_value."""
+
+    def _make(self) -> StakingInteractBaseBehaviour:
+        """Create a behaviour."""
+        return object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+
+    @pytest.mark.parametrize("value", ["0.2.0", None])
+    def test_resolved_value_is_success(self, value: Any) -> None:
+        """A RAW_TRANSACTION response sets the placeholder (even when data is None)."""
+        b = self._make()
+        mock_ctx = MagicMock()
+        mock_ctx.params.mech_chain_id = "1"
+        response_msg = MagicMock()
+        response_msg.performative = ContractApiMessage.Performative.RAW_TRANSACTION
+        response_msg.raw_transaction.body = {"data": value}
+
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "get_contract_api_response", _return_gen(response_msg)),
+        ):
+            gen = b._read_optional_contract_value(
+                contract_address="0x1",
+                contract_public_id=MagicMock(),
+                contract_callable="fn",
+                placeholder="my_result",
+            )
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+        assert b.my_result == value  # type: ignore[attr-defined]
+
+    def test_error_performative_returns_false(self) -> None:
+        """A non-RAW_TRANSACTION (error) performative returns False so caller retries."""
+        b = self._make()
+        mock_ctx = MagicMock()
+        mock_ctx.params.mech_chain_id = "1"
+        response_msg = MagicMock()
+        response_msg.performative = ContractApiMessage.Performative.ERROR
+
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "get_contract_api_response", _return_gen(response_msg)),
+        ):
+            gen = b._read_optional_contract_value(
+                contract_address="0x1",
+                contract_public_id=MagicMock(),
+                contract_callable="fn",
+                placeholder="my_result",
+            )
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+
+
+class TestGetActivityCheckerAndVersion:
+    """Tests for _get_activity_checker and _get_checker_version."""
+
+    def test_get_activity_checker_delegates(self) -> None:
+        """_get_activity_checker delegates to _read_optional_contract_value."""
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        mock_ctx = MagicMock()
+        mock_ctx.params.staking_contract_address = "0xStaking"
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_read_optional_contract_value", _return_gen(True)),
+        ):
+            gen = b._get_activity_checker()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+
+    def test_get_checker_version_delegates(self) -> None:
+        """_get_checker_version delegates to _read_optional_contract_value."""
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        with patch.object(b, "_read_optional_contract_value", _return_gen(True)):
+            gen = b._get_checker_version("0xChecker")
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+
+
+class TestIsNewStakingRegime:
+    """Tests for _is_new_staking_regime (the detection seam)."""
+
+    def _make(self, cached: Any = None) -> StakingInteractBaseBehaviour:
+        """Create a behaviour with a shared-state cache field."""
+        b = object.__new__(_ConcreteStakingBehaviour)  # type: ignore[type-abstract]
+        b._activity_checker_address = None
+        b._checker_version = None
+        return b
+
+    def _ctx(self, cached: Any = None) -> MagicMock:
+        """Build a context whose ``state`` carries the cache field."""
+        from types import SimpleNamespace
+
+        mock_ctx = MagicMock()
+        mock_ctx.state = SimpleNamespace(staking_regime_is_new=cached)
+        return mock_ctx
+
+    def test_cache_hit_skips_reads(self) -> None:
+        """A populated shared-state cache is returned without any contract read."""
+        b = self._make()
+        mock_ctx = self._ctx(cached=True)
+        get_checker = MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_get_activity_checker", get_checker),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+        get_checker.assert_not_called()
+
+    def test_cache_hit_false_skips_reads(self) -> None:
+        """A cached ``False`` is a hit too (not just ``True``) — no read happens.
+
+        The guard is ``cached is not None``, so a prior OLD verdict must be
+        honoured without re-reading; only ``None`` (never computed) triggers a
+        read.
+        """
+        b = self._make()
+        mock_ctx = self._ctx(cached=False)
+        get_checker = MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "_get_activity_checker", get_checker),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+        get_checker.assert_not_called()
+
+    def test_version_match_is_new_and_caches(self) -> None:
+        """VERSION == '0.2.0' ⇒ new regime; verdict cached on shared state."""
+        b = self._make()
+        mock_ctx = self._ctx()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _fake_wait),
+            patch.object(
+                b,
+                "_get_activity_checker",
+                _gen_set(b, "activity_checker_address", "0xChecker"),
+            ),
+            patch.object(
+                b,
+                "_get_checker_version",
+                _gen_set(b, "checker_version", "0.2.0"),
+            ),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+        assert mock_ctx.state.staking_regime_is_new is True
+
+    def test_unexpected_version_is_old(self) -> None:
+        """An unexpected VERSION (e.g. '0.3.0') ⇒ old regime (conservative)."""
+        b = self._make()
+        mock_ctx = self._ctx()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _fake_wait),
+            patch.object(
+                b,
+                "_get_activity_checker",
+                _gen_set(b, "activity_checker_address", "0xChecker"),
+            ),
+            patch.object(
+                b,
+                "_get_checker_version",
+                _gen_set(b, "checker_version", "0.3.0"),
+            ),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+        assert mock_ctx.state.staking_regime_is_new is False
+
+    def test_absent_version_is_old(self) -> None:
+        """A genuinely absent VERSION (data=None) ⇒ old regime (fail-safe)."""
+        b = self._make()
+        mock_ctx = self._ctx()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _fake_wait),
+            patch.object(
+                b,
+                "_get_activity_checker",
+                _gen_set(b, "activity_checker_address", "0xChecker"),
+            ),
+            patch.object(
+                b,
+                "_get_checker_version",
+                _gen_set(b, "checker_version", None),
+            ),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+        assert mock_ctx.state.staking_regime_is_new is False
+
+    @pytest.mark.parametrize("checker", [None, NULL_ADDRESS])
+    def test_no_activity_checker_is_old_without_version_read(
+        self, checker: Any
+    ) -> None:
+        """No activity checker (None / NULL) ⇒ old, and VERSION is never read."""
+        b = self._make()
+        mock_ctx = self._ctx()
+        version_read = MagicMock()
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(b, "wait_for_condition_with_sleep", _fake_wait),
+            patch.object(
+                b,
+                "_get_activity_checker",
+                _gen_set(b, "activity_checker_address", checker),
+            ),
+            patch.object(b, "_get_checker_version", version_read),
+        ):
+            gen = b._is_new_staking_regime()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is False
+        version_read.assert_not_called()
+        assert mock_ctx.state.staking_regime_is_new is False
+
+
+# ---------------------------------------------------------------------------
 # CallCheckpointBehaviour
 # ---------------------------------------------------------------------------
 

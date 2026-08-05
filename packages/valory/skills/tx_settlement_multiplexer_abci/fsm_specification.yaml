@@ -3,6 +3,7 @@ alphabet_in:
 - CHECKS_PASSED
 - MECH_REQUESTING_DONE
 - NO_MAJORITY
+- OFFCHAIN_MECH_DEPOSIT_SETTLED
 - REDEEMING_DONE
 - REFILL_REQUIRED
 - ROUND_TIMEOUT
@@ -11,7 +12,10 @@ alphabet_in:
 - STAKING_DONE
 - SUBSCRIPTION_DONE
 - SWAP_DONE
+- TOP_UP_DONE
 - UNRECOGNIZED
+- WITHDRAW_OMEN_DONE
+- WITHDRAW_TOP_UP_DONE
 - WRAP_COLLATERAL_DONE
 default_start_state: PreTxSettlementRound
 final_states:
@@ -19,7 +23,11 @@ final_states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedOffchainMechDepositSettledRound
+- FinishedOmenWithdrawTxRound
 - FinishedPolymarketSwapTxRound
+- FinishedPolymarketTopUpTxRound
+- FinishedPolymarketWithdrawTopUpTxRound
 - FinishedPolymarketWrapCollateralTxRound
 - FinishedRedeemingTxRound
 - FinishedSellOutcomeTokensTxRound
@@ -35,7 +43,11 @@ states:
 - FailedMultiplexerRound
 - FinishedBetPlacementTxRound
 - FinishedMechRequestTxRound
+- FinishedOffchainMechDepositSettledRound
+- FinishedOmenWithdrawTxRound
 - FinishedPolymarketSwapTxRound
+- FinishedPolymarketTopUpTxRound
+- FinishedPolymarketWithdrawTopUpTxRound
 - FinishedPolymarketWrapCollateralTxRound
 - FinishedRedeemingTxRound
 - FinishedSellOutcomeTokensTxRound
@@ -47,6 +59,7 @@ states:
 transition_func:
     (PostTxSettlementRound, BET_PLACEMENT_DONE): FinishedBetPlacementTxRound
     (PostTxSettlementRound, MECH_REQUESTING_DONE): FinishedMechRequestTxRound
+    (PostTxSettlementRound, OFFCHAIN_MECH_DEPOSIT_SETTLED): FinishedOffchainMechDepositSettledRound
     (PostTxSettlementRound, REDEEMING_DONE): FinishedRedeemingTxRound
     (PostTxSettlementRound, ROUND_TIMEOUT): PostTxSettlementRound
     (PostTxSettlementRound, SELL_OUTCOME_TOKENS_DONE): FinishedSellOutcomeTokensTxRound
@@ -54,7 +67,10 @@ transition_func:
     (PostTxSettlementRound, STAKING_DONE): FinishedStakingTxRound
     (PostTxSettlementRound, SUBSCRIPTION_DONE): FinishedSubscriptionTxRound
     (PostTxSettlementRound, SWAP_DONE): FinishedPolymarketSwapTxRound
+    (PostTxSettlementRound, TOP_UP_DONE): FinishedPolymarketTopUpTxRound
     (PostTxSettlementRound, UNRECOGNIZED): FailedMultiplexerRound
+    (PostTxSettlementRound, WITHDRAW_OMEN_DONE): FinishedOmenWithdrawTxRound
+    (PostTxSettlementRound, WITHDRAW_TOP_UP_DONE): FinishedPolymarketWithdrawTopUpTxRound
     (PostTxSettlementRound, WRAP_COLLATERAL_DONE): FinishedPolymarketWrapCollateralTxRound
     (PreTxSettlementRound, CHECKS_PASSED): ChecksPassedRound
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound

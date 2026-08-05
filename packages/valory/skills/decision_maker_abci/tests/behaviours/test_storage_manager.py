@@ -431,7 +431,9 @@ class TestGetMechTools:
                 with patch.object(
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
-                    mock_params.return_value = MagicMock(irrelevant_tools=set())
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset()
+                    )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
                     )
@@ -448,6 +450,100 @@ class TestGetMechTools:
 
         assert result is True
         assert behaviour._mech_tools == {"tool1", "tool2"}
+
+    def test_get_mech_tools_intersects_with_v1_suitable_tools(self) -> None:
+        """V1 path intersects on-chain tools with the V1 operator allowlist."""
+        behaviour = _make_behaviour()
+        behaviour._mech_hash = "valid_hash"
+
+        mock_api = MagicMock()
+        mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
+        mock_api.process_response.return_value = ["tool1", "tool2", "tool3"]
+        mock_api.is_retries_exceeded.return_value = False
+
+        mock_response = MagicMock()
+
+        with patch.object(
+            type(behaviour), "mech_tools_api", new_callable=PropertyMock
+        ) as api_mock:
+            api_mock.return_value = mock_api
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(is_marketplace_v2=False)
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset({"tool1", "tool3"})
+                    )
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                        return_value=_return_gen(mock_response)
+                    )
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+
+                    gen = behaviour._get_mech_tools()
+                    result = None
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration as e:
+                        result = e.value
+
+        assert result is True
+        # tool2 dropped: not in the operator allowlist
+        assert behaviour._mech_tools == {"tool1", "tool3"}
+
+    def test_get_mech_tools_skips_v1_allowlist_on_v2(self) -> None:
+        """The V1 allowlist guard suppresses intersection on V2 paths.
+
+        Belt-and-suspenders: `_get_tools` already short-circuits on V2
+        before reaching this method, but if a future refactor ever
+        routes V2 through `_get_mech_tools` the inner guard must NOT
+        apply the V1-shaped allowlist.
+        """
+        behaviour = _make_behaviour()
+        behaviour._mech_hash = "valid_hash"
+
+        mock_api = MagicMock()
+        mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
+        mock_api.process_response.return_value = ["tool1", "tool2", "tool3"]
+        mock_api.is_retries_exceeded.return_value = False
+
+        mock_response = MagicMock()
+
+        with patch.object(
+            type(behaviour), "mech_tools_api", new_callable=PropertyMock
+        ) as api_mock:
+            api_mock.return_value = mock_api
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(is_marketplace_v2=True)
+                with patch.object(
+                    type(behaviour), "params", new_callable=PropertyMock
+                ) as mock_params:
+                    mock_params.return_value = MagicMock(
+                        mech_marketplace_v1_suitable_tools=frozenset({"tool1", "tool3"})
+                    )
+                    behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                        return_value=_return_gen(mock_response)
+                    )
+                    behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                    behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+
+                    gen = behaviour._get_mech_tools()
+                    result = None
+                    try:
+                        while True:
+                            next(gen)
+                    except StopIteration as e:
+                        result = e.value
+
+        assert result is True
+        # V2 path: tool2 NOT dropped despite being absent from the allowlist.
+        assert behaviour._mech_tools == {"tool1", "tool2", "tool3"}
 
     def test_get_mech_tools_retries_exceeded(self) -> None:
         """Should return True with error log when retries exceeded."""
@@ -519,14 +615,59 @@ class TestGetMechTools:
 
         assert result is False
 
-    def test_get_mech_tools_empty_relevant_tools(self) -> None:
-        """Should return False when all tools are irrelevant."""
+    def test_get_mech_tools_empty_manifest(self) -> None:
+        """Should return False when the mech's manifest tools list is empty."""
         behaviour = _make_behaviour()
         behaviour._mech_hash = "valid_hash"
 
         mock_api = MagicMock()
         mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
-        mock_api.process_response.return_value = ["irrelevant_tool"]
+        mock_api.process_response.return_value = []
+        mock_api.is_retries_exceeded.return_value = False
+
+        with patch.object(
+            type(behaviour), "mech_tools_api", new_callable=PropertyMock
+        ) as api_mock:
+            api_mock.return_value = mock_api
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(is_marketplace_v2=True)
+                behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
+                    return_value=_return_gen(MagicMock())
+                )
+                behaviour._check_hash = MagicMock()  # type: ignore[method-assign]
+                behaviour.set_mech_agent_specs = MagicMock()  # type: ignore[method-assign]
+
+                gen = behaviour._get_mech_tools()
+                result = None
+                try:
+                    while True:
+                        next(gen)
+                except StopIteration as e:
+                    result = e.value
+
+        assert result is False
+
+    def test_get_mech_tools_normalizes_case(self) -> None:
+        """Mixed-case manifest tools are lowercased before being stored.
+
+        Verifies the lowercasing happens regardless of whether the V1
+        allowlist intersection runs (allowlist is empty here, so the
+        intersection branch is skipped). The downstream suitability
+        classifier, ChatUI pin lookup, and V1 allowlist all key on
+        lowercased names, so this normalization is the consumer-side
+        contract every filter downstream depends on.
+        """
+        behaviour = _make_behaviour()
+        behaviour._mech_hash = "valid_hash"
+
+        mock_api = MagicMock()
+        mock_api.get_spec.return_value = {"method": "GET", "url": "http://test"}
+        mock_api.process_response.return_value = [
+            "Prediction-Offline",
+            "Superforcaster",
+        ]
         mock_api.is_retries_exceeded.return_value = False
 
         with patch.object(
@@ -541,7 +682,7 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        irrelevant_tools={"irrelevant_tool"}
+                        mech_marketplace_v1_suitable_tools=frozenset()
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(MagicMock())
@@ -557,7 +698,8 @@ class TestGetMechTools:
                     except StopIteration as e:
                         result = e.value
 
-        assert result is False
+        assert result is True
+        assert behaviour._mech_tools == {"prediction-offline", "superforcaster"}
 
 
 # Tests for get_tools
@@ -819,12 +961,12 @@ class TestFetchAccuracyInfo:
         assert result is False
 
 
-# Tests for remove_irrelevant_tools
+# Tests for prune_accuracy_store_to_current_tools
 # ---------------------------------------------------------------------------
 
 
-class TestRemoveIrrelevantTools:
-    """Tests for _remove_irrelevant_tools."""
+class TestPruneAccuracyStoreToCurrentTools:
+    """Tests for _prune_accuracy_store_to_current_tools."""
 
     def test_removes_tools_not_in_mech_tools(self) -> None:
         """Should remove tools from accuracy_store that are not in mech_tools."""
@@ -838,7 +980,7 @@ class TestRemoveIrrelevantTools:
         )
         behaviour._policy = policy
 
-        behaviour._remove_irrelevant_tools()
+        behaviour._prune_accuracy_store_to_current_tools()
 
         assert "tool1" in policy.accuracy_store
         assert "tool2" not in policy.accuracy_store
@@ -1131,7 +1273,9 @@ class TestUpdatePolicyTools:
         policy = _make_policy()
         behaviour._policy = policy
 
-        with patch.object(behaviour, "_remove_irrelevant_tools") as mock_remove:
+        with patch.object(
+            behaviour, "_prune_accuracy_store_to_current_tools"
+        ) as mock_remove:
             with patch.object(
                 behaviour, "_parse_global_info", return_value=(100, {"tool1": {}})
             ) as mock_parse:
@@ -1401,6 +1545,43 @@ class TestSetupPolicyAndTools:
             result = e.value
 
         assert result is True
+
+    def test_invokes_maybe_publish_suitable_tools(self) -> None:
+        """Setup must invoke _maybe_publish_suitable_tools, after the policy is set."""
+        behaviour = _make_behaviour()
+        calls = []
+
+        def fake_get_tools() -> None:  # type: ignore[no-untyped-def, misc]
+            """Fake _get_tools that sets mech_tools."""
+            behaviour._mech_tools = {"tool1"}  # type: ignore[no-untyped-def]
+            yield
+
+        def fake_set_policy() -> None:  # type: ignore[no-untyped-def, misc]
+            """Fake _set_policy."""
+            calls.append("set_policy")  # type: ignore[no-untyped-def]
+            behaviour._policy = _make_policy()
+            yield
+
+        def fake_publish() -> None:  # type: ignore[no-untyped-def, misc]
+            """Spy for _maybe_publish_suitable_tools."""
+            calls.append("publish")  # type: ignore[no-untyped-def]
+            yield
+
+        behaviour._get_tools = fake_get_tools  # type: ignore[method-assign]
+        behaviour._set_policy = fake_set_policy  # type: ignore[method-assign]
+        behaviour._maybe_publish_suitable_tools = fake_publish  # type: ignore[method-assign]
+
+        gen = behaviour._setup_policy_and_tools()
+        result = None
+        try:
+            while True:
+                next(gen)
+        except StopIteration as e:
+            result = e.value
+
+        assert result is True
+        # Wiring: publish is invoked, and only after the policy is set.
+        assert calls == ["set_policy", "publish"]
 
 
 # ---------------------------------------------------------------------------

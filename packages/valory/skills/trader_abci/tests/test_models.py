@@ -95,6 +95,7 @@ class TestSharedState:
         mock_params.finalize_timeout = 20
         mock_params.history_check_timeout = 25
         mock_params.redeem_round_timeout = 3600
+        mock_params.withdrawal_round_timeout = 1800
 
         # Save original event_to_timeout so we can restore it after test
         original_event_to_timeout = TraderAbciApp.event_to_timeout.copy()
@@ -140,6 +141,14 @@ class TestSharedState:
             assert (
                 TraderAbciApp.event_to_timeout[DecisionMakerEvent.REDEEM_ROUND_TIMEOUT]
                 == 3600
+            )
+
+            # Verify DecisionMakerEvent withdrawal timeout
+            assert (
+                TraderAbciApp.event_to_timeout[
+                    DecisionMakerEvent.WITHDRAWAL_ROUND_TIMEOUT
+                ]
+                == 1800
             )
 
             # Verify reset_pause_timeout = reset_pause_duration + MARGIN

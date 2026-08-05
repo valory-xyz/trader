@@ -9,48 +9,53 @@ fingerprint:
   __init__.py: bafybeiguns5ahxytqmaqvnp3tevethdbh2ulru2htsp2rmyhwoxflesaga
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
-  achievements_checker/bet_payout_checker.py: bafybeicinegfwaayhvh2km4alolybovn6oy7q2gtfxukzryongxeim2iyq
-  behaviours.py: bafybeihk6mglprrccijdstkn2ahu4pihaveoe6fzmjgyqfou5qqeenvlj4
+  achievements_checker/bet_payout_checker.py: bafybeigqbcvy7fe3apckuscrp4gs5zljppady6bwe6kgjdxxjryyppo6jm
+  behaviours.py: bafybeiewi4auja3lgstf6mjnoyl2esal4yrmygsuamn5j6fmkkdzruyfdy
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
   graph_tooling/base_predictions_helper.py: bafybeiddvsa7xqmrlkspdcb4vqsgtncr32fgaoktijpocpyuz65ztaopga
-  graph_tooling/polymarket_predictions_helper.py: bafybeibpvmois6vhxofqlrt7uy3tohqgvu5dg2madrm7ly6t6wrkvmlwym
-  graph_tooling/predictions_helper.py: bafybeielkfyjkycayfnbmqvhxzohrurtmyzjzqfxhtsp5ovyfpf2btl45u
-  graph_tooling/queries.py: bafybeigtz4r7yc2gnuzbqsaeepwwfpeckfqabkktwxh4vpwtelhwsyxaza
-  graph_tooling/requests.py: bafybeigvfyklcd4ymzprmjft3xfcxgr7re7fhnhjr3dqbwvqdhzah6glwi
-  handlers.py: bafybeibm7dqkbrf5b5zeu6oxdltpi63ommxu3v2ft64bgyt6uy6uzzprzy
-  models.py: bafybeibe3nyonkgkkiqe4f4ejkq3vkbpdxie5omqzhxjmy2ljmbgt7hcmi
+  graph_tooling/mech_analytics_client.py: bafybeiget5yvxu62hsyvgg72pv7kkat6brbct7g54hgsgvis2afru6opmq
+  graph_tooling/polymarket_predictions_helper.py: bafybeichscju77wvmdbz5cf46pa2yefgcgmfbq7dbk3ky4evugp67v76ai
+  graph_tooling/predictions_helper.py: bafybeibosbqn6lhpsdgifmhlmyxurooouaxmg44l3rp7f2odks5bfdvyw4
+  graph_tooling/queries.py: bafybeifywkkxfmco3baqjuc5w6fkj2cgfs3znpgoowxdjnrhugaxeevapu
+  graph_tooling/requests.py: bafybeifwsw7w5qktbywgdxsuskiupzfhzofthlhbobx5zakf4ls4euartu
+  handlers.py: bafybeif3pnrfdyhipmizob7zsn65f7qlf6iwuy3fi7s6ku2dvqyu4mr4am
+  models.py: bafybeicms3qrl3b5b3zn4y43tsionohj7c77tmb6i5h4cejjee4hdiq7cm
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
   tests/achievements_checker/__init__.py: bafybeihzqumkk6ozznhfkzul6eylxhxuount53x5hdezxfzbmp4wfwamci
   tests/achievements_checker/test_base.py: bafybeia2r3dpvg4p2bl2aw27s5giooesuqcaek2qcpb7eykhzzyn5hzzci
-  tests/achievements_checker/test_bet_payout_checker.py: bafybeie4h4yw5o7q54lplbuqhgbbcz2vcj2tap6stnshis54hkhv4v3fca
+  tests/achievements_checker/test_bet_payout_checker.py: bafybeigz6watddcr2l3s45xfgwnhsmjjv36z72qss5w5xxxuyi5r6egkrq
   tests/graph_tooling/__init__.py: bafybeia4232yl536xzhvnkjblvfbtphtp34t4zylkay4fimm26bgo5tzru
   tests/graph_tooling/test_base_predictions_helper.py: bafybeihcnx5crq5j5nr5p6h5y3vuqgqapdnkcghubehk7fnnyv2vmcpriq
-  tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeih6lqpc4tzj77olxe7kzfdpgmzyilfqkmot3ky4cq3i6wp3nrkpee
-  tests/graph_tooling/test_predictions_helper.py: bafybeiexjvh4yx4wx7i4oj5ltgxisnldbcgklejbg45cgfwqvk5zkk2c4e
+  tests/graph_tooling/test_mech_analytics_client.py: bafybeia2lrppzaxg7lvndgh555dtsngvsrggvu4vyomxhyzxruiltlawba
+  tests/graph_tooling/test_mech_analytics_flag_branching.py: bafybeifgbyshtaawyvdr4q5zfb2liagrgdk7yssmvdczyjwau7hildqm6e
+  tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeiepfsy2cnv2kpimre33mx7w6spvwdbzfhau6etuelof6g4n3ybbgm
+  tests/graph_tooling/test_predictions_helper.py: bafybeidkmubpjfnxys74bjaqd7ptz4gc6ejfwrrmiodmdjwdovdclvdqhu
   tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
-  tests/graph_tooling/test_requests.py: bafybeiez2icgxoz5khs3itvmpaypgokkfdn6zbsoafiecb3hvrpzqrg2ia
-  tests/test_behaviours.py: bafybeie4p3dercizhahbrm23dngsky4qb7hqcdieco3ry76rcclhivyoia
+  tests/graph_tooling/test_requests.py: bafybeigjgvmyadexrvcs4iofxpxomlav62o5z2uhkyvmy5cmdp7rxosdqu
+  tests/test_behaviours.py: bafybeigfj4tiohujhiazwcmjyunxxps62qrnqzfd2b7k3cqqis34lky6v4
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
-  tests/test_handlers.py: bafybeih5fpmtk3jr4pjw63wmy3g3ys536xlbe527uelzv5vlsl6wnhwmqa
-  tests/test_models.py: bafybeiaccjetj3nbpstm3ee25kjiug2wzusnlysxdk53ybu5wavekjtwy4
+  tests/test_handlers.py: bafybeigybc6zkku7ldtawjcjjdkndiz3alvckxbeyjj23rsmny5ql7leku
+  tests/test_models.py: bafybeicoimddbyoh3gkddxdnwknp5etbib25sgpguarode6y4iohuu63oe
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
   tests/test_save_performance_summary.py: bafybeibgyx3n4dn7zhb7vfcc4wwq7nuyfep723cyqfrpnwqgsvhhwagure
 fingerprint_ignore_patterns: []
 contracts:
-- valory/erc20:0.1.0:bafybeigjxwhx4li5hmyv3hrtatwq65gl4wihqysaq5pqlpmw5o4lymfv6y
+- valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
+- valory/mech_prepaid_reader:0.1.0:bafybeiaitnqi4kc2wiltj3k6a3iujxritwkh5w2a2xoff7dosoqy7p3sou
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
-- valory/srr:0.1.0:bafybeiee2dgy6r2z5x6vu2ug5vcxvfgg4v3liq2x7v3hxchtp45mwnchg4
+- valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
+- valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 connections:
-- valory/polymarket_client:0.1.0:bafybeia5bkcws4liogkstnx3ximg3bp4vo5zoae3eduxrxtkor3o546c24
+- valory/polymarket_client:0.1.0:bafybeid4eo37pka4tfhsjs6rb3knrugmokcvihust2dpfrgob56y77xd44
 handlers:
   abci:
     args: {}
@@ -75,6 +80,27 @@ handlers:
     class_name: TendermintHandler
 behaviours: {}
 models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  tendermint_dialogues:
+    args: {}
+    class_name: TendermintDialogues
   state:
     args: {}
     class_name: SharedState
@@ -89,6 +115,9 @@ models:
       is_agent_performance_summary_enabled: true
       is_running_on_polymarket: false
       is_achievement_checker_enabled: true
+      balance_tracker_address: '0x0000000000000000000000000000000000000000'
+      mech_analytics_url: ''
+      use_mech_analytics: false
     class_name: AgentPerformanceSummaryParams
   olas_agents_subgraph:
     args:

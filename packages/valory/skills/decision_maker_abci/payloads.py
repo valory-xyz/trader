@@ -128,6 +128,33 @@ class PolymarketBetPlacementPayload(MultisigTxPayload):
 
 
 @dataclass(frozen=True)
+class PolymarketTopUpPayload(MultisigTxPayload):
+    """Represents a payload for the Safe→DepositWallet top-up.
+
+    ``event`` carries the short-circuit signal: ``Event.PREPARE_TX.value``
+    when a pUSD transfer to the DW must settle (``tx_hash`` populated), or
+    ``Event.DONE.value`` when the DW is already funded (no tx settles; jump
+    straight to bet placement). The DepositWallet address is not carried here:
+    the bet-placement / sweep rounds resolve it from the persisted store.
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PolymarketSweepPayload(MultisigTxPayload):
+    """Represents a payload for the DepositWallet→Safe sweep.
+
+    The sweep runs through the relayer proxy (no on-chain tx settles here),
+    so ``tx_hash`` is unused. ``event`` carries the onward terminal event
+    propagated from the preceding bet-placement / withdrawal result
+    (``DONE`` / ``BLACKLIST`` / ``INSUFFICIENT_BALANCE``).
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class PolymarketSetApprovalPayload(MultisigTxPayload):
     """Represents a transaction payload for setting approval."""
 
@@ -155,6 +182,35 @@ class SellOutcomeTokensPayload(MultisigTxPayload):
 @dataclass(frozen=True)
 class RedeemRouterPayload(VotingPayload):
     """Represents a payload for Redeem router round."""
+
+
+@dataclass(frozen=True)
+class WithdrawalPayload(VotingPayload):
+    """Represents a payload for the withdrawal rounds (Polymarket / Omen / Idle)."""
+
+
+@dataclass(frozen=True)
+class OmenWithdrawalPayload(MultisigTxPayload):
+    """Represents a transaction payload for the Omen sweep multisend.
+
+    ``event`` carries the short-circuit signal: ``Event.PREPARE_TX.value``
+    when there are positions to sell (``tx_hash`` populated, route through
+    tx settlement), or ``Event.WITHDRAWAL_DONE.value`` when nothing
+    sellable (no tx settles; jump straight to ``WithdrawalIdleRound``).
+    """
+
+    event: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class PostOmenWithdrawalPayload(VotingPayload):
+    """Represents a payload for the Omen withdrawal post-settlement round.
+
+    Consensus-only — the tx itself was submitted by ``OmenWithdrawRound``
+    one step earlier; this round just parses the receipt and persists
+    fills / errors / the funds-locked snapshot. ``vote`` is unused
+    (matches ``WithdrawalPayload``).
+    """
 
 
 @dataclass(frozen=True)

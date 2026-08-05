@@ -25,7 +25,13 @@ packages/valory/contracts/mech/
 packages/valory/contracts/gnosis_safe_proxy_factory/
 packages/valory/contracts/agent_mech/
 packages/valory/contracts/mech_marketplace_legacy/
+packages/valory/contracts/mech_marketplace/
+packages/valory/contracts/balance_tracker/
+packages/valory/contracts/balance_tracker_fixed_price_native/
 packages/valory/contracts/multisend/
+packages/valory/contracts/realitio/
+packages/valory/contracts/realitio_proxy/
+packages/valory/contracts/conditional_tokens/
 packages/valory/contracts/service_registry/
 packages/valory/contracts/gnosis_safe/
 packages/valory/contracts/agent_registry/
@@ -79,3 +85,6 @@ benchmarks/
 coverage.xml
 .hypothesis/
 .claude/
+.tomte-tox.ini
+.darglint
+.gitleaks-merged.toml

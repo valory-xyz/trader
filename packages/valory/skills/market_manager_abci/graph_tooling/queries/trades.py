@@ -21,6 +21,37 @@
 
 from string import Template
 
+# Used by the Omen withdrawal sweep to map each held CT position back to
+# its FPMM (we join on ``fpmm.condition.id``). Unlike the redeem ``trades``
+# template below, this one has no time-window filter and no ``type: Buy``
+# filter — the withdrawal sweep needs every FPMM the safe has ever traded
+# on, not just recent buys.
+withdrawal_creator_fpmms = Template("""
+        {
+            fpmmTrades(
+                where: {
+                    creator: "${creator}",
+                    id_gt: "${id_gt}"
+                }
+                first: ${first}
+                orderBy: id
+                orderDirection: asc
+            ) {
+                id
+                fpmm {
+                    id
+                    answerFinalizedTimestamp
+                    currentAnswer
+                    isPendingArbitration
+                    condition {
+                        id
+                    }
+                }
+            }
+        }
+        """)
+
+
 trades = Template("""
         {
             fpmmTrades(

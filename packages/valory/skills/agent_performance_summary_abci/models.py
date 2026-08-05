@@ -23,13 +23,17 @@
 import builtins
 import json
 import os
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, cast
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+    BaseParams,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -196,6 +200,65 @@ class Achievements:
 
 
 @dataclass
+class OffchainDepositState:
+    """Cumulative on-chain BalanceTracker Deposit tracking for pre-deposit-as-loss ROI.
+
+    Under the pre-deposit-as-loss decision, every top-up to a Safe's
+    ``mapRequesterBalances`` on the BalanceTracker contract (the mech
+    marketplace only routes requests; the balance mapping and the
+    ``Deposit`` event live on the tracker) is booked as spent the moment
+    it lands on chain — the tracker has no requester-withdraw path, so
+    committed money is unrecoverable regardless of consumption.
+
+    ``total_deposited_wei`` is the cumulative wei-scaled sum of Deposit
+    event amounts. ``last_scanned_block`` is the highest block already
+    counted; the next cycle scans only ``last_scanned_block + 1`` and
+    above. ``last_scanned_block is None`` distinguishes "never scanned"
+    from a legitimate genesis-block checkpoint (matters on devnet/Hardhat
+    chains where block 0 is a real block).
+
+    For any Safe that has never called ``depositFor`` (i.e. every
+    production on-chain trader today), the state stays at its default
+    (``None`` checkpoint) and contributes nothing to the ROI cost side.
+
+    Enforced invariants at construction time:
+    - ``total_deposited_wei`` must be a non-negative integer.
+    - ``last_scanned_block`` must be ``None`` or a non-negative integer.
+    """
+
+    total_deposited_wei: int = 0
+    last_scanned_block: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Validate the persisted checkpoint fields."""
+        # Defensive: some future writer may round-trip the wei count
+        # through JSON as a string; coerce transparently rather than
+        # rejecting. Not driven by any real prior on-disk data — this
+        # dataclass is new in this PR.
+        if isinstance(self.total_deposited_wei, str):
+            self.total_deposited_wei = int(self.total_deposited_wei)
+        if not isinstance(self.total_deposited_wei, int):
+            raise TypeError(
+                f"total_deposited_wei must be int, got {type(self.total_deposited_wei).__name__}"
+            )
+        if self.total_deposited_wei < 0:
+            raise ValueError(
+                f"total_deposited_wei must be non-negative, got {self.total_deposited_wei}"
+            )
+        if self.last_scanned_block is not None:
+            if not isinstance(self.last_scanned_block, int):
+                raise TypeError(
+                    "last_scanned_block must be int or None, "
+                    f"got {type(self.last_scanned_block).__name__}"
+                )
+            if self.last_scanned_block < 0:
+                raise ValueError(
+                    "last_scanned_block must be non-negative, "
+                    f"got {self.last_scanned_block}"
+                )
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -212,6 +275,7 @@ class AgentPerformanceSummary:
     prediction_history: Optional[PredictionHistory] = None
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
+    offchain_deposits: Optional[OffchainDepositState] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -238,6 +302,9 @@ class AgentPerformanceSummary:
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)
 
+        if isinstance(self.offchain_deposits, dict):
+            self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
+
 
 class AgentPerformanceSummaryParams(BaseParams):
     """Agent Performance Summary's parameters."""
@@ -257,6 +324,33 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.is_achievement_checker_enabled: bool = self._ensure(
             "is_achievement_checker_enabled", kwargs, bool
         )
+        # BalanceTracker contract address for pre-deposit-as-loss ROI
+        # accounting. Empty or the zero address disables the Deposit-event
+        # scan; the helper falls back to the cached total (see
+        # ``_fetch_offchain_prepaid_wei``). Kept as a trader-local skill
+        # param on purpose — this is an ROI-accounting concern, not a
+        # mech-routing concern, so it does not belong on
+        # ``mech_marketplace_config``.
+        self.balance_tracker_address: str = self._ensure(
+            "balance_tracker_address", kwargs, str
+        )
+        # Mech-analytics migration: base URL of the read-only mech-analytics
+        # API and a feature flag gating whether the trader reads request
+        # data from that API instead of the marketplace subgraph. Empty URL
+        # disables the flag-on path defensively (throws in the client rather
+        # than silently returning zero rows and inflating ROI). Both default
+        # to the safe pre-migration behaviour: flag off, subgraph read
+        # unchanged. See docs (consumer migration §7 in mech-analytics repo).
+        self.mech_analytics_url: str = self._ensure("mech_analytics_url", kwargs, str)
+        self.use_mech_analytics: bool = self._ensure("use_mech_analytics", kwargs, bool)
+        # Enforce the pairing at startup — fail loudly rather than
+        # silently no-op'ing back to the subgraph path when an operator
+        # enables the flag but forgets the URL.
+        if self.use_mech_analytics and not self.mech_analytics_url:
+            raise ValueError(
+                "use_mech_analytics is true but mech_analytics_url is empty; "
+                "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
+            )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves
@@ -315,13 +409,152 @@ class SharedState(BaseSharedState):
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
+        except (TypeError, ValueError) as e:
+            # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
+            # rejected a persisted value. Previously no field could raise
+            # from the reader; now that we persist typed state, one bad
+            # entry could brick every read. Degrade to a fresh summary
+            # rather than propagate — same behaviour as an unreadable
+            # file. Callers that persist irreversible state
+            # (``offchain_deposits.total_deposited_wei``) MUST NOT use the
+            # degraded return value to derive an on-disk write for that
+            # state — see ``read_offchain_deposits_from_disk`` for the
+            # sibling-agnostic re-read used in the cycle-end save path.
+            self.context.logger.warning(
+                f"Persisted agent performance summary failed validation ({e}); "
+                "starting from a fresh summary."
+            )
+            return AgentPerformanceSummary()
 
-    def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
-        """Write the agent performance summary to a file."""
+    def read_offchain_deposits_from_disk(self) -> Optional["OffchainDepositState"]:
+        """Return the persisted ``offchain_deposits`` sub-field with lenient parsing.
+
+        Bypasses ``AgentPerformanceSummary.__post_init__`` so a corrupt
+        sibling field (e.g. a bad ``Achievements`` or ``PredictionHistory``
+        entry that would otherwise degrade
+        ``read_existing_performance_summary`` to a fresh summary) can't
+        cascade into wiping this specific irreversible field.
+        ``_save_agent_performance_summary`` calls this before overwriting
+        so the mid-cycle write from ``_fetch_offchain_prepaid_wei``
+        survives the cycle-end save under any sibling-corruption path.
+
+        :return: the persisted ``OffchainDepositState`` if the file has a
+            valid entry, ``None`` if the file is missing, unreadable,
+            has no ``offchain_deposits`` key, or the field itself fails
+            validation. The final case is logged; the others are silent
+            (they overlap with the legitimate first-boot / never-scanned
+            path).
+        """
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
-        with open(file_path, "w") as f:
-            json.dump(asdict(summary), f, indent=4)
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+        sub = raw.get("offchain_deposits") if isinstance(raw, dict) else None
+        if not isinstance(sub, dict):
+            return None
+
+        try:
+            return OffchainDepositState(**sub)
+        except (TypeError, ValueError) as e:
+            self.context.logger.warning(
+                f"Persisted offchain_deposits failed validation ({e}); "
+                "leaving it unpreserved on this save."
+            )
+            return None
+
+    def write_offchain_deposits_to_disk(self, state: "OffchainDepositState") -> None:
+        """Atomic-write ``offchain_deposits`` to disk, preserving sibling fields.
+
+        Mirrors ``read_offchain_deposits_from_disk`` on the write side.
+        Reads the raw JSON dict (bypassing every dataclass
+        ``__post_init__``), updates only the ``offchain_deposits`` key,
+        writes back atomically via tempfile + ``os.replace``.
+        ``_fetch_offchain_prepaid_wei`` uses this instead of
+        ``overwrite_performance_summary(summary)`` because the summary
+        read it would otherwise pair with can silently degrade to a
+        fresh dataclass on any nested-field ``__post_init__`` raise,
+        which would then wipe every sibling field on disk (metrics,
+        agent_details, prediction_history, ...) during the mid-cycle
+        checkpoint write. Split-write keeps our checkpoint safe without
+        depending on other fields' validation state.
+
+        If the file is missing or unreadable, writes a minimal
+        ``{"offchain_deposits": ...}`` — the operator has explicitly
+        opted in to off-chain accounting at this point, so keeping the
+        checkpoint alive is more important than refusing to write over
+        a corrupt file. The next cycle-end
+        ``_save_agent_performance_summary`` will re-populate the sibling
+        fields from live data.
+
+        :param state: the ``OffchainDepositState`` to persist.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raw = {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            raw = {}
+
+        raw["offchain_deposits"] = asdict(state)
+
+        # tempfile in the same directory so ``os.replace`` is atomic on
+        # POSIX (both paths on one filesystem).
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=file_path.name + ".", dir=str(file_path.parent)
+        )
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(raw, f, indent=4)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, file_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+    def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
+        """Write the agent performance summary to a file atomically.
+
+        Uses a same-directory temp file + ``os.replace`` so a mid-write
+        crash (docker stop -t 0, OOM, disk full) can't leave the file
+        truncated. Matters more than for the previous callers of this
+        method: this PR is the first to persist irreversible state
+        (``offchain_deposits.total_deposited_wei``) that cannot be
+        re-derived from the subgraph.
+
+        :param summary: fully-populated summary to overwrite the persisted
+            copy with.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        # tempfile in the same directory so ``os.replace`` is atomic on
+        # POSIX (both paths on one filesystem).
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=file_path.name + ".", dir=str(file_path.parent)
+        )
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(asdict(summary), f, indent=4)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, file_path)
+        except Exception:
+            # Best-effort cleanup of the stale temp file.
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""
@@ -329,6 +562,33 @@ class SharedState(BaseSharedState):
         existing_data.agent_behavior = behavior
         existing_data.timestamp = self.synced_timestamp
         self.overwrite_performance_summary(existing_data)
+
+    def update_funds_locked_in_markets(self, value: float) -> None:
+        """Update only the ``funds_locked_in_markets`` field in the summary.
+
+        Lets external skills (e.g. the withdrawal behaviour at sweep
+        end) bridge the cache-staleness gap between an event that
+        changes on-chain locked value and the next normal performance
+        summary round. The field is overwritten on the next normal
+        round; this is an interim refresh.
+
+        Lazily builds the nested ``AgentPerformanceData`` →
+        ``PerformanceMetricsData`` chain when the file doesn't exist
+        yet (first-ever run) or has only partially-populated nested
+        fields.
+
+        :param value: USD-equivalent value of currently locked positions.
+        """
+        existing = self.read_existing_performance_summary()
+        if existing.agent_performance is None:
+            existing.agent_performance = AgentPerformanceData(
+                metrics=PerformanceMetricsData()
+            )
+        if existing.agent_performance.metrics is None:
+            existing.agent_performance.metrics = PerformanceMetricsData()
+        existing.agent_performance.metrics.funds_locked_in_markets = value
+        existing.timestamp = self.synced_timestamp
+        self.overwrite_performance_summary(existing)
 
 
 class Subgraph(ApiSpecs):

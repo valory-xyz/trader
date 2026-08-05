@@ -24,7 +24,19 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from aea.exceptions import enforce
 from aea.skills.base import Model, SkillContext
@@ -34,12 +46,16 @@ from web3.types import BlockIdentifier
 
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.base import AbciApp
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
 from packages.valory.skills.abstract_round_abci.models import Requests as BaseRequests
-from packages.valory.skills.abstract_round_abci.models import TypeCheckMixin
+from packages.valory.skills.abstract_round_abci.models import (
+    TypeCheckMixin,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
@@ -197,6 +213,16 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
         self.redeeming_progress: RedeemingProgress = RedeemingProgress()
+        # Process-lifetime cache for the staking-regime detection seam
+        # (``staking_abci.behaviours.StakingInteractBaseBehaviour._is_new_staking_regime``).
+        # Lives here, NOT on ``staking_abci``'s SharedState: in the composed agent
+        # there is exactly one live ``context.state`` instance shared by every
+        # sub-skill — ``trader_abci.SharedState`` (MRO includes
+        # ``decision_maker_abci.models.SharedState``). The sub-skill SharedState
+        # subclasses are never instantiated as the live state, so a field placed
+        # there would ``AttributeError`` on the live instance. ``None`` = not yet
+        # detected; set once per process (Pearl restarts on a contract switch).
+        self.staking_regime_is_new: Optional[bool] = None
         self.strategy_to_filehash: Dict[str, str] = {}
         self.strategies_executables: Dict[str, Tuple[str, str]] = {}
         self.in_flight_req: bool = False
@@ -386,12 +412,38 @@ class DecisionMakerParams(
         )
         agent_registry_address = cast(str, agent_registry_address)
 
+        # V1-only operator allowlist applied in `_get_mech_tools`. On the V2
+        # marketplace path the suitability classifier in
+        # `behaviours/tool_selection.py::_fetch_mech_manifests` replaces it
+        # and this set is loaded but unused.
+        self.mech_marketplace_v1_suitable_tools: FrozenSet[str] = frozenset(
+            str(tool).lower()
+            for tool in self._ensure(
+                "mech_marketplace_v1_suitable_tools", kwargs, List[str]
+            )
+        )
+
         # the number of days to sample bets from
         self.sample_bets_closing_days: int = self._ensure(
             "sample_bets_closing_days", kwargs, int
         )
         if self.sample_bets_closing_days <= 0:
             msg = "The number of days to sample bets from must be positive!"
+            raise ValueError(msg)
+
+        # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
+        # 0.0 / 1.0 widen the band to the full [0, 1] range = no-op.
+        self.polymarket_spread_min: float = self._ensure(
+            "polymarket_spread_min", kwargs, float
+        )
+        self.polymarket_spread_max: float = self._ensure(
+            "polymarket_spread_max", kwargs, float
+        )
+        if self.polymarket_spread_min > self.polymarket_spread_max:
+            msg = (
+                f"polymarket_spread_min ({self.polymarket_spread_min}) must be "
+                f"<= polymarket_spread_max ({self.polymarket_spread_max})"
+            )
             raise ValueError(msg)
 
         # the trading strategy to use for placing bets
@@ -430,9 +482,27 @@ class DecisionMakerParams(
         self.redeem_round_timeout: float = self._ensure(
             "redeem_round_timeout", kwargs, float
         )
+        self.withdrawal_round_timeout: float = self._ensure(
+            "withdrawal_round_timeout", kwargs, float
+        )
         # a slippage in the range of [0, 1] to apply to the `minOutcomeTokensToBuy` when buying shares on a fpmm
         self._slippage: float = 0.0
         self.slippage: float = self._ensure("slippage", kwargs, float)
+        # Omenstrat withdrawal sweep parameters.
+        # `withdrawal_slippage`: extra headroom on `maxOutcomeTokensToSell` for
+        # sells through FPMM.sell (ceiling-direction; see omen_withdraw.py).
+        # `withdrawal_return_buffer`: shrink `n_estimate` when sizing the
+        # returnAmount to stay below the headroom-cap (avoids step-2 halving
+        # loops in calcSellAmount).
+        # `dust_epsilon_wxdai`: positions whose `balance * marginal_price`
+        # (wxDAI wei) falls below this are skipped as dust.
+        self.withdrawal_slippage: float = self._ensure(
+            "withdrawal_slippage", kwargs, float
+        )
+        self.withdrawal_return_buffer: float = self._ensure(
+            "withdrawal_return_buffer", kwargs, float
+        )
+        self.dust_epsilon_wxdai: int = self._ensure("dust_epsilon_wxdai", kwargs, int)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
         self.agent_registry_address: str = agent_registry_address
         self.tool_punishment_multiplier: int = self._ensure(
@@ -475,6 +545,23 @@ class DecisionMakerParams(
         self.review_period_seconds: int = self._ensure(
             "review_period_seconds", kwargs, int
         )
+        self.withdrawal_max_fak_attempts: int = self._ensure(
+            "withdrawal_max_fak_attempts", kwargs, int
+        )
+        self.withdrawal_fak_backoff_s: List[int] = self._ensure(
+            "withdrawal_fak_backoff_s", kwargs, List[int]
+        )
+        # ``withdrawal_fak_backoff_s`` is the schedule of inter-attempt
+        # sleeps, so it has one fewer entry than the attempt count: with
+        # ``max_attempts=3`` and ``backoff=[10, 30]``, the loop tries,
+        # sleeps 10s, retries, sleeps 30s, retries — 3 attempts, 2 gaps.
+        expected = self.withdrawal_max_fak_attempts - 1
+        if len(self.withdrawal_fak_backoff_s) != expected:
+            raise ValueError(
+                "withdrawal_fak_backoff_s length "
+                f"({len(self.withdrawal_fak_backoff_s)}) must equal "
+                f"withdrawal_max_fak_attempts - 1 ({expected})"
+            )
         self.min_confidence_for_selling: float = 0.5
         self.polymarket_builder_program_enabled: bool = self._ensure(
             "polymarket_builder_program_enabled", kwargs, bool

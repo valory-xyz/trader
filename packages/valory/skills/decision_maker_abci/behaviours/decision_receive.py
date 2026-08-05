@@ -457,6 +457,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         market_type = "clob" if self.params.is_running_on_polymarket else "fpmm"
         orderbook_asks_yes = None
         orderbook_asks_no = None
+        orderbook_bids_yes = None
+        orderbook_bids_no = None
         min_order_shares = 0.0
 
         prices = bet.outcomeTokenMarginalPrices
@@ -472,12 +474,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                     ob_yes = yield from self._fetch_orderbook(yes_token_id)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
+                        orderbook_bids_yes = ob_yes.get("bids", [])
                         if ob_yes.get("min_order_size") is not None:
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
                     ob_no = yield from self._fetch_orderbook(no_token_id)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
+                        orderbook_bids_no = ob_no.get("bids", [])
                         if (
                             min_order_shares == 0.0
                             and ob_no.get("min_order_size") is not None
@@ -517,6 +521,49 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
             return False, 0, None
+
+        # Optional spread gate (Polymarket / CLOB only): skip the bet when the
+        # chosen side's live bid-ask spread falls outside
+        # ``[polymarket_spread_min, polymarket_spread_max]``. The default band
+        # [0.0, 1.0] passes every well-formed book; a crossed/broken book
+        # (best_bid > best_ask -> spread < 0) is intentionally rejected as bad
+        # data, even under the default. A missing/empty/unparseable book
+        # bypasses the gate (the strategy already approved the bet); the bypass
+        # is logged when a non-default band is set, since that is exactly the
+        # illiquid market the operator wanted caught.
+        if market_type == "clob":
+            is_yes = strategy_vote == 0
+            spread_asks, spread_bids = (
+                (orderbook_asks_yes, orderbook_bids_yes)
+                if is_yes
+                else (orderbook_asks_no, orderbook_bids_no)
+            )
+            lo = self.params.polymarket_spread_min
+            hi = self.params.polymarket_spread_max
+            band_is_default = lo <= 0.0 and hi >= 1.0
+            if spread_asks and spread_bids:
+                try:
+                    best_ask = min(float(a["price"]) for a in spread_asks)
+                    best_bid = max(float(b["price"]) for b in spread_bids)
+                except (ValueError, TypeError) as exc:
+                    self.context.logger.warning(
+                        f"Spread gate bypassed: could not parse order book "
+                        f"prices ({exc})."
+                    )
+                else:
+                    spread = best_ask - best_bid
+                    if not lo <= spread <= hi:
+                        self.context.logger.info(
+                            f"Spread gate: {spread:.4f} outside "
+                            f"[{lo}, {hi}] — skipping bet."
+                        )
+                        return False, 0, None
+            elif not band_is_default:
+                self.context.logger.warning(
+                    f"Spread gate bypassed: chosen-side order book unavailable "
+                    f"(is_yes={is_yes}) while a non-default band [{lo}, {hi}] "
+                    f"is configured."
+                )
 
         is_profitable = True
         expected_profit = strategy_result.get("expected_profit", 0)

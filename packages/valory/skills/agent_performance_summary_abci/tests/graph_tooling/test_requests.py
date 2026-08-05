@@ -21,8 +21,11 @@
 
 import json
 from abc import ABC
-from typing import Any, Generator
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, patch
+from urllib.parse import quote
 
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
@@ -210,7 +213,7 @@ def _make_behaviour(**overrides: Any) -> _ConcreteAPTBehaviour:
     return b
 
 
-def _exhaust(gen: Generator) -> Any:
+def _exhaust(gen: "Generator[Any, Any, Any]") -> Any:
     """Drive a generator to completion and return its final value."""
     result = None
     try:
@@ -1855,3 +1858,427 @@ class TestCleanUp:
 
         # Should not raise
         b.clean_up()
+
+
+class TestFetchCTHeldPositionKeys:
+    """Tests for ``_fetch_ct_held_position_keys`` error semantics.
+
+    The error path must return ``None`` so the downstream consumer in
+    :func:`compute_funds_locked_from_bets` can fall back to the
+    un-gated FIFO sum. Returning ``set()`` would collapse every
+    position out and write a phantom ``0.0`` to
+    ``funds_locked_in_markets``.
+    """
+
+    @staticmethod
+    def _strip_ct_subgraph(b: _ConcreteAPTBehaviour) -> None:
+        """Make ``context.conditional_tokens_subgraph`` raise ``AttributeError``.
+
+        ``MagicMock`` auto-creates attributes on access, so the
+        production-side ``except AttributeError`` would never fire on a
+        bare ``_make_behaviour()`` instance. We replace the context
+        with a spec'd mock that lacks the attribute entirely.
+
+        :param b: behaviour instance whose ``_context`` will be swapped
+            for a class instance lacking ``conditional_tokens_subgraph``.
+        """
+
+        class _CtxWithoutCt:
+            logger = MagicMock()
+            params = MagicMock()
+            # deliberately no ``conditional_tokens_subgraph`` attribute
+
+        b._context = _CtxWithoutCt()  # type: ignore[assignment]
+
+    def test_missing_ct_subgraph_returns_none(self) -> None:
+        """No ``conditional_tokens_subgraph`` on context -> ``None``."""
+        b = _make_behaviour()
+        self._strip_ct_subgraph(b)
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_subgraph_request_failure_returns_none(self) -> None:
+        """``_fetch_from_subgraph`` returning ``None`` -> ``None``."""
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen(None)  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result is None
+
+    def test_empty_list_returns_empty_set(self) -> None:
+        """Subgraph returns ``[]`` -> empty set (not ``None``).
+
+        The CT subgraph spec extracts ``data:user:userPositions`` as a
+        ``list`` (``response_type: list`` in
+        ``trader_abci/skill.yaml``), so ``process_response`` returns
+        the unwrapped list directly. An empty list distinguishes
+        "user genuinely holds nothing" (gate everything out -> 0.0
+        correctly) from "fetch error" (``None``, no gate, un-gated
+        sum).
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        b._fetch_from_subgraph = _return_gen([])  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == set()
+
+    def test_populated_positions_returns_keys(self) -> None:
+        """Returns the ``(condition_id, outcome_index)`` tuple per held row.
+
+        Receives the unwrapped ``userPositions`` list directly (not a
+        nested ``{"user": {...}}`` dict) — matches what
+        ``process_response`` produces given the spec's
+        ``response_key: data:user:userPositions``.
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        condition_a = "0x" + "a1" * 32
+        # indexSet "1" -> outcome 0, indexSet "2" -> outcome 1.
+        b._fetch_from_subgraph = _return_gen(  # type: ignore[method-assign]
+            [
+                {
+                    "balance": "1000",
+                    "id": "0xpos1",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["1"],
+                    },
+                },
+                {
+                    "balance": "500",
+                    "id": "0xpos2",
+                    "position": {
+                        "conditionIds": [condition_a],
+                        "indexSets": ["2"],
+                    },
+                },
+            ]
+        )
+
+        result = _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert result == {(condition_a.lower(), 0), (condition_a.lower(), 1)}
+
+    def test_query_filters_balance_gt_zero_server_side(self) -> None:
+        """The CT query carries ``balance_gt: "0"`` so the result set stays small.
+
+        Without the server-side filter the query returns every
+        historical ``userPosition`` (including thousands of redeemed
+        zero-balance rows on a long-lived trader safe). Page 1 fills
+        up at 1000 rows, the loop then tries page 2 which is
+        susceptible to transient subgraph failures — when that fails
+        the fetcher returns ``None`` and the consumer falls back to
+        the un-gated sum, surfacing the 110-wxDAI phantom-locked-funds
+        regression.
+
+        Filtering server-side keeps the response to actually-held
+        positions only (~tens of rows) and fits in one page.
+        """
+        b = _make_behaviour()
+        b.context.conditional_tokens_subgraph = MagicMock()
+        captured: Dict[str, Any] = {}
+
+        def fake_fetch(**kwargs: Any) -> Generator[None, None, Any]:
+            captured["query"] = kwargs.get("query", "")
+            return []
+            yield  # pragma: no cover
+
+        b._fetch_from_subgraph = fake_fetch  # type: ignore[method-assign,assignment]
+        _exhaust(b._fetch_ct_held_position_keys("0xsafe"))
+
+        assert 'balance_gt: "0"' in captured["query"], captured["query"]
+
+
+# ---------------------------------------------------------------------------
+# Mech-analytics flag-on tests: cover the async-HTTP paths on the
+# behaviour helper (``_page_mech_analytics_scored_rows``) and the two
+# consumers that route through it (``_fetch_all_mech_requests`` and
+# ``_fetch_mech_requests_by_titles``). Without these, the flag-on
+# branches would ship with zero unit coverage, which is exactly the
+# ROI-affecting key-chain the reviewer flagged as a coverage gate hard
+# fail.
+# ---------------------------------------------------------------------------
+
+
+def _http_response(status: int, body: Any) -> MagicMock:
+    """Build a MagicMock that mirrors an Autonomy HttpMessage.
+
+    The framework's ``get_http_response`` returns an object with
+    ``.status_code`` and ``.body`` (bytes); the pagination helper reads
+    both, so this fixture pins the same interface.
+
+    :param status: HTTP status code the mock should report.
+    :param body: response body; ``bytes`` are copied as-is, anything
+        else is JSON-serialised.
+    :return: MagicMock with ``.status_code`` and ``.body`` set.
+    """
+    resp = MagicMock()
+    resp.status_code = status
+    if isinstance(body, (bytes, bytearray)):
+        resp.body = bytes(body)
+    else:
+        resp.body = json.dumps(body).encode()
+    return resp
+
+
+def _mech_analytics_ctx(is_polymarket: bool = False) -> MagicMock:
+    """Context with params.mech_analytics_url + is_running_on_polymarket set."""
+    ctx = MagicMock()
+    ctx.params = SimpleNamespace(
+        mech_analytics_url="https://mech-analytics.test",
+        use_mech_analytics=True,
+        is_running_on_polymarket=is_polymarket,
+    )
+    return ctx
+
+
+def _queued_get_http_response(pages: List[MagicMock]) -> Any:
+    """Return a fake ``get_http_response`` that pops one response per call.
+
+    Each call yields once (matching the real generator contract) and
+    returns the next queued response. Used to drive the pagination
+    loop with a predictable sequence of pages / failures.
+
+    :param pages: sequence of response mocks to serve, one per call.
+    :return: a generator-factory suitable for monkey-patching onto a
+        behaviour instance's ``get_http_response`` attribute.
+    """
+    queue = list(pages)
+
+    def _gen(*args: Any, **kwargs: Any) -> "Generator[Any, Any, MagicMock]":
+        yield
+        if not queue:
+            raise AssertionError(
+                "get_http_response called more times than pages queued"
+            )
+        return queue.pop(0)
+
+    return _gen
+
+
+class TestPageMechAnalyticsScoredRows:
+    """Async pagination helper on ``APTQueryingBehaviour``: failures return None."""
+
+    def test_single_page_success(self) -> None:
+        """Single-page response returns the rows as a list."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, {"rows": [{"a": 1}, {"a": 2}], "next_cursor": None})]
+        )
+        result = _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe"))
+        assert result == [{"a": 1}, {"a": 2}]
+
+    def test_multi_page_concatenates_in_order(self) -> None:
+        """Cursor is followed across pages, rows concatenated in order."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(200, {"rows": [{"i": 1}], "next_cursor": "c1"}),
+                _http_response(200, {"rows": [{"i": 2}], "next_cursor": "c2"}),
+                _http_response(200, {"rows": [{"i": 3}], "next_cursor": None}),
+            ]
+        )
+        result = _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe"))
+        assert result == [{"i": 1}, {"i": 2}, {"i": 3}]
+
+    def test_non_2xx_returns_none(self) -> None:
+        """Non-200 response returns None (fetch failure, not empty)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(502, {})]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_json_parse_failure_returns_none(self) -> None:
+        """Malformed JSON body surfaces as None, not silent empty."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, b"not json at all")]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_shape_drift_missing_rows_returns_none(self) -> None:
+        """Payload with no ``rows`` list MUST NOT be treated as empty."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(200, {"detail": "server error"})]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+    def test_mid_pagination_failure_returns_none(self) -> None:
+        """Partial result from a mid-loop failure MUST be discarded."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(200, {"rows": [{"i": 1}], "next_cursor": "c1"}),
+                _http_response(502, {}),
+            ]
+        )
+        assert _exhaust(b._page_mech_analytics_scored_rows(requester="0xsafe")) is None
+
+
+class TestFetchAllMechRequestsFlagOn:
+    """``_fetch_all_mech_requests`` flag-on branch — uses async pagination + adapter."""
+
+    def test_flag_on_success_returns_subgraph_shaped_rows(self) -> None:
+        """Successful fetch returns rows in the trader's subgraph shape."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(
+                    200,
+                    {
+                        "rows": [
+                            {
+                                "question_title": "Q1",
+                                "requested_at": "2026-07-10T12:00:00+00:00",
+                                "tool": "t",
+                            }
+                        ],
+                        "next_cursor": None,
+                    },
+                )
+            ]
+        )
+        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
+        assert result is not None
+        assert result[0]["parsedRequest"]["questionTitle"] == "Q1"
+
+    def test_flag_on_failure_returns_none(self) -> None:
+        """Fetch failure propagates as None (distinct from empty ``[]``)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(500, {})]
+        )
+        assert _exhaust(b._fetch_all_mech_requests("0xsafe")) is None
+
+
+class TestFetchMechRequestsByTitlesFlagOn:
+    """``_fetch_mech_requests_by_titles`` flag-on branch — client-side title filter."""
+
+    def test_flag_on_filters_to_requested_titles_only(self) -> None:
+        """Titles not in the caller's list are dropped from the result."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [
+                _http_response(
+                    200,
+                    {
+                        "rows": [
+                            {
+                                "question_title": "wanted",
+                                "requested_at": "2026-07-10T00:00:00Z",
+                            },
+                            {
+                                "question_title": "other",
+                                "requested_at": "2026-07-10T00:00:00Z",
+                            },
+                        ],
+                        "next_cursor": None,
+                    },
+                )
+            ]
+        )
+        result = _exhaust(
+            b._fetch_mech_requests_by_titles("0xsafe", question_titles=["wanted"])
+        )
+        assert result is not None
+        assert len(result) == 1
+        assert result[0]["parsedRequest"]["questionTitle"] == "wanted"
+
+    def test_flag_on_empty_titles_short_circuits_without_fetch(self) -> None:
+        """Empty title list means no work, no HTTP call."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = MagicMock()  # type: ignore[method-assign]  # would fail if called
+        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", [])) == []
+        assert b.get_http_response.call_count == 0
+
+    def test_flag_on_fetch_failure_returns_none(self) -> None:
+        """Fetch failure propagates as None (distinct from empty list)."""
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
+            [_http_response(503, {})]
+        )
+        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", ["t"])) is None
+
+    def test_flag_on_since_offsets_watermark_by_one_second(self) -> None:
+        """``block_timestamp_gt`` is a row already consumed; ``since`` must skip it.
+
+        The subgraph query uses ``blockTimestamp_gt`` (strictly greater
+        than); mech-analytics' ``since`` is inclusive. Passing
+        ``last_mech_timestamp`` straight through re-fetches the boundary
+        row each tick, and the monotonic ``max(prev, new)`` aggregation
+        would then never let the resulting overcount self-correct. The
+        ``+1`` offset keeps the two backends semantically aligned.
+        """
+        watermark = 1_700_000_000
+        captured: Dict[str, Any] = {}
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            captured.setdefault("url", kwargs.get("url"))
+            yield
+            return _http_response(200, {"rows": [], "next_cursor": None})
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        _exhaust(
+            b._fetch_mech_requests_by_titles(
+                "0xsafe",
+                question_titles=["wanted"],
+                block_timestamp_gt=watermark,
+            )
+        )
+
+        expected_since = datetime.fromtimestamp(
+            watermark + 1, tz=timezone.utc
+        ).isoformat()
+        # ``build_scored_rows_url`` URL-encodes the ISO string; unquote
+        # for a substring check that's readable in case of failure.
+        assert captured.get("url") is not None
+        assert f"since={quote(expected_since, safe='')}" in captured["url"]
+
+    def test_flag_on_no_watermark_sends_no_since_bound(self) -> None:
+        """Backfill entry point (``block_timestamp_gt=0``) omits ``since`` entirely.
+
+        Guards against a symmetric bug where always adding +1 would
+        skip epoch on the initial backfill path.
+        """
+        captured: Dict[str, Any] = {}
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            captured.setdefault("url", kwargs.get("url"))
+            yield
+            return _http_response(200, {"rows": [], "next_cursor": None})
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        _exhaust(
+            b._fetch_mech_requests_by_titles(
+                "0xsafe",
+                question_titles=["wanted"],
+                block_timestamp_gt=0,
+            )
+        )
+        assert captured.get("url") is not None
+        assert "since=" not in captured["url"]

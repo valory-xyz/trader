@@ -68,6 +68,11 @@ from packages.valory.skills.transaction_settlement_abci.rounds import TX_HASH_LE
 WaitableConditionType = Generator[None, None, bool]
 
 
+# Activity-checker ``VERSION()`` value that marks the decoupled-activity
+# (``RequesterActivityCheckerV2``) staking regime. Exact match — a future
+# version is deliberately treated as old until the agent learns to recognise it.
+NEW_STAKING_CHECKER_VERSION = "0.2.0"
+
 ETH_PRICE = 0
 # setting the safe gas to 0 means that all available gas will be used
 # which is what we want in most cases
@@ -90,6 +95,11 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
         self._service_staking_state: StakingState = StakingState.UNSTAKED
         self._checkpoint_ts = 0
         self._agent_ids: str = "[]"
+        # Per-instance scratch for the in-flight regime-detection reads only.
+        # The *verdict* is cached on shared state (see ``_is_new_staking_regime``),
+        # because the round behaviour is re-instantiated on every round entry.
+        self._activity_checker_address: Optional[str] = None
+        self._checker_version: Optional[str] = None
 
     @property
     def params(self) -> StakingParams:
@@ -192,6 +202,26 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     def agent_ids(self, agent_ids: List[int]) -> None:
         """Set the agent ids."""
         self._agent_ids = json.dumps(agent_ids)
+
+    @property
+    def activity_checker_address(self) -> Optional[str]:
+        """Get the activity checker address read from the staking contract."""
+        return self._activity_checker_address
+
+    @activity_checker_address.setter
+    def activity_checker_address(self, activity_checker_address: Optional[str]) -> None:
+        """Set the activity checker address."""
+        self._activity_checker_address = activity_checker_address
+
+    @property
+    def checker_version(self) -> Optional[str]:
+        """Get the activity checker ``VERSION`` (``None`` if the getter is absent)."""
+        return self._checker_version
+
+    @checker_version.setter
+    def checker_version(self, checker_version: Optional[str]) -> None:
+        """Set the activity checker version."""
+        self._checker_version = checker_version
 
     def wait_for_condition_with_sleep(
         self,
@@ -399,6 +429,124 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
             placeholder=get_name(CallCheckpointBehaviour.agent_ids),
         )
         return status
+
+    def _read_optional_contract_value(
+        self,
+        contract_address: str,
+        contract_public_id: PublicId,
+        contract_callable: str,
+        placeholder: str,
+    ) -> WaitableConditionType:
+        """Contract read that accepts a *resolved* ``None`` as a valid answer.
+
+        Unlike ``contract_interact`` (which treats ``data is None`` as a failure
+        and retries), this distinguishes:
+
+        * a ``RAW_TRANSACTION`` response whose ``data`` may legitimately be
+          ``None`` — the wrapper degraded a genuine missing function — which is
+          recorded and reported as success; from
+        * any other (error) performative, i.e. a transient RPC/connection
+          failure, which returns ``False`` so the caller retries instead of
+          silently classifying the contract as "old".
+
+        :param contract_address: the contract to call.
+        :param contract_public_id: the contract public id.
+        :param contract_callable: the contract method to call.
+        :param placeholder: the attribute to store the read value on.
+        :return: whether the read resolved (regardless of a ``None`` value).
+        :yield: the contract-api request step.
+        """
+        contract_id = str(contract_public_id)
+        response_msg = yield from self.get_contract_api_response(
+            ContractApiMessage.Performative.GET_RAW_TRANSACTION,  # type: ignore
+            contract_address,
+            contract_id,
+            contract_callable,
+            chain_id=self.params.mech_chain_id,
+        )
+        if response_msg.performative != ContractApiMessage.Performative.RAW_TRANSACTION:
+            self.default_error(contract_id, contract_callable, response_msg)
+            return False
+
+        setattr(self, placeholder, response_msg.raw_transaction.body.get("data", None))
+        return True
+
+    def _get_activity_checker(self) -> WaitableConditionType:
+        """Read the staking contract's activity checker address (on-chain).
+
+        Uses the ``mech_activity`` contract package purely for the
+        ``activityChecker()`` selector — the call targets the *staking* contract
+        address. (The ``staking_token`` package is third-party / not committed in
+        this repo, so the read is routed through the tracked ``mech_activity``
+        package instead.)
+
+        :return: whether the read resolved.
+        :yield: the contract-api request step.
+        """
+        status = yield from self._read_optional_contract_value(
+            contract_address=self.staking_contract_address,
+            contract_public_id=MechActivityContract.contract_id,
+            contract_callable="get_activity_checker",
+            placeholder=get_name(StakingInteractBaseBehaviour.activity_checker_address),
+        )
+        return status
+
+    def _get_checker_version(self, checker: str) -> WaitableConditionType:
+        """Read the activity checker's ``VERSION`` (``None`` ⇒ absent / old)."""
+        status = yield from self._read_optional_contract_value(
+            contract_address=checker,
+            contract_public_id=MechActivityContract.contract_id,
+            contract_callable="version",
+            placeholder=get_name(StakingInteractBaseBehaviour.checker_version),
+        )
+        return status
+
+    def _is_new_staking_regime(self) -> Generator[None, None, bool]:
+        """Whether staked on a new (decoupled-activity / V2) staking contract.
+
+        Detected via the activity checker's ``VERSION()`` getter:
+        ``VERSION() == "0.2.0"`` ⇒ new regime; absent / unexpected value /
+        no activity checker ⇒ old (fail-safe). A *transient* RPC error is never
+        classified as old — the underlying reads retry instead.
+
+        The verdict is cached on shared state (``context.state``), NOT on the
+        behaviour instance: the round behaviour is re-instantiated on every
+        round entry, so a ``self.*`` cache would never survive a period. The
+        staking contract cannot change without a Pearl restart, so one
+        process-lifetime cache on the shared model is correct and cheap. The
+        field lives on ``decision_maker_abci.models.SharedState`` — the only
+        ``SharedState`` in the composed agent's single live ``context.state``
+        instance (see that skill's models for the rationale).
+
+        :return: ``True`` if on a new-regime staking contract, else ``False``.
+        :yield: contract-read steps.
+        """
+        cached = self.context.state.staking_regime_is_new
+        if cached is not None:
+            return cached
+
+        # 1. activity-checker address, read on-chain (not from a Pearl param)
+        yield from self.wait_for_condition_with_sleep(self._get_activity_checker)
+        checker = self.activity_checker_address
+
+        if not checker or checker == NULL_ADDRESS:
+            # No activity checker on the staking contract ⇒ old-style contract.
+            is_new = False
+        else:
+            # 2. VERSION() on the checker; ``None`` ⇒ genuinely absent ⇒ old.
+            #    Transient RPC errors propagate as an error performative and are
+            #    retried by ``wait_for_condition_with_sleep`` (never reach here).
+            yield from self.wait_for_condition_with_sleep(
+                lambda: self._get_checker_version(checker)
+            )
+            is_new = self.checker_version == NEW_STAKING_CHECKER_VERSION
+
+        self.context.state.staking_regime_is_new = is_new
+        self.context.logger.info(
+            f"Staking regime: {'NEW' if is_new else 'OLD'} "
+            f"(checker={checker}, VERSION={self.checker_version})"
+        )
+        return is_new
 
 
 class CallCheckpointBehaviour(

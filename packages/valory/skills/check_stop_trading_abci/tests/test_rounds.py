@@ -31,6 +31,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Tuple,
     Type,
 )
 from unittest.mock import MagicMock, Mock, patch
@@ -56,6 +57,8 @@ from packages.valory.skills.check_stop_trading_abci.rounds import (
     FinishedCheckStopTradingRound,
     FinishedWithReviewBetsRound,
     FinishedWithSkipTradingRound,
+    FinishedWithWithdrawalOmenRound,
+    FinishedWithWithdrawalPolymarketRound,
     SynchronizedData,
 )
 
@@ -80,7 +83,10 @@ def get_participants() -> FrozenSet[str]:
 
 
 def get_participant_to_votes(
-    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
+    participants: FrozenSet[str],
+    vote: bool,
+    review_bets_for_selling: bool,
+    is_activity_target_met: bool = False,
 ) -> Dict[str, CheckStopTradingPayload]:
     """participant_to_votes"""
 
@@ -89,18 +95,24 @@ def get_participant_to_votes(
             sender=participant,
             vote=vote,
             review_bets_for_selling=review_bets_for_selling,
+            is_activity_target_met=is_activity_target_met,
         )
         for participant in participants
     }
 
 
 def get_participant_to_votes_serialized(
-    participants: FrozenSet[str], vote: bool, review_bets_for_selling: bool
+    participants: FrozenSet[str],
+    vote: bool,
+    review_bets_for_selling: bool,
+    is_activity_target_met: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """participant_to_votes"""
 
     return CollectionRound.serialize_collection(
-        get_participant_to_votes(participants, vote, review_bets_for_selling)
+        get_participant_to_votes(
+            participants, vote, review_bets_for_selling, is_activity_target_met
+        )
     )
 
 
@@ -170,12 +182,14 @@ class BaseCheckStopTradingRoundTest(BaseVotingRoundTest):
                     self.participants,
                     vote=vote,
                     review_bets_for_selling=should_review_bets,
+                    is_activity_target_met=should_review_bets,
                 ),
                 synchronized_data_update_fn=lambda _synchronized_data, _: _synchronized_data.update(
                     participant_to_votes=get_participant_to_votes_serialized(
                         self.participants,
                         vote=vote,
                         review_bets_for_selling=should_review_bets,
+                        is_activity_target_met=should_review_bets,
                     ),
                     review_bets_for_selling=should_review_bets,
                 ),
@@ -316,6 +330,8 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
         FinishedCheckStopTradingRound,
         FinishedWithSkipTradingRound,
         FinishedWithReviewBetsRound,
+        FinishedWithWithdrawalPolymarketRound,
+        FinishedWithWithdrawalOmenRound,
     }
     assert abci_app.transition_function == {
         CheckStopTradingRound: {
@@ -325,10 +341,14 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
             Event.ROUND_TIMEOUT: CheckStopTradingRound,
             Event.NO_MAJORITY: CheckStopTradingRound,
             Event.SKIP_TRADING: FinishedWithSkipTradingRound,
+            Event.WITHDRAW_POLYMARKET: FinishedWithWithdrawalPolymarketRound,
+            Event.WITHDRAW_OMEN: FinishedWithWithdrawalOmenRound,
         },
         FinishedCheckStopTradingRound: {},
         FinishedWithSkipTradingRound: {},
         FinishedWithReviewBetsRound: {},
+        FinishedWithWithdrawalPolymarketRound: {},
+        FinishedWithWithdrawalOmenRound: {},
     }
     assert abci_app.event_to_timeout == {Event.ROUND_TIMEOUT: 30.0}
     assert abci_app.db_pre_conditions == {CheckStopTradingRound: set()}
@@ -336,6 +356,8 @@ def test_abci_app_initialization(abci_app: CheckStopTradingAbciApp) -> None:
         FinishedCheckStopTradingRound: set(),
         FinishedWithSkipTradingRound: set(),
         FinishedWithReviewBetsRound: set(),
+        FinishedWithWithdrawalPolymarketRound: set(),
+        FinishedWithWithdrawalOmenRound: set(),
     }
 
 
@@ -372,6 +394,40 @@ class TestSynchronizedDataProperties:
         data = SynchronizedData(db=AbciAppDB(setup_data={"is_staking_kpi_met": [True]}))
         assert data.is_staking_kpi_met is True
 
+    def test_is_activity_target_met_default(self) -> None:
+        """is_activity_target_met defaults to False."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={}))
+        assert data.is_activity_target_met is False
+
+    def test_is_activity_target_met_true(self) -> None:
+        """is_activity_target_met returns True when set."""
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"is_activity_target_met": [True]})
+        )
+        assert data.is_activity_target_met is True
+
+    def test_activity_target_default_and_value(self) -> None:
+        """activity_target defaults to 0 and reflects the stored value."""
+        assert SynchronizedData(db=AbciAppDB(setup_data={})).activity_target == 0
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_target": [8]}))
+        assert data.activity_target == 8
+
+    def test_activity_target_none_coerced_to_zero(self) -> None:
+        """A stored ``None`` is coerced to 0 (None-safe, mirrors states/base.py)."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_target": [None]}))
+        assert data.activity_target == 0
+
+    def test_activity_completed_default_and_value(self) -> None:
+        """activity_completed defaults to 0 and reflects the stored value."""
+        assert SynchronizedData(db=AbciAppDB(setup_data={})).activity_completed == 0
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_completed": [5]}))
+        assert data.activity_completed == 5
+
+    def test_activity_completed_none_coerced_to_zero(self) -> None:
+        """A stored ``None`` is coerced to 0 (None-safe, mirrors states/base.py)."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"activity_completed": [None]}))
+        assert data.activity_completed == 0
+
     def test_review_bets_for_selling_default(self) -> None:
         """review_bets_for_selling defaults to False when not set."""
         data = SynchronizedData(db=AbciAppDB(setup_data={}))
@@ -396,16 +452,474 @@ class TestCheckStopTradingRoundShouldReviewBets:
     """Tests for CheckStopTradingRound.should_review_bets."""
 
     def test_not_kpi_met(self) -> None:
-        """When KPI is not met, should not review bets."""
+        """When the activity target is not met, should not review bets."""
         round_ = CheckStopTradingRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
-        assert round_.should_review_bets(is_staking_kpi_met=False) is False
+        assert round_.should_review_bets(is_activity_target_met=False) is False
 
     def test_kpi_met_review_disabled(self) -> None:
-        """When KPI met but position review disabled, should not review."""
+        """When the activity target met but position review disabled, should not review."""
         round_ = CheckStopTradingRound(
             synchronized_data=MagicMock(), context=MagicMock()
         )
         round_.context.params.enable_position_review = False
-        assert round_.should_review_bets(is_staking_kpi_met=True) is False
+        assert round_.should_review_bets(is_activity_target_met=True) is False
+
+
+# ---------------------------------------------------------------------------
+# Withdrawal gate (D14, §6.1)
+# ---------------------------------------------------------------------------
+
+
+class TestWithdrawalEventEnum:
+    """Tests for the Event enum extension."""
+
+    def test_withdraw_polymarket_event_exists(self) -> None:
+        """The Event enum must include WITHDRAW_POLYMARKET."""
+        assert hasattr(Event, "WITHDRAW_POLYMARKET")
+
+    def test_withdraw_omen_event_exists(self) -> None:
+        """The Event enum must include WITHDRAW_OMEN."""
+        assert hasattr(Event, "WITHDRAW_OMEN")
+
+
+class TestWithdrawalDegenerateRounds:
+    """Tests for the degenerate rounds reached via the withdrawal events."""
+
+    def test_finished_with_withdrawal_polymarket_round_initialization(
+        self,
+    ) -> None:
+        """Verify FinishedWithWithdrawalPolymarketRound is constructable."""
+        round_ = FinishedWithWithdrawalPolymarketRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinishedWithWithdrawalPolymarketRound)
+
+    def test_finished_with_withdrawal_omen_round_initialization(self) -> None:
+        """Verify FinishedWithWithdrawalOmenRound is constructable."""
+        round_ = FinishedWithWithdrawalOmenRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        assert isinstance(round_, FinishedWithWithdrawalOmenRound)
+
+
+class TestAbciAppWithdrawalWiring:
+    """The AbciApp transition function and final-state set must include withdrawal."""
+
+    def test_done_event_routes_through_withdrawal_when_armed(self) -> None:
+        """The transition function must include WITHDRAW_POLYMARKET / WITHDRAW_OMEN entries."""
+        tx_function = CheckStopTradingAbciApp.transition_function
+        assert (
+            tx_function[CheckStopTradingRound][Event.WITHDRAW_POLYMARKET]
+            is FinishedWithWithdrawalPolymarketRound
+        )
+        assert (
+            tx_function[CheckStopTradingRound][Event.WITHDRAW_OMEN]
+            is FinishedWithWithdrawalOmenRound
+        )
+
+    def test_final_states_include_withdrawal_terminals(self) -> None:
+        """The final_states set must include the two withdrawal terminals."""
+        assert (
+            FinishedWithWithdrawalPolymarketRound
+            in CheckStopTradingAbciApp.final_states
+        )
+        assert FinishedWithWithdrawalOmenRound in CheckStopTradingAbciApp.final_states
+
+    def test_db_post_conditions_include_withdrawal_terminals(self) -> None:
+        """The db_post_conditions map must include the new degenerate rounds."""
+        assert (
+            FinishedWithWithdrawalPolymarketRound
+            in CheckStopTradingAbciApp.db_post_conditions
+        )
+        assert (
+            FinishedWithWithdrawalOmenRound
+            in CheckStopTradingAbciApp.db_post_conditions
+        )
+
+
+def _make_round_with_disk_flag(
+    *,
+    is_polymarket: bool,
+    withdrawal_mode: bool,
+    withdrawal_state: str,
+) -> CheckStopTradingRound:
+    """Construct a CheckStopTradingRound wired for end_block branching tests.
+
+    The super().end_block() return value is controlled by patching
+    VotingRound.end_block in the test itself; this helper only sets up the
+    context params and the disk-flag helper.
+
+    :param is_polymarket: ``params.is_running_on_polymarket`` to inject.
+    :param withdrawal_mode: ``withdrawal_mode`` returned by the patched disk read.
+    :param withdrawal_state: ``withdrawal_state`` returned by the patched disk read.
+    :return: a ``CheckStopTradingRound`` ready for ``end_block`` calls.
+    """
+    sync_data = MagicMock()
+    context = MagicMock()
+    context.params.is_running_on_polymarket = is_polymarket
+    context.params.enable_position_review = False
+    context.params.review_period_seconds = 60 * 60 * 24
+    context.params.store_path = "/dev/null"
+    round_ = CheckStopTradingRound(synchronized_data=sync_data, context=context)
+    # end_block reads a representative payload from the collection (single-agent);
+    # populate it so the new payload-sourced fields can be read.
+    round_.collection = {
+        "agent_0": CheckStopTradingPayload(sender="agent_0", vote=False)
+    }
+    round_._read_withdrawal_flag = MagicMock(  # type: ignore[method-assign]
+        return_value=(withdrawal_mode, withdrawal_state)
+    )
+    return round_
+
+
+class TestEndBlockWithdrawalBranching:
+    """Tests for the new withdrawal branch in CheckStopTradingRound.end_block."""
+
+    def _run_end_block(
+        self,
+        round_: CheckStopTradingRound,
+        super_event: Optional[Event],
+        *,
+        kpi_met: bool = False,
+    ) -> Optional[Tuple[Any, Event]]:
+        """Run end_block while patching super().end_block() and the KPI property."""
+        from unittest.mock import PropertyMock
+
+        if super_event is None:
+            super_value = None
+        else:
+            sync = MagicMock()
+            sync.update = MagicMock(return_value=sync)
+            super_value = (sync, super_event)
+
+        with (
+            patch.object(VotingRound, "end_block", return_value=super_value),
+            patch.object(
+                VotingRound,
+                "positive_vote_threshold_reached",
+                new_callable=PropertyMock,
+                return_value=kpi_met,
+            ),
+        ):
+            return round_.end_block()  # type: ignore[return-value]
+
+    def test_done_with_polymarket_flag_emits_withdraw_polymarket(self) -> None:
+        """flag=True + venue=polymarket + super=DONE → WITHDRAW_POLYMARKET."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_done_with_omen_flag_emits_withdraw_omen(self) -> None:
+        """flag=True + venue=omen + super=DONE → WITHDRAW_OMEN."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=False,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_OMEN
+
+    def test_done_with_flag_off_emits_done(self) -> None:
+        """flag=False + super=DONE → DONE (existing behaviour preserved)."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=False,
+            withdrawal_state="idle",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.DONE
+
+    def test_complete_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=complete → still diverts.
+
+        Once armed, the agent stays in withdrawal mode for the lifetime of
+        the process (no normal trading) until a restart with state==complete
+        triggers the boot-time auto-clear. So the gate diverts on every
+        cycle regardless of the latest sweep's outcome.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="complete",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_errored_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=errored → still diverts (auto-retry semantics)."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="errored",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_selling_state_keeps_diverting_into_withdrawal(self) -> None:
+        """flag=True + state=selling → diverts (resume mid-sweep on restart)."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="selling",
+        )
+        result = self._run_end_block(round_, Event.DONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_withdrawal_trumps_skip_trading(self) -> None:
+        """flag=True + super=SKIP_TRADING (KPI met) → WITHDRAW_POLYMARKET.
+
+        The operator-armed withdrawal intent is "halt and unwind"; if the
+        agent has reached its staking KPI it would otherwise skip trading
+        and never enter the sweep — operator presses POST, sees ``armed``,
+        and observes nothing happening. Withdrawal must override.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.SKIP_TRADING, kpi_met=True)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_withdrawal_trumps_review_bets(self) -> None:
+        """flag=True + KPI met + review window elapsed → WITHDRAW_POLYMARKET.
+
+        Review-for-selling is also a normal-trading concern; the operator's
+        withdraw signal supersedes it.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        # Force should_review_bets to return True so the REVIEW_BETS branch
+        # would otherwise fire.
+        round_.should_review_bets = MagicMock(return_value=True)  # type: ignore[method-assign]
+        result = self._run_end_block(round_, Event.SKIP_TRADING, kpi_met=True)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.WITHDRAW_POLYMARKET
+
+    def test_withdrawal_does_not_override_none_event(self) -> None:
+        """super=NONE + flag=True → NONE passthrough (no consensus, retry).
+
+        Withdrawal must NOT divert on a no-consensus event — the round needs
+        to retry to reach consensus before any decision branches.
+        """
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.NONE)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.NONE
+
+    def test_withdrawal_does_not_override_no_majority(self) -> None:
+        """super=NO_MAJORITY + flag=True → NO_MAJORITY passthrough."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, Event.NO_MAJORITY)
+
+        assert result is not None
+        _, event = result
+        assert event == Event.NO_MAJORITY
+
+    def test_super_returns_none_returns_none(self) -> None:
+        """If super().end_block returns None (no consensus), pass through None."""
+        round_ = _make_round_with_disk_flag(
+            is_polymarket=True,
+            withdrawal_mode=True,
+            withdrawal_state="armed",
+        )
+        result = self._run_end_block(round_, None)
+
+        assert result is None
+
+
+class TestEndBlockPersistsActivityFields:
+    """end_block must persist the payload-sourced activity fields, and only on convergence."""
+
+    @staticmethod
+    def _make_round(payload: CheckStopTradingPayload) -> CheckStopTradingRound:
+        """Build a round over a real DB so the persisted fields can be read back.
+
+        :param payload: the representative payload to seed the collection with.
+        :return: a ``CheckStopTradingRound`` ready for ``end_block`` calls.
+        """
+        context = MagicMock()
+        context.params.enable_position_review = False
+        context.params.store_path = "/dev/null"
+        round_ = CheckStopTradingRound(
+            synchronized_data=SynchronizedData(db=AbciAppDB(setup_data={})),
+            context=context,
+        )
+        round_.collection = {payload.sender: payload}
+        round_._read_withdrawal_flag = MagicMock(  # type: ignore[method-assign]
+            return_value=(False, "idle")
+        )
+        return round_
+
+    def _run(self, round_: CheckStopTradingRound, super_event: Optional[Event]) -> None:
+        """Drive end_block with super() returning ``(sync, super_event)``."""
+        sync = MagicMock()
+        sync.update = MagicMock(return_value=sync)
+        super_value = None if super_event is None else (sync, super_event)
+        with patch.object(VotingRound, "end_block", return_value=super_value):
+            round_.end_block()
+
+    def test_converged_round_persists_payload_fields(self) -> None:
+        """On a converged event the four fields are written from the payload.
+
+        The vote/KPI decoupling lives here: ``vote`` (stop) can disagree with
+        ``is_staking_kpi_met``, and ``is_activity_target_met`` is the separate
+        rotation signal. Asserts each lands in synced data verbatim.
+        """
+        payload = CheckStopTradingPayload(
+            sender="agent_0",
+            vote=True,
+            is_staking_kpi_met=False,
+            is_activity_target_met=True,
+            activity_target=8,
+            activity_completed=9,
+        )
+        round_ = self._make_round(payload)
+        self._run(round_, Event.SKIP_TRADING)
+
+        synced = round_.synchronized_data
+        assert synced.is_staking_kpi_met is False
+        assert synced.is_activity_target_met is True
+        assert synced.activity_target == 8
+        assert synced.activity_completed == 9
+
+    def test_no_consensus_event_does_not_persist_fields(self) -> None:
+        """On NONE/NO_MAJORITY the fields are NOT written (no partial data)."""
+        payload = CheckStopTradingPayload(
+            sender="agent_0",
+            vote=True,
+            is_staking_kpi_met=True,
+            is_activity_target_met=True,
+            activity_target=8,
+            activity_completed=9,
+        )
+        round_ = self._make_round(payload)
+        self._run(round_, Event.NO_MAJORITY)
+
+        # Nothing persisted ⇒ accessors fall back to their defaults.
+        synced = round_.synchronized_data
+        assert synced.is_staking_kpi_met is False
+        assert synced.is_activity_target_met is False
+        assert synced.activity_target == 0
+        assert synced.activity_completed == 0
+
+
+class TestReadWithdrawalFlag:
+    """Tests for the disk-read helper that the gate uses."""
+
+    def test_missing_file_returns_off_idle(self, tmp_path: Any) -> None:
+        """A missing chatui_param_store.json returns (False, 'idle')."""
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        mode, state = round_._read_withdrawal_flag(tmp_path)
+        assert mode is False
+        assert state == "idle"
+
+    def test_invalid_json_returns_off_idle(self, tmp_path: Any) -> None:
+        """An unparseable JSON file returns (False, 'idle') without crashing."""
+        store_file = tmp_path / "chatui_param_store.json"
+        store_file.write_text("not-valid-json{{{")
+
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        mode, state = round_._read_withdrawal_flag(tmp_path)
+        assert mode is False
+        assert state == "idle"
+
+    def test_valid_json_returns_persisted_values(self, tmp_path: Any) -> None:
+        """Valid JSON roundtrips its withdrawal_mode and withdrawal_state."""
+        store_file = tmp_path / "chatui_param_store.json"
+        store_file.write_text(
+            json.dumps({"withdrawal_mode": True, "withdrawal_state": "armed"})
+        )
+
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        mode, state = round_._read_withdrawal_flag(tmp_path)
+        assert mode is True
+        assert state == "armed"
+
+    def test_missing_keys_default_to_off_idle(self, tmp_path: Any) -> None:
+        """A JSON store without the withdrawal keys returns (False, 'idle')."""
+        store_file = tmp_path / "chatui_param_store.json"
+        store_file.write_text(json.dumps({"trading_strategy": "kelly_criterion"}))
+
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        mode, state = round_._read_withdrawal_flag(tmp_path)
+        assert mode is False
+        assert state == "idle"
+
+
+class TestCheckStopTradingParamsIsRunningOnPolymarket:
+    """Tests for the is_running_on_polymarket attribute on CheckStopTradingParams."""
+
+    def test_param_loaded_true(self) -> None:
+        """is_running_on_polymarket=True flows through __init__."""
+        from packages.valory.skills.check_stop_trading_abci.models import (
+            CheckStopTradingParams,
+        )
+
+        params = object.__new__(CheckStopTradingParams)
+        kwargs = {"is_running_on_polymarket": True}
+        # Use the private helper directly to avoid wiring the full param chain.
+        # The implementation must read this kwarg into the attribute.
+        CheckStopTradingParams._read_polymarket_flag(params, kwargs)  # type: ignore[attr-defined]
+        assert params.is_running_on_polymarket is True
+
+    def test_param_loaded_false(self) -> None:
+        """is_running_on_polymarket=False flows through __init__."""
+        from packages.valory.skills.check_stop_trading_abci.models import (
+            CheckStopTradingParams,
+        )
+
+        params = object.__new__(CheckStopTradingParams)
+        kwargs = {"is_running_on_polymarket": False}
+        CheckStopTradingParams._read_polymarket_flag(params, kwargs)  # type: ignore[attr-defined]
+        assert params.is_running_on_polymarket is False

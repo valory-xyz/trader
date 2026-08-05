@@ -20,8 +20,7 @@
 """Execution-aware Kelly criterion bet sizing for CLOB and FPMM markets."""
 
 import math
-from typing import Any, Dict, List, Optional, Tuple
-
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 # --- Required / optional field contracts ---
 
@@ -42,6 +41,7 @@ OPTIONAL_FIELDS = frozenset(
         "min_bet",
         "n_bets",
         "min_edge",
+        "max_edge",
         "min_oracle_prob",
         "fee_per_trade",
         "grid_points",
@@ -51,6 +51,9 @@ OPTIONAL_FIELDS = frozenset(
         "bet_fee",
         "orderbook_asks_yes",
         "orderbook_asks_no",
+        # accepted but NOT consulted in the CLOB sizing path post-PR #971
+        # (FOK takers are not share-count-constrained); still populated by
+        # decision_receive.py — kept here to avoid breaking those callers.
         "min_order_shares",
     }
 )
@@ -62,6 +65,9 @@ DEFAULT_MAX_BET_USDC = int(5e6)  # 5 USDC
 DEFAULT_MIN_BET = 1
 DEFAULT_N_BETS = 1
 DEFAULT_MIN_EDGE = 0.03
+# Optional CLOB-only upper bound on edge. edge = p_oracle - best_ask is
+# always <= 1.0, so 1.0 widens the band to the full range = no-op.
+DEFAULT_MAX_EDGE = 1.0
 DEFAULT_MIN_ORACLE_PROB = 0.5
 DEFAULT_FEE_PER_TRADE_XDAI = int(1e16)  # 0.01 xDAI
 DEFAULT_FEE_PER_TRADE_USDC = int(1e4)  # 0.01 USDC
@@ -72,9 +78,7 @@ DEFAULT_TOKEN_DECIMALS = 18
 # --- Execution models ---
 
 
-def walk_book(
-    asks: List[Dict[str, str]], spend: float
-) -> Tuple[float, float]:
+def walk_book(asks: List[Dict[str, str]], spend: float) -> Tuple[float, float]:
     """Walk CLOB ask-side orderbook to simulate a market buy.
 
     :param asks: ask levels from CLOB, each {"price": str, "size": str}.
@@ -109,9 +113,7 @@ def walk_book(
     return cost, shares
 
 
-def fpmm_execution(
-    b: float, x: float, y: float, alpha: float
-) -> Tuple[float, float]:
+def fpmm_execution(b: float, x: float, y: float, alpha: float) -> Tuple[float, float]:
     """FPMM constant-product AMM execution model.
 
     cost(b) = b
@@ -265,7 +267,9 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     )
 
     default_fee = (
-        DEFAULT_FEE_PER_TRADE_USDC if token_decimals == 6 else DEFAULT_FEE_PER_TRADE_XDAI
+        DEFAULT_FEE_PER_TRADE_USDC
+        if token_decimals == 6
+        else DEFAULT_FEE_PER_TRADE_XDAI
     )
 
     max_bet_wei: int = kwargs.get("max_bet", default_max_bet)
@@ -273,6 +277,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     fee_per_trade_wei: int = kwargs.get("fee_per_trade", default_fee)
     n_bets: int = kwargs.get("n_bets", DEFAULT_N_BETS)
     min_edge: float = kwargs.get("min_edge", DEFAULT_MIN_EDGE)
+    max_edge: float = kwargs.get("max_edge", DEFAULT_MAX_EDGE)
     min_oracle_prob: float = kwargs.get("min_oracle_prob", DEFAULT_MIN_ORACLE_PROB)
     grid_points: int = kwargs.get("grid_points", DEFAULT_GRID_POINTS)
 
@@ -285,15 +290,24 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     token_name = "USDC" if token_decimals == 6 else "xDAI"
     info.append(f"Bankroll: {w_total} {token_name}, floor: {floor} {token_name}")
-    info.append(f"max_bet: {max_bet}, n_bets: {n_bets}, min_edge: {min_edge}")
+    info.append(
+        f"max_bet: {max_bet}, n_bets: {n_bets}, "
+        f"min_edge: {min_edge}, max_edge: {max_edge}"
+    )
     info.append(f"market_type: {market_type}, p_yes: {p_yes}")
+
+    # Reject an inverted edge band up front: min_edge > max_edge makes the
+    # CLOB pre-filter unsatisfiable, which would silently skip every bet.
+    if min_edge > max_edge:
+        error.append(
+            f"min_edge ({min_edge}) > max_edge ({max_edge}): no valid edge band"
+        )
+        return _no_trade(info, error)
 
     # 3. Compute effective wealth
     w = w_total - floor
     if w <= 0:
-        return _no_trade(
-            info, error, f"Bankroll ({w_total}) <= floor ({floor})"
-        )
+        return _no_trade(info, error, f"Bankroll ({w_total}) <= floor ({floor})")
 
     # Per-bet bankroll
     w_bet = min(n_bets * max_bet, w)
@@ -317,10 +331,11 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     for side in sides:
         label = side["label"]
-        p = side["p"]
-        price = side["price"]
+        # Side dict mixes value types; cast at access site for arithmetic.
+        p = cast(float, side["p"])
+        price = cast(float, side["price"])
 
-        # Filter: min_oracle_prob
+        # Filter on min_oracle_prob — skip sides whose oracle prob is below the threshold.
         if min_oracle_prob > 0 and p < min_oracle_prob:
             msg = f"{label}: oracle prob {p:.3f} < min_oracle_prob {min_oracle_prob}"
             info.append(msg)
@@ -341,41 +356,29 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
             sorted_asks = sorted(asks, key=lambda a: float(a["price"]))
             best_ask_price = float(sorted_asks[0]["price"])
-            min_order_shares = float(kwargs.get("min_order_shares", 5.0))
 
-            # Compute venue minimum spend from min_order_shares
-            remaining_shares = min_order_shares
-            venue_min_side = 0.0
-            for level in sorted_asks:
-                lp = float(level["price"])
-                ls = float(level["size"])
-                if lp <= 0 or ls <= 0:
-                    continue
-                fill = min(ls, remaining_shares)
-                venue_min_side += fill * lp
-                remaining_shares -= fill
-                if remaining_shares <= 0:
-                    break
-
-            if remaining_shares > 0:
-                msg = (
-                    f"{label}: insufficient book depth to fill "
-                    f"min_order_shares={min_order_shares}"
-                )
-                info.append(msg)
-                all_rejections.append(msg)
-                continue
-
-            b_min_side = max(min_bet, venue_min_side)
+            # No venue-minimum floor for CLOB: ``min_order_size`` (~5 shares)
+            # is a maker/limit constraint, not enforced on the FOK *taker*
+            # orders Trader places (USD depth checked only). See PR #971.
+            b_min_side = min_bet
             x_native, y_native = 0.0, 0.0
 
-            # CLOB pre-filter: quick edge check against best ask
+            # CLOB pre-filter: quick edge check against best ask. Edge must
+            # fall inside the [min_edge, max_edge] band; defaults
+            # (DEFAULT_MIN_EDGE, DEFAULT_MAX_EDGE) reduce to the original
+            # floor-only check.
             edge_best_ask = p - best_ask_price
-            if edge_best_ask < min_edge:
-                msg = (
-                    f"{label}: edge vs best_ask "
-                    f"{edge_best_ask:+.4f} < min_edge {min_edge}"
-                )
+            if not min_edge <= edge_best_ask <= max_edge:
+                if edge_best_ask < min_edge:
+                    msg = (
+                        f"{label}: edge vs best_ask "
+                        f"{edge_best_ask:+.4f} < min_edge {min_edge}"
+                    )
+                else:
+                    msg = (
+                        f"{label}: edge vs best_ask "
+                        f"{edge_best_ask:+.4f} > max_edge {max_edge}"
+                    )
                 info.append(msg)
                 all_rejections.append(msg)
                 continue
@@ -428,10 +431,35 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
             f"G_improvement={g_improvement:.6f}"
         )
 
+        if market_type == "clob":
+            # The book genuinely cannot fill (empty / all zero-price /
+            # invalid): keep an explicit signal so a no-bet on a high-edge
+            # market is not mistaken for a legitimately unprofitable one.
+            _, depth_shares = walk_book(sorted_asks, max_bet)
+            if depth_shares <= 0:
+                msg = (
+                    f"{label}: book filled to 0 at all grid points "
+                    f"(thin or invalid)"
+                )
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
+
+            # ``b_min_side`` only sets the requested grid point; ``walk_book``
+            # caps the actual fill cost to available depth, so a book thinner
+            # than ``min_bet`` would otherwise leak a sub-floor order through.
+            if 0 < best_spend < b_min_side:
+                msg = (
+                    f"{label}: fill cost {best_spend:.4f} < min_bet "
+                    f"{b_min_side:.4f} (insufficient book depth)"
+                )
+                info.append(msg)
+                all_rejections.append(msg)
+                continue
+
         if best_spend > 0 and g_improvement > 0:
             if (  # pragma: no branch — first side always sets best_result
-                best_result is None
-                or g_improvement > best_result["g_improvement"]
+                best_result is None or g_improvement > best_result["g_improvement"]
             ):
                 best_result = {
                     "spend": best_spend,
@@ -455,9 +483,7 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     bet_amount_wei = int(best_result["spend"] * scale)
     expected_profit = (
-        best_result["p"] * best_result["shares"]
-        - best_result["spend"]
-        - fee_per_trade
+        best_result["p"] * best_result["shares"] - best_result["spend"] - fee_per_trade
     )
     expected_profit_wei = int(expected_profit * scale)
 

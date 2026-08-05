@@ -37,7 +37,9 @@ from packages.valory.skills.abstract_round_abci.base import RoundSequence
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
 )
-from packages.valory.skills.abstract_round_abci.handlers import AbstractResponseHandler
+from packages.valory.skills.abstract_round_abci.handlers import (
+    AbstractResponseHandler,
+)
 from packages.valory.skills.abstract_round_abci.handlers import (
     ContractApiHandler as BaseContractApiHandler,
 )
@@ -59,9 +61,16 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpHandler as BaseHttpHandler,
 )
-from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
+from packages.valory.skills.agent_performance_summary_abci.handlers import (
+    HttpMethod,
+)
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
-from packages.valory.skills.chatui_abci.models import SharedState, TradingStrategyUI
+from packages.valory.skills.chatui_abci.models import (
+    SharedState,
+    TradingStrategyUI,
+    WITHDRAWAL_STATE_ARMED,
+    WITHDRAWAL_STATE_IDLE,
+)
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
@@ -98,6 +107,7 @@ UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
+SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -118,12 +128,14 @@ class HttpHandler(BaseHttpHandler):
         chatui_prompt_url = rf"{self.hostname_regex}\/chatui-prompt"
         configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
         is_enabled_url = rf"{self.hostname_regex}\/features"
+        withdrawal_url = rf"{self.hostname_regex}\/api\/v1\/withdrawal"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
             (HttpMethod.GET.value,): [
                 *(self.routes.get((HttpMethod.GET.value,), [])),
                 (is_enabled_url, self._handle_get_features),
+                (withdrawal_url, self._handle_get_withdrawal),
             ],
             (HttpMethod.HEAD.value,): [
                 *(self.routes.get((HttpMethod.HEAD.value,), [])),
@@ -134,6 +146,7 @@ class HttpHandler(BaseHttpHandler):
                 (chatui_prompt_url, self._handle_chatui_prompt),
                 # correct name according to fe spec
                 (configure_strategies_url, self._handle_chatui_prompt),
+                (withdrawal_url, self._handle_post_withdrawal),
             ],
         }
 
@@ -224,12 +237,19 @@ class HttpHandler(BaseHttpHandler):
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
+        available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
             ", ".join(current_allowed_tools_raw)
             if current_allowed_tools_raw
             else "Automatic tool selection based on policy (all available tools)"
+        )
+        current_selected_mechs_raw = self.shared_state.chatui_config.selected_mechs
+        current_selected_mechs = (
+            ", ".join(current_selected_mechs_raw)
+            if current_selected_mechs_raw
+            else "All configured valid mechs"
         )
         current_fixed_bet_size = self.shared_state.chatui_config.fixed_bet_size
         current_max_bet_size = self.shared_state.chatui_config.max_bet_size
@@ -247,6 +267,12 @@ class HttpHandler(BaseHttpHandler):
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
             available_tools=available_tools,
+            current_selected_mechs=current_selected_mechs,
+            available_mechs=(
+                ", ".join(sorted(available_mechs))
+                if available_mechs
+                else "(none discovered yet)"
+            ),
             current_fixed_bet_size=(
                 current_fixed_bet_size / (10**decimals)
                 if current_fixed_bet_size is not None
@@ -294,13 +320,48 @@ class HttpHandler(BaseHttpHandler):
             callback_kwargs,
         )
 
+    def _get_available_valid_mechs(self) -> Set[str]:
+        """Return the set of mech addresses currently visible to mech-interact.
+
+        ``available_valid_mechs`` is fully defensive: it falls back to an
+        empty set on a missing or malformed ``mechs_info`` key. Callers
+        are responsible for handling the empty case.
+        """
+        return self.synchronized_data.available_valid_mechs
+
+    def _available_tools(self) -> Set[str]:
+        """Resolve the user-selectable mech tool set.
+
+        Prefers the suitability-filtered set the decision-maker's
+        ToolSelectionBehaviour publishes on shared state
+        (``available_prediction_tools``) so the ChatUI displays and validates
+        tool pins against the same universe the policy can actually select
+        from. Falls back to the raw ``available_mech_tools`` synced-data set
+        when the filtered set has not been published *or is empty*: cold start
+        before the first ``ToolSelectionRound``, a round where every manifest
+        fetch failed, or the V1 marketplace path (which has no classifier and
+        already filters at the feed point). The empty-set case falls back too —
+        an empty ``frozenset`` ("nothing selectable") must not be read as a hard
+        "reject every pin", which would brick ``configure_strategies``.
+
+        :return: the set of tool names the user may pin / that are advertised.
+        """
+        prediction_tools = self.shared_state.available_prediction_tools
+        if prediction_tools:
+            # Materialise to a plain ``set``: this value is str-formatted into
+            # the LLM prompt ("Available tools: {available_tools}"), where a
+            # ``frozenset`` renders as "frozenset({...})". The copy keeps the
+            # rendering consistent with the ``available_mech_tools`` fallback.
+            return set(prediction_tools)
+        return self.synchronized_data.available_mech_tools
+
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> Optional[Set[str]]:
         """Get available mech tools, handle errors if not available."""
         try:
-            return self.synchronized_data.available_mech_tools
-        except TypeError as e:
+            return self._available_tools()
+        except (TypeError, AttributeError) as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
             )
@@ -448,7 +509,7 @@ class HttpHandler(BaseHttpHandler):
             self._store_allowed_tools(None)
 
         elif updated_allowed_tools is not None:
-            available = self.synchronized_data.available_mech_tools
+            available = self._available_tools()
             unknown = [t for t in updated_allowed_tools if t not in available]
             valid = [t for t in updated_allowed_tools if t in available]
             if unknown:
@@ -465,6 +526,39 @@ class HttpHandler(BaseHttpHandler):
                 # empty list explicitly passed — treat as clear
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
                 self._store_allowed_tools(None)
+
+        updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
+            SELECTED_MECHS_FIELD, None
+        )
+        selected_mechs_is_removed: bool = (
+            FieldsThatCanBeRemoved.SELECTED_MECHS.value
+            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+        )
+
+        if selected_mechs_is_removed:
+            updated_params.update({SELECTED_MECHS_FIELD: None})
+            self._store_selected_mechs(None)
+
+        elif updated_selected_mechs is not None:
+            # Address comparison is case-insensitive; the synced data stores
+            # lowercase addresses to match the subgraph format.
+            available_mechs = self._get_available_valid_mechs()
+            normalized = [str(m).lower() for m in updated_selected_mechs]
+            unknown_mechs = [m for m in normalized if m not in available_mechs]
+            valid_mechs = [m for m in normalized if m in available_mechs]
+            if unknown_mechs:
+                issue_message = (
+                    f"Unknown mech(s) ignored: {unknown_mechs}. "
+                    f"Available mechs are: {', '.join(sorted(available_mechs)) or '(none discovered yet)'}."
+                )
+                self.context.logger.warning(issue_message)
+                issues.append(issue_message)
+            if valid_mechs:
+                updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
+                self._store_selected_mechs(valid_mechs)
+            elif not unknown_mechs:
+                updated_params.update({SELECTED_MECHS_FIELD: None})
+                self._store_selected_mechs(None)
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -586,6 +680,58 @@ class HttpHandler(BaseHttpHandler):
         """Store the allowed tools list."""
         self.shared_state.chatui_config.allowed_tools = tools
         self._store_chatui_param_to_json(ALLOWED_TOOLS_FIELD, tools)
+
+    def _store_selected_mechs(self, mechs: Optional[List[str]] = None) -> None:
+        """Store the ChatUI-pinned mech addresses."""
+        self.shared_state.chatui_config.selected_mechs = mechs
+        self._store_chatui_param_to_json(SELECTED_MECHS_FIELD, mechs)
+
+    def _build_withdrawal_status(self) -> Dict[str, Any]:
+        """Return the GET payload describing current withdrawal state.
+
+        Reads from disk rather than the in-memory ``chatui_config`` cache:
+        the withdrawal fields are written by ``decision_maker_abci`` directly
+        to ``chatui_param_store.json`` and never propagated back into this
+        skill's in-memory cfg. Reading disk on every GET keeps the FE
+        polling loop in lock-step with the behaviour-side state machine.
+
+        :return: payload dict matching the documented withdrawal-status shape.
+        """
+        store = self.shared_state._get_current_json_store()
+        fills = store.get("withdrawal_fills", []) or []
+        errors = store.get("withdrawal_errors", []) or []
+        venue = "polymarket" if self.context.params.is_running_on_polymarket else "omen"
+        return {
+            "mode": store.get("withdrawal_state", WITHDRAWAL_STATE_IDLE),
+            "venue": venue,
+            "positions_total": len(fills) + len(errors),
+            "positions_sold": len(fills),
+            "positions_stuck": len(errors),
+            "fills": fills,
+            "errors": errors,
+        }
+
+    def _handle_post_withdrawal(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle POST /api/v1/withdrawal — arm withdrawal mode (idempotent)."""
+        cfg = self.shared_state.chatui_config
+        if cfg.withdrawal_state == WITHDRAWAL_STATE_IDLE:
+            cfg.withdrawal_mode = True
+            cfg.withdrawal_state = WITHDRAWAL_STATE_ARMED
+            cfg.withdrawal_fills = []
+            cfg.withdrawal_errors = []
+            self._store_chatui_param_to_json("withdrawal_mode", True)
+            self._store_chatui_param_to_json("withdrawal_state", WITHDRAWAL_STATE_ARMED)
+            self._store_chatui_param_to_json("withdrawal_fills", [])
+            self._store_chatui_param_to_json("withdrawal_errors", [])
+        self._send_ok_response(http_msg, http_dialogue, self._build_withdrawal_status())
+
+    def _handle_get_withdrawal(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/withdrawal — return current status."""
+        self._send_ok_response(http_msg, http_dialogue, self._build_withdrawal_status())
 
 
 class SrrHandler(AbstractResponseHandler):

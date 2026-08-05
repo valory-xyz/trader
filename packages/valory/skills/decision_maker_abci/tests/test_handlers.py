@@ -638,6 +638,9 @@ class TestHttpHandler:
             # Configure synchronized_data mock
             mock_sync_data = MagicMock()
             mock_sync_data.is_staking_kpi_met = True
+            mock_sync_data.is_activity_target_met = False
+            mock_sync_data.activity_target = 8
+            mock_sync_data.activity_completed = 5
             mock_sync_data.service_staking_state = MockStakingState.STAKED
             mock_sync_data.period_count = 5
             mock_sync.return_value = mock_sync_data
@@ -671,6 +674,12 @@ class TestHttpHandler:
             http_dialogue.reply.assert_called_once()
             call_kwargs = http_dialogue.reply.call_args[1]
             assert call_kwargs["status_code"] == 200
+            body = json.loads(call_kwargs["body"])
+            agent_health = body["agent_health"]
+            assert agent_health["is_staking_kpi_met"] is True
+            assert agent_health["is_activity_target_met"] is False
+            assert agent_health["activity_target"] == 8
+            assert agent_health["activity_completed"] == 5
 
 
 # ---------------------------------------------------------------------------

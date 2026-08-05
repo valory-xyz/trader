@@ -57,7 +57,6 @@ class Event(Enum):
     DONE_SELL = "done_sell"
     DONE_NO_SELL = "done_no_sell"
     NONE = "none"
-    FETCH_ERROR = "fetch_error"
     BENCHMARKING_ENABLED = "benchmarking_enabled"
     BENCHMARKING_DISABLED = "benchmarking_disabled"
     BENCHMARKING_FINISHED = "benchmarking_finished"
@@ -74,19 +73,18 @@ class Event(Enum):
     NO_REDEEMING = "no_redeeming"
     BLACKLIST = "blacklist"
     NO_OP = "no_op"
-    NO_SUBSCRIPTION = "no_subscription"
     ROUND_TIMEOUT = "round_timeout"
     REDEEM_ROUND_TIMEOUT = "redeem_round_timeout"
+    WITHDRAWAL_ROUND_TIMEOUT = "withdrawal_round_timeout"
     NO_MAJORITY = "no_majority"
     NEW_SIMULATED_RESAMPLE = "new_simulated_resample"
     POLYMARKET_DONE = "polymarket_done"
-    POLYMARKET_FETCH_MARKETS = "polymarket_fetch_markets"
     BET_PLACEMENT_FAILED = "bet_placement_failed"
     BET_PLACEMENT_IMPOSSIBLE = "bet_placement_impossible"
     BET_PLACEMENT_DONE = "bet_placement_done"
-    SKIP = "skip"
     SET_APPROVAL = "set_approval"
     PREPARE_TX = "prepare_tx"
+    WITHDRAWAL_DONE = "withdrawal_done"
 
 
 class SynchronizedData(
@@ -309,8 +307,29 @@ class SynchronizedData(
 
     @property
     def is_staking_kpi_met(self) -> bool:
-        """Get the status of the staking kpi."""
+        """Get the status of the on-chain staking kpi."""
         return bool(self.db.get("is_staking_kpi_met", False))
+
+    @property
+    def is_activity_target_met(self) -> bool:
+        """Get whether the off-chain activity target is met (the rotation signal)."""
+        return bool(self.db.get("is_activity_target_met", False))
+
+    @property
+    def activity_target(self) -> int:
+        """Get the per-epoch activity target."""
+        activity_target = self.db.get("activity_target", 0)
+        if activity_target is None:
+            return 0
+        return int(activity_target)
+
+    @property
+    def activity_completed(self) -> int:
+        """Get the mech requests completed this epoch."""
+        activity_completed = self.db.get("activity_completed", 0)
+        if activity_completed is None:
+            return 0
+        return int(activity_completed)
 
     @property
     def service_staking_state(self) -> StakingState:

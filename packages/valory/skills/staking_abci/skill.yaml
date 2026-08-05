@@ -8,32 +8,32 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifrpl36fddmgvniwvghqtxdzc44ry6l2zvqy37vu3y2xvwyd23ugy
   __init__.py: bafybeieklhap7bydof2ugmbyzjrjcrikehbmbqhjyovp7sp4tbdlfa2sgi
-  behaviours.py: bafybeihpghqnh74gfkkci4zriy6a2n6ppr2aifh4qeas2ayeplbppd2gza
+  behaviours.py: bafybeicbarxvmawqzytgvej4ykpkss6yoysvjk2p5gc4xshsc4ebc7p64m
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeicuoejmaks3ndwhbflp64kkfdkrdyn74a2fplarg4l3gxlonfmeoq
-  handlers.py: bafybeihspev6kdjwo6i3577c3lgk4pv6mzyfdsyvkg6bn3rz5diafmrko4
-  models.py: bafybeib6zkxiw6ni4vmfed6p7jbu2lgm2tgvavmycqki2l2ku3jgwlf7tq
+  handlers.py: bafybeidg4plq4x7hrk5vxihtphfd5uf26kh5yukb4m3wta4b4lkw7rchku
+  models.py: bafybeihwrtmgur7swvwz327r5lotkddria36hnaf42dl6u2pg4xuvludq4
   payloads.py: bafybeigncopqpz3a2nd6hgpsbqjqff2hsoa73abjck4ic5tnxpkzmfmkwu
-  rounds.py: bafybeih2we7exxrb67aoyhmvsuntwstmeoq2qibrctyf6jed4mde6qo6wu
+  rounds.py: bafybeiavfso2rano7hnqsqgh7pzctgooto4atc6xutwtchwoe73lpxsoxq
   tests/__init__.py: bafybeid7m6ynosqeb4mvsss2hqg75aly5o2d47r7yfg2xtgwzkkilv2d2m
-  tests/test_behaviours.py: bafybeige6f4bnssac5r2vmbtylgk3u7auqj36tpx5p3yaiwzcoybphx7we
+  tests/test_behaviours.py: bafybeiaceuqzbtuludjoomyo6ed7dv3yim6sskq6gevfzd53xcqtujas7e
   tests/test_dialogues.py: bafybeidwjk52mufwvkj4cr3xgqycbdzxc6gvosmqyuqdjarnrgwth6wcai
-  tests/test_handlers.py: bafybeigoz6bdshjxsam6t7kzad273lwkucpvgrkmfak73qlssluopjfbzi
+  tests/test_handlers.py: bafybeiarttrgkl3ixrugh2fdqbisgcwi3jmm3sntwsx33iauwcjqhf3fbq
   tests/test_models.py: bafybeicxywbnbxlebb7bhglieooujfibmni2ui6hqnw3tvxka65suaj42y
   tests/test_payloads.py: bafybeif6oourkbrvtxszekfdcwmnjgwaaobpbf3sglyrsbcy422jy2f2ge
-  tests/test_rounds.py: bafybeifbam24yodcmtgr6262festb4x3id5k3nthrvxvjeqg4whh37adfe
+  tests/test_rounds.py: bafybeibkirt6bsdi6ob54bko7ygysvhoayvwrrdkjilp64saomlulbi4fq
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
-- valory/gnosis_safe:0.1.0:bafybeihljnuo6jiyqfvow4vgxy5ih4eha2pjtguh7o6pabe24lbd6mwjaa
-- valory/service_staking_token:0.1.0:bafybeifzjbauofbshdt64hndx3nudf3kfm2db744tmefbrwmhuapjtk5de
-- valory/staking_token:0.1.0:bafybeibdn7ntkijvsco224ehm3bk6i4r7zhlre4ns4mzlmohlqgnw325bu
-- valory/mech_activity:0.1.0:bafybeih5mdmjnvtaxbpqpdmikim6t2jvefcnsp62uzxcmzxodh2gzyf2eq
+- valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
+- valory/service_staking_token:0.1.0:bafybeibb2f7vuflavba4pbcd4kse7grsdtcvvhoilvbeupc2ymspwfkrwy
+- valory/staking_token:0.1.0:bafybeihqnd5ot5w56i37pvzucsfoljhl5oi36ridluvtikzzbczqjztffi
+- valory/mech_activity:0.1.0:bafybeibsvqydfecckfxdd267fo6ebow6skdnub6axt3tuwiye6qo3avna4
 protocols:
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 skills:
-- valory/abstract_round_abci:0.1.0:bafybeiesqybjt2d3cwazu5xurye7znnkidem2qhudfvjnaprbk6p5flfe4
-- valory/transaction_settlement_abci:0.1.0:bafybeiemyjkxj2ifzjr5kubtebpyezocl33zxt7gwf7yongg6zlbfjilte
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
+- valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 behaviours:
   main:
     args: {}

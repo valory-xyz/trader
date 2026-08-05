@@ -116,7 +116,11 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         srr_dialogue = cast(SrrDialogue, srr_dialogue)
         response = yield from self.do_connection_request(srr_message, srr_dialogue)  # type: ignore
 
-        response_json = json.loads(response.payload)  # type: ignore
+        if response is None:
+            self.context.logger.warning("No response from the Polymarket connection.")
+            return None
+
+        response_json = json.loads(response.payload)
 
         return response_json
 

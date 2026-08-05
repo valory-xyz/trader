@@ -94,6 +94,7 @@ class TestBetPayoutCheckerUpdateAchievements:
         bet_amount: float = 10.0,
         total_payout: float = 30.0,
         settled_at: str = "2024-01-15T12:00:00Z",
+        status: str = "won",
     ) -> dict:
         """Create a bet dict for testing."""
         return {
@@ -101,6 +102,7 @@ class TestBetPayoutCheckerUpdateAchievements:
             "bet_amount": bet_amount,
             "total_payout": total_payout,
             "settled_at": settled_at,
+            "status": status,
         }
 
     def test_missing_prediction_history_kwarg_raises_value_error(self) -> None:
@@ -357,8 +359,76 @@ class TestBetPayoutCheckerUpdateAchievements:
             "id": "no_amount",
             "total_payout": 30.0,
             "settled_at": "2024-01-15T12:00:00Z",
+            "status": "won",
         }
         prediction_history = PredictionHistory(items=[bet])
+        result = checker.update_achievements(
+            achievements, prediction_history=prediction_history
+        )
+        assert result is False
+        assert len(achievements.items) == 0
+
+    def test_status_lost_with_high_total_payout_skipped(self) -> None:
+        """Sell-aware: a LOST bet with non-zero total_payout (sold-at-loss) must not fire.
+
+        Under the sell-aware perf summary, fully-sold-at-loss bets carry
+        ``total_payout`` equal to realized proceeds. Pre-fix the checker would
+        compute ``roi = proceeds / cost > threshold`` for any sold position
+        and falsely emit an achievement. The status guard prevents that.
+        """
+        checker = self._make_checker(roi_threshold=2.0)
+        achievements = Achievements()
+        # ROI = 30/10 = 3.0, but status is "lost" — must not fire.
+        bet = self._make_bet(
+            bet_id="lost_sold",
+            bet_amount=10.0,
+            total_payout=30.0,
+            status="lost",
+        )
+        prediction_history = PredictionHistory(items=[bet])
+        result = checker.update_achievements(
+            achievements, prediction_history=prediction_history
+        )
+        assert result is False
+        assert len(achievements.items) == 0
+
+    def test_status_pending_skipped(self) -> None:
+        """PENDING bets must not fire the achievement."""
+        checker = self._make_checker(roi_threshold=2.0)
+        achievements = Achievements()
+        bet = self._make_bet(
+            bet_id="pending_high_payout",
+            bet_amount=10.0,
+            total_payout=30.0,
+            status="pending",
+        )
+        prediction_history = PredictionHistory(items=[bet])
+        result = checker.update_achievements(
+            achievements, prediction_history=prediction_history
+        )
+        assert result is False
+        assert len(achievements.items) == 0
+
+    def test_won_with_none_settled_at_skipped_no_crash(self) -> None:
+        """Fully-sold-at-profit-pre-resolution: WON status, settled_at=None.
+
+        Under the hybrid status rule, a bet fully sold for >cost before the
+        market resolves classifies as WON via PnL sign. ``settled_at`` is
+        derived from ``resolution.blockTimestamp`` and is ``None`` for
+        unresolved markets. Pre-fix the checker would call
+        ``bet['settled_at'].replace(...)`` and crash with AttributeError.
+        """
+        checker = self._make_checker(roi_threshold=2.0)
+        achievements = Achievements()
+        bet = self._make_bet(
+            bet_id="sold_at_profit_pre_resolution",
+            bet_amount=10.0,
+            total_payout=30.0,
+            settled_at=None,  # type: ignore[arg-type]
+            status="won",
+        )
+        prediction_history = PredictionHistory(items=[bet])
+        # Must not raise.
         result = checker.update_achievements(
             achievements, prediction_history=prediction_history
         )

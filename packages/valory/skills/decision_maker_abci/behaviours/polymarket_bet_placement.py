@@ -24,6 +24,9 @@ from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    PolymarketDepositWalletBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -41,7 +44,9 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 CLOB_VERSION = "v2"
 
 
-class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
+class PolymarketBetPlacementBehaviour(
+    PolymarketDepositWalletBehaviour, StorageManagerBehaviour
+):
     """A behaviour in which the agents blacklist the sampled bet."""
 
     matching_round = PolymarketBetPlacementRound
@@ -71,6 +76,10 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
             return
 
         token_id = self.sampled_bet.outcome_token_ids[outcome]
+        # The Polymarket CLOB fee is reserved connection-side: the order is sized
+        # to ``amount - exact_fee`` against the DepositWallet's live pUSD balance
+        # using Polymarket's documented per-market fee (``GET /fee-rate`` + market
+        # fee exponent), so the full topped-up ``investment_amount`` is offered.
         amount = self.usdc_to_native(self.investment_amount)
 
         if self.investment_amount > self.token_balance:
@@ -94,11 +103,16 @@ class PolymarketBetPlacementBehaviour(StorageManagerBehaviour):
         cached_orders = self.synchronized_data.cached_signed_orders
         cached_signed_order_json = cached_orders.get(cache_key)
 
-        # Prepare payload data
+        # Prepare payload data. Under CLOB v2 the order is funded by
+        # the DepositWallet (signature_type=3); pass it so the connection signs
+        # with funder=DW even if it learned a different/no DW at startup.
         params = {
             "token_id": token_id,
             "amount": amount,
         }
+        dw_address = self._resolve_deposit_wallet()
+        if dw_address:
+            params["funder"] = dw_address
 
         # Add cached order if available
         if cached_signed_order_json:

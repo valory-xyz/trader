@@ -204,11 +204,12 @@ build-agent-runner-mac: uv-install  agent
 
 .PHONY: check-agent-runner
 check-agent-runner:
-	# aea-config.yaml uses an anonymous template ($${str:/data/}) so Pearl's
-	# path-based env-var injection wins at runtime; a named template would
-	# suppress the fallback. See valory-xyz/olas-operate-middleware#424.
+	# aea-config.yaml uses a named env-var template ($${STORE_PATH:str:/data/})
+	# for the skill's store_path, so a single STORE_PATH override drives it.
+	# Path-based env vars like SKILL_..._STORE_PATH are the fallback when the
+	# template lacks an explicit var name and are silently ignored here.
 	uv run aea-helpers check-binary ./dist/agent_runner_bin$(EXE_SUFFIX) ./agent \
-	--env-var SKILL_TRADER_ABCI_MODELS_PARAMS_ARGS_STORE_PATH=$(STORE_PATH_VALUE)
+	--env-var STORE_PATH=$(STORE_PATH_VALUE)
 
 .PHONY: ci-linter-checks
 ci-linter-checks:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@
 # ------------------------------------------------------------------------------
 
 """This module contains the class to connect to the `ServiceStakingTokenMechUsage` contract."""
-
-from enum import Enum
 
 from aea.common import JSONLike
 from aea.configurations.base import PublicId
@@ -190,7 +188,7 @@ class ServiceStakingTokenContract(Contract):
         contract = cls.get_instance(ledger_api, contract_address)
         duration = contract.functions.minStakingDuration().call()
         return dict(data=duration)
-    
+
     @classmethod
     def get_agent_ids(
         cls,

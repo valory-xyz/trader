@@ -50,13 +50,17 @@ class TestRunBankroll:
 
     def test_bankroll_below_floor(self) -> None:
         """Bankroll <= floor_balance returns zero bet with vote still set."""
-        result = run(bankroll=1_000_000, floor_balance=2_000_000, p_yes=0.7, bet_amount=500_000)
+        result = run(
+            bankroll=1_000_000, floor_balance=2_000_000, p_yes=0.7, bet_amount=500_000
+        )
         assert result["bet_amount"] == 0
         assert result["vote"] == 0  # YES side still determined
 
     def test_bankroll_equal_to_floor(self) -> None:
         """Bankroll exactly equal to floor returns zero bet."""
-        result = run(bankroll=1_000_000, floor_balance=1_000_000, p_yes=0.7, bet_amount=500_000)
+        result = run(
+            bankroll=1_000_000, floor_balance=1_000_000, p_yes=0.7, bet_amount=500_000
+        )
         assert result["bet_amount"] == 0
 
 
@@ -65,7 +69,9 @@ class TestRunBetAmount:
 
     def test_returns_configured_amount(self) -> None:
         """Returns the configured bet_amount when within limits."""
-        result = run(bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=2_000_000)
+        result = run(
+            bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=2_000_000
+        )
         assert result["bet_amount"] == 2_000_000
 
     def test_no_bet_amount_configured(self) -> None:
@@ -81,15 +87,20 @@ class TestRunBetAmount:
     def test_capped_at_max_bet(self) -> None:
         """bet_amount capped at max_bet."""
         result = run(
-            bankroll=10_000_000, floor_balance=0, p_yes=0.7,
-            bet_amount=2_000_000, max_bet=500_000,
+            bankroll=10_000_000,
+            floor_balance=0,
+            p_yes=0.7,
+            bet_amount=2_000_000,
+            max_bet=500_000,
         )
         assert result["bet_amount"] == 500_000
 
     def test_capped_at_available_balance(self) -> None:
         """bet_amount capped at bankroll - floor_balance."""
         result = run(
-            bankroll=2_000_000, floor_balance=1_700_000, p_yes=0.7,
+            bankroll=2_000_000,
+            floor_balance=1_700_000,
+            p_yes=0.7,
             bet_amount=2_000_000,
         )
         assert result["bet_amount"] == 300_000
@@ -105,17 +116,23 @@ class TestRunSideSelection:
 
     def test_vote_yes_when_p_yes_higher(self) -> None:
         """p_yes > 0.5 → vote=0 (YES)."""
-        result = run(bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=1_000_000)
+        result = run(
+            bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=1_000_000
+        )
         assert result["vote"] == 0
 
     def test_vote_no_when_p_no_higher(self) -> None:
         """p_yes < 0.5 → vote=1 (NO)."""
-        result = run(bankroll=10_000_000, floor_balance=0, p_yes=0.3, bet_amount=1_000_000)
+        result = run(
+            bankroll=10_000_000, floor_balance=0, p_yes=0.3, bet_amount=1_000_000
+        )
         assert result["vote"] == 1
 
     def test_tie_returns_no_trade(self) -> None:
         """p_yes = 0.5 → tie, no bet."""
-        result = run(bankroll=10_000_000, floor_balance=0, p_yes=0.5, bet_amount=1_000_000)
+        result = run(
+            bankroll=10_000_000, floor_balance=0, p_yes=0.5, bet_amount=1_000_000
+        )
         assert result["bet_amount"] == 0
         assert result["vote"] is None
 
@@ -125,7 +142,9 @@ class TestRunReturnFormat:
 
     def test_successful_return_keys(self) -> None:
         """Successful bet has all expected keys."""
-        result = run(bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=1_000_000)
+        result = run(
+            bankroll=10_000_000, floor_balance=0, p_yes=0.7, bet_amount=1_000_000
+        )
         assert "bet_amount" in result
         assert "vote" in result
         assert "info" in result
@@ -141,7 +160,10 @@ class TestRunReturnFormat:
     def test_unknown_kwargs_ignored(self) -> None:
         """Extra kwargs don't cause errors."""
         result = run(
-            bankroll=10_000_000, floor_balance=0, p_yes=0.7,
-            bet_amount=1_000_000, unknown_field="hello",
+            bankroll=10_000_000,
+            floor_balance=0,
+            p_yes=0.7,
+            bet_amount=1_000_000,
+            unknown_field="hello",
         )
         assert result["bet_amount"] == 1_000_000

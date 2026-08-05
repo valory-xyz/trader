@@ -21,7 +21,9 @@
 
 from typing import Any, Callable, Dict, Type, Union, cast
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+)
 from packages.valory.skills.abstract_round_abci.models import (
     BenchmarkTool as BaseBenchmarkTool,
 )
@@ -64,7 +66,9 @@ from packages.valory.skills.decision_maker_abci.models import (
 from packages.valory.skills.decision_maker_abci.models import (
     ConditionalTokensSubgraph as DecisionMakerConditionalTokensSubgraph,
 )
-from packages.valory.skills.decision_maker_abci.models import DecisionMakerParams
+from packages.valory.skills.decision_maker_abci.models import (
+    DecisionMakerParams,
+)
 from packages.valory.skills.decision_maker_abci.models import (
     RealitioSubgraph as DecisionMakerRealitioSubgraph,
 )
@@ -222,6 +226,9 @@ class SharedState(BaseSharedState):
             TSEvent.FINALIZE_TIMEOUT: params.finalize_timeout,
             TSEvent.CHECK_TIMEOUT: params.history_check_timeout,
             DecisionMakerEvent.REDEEM_ROUND_TIMEOUT: params.redeem_round_timeout,
+            DecisionMakerEvent.WITHDRAWAL_ROUND_TIMEOUT: (
+                params.withdrawal_round_timeout
+            ),
             ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT: reset_pause_timeout,
         }
 
