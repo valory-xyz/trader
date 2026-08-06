@@ -121,19 +121,22 @@ jobs:
         # editing tomte's upstream tox config. ``tox-uv`` creates
         # venvs without a bootstrap ``pip``, so ``ensurepip`` runs
         # first to install one, then the upgrade lands a patched
-        # version. The ``+=`` form appends to whatever tomte declares
-        # so a future tomte bump adding its own passenv/commands_pre
-        # entries is not silently dropped.
+        # version. The ``+=`` form makes the intent explicit even
+        # though tomte's upstream ``[testenv:safety]`` currently
+        # declares neither key, so the override is only additive if
+        # a future tomte bump adds one on that section directly.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
             -x 'testenv:safety.commands_pre+=python -m ensurepip --upgrade
                 python -m pip install --upgrade pip>=26.1.2'
       - name: Bandit scan
-        # ``if: always()`` runs bandit even when the safety scan above
-        # fails, so a scanner-tooling regression can never silently
-        # take our first-party SAST offline.
-        if: always()
+        # ``!cancelled()`` runs bandit whether the safety scan above
+        # succeeded or failed, but skips it when the run itself is
+        # cancelled (e.g. a superseding push under the workflow's
+        # ``concurrency: cancel-in-progress: true``). ``always()``
+        # would burn minutes on abandoned runs.
+        if: ${{ !cancelled() }}
         run: tomte tox -e bandit
       - name: Check packages
         run: tomte tox -e check-packages
