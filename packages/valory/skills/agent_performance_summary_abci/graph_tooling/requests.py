@@ -688,6 +688,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
 
+            # ``None`` = transport / schema failure on this page. Coercing
+            # it to "no more pages" (via the truthiness check below) would
+            # return the partial prefix indistinguishable from a complete
+            # result. On the schema-v2 rebuild path this writes an empty
+            # or truncated series stamped ``schema_version=2``, wiping the
+            # agent's history with no rebuild path left to fire. Propagate
+            # ``None`` so the caller's ``if daily_stats is None`` guard
+            # suppresses the write and the next FSM cycle retries.
+            if result is None:
+                self.context.logger.error(
+                    f"daily profit pagination failed at skip={skip}; "
+                    f"aborting fetch so the rebuild can retry"
+                )
+                return None
+
             # Handle null traderAgent response
             if not result:
                 break
@@ -759,6 +774,23 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 subgraph=subgraph,
                 res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
+
+            # ``None`` = transport / schema failure on this page. A
+            # well-formed empty page returns ``{}`` (falsy but not
+            # ``None``). Coercing ``None`` to "no more pages" here
+            # returned partial data indistinguishable from a complete
+            # result, which the caller (``_build_mech_request_lookup``)
+            # would then write to disk alongside ``schema_version=2``
+            # — locking the agent into a permanent undercount that no
+            # rebuild path can revisit. Propagate ``None`` so the
+            # caller's empty-lookup guard suppresses the write and
+            # the next FSM cycle re-attempts the full rebuild.
+            if result is None:
+                self.context.logger.error(
+                    f"mech request pagination failed at skip={skip}; "
+                    f"aborting lookup so the rebuild can retry"
+                )
+                return None
 
             if not result:
                 break
@@ -849,10 +881,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             res_context=res_context,
         )
 
-        if result:
-            if isinstance(result, dict) and "sender" in result:
-                result = result.get("sender") or {}
-            return result.get("requests", []) if isinstance(result, dict) else []
+        # Honor the docstring contract: ``None`` on transport / schema
+        # failure, empty list on a well-formed empty response. Callers
+        # rely on this distinction to gate the H6 fail-closed path;
+        # coercing ``None`` to ``[]`` here would silently let a subgraph
+        # outage look identical to "nothing new since watermark" and
+        # write zero-attribution days that never self-heal.
+        if result is None:
+            return None
+        if isinstance(result, dict):
+            if "sender" in result:
+                sender = result.get("sender")
+                if sender is None:
+                    return []
+                return sender.get("requests", []) if isinstance(sender, dict) else []
+            return result.get("requests", [])
         return []
 
     def clean_up(self) -> None:
