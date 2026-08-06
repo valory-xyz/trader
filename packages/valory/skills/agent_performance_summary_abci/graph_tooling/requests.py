@@ -688,6 +688,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context=f"{res_context_prefix}_batch_{skip // batch_size + 1}",
             )
 
+            # ``None`` = transport / schema failure on this page. Coercing
+            # it to "no more pages" (via the truthiness check below) would
+            # return the partial prefix indistinguishable from a complete
+            # result. On the schema-v2 rebuild path this writes an empty
+            # or truncated series stamped ``schema_version=2``, wiping the
+            # agent's history with no rebuild path left to fire. Propagate
+            # ``None`` so the caller's ``if daily_stats is None`` guard
+            # suppresses the write and the next FSM cycle retries.
+            if result is None:
+                self.context.logger.error(
+                    f"daily profit pagination failed at skip={skip}; "
+                    f"aborting fetch so the rebuild can retry"
+                )
+                return None
+
             # Handle null traderAgent response
             if not result:
                 break

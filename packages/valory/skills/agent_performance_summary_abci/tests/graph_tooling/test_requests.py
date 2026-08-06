@@ -1315,8 +1315,15 @@ class TestFetchDailyProfitStatistics:
 
         assert result == stats
 
-    def test_empty_result(self) -> None:
-        """When fetch returns None, returns empty list."""
+    def test_first_page_transport_failure_returns_none(self) -> None:
+        """Transport failure on the first page propagates as ``None``.
+
+        Under the schema-v2 rebuild every deployed agent routes through
+        ``_perform_initial_backfill`` once. If daily stats came back as
+        ``[]`` on a real transport failure, backfill would write an
+        empty series stamped ``schema_version=2`` and wipe the agent's
+        history with no rebuild path left to fire.
+        """
         b = _make_behaviour()
         b.sleep = _noop_gen  # type: ignore[method-assign]
         mock_sg = MagicMock()
@@ -1331,7 +1338,35 @@ class TestFetchDailyProfitStatistics:
         gen = b._fetch_daily_profit_statistics("0xagent", 1000)
         result = _exhaust(gen)  # type: ignore[arg-type]
 
-        assert result == []
+        assert result is None
+
+    def test_mid_pagination_failure_returns_none(self) -> None:
+        """Transport failure on page N propagates as ``None`` too.
+
+        A truncated-but-non-empty result is even worse than an empty
+        one under the schema-v2 rebuild — it looks plausible, so no
+        downstream guard fires.
+        """
+        b = _make_behaviour()
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        first_full_batch = [{"day": f"d{i}"} for i in range(QUERY_BATCH_SIZE)]
+        self._setup_subgraph(
+            b,
+            # Page 1: full batch (forces pagination). Page 2: transport
+            # failure (``None``).
+            [
+                {"traderAgent": {"dailyProfitStatistics": first_full_batch}},
+                None,
+            ],
+            is_polymarket=False,
+        )
+        b.context.olas_agents_subgraph.api_id = "test"
+        b.context.olas_agents_subgraph.retries_info.suggested_sleep_time = 1.0
+
+        gen = b._fetch_daily_profit_statistics("0xagent", 1000)
+        result = _exhaust(gen)  # type: ignore[arg-type]
+
+        assert result is None
 
     def test_no_dailyProfitStatistics_key(self) -> None:
         """When result has no dailyProfitStatistics key, returns empty list."""
@@ -1579,6 +1614,36 @@ class TestFetchAllMechRequests:
         result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
+
+    def test_well_formed_empty_page_terminates_pagination(self) -> None:
+        """A well-formed empty response (``{}``) ends pagination cleanly.
+
+        Locks in the distinction between a transport failure (``None``,
+        propagate) and an empty page (``{}``, terminate). Without this
+        test the ``if not result: break`` line is uncovered — every
+        other termination path in the loop is now driven by returning
+        ``None``, and coverage would silently regress if the empty-
+        page branch were removed.
+        """
+        b = _make_behaviour()
+        first_full_batch = [{"id": f"r{i}"} for i in range(QUERY_BATCH_SIZE)]
+        self._setup_subgraph(
+            b,
+            # Page 1: full batch (forces the loop past its
+            # ``len < batch_size`` shortcut). Page 2: well-formed
+            # empty dict from the subgraph, which is what a healthy
+            # end-of-collection looks like at this layer.
+            [
+                {"sender": {"requests": first_full_batch}},
+                {},
+            ],
+            is_polymarket=False,
+        )
+
+        gen = b._fetch_all_mech_requests("0xagent")
+        result = _exhaust(gen)  # type: ignore[arg-type]
+
+        assert result == first_full_batch
 
     def test_empty_requests_list(self) -> None:
         """When requests list is empty, returns empty list."""
