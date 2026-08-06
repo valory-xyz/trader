@@ -3938,6 +3938,112 @@ class TestBuildProfitOverTimeData:
         mock_backfill.assert_not_called()
         assert result is incr_result
 
+    def test_m5_residual_warning_fires_beyond_tolerance(self) -> None:
+        """M5 residual warning fires when the drift exceeds the fixed tolerance.
+
+        Reference is ``total - open``. The residual is stored − reference
+        − open, so the open-book size cancels out. A stored count of 30
+        vs reference 3 against 1 open market gives residual 26, well
+        above the tolerance, and the warning should log.
+        """
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=3,
+            _open_market_requests=1,
+        )
+        ctx, _, synced_data, state = _mock_context()
+        logger = MagicMock()
+        ctx.logger = logger
+        summary = _default_summary()
+        existing_profit = ProfitOverTimeData(
+            last_updated=1700000000,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=30,
+                    daily_profit_raw=1.0 + 30 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                )
+            ],
+            settled_mech_requests_count=30,
+            includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+        summary.profit_over_time = existing_profit
+        summary.agent_performance = MagicMock()
+        summary.agent_performance.metrics = MagicMock()
+        summary.agent_performance.metrics.settled_mech_request_count = 3
+        state.read_existing_performance_summary.return_value = summary
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_perform_incremental_update",
+                side_effect=_return_gen(existing_profit),
+            ),
+        ):
+            self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+        warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
+        assert any("Settled mech count residual" in w for w in warnings), warnings
+
+    def test_m5_open_requests_none_does_not_skip_diagnostic(self) -> None:
+        """A ``None`` ``_open_market_requests`` must not silence M5.
+
+        ``_calculate_settled_mech_requests`` short-circuits and leaves
+        ``_open_market_requests=None`` whenever ``_get_total_mech_requests``
+        returned zero. That state is also reachable from a transport
+        hiccup that coerces the total to zero, and in that state a
+        drifted stored series is precisely what M5 should surface.
+        """
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=0,
+            _open_market_requests=None,
+        )
+        ctx, _, synced_data, state = _mock_context()
+        logger = MagicMock()
+        ctx.logger = logger
+        summary = _default_summary()
+        existing_profit = ProfitOverTimeData(
+            last_updated=1700000000,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=1700000000,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=100,
+                    daily_profit_raw=1.0 + 100 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                )
+            ],
+            settled_mech_requests_count=100,
+            includes_unplaced_mech_fees=True,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+        summary.profit_over_time = existing_profit
+        summary.agent_performance = MagicMock()
+        summary.agent_performance.metrics = MagicMock()
+        # Non-zero so the "missing settled count" backfill branch does
+        # not fire; the routing must reach the incremental leg where
+        # the M5 diagnostic lives.
+        summary.agent_performance.metrics.settled_mech_request_count = 1
+        state.read_existing_performance_summary.return_value = summary
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_perform_incremental_update",
+                side_effect=_return_gen(existing_profit),
+            ),
+        ):
+            self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+        warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
+        assert any("Settled mech count residual" in w for w in warnings), warnings
+
     def test_missing_settled_mech_request_count_triggers_backfill(self) -> None:
         """Routes to backfill when settled_mech_request_count field is missing."""
         b = _make_fetch_behaviour(_settled_mech_requests_count=5)

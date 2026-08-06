@@ -140,6 +140,12 @@ Check it out\U0001f447
 MIN_TRADES_FOR_ROI_DISPLAY = 10
 MORE_TRADES_NEEDED_TEXT = "More trades needed"
 
+# M5 diagnostic: fixed tolerance for the series-vs-snapshot residual.
+# Small integer gaps between the two subgraph snapshots are expected
+# (a mech landing on an open market between the two reads); anything
+# larger is a genuine drift worth surfacing.
+_M5_RESIDUAL_TOLERANCE = 5
+
 
 class FetchPerformanceSummaryBehaviour(
     APTQueryingBehaviour,
@@ -1757,21 +1763,26 @@ class FetchPerformanceSummaryBehaviour(
             # ``series != snapshot`` warning fires on every tick for
             # every healthy agent holding open markets and drowns the
             # rare genuine anomalies. Warn only on the *unexplained*
-            # portion.
+            # portion, and with a small fixed tolerance so an agent
+            # holding a large open book cannot hide a large drift.
             settled_reference = self._settled_mech_requests_count
             stored_settled = existing_profit_data.settled_mech_requests_count
-            open_requests = self._open_market_requests
-            if (
-                settled_reference is not None
-                and stored_settled
-                and open_requests is not None
-            ):
+            # ``self._open_market_requests`` stays ``None`` when
+            # ``_calculate_settled_mech_requests`` short-circuits at
+            # ``total_mech_requests == 0`` (a legitimately-idle agent,
+            # but also an agent whose ``_fetch_mech_sender`` errored and
+            # got coerced to 0). Treating it as ``0`` for the
+            # diagnostic keeps the log firing on the worst-case drift
+            # rather than silently skipping the check exactly when it
+            # matters most.
+            open_requests = self._open_market_requests or 0
+            if settled_reference is not None and stored_settled:
                 residual = stored_settled - settled_reference - open_requests
                 # Small residuals happen: e.g. a mech landing on an
                 # open market between the two subgraph snapshots.
-                # Warn only when the gap is materially larger than the
-                # open-market offset can explain.
-                if abs(residual) > max(open_requests, 1):
+                # A handful is expected, not a proportion of the open
+                # book, so the tolerance is fixed rather than scaling.
+                if abs(residual) > _M5_RESIDUAL_TOLERANCE:
                     self.context.logger.warning(
                         f"Settled mech count residual (series={stored_settled}, "
                         f"snapshot={settled_reference}, open={open_requests}, "
