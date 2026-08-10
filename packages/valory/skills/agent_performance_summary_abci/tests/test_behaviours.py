@@ -2551,6 +2551,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
+        params.use_offchain = False
         shared_state, writes = self._make_shared_state(None)
 
         api_calls: list = []
@@ -2589,6 +2590,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=False)
+        params.use_offchain = False
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=5000, last_scanned_block=142)
         )
@@ -2614,6 +2616,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         params.balance_tracker_address = "0x0000000000000000000000000000000000000000"
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=800, last_scanned_block=42)
@@ -2646,6 +2649,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(None)
 
         contract_calls_seen: list = []
@@ -2685,6 +2689,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(None)
 
         with (
@@ -2711,6 +2716,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(None)
 
         def _ledger_api(*_a: Any, **_kw: Any) -> Generator:
@@ -2752,6 +2758,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -2791,6 +2798,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -2848,6 +2856,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -2894,6 +2903,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -2959,6 +2969,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -2999,6 +3010,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=500)
         )
@@ -3038,6 +3050,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )
@@ -3073,6 +3086,7 @@ class TestFetchOffchainPrepaidWei:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.mech_marketplace_config = _make_marketplace_config(use_offchain=True)
+        params.use_offchain = True
         shared_state, writes = self._make_shared_state(
             OffchainDepositState(total_deposited_wei=1000, last_scanned_block=99)
         )

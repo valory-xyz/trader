@@ -179,10 +179,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/mech_interact_abci:0.1.0:bafybeifbkpgivxjexlhrptn2iaju7vyzeusevvucsin6tbjwveniykad2q
+- valory/mech_interact_abci:0.1.0:bafybeic5xfxdod5l56o7aojdamojnvi562nql2mlah73bf47d4guz4xnwi
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/agent_performance_summary_abci:0.1.0:bafybeibw4cjxuswzkhilfxwqodxuwpnqxq7e5egfmrmufoigjtu4iyma6u
-- valory/chatui_abci:0.1.0:bafybeiga534fdtg7544qf3paaxcunauy46hu4xphmo2k2izjmdncw72pmy
+- valory/agent_performance_summary_abci:0.1.0:bafybeiaguxjexjxth4e3zajfxvqjprjhn4r6njgq6ddmhkql3uhqdsttp4
+- valory/chatui_abci:0.1.0:bafybeicsqursfh4svzecimnfbv77jn4vq3cc42e7bislzxfbqigos4ulgm
 behaviours:
   main:
     args: {}
@@ -392,6 +392,8 @@ models:
         priority_mech_service_id: 0
         requester_staking_instance_address: '0x0000000000000000000000000000000000000000'
         response_timeout: 300
+      use_offchain: false
+      offchain_deposit_target_calls: 10
       agent_balance_threshold: 10000000000000000
       expected_mech_response_time: 300
       mech_invalid_response: Invalid Response
