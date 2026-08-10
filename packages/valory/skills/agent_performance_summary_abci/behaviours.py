@@ -575,8 +575,7 @@ class FetchPerformanceSummaryBehaviour(
         )
         cached_total = state.total_deposited_wei
 
-        marketplace_config = self.params.mech_marketplace_config
-        if not marketplace_config.use_offchain:
+        if not self.params.use_offchain:
             # On-chain-only deployment (default for all production
             # traders). cached_total is 0 for any agent that never enabled
             # off-chain accounting, so ROI is bit-identical to pre-migration.

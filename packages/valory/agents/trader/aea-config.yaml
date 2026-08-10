@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiffci4jqgnmjud3j6m5cam7vvjttt6uugfh57az6a4quiwzmk6llm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifjxdbup557ynvbjfo6q2zoeupz3rerzf3uwyntiqvhmoqupy7a7a
 - valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeiefxkbb3qh35gnsoqq65bi7wvp7yfbb7uiwef747oahgtyicisumu
-- valory/trader_abci:0.1.0:bafybeiduf4gkl6f6dvhiwe5shf7vtc6fyb5ypyyamlkq4sqdw7xpjf6t4m
+- valory/decision_maker_abci:0.1.0:bafybeihgq4jjqyjrxyzzzi7hd7r27vf2lj45h5ljnp57kzg6enz3vtyqvy
+- valory/trader_abci:0.1.0:bafybeibf5d2gaacgrxxxwv4himk3jmuhnh7j4ahezjrxklqiewzgglgiq4
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeicn32bur353d3msdypfcwq257ucmmg55rzyklxftff2l2uoez62wu
-- valory/mech_interact_abci:0.1.0:bafybeifbkpgivxjexlhrptn2iaju7vyzeusevvucsin6tbjwveniykad2q
-- valory/chatui_abci:0.1.0:bafybeiga534fdtg7544qf3paaxcunauy46hu4xphmo2k2izjmdncw72pmy
-- valory/agent_performance_summary_abci:0.1.0:bafybeibw4cjxuswzkhilfxwqodxuwpnqxq7e5egfmrmufoigjtu4iyma6u
+- valory/check_stop_trading_abci:0.1.0:bafybeierqjfa6yq4vmhwsweght4w5vao2f7d732jczuexa7ovy4grhqmui
+- valory/mech_interact_abci:0.1.0:bafybeic5xfxdod5l56o7aojdamojnvi562nql2mlah73bf47d4guz4xnwi
+- valory/chatui_abci:0.1.0:bafybeicsqursfh4svzecimnfbv77jn4vq3cc42e7bislzxfbqigos4ulgm
+- valory/agent_performance_summary_abci:0.1.0:bafybeiaguxjexjxth4e3zajfxvqjprjhn4r6njgq6ddmhkql3uhqdsttp4
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -259,6 +259,8 @@ models:
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:false}
       policy_store_update_offset: ${int:259200}
       mech_marketplace_config: ${MECH_MARKETPLACE_CONFIG:dict:{"mech_marketplace_address":"0x0000000000000000000000000000000000000000","priority_mech_address":"0x0000000000000000000000000000000000000000","priority_mech_staking_instance_address":"0x0000000000000000000000000000000000000000","priority_mech_service_id":0,"requester_staking_instance_address":"0x0000000000000000000000000000000000000000","response_timeout":300}}
+      use_offchain: ${USE_OFFCHAIN:bool:false}
+      offchain_deposit_target_calls: ${OFFCHAIN_DEPOSIT_TARGET_CALLS:int:10}
       expected_mech_response_time: ${int:300}
       mech_invalid_response: ${str:Invalid Response}
       mech_consecutive_failures_threshold: ${int:2}
