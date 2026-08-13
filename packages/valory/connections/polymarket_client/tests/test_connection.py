@@ -886,8 +886,11 @@ class TestBuySizing:
         conn.client.create_market_order.assert_not_called()
 
     def test_place_bet_does_not_cache_a_venue_minimum_rejection(self) -> None:
-        """A price move can slip an order past the preflight; the venue's own
-        refusal must still be terminal rather than cached and replayed."""
+        """The venue's own refusal is terminal, not cached and replayed.
+
+        A price move between the preflight and the post can still slip an
+        under-minimum order through to the CLOB.
+        """
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()

@@ -104,10 +104,10 @@ MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
 # the fee, which is why a bet sized at the $1 floor bounces with
 # "invalid amount for a marketable BUY order ($0.98), min size: 1".
 MIN_MARKETABLE_USD = 1.0
-# Substring of the CLOB's rejection for an order it will not take at this size
-# ("invalid amount for a marketable BUY order ($0.98), min size: 1"). Re-signing
-# cannot change the amount, so a rejection carrying this is terminal: the order
-# must not be cached for retry.
+# Substring of the CLOB's rejection for an order it will not take at this size;
+# the venue phrases it as an invalid amount for a marketable BUY order, naming
+# the shrunk figure and the minimum. Re-signing cannot change the amount, so a
+# rejection carrying this is terminal: the order must not be cached for retry.
 #
 # Deliberately matched broadly rather than pinned to the full "min size" phrasing.
 # The two ways to be wrong are not symmetric: treating an unrelated "invalid

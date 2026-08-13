@@ -222,6 +222,8 @@ class TestPolymarketTopUpBehaviour:
         Funded with exactly the bet, the SDK sizes the order to ``bet - fee``:
         fewer shares than the strategy sized, and an outright rejection when
         the bet sits on the venue's $1 floor.
+
+        :param tmp_path: the temporary store directory.
         """
         behaviour = _make_behaviour(tmp_path)
         behaviour.do_connection_request = lambda m, d: (  # type: ignore[method-assign]
@@ -333,19 +335,19 @@ class TestPolymarketTopUpBehaviour:
         other test. Here the connection's own ``_quote_buy`` produces the fee,
         this behaviour's own arithmetic turns it into a transfer, and the
         connection's own ``_place_bet`` gate then judges the funded wallet.
+
+        :param tmp_path: the temporary store directory.
         """
-        from packages.valory.connections.polymarket_client.connection import (
-            PolymarketClientConnection,
-        )
+        from packages.valory.connections.polymarket_client import connection as conn_mod
 
         # A bet sitting exactly on the venue's $1.00 floor: the OPE-1883 case.
         bet_units = 1_000_000
-        conn = object.__new__(PolymarketClientConnection)
+        conn = object.__new__(conn_mod.PolymarketClientConnection)
         conn.logger = MagicMock()
         conn.client = MagicMock()
         conn.builder_config = None
         conn.dw_address = DW
-        conn._ensure_dw_funder = MagicMock()
+        conn._ensure_dw_funder = MagicMock()  # type: ignore[method-assign]
         conn.client.calculate_market_price.return_value = 0.98
 
         def _adjust(_tok, amount, _price, balance, _builder=None):  # type: ignore[no-untyped-def]
@@ -358,7 +360,7 @@ class TestPolymarketTopUpBehaviour:
         conn.client._adjust_buy_amount_for_balance.side_effect = _adjust
 
         # 1. The connection quotes the fee, with the DW swept empty as at top-up.
-        conn._read_dw_collateral_balance = MagicMock(return_value=0.0)
+        conn._read_dw_collateral_balance = MagicMock(return_value=0.0)  # type: ignore[method-assign]
         quote, _ = conn._quote_buy(token_id="tok", amount=bet_units / PUSD_UNITS)
 
         # 2. This behaviour's real arithmetic turns that quote into a transfer.
@@ -371,34 +373,17 @@ class TestPolymarketTopUpBehaviour:
         assert transferred > bet_units, "no fee was reserved"
 
         # 3. The connection's gate judges a DW funded with exactly that transfer.
-        from py_clob_client_v2.order_utils import Side
-        from py_clob_client_v2.order_utils.model.order_data_v2 import SignedOrderV2
-        from py_clob_client_v2.order_utils.model.signature_type_v2 import (
-            SignatureTypeV2,
-        )
-
-        conn._read_dw_collateral_balance = MagicMock(
+        # Order serialization is stubbed rather than pulling the CLOB SDK in
+        # here: this skill does not depend on it, and what is under test is the
+        # gate's verdict, not the wire format of a signed order.
+        conn._read_dw_collateral_balance = MagicMock(  # type: ignore[method-assign]
             return_value=transferred / PUSD_UNITS
         )
-        conn.client.create_market_order.return_value = SignedOrderV2(
-            salt="1",
-            maker="0x0000000000000000000000000000000000000001",
-            signer="0x0000000000000000000000000000000000000002",
-            tokenId="tok",
-            makerAmount=str(bet_units),
-            takerAmount="1020408",
-            side=Side.BUY,
-            signatureType=SignatureTypeV2.POLY_GNOSIS_SAFE,
-            timestamp="1700000000000",
-            metadata="0x" + "00" * 32,
-            builder="0x" + "00" * 32,
-            expiration="0",
-            signature="0xdeadbeef",
-        )
         conn.client.post_order.return_value = {"status": "matched"}
-        response, error = conn._place_bet(
-            token_id="tok", amount=bet_units / PUSD_UNITS, funder=DW
-        )
+        with patch.object(conn_mod, "_serialize_signed_order_v2", return_value={}):
+            response, error = conn._place_bet(
+                token_id="tok", amount=bet_units / PUSD_UNITS, funder=DW
+            )
 
         assert error is None, f"the reserve did not clear the venue minimum: {error}"
         assert "below_minimum" not in response
@@ -410,6 +395,8 @@ class TestPolymarketTopUpBehaviour:
 
         The two take the same branch but mean different things — one is a
         fee-free market, the other silently reproduces the pre-fix under-funding.
+
+        :param tmp_path: the temporary store directory.
         """
         behaviour = _make_behaviour(tmp_path)
         behaviour.do_connection_request = lambda m, d: (  # type: ignore[method-assign]
