@@ -38,18 +38,8 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_top_up import 
 )
 
 ERC20_TRANSFER_SELECTOR = "0xa9059cbb"  # keccak("transfer(address,uint256)")[:4]
-# pUSD base units per whole token. Spelled out rather than taken from
-# ``get_token_precision()`` so it stays the exact inverse of ``usdc_to_native``,
-# which hardcodes the same 6 decimals two lines below — deriving one of the pair
-# and hardcoding the other is how a scale bug gets in.
+# Must stay the exact inverse of the 6 decimals ``usdc_to_native`` hardcodes.
 PUSD_UNITS = 10**6
-# Cushion on the measured taker fee. The fee is priced here, a round and a full
-# on-chain settlement before the order is signed, and it moves with the price
-# (≈0.5%–3.7% across the price range), so the figure quoted now understates the
-# one charged then whenever the price drifts toward the middle of the book.
-# Reserving half as much again absorbs that; whatever the buy leaves behind is
-# swept back to the Safe at the start of the next cycle, so over-funding the DW
-# costs nothing but a little idle pUSD.
 FEE_HEADROOM_RATIO = 1.5
 
 
@@ -224,11 +214,12 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
                 "venue minimum."
             )
             return buy_amount
-        if fee <= 0:
-            # A market that charges no taker fee: nothing to reserve. The
-            # negative arm is unreachable with a well-behaved SDK (the fee is
-            # measured as what it declines to spend, which cannot exceed the
-            # amount), and guards a value that crosses a process boundary.
+        if fee < 0:
+            self.context.logger.warning(
+                f"Nonsensical CLOB fee quote ({fee}); topping up the bare bet."
+            )
+            return buy_amount
+        if fee == 0:
             return buy_amount
 
         # Round the reserve up: truncating it would leave the order a base unit

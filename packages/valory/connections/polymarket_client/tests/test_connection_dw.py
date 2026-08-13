@@ -97,21 +97,21 @@ class TestEncoders:
         conn.w3.keccak.return_value.hex.return_value = "deadbeef"
         conn.w3.to_checksum_address.side_effect = lambda a: a
         conn.w3.eth.call.return_value = (2_500_000).to_bytes(32, "big")
-        assert conn._dw_collateral_balance(DW, fallback=9.9) == 2.5
+        assert conn._read_dw_collateral_balance(DW) == 2.5
 
-    def test_dw_collateral_balance_no_dw_returns_fallback(self) -> None:
-        """A missing DW short-circuits to the fallback (no RPC call)."""
+    def test_dw_collateral_balance_no_dw_returns_none(self) -> None:
+        """A missing DW short-circuits to ``None`` (no RPC call)."""
         conn = _make_conn()
-        assert conn._dw_collateral_balance(None, fallback=4.2) == 4.2
+        assert conn._read_dw_collateral_balance(None) is None
         conn.w3.eth.call.assert_not_called()
 
-    def test_dw_collateral_balance_rpc_error_returns_fallback(self) -> None:
-        """An RPC failure logs a warning and falls back to the nominal amount."""
+    def test_dw_collateral_balance_rpc_error_returns_none(self) -> None:
+        """An RPC failure logs a warning and reports the balance as unknown."""
         conn = _make_conn()
         conn.w3.keccak.return_value.hex.return_value = "deadbeef"
         conn.w3.to_checksum_address.side_effect = lambda a: a
         conn.w3.eth.call.side_effect = RuntimeError("rpc down")
-        assert conn._dw_collateral_balance(DW, fallback=1.0) == 1.0
+        assert conn._read_dw_collateral_balance(DW) is None
         conn.logger.warning.assert_called_once()
 
     def test_erc1155_balance_of(self) -> None:

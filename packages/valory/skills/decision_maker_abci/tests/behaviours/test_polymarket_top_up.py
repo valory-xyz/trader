@@ -227,7 +227,7 @@ class TestPolymarketTopUpBehaviour:
         """
         behaviour = _make_behaviour(tmp_path)
         behaviour.do_connection_request = lambda m, d: (  # type: ignore[method-assign]
-            (yield) or _resp({"fee_usd": 0.02, "blocked": True})
+            (yield) or _resp({"fee_usd": 0.017, "blocked": True})
         )
         behaviour._build_multisend_data = lambda: _ok()  # type: ignore[method-assign]
         behaviour._build_multisend_safe_tx_hash = lambda: _ok()  # type: ignore[method-assign]
@@ -249,9 +249,11 @@ class TestPolymarketTopUpBehaviour:
         ):
             payload = _drive(behaviour)
         assert payload.event == Event.PREPARE_TX.value
-        # 1.0 pUSD + ceil(0.02 * 1.5 * 1e6) = 1_030_000 base units.
+        # 0.017 * 1.5 * 1e6 is 25500.000000000004, so ceil (25501) and floor
+        # (25500) differ; a fee whose reserve is a whole number cannot tell a
+        # rounding regression from a correct one.
         transferred = int(behaviour.multisend_batches[0].data.hex()[-64:], 16)
-        assert transferred == 1_030_000
+        assert transferred == 1_025_501
 
     def test_fee_reserve_counts_against_the_safe_balance(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """A Safe that covers the bet but not the fee defers rather than reverts."""
@@ -269,6 +271,7 @@ class TestPolymarketTopUpBehaviour:
         ):
             payload = _drive(behaviour)
         assert payload.event == Event.INSUFFICIENT_BALANCE.value
+        assert not behaviour.multisend_batches
 
     def test_no_fee_quoted_tops_up_the_bare_bet(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """A fee-free market (or an unreadable quote) adds no reserve."""
@@ -427,6 +430,7 @@ class TestPolymarketTopUpBehaviour:
         behaviour._sampled_outcome_token_id = lambda: "token123"  # type: ignore[method-assign]
         behaviour.dw_address = DW
         assert _run(behaviour._top_up_amount(1_000_000)) == 1_000_000
+        behaviour.context.logger.warning.assert_called_once()
 
     def test_sampled_outcome_token_id_resolves(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """The token id comes from the sampled bet's chosen outcome."""

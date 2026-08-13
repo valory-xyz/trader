@@ -441,13 +441,7 @@ class TestPlaceBet:
         so the caller can retry with the same order if the submission fails.
         """
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         signed = self._make_signed_order_v2()
         conn.client.create_market_order.return_value = signed
         conn.client.post_order.return_value = {"status": "matched"}
@@ -488,13 +482,7 @@ class TestPlaceBet:
     def test_place_bet_drops_v1_cache_and_resigns(self) -> None:
         """v1-shaped cache (no ``clob_version`` marker) is dropped; order resigned."""
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         v1_cached = {
             "salt": "1",
             "maker": "0x0",
@@ -525,13 +513,7 @@ class TestPlaceBet:
     def test_place_bet_unparseable_cache_resigns(self) -> None:
         """Garbage cache JSON: warn and fall through to fresh signing."""
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
         conn.client.post_order.return_value = {"status": "matched"}
 
@@ -554,13 +536,7 @@ class TestPlaceBet:
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         exc = PolyApiException(error_msg={"error": "duplicate order"})
         conn.client.create_market_order.side_effect = exc
 
@@ -575,13 +551,7 @@ class TestPlaceBet:
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         exc = PolyApiException(error_msg="plain string error")
         conn.client.create_market_order.side_effect = exc
 
@@ -593,13 +563,7 @@ class TestPlaceBet:
     def test_place_bet_post_order_none_response(self) -> None:
         """When post_order returns None, response is None but no crash."""
         conn = _make_connection()
-        # Arm the sizing preflight with a funded DW and a real fee model so
-        # this test clears the CLOB-minimum gate by design. Left unstubbed,
-        # the MagicMock client makes every sizing figure 1.0, landing the
-        # order exactly on the minimum and passing only because the
-        # comparison is ``>=`` — a boundary this test never meant to assert.
-        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
-        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+        _arm_preflight(conn)
         conn.client.create_market_order.return_value = self._make_signed_order_v2()
         conn.client.post_order.return_value = None
 
@@ -642,6 +606,19 @@ def _stub_sizing_client(conn: Any, price: float, fee_rate: float) -> None:
     conn.client._adjust_buy_amount_for_balance.side_effect = adjust
 
 
+def _arm_preflight(conn: Any) -> None:
+    """Give `conn` a funded DW and a real fee model.
+
+    Left unstubbed, the MagicMock client makes every sizing figure 1.0, landing
+    the order exactly on ``MIN_MARKETABLE_USD`` and clearing the gate only
+    because the comparison is ``>=``.
+
+    :param conn: the connection to stub.
+    """
+    conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
+    _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+
+
 class TestBuySizing:
     """Tests for the CLOB minimum-order-size preflight."""
 
@@ -674,10 +651,39 @@ class TestBuySizing:
     def test_buy_sizing_returns_none_when_the_book_is_unreadable(self) -> None:
         """An unpriceable market yields None so the caller falls through."""
         conn = _make_connection()
-        conn.client.calculate_market_price.side_effect = Exception("no book")
+        conn.client.calculate_market_price.side_effect = ValueError("no book")
 
         assert conn._buy_sizing("tok", amount=10.0, balance=100.0) is None
         conn.logger.warning.assert_called_once()
+        conn.logger.error.assert_not_called()
+
+    def test_buy_sizing_logs_an_unexpected_error_loudly(self) -> None:
+        """A bug here silently disables the gate, so it must not be a warning.
+
+        An SDK rename would raise AttributeError and degrade to "no preflight",
+        reintroducing the fee-shrink this gate exists to catch.
+        """
+        conn = _make_connection()
+        conn.client.calculate_market_price.side_effect = AttributeError("renamed")
+
+        assert conn._buy_sizing("tok", amount=10.0, balance=100.0) is None
+        conn.logger.error.assert_called_once()
+        conn.logger.warning.assert_not_called()
+
+    def test_buy_sizing_without_a_balance_still_measures_the_fee(self) -> None:
+        """An unreadable balance costs the verdict, not the fee.
+
+        The top-up needs the fee to size its reserve; losing it to a transient
+        RPC failure would under-fund the DepositWallet and recreate the bug.
+        """
+        conn = _make_connection()
+        _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
+
+        sizing = conn._buy_sizing("tok", amount=10.0, balance=None)
+
+        assert sizing.fee == pytest.approx(0.2)
+        assert sizing.spendable is None
+        assert conn._below_minimum_reason(10.0, sizing.spendable) is None
 
     def test_buy_sizing_passes_the_builder_code(self) -> None:
         """The builder taker fee is part of the reserve, so it must be priced."""
@@ -712,7 +718,7 @@ class TestBuySizing:
     def test_quote_buy_reports_the_fee_to_reserve(self) -> None:
         """The top-up's quote carries the fee and the funded total."""
         conn = _make_connection()
-        conn._dw_collateral_balance = MagicMock(return_value=1.0)
+        conn._read_dw_collateral_balance = MagicMock(return_value=1.0)
         _stub_sizing_client(conn, price=0.98, fee_rate=0.02)
 
         quote, error = conn._quote_buy(token_id="tok", amount=1.0, funder=SAFE_ADDRESS)
@@ -727,7 +733,7 @@ class TestBuySizing:
     def test_quote_buy_degrades_when_unpriceable(self) -> None:
         """An unreadable book yields a fee-less quote, never a block."""
         conn = _make_connection()
-        conn._dw_collateral_balance = MagicMock(return_value=1.0)
+        conn._read_dw_collateral_balance = MagicMock(return_value=1.0)
         conn.client.calculate_market_price.side_effect = Exception("no book")
 
         quote, error = conn._quote_buy(token_id="tok", amount=1.0)
@@ -828,14 +834,6 @@ class TestBuySizing:
             conn.client.create_market_order.call_args.args[0].user_usdc_balance == 1.0
         )
 
-    def test_dw_collateral_balance_still_falls_back(self) -> None:
-        """The sizing helper keeps its fallback contract."""
-        conn = _make_connection()
-        conn._read_dw_collateral_balance = MagicMock(return_value=None)
-        assert conn._dw_collateral_balance(SAFE_ADDRESS, fallback=7.5) == 7.5
-        conn._read_dw_collateral_balance = MagicMock(return_value=3.25)
-        assert conn._dw_collateral_balance(SAFE_ADDRESS, fallback=7.5) == 3.25
-
     def test_quote_buy_keeps_one_key_set_when_unpriceable(self) -> None:
         """The degraded quote carries every key as an explicit null.
 
@@ -844,12 +842,12 @@ class TestBuySizing:
         reads a sizing field after seeing it.
         """
         conn = _make_connection()
-        conn._dw_collateral_balance = MagicMock(return_value=1.0)
+        conn._read_dw_collateral_balance = MagicMock(return_value=1.0)
         conn.client.calculate_market_price.side_effect = Exception("no book")
         degraded, _ = conn._quote_buy(token_id="tok", amount=1.0)
 
         priced_conn = _make_connection()
-        priced_conn._dw_collateral_balance = MagicMock(return_value=1.0)
+        priced_conn._read_dw_collateral_balance = MagicMock(return_value=1.0)
         _stub_sizing_client(priced_conn, price=0.98, fee_rate=0.02)
         measured, _ = priced_conn._quote_buy(token_id="tok", amount=1.0)
 
@@ -861,7 +859,7 @@ class TestBuySizing:
     def test_quote_buy_blocked_agrees_with_its_reason(self) -> None:
         """``blocked`` is derived from the reason, so the two cannot disagree."""
         conn = _make_connection()
-        conn._dw_collateral_balance = MagicMock(return_value=100.0)
+        conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
         _stub_sizing_client(conn, price=0.5, fee_rate=0.02)
 
         quote, _ = conn._quote_buy(token_id="tok", amount=10.0)
