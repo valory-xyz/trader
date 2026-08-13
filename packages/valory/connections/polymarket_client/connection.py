@@ -26,7 +26,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, NamedTuple, Optional, Tuple, cast
 
 import requests
 from aea.configurations.base import PublicId
@@ -98,6 +98,24 @@ RATE_LIMIT_RETRY_DELAY = 10  # base seconds for HTTP 429 (rate-limit) responses
 MAX_RATE_LIMIT_SLEEP = 60  # upper bound on a single Retry-After-aware sleep
 # Subgraph indexes markets created after this date; exclude older markets
 MARKETS_MIN_CREATED_AT = "2025-12-15T19:20:11Z"
+# The CLOB refuses a marketable order worth less than this, measured on the
+# amount that actually reaches the book — i.e. after the taker-fee reserve has
+# been held back. A buy funded with exactly the bet is therefore always short by
+# the fee, which is why a bet sized at the $1 floor bounces with
+# "invalid amount for a marketable BUY order ($0.98), min size: 1".
+MIN_MARKETABLE_USD = 1.0
+# Substring of the CLOB's rejection for an order it will not take at this size
+# ("invalid amount for a marketable BUY order ($0.98), min size: 1"). Re-signing
+# cannot change the amount, so a rejection carrying this is terminal: the order
+# must not be cached for retry.
+#
+# Deliberately matched broadly rather than pinned to the full "min size" phrasing.
+# The two ways to be wrong are not symmetric: treating an unrelated "invalid
+# amount ..." rejection as terminal costs one queue demotion in
+# ``BlacklistingRound``, while failing to recognise a real one re-caches the
+# order and puts the FSM back in the unbounded BET_PLACEMENT_FAILED self-loop
+# this whole path exists to break. Prefer the cheap error.
+BELOW_MINIMUM_ERROR = "invalid amount"
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -168,6 +186,18 @@ def _validate_builder_code(code: Optional[str], logger: Any) -> str:
         "posted without attribution."
     )
     return ""
+
+
+class BuySizing(NamedTuple):  # pylint: disable=too-few-public-methods
+    """What a market buy would actually put on the book, per the SDK's own sizing.
+
+    A named tuple rather than a dict so a mistyped field is a mypy error at
+    review time instead of a ``KeyError`` in a live placement.
+    """
+
+    price: float
+    fee: float
+    spendable: float
 
 
 def _serialize_signed_order_v2(signed: SignedOrderV2) -> Dict[str, Any]:
@@ -518,6 +548,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         # Map request types to handler methods
         request_function_map: Dict[RequestType, Callable] = {
             RequestType.PLACE_BET: self._place_bet,
+            RequestType.QUOTE_BUY: self._quote_buy,
             RequestType.FETCH_MARKETS: self._fetch_markets,
             RequestType.FETCH_MARKET: self._fetch_market_by_slug,
             RequestType.GET_POSITIONS: self._get_positions,
@@ -574,6 +605,134 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.error(f"Polymarket connection test failed: {e}")
             return False
 
+    def _buy_sizing(
+        self, token_id: str, amount: float, balance: float
+    ) -> Optional[BuySizing]:
+        """Measure what a market buy of ``amount`` would actually put on the book.
+
+        Every number comes from the SDK's own sizing rather than a
+        reimplementation of the fee formula, so this and the order that follows
+        it cannot disagree. The fee is *measured*, not derived: it is whatever
+        the SDK declines to spend when the balance is exactly the order amount.
+
+        :param token_id: CTF token id of the outcome to buy.
+        :param amount: the nominal pUSD spend.
+        :param balance: the funder's live pUSD balance.
+        :return: the sizing, or ``None`` when the book or the fee schedule could
+            not be read (the caller then falls through and lets the CLOB itself
+            validate the order).
+        """
+        builder_code = self.builder_config.builder_code if self.builder_config else None
+        try:
+            price = float(
+                self.client.calculate_market_price(token_id, BUY, amount, OrderType.FOK)
+            )
+            at_full_size = float(
+                self.client._adjust_buy_amount_for_balance(  # pylint: disable=protected-access
+                    token_id, amount, price, amount, builder_code
+                )
+            )
+            affordable = float(
+                self.client._adjust_buy_amount_for_balance(  # pylint: disable=protected-access
+                    token_id, amount, price, balance, builder_code
+                )
+            )
+        except Exception as e:  # noqa: BLE001 - advisory preflight, never fatal
+            self.logger.warning(
+                f"Could not size the buy against the live book ({e}); "
+                "leaving the order for the CLOB to validate."
+            )
+            return None
+        return BuySizing(
+            price=price,
+            fee=amount - at_full_size,
+            # What the order is worth: the spend, or what the balance leaves of
+            # it after the fee. Comparing only the fee-shrunk figure would pass
+            # a bet that was under the minimum to begin with — that one is
+            # affordable in full against a fat balance and still bounced.
+            spendable=min(affordable, amount),
+        )
+
+    def _below_minimum_reason(self, amount: float, spendable: float) -> Optional[str]:
+        """Why the CLOB would refuse this buy — the two causes need opposite fixes.
+
+        A bet under the minimum has to be raised; one the fee shrinks under it
+        has to be funded with the fee on top. Naming them apart keeps the log
+        from sending an operator to add pUSD the Safe already holds.
+
+        :param amount: the nominal pUSD spend.
+        :param spendable: what would actually reach the book.
+        :return: the reason, or ``None`` when the order clears the minimum.
+        """
+        if spendable >= MIN_MARKETABLE_USD:
+            return None
+        if amount < MIN_MARKETABLE_USD:
+            return (
+                f"the bet itself (${amount:.4f}) is under the CLOB's "
+                f"${MIN_MARKETABLE_USD:.0f} marketable minimum; more pUSD in "
+                "the DepositWallet will not help"
+            )
+        return (
+            f"the taker fee leaves only ${spendable:.4f} of this ${amount:.4f} "
+            f"buy on the book, under the CLOB's ${MIN_MARKETABLE_USD:.0f} "
+            "marketable minimum; the DepositWallet needs the fee on top"
+        )
+
+    def _quote_buy(
+        self, token_id: str, amount: float, funder: Optional[str] = None
+    ) -> Tuple[Any, Any]:
+        """Price a buy without placing it, so the caller can fund the fee.
+
+        Used by the top-up behaviour a round ahead of placement: funding the
+        DepositWallet with exactly the bet guarantees the SDK shrinks the order
+        by the fee, so the top-up needs to know the fee before it builds the
+        Safe transfer.
+
+        ``fee_usd`` / ``required_usd`` are measured at full size and so do not
+        depend on the DW's current balance — which is what a caller about to
+        *fund* the DW must read. ``spendable_usd`` / ``blocked`` do depend on
+        it, and the top-up runs right after the DW has been swept empty, where
+        they will always say blocked. They answer "could this order go out
+        now?", not "how much should I send?".
+
+        :param token_id: CTF token id of the outcome to buy.
+        :param amount: the nominal pUSD spend.
+        :param funder: DepositWallet address, for the balance read.
+        :return: ``(quote, None)``; ``fee_usd`` is ``None`` when unmeasurable.
+        """
+        self._ensure_dw_funder(funder or self.dw_address)
+        balance = self._dw_collateral_balance(funder or self.dw_address, amount)
+        sizing = self._buy_sizing(token_id, amount, balance)
+        # One key set on both paths, with explicit nulls when unmeasurable. A
+        # shape that varies by branch would make ``blocked: false`` mean two
+        # different things — "measured and clear" or "never checked" — and would
+        # KeyError any consumer that reads a sizing field after seeing it.
+        quote: Dict[str, Any] = {
+            "token_id": token_id,
+            "amount_usd": amount,
+            "price": None,
+            "fee_usd": None,
+            "required_usd": None,
+            "spendable_usd": None,
+            "blocked": False,
+            "blocked_reason": None,
+        }
+        if sizing is None:
+            return quote, None
+        # ``blocked`` is derived from the reason rather than recomputed against
+        # MIN_MARKETABLE_USD: two expressions of one rule can drift apart into
+        # "blocked with no reason".
+        reason = self._below_minimum_reason(amount, sizing.spendable)
+        quote.update(
+            price=sizing.price,
+            fee_usd=sizing.fee,
+            required_usd=amount + sizing.fee,
+            spendable_usd=sizing.spendable,
+            blocked=reason is not None,
+            blocked_reason=reason,
+        )
+        return quote, None
+
     def _place_bet(
         self,
         token_id: str,
@@ -619,16 +778,46 @@ class PolymarketClientConnection(BaseSyncConnection):
                     )
 
             if signed is None:
-                # Pass the DepositWallet's live pUSD balance so the SDK sizes the
-                # order to ``amount - exact_fee`` using Polymarket's documented,
-                # per-market CLOB fee (``GET /fee-rate`` base rate + market fee
-                # exponent: ``fee = (amount/price) * rate * (price*(1-price))**e``).
-                # The fee is price-dependent (≈0.5%–3.7% over the price range) so a flat
-                # reserve both over- and under-shoots. Falls back to ``amount`` so
-                # the fee is still reserved if the balance read is unavailable.
-                user_balance = self._dw_collateral_balance(
-                    funder or self.dw_address, amount
+                # Pass the DepositWallet's live pUSD balance so the SDK sizes
+                # the order against what the funder actually holds, using
+                # Polymarket's documented per-market CLOB fee (``GET /fee-rate``
+                # base rate + market fee exponent:
+                # ``fee = (amount/price) * rate * (price*(1-price))**e``). The
+                # fee is price-dependent (≈0.5%–3.7% over the price range) so a
+                # flat reserve both over- and under-shoots.
+                measured_balance = self._read_dw_collateral_balance(
+                    funder or self.dw_address
                 )
+                # Falls back to ``amount`` so the fee is still reserved if the
+                # balance read is unavailable.
+                user_balance = amount if measured_balance is None else measured_balance
+                # Preflight with that same sizing. Posting an under-minimum
+                # order is not merely wasted: the rejection is cached and
+                # replayed, and BET_PLACEMENT_FAILED loops back into this
+                # round, so the agent spins on it forever. Refusing here turns
+                # that into a single skip.
+                #
+                # Only when the balance was actually read. The fallback above is
+                # numerically identical to "the DW holds exactly the bet", which
+                # forces the SDK's fee shrink and would make every transient RPC
+                # failure look like a genuine under-minimum order — costing a
+                # correctly funded market its place in the queue. An unread
+                # balance means the preflight has nothing to judge, so it stands
+                # aside and lets the CLOB rule on the order.
+                if measured_balance is not None:
+                    sizing = self._buy_sizing(token_id, amount, user_balance)
+                    if sizing is not None:
+                        reason = self._below_minimum_reason(amount, sizing.spendable)
+                        if reason:
+                            # Named apart from the ``error_msg`` the exception
+                            # handler below binds: sharing it would narrow that
+                            # one's inferred type and trip mypy.
+                            block_msg = f"Order below the CLOB minimum: {reason}"
+                            self.logger.error(block_msg)
+                            return {
+                                "error": block_msg,
+                                "below_minimum": True,
+                            }, block_msg
                 mo = MarketOrderArgs(
                     token_id=token_id,
                     amount=amount,
@@ -655,6 +844,12 @@ class PolymarketClientConnection(BaseSyncConnection):
                 else f"Error placing bet: {e}"
             )
             self.logger.error(error_msg)
+            # An under-minimum rejection is terminal: the amount is baked into
+            # the signature, so re-posting the same order can only be refused
+            # again. Withhold it from the response so the caller cannot cache
+            # it, and flag the cause so the caller can leave the round.
+            if BELOW_MINIMUM_ERROR in str(error_msg).lower():
+                return {"error": error_msg, "below_minimum": True}, error_msg
             # Return error with signed order for retry
             response = {"error": error_msg, "signed_order_json": signed_order_json}
             return response, error_msg
@@ -1469,21 +1664,21 @@ class PolymarketClientConnection(BaseSyncConnection):
         )
         return "0x" + (selector + encoded_args).hex()
 
-    def _dw_collateral_balance(self, dw: Optional[str], fallback: float) -> float:
-        """Return the DepositWallet's pUSD balance in float USDC for fee sizing.
+    def _read_dw_collateral_balance(self, dw: Optional[str]) -> Optional[float]:
+        """Read the DepositWallet's pUSD balance, or ``None`` when it cannot be.
 
-        Used as ``MarketOrderArgs.user_usdc_balance`` so the CLOB SDK shrinks a
-        market buy to ``amount - exact_fee`` against the live balance. Best-
-        effort: on a missing DW or an RPC failure it returns ``fallback`` (the
-        nominal order amount), so the documented fee is still reserved from the
-        intended spend rather than risking a "not enough balance" rejection.
+        Separated from ``_dw_collateral_balance`` so a caller can tell an
+        unread balance from a real one. That distinction is load-bearing: the
+        nominal-amount fallback is indistinguishable from "the DW holds exactly
+        the bet", which is precisely the state that makes the SDK shrink the
+        order by the fee — so a caller that cannot tell them apart will read a
+        transient RPC failure as a genuine under-minimum order.
 
         :param dw: the DepositWallet address, or ``None``.
-        :param fallback: the value to return when the balance cannot be read.
-        :return: the DW pUSD balance in float USDC, or ``fallback``.
+        :return: the DW pUSD balance in float USDC, or ``None``.
         """
         if not dw:
-            return fallback
+            return None
         try:
             return self._erc20_balance_of(self.collateral_address, dw) / 10**6
         except Exception as e:  # noqa: BLE001 - best-effort on-chain read
@@ -1491,7 +1686,25 @@ class PolymarketClientConnection(BaseSyncConnection):
                 f"Could not read DepositWallet pUSD balance ({e}); "
                 "reserving the fee from the nominal order amount."
             )
-            return fallback
+            return None
+
+    def _dw_collateral_balance(self, dw: Optional[str], fallback: float) -> float:
+        """Return the DepositWallet's pUSD balance in float USDC for fee sizing.
+
+        Passed as ``MarketOrderArgs.user_usdc_balance`` so the SDK sizes the
+        order against the funder's real balance. When the DW carries the bet
+        plus the fee (see the top-up behaviour's fee reserve) the SDK leaves the
+        order at the full bet; when it carries only the bet, the SDK holds the
+        fee back out of it. Best-effort: on a missing DW or an RPC failure it
+        returns ``fallback`` (the nominal order amount) so the fee is still
+        reserved rather than risking a "not enough balance" rejection.
+
+        :param dw: the DepositWallet address, or ``None``.
+        :param fallback: the value to return when the balance cannot be read.
+        :return: the DW pUSD balance in float USDC, or ``fallback``.
+        """
+        balance = self._read_dw_collateral_balance(dw)
+        return fallback if balance is None else balance
 
     def _erc20_balance_of(self, token_address: str, owner: str) -> int:
         """Read an ERC20 balance via eth_call.

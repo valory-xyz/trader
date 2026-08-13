@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
 - valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
-- valory/polymarket_client:0.1.0:bafybeid4eo37pka4tfhsjs6rb3knrugmokcvihust2dpfrgob56y77xd44
+- valory/polymarket_client:0.1.0:bafybeierzbimjnp7k77osqpwrqybxh6drb6gbffebrriasz2ixx3efpx2m
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihaui6tcsa4fn7ei42onixizqsxnrrcvx3i23ea67evtutwlmyuqi
-- valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeibwcjeh4ckj2uhmlqp2ayfzrosgfawuhmgdcpigzlpwgvvwdcrwn4
-- valory/trader_abci:0.1.0:bafybeibpcxtruy4pomb7bqogrsnddnte2ja2mwgtpm3f3tirhvqiwrf7gi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihaxkeznr3qskr6o4c2ltesl6t2im4qbxlwcka4f5vkpfwkzqgdmu
+- valory/market_manager_abci:0.1.0:bafybeiema4cl6k7djiuu3cjohp6z46bj3urxngap6rk6aqlfrzbi7jt7oa
+- valory/decision_maker_abci:0.1.0:bafybeierpczczcmhv6mehztyptbbskpfhn5yymhta3zioxaoqbctiyijhq
+- valory/trader_abci:0.1.0:bafybeicztyuwbti5e3lxcv7utkag3jthmuqewrln5lqj4me6dp4xos23ry
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeiagztbg3kcwhbvocmkulxbo4hthipkkhffwmgsrbknmjoqqv3amem
+- valory/check_stop_trading_abci:0.1.0:bafybeiehobzde5uqfjljrktfpzphh4sz652xuvjizo7oqjlzxm4jdualhe
 - valory/mech_interact_abci:0.1.0:bafybeif3cnuns2i7xh2wyrpj45xdmkjkgqpy72ox66tijtbf5okn2l2iiu
-- valory/chatui_abci:0.1.0:bafybeicsqursfh4svzecimnfbv77jn4vq3cc42e7bislzxfbqigos4ulgm
-- valory/agent_performance_summary_abci:0.1.0:bafybeiaguxjexjxth4e3zajfxvqjprjhn4r6njgq6ddmhkql3uhqdsttp4
+- valory/chatui_abci:0.1.0:bafybeihb6rppz3elbvvdhmnrocxnhxfjf6voi3iwqt463jrbmndhsrq7ue
+- valory/agent_performance_summary_abci:0.1.0:bafybeifvytetme5ep3n4dmbx4g63yc36x4hs6wbiteut5yepr27lapmabi
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe

@@ -27,6 +27,9 @@ class RequestType(Enum):
     """Enum for supported Polymarket request types."""
 
     PLACE_BET = "place_bet"
+    # Prices a buy without placing it, so the top-up can fund the taker fee on
+    # top of the bet instead of letting the SDK carve it out of the bet.
+    QUOTE_BUY = "quote_buy"
     FETCH_MARKETS = "fetch_markets"
     FETCH_MARKET = "fetch_market"
     GET_POSITIONS = "get_positions"

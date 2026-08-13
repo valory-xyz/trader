@@ -19,6 +19,7 @@
 
 """This module contains the Polymarket (CLOB v2) DepositWallet top-up behaviour."""
 
+import math
 from typing import Any, Generator, Optional
 
 from eth_utils import to_checksum_address  # type: ignore[import-not-found]
@@ -37,6 +38,19 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_top_up import 
 )
 
 ERC20_TRANSFER_SELECTOR = "0xa9059cbb"  # keccak("transfer(address,uint256)")[:4]
+# pUSD base units per whole token. Spelled out rather than taken from
+# ``get_token_precision()`` so it stays the exact inverse of ``usdc_to_native``,
+# which hardcodes the same 6 decimals two lines below — deriving one of the pair
+# and hardcoding the other is how a scale bug gets in.
+PUSD_UNITS = 10**6
+# Cushion on the measured taker fee. The fee is priced here, a round and a full
+# on-chain settlement before the order is signed, and it moves with the price
+# (≈0.5%–3.7% across the price range), so the figure quoted now understates the
+# one charged then whenever the price drifts toward the middle of the book.
+# Reserving half as much again absorbs that; whatever the buy leaves behind is
+# swept back to the Safe at the start of the next cycle, so over-funding the DW
+# costs nothing but a little idle pUSD.
+FEE_HEADROOM_RATIO = 1.5
 
 
 class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
@@ -44,9 +58,10 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
 
     Resolves the DepositWallet (provisioning it through the relayer proxy when
     absent), opportunistically sweeps any pUSD stranded in the DW from a prior
-    cycle, then builds a Safe multisend transferring the buy amount of pUSD to
-    the DW and routes it through tx settlement. When the buy amount is
-    non-positive the round short-circuits to ``INSUFFICIENT_BALANCE``.
+    cycle, then builds a Safe multisend transferring the buy amount of pUSD —
+    plus the quoted CLOB taker fee, which the SDK would otherwise carve out of
+    the bet — to the DW, and routes it through tx settlement. When the buy
+    amount is non-positive the round short-circuits to ``INSUFFICIENT_BALANCE``.
     """
 
     matching_round = PolymarketTopUpRound
@@ -114,13 +129,15 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
 
+        top_up_amount = yield from self._top_up_amount(buy_amount)
+
         # Guard against an under-funded Safe: a pUSD transfer for more than the
         # Safe holds would revert on-chain and burn a full settlement cycle.
         yield from self.wait_for_condition_with_sleep(self.check_balance)
-        if buy_amount > self.token_balance:
+        if top_up_amount > self.token_balance:
             self.context.logger.warning(
-                f"Safe pUSD balance ({self.token_balance}) below the buy amount "
-                f"({buy_amount}); deferring top-up."
+                f"Safe pUSD balance ({self.token_balance}) below the top-up amount "
+                f"({top_up_amount}); deferring top-up."
             )
             self._set_payload(Event.INSUFFICIENT_BALANCE, None)
             return
@@ -129,7 +146,9 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
         self.multisend_batches.append(
             MultisendBatch(
                 to=self.params.polymarket_collateral_address,
-                data=HexBytes(self._build_erc20_transfer_data(dw_address, buy_amount)),
+                data=HexBytes(
+                    self._build_erc20_transfer_data(dw_address, top_up_amount)
+                ),
                 value=0,
             )
         )
@@ -143,6 +162,83 @@ class PolymarketTopUpBehaviour(PolymarketDepositWalletBehaviour):
             return
 
         self._set_payload(Event.PREPARE_TX, self.tx_hex)
+
+    def _sampled_outcome_token_id(self) -> Optional[str]:
+        """The CTF token id the imminent buy will target, if it can be resolved.
+
+        :return: the token id, or ``None`` when no bet/outcome is resolvable.
+        """
+        try:
+            outcome = self.sampled_bet.get_outcome(self.outcome_index)
+            return (self.sampled_bet.outcome_token_ids or {})[outcome]
+        except Exception as e:  # noqa: BLE001 — best-effort; the fee is advisory
+            # Name the cause. Degrading here funds the bare bet, which is the
+            # state that gets the order shrunk under the venue minimum — so this
+            # warning is the only trace of why a later placement was refused.
+            self.context.logger.warning(
+                f"Could not resolve the sampled outcome token id ({e}); "
+                "topping up the bet without a fee reserve."
+            )
+            return None
+
+    def _top_up_amount(self, buy_amount: int) -> Generator[None, None, int]:
+        """Add the CLOB taker fee to the bet, so the order is not shrunk by it.
+
+        The SDK sizes a market buy against the funder's live balance and holds
+        the fee back out of it, so a DepositWallet funded with exactly the bet
+        always puts ``bet - fee`` on the book. That both buys fewer shares than
+        the strategy sized (kelly charges the fee on top of ``spend``, not out
+        of it) and, for a bet sitting on the venue's $1 floor, drops the order
+        under the minimum and gets it rejected outright. Funding the fee
+        alongside the bet makes the order equal the bet.
+
+        Best-effort: an unreadable book or fee schedule falls back to the bare
+        bet, leaving the connection's own preflight to catch what that costs.
+
+        :param buy_amount: the bet, in pUSD base units.
+        :yield: framework yields around the quote request.
+        :return: the pUSD base units to transfer Safe→DW.
+        """
+        token_id = self._sampled_outcome_token_id()
+        if token_id is None:
+            return buy_amount
+
+        quote = yield from self._send_polymarket_request(
+            RequestType.QUOTE_BUY,
+            {
+                "token_id": token_id,
+                "amount": self.usdc_to_native(buy_amount),
+                "funder": self.dw_address,
+            },
+        )
+        fee = (quote or {}).get("fee_usd")
+        if fee is None:
+            # Either the request failed or the book/fee schedule was unreadable.
+            # Distinguished from a genuine zero fee because this one degrades to
+            # the pre-fix behaviour — the bet gets funded bare, the SDK shrinks
+            # the order by the fee, and a floor-sized bet is then refused. Say so
+            # here or the refusal looks unexplained a round later.
+            self.context.logger.warning(
+                "No CLOB fee quote available; topping up the bare bet. The order "
+                "may be shrunk by the taker fee and refused if it is near the "
+                "venue minimum."
+            )
+            return buy_amount
+        if fee <= 0:
+            # A market that charges no taker fee: nothing to reserve. The
+            # negative arm is unreachable with a well-behaved SDK (the fee is
+            # measured as what it declines to spend, which cannot exceed the
+            # amount), and guards a value that crosses a process boundary.
+            return buy_amount
+
+        # Round the reserve up: truncating it would leave the order a base unit
+        # short of the bet, which is the whole failure this reserve exists for.
+        reserve = math.ceil(fee * FEE_HEADROOM_RATIO * PUSD_UNITS)
+        self.context.logger.info(
+            f"Reserving {reserve} pUSD units for the CLOB taker fee "
+            f"(quoted {fee}) on top of the {buy_amount} bet."
+        )
+        return buy_amount + reserve
 
     def _set_payload(self, event: Event, tx_hash: Optional[str]) -> None:
         """Build the top-up payload carrying the onward event.
