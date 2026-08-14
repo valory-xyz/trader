@@ -120,6 +120,17 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
             self.context.logger.warning("No response from the Polymarket connection.")
             return None
 
+        # _request_with_retries can return a non-dict payload (JSON null, a
+        # list, or a string from a misbehaving edge proxy). Calling
+        # .get() on it would raise AttributeError and bubble up to
+        # fetch_markets' blanket except Exception, dropping the whole
+        # category. Degrade gracefully instead. (See issue #970.)
+        if response.error:
+            self.context.logger.warning(
+                f"Polymarket connection error: {response.error}"
+            )
+            return None
+
         response_json = json.loads(response.payload)
 
         return response_json
