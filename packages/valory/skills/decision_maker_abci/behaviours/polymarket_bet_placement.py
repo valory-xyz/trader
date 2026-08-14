@@ -76,10 +76,11 @@ class PolymarketBetPlacementBehaviour(
             return
 
         token_id = self.sampled_bet.outcome_token_ids[outcome]
-        # The Polymarket CLOB fee is reserved connection-side: the order is sized
-        # to ``amount - exact_fee`` against the DepositWallet's live pUSD balance
-        # using Polymarket's documented per-market fee (``GET /fee-rate`` + market
-        # fee exponent), so the full topped-up ``investment_amount`` is offered.
+        # The full ``investment_amount`` reaches the book. The SDK sizes a market
+        # buy against the funder's live balance and holds the CLOB taker fee back
+        # out of it, so the top-up round funds the DepositWallet with the bet
+        # *plus* the quoted fee (see ``PolymarketTopUpBehaviour._top_up_amount``);
+        # the fee then comes out of that reserve instead of out of the bet.
         amount = self.usdc_to_native(self.investment_amount)
 
         if self.investment_amount > self.token_balance:
@@ -154,9 +155,20 @@ class PolymarketBetPlacementBehaviour(
                 f"Bet placement: Status={status}, OrderID={order_id}, TX={tx_hashes}, IsDuplicate={is_duplicate_error}"
             )
 
-            # Handle no orderbook error
+            # Handle an order the CLOB will not take at this size. The amount is
+            # baked into the signature, so retrying cannot change it — and
+            # BET_PLACEMENT_FAILED loops straight back into this round, which is
+            # how one under-minimum order stalls the agent indefinitely. Leave
+            # via BET_PLACEMENT_IMPOSSIBLE instead and drop any cached order, so
+            # the market is blacklisted and sampling moves on.
             response_str = str(response)
-            if "No orderbook exists for the requested token id" in response_str:
+            if response.get("below_minimum"):
+                error_message = f"Failed to place bet: {error_msg}"
+                self.context.logger.error(error_message)
+                event = Event.BET_PLACEMENT_IMPOSSIBLE
+                updated_cache.pop(cache_key, None)
+            # Handle no orderbook error
+            elif "No orderbook exists for the requested token id" in response_str:
                 error_message = "Failed to place bet: No orderbook exists for the requested token id"
                 self.context.logger.error(error_message)
                 event = Event.BET_PLACEMENT_IMPOSSIBLE

@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
 - valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
-- valory/polymarket_client:0.1.0:bafybeid4eo37pka4tfhsjs6rb3knrugmokcvihust2dpfrgob56y77xd44
+- valory/polymarket_client:0.1.0:bafybeihm4rw5frtbbocbabsue64j5h3mzhdxnitgcitphx2cn5t5orpfaq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihaui6tcsa4fn7ei42onixizqsxnrrcvx3i23ea67evtutwlmyuqi
-- valory/market_manager_abci:0.1.0:bafybeig3ak2eoimxwuupybde4napyi2jlf7pxk35se2zclikete2ni5hti
-- valory/decision_maker_abci:0.1.0:bafybeibwcjeh4ckj2uhmlqp2ayfzrosgfawuhmgdcpigzlpwgvvwdcrwn4
-- valory/trader_abci:0.1.0:bafybeibpcxtruy4pomb7bqogrsnddnte2ja2mwgtpm3f3tirhvqiwrf7gi
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif7y24hccauwbmoxzxl7uakw32nwoqs477c3pjx7ltb6gpkrpxvjy
+- valory/market_manager_abci:0.1.0:bafybeiazpjmdxvgv6c5veug34qo4sensigshongo237fc4g3qcofii6jga
+- valory/decision_maker_abci:0.1.0:bafybeifciyyusg2y3iqze3plyn5wufefktn5nnk4ugbc7uprbh6aqmbqpe
+- valory/trader_abci:0.1.0:bafybeiclgf7vee3bl7yz2hqjaef34vgymwnojb6gqjwov2ec3iryxb7rzu
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeiagztbg3kcwhbvocmkulxbo4hthipkkhffwmgsrbknmjoqqv3amem
+- valory/check_stop_trading_abci:0.1.0:bafybeib2ggmfcfwduegbxf3mc2thylmu2j6hrve44jjnuwc2bbkvjcjrge
 - valory/mech_interact_abci:0.1.0:bafybeif3cnuns2i7xh2wyrpj45xdmkjkgqpy72ox66tijtbf5okn2l2iiu
-- valory/chatui_abci:0.1.0:bafybeicsqursfh4svzecimnfbv77jn4vq3cc42e7bislzxfbqigos4ulgm
-- valory/agent_performance_summary_abci:0.1.0:bafybeiaguxjexjxth4e3zajfxvqjprjhn4r6njgq6ddmhkql3uhqdsttp4
+- valory/chatui_abci:0.1.0:bafybeif74uzsizskpt5swy7ok5rt26jzktjkkwrmdieu65ragsaehl24na
+- valory/agent_performance_summary_abci:0.1.0:bafybeido5icpf3zunfitffcmlnnynkrklcz3ycxvcfvgekkvf3f3wold6i
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
