@@ -1,0 +1,14 @@
+# Repo-level safety policy. Layered on top of tomte's shipped baseline
+# (see tomte/configs/safety-policy.yml). Add per-repo ignores here with
+# a specific PyUp ID, a reason, and an expiry so entries don't rot.
+
+security:
+  ignore-vulnerabilities:
+    # setuptools <83.0.0 (CVE-2026-59890, PyUp SFTY-20260721-58460).
+    # Pulled in transitively by tomte[safety]; not consumed by the
+    # trader's runtime image. Not pinnable from this repo — remove
+    # once tomte bumps the extra past the fix.
+    58460:
+      reason: "setuptools transitive of tomte[safety]; awaiting upstream bump"
+      expires: "2026-12-31"
+  continue-on-vulnerability-error: false
