@@ -18,10 +18,10 @@ fingerprint:
   graph_tooling/mech_analytics_client.py: bafybeiget5yvxu62hsyvgg72pv7kkat6brbct7g54hgsgvis2afru6opmq
   graph_tooling/polymarket_predictions_helper.py: bafybeichscju77wvmdbz5cf46pa2yefgcgmfbq7dbk3ky4evugp67v76ai
   graph_tooling/predictions_helper.py: bafybeibosbqn6lhpsdgifmhlmyxurooouaxmg44l3rp7f2odks5bfdvyw4
-  graph_tooling/queries.py: bafybeifywkkxfmco3baqjuc5w6fkj2cgfs3znpgoowxdjnrhugaxeevapu
-  graph_tooling/requests.py: bafybeib4w6ecembt53ukfltwhyetqopomx5luo537deb5am2za5ici7mwu
-  handlers.py: bafybeif3pnrfdyhipmizob7zsn65f7qlf6iwuy3fi7s6ku2dvqyu4mr4am
-  models.py: bafybeigfvf5d5ab56xasomwfwascfuxncudx5bv3we4iijdjhnci7w73pe
+  graph_tooling/queries.py: bafybeihopxhz2w2g6s3ovv4adsn2v5s2fjdcjotzoac3ulh56bpxwwrtfm
+  graph_tooling/requests.py: bafybeielq7n6bo3dedbyv7e2qavm4rimafhw42ku7jlp3ezahzrelc4hsi
+  handlers.py: bafybeibs45qlzj4t4hpv4etxui7gmc25ubcp7cjnhygkwwbnju6ag2nmmq
+  models.py: bafybeihkon6khdii5nvcia4wealbxdni4mplmpkfs3rzyx62gplmklodqi
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -34,11 +34,11 @@ fingerprint:
   tests/graph_tooling/test_mech_analytics_flag_branching.py: bafybeifgbyshtaawyvdr4q5zfb2liagrgdk7yssmvdczyjwau7hildqm6e
   tests/graph_tooling/test_polymarket_predictions_helper.py: bafybeiepfsy2cnv2kpimre33mx7w6spvwdbzfhau6etuelof6g4n3ybbgm
   tests/graph_tooling/test_predictions_helper.py: bafybeidkmubpjfnxys74bjaqd7ptz4gc6ejfwrrmiodmdjwdovdclvdqhu
-  tests/graph_tooling/test_queries.py: bafybeih4ybhkq5seb34eqgakfpfrtlijxju3w52cjwvlrbbx2afgai4jm4
-  tests/graph_tooling/test_requests.py: bafybeig5nc5ijgvy6kiay3yf5gwjd6mpi5fnhkmzqya37ruglkso2n77fq
-  tests/test_behaviours.py: bafybeih6kcq5sex3hiy4v7keyqcka3u2x4sj4vuueidyepjgplhrhhft2e
+  tests/graph_tooling/test_queries.py: bafybeihrja7ai3i3nombba3s7ynyuadwawkgxmoa4geefa76l2j77gpw4y
+  tests/graph_tooling/test_requests.py: bafybeidkqyfsqqedbdxfggundmxslvzymtma6dy6uosnk3yrpuuzdezbee
+  tests/test_behaviours.py: bafybeicchvl6xuwkp3nnvhjxtzfjmdbullcw6pmkamo2csnwh4vf7wdwbq
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
-  tests/test_handlers.py: bafybeigybc6zkku7ldtawjcjjdkndiz3alvckxbeyjj23rsmny5ql7leku
+  tests/test_handlers.py: bafybeibilyqeduvyufpd6kv7mwwooiuqudhosvmcql6hxqpv4lb3u7smtu
   tests/test_models.py: bafybeicoimddbyoh3gkddxdnwknp5etbib25sgpguarode6y4iohuu63oe
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
@@ -216,13 +216,13 @@ models:
         Content-Type: application/json
       method: POST
       parameters: {}
-      response_key: data:traderAgent
+      response_key: data:traderAgentById
       response_type: dict
       error_key: errors
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
@@ -237,8 +237,23 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
     class_name: PolymarketBetsSubgraph
+  polymarket_questions_subgraph:
+    args:
+      api_id: polymarket_questions
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:questions
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
+    class_name: PolymarketQuestionsSubgraph
   polygon_mech_subgraph:
     args:
       api_id: polygon_mech

@@ -1542,6 +1542,35 @@ class TestMatchMechRequestsToDays:
         assert unplaced == 0
         assert fees_by_day == {day1: 1}
 
+    def test_polymarket_hydrated_shape_uses_bet_timestamps(self) -> None:
+        """The shape _hydrate_profit_participants emits drives the bet-level bisect."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        day1 = SECONDS_PER_DAY * 100
+        bet_ts = day1 + 5000
+        stats = [
+            {
+                "date": str(day1),
+                "profitParticipants": [
+                    {
+                        "id": "0xaaa",
+                        "questionId": "0xq",
+                        "metadata": {"title": "PM Market"},
+                        "bets": [{"blockTimestamp": str(bet_ts)}],
+                    }
+                ],
+            },
+        ]
+        # only reachable by matching against bet_ts; day_ts alone would miss it
+        lookup = {"PM Market": [bet_ts - 10]}
+        with _patch_context(b, ctx, synced_data)[0]:
+            fees_by_day, placed, unplaced = b._match_mech_requests_to_days(
+                stats, lookup
+            )
+        assert placed == 1
+        assert unplaced == 0
+        assert fees_by_day == {day1: 1}
+
     def test_missing_date_skipped(self) -> None:
         """Stats with missing date are skipped."""
         b = _make_fetch_behaviour()

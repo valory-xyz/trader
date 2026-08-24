@@ -48,6 +48,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
     GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
+    GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
@@ -65,6 +66,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
+TRADER_AGENT_RESPONSE_KEYS = ("traderAgent", "traderAgentById")
+
 OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"  # nosec
 DECIMAL_SCALING_FACTOR = 10**18
 USD_PRICE_FIELD = "usd"
@@ -72,6 +75,20 @@ USD_PRICE_FIELD = "usd"
 QUESTION_DATA_SEPARATOR = "\u241f"
 
 _MAX_SLEEP_TIME = 300.0  # 5 minutes; prevents OverflowError in timedelta
+
+
+def _unwrap_trader_agent(result: Any) -> Any:
+    """Unwrap a single-agent subgraph response, whichever field name it used.
+
+    :param result: the processed subgraph response.
+    :return: the trader agent payload, or ``result`` unchanged when it is
+        not a wrapped single-agent response.
+    """
+    if result and isinstance(result, dict):
+        for key in TRADER_AGENT_RESPONSE_KEYS:
+            if key in result:
+                return result.get(key)
+    return result
 
 
 def to_content(query: str, variables: Dict) -> bytes:
@@ -450,9 +467,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context="trader_agent",
             )
 
-        if result and isinstance(result, dict) and "traderAgent" in result:
-            return result.get("traderAgent")
-        return result
+        return _unwrap_trader_agent(result)
 
     def _fetch_staking_service(
         self, service_id: str
@@ -515,9 +530,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             subgraph=self.context.olas_agents_subgraph,
             res_context="trader_agent_bets",
         )
-        if result and isinstance(result, dict) and "traderAgent" in result:
-            return result.get("traderAgent")
-        return result
+        return _unwrap_trader_agent(result)
 
     def _fetch_agent_details(
         self, agent_safe_address: str
@@ -537,9 +550,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 subgraph=self.context.olas_agents_subgraph,
                 res_context="agent_details",
             )
-        if result and isinstance(result, dict) and "traderAgent" in result:
-            return result.get("traderAgent")
-        return result
+        return _unwrap_trader_agent(result)
 
     def _fetch_trader_agent_performance(
         self, agent_safe_address: str, first: int = 200, skip: int = 0
@@ -560,9 +571,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 res_context="trader_agent_performance",
             )
 
-        if result and isinstance(result, dict) and "traderAgent" in result:
-            return result.get("traderAgent")
-        return result
+        return _unwrap_trader_agent(result)
 
     def _fetch_pending_bets(
         self, agent_safe_address: str
@@ -574,9 +583,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             subgraph=self.context.olas_agents_subgraph,
             res_context="pending_bets",
         )
-        if result and isinstance(result, dict) and "traderAgent" in result:
-            return result.get("traderAgent")
-        return result
+        return _unwrap_trader_agent(result)
 
     def _fetch_all_resolved_markets(
         self, timestamp_gt: int, timestamp_lte: Optional[int] = None
@@ -707,9 +714,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if not result:
                 break
 
-            # Unwrap traderAgent if present
-            if isinstance(result, dict) and "traderAgent" in result:
-                result = result.get("traderAgent") or {}
+            result = _unwrap_trader_agent(result) or {}
 
             # Get dailyProfitStatistics from the result
             if not result.get("dailyProfitStatistics"):
@@ -727,7 +732,85 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
 
             skip += batch_size
 
+        if self.params.is_running_on_polymarket:
+            hydrated = yield from self._hydrate_profit_participants(
+                all_statistics, agent_safe_address.lower()
+            )
+            if not hydrated:
+                return None
+
         return all_statistics
+
+    def _hydrate_profit_participants(
+        self, statistics: List[Dict], agent_safe_address: str
+    ) -> Generator[None, None, bool]:
+        """Replace Polymarket ``profitParticipants`` conditionIds with question objects.
+
+        :param statistics: daily profit statistics, mutated in place.
+        :param agent_safe_address: the agent whose bets the questions carry.
+        :return: whether every batch of questions was fetched successfully.
+        :yield: framework yields for each batched request.
+        """
+        bettor_id = agent_safe_address.lower()
+        condition_ids = {
+            participant
+            for stat in statistics
+            for participant in stat.get("profitParticipants") or []
+            if isinstance(participant, str)
+        }
+        if not condition_ids:
+            return True
+
+        ordered_ids = sorted(condition_ids)
+        questions_by_id: Dict[str, Dict] = {}
+        for start in range(0, len(ordered_ids), QUERY_BATCH_SIZE):
+            batch = ordered_ids[start : start + QUERY_BATCH_SIZE]
+            result = yield from self._fetch_from_subgraph(
+                query=GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
+                variables={"ids": batch, "bettorId": bettor_id},
+                subgraph=self.context.polymarket_questions_subgraph,
+                res_context=(
+                    f"polymarket_profit_questions_batch_"
+                    f"{start // QUERY_BATCH_SIZE + 1}"
+                ),
+            )
+            # Partial hydration bakes a wrong mech-fee series into the history.
+            if result is None:
+                self.context.logger.error(
+                    "profit participant hydration failed; "
+                    "aborting so the rebuild can retry"
+                )
+                return False
+            for question in result or []:
+                question_id = question.get("id")
+                if question_id:
+                    questions_by_id[question_id] = question
+
+        without_bets = sum(
+            1 for question in questions_by_id.values() if not question.get("bets")
+        )
+        if without_bets:
+            self.context.logger.warning(
+                f"{without_bets}/{len(questions_by_id)} resolved profit participants "
+                f"carry no bets for {bettor_id}; day-matching falls back to "
+                f"day-level timestamps for them"
+            )
+
+        unresolved = len(ordered_ids) - len(questions_by_id)
+        if unresolved:
+            self.context.logger.warning(
+                f"{unresolved}/{len(ordered_ids)} profit participants had no "
+                f"matching question; their mech requests will be attributed "
+                f"to the request's own day"
+            )
+
+        for stat in statistics:
+            stat["profitParticipants"] = [
+                questions_by_id[participant]
+                for participant in stat.get("profitParticipants") or []
+                if participant in questions_by_id
+            ]
+        return True
 
     def _fetch_all_mech_requests(
         self, agent_safe_address: str
@@ -907,6 +990,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             "polymarket_agents_subgraph",
             "open_markets_subgraph",
             "polymarket_bets_subgraph",
+            "polymarket_questions_subgraph",
             "gnosis_staking_subgraph",
             "polygon_staking_subgraph",
         )

@@ -657,5 +657,9 @@ class PolymarketBetsSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Polymarket bets subgraph specifications."""
 
 
+class PolymarketQuestionsSubgraph(Subgraph):
+    """A model that wraps ApiSpecs for the Polymarket questions subgraph."""
+
+
 class PolygonMechSubgraph(Subgraph):
     """A model that wraps ApiSpecs for the Polygon Mech's subgraph specifications."""
