@@ -223,11 +223,7 @@ POLYMARKET_SQUID_QUERIES = {
 def test_polymarket_queries_use_openreader_dialect(
     constant_name: str, query_value: str
 ) -> None:
-    """Polymarket queries must not carry The Graph-only syntax.
-
-    Variable *names* stay ``$first``/``$skip`` so call sites are untouched;
-    only their use in argument position has to move to ``limit``/``offset``.
-    """
+    """Polymarket queries must not carry The Graph-only syntax."""
     for token in ("first: $", "skip: $", "orderDirection", "traderAgent_:", ": ID!"):
         assert token not in query_value, f"{constant_name} still uses '{token}'"
 

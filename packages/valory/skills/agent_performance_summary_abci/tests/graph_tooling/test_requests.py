@@ -176,13 +176,14 @@ def _return_gen(value: Any) -> Any:
 
 def _recording_gen(sink: List[Any]) -> Any:
     """Create a generator factory that records each call's ``content`` kwarg."""
+    response: Any = MagicMock()
 
     # type: ignore[no-untyped-def]
     def _gen(*args: Any, **kwargs: Any) -> Generator:
         """Inner generator recording the request body."""
         sink.append(kwargs.get("content"))
         yield
-        return MagicMock()
+        return response
 
     return _gen
 
@@ -2435,7 +2436,7 @@ class TestUnwrapTraderAgent:
 
     def test_returns_unwrapped_payload_untouched(self) -> None:
         """An already-unwrapped payload passes straight through."""
-        payload = {"dailyProfitStatistics": []}
+        payload: Dict[str, Any] = {"dailyProfitStatistics": []}
         assert _unwrap_trader_agent(payload) is payload
 
     def test_returns_falsy_untouched(self) -> None:
@@ -2475,7 +2476,7 @@ class TestHydrateProfitParticipants:
         mock_sg.process_response.assert_not_called()
 
     def test_replaces_condition_ids_with_question_objects(self) -> None:
-        """conditionId strings are spliced out for their question objects."""
+        """Each conditionId string is spliced out for its question object."""
         b = _make_behaviour()
         question = {
             "id": "0xaaa",
@@ -2615,12 +2616,7 @@ class TestFetchDailyProfitStatisticsHydration:
 
     @staticmethod
     def _behaviour(pages: list, questions: Any) -> _ConcreteAPTBehaviour:  # type: ignore[type-arg]
-        """Build a behaviour serving *pages* of daily stats, then *questions*.
-
-        ``response_key: data:traderAgentById`` means ``process_response``
-        hands back the agent object itself, so a page is the bare
-        ``{"dailyProfitStatistics": [...]}`` dict rather than a wrapper.
-        """
+        """Build a behaviour serving *pages* of daily stats, then *questions*."""
         b = _make_behaviour()
         b.context.params.is_running_on_polymarket = True
 
@@ -2646,7 +2642,7 @@ class TestFetchDailyProfitStatisticsHydration:
         return b
 
     def test_page_is_hydrated(self) -> None:
-        """conditionIds on a Polymarket page are hydrated before returning."""
+        """Every conditionId on a Polymarket page is hydrated before returning."""
         question = {"id": "0xaaa", "metadata": {"title": "Will it rain?"}}
         stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
         b = self._behaviour([stats], [question])
