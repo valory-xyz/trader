@@ -406,11 +406,21 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_adjusted_funds_status(self) -> FundRequirements:
         """
-        Adjust fund status based on chain-specific token equivalence:
+        Compute the fund status exposed to Pearl.
 
-        - Gnosis (Omen): treat wxDAI as xDAI (1:1, same decimals)
-        - Polygon (Polymarket): treat USDC as POL by converting via exchange rate
-          and fold USDC.e balance into the pUSD bucket (v2 primary collateral)
+        Chain-specific behaviour:
+
+        - Gnosis (Omen): no wxDAI-as-xDAI smoothing. Mech deposits (offchain
+          BalanceTracker and on-chain mech request price) are msg.value paths
+          that need real native xDAI from the Safe, so counting wxDAI as xDAI
+          would hide the shortfall and block Pearl's native top-up.
+        - Polygon (Polymarket): USDC is folded into POL via CoinGecko rate.
+          The Safe's real spending on Polymarket is USDC; no significant
+          msg.value path consumes native POL from the Safe (Safe
+          ``execTransaction`` gas is paid by the submitting EOA), so
+          smoothing avoids spurious POL top-up asks. USDC.e is also folded
+          into pUSD via :meth:`_merge_usdc_e_into_pusd` (v2 trading
+          collateral).
 
         :return: The adjusted fund requirements.
         """
@@ -424,6 +434,7 @@ class HttpHandler(BaseHttpHandler):
 
             native_status = safe_balances.tokens[chain_config["native_token_address"]]
 
+            adjustment_balance = 0
             if self.params.is_running_on_polymarket:
                 self._merge_usdc_e_into_pusd(safe_balances, chain_config)
                 # On Polygon: USDC balance needs to be converted to POL equivalent
@@ -480,19 +491,6 @@ class HttpHandler(BaseHttpHandler):
                     return funds_status
 
                 adjustment_balance = pol_equivalent
-            else:
-                # On Gnosis: wxDAI balance considered as xDAI (both same decimals, 1:1 rate)
-                wrapped_native_status = safe_balances.tokens[
-                    chain_config["wrapped_native_address"]
-                ]
-                if wrapped_native_status.balance is None:
-                    self.context.logger.warning(
-                        "Wrapped-native balance unknown (sub-call reverted); "
-                        "skipping wxDAI->xDAI consolidation and clearing native deficit."
-                    )
-                    native_status.deficit = None
-                    return funds_status
-                adjustment_balance = int(wrapped_native_status.balance)
 
         except KeyError:
             self.context.logger.error(

@@ -777,8 +777,14 @@ class TestGetAdjustedFundsStatus:
         handler = _make_handler(is_polymarket=is_polymarket)
         return handler
 
-    def test_gnosis_adjustment(self) -> None:
-        """Test gnosis path: wraps wxDAI balance into native."""
+    def test_gnosis_deficit_ignores_wxdai_when_above_threshold(self) -> None:
+        """Gnosis: wxDAI in the Safe is not counted toward the native deficit.
+
+        Mech deposits and on-chain mech request prices are msg.value paths
+        that need real xDAI. Even when the Safe holds enough wxDAI to make
+        combined "spending power" look healthy, the native deficit must be
+        computed against native balance only so Pearl still tops up xDAI.
+        """
         handler = self._setup_handler(is_polymarket=False)
 
         fund_status = self._make_funds_status(
@@ -802,25 +808,35 @@ class TestGetAdjustedFundsStatus:
         ) as mock_sd:
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
-            # actual_considered = 100 + 600 = 700, threshold=500, 700 >= 500 so deficit=0
-            native_token = (
-                result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
-            )
-            assert native_token.deficit == 0
 
-    def test_gnosis_adjustment_with_deficit(self) -> None:
-        """Test gnosis path with deficit remaining."""
+        native_token = (
+            result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        # native_balance=100, threshold=500 -> deficit = topup - balance = 900.
+        # wxDAI balance of 600 must NOT be added in.
+        assert native_token.deficit == 900
+
+    def test_gnosis_reports_full_topup_when_safe_is_dry_but_wxdai_rich(self) -> None:
+        """Gnosis: 0 native + large wxDAI must still surface the real xDAI deficit.
+
+        Reproduces the failure mode where a Safe accumulated ~30 wxDAI from
+        Omen settlements while native drained to zero, and every offchain
+        mech request was failing with OFFCHAIN_ALL_FAILED because
+        BalanceTracker(fixed_price_native) rejected the msg.value=0 deposit.
+        Pearl saw deficit=0 (wxDAI smoothed as xDAI), never topped up.
+        Deficit must equal the full topup amount here.
+        """
         handler = self._setup_handler(is_polymarket=False)
 
         fund_status = self._make_funds_status(
             chain_name="gnosis",
             safe_address="0xSafe",
             native_token_addr=GNOSIS_NATIVE_TOKEN_ADDRESS,
-            native_balance=10,
-            native_threshold=500,
-            native_topup=1000,
+            native_balance=0,
+            native_threshold=1_000_000_000_000_000_000,  # 1 xDAI
+            native_topup=10_000_000_000_000_000_000,  # 10 xDAI
             wrapped_addr=GNOSIS_WRAPPED_NATIVE_ADDRESS,
-            wrapped_balance=20,
+            wrapped_balance=29_320_000_000_000_000_000,  # 29.32 wxDAI
         )
 
         mock_synced = MagicMock()
@@ -833,12 +849,42 @@ class TestGetAdjustedFundsStatus:
         ) as mock_sd:
             mock_sd.return_value = mock_synced
             result = handler._get_adjusted_funds_status()
-            native_token = (
-                result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
-            )
-            # actual_considered = 10 + 20 = 30, threshold=500, topup=1000
-            # deficit = max(0, 1000 - 30) = 970
-            assert native_token.deficit == 970
+
+        native_token = (
+            result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        assert native_token.deficit == 10_000_000_000_000_000_000
+
+    def test_gnosis_no_deficit_when_native_above_threshold(self) -> None:
+        """Gnosis: native at/above threshold -> deficit is 0, wxDAI is irrelevant."""
+        handler = self._setup_handler(is_polymarket=False)
+
+        fund_status = self._make_funds_status(
+            chain_name="gnosis",
+            safe_address="0xSafe",
+            native_token_addr=GNOSIS_NATIVE_TOKEN_ADDRESS,
+            native_balance=800,
+            native_threshold=500,
+            native_topup=1000,
+            wrapped_addr=GNOSIS_WRAPPED_NATIVE_ADDRESS,
+            wrapped_balance=0,
+        )
+
+        mock_synced = MagicMock()
+        mock_synced.safe_contract_address = "0xSafe"
+        mock_fn = MagicMock(return_value=fund_status)
+        handler.context.shared_state.__getitem__ = MagicMock(return_value=mock_fn)
+
+        with patch.object(
+            type(handler), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = mock_synced
+            result = handler._get_adjusted_funds_status()
+
+        native_token = (
+            result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
+        )
+        assert native_token.deficit == 0
 
     def test_polygon_adjustment_success(self) -> None:
         """Test polygon path: converts USDC to POL equivalent."""
@@ -1178,8 +1224,13 @@ class TestGetAdjustedFundsStatus:
 
         handler.context.logger.warning.assert_not_called()
 
-    def test_gnosis_skips_adjustment_when_wxdai_balance_unknown(self) -> None:
-        """Skip wxDAI->xDAI consolidation when wxDAI balance is unknown; clear native deficit."""
+    def test_gnosis_ignores_wxdai_balance_unknown(self) -> None:
+        """Gnosis: wxDAI balance being unknown must not affect the native deficit.
+
+        The Gnosis path no longer reads wxDAI at all; the deficit is
+        computed from native balance only. An unknown wxDAI sub-call is
+        therefore a no-op for the native deficit.
+        """
         handler = self._setup_handler(is_polymarket=False)
 
         fund_status = self._make_funds_status(
@@ -1199,10 +1250,6 @@ class TestGetAdjustedFundsStatus:
         )
         wrapped_token.balance = None
         wrapped_token.deficit = None
-        native_token_in = (
-            fund_status["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
-        )
-        native_token_in.deficit = 990
 
         mock_synced = MagicMock()
         mock_synced.safe_contract_address = "0xSafe"
@@ -1218,8 +1265,8 @@ class TestGetAdjustedFundsStatus:
         native_token = (
             result["gnosis"].accounts["0xSafe"].tokens[GNOSIS_NATIVE_TOKEN_ADDRESS]
         )
-        assert native_token.deficit is None
-        handler.context.logger.warning.assert_called()
+        # deficit = topup - native_balance = 1000 - 10 = 990
+        assert native_token.deficit == 990
 
     def test_gnosis_skips_adjustment_when_native_balance_unknown(self) -> None:
         """Native balance unknown -> leave deficit untouched, no spurious top-up."""
