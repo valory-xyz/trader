@@ -133,7 +133,7 @@ jobs:
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
             -x 'testenv:safety.commands_pre+=python -m ensurepip --upgrade
                 python -m pip install --upgrade pip>=26.1.2' \
-            -x 'testenv:safety.commands=safety check --policy-file {toxinidir}/.safety-policy.yml'
+            -x 'testenv:safety.commands=safety check --policy-file .safety-policy.yml'
       - name: Bandit scan
         # ``!cancelled()`` runs bandit whether the safety scan above
         # succeeded or failed, but skips it when the run itself is
