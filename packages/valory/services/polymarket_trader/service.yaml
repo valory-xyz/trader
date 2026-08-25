@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeia22obmukxyxguvlsegbd5tfip7mmttau3fv25tqmeqip6i3djmtu
+agent: valory/trader:0.1.0:bafybeiemasi3f3r4iarszlkbahc3gaikcwmsh4k7k7odpew4eq72ick5tm
 number_of_agents: 1
 deployment:
   agent:
@@ -163,8 +163,6 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x5C50ebc17d002A4484585C8fbf62f51953493c0B}
-      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
-      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       pol_threshold_for_swap: ${POL_THRESHOLD_FOR_SWAP:int:2000000000000000000}
@@ -328,6 +326,14 @@ models:
       error_type: ${POLYGON_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${POLYGON_MECH_SUBGRAPH_RETRIES:int:5}
       url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon}
+---
+public_id: valory/agent_performance_summary_abci:0.1.0
+type: skill
+models:
+  params:
+    args:
+      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
+      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
 ---
 public_id: valory/ledger:0.19.0
 type: connection
