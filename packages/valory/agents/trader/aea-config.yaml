@@ -282,6 +282,8 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
+      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
+      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
       polymarket_collateral_address: ${POLYMARKET_COLLATERAL_ADDRESS:str:0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB}
@@ -521,14 +523,6 @@ models:
       error_type: ${str:dict}
       retries: ${int:5}
       url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon
----
-public_id: valory/agent_performance_summary_abci:0.1.0
-type: skill
-models:
-  params:
-    args:
-      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
-      use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
