@@ -319,7 +319,7 @@ query GetPolymarketTraderAgentPerformance($id: String!) {
 GET_POLYMARKET_PREDICTION_HISTORY_QUERY = """
 query GetPolymarketPredictionHistory($id: String!, $first: Int!, $skip: Int!) {
   marketParticipants(
-    orderBy: blockTimestamp_DESC
+    orderBy: [blockTimestamp_DESC, id_DESC]
     where: {traderAgent: {id_eq: $id}}
     limit: $first
     offset: $skip
@@ -356,7 +356,7 @@ query GetPolymarketTraderAgentBets($id: String!) {
   marketParticipants(
     where: {traderAgent: {id_eq: $id}}
     limit: 1000
-    orderBy: blockTimestamp_DESC
+    orderBy: [blockTimestamp_DESC, id_DESC]
   ) {
     bets {
       id
