@@ -251,3 +251,29 @@ def test_polymarket_question_bets_are_bounded_and_scoped_to_the_bettor() -> None
         "bets(limit: 1000, where: { bettorId_eq: $bettorId })"
         in GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY
     )
+
+
+def polymarket_question_bets_fields() -> set:
+    """Return the field names selected inside the question ``bets`` block."""
+    block = GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY.split(
+        "bets(limit: 1000, where: { bettorId_eq: $bettorId }) {"
+    )[1].split("}")[0]
+    return set(block.split())
+
+
+def test_polymarket_question_bets_select_only_the_consumed_field() -> None:
+    """``_match_mech_requests_to_days`` reads only ``blockTimestamp`` per bet.
+
+    Pinned as an exact set so a field added inside the ``bets`` block widens the
+    hydrated shape here rather than silently in production.
+    """
+    assert polymarket_question_bets_fields() == {"blockTimestamp"}
+
+
+def test_polymarket_paginated_queries_break_ties_on_id() -> None:
+    """``blockTimestamp`` is not unique per agent and OpenReader adds no tiebreaker."""
+    for query in (
+        GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
+        GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
+    ):
+        assert "orderBy: [blockTimestamp_DESC, id_DESC]" in query

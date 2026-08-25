@@ -1252,10 +1252,10 @@ class TestHandleGetPredictions:
             mock_ok.assert_called_once()
 
     def test_subgraph_fallback_uses_polymarket_fetcher(self) -> None:
-        """The deep-pagination fallback routes to the Polymarket fetcher.
+        """The deep-pagination fallback must route to the Polymarket fetcher.
 
-        Without the platform branch this path built the Omen fetcher on a
-        Polymarket deployment, querying the wrong subgraph with an Omen query.
+        With ``is_running_on_polymarket=True`` the fallback builds the
+        Polymarket fetcher, never the Omen one.
         """
         handler = _make_handler(is_running_on_polymarket=True)
         http_msg = _make_http_msg(

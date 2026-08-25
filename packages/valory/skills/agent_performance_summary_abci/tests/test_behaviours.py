@@ -52,6 +52,9 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     WEI_IN_ETH,
     WXDAI_ADDRESS,
 )
+from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
+    GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
 )
@@ -102,6 +105,14 @@ def _return_gen(value: Any) -> Any:
         yield  # pragma: no cover
 
     return gen
+
+
+def _question_bets_fields() -> set:
+    """Field names the ``bets`` block of the hydration query actually selects."""
+    block = GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY.split(
+        "bets(limit: 1000, where: { bettorId_eq: $bettorId }) {"
+    )[1].split("}")[0]
+    return set(block.split())
 
 
 def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
@@ -1543,11 +1554,17 @@ class TestMatchMechRequestsToDays:
         assert fees_by_day == {day1: 1}
 
     def test_polymarket_hydrated_shape_uses_bet_timestamps(self) -> None:
-        """The shape _hydrate_profit_participants emits drives the bet-level bisect."""
+        """The shape _hydrate_profit_participants emits drives the bet-level bisect.
+
+        Each bet carries exactly the fields the hydration query selects, so
+        dropping ``blockTimestamp`` from that query fails here instead of
+        silently degrading day-matching to day-level timestamps.
+        """
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
         day1 = SECONDS_PER_DAY * 100
         bet_ts = day1 + 5000
+        bet = {field: str(bet_ts) for field in _question_bets_fields()}
         stats = [
             {
                 "date": str(day1),
@@ -1556,7 +1573,7 @@ class TestMatchMechRequestsToDays:
                         "id": "0xaaa",
                         "questionId": "0xq",
                         "metadata": {"title": "PM Market"},
-                        "bets": [{"blockTimestamp": str(bet_ts)}],
+                        "bets": [bet],
                     }
                 ],
             },

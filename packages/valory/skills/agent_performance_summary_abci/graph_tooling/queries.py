@@ -453,8 +453,6 @@ query GetPolymarketDailyProfitStatistics($agentId: String!, $startTimestamp: Big
 }
 """
 
-# `bets` must stay scoped: an unscoped Question.bets spans every tracked agent on
-# the market, letting other traders' bets consume this agent's mech requests.
 GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY = """
 query GetPolymarketQuestionsByIds($ids: [String!], $bettorId: String!) {
   questions(where: { id_in: $ids }) {

@@ -24,7 +24,17 @@ import json
 from abc import ABC
 from datetime import datetime, timezone
 from enum import Enum, auto
-from typing import Any, Dict, Generator, List, Optional, cast
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    TypedDict,
+    cast,
+)
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
@@ -66,7 +76,10 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 QUERY_BATCH_SIZE = 1000
 MAX_LOG_SIZE = 1000
 
-TRADER_AGENT_RESPONSE_KEYS = ("traderAgent", "traderAgentById")
+TRADER_AGENT_RESPONSE_KEYS: Tuple[Literal["traderAgent", "traderAgentById"], ...] = (
+    "traderAgent",
+    "traderAgentById",
+)
 
 OLAS_TOKEN_ADDRESS = "0xce11e14225575945b8e6dc0d4f2dd4c570f79d9f"  # nosec
 DECIMAL_SCALING_FACTOR = 10**18
@@ -77,17 +90,54 @@ QUESTION_DATA_SEPARATOR = "\u241f"
 _MAX_SLEEP_TIME = 300.0  # 5 minutes; prevents OverflowError in timedelta
 
 
-def _unwrap_trader_agent(result: Any) -> Any:
+class RawProfitStatistic(TypedDict, total=False):
+    """A Polymarket daily profit statistic as the squid returns it."""
+
+    id: str
+    date: int
+    totalBets: int
+    totalTraded: str
+    totalPayout: str
+    dailyProfit: str
+    profitParticipants: List[str]
+
+
+class HydratedProfitStatistic(TypedDict, total=False):
+    """A Polymarket daily profit statistic after profit-participant hydration."""
+
+    id: str
+    date: int
+    totalBets: int
+    totalTraded: str
+    totalPayout: str
+    dailyProfit: str
+    profitParticipants: List[Dict[str, Any]]
+
+
+def _unwrap_trader_agent(result: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Unwrap a single-agent subgraph response, whichever field name it used.
 
+    Two shapes arrive here and both are expected. Omen's ``olas_agents_subgraph``
+    sets ``response_key: data``, so the payload is still wrapped under
+    ``traderAgent`` and gets unwrapped by the loop. Polymarket's
+    ``polymarket_agents_subgraph`` sets ``response_key: data:traderAgentById``,
+    so ``ApiSpecs`` has already unwrapped it and the pass-through at the end is
+    the normal path — not a fallback. A field rename on either side surfaces
+    upstream instead of here: ``response_key`` extraction raises
+    ``UnexpectedResponseError``, which ``process_response`` logs and turns into
+    ``None`` before this function is reached.
+
+    ``traderAgent`` wins when a response somehow carries both keys, following
+    the declaration order of ``TRADER_AGENT_RESPONSE_KEYS``.
+
     :param result: the processed subgraph response.
-    :return: the trader agent payload, or ``result`` unchanged when it is
-        not a wrapped single-agent response.
+    :return: the trader agent payload, or ``result`` unchanged when it carries
+        neither key (already unwrapped).
     """
     if result and isinstance(result, dict):
         for key in TRADER_AGENT_RESPONSE_KEYS:
             if key in result:
-                return result.get(key)
+                return result[key]
     return result
 
 
@@ -742,9 +792,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return all_statistics
 
     def _hydrate_profit_participants(
-        self, statistics: List[Dict], agent_safe_address: str
+        self, statistics: List[Dict[str, Any]], agent_safe_address: str
     ) -> Generator[None, None, bool]:
         """Replace Polymarket ``profitParticipants`` conditionIds with question objects.
+
+        The squid returns ``profitParticipants`` as ``List[str]`` conditionIds
+        where the retired subgraph returned ``Question`` objects. Each statistic
+        is mutated in place from ``RawProfitStatistic`` to
+        ``HydratedProfitStatistic``, so the two ``behaviours.py`` consumers keep
+        the ``List[Dict]`` shape they already expect.
+
+        Each question's ``bets`` are scoped to ``agent_safe_address`` via
+        ``bettorId_eq``: ``Question.bets`` spans every tracked agent on the
+        market, and unscoped bets entered ``_match_mech_requests_to_days`` and
+        corrupted this agent's mech-fee-per-day attribution. The address is
+        lowercased here so the invariant does not depend on the caller.
 
         :param statistics: daily profit statistics, mutated in place.
         :param agent_safe_address: the agent whose bets the questions carry.
@@ -805,11 +867,18 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             )
 
         for stat in statistics:
-            stat["profitParticipants"] = [
-                questions_by_id[participant]
-                for participant in stat.get("profitParticipants") or []
-                if participant in questions_by_id
-            ]
+            hydrated: List[Dict[str, Any]] = []
+            raw = cast(RawProfitStatistic, stat)
+            participants: List[Any] = list(raw.get("profitParticipants") or [])
+            for participant in participants:
+                # A dict is already a question and is unhashable, so it must
+                # never reach the lookup: that raises ``TypeError`` and aborts
+                # the whole statistics fetch.
+                if isinstance(participant, dict):
+                    hydrated.append(participant)
+                elif participant in questions_by_id:
+                    hydrated.append(questions_by_id[participant])
+            cast(HydratedProfitStatistic, stat)["profitParticipants"] = hydrated
         return True
 
     def _fetch_all_mech_requests(

@@ -2445,8 +2445,8 @@ class TestUnwrapTraderAgent:
         assert _unwrap_trader_agent({}) == {}
 
     def test_non_dict_passes_through(self) -> None:
-        """Non-dict responses are handed back untouched, as the callers expect."""
-        assert _unwrap_trader_agent([1, 2]) == [1, 2]
+        """The runtime isinstance guard holds even though no caller can hit it."""
+        assert _unwrap_trader_agent([1, 2]) == [1, 2]  # type: ignore[arg-type]
 
 
 class TestHydrateProfitParticipants:
@@ -2590,6 +2590,25 @@ class TestHydrateProfitParticipants:
 
         assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
         mock_sg.process_response.assert_not_called()
+
+    def test_mixed_string_and_dict_participants(self) -> None:
+        """A partly pre-hydrated list splices the strings and keeps the dicts.
+
+        A dict is unhashable, so reaching the ``questions_by_id`` lookup with one
+        raises ``TypeError`` and aborts the whole statistics fetch.
+        """
+        b = _make_behaviour()
+        pre_hydrated = {"id": "0xbbb", "metadata": {"title": "b"}}
+        question = {
+            "id": "0xaaa",
+            "metadata": {"title": "a"},
+            "bets": [{"blockTimestamp": "1"}],
+        }
+        self._setup(b, [[question]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa", pre_hydrated]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert stats[0]["profitParticipants"] == [question, pre_hydrated]
 
     def test_batches_condition_ids_at_the_query_batch_size(self) -> None:
         """More ids than one batch are fetched over multiple requests."""
