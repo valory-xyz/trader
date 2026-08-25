@@ -129,7 +129,7 @@ jobs:
           tomte tox -e safety \
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
             -x 'testenv:safety.commands_pre+=python -m ensurepip --upgrade
-                python -m pip install --upgrade pip>=26.1.2'
+                python -m pip install --upgrade pip>=26.1.2 setuptools>=83.0.0'
       - name: Bandit scan
         # ``!cancelled()`` runs bandit whether the safety scan above
         # succeeded or failed, but skips it when the run itself is
