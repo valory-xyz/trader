@@ -532,7 +532,13 @@ class HttpHandler(BaseHttpHandler):
 
             # Fetch from subgraph
             self.context.logger.info(f"Querying subgraph (page {page})")
-            fetcher = PredictionsFetcher(self.context, self.context.logger)
+            fetcher: BasePredictionsFetcher
+            if self.context.params.is_running_on_polymarket:
+                fetcher = PolymarketPredictionsFetcher(
+                    self.context, self.context.logger
+                )
+            else:
+                fetcher = PredictionsFetcher(self.context, self.context.logger)
             result = fetcher.fetch_predictions(
                 safe_address=safe_address,
                 first=page_size,

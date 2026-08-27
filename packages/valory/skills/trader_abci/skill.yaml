@@ -13,7 +13,7 @@ fingerprint:
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeig7fywd26sybd7edhrhnyeqcyo5rfi7hdhy75eiozakmft77xinsi
   handlers.py: bafybeidefu2bxiadnxbnlaiz2e4ntrcrraxhrvmvyd7uce3e274lfdodti
-  models.py: bafybeiai3vxuyl2ydfxocaygnhbno2ef3lw4ag63turmd7fqpaleixc2xy
+  models.py: bafybeigqefgpbkjd7tz63sdj363cizuecbkrf6kkkvljvb2fjf5j6thuq4
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeiflcotz6gq2dgtnzptlyyhu5fryg3c6z7gosoqmln2tlci3v4odqa
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
@@ -34,7 +34,8 @@ fingerprint:
   ui-build/omenstrat/index.html: bafybeibuwyeuiyq54fmdlrbgp5riuqpwckugilkgptefnt5uydjqvuymvu
   ui-build/polystrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/polystrat/assets/index-DXueHLS6.js: bafybeifezce2yd5i2hdncf5q6azcuacmfqnwcyfndjncsdv273brrjv2zu
+  ui-build/polystrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
+  ui-build/polystrat/assets/index-BocnbQ1V.js: bafybeig26bhuhkokihz3o4oa6lulh6uu3ya35myw5ojwscdpfg4wwetkzy
   ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -42,7 +43,7 @@ fingerprint:
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeicvkjdg7qmcuzw2oa7ztptminh5jqfv6gd3mucs4tgwpmitu3ljza
+  ui-build/polystrat/index.html: bafybeidm3633dqsnaqltd26emig2thmcgbntuuxzlvgmqr66okhbx4enzm
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
@@ -57,13 +58,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeiazpjmdxvgv6c5veug34qo4sensigshongo237fc4g3qcofii6jga
-- valory/decision_maker_abci:0.1.0:bafybeidgasn56seyutkddrvkllkug3wzvj3vh2gblliqpym5swmxtf5zly
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib73m7irmjpns7ejly52vzhgvovsi4oevvlvn3rkiwpf3ples6rdm
+- valory/decision_maker_abci:0.1.0:bafybeidkiii2ronp6wo4gdtcfyj4z5y5zhe6agolrqnk4wchfcvl2o7b6u
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigjbqletogc25tjrdn2lf2tlme64kf4eygdulq6moz2bfxrinyxny
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeiffqdel2jjfuzodxxx55yl5fgzzkv35bpkadtxltko265gnks7q3m
+- valory/check_stop_trading_abci:0.1.0:bafybeihmyfkdgbnpwdp4yrb3xtrohqxvzng22kl7jkrnz5ytagxsewvp4y
 - valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
-- valory/chatui_abci:0.1.0:bafybeif74uzsizskpt5swy7ok5rt26jzktjkkwrmdieu65ragsaehl24na
-- valory/agent_performance_summary_abci:0.1.0:bafybeido5icpf3zunfitffcmlnnynkrklcz3ycxvcfvgekkvf3f3wold6i
+- valory/chatui_abci:0.1.0:bafybeiftg73pbseumlwqhhmjr4o4j5dnnd4glmzsw4ahgbwh6rztfntibe
+- valory/agent_performance_summary_abci:0.1.0:bafybeiflh5k5bpt2frmu2x6iogsnhphfrptzlvdwl4ndplaofyv5wvzk3q
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:
   main:
@@ -612,13 +613,13 @@ models:
         Content-Type: application/json
       method: POST
       parameters: {}
-      response_key: data:traderAgent
+      response_key: data:traderAgentById
       response_type: dict
       error_key: errors
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
     class_name: PolymarketAgentsSubgraph
   polymarket_bets_subgraph:
     args:
@@ -633,8 +634,23 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://api.subgraph.autonolas.tech/api/proxy/predict-polymarket
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
     class_name: PolymarketBetsSubgraph
+  polymarket_questions_subgraph:
+    args:
+      api_id: polymarket_questions
+      headers:
+        Content-Type: application/json
+      method: POST
+      parameters: {}
+      response_key: data:questions
+      response_type: list
+      error_key: errors
+      error_index: 0
+      error_type: dict
+      retries: 5
+      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
+    class_name: PolymarketQuestionsSubgraph
   polygon_mech_subgraph:
     args:
       api_id: polygon_mech

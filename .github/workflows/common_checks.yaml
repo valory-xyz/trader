@@ -116,15 +116,19 @@ jobs:
           NLTK_DISABLE_IMPORT_SECURITY: "1"
         # The ``-x`` overrides (a) forward the escape-hatch env var
         # into the safety tox venv, and (b) bootstrap+upgrade ``pip``
-        # inside the venv past SFTY-20260601-69199 (pip Path Traversal
-        # in ``<26.1.2``) before ``safety check`` runs, without
-        # editing tomte's upstream tox config. ``tox-uv`` creates
-        # venvs without a bootstrap ``pip``, so ``ensurepip`` runs
-        # first to install one, then the upgrade lands a patched
-        # version. The ``+=`` form makes the intent explicit even
-        # though tomte's upstream ``[testenv:safety]`` currently
-        # declares neither key, so the override is only additive if
-        # a future tomte bump adds one on that section directly.
+        # and ``setuptools`` inside the venv past SFTY-20260601-69199
+        # (pip Path Traversal in ``<26.1.2``) and SFTY-20260721-58460
+        # (setuptools sdist MANIFEST.in exclusion bypass in
+        # ``<83.0.0``) before ``safety check`` runs, without editing
+        # tomte's upstream tox config. Both are seeded into the venv
+        # by the toolchain rather than declared by this repo, so they
+        # are only fixable here. ``tox-uv`` creates venvs without a
+        # bootstrap ``pip``, so ``ensurepip`` runs first to install
+        # one, then the upgrade lands patched versions. The ``+=``
+        # form makes the intent explicit even though tomte's upstream
+        # ``[testenv:safety]`` currently declares neither key, so the
+        # override is only additive if a future tomte bump adds one
+        # on that section directly.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \

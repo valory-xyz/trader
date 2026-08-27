@@ -34,6 +34,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_PENDING_BETS_QUERY,
     GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
+    GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
     GET_POLYMARKET_SPECIFIC_BET_QUERY,
     GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
@@ -121,6 +122,10 @@ QUERY_CONSTANTS = {
         GET_POLYMARKET_SPECIFIC_BET_QUERY,
         "GetPolymarketSpecificBet",
     ),
+    "GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY": (
+        GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
+        "GetPolymarketQuestionsByIds",
+    ),
     "GET_OMEN_FINALIZATION_QUERY": (
         GET_OMEN_FINALIZATION_QUERY,
         "GetOmenFinalization",
@@ -190,3 +195,85 @@ def test_omen_finalization_query_selects_required_fields() -> None:
         "GET_OMEN_FINALIZATION_QUERY must filter by id_in for batched "
         "enrichment keyed on fpmm ids"
     )
+
+
+# The predict-polymarket squid speaks OpenReader, not The Graph. These pin the
+# dialect differences that fail the query outright rather than return wrong data.
+POLYMARKET_SQUID_QUERIES = {
+    "GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY": (
+        GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY
+    ),
+    "GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY": (
+        GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY
+    ),
+    "GET_POLYMARKET_PREDICTION_HISTORY_QUERY": GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
+    "GET_POLYMARKET_TRADER_AGENT_BETS_QUERY": GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
+    "GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY": (
+        GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY
+    ),
+    "GET_POLYMARKET_SPECIFIC_BET_QUERY": GET_POLYMARKET_SPECIFIC_BET_QUERY,
+    "GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY": GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
+}
+
+
+@pytest.mark.parametrize(
+    "constant_name,query_value",
+    list(POLYMARKET_SQUID_QUERIES.items()),
+)
+def test_polymarket_queries_use_openreader_dialect(
+    constant_name: str, query_value: str
+) -> None:
+    """Polymarket queries must not carry The Graph-only syntax."""
+    for token in ("first: $", "skip: $", "orderDirection", "traderAgent_:", ": ID!"):
+        assert token not in query_value, f"{constant_name} still uses '{token}'"
+
+
+def test_polymarket_single_agent_queries_use_by_id_field() -> None:
+    """Single-agent lookups resolve through traderAgentById on the squid."""
+    for query in (
+        GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
+        GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
+        GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
+    ):
+        assert "traderAgentById(id: $id" in query or (
+            "traderAgentById(id: $agentId" in query
+        )
+
+
+def test_polymarket_specific_bet_query_declares_no_unused_variables() -> None:
+    """The squid rejects unused variables; ``$betId`` filters client-side."""
+    assert "$betId" not in GET_POLYMARKET_SPECIFIC_BET_QUERY
+
+
+def test_polymarket_question_bets_are_bounded_and_scoped_to_the_bettor() -> None:
+    """Unscoped Question.bets lets other traders' bets consume this agent's mech requests."""
+    assert (
+        "bets(limit: 1000, where: { bettorId_eq: $bettorId })"
+        in GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY
+    )
+
+
+def polymarket_question_bets_fields() -> set:
+    """Return the field names selected inside the question ``bets`` block."""
+    block = GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY.split(
+        "bets(limit: 1000, where: { bettorId_eq: $bettorId }) {"
+    )[1].split("}")[0]
+    return set(block.split())
+
+
+def test_polymarket_question_bets_select_only_the_consumed_field() -> None:
+    """``_match_mech_requests_to_days`` reads only ``blockTimestamp`` per bet.
+
+    Pinned as an exact set so a field added inside the ``bets`` block widens the
+    hydrated shape here rather than silently in production.
+    """
+    assert polymarket_question_bets_fields() == {"blockTimestamp"}
+
+
+def test_polymarket_paginated_queries_break_ties_on_id() -> None:
+    """``blockTimestamp`` is not unique per agent and OpenReader adds no tiebreaker."""
+    for query in (
+        GET_POLYMARKET_PREDICTION_HISTORY_QUERY,
+        GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
+    ):
+        assert "orderBy: [blockTimestamp_DESC, id_DESC]" in query

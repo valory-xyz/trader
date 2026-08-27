@@ -275,8 +275,8 @@ query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!, $bl
 
 # Polymarket-specific queries
 GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY = """
-query GetPolymarketTraderAgentDetails($id: ID!) {
-  traderAgent(id: $id) {
+query GetPolymarketTraderAgentDetails($id: String!) {
+  traderAgentById(id: $id) {
     id
     blockTimestamp
     lastActive
@@ -305,8 +305,8 @@ query GetMechToolForQuestion($sender: String!, $questionTitle: String!, $blockTi
 """
 
 GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY = """
-query GetPolymarketTraderAgentPerformance($id: ID!) {
-  traderAgent(id: $id) {
+query GetPolymarketTraderAgentPerformance($id: String!) {
+  traderAgentById(id: $id) {
     serviceId
     totalBets
     totalExpectedPayout
@@ -317,13 +317,12 @@ query GetPolymarketTraderAgentPerformance($id: ID!) {
 """
 
 GET_POLYMARKET_PREDICTION_HISTORY_QUERY = """
-query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
+query GetPolymarketPredictionHistory($id: String!, $first: Int!, $skip: Int!) {
   marketParticipants(
-    orderBy: blockTimestamp
-    orderDirection: desc
-    where: {traderAgent_: {id: $id}}
-    first: $first
-    skip: $skip
+    orderBy: [blockTimestamp_DESC, id_DESC]
+    where: {traderAgent: {id_eq: $id}}
+    limit: $first
+    offset: $skip
   ) {
     totalPayout
     bets {
@@ -353,12 +352,11 @@ query GetPolymarketPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
 """
 
 GET_POLYMARKET_TRADER_AGENT_BETS_QUERY = """
-query GetPolymarketTraderAgentBets($id: ID!) {
+query GetPolymarketTraderAgentBets($id: String!) {
   marketParticipants(
-    where: {traderAgent_: {id: $id}}
-    first: 1000
-    orderBy: blockTimestamp
-    orderDirection: desc
+    where: {traderAgent: {id_eq: $id}}
+    limit: 1000
+    orderBy: [blockTimestamp_DESC, id_DESC]
   ) {
     bets {
       id
@@ -433,16 +431,15 @@ query GetSpecificMarketBets($id: ID!, $betId: ID!) {
 """
 
 GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY = """
-query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
-  traderAgent(id: $agentId) {
+query GetPolymarketDailyProfitStatistics($agentId: String!, $startTimestamp: BigInt!, $first: Int, $skip: Int) {
+  traderAgentById(id: $agentId) {
     dailyProfitStatistics(
       where: {
-        date_gte: $startTimestamp,
+        date_gte: $startTimestamp
       }
-      orderBy: date
-      orderDirection: asc
-      first: $first
-      skip: $skip
+      orderBy: date_ASC
+      limit: $first
+      offset: $skip
     ) {
       id
       date
@@ -450,30 +447,31 @@ query GetPolymarketDailyProfitStatistics($agentId: ID!, $startTimestamp: BigInt!
       totalTraded
       totalPayout
       dailyProfit
-      profitParticipants {
-        id
-        questionId
-        metadata {
-          title
-        }
-        bets {
-          blockTimestamp
-          question {
-            metadata {
-              title
-            }
-          }
-        }
-      }
+      profitParticipants
+    }
+  }
+}
+"""
+
+GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY = """
+query GetPolymarketQuestionsByIds($ids: [String!], $bettorId: String!) {
+  questions(where: { id_in: $ids }) {
+    id
+    questionId
+    metadata {
+      title
+    }
+    bets(limit: 1000, where: { bettorId_eq: $bettorId }) {
+      blockTimestamp
     }
   }
 }
 """
 
 GET_POLYMARKET_SPECIFIC_BET_QUERY = """
-query GetPolymarketSpecificBet($id: ID!, $betId: ID!) {
+query GetPolymarketSpecificBet($id: String!) {
   marketParticipants(
-    where: {traderAgent_: {id: $id}}
+    where: {traderAgent: {id_eq: $id}}
   ) {
     totalPayout
     bets {

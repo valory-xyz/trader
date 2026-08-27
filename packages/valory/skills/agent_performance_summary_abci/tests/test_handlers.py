@@ -1251,6 +1251,44 @@ class TestHandleGetPredictions:
             self.handler._handle_get_predictions(http_msg, self.http_dialogue)
             mock_ok.assert_called_once()
 
+    def test_subgraph_fallback_uses_polymarket_fetcher(self) -> None:
+        """The deep-pagination fallback must route to the Polymarket fetcher.
+
+        With ``is_running_on_polymarket=True`` the fallback builds the
+        Polymarket fetcher, never the Omen one.
+        """
+        handler = _make_handler(is_running_on_polymarket=True)
+        http_msg = _make_http_msg(
+            url="http://localhost:8080/api/v1/agent/prediction-history?page=100"
+        )
+        history = PredictionHistory(
+            total_predictions=5,
+            stored_count=5,
+            items=[{"id": str(i)} for i in range(5)],
+        )
+        summary = AgentPerformanceSummary(prediction_history=history)
+        handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            summary
+        )
+
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PolymarketPredictionsFetcher"
+            ) as MockPolymarketFetcher,
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.handlers.PredictionsFetcher"
+            ) as MockOmenFetcher,
+            patch.object(handler, "_send_ok_response") as mock_ok,
+        ):
+            MockPolymarketFetcher.return_value.fetch_predictions.return_value = {
+                "total_predictions": 5,
+                "items": [],
+            }
+            handler._handle_get_predictions(http_msg, self.http_dialogue)
+            MockPolymarketFetcher.return_value.fetch_predictions.assert_called_once()
+            MockOmenFetcher.assert_not_called()
+            mock_ok.assert_called_once()
+
     def test_fetches_from_subgraph_with_status_all(self) -> None:
         """Test fetching from subgraph with 'all' status passes None to fetcher."""
         http_msg = _make_http_msg(

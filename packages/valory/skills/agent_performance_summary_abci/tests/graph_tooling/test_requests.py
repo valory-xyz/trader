@@ -37,6 +37,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     QUESTION_DATA_SEPARATOR,
     USD_PRICE_FIELD,
     _MAX_SLEEP_TIME,
+    _unwrap_trader_agent,
     to_content,
 )
 
@@ -169,6 +170,20 @@ def _return_gen(value: Any) -> Any:
         """Inner generator returning value."""
         yield
         return value
+
+    return _gen
+
+
+def _recording_gen(sink: List[Any]) -> Any:
+    """Create a generator factory that records each call's ``content`` kwarg."""
+    response: Any = MagicMock()
+
+    # type: ignore[no-untyped-def]
+    def _gen(*args: Any, **kwargs: Any) -> Generator:
+        """Inner generator recording the request body."""
+        sink.append(kwargs.get("content"))
+        yield
+        return response
 
     return _gen
 
@@ -2394,3 +2409,320 @@ class TestFetchMechRequestsByTitlesFlagOn:
         )
         assert captured.get("url") is not None
         assert "since=" not in captured["url"]
+
+
+# ---------------------------------------------------------------------------
+# squid migration: trader agent unwrapping and profitParticipants hydration
+# ---------------------------------------------------------------------------
+
+
+class TestUnwrapTraderAgent:
+    """Tests for the _unwrap_trader_agent helper."""
+
+    def test_unwraps_the_graph_field_name(self) -> None:
+        """A subgraph-shaped response unwraps through the traderAgent key."""
+        assert _unwrap_trader_agent({"traderAgent": {"id": "0x1"}}) == {"id": "0x1"}
+
+    def test_unwraps_squid_field_name(self) -> None:
+        """A squid-shaped response unwraps through the traderAgentById key."""
+        assert _unwrap_trader_agent({"traderAgentById": {"id": "0x2"}}) == {"id": "0x2"}
+
+    def test_prefers_the_graph_key_when_both_present(self) -> None:
+        """The Graph spelling wins when a response carries both keys."""
+        result = _unwrap_trader_agent(
+            {"traderAgent": {"id": "0x1"}, "traderAgentById": {"id": "0x2"}}
+        )
+        assert result == {"id": "0x1"}
+
+    def test_returns_unwrapped_payload_untouched(self) -> None:
+        """An already-unwrapped payload passes straight through."""
+        payload: Dict[str, Any] = {"dailyProfitStatistics": []}
+        assert _unwrap_trader_agent(payload) is payload
+
+    def test_returns_falsy_untouched(self) -> None:
+        """Falsy inputs are returned as-is."""
+        assert _unwrap_trader_agent(None) is None
+        assert _unwrap_trader_agent({}) == {}
+
+    def test_non_dict_passes_through(self) -> None:
+        """The runtime isinstance guard holds even though no caller can hit it."""
+        assert _unwrap_trader_agent([1, 2]) == [1, 2]  # type: ignore[arg-type]
+
+
+class TestHydrateProfitParticipants:
+    """Tests for _hydrate_profit_participants (squid conditionId rehydration)."""
+
+    AGENT = "0xagent"
+
+    @staticmethod
+    def _setup(b: _ConcreteAPTBehaviour, responses: list) -> MagicMock:  # type: ignore[type-arg]
+        """Wire polymarket_questions_subgraph to return *responses* in order."""
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.is_retries_exceeded.return_value = False
+        mock_sg.process_response.side_effect = list(responses)
+        b.context.polymarket_questions_subgraph = mock_sg
+        b.sent_contents = []  # type: ignore[attr-defined]
+        b.get_http_response = _recording_gen(b.sent_contents)  # type: ignore[method-assign,attr-defined]
+        return mock_sg
+
+    def test_no_participants_skips_the_fetch(self) -> None:
+        """With no conditionIds there is nothing to hydrate and no request."""
+        b = _make_behaviour()
+        mock_sg = self._setup(b, [])
+        stats = [{"date": "1", "profitParticipants": []}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        mock_sg.process_response.assert_not_called()
+
+    def test_replaces_condition_ids_with_question_objects(self) -> None:
+        """Each conditionId string is spliced out for its question object."""
+        b = _make_behaviour()
+        question = {
+            "id": "0xaaa",
+            "questionId": "0xq",
+            "metadata": {"title": "Will it rain?"},
+            "bets": [{"blockTimestamp": "1700000000"}],
+        }
+        self._setup(b, [[question]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert stats[0]["profitParticipants"] == [question]
+        sent = json.loads(b.sent_contents[-1])  # type: ignore[attr-defined]
+        assert sent["variables"]["bettorId"] == self.AGENT
+
+    def test_drops_condition_ids_the_squid_does_not_know(self) -> None:
+        """An unresolvable conditionId is dropped rather than kept as a string."""
+        b = _make_behaviour()
+        question = {
+            "id": "0xaaa",
+            "metadata": {"title": "t"},
+            "bets": [{"blockTimestamp": "1"}],
+        }
+        self._setup(b, [[question]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa", "0xmissing"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert stats[0]["profitParticipants"] == [question]
+        b.context.logger.warning.assert_called_once()
+        warning = b.context.logger.warning.call_args[0][0]
+        assert "1/2 profit participants had no matching question" in warning
+
+    def test_question_without_id_is_ignored(self) -> None:
+        """A row missing an id cannot be joined on and is skipped."""
+        b = _make_behaviour()
+        self._setup(b, [[{"metadata": {"title": "no id"}}]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert stats[0]["profitParticipants"] == []
+
+    def test_warns_when_no_resolved_question_carries_bets(self) -> None:
+        """A bettorId that stops matching resolves questions but returns no bets."""
+        b = _make_behaviour()
+        self._setup(b, [[{"id": "0xaaa", "metadata": {"title": "t"}, "bets": []}]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        warning = b.context.logger.warning.call_args[0][0]
+        assert "1/1 resolved profit participants carry no bets" in warning
+
+    def test_warns_for_the_subset_of_questions_without_bets(self) -> None:
+        """One still-working question must not silence the degraded ones."""
+        b = _make_behaviour()
+        self._setup(
+            b,
+            [
+                [
+                    {
+                        "id": "0xaaa",
+                        "metadata": {"title": "a"},
+                        "bets": [{"blockTimestamp": "1"}],
+                    },
+                    {"id": "0xbbb", "metadata": {"title": "b"}, "bets": []},
+                ]
+            ],
+        )
+        stats = [{"date": "1", "profitParticipants": ["0xaaa", "0xbbb"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        warning = b.context.logger.warning.call_args[0][0]
+        assert "1/2 resolved profit participants carry no bets" in warning
+
+    def test_quiet_when_every_question_carries_bets(self) -> None:
+        """The healthy case: every resolved participant has at least one bet."""
+        b = _make_behaviour()
+        self._setup(
+            b,
+            [
+                [
+                    {
+                        "id": "0xaaa",
+                        "metadata": {"title": "t"},
+                        "bets": [{"blockTimestamp": "1"}],
+                    }
+                ]
+            ],
+        )
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        b.context.logger.warning.assert_not_called()
+
+    def test_fetch_failure_propagates_none(self) -> None:
+        """A failed question fetch aborts instead of silently losing titles."""
+        b = _make_behaviour()
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        mock_sg = self._setup(b, [None])
+        mock_sg.api_id = "polymarket_questions"
+        mock_sg.retries_info.suggested_sleep_time = 1.0
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is False
+        assert stats[0]["profitParticipants"] == ["0xaaa"]
+
+    def test_non_string_participants_are_ignored(self) -> None:
+        """Already-hydrated participants do not trigger a second fetch."""
+        b = _make_behaviour()
+        mock_sg = self._setup(b, [])
+        stats = [{"date": "1", "profitParticipants": [{"id": "0xaaa"}]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        mock_sg.process_response.assert_not_called()
+
+    def test_mixed_string_and_dict_participants(self) -> None:
+        """A partly pre-hydrated list splices the strings and keeps the dicts.
+
+        A dict is unhashable, so reaching the ``questions_by_id`` lookup with one
+        raises ``TypeError`` and aborts the whole statistics fetch.
+        """
+        b = _make_behaviour()
+        pre_hydrated = {"id": "0xbbb", "metadata": {"title": "b"}}
+        question = {
+            "id": "0xaaa",
+            "metadata": {"title": "a"},
+            "bets": [{"blockTimestamp": "1"}],
+        }
+        self._setup(b, [[question]])
+        stats = [{"date": "1", "profitParticipants": ["0xaaa", pre_hydrated]}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert stats[0]["profitParticipants"] == [question, pre_hydrated]
+
+    def test_batches_condition_ids_at_the_query_batch_size(self) -> None:
+        """More ids than one batch are fetched over multiple requests."""
+        b = _make_behaviour()
+        total = QUERY_BATCH_SIZE + 5
+        ids = [f"0x{i:064x}" for i in range(total)]
+        ordered = sorted(ids)
+        first = [
+            {"id": i, "metadata": {"title": i}} for i in ordered[:QUERY_BATCH_SIZE]
+        ]
+        second = [
+            {"id": i, "metadata": {"title": i}} for i in ordered[QUERY_BATCH_SIZE:]
+        ]
+        mock_sg = self._setup(b, [first, second])
+        stats = [{"date": "1", "profitParticipants": ids}]
+
+        assert _exhaust(b._hydrate_profit_participants(stats, self.AGENT)) is True
+        assert mock_sg.process_response.call_count == 2
+        assert len(stats[0]["profitParticipants"]) == total
+
+
+class TestFetchDailyProfitStatisticsHydration:
+    """_fetch_daily_profit_statistics wires hydration on the Polymarket path."""
+
+    @staticmethod
+    def _behaviour(pages: list, questions: Any) -> _ConcreteAPTBehaviour:  # type: ignore[type-arg]
+        """Build a behaviour serving *pages* of daily stats, then *questions*."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = True
+
+        agents_sg = MagicMock()
+        agents_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        agents_sg.is_retries_exceeded.return_value = False
+        agents_sg.process_response.side_effect = [
+            {"dailyProfitStatistics": page} for page in pages
+        ]
+        b.context.polymarket_agents_subgraph = agents_sg
+
+        questions_sg = MagicMock()
+        questions_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        questions_sg.is_retries_exceeded.return_value = False
+        questions_sg.process_response.side_effect = [questions]
+        questions_sg.api_id = "polymarket_questions"
+        questions_sg.retries_info.suggested_sleep_time = 1.0
+        b.context.polymarket_questions_subgraph = questions_sg
+
+        b.sent_contents = []  # type: ignore[attr-defined]
+        b.get_http_response = _recording_gen(b.sent_contents)  # type: ignore[method-assign,attr-defined]
+        b.sleep = _noop_gen  # type: ignore[method-assign]
+        return b
+
+    def test_page_is_hydrated(self) -> None:
+        """Every conditionId on a Polymarket page is hydrated before returning."""
+        question = {"id": "0xaaa", "metadata": {"title": "Will it rain?"}}
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+        b = self._behaviour([stats], [question])
+
+        result = _exhaust(b._fetch_daily_profit_statistics("0xAgEnT", 1000))
+
+        assert result is not None
+        assert result[0]["profitParticipants"] == [question]
+
+    def test_wrapped_page_is_unwrapped_then_hydrated(self) -> None:
+        """A response that still carries the traderAgentById wrapper works too."""
+        question = {"id": "0xaaa", "metadata": {"title": "Will it rain?"}}
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+        b = self._behaviour([[]], [question])
+        b.context.polymarket_agents_subgraph.process_response.side_effect = [
+            {"traderAgentById": {"dailyProfitStatistics": stats}}
+        ]
+
+        result = _exhaust(b._fetch_daily_profit_statistics("0xagent", 1000))
+
+        assert result is not None
+        assert result[0]["profitParticipants"] == [question]
+
+    def test_participants_hydrate_across_every_page(self) -> None:
+        """Hydration covers the union of all pages, not just the last one."""
+        first_page = [
+            {"date": str(i), "profitParticipants": []} for i in range(QUERY_BATCH_SIZE)
+        ]
+        first_page[0]["profitParticipants"] = ["0xaaa"]
+        second_page = [{"date": "last", "profitParticipants": ["0xbbb"]}]
+        q_a = {"id": "0xaaa", "metadata": {"title": "first page"}}
+        q_b = {"id": "0xbbb", "metadata": {"title": "second page"}}
+        b = self._behaviour([first_page, second_page], [q_a, q_b])
+
+        result = _exhaust(b._fetch_daily_profit_statistics("0xagent", 1000))
+
+        assert result is not None
+        assert len(result) == QUERY_BATCH_SIZE + 1
+        assert result[0]["profitParticipants"] == [q_a]
+        assert result[-1]["profitParticipants"] == [q_b]
+
+    def test_bettor_id_is_lowercased_agent_address(self) -> None:
+        """The questions query is scoped to this agent's bets."""
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+        b = self._behaviour([stats], [{"id": "0xaaa", "metadata": {"title": "t"}}])
+
+        _exhaust(b._fetch_daily_profit_statistics("0xAgEnT", 1000))
+
+        sent = json.loads(b.sent_contents[-1])  # type: ignore[attr-defined]
+        assert sent["variables"]["bettorId"] == "0xagent"
+
+    def test_empty_page_stops_pagination(self) -> None:
+        """An empty (but not ``None``) page ends pagination cleanly."""
+        b = self._behaviour([[]], [])
+        b.context.polymarket_agents_subgraph.process_response.side_effect = [{}]
+
+        assert _exhaust(b._fetch_daily_profit_statistics("0xagent", 1000)) == []
+
+    def test_hydration_failure_aborts_the_fetch(self) -> None:
+        """A hydration failure returns ``None`` so the rebuild can retry."""
+        stats = [{"date": "1", "profitParticipants": ["0xaaa"]}]
+        b = self._behaviour([stats], None)
+
+        assert _exhaust(b._fetch_daily_profit_statistics("0xagent", 1000)) is None
