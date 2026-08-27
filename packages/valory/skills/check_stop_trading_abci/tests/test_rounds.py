@@ -34,7 +34,7 @@ from typing import (
     Tuple,
     Type,
 )
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 
@@ -465,6 +465,41 @@ class TestCheckStopTradingRoundShouldReviewBets:
         )
         round_.context.params.enable_position_review = False
         assert round_.should_review_bets(is_activity_target_met=True) is False
+
+
+class TestCheckStopTradingRoundSyncedTimestamp:
+    """Tests for CheckStopTradingRound.synced_timestamp."""
+
+    def test_returns_transition_timestamp(self) -> None:
+        """The synced timestamp is read from the last round transition."""
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        transition_ts = MagicMock()
+        transition_ts.timestamp.return_value = 1700000000.5
+        round_.context.state.round_sequence.last_round_transition_timestamp = (
+            transition_ts
+        )
+        assert round_.synced_timestamp == 1700000000
+
+    def test_falls_back_to_local_clock(self) -> None:
+        """The synced timestamp falls back to the local clock before any transition."""
+        round_ = CheckStopTradingRound(
+            synchronized_data=MagicMock(), context=MagicMock()
+        )
+        round_sequence = MagicMock()
+        type(round_sequence).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+        round_.context.state.round_sequence = round_sequence
+
+        with patch(
+            "packages.valory.skills.check_stop_trading_abci.rounds.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            assert round_.synced_timestamp == 1700000000
+
+        round_.context.logger.warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

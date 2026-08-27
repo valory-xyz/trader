@@ -21,6 +21,7 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, Set, Tuple, Type, cast
@@ -130,9 +131,16 @@ class CheckStopTradingRound(VotingRound):
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
-        return int(
-            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
-        )
+        try:
+            return int(
+                self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
+            )
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Falling back to the local clock."
+            )
+            return int(datetime.now(timezone.utc).timestamp())
 
     def should_review_bets(self, is_activity_target_met: bool) -> bool:
         """Check if the bets should be reviewed."""

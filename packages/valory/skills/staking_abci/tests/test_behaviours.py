@@ -144,6 +144,33 @@ class TestStakingInteractProperties:
         ):
             assert b.synced_timestamp == 1700000000
 
+    def test_synced_timestamp_falls_back_to_local_clock(self) -> None:
+        """Synced_timestamp falls back to the local clock before any transition."""
+        b = self._make()
+        mock_rs = MagicMock()
+        type(mock_rs).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+        mock_ctx = MagicMock()
+        with (
+            patch.object(
+                type(b),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=mock_rs,
+            ),
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch(
+                "packages.valory.skills.staking_abci.behaviours.datetime"
+            ) as mock_datetime,
+        ):
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            assert b.synced_timestamp == 1700000000
+
+        mock_ctx.logger.warning.assert_called_once()
+
     def test_staking_contract_address(self) -> None:
         """Staking_contract_address delegates to params."""
         b = self._make()

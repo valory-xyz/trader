@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigjbqletogc25tjrdn2lf2tlme64kf4eygdulq6moz2bfxrinyxny
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiakwaissr6huqdodyz3rssetp7qiuo75y7nves5unw5m7zr3cfzre
 - valory/market_manager_abci:0.1.0:bafybeiazpjmdxvgv6c5veug34qo4sensigshongo237fc4g3qcofii6jga
-- valory/decision_maker_abci:0.1.0:bafybeidkiii2ronp6wo4gdtcfyj4z5y5zhe6agolrqnk4wchfcvl2o7b6u
-- valory/trader_abci:0.1.0:bafybeichk3jimazfnjccigpcn66z5foprhr44hxspdtqcqt5cnb4vjhlc4
-- valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeihmyfkdgbnpwdp4yrb3xtrohqxvzng22kl7jkrnz5ytagxsewvp4y
+- valory/decision_maker_abci:0.1.0:bafybeicr4mmcy6mk5m3z6yqrgybwhjz2hpbqj44ydf4cgdh3kt7fupvlda
+- valory/trader_abci:0.1.0:bafybeifirnzbla2wqupzyaznz54gfkrnxhdsucobd7fw4p5q6unlrvfhx4
+- valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
+- valory/check_stop_trading_abci:0.1.0:bafybeia2ukrluy7yaao2i2bbswamp2vztb3jx4rmhlfzrxgdtlz3fnmmxu
 - valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
-- valory/chatui_abci:0.1.0:bafybeiftg73pbseumlwqhhmjr4o4j5dnnd4glmzsw4ahgbwh6rztfntibe
-- valory/agent_performance_summary_abci:0.1.0:bafybeiflh5k5bpt2frmu2x6iogsnhphfrptzlvdwl4ndplaofyv5wvzk3q
+- valory/chatui_abci:0.1.0:bafybeiaky4i4truyh5kgagh5xq2bwip4o6mpvnionm3wrtifejk5yztflq
+- valory/agent_performance_summary_abci:0.1.0:bafybeiea7gzeutqhym7g2skzjr65mr5e6ycgfsigglbthnftskrc6coe6a
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe

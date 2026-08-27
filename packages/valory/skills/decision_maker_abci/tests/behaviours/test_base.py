@@ -540,6 +540,31 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         result = behaviour.synced_timestamp
         assert result == 1700000000
 
+    def test_synced_timestamp_falls_back_to_local_clock(self) -> None:
+        """Test that `synced_timestamp` falls back to the local clock."""
+        behaviour = self.behaviour
+        round_sequence = MagicMock()
+        type(round_sequence).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=round_sequence,
+            ),
+            mock.patch(
+                "packages.valory.skills.decision_maker_abci.behaviours.base.datetime"
+            ) as mock_datetime,
+        ):
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            result = behaviour.synced_timestamp
+
+        assert result == 1700000000
+        behaviour.context.logger.warning.assert_called_once()
+
     def test_safe_tx_hash_getter(self) -> None:
         """Test the `safe_tx_hash` getter."""
         behaviour = self.behaviour
@@ -929,6 +954,47 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                     behaviour.update_bet_transaction_information()
 
         mock_bet.update_investments.assert_called_once_with(1000)  # type: ignore[method-assign]
+
+    def test_update_bet_transaction_information_after_period_reset(self) -> None:
+        """Test `update_bet_transaction_information` when the transition history was wiped."""
+        behaviour = self.behaviour
+        mock_bet = MagicMock()
+        mock_bet.queue_status.next_status.return_value = MagicMock()
+        mock_bet.update_investments.return_value = True
+        mock_bet.id = "test_bet"
+
+        db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
+        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
+        round_sequence = MagicMock()
+        type(round_sequence).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=round_sequence,
+            ),
+            mock.patch.object(
+                type(behaviour),
+                "sampled_bet",
+                new_callable=PropertyMock,
+                return_value=mock_bet,
+            ),
+            mock.patch.object(behaviour, "store_bets") as mock_store_bets,
+            mock.patch.object(behaviour, "_update_bet_strategy"),
+            mock.patch(
+                "packages.valory.skills.decision_maker_abci.behaviours.base.datetime"
+            ) as mock_datetime,
+        ):
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            behaviour.update_bet_transaction_information()
+
+        assert mock_bet.processed_timestamp == 1700000000
+        mock_bet.update_investments.assert_called_once_with(1000)
+        mock_store_bets.assert_called_once()
 
     def test_update_bet_transaction_information_update_fails(self) -> None:
         """Test `update_bet_transaction_information` when update_investments returns False."""  # type: ignore[misc]
