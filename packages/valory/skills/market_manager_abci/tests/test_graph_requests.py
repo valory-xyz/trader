@@ -21,7 +21,7 @@
 
 import json
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
@@ -297,6 +297,24 @@ class TestQueryingBehaviourProperties:
         result = b.synced_time
         assert result == 1700000000
         assert isinstance(result, int)
+
+    def test_synced_time_falls_back_to_local_clock(self) -> None:
+        """Test that synced_time falls back to the local clock after a reset."""
+        b = _make_behaviour()
+        round_sequence = MagicMock()
+        type(round_sequence).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+        b.context.state.round_sequence = round_sequence
+
+        with patch(
+            "packages.valory.skills.market_manager_abci.graph_tooling.requests.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            result = b.synced_time
+
+        assert result == 1700000000
+        b.context.logger.warning.assert_called_once()
 
     def test_current_subgraph_reads_from_context(self) -> None:
         """Test that current_subgraph does getattr(context, _current_market)."""
