@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigjbqletogc25tjrdn2lf2tlme64kf4eygdulq6moz2bfxrinyxny
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidn7zfagutrub2tm5gcdeheojtzmr4xmezonlehwq33754fc27iiu
 - valory/market_manager_abci:0.1.0:bafybeiazpjmdxvgv6c5veug34qo4sensigshongo237fc4g3qcofii6jga
-- valory/decision_maker_abci:0.1.0:bafybeidkiii2ronp6wo4gdtcfyj4z5y5zhe6agolrqnk4wchfcvl2o7b6u
-- valory/trader_abci:0.1.0:bafybeidxabwqxjfmwcsytq73vcf35imxnv2wrn7owcq625ik3yrnbv434e
+- valory/decision_maker_abci:0.1.0:bafybeihozvh7qcc37fdostxvwuyjmiysfgcwlrlsu2b2fvh535abz5extm
+- valory/trader_abci:0.1.0:bafybeigahiggttchxqcknlbdnlzvlpjxvgne6f4upkypxc7zwlieile7vy
 - valory/staking_abci:0.1.0:bafybeia6csjgex5zxdt6vymiaengu75lyzjdgfrnp65ewlghthiniquhje
-- valory/check_stop_trading_abci:0.1.0:bafybeihmyfkdgbnpwdp4yrb3xtrohqxvzng22kl7jkrnz5ytagxsewvp4y
+- valory/check_stop_trading_abci:0.1.0:bafybeieidw5dgmlx3z5injy4syoktakckcqkzps3jh6n7lt4z76vk6ghzm
 - valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
-- valory/chatui_abci:0.1.0:bafybeiftg73pbseumlwqhhmjr4o4j5dnnd4glmzsw4ahgbwh6rztfntibe
-- valory/agent_performance_summary_abci:0.1.0:bafybeiflh5k5bpt2frmu2x6iogsnhphfrptzlvdwl4ndplaofyv5wvzk3q
+- valory/chatui_abci:0.1.0:bafybeieksrohhf5mzfbchvnywk2cmngbphcpn2t2iewllm5mbgtkgbsb3m
+- valory/agent_performance_summary_abci:0.1.0:bafybeid3hkdkbwz2a7vufhbixm2iwqgeon63u7g6prjv2alr3d53x2547i
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -282,7 +282,7 @@ models:
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
-      mech_analytics_url: ${MECH_ANALYTICS_URL:str:}
+      mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
@@ -498,7 +498,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
+      url: ${POLYMARKET_AGENTS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_bets_subgraph:
     args:
       headers:
@@ -510,7 +510,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
+      url: ${POLYMARKET_BETS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_questions_subgraph:
     args:
       headers:
@@ -522,7 +522,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://subgraph.autonolas.tech/squid/predict-polymarket/graphql
+      url: ${POLYMARKET_QUESTIONS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polygon_mech_subgraph:
     args:
       headers:
@@ -534,7 +534,7 @@ models:
       error_index: ${int:0}
       error_type: ${str:dict}
       retries: ${int:5}
-      url: https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon
+      url: ${POLYGON_MECH_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-polygon}
 ---
 public_id: valory/p2p_libp2p_client:0.1.0
 type: connection
@@ -607,8 +607,8 @@ models:
 public_id: valory/polymarket_client:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
 type: connection
 config:
-  host: https://clob.polymarket.com
-  chain_id: 137
+  host: ${POLYMARKET_CLOB_HOST:str:https://clob.polymarket.com}
+  chain_id: ${POLYMARKET_CHAIN_ID:int:137}
   safe_contract_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
   builder_code: ${POLYMARKET_BUILDER_CODE:str:0x0000000000000000000000000000000000000000000000000000000000000000}
