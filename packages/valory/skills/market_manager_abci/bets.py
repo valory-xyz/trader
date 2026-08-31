@@ -242,6 +242,13 @@ class Bet:
         """Get the amount invested in bets."""
         return self.invested_amount_yes + self.invested_amount_no
 
+    @property
+    def has_investments(self) -> bool:
+        """Whether any investment is recorded, readable on blacklisted bets."""
+        # `invested_amount` resolves outcome names, which raises once
+        # `blacklist_forever` has set `outcomes` to `None`.
+        return any(sum(amounts) > 0 for amounts in self.investments.values())
+
     @staticmethod
     def opposite_vote(vote: int) -> int:
         """Get the opposite vote."""

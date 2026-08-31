@@ -153,3 +153,71 @@ def test_agent_config_resolves_consistently_per_chain(
         "url"
     ]
     assert mechs_url == marketplace_url
+
+
+def _headers_blocks(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the resolved ``headers`` arg of every model in ``doc`` that has one.
+
+    :param doc: a resolved override document.
+    :return: a mapping from model name to its resolved ``headers`` value.
+    """
+    return {
+        model: cfg["args"]["headers"]
+        for model, cfg in doc.get("models", {}).items()
+        if isinstance(cfg.get("args"), dict) and "headers" in cfg["args"]
+    }
+
+
+def _collapsed_headers_env() -> Dict[str, str]:
+    """Build the ``..._ARGS_HEADERS`` vars a deployment exports for each model.
+
+    :return: a mapping from path-derived env var name to its JSON-encoded value.
+    """
+    docs = list(yaml_load_all(io.StringIO(AEA_CONFIG_PATH.read_text(encoding="utf-8"))))
+    blocks = _headers_blocks(_override(docs, "trader_abci"))
+    assert blocks, "no headers blocks found in aea-config.yaml"
+    return {
+        f"SKILL_TRADER_ABCI_MODELS_{model.upper()}_ARGS_HEADERS": json.dumps(
+            {"Content-Type": "application/json"}
+        )
+        for model in blocks
+    }
+
+
+def test_headers_survive_the_collapsed_headers_env_var() -> None:
+    """``Content-Type`` must stay a real media type once deployment env vars exist.
+
+    ``Content-Type`` is not a bash-safe key, so open-aea JSON-encodes the whole
+    ``headers`` dict into one ``..._ARGS_HEADERS`` var, and ``restrict_model_args``
+    truncates the leaf's own path to that same name. An *anonymous* leaf
+    placeholder therefore falls back to that name and resolves to the whole dict
+    as a string, which the squid rejects with HTTP 400. Naming the placeholder
+    keeps that fallback from ever being consulted.
+    """
+    resolved = _headers_blocks(
+        _override(_resolve(_collapsed_headers_env()), "trader_abci")
+    )
+
+    assert resolved
+    for model, headers in resolved.items():
+        assert headers == {
+            "Content-Type": "application/json"
+        }, f"{model} resolved to a corrupted Content-Type: {headers!r}"
+
+
+def test_headers_content_type_is_overridable_by_its_own_env_var() -> None:
+    """The named var must drive every leaf, proving the placeholder is really named.
+
+    A plain literal would also survive the test above, but ``analyse-service``
+    rejects a literal under a model arg.
+    """
+    env = _collapsed_headers_env()
+    env["API_CONTENT_TYPE"] = "application/graphql-response+json"
+
+    resolved = _headers_blocks(_override(_resolve(env), "trader_abci"))
+
+    assert resolved
+    for model, headers in resolved.items():
+        assert headers == {
+            "Content-Type": "application/graphql-response+json"
+        }, f"{model} ignored API_CONTENT_TYPE: {headers!r}"

@@ -21,7 +21,7 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 from packages.valory.skills.market_manager_abci.behaviours.base import (
@@ -32,10 +32,18 @@ from packages.valory.skills.market_manager_abci.behaviours.base import (
 from packages.valory.skills.market_manager_abci.behaviours.fetch_markets_router import (
     FetchMarketsRouterBehaviour,
 )
+from packages.valory.skills.market_manager_abci.bets import (
+    Bet,
+    DAY_IN_SECONDS,
+    QueueStatus,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+NOW = 1_800_000_000
 
 
 def _noop_gen(*args: Any, **kwargs: Any) -> Any:
@@ -652,3 +660,93 @@ class TestMarketManagerRoundBehaviour:
 
         for b_cls in MarketManagerRoundBehaviour.behaviours:
             assert issubclass(b_cls, BaseBehaviour)
+
+
+# ===========================================================================
+# Tests for BetsManagerBehaviour.build_bet_index / prune_bets
+# ===========================================================================
+
+
+def _prunable_bet(bet_id: str, **overrides: Any) -> Bet:
+    """Build a settled, never-invested bet that `prune_bets` should drop.
+
+    :param bet_id: the id to give the bet.
+    :param **overrides: fields overriding the prunable defaults.
+    :return: the constructed bet.
+    """
+    defaults: Dict[str, Any] = dict(
+        id=bet_id,
+        market="polymarket",
+        title="Test?",
+        collateralToken="0xtoken",
+        creator="0xcreator",
+        fee=0,
+        openingTimestamp=NOW - 60 * DAY_IN_SECONDS,
+        outcomeSlotCount=2,
+        outcomeTokenAmounts=[100, 200],
+        outcomeTokenMarginalPrices=[0.5, 0.5],
+        outcomes=["Yes", "No"],
+        scaledLiquidityMeasure=10.0,
+        queue_status=QueueStatus.EXPIRED,
+    )
+    defaults.update(overrides)
+    return Bet(**defaults)
+
+
+class TestBuildBetIndex:
+    """Tests for BetsManagerBehaviour.build_bet_index."""
+
+    def test_maps_every_id_to_its_position(self) -> None:
+        """Test that each stored bet id maps to its index."""
+        b = _make_behaviour(bets=[_prunable_bet("a"), _prunable_bet("b")])
+        assert b.build_bet_index() == {"a": 0, "b": 1}
+
+    def test_empty_store(self) -> None:
+        """Test that an empty store yields an empty index."""
+        assert _make_behaviour().build_bet_index() == {}
+
+
+class TestPruneBets:
+    """Tests for BetsManagerBehaviour.prune_bets."""
+
+    def test_drops_settled_bets_with_no_position(self) -> None:
+        """Test that a long-settled bet with no investment is dropped."""
+        b = _make_behaviour(bets=[_prunable_bet("old")], synced_time=NOW)
+        b.prune_bets()
+        assert b.bets == []
+        b.context.logger.info.assert_called_once()
+
+    def test_keeps_bets_with_a_recorded_investment(self) -> None:
+        """Test that a bet the agent took a position in is never dropped."""
+        bet = _prunable_bet("held", investments={"Yes": [10], "No": []})
+        b = _make_behaviour(bets=[bet], synced_time=NOW)
+        b.prune_bets()
+        assert b.bets == [bet]
+
+    def test_keeps_bets_that_are_not_expired(self) -> None:
+        """Test that a live bet is never dropped, however old its timestamp."""
+        bet = _prunable_bet("live", queue_status=QueueStatus.FRESH)
+        b = _make_behaviour(bets=[bet], synced_time=NOW)
+        b.prune_bets()
+        assert b.bets == [bet]
+
+    def test_keeps_recently_settled_bets(self) -> None:
+        """Test that a bet inside the retention window is kept."""
+        bet = _prunable_bet("recent", openingTimestamp=NOW - DAY_IN_SECONDS)
+        b = _make_behaviour(bets=[bet], synced_time=NOW)
+        b.prune_bets()
+        assert b.bets == [bet]
+
+    def test_keeps_bets_with_no_usable_timestamp(self) -> None:
+        """Test that a bet we cannot date is never dropped."""
+        bet = _prunable_bet("undated", openingTimestamp=0)
+        b = _make_behaviour(bets=[bet], synced_time=NOW)
+        b.prune_bets()
+        assert b.bets == [bet]
+
+    def test_no_log_when_nothing_is_dropped(self) -> None:
+        """Test that a pass dropping nothing leaves the store and log untouched."""
+        bet = _prunable_bet("recent", openingTimestamp=NOW - DAY_IN_SECONDS)
+        b = _make_behaviour(bets=[bet], synced_time=NOW)
+        b.prune_bets()
+        b.context.logger.info.assert_not_called()
