@@ -251,6 +251,8 @@ class Bet:
         `blacklist_forever` has set `outcomes` to `None`. Note this means "amounts
         recorded now", not "ever traded": `update_bets_investments` skips expired
         bets, so a settled market the agent traded can report `False`.
+
+        :return: True if any non-zero amount is recorded against the bet.
         """
         return any(a for amounts in self.investments.values() for a in amounts)
 
