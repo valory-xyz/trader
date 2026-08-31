@@ -334,7 +334,7 @@ models:
   network_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:blocks}
       response_index: ${int:0}
@@ -347,7 +347,7 @@ models:
   omen_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:fixedProductMarketMakers}
       response_type: ${str:list}
@@ -366,7 +366,7 @@ models:
   mech_response:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:GET}
       response_key: ${str:result}
       response_type: ${str:str}
@@ -375,7 +375,7 @@ models:
   agent_tools:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:GET}
       response_key: ${str:tools}
       response_type: ${str:list}
@@ -384,7 +384,7 @@ models:
   trades_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:fpmmTrades}
       response_type: ${str:list}
@@ -396,7 +396,7 @@ models:
   conditional_tokens_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:user:userPositions}
       response_type: ${str:list}
@@ -408,7 +408,7 @@ models:
   realitio_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:answers}
       response_type: ${str:list}
@@ -420,7 +420,7 @@ models:
   open_markets_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:questions}
       response_type: ${str:list}
@@ -432,7 +432,7 @@ models:
   olas_agents_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data}
       response_type: ${str:dict}
@@ -444,7 +444,7 @@ models:
   olas_mech_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data}
       response_type: ${str:dict}
@@ -456,7 +456,7 @@ models:
   gnosis_staking_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:service}
       response_type: ${str:dict}
@@ -468,7 +468,7 @@ models:
   mech_tools:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:GET}
       response_key: ${str:tools}
       response_type: ${str:list}
@@ -477,7 +477,7 @@ models:
   mechs_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:meches}
       response_type: ${str:list}
@@ -490,7 +490,7 @@ models:
   polymarket_agents_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:traderAgentById}
       response_type: ${str:dict}
@@ -502,7 +502,7 @@ models:
   polymarket_bets_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:marketParticipants}
       response_type: ${str:list}
@@ -514,7 +514,7 @@ models:
   polymarket_questions_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:questions}
       response_type: ${str:list}
@@ -526,7 +526,7 @@ models:
   polygon_mech_subgraph:
     args:
       headers:
-        Content-Type: ${str:application/json}
+        Content-Type: ${API_CONTENT_TYPE:str:application/json}
       method: ${str:POST}
       response_key: ${str:data:sender}
       response_type: ${str:dict}

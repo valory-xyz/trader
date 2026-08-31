@@ -39,6 +39,7 @@ from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
+    DAY_IN_SECONDS,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.models import (
@@ -50,6 +51,10 @@ BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
+EXPIRED_BET_RETENTION = 30 * DAY_IN_SECONDS
+# Bounds how long a chunk pass can hold the AEA loop, which the agent's
+# HTTP server and Tendermint's stall tolerance both share.
+YIELD_EVERY_N_MARKETS = 500
 
 
 class BetsManagerBehaviour(BaseBehaviour, ABC):
@@ -188,6 +193,38 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         for bet in self.bets:
             if getattr(bet, "collateralToken", ""):
                 bet.collateralToken = ""
+
+    def build_bet_index(self) -> Dict[str, int]:
+        """Map each stored bet's id to its index in ``self.bets``.
+
+        :return: a mapping from bet id to its index in ``self.bets``.
+        """
+        return {bet.id: index for index, bet in enumerate(self.bets)}
+
+    def prune_bets(self) -> None:
+        """Drop long-settled bets that the agent never took a position in."""
+        # `openingTimestamp` carries the market's `endDate` on Polymarket, so
+        # this window means "the market closed more than a retention period ago".
+        cutoff = self.synced_time - EXPIRED_BET_RETENTION
+        retained = [
+            bet
+            for bet in self.bets
+            if not (
+                bet.queue_status.is_expired()
+                and not bet.has_investments
+                and 0 < bet.openingTimestamp < cutoff
+            )
+        ]
+
+        dropped = len(self.bets) - len(retained)
+        if not dropped:
+            return
+
+        self.bets = retained
+        self.context.logger.info(
+            f"Pruned {dropped} settled bets with no position from the store, "
+            f"{len(retained)} retained."
+        )
 
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""

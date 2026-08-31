@@ -1409,3 +1409,32 @@ class TestBetToRequestContext:
         serialized = json.dumps(ctx)
         deserialized = json.loads(serialized)
         assert deserialized == ctx
+
+
+class TestBetHasInvestments:
+    """Tests for Bet.has_investments."""
+
+    def test_false_without_any_investment(self) -> None:
+        """Test that a bet with no recorded amounts reports no investment."""
+        assert _make_bet().has_investments is False
+
+    def test_false_for_zero_amounts(self) -> None:
+        """Test that zero-valued amounts do not count as an investment."""
+        assert _make_bet(investments={"Yes": [0], "No": [0]}).has_investments is False
+
+    def test_true_for_a_recorded_amount(self) -> None:
+        """Test that a non-zero amount on either side counts as an investment."""
+        assert _make_bet(investments={"Yes": [], "No": [7]}).has_investments is True
+
+    def test_readable_after_blacklist_forever(self) -> None:
+        """Test that it stays readable once `outcomes` is `None`.
+
+        `invested_amount` resolves outcome names and raises in that state, which
+        is why pruning cannot use it.
+        """
+        bet = _make_bet(investments={"Yes": [7], "No": []})
+        bet.blacklist_forever()
+
+        with pytest.raises(ValueError):
+            _ = bet.invested_amount
+        assert bet.has_investments is True
