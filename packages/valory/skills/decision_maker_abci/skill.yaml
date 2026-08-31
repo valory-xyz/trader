@@ -294,6 +294,7 @@ models:
         omen_subgraph: []
       slot_count: 2
       opening_margin: 300
+      expired_bet_retention: 2592000
       languages:
       - en_US
       disabled_polymarket_tags:

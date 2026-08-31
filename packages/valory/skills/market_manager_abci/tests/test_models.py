@@ -164,6 +164,7 @@ DEFAULT_MM_KWARGS: Dict[str, Any] = {
     "is_running_on_polymarket": False,
     "enable_multi_bets_fallback": False,
     "disabled_polymarket_tags": [],
+    "expired_bet_retention": 2592000,
 }
 
 

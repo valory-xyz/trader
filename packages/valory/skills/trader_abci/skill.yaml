@@ -15,7 +15,7 @@ fingerprint:
   handlers.py: bafybeidefu2bxiadnxbnlaiz2e4ntrcrraxhrvmvyd7uce3e274lfdodti
   models.py: bafybeigqefgpbkjd7tz63sdj363cizuecbkrf6kkkvljvb2fjf5j6thuq4
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/test_agent_config_resolution.py: bafybeicbm3w4ooeu43j4el6ttpynerzsb7hcqnj4cvfxerlh34b5y6mf5m
+  tests/test_agent_config_resolution.py: bafybeiemy26ij7parlduqt6i2aibda2ww2easaghkxrkvhltiuborjzu5i
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeig36t6xlip4xyylis3n7t6wx45zftfpfk75fztlz3fgycrd3ad7na
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
@@ -191,6 +191,7 @@ models:
         omen_subgraph: []
       slot_count: 2
       opening_margin: 300
+      expired_bet_retention: 2592000
       languages:
       - en_US
       disabled_polymarket_tags:

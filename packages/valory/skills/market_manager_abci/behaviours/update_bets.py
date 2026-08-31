@@ -163,10 +163,11 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # helps in resetting the queue number to 0
         if self.bets:
             self._blacklist_expired_bets()
-            # must follow the blacklist pass above, which is what sets `EXPIRED`
-            self.prune_bets()
+            self.prune_bets(self.synced_time)
 
-    def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> Generator:
+    def _process_chunk(
+        self, chunk: Optional[List[Dict[str, Any]]]
+    ) -> Generator[None, None, None]:
         """Process a chunk of bets.
 
         :param chunk: the raw bets to merge into the store.
@@ -182,6 +183,8 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             bet = Bet(**raw_bet, market=self._current_market)
             index = bet_index.get(bet.id)
             if index is None:
+                # only this branch grows `self.bets`; the update branch leaves
+                # positions untouched, so the index stays valid for the chunk
                 bet_index[bet.id] = len(self.bets)
                 self.bets.append(bet)
             else:
