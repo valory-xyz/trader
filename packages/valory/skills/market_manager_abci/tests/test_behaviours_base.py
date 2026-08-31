@@ -102,6 +102,7 @@ def _make_behaviour(tmp_path: Any = None, **overrides: Any) -> _ConcreteBetsMana
     ctx = MagicMock()
     store_path = Path(tmp_path) if tmp_path else Path("/tmp/test_store")  # nosec B108
     ctx.params.store_path = store_path
+    ctx.params.expired_bet_retention = 30 * DAY_IN_SECONDS
     b._context = ctx
 
     # -- internal state --
@@ -711,42 +712,42 @@ class TestPruneBets:
 
     def test_drops_settled_bets_with_no_position(self) -> None:
         """Test that a long-settled bet with no investment is dropped."""
-        b = _make_behaviour(bets=[_prunable_bet("old")], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[_prunable_bet("old")])
+        b.prune_bets(NOW)
         assert b.bets == []
         b.context.logger.info.assert_called_once()
 
     def test_keeps_bets_with_a_recorded_investment(self) -> None:
         """Test that a bet the agent took a position in is never dropped."""
         bet = _prunable_bet("held", investments={"Yes": [10], "No": []})
-        b = _make_behaviour(bets=[bet], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[bet])
+        b.prune_bets(NOW)
         assert b.bets == [bet]
 
     def test_keeps_bets_that_are_not_expired(self) -> None:
         """Test that a live bet is never dropped, however old its timestamp."""
         bet = _prunable_bet("live", queue_status=QueueStatus.FRESH)
-        b = _make_behaviour(bets=[bet], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[bet])
+        b.prune_bets(NOW)
         assert b.bets == [bet]
 
     def test_keeps_recently_settled_bets(self) -> None:
         """Test that a bet inside the retention window is kept."""
         bet = _prunable_bet("recent", openingTimestamp=NOW - DAY_IN_SECONDS)
-        b = _make_behaviour(bets=[bet], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[bet])
+        b.prune_bets(NOW)
         assert b.bets == [bet]
 
     def test_keeps_bets_with_no_usable_timestamp(self) -> None:
         """Test that a bet we cannot date is never dropped."""
         bet = _prunable_bet("undated", openingTimestamp=0)
-        b = _make_behaviour(bets=[bet], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[bet])
+        b.prune_bets(NOW)
         assert b.bets == [bet]
 
     def test_no_log_when_nothing_is_dropped(self) -> None:
         """Test that a pass dropping nothing leaves the store and log untouched."""
         bet = _prunable_bet("recent", openingTimestamp=NOW - DAY_IN_SECONDS)
-        b = _make_behaviour(bets=[bet], synced_time=NOW)
-        b.prune_bets()
+        b = _make_behaviour(bets=[bet])
+        b.prune_bets(NOW)
         b.context.logger.info.assert_not_called()

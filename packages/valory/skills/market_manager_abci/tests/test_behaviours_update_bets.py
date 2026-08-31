@@ -33,6 +33,7 @@ from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
 )
+from packages.valory.skills.market_manager_abci.tests.conftest import raw_bet
 
 # ---------------------------------------------------------------------------
 # Generator helpers for mocking `yield from` calls
@@ -95,6 +96,7 @@ def _make_behaviour(**overrides: Any) -> UpdateBetsBehaviour:
     """Create an UpdateBetsBehaviour instance bypassing __init__."""
     behaviour = object.__new__(UpdateBetsBehaviour)
     behaviour._context = MagicMock()
+    behaviour._context.params.expired_bet_retention = 2592000
     behaviour.bets = []
     behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # nosec B108
     behaviour.bets_filepath = "/tmp/bets.json"  # nosec B108
@@ -1136,7 +1138,7 @@ class TestSetupPrunes:
 
         order: List[str] = []
         behaviour._blacklist_expired_bets.side_effect = lambda: order.append("blacklist")  # type: ignore[attr-defined]
-        behaviour.prune_bets.side_effect = lambda: order.append("prune")  # type: ignore[attr-defined]
+        behaviour.prune_bets.side_effect = lambda *_: order.append("prune")  # type: ignore[attr-defined]
         behaviour.setup()
 
         assert order == ["blacklist", "prune"]
@@ -1152,41 +1154,45 @@ class TestSetupPrunes:
 class TestProcessChunkYields:
     """Tests that _process_chunk hands the AEA loop back while walking a chunk."""
 
-    @staticmethod
-    def _raw(index: int) -> Dict[str, Any]:
-        """Build a raw bet payload.
-
-        :param index: distinguishes the generated market.
-        :return: the raw bet dict.
-        """
-        return dict(
-            id=f"m{index}",
-            title="Q?",
-            collateralToken="0x",
-            creator="0x",
-            fee=0,
-            openingTimestamp=9999999999,
-            outcomeSlotCount=2,
-            outcomeTokenAmounts=[100, 200],
-            outcomeTokenMarginalPrices=[0.5, 0.5],
-            outcomes=["Yes", "No"],
-            scaledLiquidityMeasure=10.0,
-        )
-
     def test_yields_once_per_interval(self) -> None:
         """Test that a chunk spanning several intervals yields once for each."""
         behaviour = _make_behaviour()
-        chunk = [self._raw(i) for i in range(YIELD_EVERY_N_MARKETS * 2)]
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS * 2)]
 
         yields = sum(1 for _ in behaviour._process_chunk(chunk))
 
         assert yields == 2
         assert len(behaviour.bets) == len(chunk)
 
+    def test_yields_exactly_once_at_the_boundary(self) -> None:
+        """Test the exact interval boundary, which an off-by-one would move."""
+        behaviour = _make_behaviour()
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS)]
+
+        assert sum(1 for _ in behaviour._process_chunk(chunk)) == 1
+        assert len(behaviour.bets) == len(chunk)
+
     def test_does_not_yield_below_the_interval(self) -> None:
         """Test that a short chunk is processed without giving up the loop."""
         behaviour = _make_behaviour()
-        chunk = [self._raw(i) for i in range(YIELD_EVERY_N_MARKETS - 1)]
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS - 1)]
 
         assert sum(1 for _ in behaviour._process_chunk(chunk)) == 0
         assert len(behaviour.bets) == len(chunk)
+
+    def test_duplicate_id_in_one_chunk_updates_instead_of_appending(self) -> None:
+        """Test that a repeated id inside one chunk never double-appends.
+
+        The index write before the append is what enforces this; without it the
+        second occurrence is treated as new.
+        """
+        behaviour = _make_behaviour()
+        chunk = [
+            raw_bet("dup", scaledLiquidityMeasure=10.0),
+            raw_bet("dup", scaledLiquidityMeasure=99.0),
+        ]
+
+        list(behaviour._process_chunk(chunk))
+
+        assert len(behaviour.bets) == 1
+        assert behaviour.bets[0].scaledLiquidityMeasure == 99.0

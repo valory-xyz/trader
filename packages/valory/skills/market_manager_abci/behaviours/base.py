@@ -39,7 +39,6 @@ from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.market_manager_abci.bets import (
     Bet,
     BetsDecoder,
-    DAY_IN_SECONDS,
     serialize_bets,
 )
 from packages.valory.skills.market_manager_abci.models import (
@@ -51,9 +50,9 @@ BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
-EXPIRED_BET_RETENTION = 30 * DAY_IN_SECONDS
-# Bounds how long a chunk pass can hold the AEA loop, which the agent's
-# HTTP server and Tendermint's stall tolerance both share.
+# A pass that holds the cooperative AEA loop starves the agent's own HTTP server
+# and stalls Tendermint block production; crossing `BLOCKS_STALL_TOLERANCE` wedges
+# the agent. Single-agent deployments still run Tendermint, so this applies there.
 YIELD_EVERY_N_MARKETS = 500
 
 
@@ -197,15 +196,27 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
     def build_bet_index(self) -> Dict[str, int]:
         """Map each stored bet's id to its index in ``self.bets``.
 
+        A repeated id resolves to its last occurrence, where the linear scan this
+        replaced resolved to the first. No path appends a duplicate today.
+
         :return: a mapping from bet id to its index in ``self.bets``.
         """
         return {bet.id: index for index, bet in enumerate(self.bets)}
 
-    def prune_bets(self) -> None:
-        """Drop long-settled bets that the agent never took a position in."""
+    def prune_bets(self, now: int) -> None:
+        """Drop long-settled bets with no amount recorded against them.
+
+        Shifts positions in ``self.bets``, so it must run before
+        ``SamplingBehaviour`` recomputes ``sampled_bet_index``, which is
+        positional rather than keyed by id.
+
+        :param now: the synchronized time to measure the retention window from.
+            Passed in because ``synced_time`` lives on ``QueryingBehaviour``, not
+            on this class.
+        """
         # `openingTimestamp` carries the market's `endDate` on Polymarket, so
         # this window means "the market closed more than a retention period ago".
-        cutoff = self.synced_time - EXPIRED_BET_RETENTION
+        cutoff = now - self.params.expired_bet_retention
         retained = [
             bet
             for bet in self.bets

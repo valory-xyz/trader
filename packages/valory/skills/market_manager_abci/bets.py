@@ -244,10 +244,15 @@ class Bet:
 
     @property
     def has_investments(self) -> bool:
-        """Whether any investment is recorded, readable on blacklisted bets."""
-        # `invested_amount` resolves outcome names, which raises once
-        # `blacklist_forever` has set `outcomes` to `None`.
-        return any(sum(amounts) > 0 for amounts in self.investments.values())
+        """Whether any amount is currently recorded against this bet.
+
+        Reads `investments` directly; `invested_amount` goes through the `yes`/`no`
+        properties, which dispatch to `get_outcome` and raise once
+        `blacklist_forever` has set `outcomes` to `None`. Note this means "amounts
+        recorded now", not "ever traded": `update_bets_investments` skips expired
+        bets, so a settled market the agent traded can report `False`.
+        """
+        return any(a for amounts in self.investments.values() for a in amounts)
 
     @staticmethod
     def opposite_vote(vote: int) -> int:

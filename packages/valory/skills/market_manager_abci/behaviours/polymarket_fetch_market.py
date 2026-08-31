@@ -345,8 +345,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # helps in resetting the queue number to 0
         if self.bets:
             self._blacklist_expired_bets()
-            # must follow the blacklist pass above, which is what sets `EXPIRED`
-            self.prune_bets()
+            self.prune_bets(self.synced_time)
 
     @staticmethod
     def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
@@ -385,7 +384,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 return True
         return False
 
-    def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> Generator:
+    def _process_chunk(
+        self, chunk: Optional[List[Dict[str, Any]]]
+    ) -> Generator[None, None, None]:
         """Process a chunk of bets.
 
         :param chunk: the raw bets to merge into the store.
@@ -412,6 +413,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         null_or_mismatch_drops += 1
                     else:
                         zero_liquidity_drops += 1
+                # only this branch grows `self.bets`; the update branch leaves
+                # positions untouched, so the index stays valid for the chunk
                 bet_index[bet.id] = len(self.bets)
                 self.bets.append(bet)
             else:
@@ -501,7 +504,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             unexpected_error_in_category = 0
             closed_in_category = 0
 
-            for market in markets:
+            for processed, market in enumerate(markets, start=1):
+                if processed % YIELD_EVERY_N_MARKETS == 0:
+                    yield
                 market_id = market.get("id", "unknown")
                 is_category_valid = market.get("category_valid", False)
                 # keyword filter disabled — accept all categories

@@ -82,6 +82,7 @@ models:
       creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA596E7D23f557"]}}
       slot_count: ${SLOT_COUNT:int:2}
       opening_margin: ${OPENING_MARGIN:int:300}
+      expired_bet_retention: ${EXPIRED_BET_RETENTION:int:2592000}
       languages: ${LANGUAGES:list:["en_US"]}
       disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${ABT:int:5}
@@ -207,7 +208,6 @@ models:
       datetime_format: ${ACC_INFO_FIELDS_DATETIME_FORMAT:str:%Y-%m-%d %H:%M:%S}
   network_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${NETWORK_SUBGRAPH_METHOD:str:POST}
       response_key: ${NETWORK_SUBGRAPH_RESPONSE_KEY:str:data:blocks}
       response_index: ${NETWORK_SUBGRAPH_RESPONSE_INDEX:int:0}
@@ -219,7 +219,6 @@ models:
       url: ${NETWORK_SUBGRAPH_URL:str:https://gnosis.subgraph.autonolas.tech}
   omen_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${OMEN_SUBGRAPH_METHOD:str:POST}
       response_key: ${OMEN_SUBGRAPH_RESPONSE_KEY:str:data:fixedProductMarketMakers}
       response_type: ${OMEN_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -237,7 +236,6 @@ models:
       url: ${RANDOMNESS_API_URL:str:https://drand.cloudflare.com/public/latest}
   mech_response:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${MECH_RESPONSE_API_METHOD:str:GET}
       response_key: ${MECH_RESPONSE_API_RESPONSE_KEY:str:result}
       response_type: ${MECH_RESPONSE_API_RESPONSE_TYPE:str:str}
@@ -245,7 +243,6 @@ models:
       url: ${MECH_RESPONSE_API_URL:str:''}
   agent_tools:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${AGENT_TOOLS_API_METHOD:str:GET}
       response_key: ${AGENT_TOOLS_API_RESPONSE_KEY:str:tools}
       response_type: ${AGENT_TOOLS_API_RESPONSE_TYPE:str:list}
@@ -253,7 +250,6 @@ models:
       url: ${AGENT_TOOLS_API_URL:str:''}
   trades_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${TRADES_SUBGRAPH_METHOD:str:POST}
       response_key: ${TRADES_SUBGRAPH_RESPONSE_KEY:str:data:fpmmTrades}
       response_type: ${TRADES_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -264,7 +260,6 @@ models:
       url: ${TRADES_SUBGRAPH_URL:str:https://trades.subgraph.autonolas.tech}
   conditional_tokens_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${CONDITIONAL_TOKENS_SUBGRAPH_METHOD:str:POST}
       response_key: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_KEY:str:data:user:userPositions}
       response_type: ${CONDITIONAL_TOKENS_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -275,7 +270,6 @@ models:
       url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://conditional-tokens.subgraph.autonolas.tech}
   realitio_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${REALITIO_SUBGRAPH_METHOD:str:POST}
       response_key: ${REALITIO_SUBGRAPH_RESPONSE_KEY:str:data:answers}
       response_type: ${REALITIO_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -286,7 +280,6 @@ models:
       url: ${REALITIO_SUBGRAPH_URL:str:https://realitio.subgraph.autonolas.tech}
   open_markets_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${OPEN_MARKETS_SUBGRAPH_METHOD:str:POST}
       response_key: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_KEY:str:data:questions}
       response_type: ${OPEN_MARKETS_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -297,7 +290,6 @@ models:
       url: ${OPEN_MARKETS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/predict-omen}
   olas_agents_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${OLAS_AGENTS_SUBGRAPH_METHOD:str:POST}
       response_key: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_KEY:str:data:traderAgent}
       response_type: ${OLAS_AGENTS_SUBGRAPH_RESPONSE_TYPE:str:dict}
@@ -308,7 +300,6 @@ models:
       url: ${OLAS_AGENTS_SUBGRAPH_URL:str:https://api.subgraph.autonolas.tech/api/proxy/predict-omen}
   polymarket_agents_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${POLYMARKET_AGENTS_SUBGRAPH_METHOD:str:POST}
       response_key: ${POLYMARKET_AGENTS_SUBGRAPH_RESPONSE_KEY:str:data:traderAgentById}
       response_type: ${POLYMARKET_AGENTS_SUBGRAPH_RESPONSE_TYPE:str:dict}
@@ -319,7 +310,6 @@ models:
       url: ${POLYMARKET_AGENTS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_bets_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${POLYMARKET_BETS_SUBGRAPH_METHOD:str:POST}
       response_key: ${POLYMARKET_BETS_SUBGRAPH_RESPONSE_KEY:str:data:marketParticipants}
       response_type: ${POLYMARKET_BETS_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -330,7 +320,6 @@ models:
       url: ${POLYMARKET_BETS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_questions_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${POLYMARKET_QUESTIONS_SUBGRAPH_METHOD:str:POST}
       response_key: ${POLYMARKET_QUESTIONS_SUBGRAPH_RESPONSE_KEY:str:data:questions}
       response_type: ${POLYMARKET_QUESTIONS_SUBGRAPH_RESPONSE_TYPE:str:list}
@@ -341,7 +330,6 @@ models:
       url: ${POLYMARKET_QUESTIONS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   gnosis_staking_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}
       response_key: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_KEY:str:data:service}
       response_type: ${GNOSIS_STAKING_SUBGRAPH_RESPONSE_TYPE:str:dict}
@@ -352,7 +340,6 @@ models:
       url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
   mechs_subgraph:
     args:
-      headers: ${HEADERS:dict:{"Content-Type":"application/json"}}
       method: ${POLYGON_MECH_SUBGRAPH_METHOD:str:POST}
       response_key: ${POLYGON_MECH_SUBGRAPH_RESPONSE_KEY:str:data:meches}
       response_type: ${POLYGON_MECH_SUBGRAPH_RESPONSE_TYPE:str:list}
