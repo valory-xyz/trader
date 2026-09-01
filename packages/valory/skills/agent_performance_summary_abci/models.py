@@ -25,6 +25,7 @@ import json
 import os
 import tempfile
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, cast
 
@@ -395,9 +396,16 @@ class SharedState(BaseSharedState):
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
-        return int(
-            self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
-        )
+        try:
+            return int(
+                self.context.state.round_sequence.last_round_transition_timestamp.timestamp()
+            )
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Falling back to the local clock."
+            )
+            return int(datetime.now(timezone.utc).timestamp())
 
     def read_existing_performance_summary(self) -> AgentPerformanceSummary:
         """Read the existing agent performance summary from a file."""

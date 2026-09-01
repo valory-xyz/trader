@@ -21,7 +21,7 @@
 
 import json
 from abc import ABC
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import (
     Any,
@@ -114,7 +114,14 @@ class StakingInteractBaseBehaviour(BaseBehaviour, ABC):
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
-        return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+        try:
+            return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Falling back to the local clock."
+            )
+            return int(datetime.now(timezone.utc).timestamp())
 
     @property
     def staking_contract_address(self) -> str:

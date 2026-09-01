@@ -76,23 +76,6 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 
-class TestBlacklistingSyncedTime:
-    """Tests for the synced_time property."""
-
-    def test_synced_time_returns_timestamp(self) -> None:
-        """synced_time should return the float timestamp from round_sequence."""
-        behaviour = _make_behaviour()
-        ts_mock = MagicMock()
-        ts_mock.timestamp.return_value = 1234567890.5
-        with patch.object(
-            type(behaviour), "shared_state", new_callable=PropertyMock
-        ) as mock_ss:
-            mock_ss.return_value = MagicMock(
-                round_sequence=MagicMock(last_round_transition_timestamp=ts_mock)
-            )
-            assert behaviour.synced_time == 1234567890.5
-
-
 class TestBlacklistBlacklist:
     """Tests for the _blacklist method."""
 

@@ -23,7 +23,7 @@ import dataclasses
 import os
 from abc import ABC
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, cast
 
@@ -212,7 +212,14 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     @property
     def synced_timestamp(self) -> int:
         """Return the synchronized timestamp across the agents."""
-        return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+        try:
+            return int(self.round_sequence.last_round_transition_timestamp.timestamp())
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Falling back to the local clock."
+            )
+            return int(datetime.now(timezone.utc).timestamp())
 
     @property
     def safe_tx_hash(self) -> str:

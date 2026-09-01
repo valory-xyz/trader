@@ -388,9 +388,16 @@ class HttpHandler(BaseHttpHandler):
         is_tm_unhealthy = round_sequence.block_stall_deadline_expired
 
         current_time = datetime.now().timestamp()
-        seconds_since_last_transition = current_time - datetime.timestamp(
-            round_sequence.last_round_transition_timestamp
-        )
+        try:
+            seconds_since_last_transition = current_time - datetime.timestamp(
+                round_sequence.last_round_transition_timestamp
+            )
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Reporting the period as just started."
+            )
+            seconds_since_last_transition = 0.0
 
         abci_app = self.round_sequence.abci_app
         previous_rounds = abci_app._previous_rounds

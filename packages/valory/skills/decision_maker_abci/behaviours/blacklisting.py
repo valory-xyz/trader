@@ -43,12 +43,6 @@ class BlacklistingBehaviour(  # type: ignore
 
     matching_round = BlacklistingRound
 
-    @property
-    def synced_time(self) -> float:
-        """Get the synchronized time among agents."""
-        synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
-        return synced_time.timestamp()
-
     def _blacklist(self) -> None:
         """Blacklist the sampled bet."""
         sampled_bet_index = self.synchronized_data.sampled_bet_index

@@ -681,6 +681,75 @@ class TestHttpHandler:
             assert agent_health["activity_target"] == 8
             assert agent_health["activity_completed"] == 5
 
+    def test_handle_get_health_after_period_reset(self) -> None:
+        """Test _handle_get_health stays healthy when the transition history was wiped."""
+
+        class MockResetStakingState(Enum):
+            """Mock staking state."""
+
+            STAKED = 1
+
+        http_msg = MagicMock()
+        http_msg.headers = ""
+        http_dialogue = MagicMock()
+        http_dialogue.reply.return_value = MagicMock()
+
+        with (
+            patch.object(self.handler, "_has_transitioned", return_value=True),
+            patch.object(self.handler, "_check_required_funds", return_value=True),
+            patch.object(self.handler, "_is_mech_reliable", return_value=True),
+            patch.object(
+                type(self.handler),
+                "synchronized_data",
+                new_callable=PropertyMock,
+            ) as mock_sync,
+            patch.object(
+                type(self.handler),
+                "round_sequence",
+                new_callable=PropertyMock,
+            ) as mock_rs,
+            patch.object(
+                type(self.handler),
+                "waiting_for_a_mech_response",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            mock_sync_data = MagicMock()
+            mock_sync_data.is_staking_kpi_met = True
+            mock_sync_data.is_activity_target_met = False
+            mock_sync_data.activity_target = 8
+            mock_sync_data.activity_completed = 5
+            mock_sync_data.service_staking_state = MockResetStakingState.STAKED
+            mock_sync_data.period_count = 0
+            mock_sync.return_value = mock_sync_data
+            self.handler.context.params.reset_pause_duration = 10
+
+            mock_round_seq = MagicMock()
+            mock_round_seq.block_stall_deadline_expired = False
+            mock_round_seq.current_round_id = "some_round"
+            type(mock_round_seq).last_round_transition_timestamp = PropertyMock(
+                side_effect=ValueError("no transition has been completed yet")
+            )
+            mock_prev_round = MagicMock()
+            mock_prev_round.round_id = "prev_round"
+            mock_round_seq.abci_app._previous_rounds = [mock_prev_round]
+            mock_event = MagicMock()
+            mock_round_seq.abci_app.transition_function = {
+                type(mock_prev_round): {mock_event: MagicMock()}
+            }
+            mock_round_seq.abci_app.event_to_timeout = {mock_event: 30}
+            mock_rs.return_value = mock_round_seq
+
+            self.handler._handle_get_health(http_msg, http_dialogue)
+
+        call_kwargs = http_dialogue.reply.call_args[1]
+        assert call_kwargs["status_code"] == 200
+        body = json.loads(call_kwargs["body"])
+        assert body["seconds_since_last_transition"] == 0.0
+        assert body["is_transitioning_fast"] is True
+        assert body["is_healthy"] is True
+
 
 # ---------------------------------------------------------------------------
 # Polymarket label override tests (PREDICT-827)

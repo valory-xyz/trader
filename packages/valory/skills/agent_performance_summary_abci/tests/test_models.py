@@ -25,7 +25,7 @@ import stat
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -792,6 +792,24 @@ class TestSharedState:
         result = state.synced_timestamp
         assert result == 1700000000
         assert isinstance(result, int)
+
+    def test_synced_timestamp_falls_back_to_local_clock(self) -> None:
+        """synced_timestamp falls back to the local clock before any round transition."""
+        state = self._make_state()
+        round_sequence = MagicMock()
+        type(round_sequence).last_round_transition_timestamp = PropertyMock(
+            side_effect=ValueError("no transition has been completed yet")
+        )
+        state.context.state.round_sequence = round_sequence  # type: ignore[attr-defined]
+
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models.datetime"
+        ) as mock_datetime:
+            mock_datetime.now.return_value.timestamp.return_value = 1700000000.5
+            result = state.synced_timestamp
+
+        assert result == 1700000000
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_read_existing_performance_summary_happy_path(self, tmp_path: Path) -> None:
         """read_existing_performance_summary reads and returns data from file."""

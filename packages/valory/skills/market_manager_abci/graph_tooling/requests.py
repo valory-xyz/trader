@@ -22,6 +22,7 @@
 
 import json
 from abc import ABC
+from datetime import datetime, timezone
 from enum import Enum, auto
 from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
@@ -116,7 +117,16 @@ class QueryingBehaviour(BaseBehaviour, ABC):
     @property
     def synced_time(self) -> int:
         """Get the synchronized time among agents."""
-        synced_time = self.shared_state.round_sequence.last_round_transition_timestamp
+        try:
+            synced_time = (
+                self.shared_state.round_sequence.last_round_transition_timestamp
+            )
+        except ValueError as e:
+            self.context.logger.warning(
+                "No round transition has completed yet, e.g. after a Tendermint "
+                f"period reset: {e}. Falling back to the local clock."
+            )
+            return int(datetime.now(timezone.utc).timestamp())
         return int(synced_time.timestamp())
 
     @property
