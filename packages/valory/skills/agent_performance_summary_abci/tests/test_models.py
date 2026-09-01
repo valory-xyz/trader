@@ -583,6 +583,55 @@ class TestAgentPerformanceSummaryParams:
         assert params.use_mech_analytics is False
         assert params.mech_analytics_url == ""
 
+    def test_unset_url_arrives_as_none_and_normalises_to_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """An unset ``MECH_ANALYTICS_URL`` resolves to ``None``, not ``""``.
+
+        The env-var template grammar has no way to express an empty default,
+        so the config ships ``${MECH_ANALYTICS_URL:str:null}`` and the model
+        normalises. Without that, ``None`` would be truthy-checked against the
+        pairing guard and the flag-on-without-URL misconfiguration would stop
+        raising.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": False,
+            "mech_analytics_url": None,
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=mock_skill_context,
+                store_path=str(tmp_path),
+                **kwargs,
+            )
+        assert params.mech_analytics_url == ""
+
+    def test_unset_url_with_flag_on_still_raises(self, tmp_path: Path) -> None:
+        """``None`` URL + flag on must trip the same guard an empty URL does.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        mock_skill_context = MagicMock()
+        kwargs = {
+            **DEFAULT_APS_KWARGS,
+            "use_mech_analytics": True,
+            "mech_analytics_url": None,
+        }
+        with patch.object(BaseParams, "__init__", return_value=None):
+            with pytest.raises(
+                ValueError,
+                match="use_mech_analytics is true but mech_analytics_url is empty",
+            ):
+                AgentPerformanceSummaryParams(
+                    skill_context=mock_skill_context,
+                    store_path=str(tmp_path),
+                    **kwargs,
+                )
+
     def test_flag_on_with_populated_url_does_not_raise(self, tmp_path: Path) -> None:
         """Flag on + valid URL is the intended production configuration.
 

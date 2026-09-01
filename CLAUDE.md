@@ -42,10 +42,25 @@ uv run pytest packages/valory/skills/<skill_name>/tests/test_behaviours.py::Test
 make format              # Auto-format (black + isort via tomte)
 make code-checks         # All linting: black, isort, flake8, mypy, pylint, darglint
 make security            # bandit + safety + gitleaks
-make common-checks-1     # copyright, dependencies, linting
-make common-checks-2     # hash check, package check, ABCI checks
+make common-checks-1     # copyright, doc links, hash/package/doc-hash checks, analyse-service
+make common-checks-2     # ABCI docstrings, FSM specs, dependencies, handlers
 make all-checks          # Everything
 make ci-linter-checks    # CI linter checks (the full CI lint suite)
+```
+
+These `make` targets do not currently work as written — see **Repo Gotchas**.
+Run the checks through `tomte tox` instead:
+
+```bash
+# autonomy-based checks - run one at a time, never under -p
+for e in check-hash check-packages check-doc-hashes analyse-service \
+         check-abci-docstrings check-abciapp-specs check-handlers check-dependencies; do
+  uv run tomte tox -e "$e" || break
+done
+uv run tomte check-copyright --author valory
+
+# pure linters are safe to parallelise
+uv run tomte tox -p -e black-check -e isort-check -e flake8 -e mypy -e pylint
 ```
 
 ### Code Generation & Hashes
@@ -147,6 +162,50 @@ Interfaces to on-chain contracts (FPMM market maker, conditional tokens, Realiti
 - Test classes with setup methods; parametrized tests common
 - Coverage tracked via `.coveragerc`
 - **CI enforces 100% coverage** — after making changes, run coverage against **every file you modified**, not just the primary one. Use `--cov=packages.valory.skills.<skill>.<module>` for each changed module.
+
+## Repo Gotchas
+
+**Keep this section updated.** If something in this repo costs you time and is not
+obvious from the code, add it here — but keep it to what stays true across tool
+upgrades. Behaviour specific to a tool version belongs in the commit message or PR,
+not in this file.
+
+- **Use `tomte tox`, never bare `tox`.** This repo's `tox.ini` deliberately defines no
+  test environments; they are rendered by tomte. Bare `tox -e <env>` finds none of them.
+- **A synced working tree holds many gitignored files under `packages/`** — third-party
+  packages pulled from IPFS, `__pycache__`, and empty `__init__.py` among them. They
+  exist only locally; CI checks out clean and never sees them, and they must not be
+  committed. A local check complaining about a file you did not write is usually one of
+  these, so confirm the file is yours before trying to fix it.
+- **Several `make` targets do not work as written.** `common-checks-1`,
+  `common-checks-2` and `ci-linter-checks` all invoke bare `tox`, and two of them call a
+  `copyright-check` environment tomte does not provide — CI uses
+  `tomte check-copyright --author valory`. Run the checks directly instead; see
+  **Linting & Formatting** above. `common-checks-1` also pulls in a doc-link checker
+  that walks external URLs, so it needs network access and fails on upstream outages.
+- **Always pass `-e`, and never parallelise the autonomy-based environments.**
+  Concurrent `autonomy` invocations are not safe against each other; run them one at a
+  time, as CI does. A bare `tomte tox` with no `-e` also runs the protocol regeneration
+  environment, which rewrites packages in place.
+- **`analyse-service` stops at the first failing component,** so fixing what it reports
+  can uncover more behind it. Re-run until two consecutive runs are clean.
+- **Env-var templates cannot express an empty-string default.** `${VAR:str:}` and
+  `${VAR:str:""}` both resolve to non-empty, truthy strings, silently defeating
+  `if not value` guards. `${VAR:str:null}` yields `None` — use it only where the
+  consumer accepts `None`.
+- **Named and anonymous placeholders resolve through different channels.**
+  `${NAME:type:default}` resolves only against a bare env var of that exact name;
+  `${type:default}` resolves only against the auto-derived component-path key. Naming a
+  placeholder therefore disables the path-key fallback a deployment may rely on.
+  `packages/valory/skills/trader_abci/tests/test_agent_config_resolution.py` guards
+  this — run it after touching `aea-config.yaml`.
+- **`setup.all_participants`, `setup.safe_contract_address` and
+  `setup.consensus_threshold` must stay anonymous** in the agent config. The deployment
+  overwrites them with runtime-computed values, and the named form falls back to the
+  placeholder defaults instead, breaking consensus on deploy.
+- **CI runs lint on Python 3.10** and the test matrix on 3.10–3.14. Lint tooling can
+  misbehave on newer interpreters locally, so check which interpreter CI uses before
+  chasing a lint failure you cannot reproduce there.
 
 ## Important Workflows
 

@@ -342,7 +342,10 @@ class AgentPerformanceSummaryParams(BaseParams):
         # than silently returning zero rows and inflating ROI). Both default
         # to the safe pre-migration behaviour: flag off, subgraph read
         # unchanged. See docs (consumer migration §7 in mech-analytics repo).
-        self.mech_analytics_url: str = self._ensure("mech_analytics_url", kwargs, str)
+        # The env-var template grammar has no empty default, so unset arrives as None.
+        self.mech_analytics_url: str = (
+            self._ensure("mech_analytics_url", kwargs, Optional[str]) or ""
+        )
         self.use_mech_analytics: bool = self._ensure("use_mech_analytics", kwargs, bool)
         # Enforce the pairing at startup — fail loudly rather than
         # silently no-op'ing back to the subgraph path when an operator
