@@ -25,6 +25,7 @@ from typing import Any, Dict, Generator, List, Optional
 
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
+    YIELD_EVERY_N_MARKETS,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet, BinaryOutcome
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -162,20 +163,29 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # helps in resetting the queue number to 0
         if self.bets:
             self._blacklist_expired_bets()
+            self.prune_bets(self.synced_time)
 
-    def get_bet_idx(self, bet_id: str) -> Optional[int]:
-        """Get the index of the bet with the given id, if it exists, otherwise `None`."""
-        return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
+    def _process_chunk(
+        self, chunk: Optional[List[Dict[str, Any]]]
+    ) -> Generator[None, None, None]:
+        """Process a chunk of bets.
 
-    def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> None:
-        """Process a chunk of bets."""
+        :param chunk: the raw bets to merge into the store.
+        :yield: control back to the agent loop every `YIELD_EVERY_N_MARKETS`.
+        """
         if chunk is None:
             return
 
-        for raw_bet in chunk:
+        bet_index = self.build_bet_index()
+        for processed, raw_bet in enumerate(chunk, start=1):
+            if processed % YIELD_EVERY_N_MARKETS == 0:
+                yield
             bet = Bet(**raw_bet, market=self._current_market)
-            index = self.get_bet_idx(bet.id)
+            index = bet_index.get(bet.id)
             if index is None:
+                # only this branch grows `self.bets`; the update branch leaves
+                # positions untouched, so the index stays valid for the chunk
+                bet_index[bet.id] = len(self.bets)
                 self.bets.append(bet)
             else:
                 self.bets[index].update_market_info(bet)
@@ -192,7 +202,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 break
 
             bets_market_chunk = yield from self._fetch_bets()
-            self._process_chunk(bets_market_chunk)
+            yield from self._process_chunk(bets_market_chunk)
 
         if self._fetch_status != FetchStatus.SUCCESS:
             # this won't wipe the bets as the `store_bets` of the `BetsManagerBehaviour` takes this into consideration

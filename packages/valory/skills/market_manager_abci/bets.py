@@ -242,6 +242,20 @@ class Bet:
         """Get the amount invested in bets."""
         return self.invested_amount_yes + self.invested_amount_no
 
+    @property
+    def has_investments(self) -> bool:
+        """Whether any amount is currently recorded against this bet.
+
+        Reads `investments` directly; `invested_amount` goes through the `yes`/`no`
+        properties, which dispatch to `get_outcome` and raise once
+        `blacklist_forever` has set `outcomes` to `None`. Note this means "amounts
+        recorded now", not "ever traded": `update_bets_investments` skips expired
+        bets, so a settled market the agent traded can report `False`.
+
+        :return: True if any non-zero amount is recorded against the bet.
+        """
+        return any(a for amounts in self.investments.values() for a in amounts)
+
     @staticmethod
     def opposite_vote(vote: int) -> int:
         """Get the opposite vote."""

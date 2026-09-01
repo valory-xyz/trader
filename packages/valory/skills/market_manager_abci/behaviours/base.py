@@ -50,6 +50,10 @@ BETS_FILENAME = "bets.json"
 MULTI_BETS_FILENAME = "multi_bets.json"
 READ_MODE = "r"
 WRITE_MODE = "w"
+# A pass that holds the cooperative AEA loop starves the agent's own HTTP server
+# and stalls Tendermint block production; crossing `BLOCKS_STALL_TOLERANCE` wedges
+# the agent. Single-agent deployments still run Tendermint, so this applies there.
+YIELD_EVERY_N_MARKETS = 500
 
 
 class BetsManagerBehaviour(BaseBehaviour, ABC):
@@ -188,6 +192,50 @@ class BetsManagerBehaviour(BaseBehaviour, ABC):
         for bet in self.bets:
             if getattr(bet, "collateralToken", ""):
                 bet.collateralToken = ""
+
+    def build_bet_index(self) -> Dict[str, int]:
+        """Map each stored bet's id to its index in ``self.bets``.
+
+        A repeated id resolves to its last occurrence, where the linear scan this
+        replaced resolved to the first. No path appends a duplicate today.
+
+        :return: a mapping from bet id to its index in ``self.bets``.
+        """
+        return {bet.id: index for index, bet in enumerate(self.bets)}
+
+    def prune_bets(self, now: int) -> None:
+        """Drop long-settled bets with no amount recorded against them.
+
+        Shifts positions in ``self.bets``, so it must run before
+        ``SamplingBehaviour`` recomputes ``sampled_bet_index``, which is
+        positional rather than keyed by id.
+
+        :param now: the synchronized time to measure the retention window from.
+            Passed in because ``synced_time`` lives on ``QueryingBehaviour``, not
+            on this class.
+        """
+        # `openingTimestamp` carries the market's `endDate` on Polymarket, so
+        # this window means "the market closed more than a retention period ago".
+        cutoff = now - self.params.expired_bet_retention
+        retained = [
+            bet
+            for bet in self.bets
+            if not (
+                bet.queue_status.is_expired()
+                and not bet.has_investments
+                and 0 < bet.openingTimestamp < cutoff
+            )
+        ]
+
+        dropped = len(self.bets) - len(retained)
+        if not dropped:
+            return
+
+        self.bets = retained
+        self.context.logger.info(
+            f"Pruned {dropped} settled bets with no position from the store, "
+            f"{len(retained)} retained."
+        )
 
     def hash_stored_bets(self) -> str:
         """Get the hash of the stored bets' file."""

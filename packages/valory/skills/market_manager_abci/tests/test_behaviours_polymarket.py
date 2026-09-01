@@ -25,6 +25,9 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from packages.valory.skills.market_manager_abci.behaviours.base import (
+    YIELD_EVERY_N_MARKETS,
+)
 from packages.valory.skills.market_manager_abci.behaviours.polymarket_fetch_market import (
     EXTREME_PRICE_THRESHOLD,
     POLYMARKET_CATEGORY_KEYWORDS,
@@ -38,6 +41,7 @@ from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
 )
+from packages.valory.skills.market_manager_abci.tests.conftest import raw_bet
 
 # ---------------------------------------------------------------------------
 # Helper utilities
@@ -64,6 +68,7 @@ def _make_behaviour(**overrides: Any) -> PolymarketFetchMarketBehaviour:
     """Create a PolymarketFetchMarketBehaviour instance using object.__new__."""
     behaviour = object.__new__(PolymarketFetchMarketBehaviour)  # type: ignore[type-abstract]
     behaviour._context = MagicMock()
+    behaviour._context.params.expired_bet_retention = 2592000
     behaviour.bets = []
     behaviour.multi_bets_filepath = "/tmp/multi_bets.json"  # type: ignore[type-abstract]  # nosec B108
     behaviour.bets_filepath = "/tmp/bets.json"  # nosec B108
@@ -827,32 +832,57 @@ class TestSetup:
         behaviour.setup()  # type: ignore[misc]
         behaviour._blacklist_expired_bets.assert_not_called()  # type: ignore[attr-defined]
 
+    def test_setup_prunes_after_blacklisting(self) -> None:
+        """Test that setup prunes the store only after the blacklist pass."""
+        behaviour = self._setup_behaviour()
+        behaviour.prune_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
+        behaviour.params.use_multi_bets_mode = False
+        behaviour.bets = [_make_bet()]
+
+        order: List[str] = []
+        behaviour._blacklist_expired_bets.side_effect = lambda: order.append("blacklist")  # type: ignore[attr-defined]
+        behaviour.prune_bets.side_effect = lambda *_: order.append("prune")  # type: ignore[attr-defined]
+        behaviour.setup()
+
+        assert order == ["blacklist", "prune"]
+
+    def test_setup_does_not_prune_when_no_bets(self) -> None:
+        """Test that setup does NOT prune when bets are empty."""
+        behaviour = self._setup_behaviour()
+        behaviour.prune_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour.synchronized_data.is_checkpoint_reached = False  # type: ignore[misc]
+        behaviour.params.use_multi_bets_mode = False
+        behaviour.bets = []
+        behaviour.setup()
+        behaviour.prune_bets.assert_not_called()  # type: ignore[attr-defined]
+
 
 # ===========================================================================  # type: ignore[attr-defined]
-# Tests for get_bet_idx
+# Tests for build_bet_index
 # ===========================================================================
 
 
-class TestGetBetIdx:
-    """Tests for get_bet_idx."""
+class TestBuildBetIndex:
+    """Tests for build_bet_index."""
 
     def test_found(self) -> None:
         """Test finding a bet by id."""
         bet1 = _make_bet(id="b1")
         bet2 = _make_bet(id="b2")
         behaviour = _make_behaviour(bets=[bet1, bet2])
-        assert behaviour.get_bet_idx("b2") == 1
+        assert behaviour.build_bet_index() == {"b1": 0, "b2": 1}
 
     def test_not_found(self) -> None:
         """Test returning None when bet is not found."""
         bet1 = _make_bet(id="b1")
         behaviour = _make_behaviour(bets=[bet1])
-        assert behaviour.get_bet_idx("nonexistent") is None
+        assert behaviour.build_bet_index().get("nonexistent") is None
 
     def test_empty_bets(self) -> None:
         """Test with empty bets list."""
         behaviour = _make_behaviour()
-        assert behaviour.get_bet_idx("anything") is None
+        assert behaviour.build_bet_index() == {}
 
 
 # ===========================================================================
@@ -867,7 +897,7 @@ class TestProcessChunk:
         """Test that None chunk is a no-op."""
         behaviour = _make_behaviour()
         behaviour._current_market = "polymarket"
-        behaviour._process_chunk(None)
+        list(behaviour._process_chunk(None))
         assert behaviour.bets == []
 
     def test_new_bet_added(self) -> None:
@@ -887,7 +917,7 @@ class TestProcessChunk:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=10.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].id == "b1"
 
@@ -912,7 +942,7 @@ class TestProcessChunk:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=20.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].scaledLiquidityMeasure == 20.0
 
@@ -934,7 +964,7 @@ class TestProcessChunk:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=20.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         assert behaviour.bets[0].market == "polymarket_client"
 
     def test_new_bet_with_null_field_counted_as_null_or_mismatch(self) -> None:
@@ -955,7 +985,7 @@ class TestProcessChunk:
             outcomes=None,
             scaledLiquidityMeasure=10.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
@@ -988,7 +1018,7 @@ class TestProcessChunk:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=0.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
@@ -1023,7 +1053,7 @@ class TestProcessChunk:
             scaledLiquidityMeasure=20.0,
             processed_timestamp=sys.maxsize,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         # Existing was alive; update_market_info propagated the blacklist
         assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
@@ -1051,7 +1081,7 @@ class TestProcessChunk:
             outcomes=["Yes", "No"],
             scaledLiquidityMeasure=20.0,
         )
-        behaviour._process_chunk([raw_bet])
+        list(behaviour._process_chunk([raw_bet]))
         log_calls = [str(c) for c in behaviour.context.logger.info.call_args_list]
         assert any(
             "filter=update_propagated_blacklist" in call and "dropped=0" in call
@@ -1708,6 +1738,34 @@ class TestFetchMarketsFromPolymarket:
         # Polymarket v2: per-bet collateralToken is intentionally blank — the
         # protocol invariant lives in `params.polymarket_collateral_address`.
         assert result[0]["collateralToken"] == ""
+
+    def test_parse_loop_yields_on_a_large_category(self) -> None:
+        """Test that the per-market parse loop also gives the AEA loop back.
+
+        `_process_chunk` is not the only O(markets) stretch in this behaviour;
+        this loop does three `json.loads` and a date parse per market.
+        """
+        behaviour = self._setup_behaviour()
+        markets = [
+            _make_valid_market(id=f"m{i}", conditionId=f"0xcond{i}")
+            for i in range(YIELD_EVERY_N_MARKETS)
+        ]
+        behaviour.send_polymarket_connection_request = _return_gen(  # type: ignore[method-assign]
+            {"technology": markets}
+        )
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        yields = 0
+        try:
+            next(gen)
+            while True:
+                gen.send(None)
+                yields += 1
+        except StopIteration:
+            pass
+
+        # one yield from the connection request, one from the parse loop boundary
+        assert yields >= 1
 
     def test_market_missing_outcomes(self) -> None:
         """Test market with empty outcomes is skipped."""
@@ -2454,7 +2512,7 @@ class TestEdgeCases:
             )
             for i in range(5)
         ]
-        behaviour._process_chunk(raw_bets)
+        list(behaviour._process_chunk(raw_bets))
         assert len(behaviour.bets) == 5
 
     def test_blacklist_expired_bets_exactly_at_margin_boundary(self) -> None:
@@ -2645,7 +2703,7 @@ class TestEdgeCases:
         """Test _process_chunk with empty list."""
         behaviour = _make_behaviour()
         behaviour._current_market = "polymarket"
-        behaviour._process_chunk([])
+        list(behaviour._process_chunk([]))
         assert behaviour.bets == []
 
     def test_fetch_markets_valid_market_is_valid_true(self) -> None:
@@ -2682,8 +2740,55 @@ class TestEdgeCases:
         assert result is not None
         assert len(result) == 0  # type: ignore[arg-type]
 
-    def test_get_bet_idx_first_element(self) -> None:
-        """Test get_bet_idx returns 0 for first element."""
+    def test_build_bet_index_first_element(self) -> None:
+        """Test build_bet_index maps the first element to 0."""
         bet = _make_bet(id="b1")
         behaviour = _make_behaviour(bets=[bet])
-        assert behaviour.get_bet_idx("b1") == 0
+        assert behaviour.build_bet_index()["b1"] == 0
+
+
+class TestProcessChunkYields:
+    """Tests that _process_chunk hands the AEA loop back while walking a chunk."""
+
+    def test_yields_once_per_interval(self) -> None:
+        """Test that a chunk spanning several intervals yields once for each."""
+        behaviour = _make_behaviour()
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS * 2)]
+
+        yields = sum(1 for _ in behaviour._process_chunk(chunk))
+
+        assert yields == 2
+        assert len(behaviour.bets) == len(chunk)
+
+    def test_yields_exactly_once_at_the_boundary(self) -> None:
+        """Test the exact interval boundary, which an off-by-one would move."""
+        behaviour = _make_behaviour()
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS)]
+
+        assert sum(1 for _ in behaviour._process_chunk(chunk)) == 1
+        assert len(behaviour.bets) == len(chunk)
+
+    def test_does_not_yield_below_the_interval(self) -> None:
+        """Test that a short chunk is processed without giving up the loop."""
+        behaviour = _make_behaviour()
+        chunk = [raw_bet(f"m{i}") for i in range(YIELD_EVERY_N_MARKETS - 1)]
+
+        assert sum(1 for _ in behaviour._process_chunk(chunk)) == 0
+        assert len(behaviour.bets) == len(chunk)
+
+    def test_duplicate_id_in_one_chunk_updates_instead_of_appending(self) -> None:
+        """Test that a repeated id inside one chunk never double-appends.
+
+        The index write before the append is what enforces this; without it the
+        second occurrence is treated as new.
+        """
+        behaviour = _make_behaviour()
+        chunk = [
+            raw_bet("dup", scaledLiquidityMeasure=10.0),
+            raw_bet("dup", scaledLiquidityMeasure=99.0),
+        ]
+
+        list(behaviour._process_chunk(chunk))
+
+        assert len(behaviour.bets) == 1
+        assert behaviour.bets[0].scaledLiquidityMeasure == 99.0

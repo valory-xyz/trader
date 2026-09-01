@@ -37,11 +37,11 @@ and assert the result is internally consistent for both deployment flavors.
 import io
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from unittest import mock
 
 import pytest
-from aea.helpers.env_vars import apply_env_variables_on_agent_config
+from aea.helpers.env_vars import ENV_VARIABLE_RE, apply_env_variables_on_agent_config
 from aea.helpers.yaml_utils import yaml_load_all
 
 from packages.valory.skills.funds_manager.models import Params
@@ -153,3 +153,91 @@ def test_agent_config_resolves_consistently_per_chain(
         "url"
     ]
     assert mechs_url == marketplace_url
+
+
+SKILL_YAML_PATH = _VALORY_DIR / "skills" / "trader_abci" / "skill.yaml"
+
+# Only these model args are exempt from open-aea's arg-path truncation.
+_EXEMPT_ARGS = frozenset({"setup", "genesis_config"})
+
+
+def _nested_model_arg_placeholders() -> List[Tuple[str, str]]:
+    """Find placeholders nested below ``models.<model>.args.<arg>`` in the agent config.
+
+    :return: ``(dotted path, placeholder)`` for every such leaf across all overrides.
+    """
+    docs = list(yaml_load_all(io.StringIO(AEA_CONFIG_PATH.read_text(encoding="utf-8"))))
+    found: List[Tuple[str, str]] = []
+
+    def walk(node: Any, path: List[str]) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                walk(value, [*path, str(key)])
+        elif isinstance(node, list):
+            for i, value in enumerate(node):
+                walk(value, [*path, str(i)])
+        elif isinstance(node, str) and ENV_VARIABLE_RE.match(node):
+            # models / <model> / args / <arg> / ...something deeper
+            if (
+                len(path) > 4
+                and path[0] == "models"
+                and path[2] == "args"
+                and path[3] not in _EXEMPT_ARGS
+            ):
+                found.append((".".join(path), node))
+
+    for doc in docs:
+        walk({"models": doc.get("models", {})}, [])
+    return found
+
+
+def test_no_anonymous_placeholder_nested_under_a_model_arg() -> None:
+    """A nested leaf must never use an anonymous ``${type:default}`` placeholder.
+
+    open-aea collapses a dict-valued model arg into one env var whenever any key
+    is not a bash identifier, and ``restrict_model_args`` truncates a nested
+    leaf's path to that same name. An anonymous leaf falls back to that name and
+    resolves to the whole parent dict as a string -- which is how every squid
+    query started returning HTTP 400. A named placeholder never consults the
+    fallback, and a plain literal is never substituted at all.
+    """
+    anonymous = [
+        (path, placeholder)
+        for path, placeholder in _nested_model_arg_placeholders()
+        if ENV_VARIABLE_RE.match(placeholder).groups()[1] is None  # type: ignore[union-attr]
+    ]
+    assert not anonymous, f"anonymous nested placeholders found: {anonymous}"
+
+
+def test_skill_declares_content_type_as_a_plain_literal() -> None:
+    """The skill's own ``Content-Type`` defaults must stay unsubstitutable literals.
+
+    The agent config deliberately does not override ``headers``, so these are the
+    values the running agent actually sends.
+    """
+    docs = list(yaml_load_all(io.StringIO(SKILL_YAML_PATH.read_text(encoding="utf-8"))))
+    declared = {
+        model: cfg["args"]["headers"].get("Content-Type")
+        for model, cfg in docs[0].get("models", {}).items()
+        if isinstance(cfg.get("args"), dict) and cfg["args"].get("headers")
+    }
+
+    assert declared, "trader_abci declares no Content-Type headers"
+    for model, value in declared.items():
+        assert value == "application/json", f"{model} -> {value!r}"
+
+
+def test_agent_config_does_not_override_headers() -> None:
+    """No ``headers`` override should reappear in the agent config.
+
+    Re-adding one buys nothing -- it can only restate the skill default -- while
+    re-arming the collapsed-env-var trap the tests above guard against.
+    """
+    docs = list(yaml_load_all(io.StringIO(AEA_CONFIG_PATH.read_text(encoding="utf-8"))))
+    overriding = [
+        f"{doc.get('public_id')}:{model}"
+        for doc in docs
+        for model, cfg in doc.get("models", {}).items()
+        if isinstance(cfg.get("args"), dict) and "headers" in cfg["args"]
+    ]
+    assert not overriding, f"headers override reintroduced for: {overriding}"

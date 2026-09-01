@@ -125,6 +125,9 @@ class MarketManagerParams(BaseParams):
         self.disabled_polymarket_tags: List[str] = self._ensure(
             "disabled_polymarket_tags", kwargs, List[str]
         )
+        self.expired_bet_retention: int = self._ensure(
+            "expired_bet_retention", kwargs, int
+        )
         super().__init__(*args, **kwargs)
 
     @property

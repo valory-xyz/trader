@@ -30,6 +30,7 @@ from dateutil import parser as date_parser
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BetsManagerBehaviour,
+    YIELD_EVERY_N_MARKETS,
 )
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
@@ -344,10 +345,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # helps in resetting the queue number to 0
         if self.bets:
             self._blacklist_expired_bets()
-
-    def get_bet_idx(self, bet_id: str) -> Optional[int]:
-        """Get the index of the bet with the given id, if it exists, otherwise `None`."""
-        return next((i for i, bet in enumerate(self.bets) if bet.id == bet_id), None)
+            self.prune_bets(self.synced_time)
 
     @staticmethod
     def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
@@ -386,19 +384,28 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 return True
         return False
 
-    def _process_chunk(self, chunk: Optional[List[Dict[str, Any]]]) -> None:
-        """Process a chunk of bets."""
+    def _process_chunk(
+        self, chunk: Optional[List[Dict[str, Any]]]
+    ) -> Generator[None, None, None]:
+        """Process a chunk of bets.
+
+        :param chunk: the raw bets to merge into the store.
+        :yield: control back to the agent loop every `YIELD_EVERY_N_MARKETS`.
+        """
         if chunk is None:
             return
 
+        bet_index = self.build_bet_index()
         new_count = 0
         update_count = 0
         null_or_mismatch_drops = 0
         zero_liquidity_drops = 0
         update_propagated_drops = 0
-        for raw_bet in chunk:
+        for processed, raw_bet in enumerate(chunk, start=1):
+            if processed % YIELD_EVERY_N_MARKETS == 0:
+                yield
             bet = Bet(**raw_bet, market=self._current_market)
-            index = self.get_bet_idx(bet.id)
+            index = bet_index.get(bet.id)
             if index is None:
                 new_count += 1
                 if bet.queue_status.is_expired():
@@ -406,6 +413,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         null_or_mismatch_drops += 1
                     else:
                         zero_liquidity_drops += 1
+                # only this branch grows `self.bets`; the update branch leaves
+                # positions untouched, so the index stays valid for the chunk
+                bet_index[bet.id] = len(self.bets)
                 self.bets.append(bet)
             else:
                 update_count += 1
@@ -494,7 +504,9 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             unexpected_error_in_category = 0
             closed_in_category = 0
 
-            for market in markets:
+            for processed, market in enumerate(markets, start=1):
+                if processed % YIELD_EVERY_N_MARKETS == 0:
+                    yield
                 market_id = market.get("id", "unknown")
                 is_category_valid = market.get("category_valid", False)
                 # keyword filter disabled — accept all categories
@@ -695,7 +707,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.bets = []
             return
 
-        self._process_chunk(bets_market_chunk)
+        yield from self._process_chunk(bets_market_chunk)
         self._blacklist_expired_bets()
 
         # truncate the bets, otherwise logs get too big

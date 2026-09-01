@@ -70,10 +70,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidsnxslce3p6icqtuiezklxgd2mppfvy7cdm7zuuqevano4lnbh6y
-- valory/market_manager_abci:0.1.0:bafybeieqmw75lqqrqm7uccjmmjme2s3zfmjwd4u3vvhbkekbyzxtgibcbq
-- valory/decision_maker_abci:0.1.0:bafybeicrimjfrtechvsf7smvdgntxlnujrsmcufiplba2u4qv2mqb4bis4
-- valory/trader_abci:0.1.0:bafybeihufikanbpvcudblnaymr32kypjbc3oxirbiyivok3iragbgehrum
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibmndj74fjaeites5pf6kfdjft3rheptb72key77c6o5j2lhsmkhi
+- valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
+- valory/decision_maker_abci:0.1.0:bafybeifxf5qyvjxytzwy65uxddsy4uddtiepjdvsteedc7uickwrkgjhdu
+- valory/trader_abci:0.1.0:bafybeidrtsgyhotnvkberqgnueqokte5elaqsa664s5vk5hyvrrzufqgvq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/check_stop_trading_abci:0.1.0:bafybeickt3jnrkmtcnzr4ugyikfqibif76oiggltflwpjo6iyquwbu44k4
 - valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
@@ -202,6 +202,7 @@ models:
       creator_per_subgraph: ${dict:{"omen_subgraph":["0x89c5cc945dd550BcFfb72Fe42BfF002429F46Fec"]}}
       slot_count: ${int:2}
       opening_margin: ${int:86400}
+      expired_bet_retention: ${EXPIRED_BET_RETENTION:int:2592000}
       languages: ${list:["en_US"]}
       disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${int:5}
@@ -333,8 +334,6 @@ models:
       datetime_format: ${str:%Y-%m-%d %H:%M:%S}
   network_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:blocks}
       response_index: ${int:0}
@@ -346,8 +345,6 @@ models:
       url: ${NETWORK_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/stakewise/ethereum-gnosis}
   omen_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:fixedProductMarketMakers}
       response_type: ${str:list}
@@ -365,8 +362,6 @@ models:
       url: ${str:https://drand.cloudflare.com/public/latest}
   mech_response:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:GET}
       response_key: ${str:result}
       response_type: ${str:str}
@@ -374,8 +369,6 @@ models:
       url: ${str:''}
   agent_tools:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:GET}
       response_key: ${str:tools}
       response_type: ${str:list}
@@ -383,8 +376,6 @@ models:
       url: ${str:''}
   trades_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:fpmmTrades}
       response_type: ${str:list}
@@ -395,8 +386,6 @@ models:
       url: ${TRADES_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/protofire/omen-xdai}
   conditional_tokens_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:user:userPositions}
       response_type: ${str:list}
@@ -407,8 +396,6 @@ models:
       url: ${CONDITIONAL_TOKENS_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/gnosis/conditional-tokens-gc}
   realitio_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:answers}
       response_type: ${str:list}
@@ -419,8 +406,6 @@ models:
       url: ${REALITIO_SUBGRAPH_URL:str:https://api.thegraph.com/subgraphs/name/realityeth/realityeth-gnosis}
   open_markets_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:questions}
       response_type: ${str:list}
@@ -431,8 +416,6 @@ models:
       url: ${str:https://api.subgraph.autonolas.tech/api/proxy/predict-omen}
   olas_agents_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data}
       response_type: ${str:dict}
@@ -443,8 +426,6 @@ models:
       url: ${str:https://api.subgraph.autonolas.tech/api/proxy/predict-omen}
   olas_mech_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data}
       response_type: ${str:dict}
@@ -455,8 +436,6 @@ models:
       url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
   gnosis_staking_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:service}
       response_type: ${str:dict}
@@ -467,8 +446,6 @@ models:
       url: ${GNOSIS_STAKING_SUBGRAPH_URL:str:https://staking-gnosis.subgraph.autonolas.tech}
   mech_tools:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:GET}
       response_key: ${str:tools}
       response_type: ${str:list}
@@ -476,8 +453,6 @@ models:
       url: ${str:''}
   mechs_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:meches}
       response_type: ${str:list}
@@ -489,8 +464,6 @@ models:
       delivery_rate_cap: ${int:10000000000000000}
   polymarket_agents_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:traderAgentById}
       response_type: ${str:dict}
@@ -501,8 +474,6 @@ models:
       url: ${POLYMARKET_AGENTS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_bets_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:marketParticipants}
       response_type: ${str:list}
@@ -513,8 +484,6 @@ models:
       url: ${POLYMARKET_BETS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polymarket_questions_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:questions}
       response_type: ${str:list}
@@ -525,8 +494,6 @@ models:
       url: ${POLYMARKET_QUESTIONS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
   polygon_mech_subgraph:
     args:
-      headers:
-        Content-Type: ${str:application/json}
       method: ${str:POST}
       response_key: ${str:data:sender}
       response_type: ${str:dict}
