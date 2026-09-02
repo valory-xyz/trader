@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -862,6 +864,36 @@ class TestIsProfitable:
             ).start()
 
         return behaviour, pred, bet
+
+    @pytest.mark.parametrize("signal", [0.35, None])
+    def test_researchability_is_forwarded_to_the_strategy(self, signal: Any) -> None:
+        """The optional mech signal reaches get_bet_amount as a kwarg.
+
+        Advisory plumbing only: shipped strategies ignore it, but a sizing
+        strategy (e.g. kelly_shrink) must be able to read it, and a tool
+        that does not emit it must forward None unchanged.
+
+        :param signal: the researchability value carried by the response.
+        """
+        captured: Dict[str, Any] = {}
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0
+        )
+        pred.researchability = signal
+
+        def mock_get_bet_amount(*_args: Any, **kwargs: Any) -> Generator:
+            captured.update(kwargs)
+            yield
+            return 500  # type: ignore[return-value]
+
+        patch.object(
+            behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+        ).start()
+        self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        assert "researchability" in captured
+        assert captured["researchability"] == signal
 
     def test_strategy_positive_bet(self) -> None:
         """Strategy returns bet_amount > 0 and vote=0 -> profitable."""

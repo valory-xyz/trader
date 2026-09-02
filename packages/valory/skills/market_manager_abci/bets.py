@@ -33,6 +33,7 @@ P_YES_FIELD = "p_yes"
 P_NO_FIELD = "p_no"
 CONFIDENCE_FIELD = "confidence"
 INFO_UTILITY_FIELD = "info_utility"
+RESEARCHABILITY_FIELD = "researchability"
 BINARY_N_SLOTS = 2
 DAY_IN_SECONDS = 24 * 60 * 60
 WEI = 10**18
@@ -112,6 +113,7 @@ class PredictionResponse:
     p_no: float
     confidence: float
     info_utility: float
+    researchability: Optional[float]
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialize the mech's prediction ignoring extra keys."""
@@ -119,10 +121,26 @@ class PredictionResponse:
         self.p_no = float(kwargs.pop(P_NO_FIELD))
         self.confidence = float(kwargs.pop(CONFIDENCE_FIELD))
         self.info_utility = float(kwargs.pop(INFO_UTILITY_FIELD))
+        # Optional 0-1 signal emitted by market-aware tools ("can research
+        # inform this question?"). Absent, malformed, boolean, or
+        # out-of-range values all degrade to None so that a response from
+        # ANY tool parses exactly as before -- the signal is advisory
+        # (strategies may read it) and never load-bearing here.
+        raw_researchability = kwargs.pop(RESEARCHABILITY_FIELD, None)
+        self.researchability = (
+            float(raw_researchability)
+            if isinstance(raw_researchability, (int, float))
+            and not isinstance(raw_researchability, bool)
+            and 0 <= raw_researchability <= 1
+            else None
+        )
 
-        # all the fields are probabilities; run checks on whether the current prediction response is valid or not.
+        # all the mandatory fields are probabilities; run checks on whether
+        # the current prediction response is valid or not.
         probabilities = (
-            getattr(self, field_.name) for field_ in dataclasses.fields(self)
+            value
+            for field_ in dataclasses.fields(self)
+            if (value := getattr(self, field_.name)) is not None
         )
         if (
             any(not (0 <= prob <= 1) for prob in probabilities)

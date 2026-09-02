@@ -573,6 +573,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         orderbook_asks_yes: Optional[List[Dict[str, str]]] = None,
         orderbook_asks_no: Optional[List[Dict[str, str]]] = None,
         min_order_shares: float = 0.0,
+        researchability: Optional[float] = None,
     ) -> Generator[None, None, int]:
         """Get the bet amount given a specified trading strategy."""
         yield from self.download_strategies()
@@ -604,6 +605,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "bankroll": bankroll,
                     "p_yes": p_yes,
                     "confidence": confidence,
+                    # Optional 0-1 signal from market-aware mech tools; None
+                    # for every other tool. Advisory: shipped strategies
+                    # ignore it, a future strategy may read it for sizing.
+                    "researchability": researchability,
                     "tokens_yes": (
                         outcome_token_amounts[0] if outcome_token_amounts else 0
                     ),

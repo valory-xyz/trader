@@ -255,6 +255,35 @@ class TestPredictionResponse:
         with pytest.raises(ValueError, match="Invalid prediction response"):
             PredictionResponse(**kwargs)
 
+    # researchability --------------------------------------------------------
+    def test_researchability_defaults_to_none(self) -> None:
+        """A response without the optional signal parses as before."""
+        pr = PredictionResponse(p_yes=0.7, p_no=0.3, confidence=0.9, info_utility=0.5)
+        assert pr.researchability is None
+
+    def test_researchability_float_is_kept(self) -> None:
+        """A valid 0-1 researchability is stored."""
+        pr = PredictionResponse(
+            p_yes=0.7,
+            p_no=0.3,
+            confidence=0.9,
+            info_utility=0.5,
+            researchability=0.8,
+        )
+        assert pr.researchability == 0.8
+
+    @pytest.mark.parametrize("bad", [True, False, -0.1, 1.5, "high", None, [0.5]])
+    def test_researchability_malformed_degrades_to_none(self, bad: Any) -> None:
+        """Bools, out-of-range and non-numeric values never break parsing."""
+        pr = PredictionResponse(
+            p_yes=0.7,
+            p_no=0.3,
+            confidence=0.9,
+            info_utility=0.5,
+            researchability=bad,
+        )
+        assert pr.researchability is None
+
     # vote -------------------------------------------------------------------
     def test_vote_yes(self) -> None:
         """Test vote returns 0 when p_yes > p_no (i.e., vote YES)."""

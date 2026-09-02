@@ -496,6 +496,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             if self.benchmarking_mode.enabled
             else self.collateral_token
         )
+        if prediction_response.researchability is not None:
+            # Log-only: the signal is recorded for offline analysis and
+            # handed to the strategy; no decision path branches on it here.
+            self.context.logger.info(
+                f"Mech tool reported researchability="
+                f"{prediction_response.researchability}."
+            )
         bet_amount = yield from self.get_bet_amount(
             prediction_response.p_yes,
             prediction_response.confidence,
@@ -508,6 +515,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             orderbook_asks_yes=orderbook_asks_yes,
             orderbook_asks_no=orderbook_asks_no,
             min_order_shares=min_order_shares,
+            researchability=prediction_response.researchability,
         )
 
         strategy_result = self._last_strategy_result
