@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -257,6 +259,55 @@ class TestGetDecision:
         assert isinstance(result, PredictionResponse)
         assert result.p_yes == 0.8
         assert result.confidence == 0.9
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            (0.35, 0.35),
+            (None, None),  # key absent entirely
+            (True, None),
+            (-0.1, None),
+            (1.5, None),
+            ("high", None),
+        ],
+    )
+    def test_get_decision_captures_researchability(
+        self, raw: Any, expected: Any
+    ) -> None:
+        """The optional signal is coerced and stashed; parsing is untouched.
+
+        :param raw: the researchability value in the mech response JSON.
+        :param expected: the coerced value expected on the behaviour.
+        """
+        behaviour = _make_behaviour()
+        behaviour._mech_researchability = 0.99  # stale value must be reset
+        pred_data: Dict[str, Any] = {
+            "p_yes": 0.8,
+            "p_no": 0.2,
+            "confidence": 0.9,
+            "info_utility": 0.5,
+        }
+        if raw is not None:
+            pred_data["researchability"] = raw
+        behaviour._mech_response = MechInteractionResponse(result=json.dumps(pred_data))
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(
+                    mech_responses=[behaviour._mech_response]
+                )
+                result = behaviour._get_decision()
+
+        assert isinstance(result, PredictionResponse)
+        assert behaviour._mech_researchability == expected
+        # Present-but-rejected values must be loud; absent must stay quiet.
+        rejected = raw is not None and expected is None
+        assert behaviour.context.logger.warning.called == rejected
 
     def test_get_decision_with_none_response(self) -> None:
         """_get_decision should return None when _mech_response stays None."""
@@ -862,6 +913,32 @@ class TestIsProfitable:
             ).start()
 
         return behaviour, pred, bet
+
+    @pytest.mark.parametrize("signal", [0.35, None])
+    def test_researchability_is_forwarded_to_the_strategy(self, signal: Any) -> None:
+        """The optional mech signal reaches get_bet_amount as a kwarg.
+
+        :param signal: the researchability value carried by the response.
+        """
+        captured: Dict[str, Any] = {}
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=500, strategy_vote=0
+        )
+        behaviour._mech_researchability = signal
+
+        def mock_get_bet_amount(*_args: Any, **kwargs: Any) -> Generator:
+            captured.update(kwargs)
+            yield
+            return 500  # type: ignore[return-value]
+
+        patch.object(
+            behaviour, "get_bet_amount", side_effect=mock_get_bet_amount
+        ).start()
+        self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        assert "researchability" in captured
+        assert captured["researchability"] == signal
 
     def test_strategy_positive_bet(self) -> None:
         """Strategy returns bet_amount > 0 and vote=0 -> profitable."""
