@@ -260,6 +260,52 @@ class TestGetDecision:
         assert result.p_yes == 0.8
         assert result.confidence == 0.9
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            (0.35, 0.35),
+            (None, None),  # key absent entirely
+            (True, None),
+            (-0.1, None),
+            (1.5, None),
+            ("high", None),
+        ],
+    )
+    def test_get_decision_captures_researchability(
+        self, raw: Any, expected: Any
+    ) -> None:
+        """The optional signal is coerced and stashed; parsing is untouched.
+
+        :param raw: the researchability value in the mech response JSON.
+        :param expected: the coerced value expected on the behaviour.
+        """
+        behaviour = _make_behaviour()
+        behaviour._mech_researchability = 0.99  # stale value must be reset
+        pred_data: Dict[str, Any] = {
+            "p_yes": 0.8,
+            "p_no": 0.2,
+            "confidence": 0.9,
+            "info_utility": 0.5,
+        }
+        if raw is not None:
+            pred_data["researchability"] = raw
+        behaviour._mech_response = MechInteractionResponse(result=json.dumps(pred_data))
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(
+                    mech_responses=[behaviour._mech_response]
+                )
+                result = behaviour._get_decision()
+
+        assert isinstance(result, PredictionResponse)
+        assert behaviour._mech_researchability == expected
+
     def test_get_decision_with_none_response(self) -> None:
         """_get_decision should return None when _mech_response stays None."""
         behaviour = _make_behaviour()
@@ -879,7 +925,7 @@ class TestIsProfitable:
         behaviour, pred, _ = self._setup_behaviour(
             strategy_bet_amount=500, strategy_vote=0
         )
-        pred.researchability = signal
+        behaviour._mech_researchability = signal
 
         def mock_get_bet_amount(*_args: Any, **kwargs: Any) -> Generator:
             captured.update(kwargs)
