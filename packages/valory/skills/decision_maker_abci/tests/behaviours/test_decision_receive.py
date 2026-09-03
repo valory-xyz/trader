@@ -305,6 +305,9 @@ class TestGetDecision:
 
         assert isinstance(result, PredictionResponse)
         assert behaviour._mech_researchability == expected
+        # Present-but-rejected values must be loud; absent must stay quiet.
+        rejected = raw is not None and expected is None
+        assert behaviour.context.logger.warning.called == rejected
 
     def test_get_decision_with_none_response(self) -> None:
         """_get_decision should return None when _mech_response stays None."""
@@ -914,10 +917,6 @@ class TestIsProfitable:
     @pytest.mark.parametrize("signal", [0.35, None])
     def test_researchability_is_forwarded_to_the_strategy(self, signal: Any) -> None:
         """The optional mech signal reaches get_bet_amount as a kwarg.
-
-        Advisory plumbing only: shipped strategies ignore it, but a sizing
-        strategy (e.g. kelly_shrink) must be able to read it, and a tool
-        that does not emit it must forward None unchanged.
 
         :param signal: the researchability value carried by the response.
         """

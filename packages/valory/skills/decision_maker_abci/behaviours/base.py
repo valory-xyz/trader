@@ -605,9 +605,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     "bankroll": bankroll,
                     "p_yes": p_yes,
                     "confidence": confidence,
-                    # Optional 0-1 signal from market-aware mech tools; None
-                    # for every other tool. Advisory: shipped strategies
-                    # ignore it, a future strategy may read it for sizing.
                     "researchability": researchability,
                     "tokens_yes": (
                         outcome_token_amounts[0] if outcome_token_amounts else 0

@@ -65,6 +65,7 @@ def _coerce_researchability(value: Any) -> Optional[float]:
     :param value: the raw value from the mech response JSON.
     :return: the coerced signal, or None.
     """
+    # bool subclasses int, so True/False would otherwise pass as 1.0/0.0.
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     if not 0 <= value <= 1:
@@ -240,11 +241,15 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
 
-        # Optional 0-1 signal from market-aware tools, forwarded to the
-        # betting strategy untouched; not stored, not gated on here.
-        self._mech_researchability = _coerce_researchability(
-            raw_response.get("researchability")
-        )
+        raw_researchability = raw_response.get("researchability")
+        self._mech_researchability = _coerce_researchability(raw_researchability)
+        if raw_researchability is not None and self._mech_researchability is None:
+            # Distinguish "tool never implemented the field" (absent, quiet)
+            # from "implemented and broken" (present but rejected, loud).
+            self.context.logger.warning(
+                f"Mech response carried an invalid researchability value "
+                f"{raw_researchability!r}; ignoring it."
+            )
         return prediction_response
 
     def _compute_new_tokens_distribution(
