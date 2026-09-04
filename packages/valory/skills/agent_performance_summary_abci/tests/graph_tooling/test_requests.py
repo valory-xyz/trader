@@ -27,11 +27,6 @@ from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, patch
 from urllib.parse import quote
 
-from packages.valory.skills.agent_performance_summary_abci.tests.test_behaviours import (
-    SAFE_ADDRESS,
-    SAFE_ADDRESS_LOWER,
-)
-
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.requests import (
     APTQueryingBehaviour,
     DECIMAL_SCALING_FACTOR,
@@ -44,6 +39,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     _MAX_SLEEP_TIME,
     _unwrap_trader_agent,
     to_content,
+)
+from packages.valory.skills.agent_performance_summary_abci.tests.test_behaviours import (
+    SAFE_ADDRESS,
+    SAFE_ADDRESS_LOWER,
 )
 
 # ---------------------------------------------------------------------------
