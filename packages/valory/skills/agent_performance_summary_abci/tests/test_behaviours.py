@@ -1227,6 +1227,31 @@ class TestGetPredictionAccuracy:
             except StopIteration as e:
                 assert e.value is None
 
+    def test_none_agent_bets_warning_makes_no_staking_claim(self) -> None:
+        """OPE-1923: the warning must not blame staking it never checked.
+
+        The previous wording ("Trader may be unstaked.") was asserted
+        against a reporter whose agent was in fact STAKED, and it sent the
+        investigation away from the actual cause.
+        """
+        b = self._make()
+        ctx, params, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_trader_agent_bets", side_effect=_return_gen(None)),
+        ):
+            gen = b._get_prediction_accuracy()
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+
+        warning = ctx.logger.warning.call_args.args[0]
+        assert SAFE_ADDRESS in warning
+        assert "No bets returned" in warning
+        assert "unstaked" not in warning
+
     def test_empty_bets_list(self) -> None:
         """Returns None when bets list is empty."""
         b = self._make()
