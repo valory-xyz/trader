@@ -934,7 +934,8 @@ class FetchPerformanceSummaryBehaviour(
         )
         if agent_bets_data is None:
             self.context.logger.warning(
-                f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
+                f"No bets returned for {agent_safe_address=}. The agent may not "
+                "have placed a bet yet, or the bets subgraph may be unavailable."
             )
             return None
 
