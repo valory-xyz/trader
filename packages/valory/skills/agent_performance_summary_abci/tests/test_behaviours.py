@@ -3337,6 +3337,28 @@ class TestFetchAvailableFunds:
             result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         assert result is None
 
+    def test_balance_lookup_keeps_the_checksummed_address(self) -> None:
+        """OPE-1923 guard: only subgraph queries were lowercased.
+
+        ``account`` goes to an ERC-20 ``check_balance`` call, not a
+        subgraph, so it must keep its EIP-55 casing. This pins the
+        boundary the fix deliberately stopped at.
+        """
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        response = MagicMock()
+        response.performative = ContractApiMessage.Performative.ERROR
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ) as mock_call,
+        ):
+            self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
+
+        assert mock_call.call_args.kwargs["account"] == SAFE_ADDRESS
+
     def test_token_or_wallet_none(self) -> None:
         """Returns None when token or wallet is None."""
         b = _make_fetch_behaviour()
@@ -3466,6 +3488,33 @@ class TestGetPolToUsdcRate:
             result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.5
         assert b._pol_usdc_rate == 0.5
+
+    def test_quote_keeps_the_checksummed_address(self) -> None:
+        """OPE-1923 guard: only subgraph queries were lowercased.
+
+        The LiFi quote is a REST call, not a subgraph, so ``fromAddress``
+        and ``toAddress`` must keep their EIP-55 casing.
+        """
+        b = _make_fetch_behaviour(
+            _pol_usdc_rate=0.5,
+            _pol_usdc_rate_timestamp=0.0,
+        )
+        ctx, _, synced_data, _ = _mock_context(synced_timestamp=1700000000)
+        response = MagicMock()
+        response.status_code = 200
+        response.body = json.dumps({"estimate": {"toAmount": "500000"}}).encode()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "get_http_response", side_effect=_return_gen(response)
+            ) as mock_get,
+        ):
+            self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
+
+        url = mock_get.call_args.kwargs["url"]
+        assert f"fromAddress={SAFE_ADDRESS}" in url
+        assert f"toAddress={SAFE_ADDRESS}" in url
 
     def test_api_non_200_returns_stale(self) -> None:
         """Returns stale cache on non-200 response."""
