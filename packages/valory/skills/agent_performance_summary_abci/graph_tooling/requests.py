@@ -502,14 +502,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent details - platform-aware.
 
-        The Polymarket squid resolves ``traderAgentById(id: String!)`` by
-        exact string match against ids it stores lowercased, so a
-        checksummed address returns ``null`` rather than an error. The
-        address is lowercased here so the invariant does not depend on the
-        caller.
+        Both branches match ``id`` against ids stored lowercased, so a
+        checksummed address returns no rows rather than an error.
 
         :param agent_safe_address: the agent Safe whose details to fetch.
-        :return: the trader agent record, or ``None`` when it is not found.
+        :return: the trader agent record, or ``None`` when the query found
+            nothing or the request failed.
         :yield: framework yields while the subgraph request is in flight.
         """
         if self.params.is_running_on_polymarket:
@@ -569,14 +567,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     ) -> Generator[None, None, Optional[Dict]]:
         """Fetch trader agent bets - platform-aware.
 
-        The Polymarket squid filters on ``traderAgent: {id_eq: $id}``, an
-        exact string match against ids it stores lowercased, so a
-        checksummed address returns an empty list rather than an error. The
-        address is lowercased here so the invariant does not depend on the
-        caller.
+        Both branches match ``id`` against ids stored lowercased, so a
+        checksummed address returns no rows rather than an error.
 
         :param agent_safe_address: the agent Safe whose bets to fetch.
-        :return: the bets payload, or ``None`` when the agent has none.
+        :return: the bets payload, or ``None`` when the agent has no bets or
+            the request failed.
         :yield: framework yields while the subgraph request is in flight.
         """
         if self.params.is_running_on_polymarket:
