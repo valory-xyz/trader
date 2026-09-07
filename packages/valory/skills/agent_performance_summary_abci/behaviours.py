@@ -933,9 +933,15 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address=agent_safe_address,
         )
         if agent_bets_data is None:
+            # Both forms are printed on purpose: the helper lowercases the
+            # address before binding it into the query, and OPE-1923 took a
+            # subgraph round-trip to diagnose precisely because the log did
+            # not show what had gone on the wire.
             self.context.logger.warning(
-                f"No bets returned for {agent_safe_address=}. The agent may not "
-                "have placed a bet yet, or the bets subgraph may be unavailable."
+                f"No bets returned for {agent_safe_address=} "
+                f"(queried as {agent_safe_address.lower()!r}). The agent may "
+                "not have placed a bet yet, or the bets subgraph may be "
+                "unavailable."
             )
             return None
 
