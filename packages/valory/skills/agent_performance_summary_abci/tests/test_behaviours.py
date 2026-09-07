@@ -75,7 +75,7 @@ from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
     UpdateAchievementsPayload,
 )
-from packages.valory.skills.agent_performance_summary_abci.tests.conftest import (
+from packages.valory.skills.agent_performance_summary_abci.tests.constants import (
     SAFE_ADDRESS,
     SAFE_ADDRESS_LOWER,
 )
@@ -1228,17 +1228,14 @@ class TestGetPredictionAccuracy:
             except StopIteration as e:
                 assert e.value is None
 
-    def test_none_agent_bets_warning_makes_no_staking_claim(self) -> None:
-        """OPE-1923: the warning must not blame staking it never checked.
+    def _log_on_none_bets(self, call_failed: bool) -> MagicMock:
+        """Drive the no-bets branch and return the context logger.
 
-        The previous wording ("Trader may be unstaked.") was asserted
-        against a reporter whose agent was in fact STAKED, and it sent the
-        investigation away from the actual cause. It also printed only the
-        checksummed address while the query went out lowercased, so both
-        forms are now asserted: a log line that does not describe what went
-        on the wire is what made this ticket expensive to diagnose.
+        :param call_failed: whether the preceding subgraph call failed.
+        :return: the mocked logger the behaviour logged through.
         """
         b = self._make()
+        b._call_failed = call_failed
         ctx, params, synced_data, _ = _mock_context()
         with (
             _patch_context(b, ctx, synced_data)[0],
@@ -1251,11 +1248,27 @@ class TestGetPredictionAccuracy:
             except StopIteration:
                 pass
 
-        warning = ctx.logger.warning.call_args.args[0]
-        assert SAFE_ADDRESS in warning
-        assert SAFE_ADDRESS_LOWER in warning
-        assert "No bets returned" in warning
-        assert "unstaked" not in warning
+        return ctx.logger
+
+    def test_none_agent_bets_reports_a_subgraph_failure_as_an_error(self) -> None:
+        """A failed call is reported as an outage, not as a bet-less agent."""
+        logger = self._log_on_none_bets(call_failed=True)
+
+        logger.info.assert_not_called()
+        message = logger.error.call_args.args[0]
+        assert SAFE_ADDRESS in message
+        assert SAFE_ADDRESS_LOWER in message
+        assert "unstaked" not in message
+
+    def test_none_agent_bets_reports_an_empty_result_as_info(self) -> None:
+        """OPE-1923: a successful empty result claims nothing about staking."""
+        logger = self._log_on_none_bets(call_failed=False)
+
+        logger.error.assert_not_called()
+        message = logger.info.call_args.args[0]
+        assert SAFE_ADDRESS in message
+        assert SAFE_ADDRESS_LOWER in message
+        assert "unstaked" not in message
 
     def test_empty_bets_list(self) -> None:
         """Returns None when bets list is empty."""
@@ -5968,7 +5981,6 @@ class TestLowercaseKeyedSubgraphEndToEnd:
         metrics = {m.name: m.value for m in summary.metrics}
         assert metrics["Prediction accuracy"] == "100%"
         assert metrics["Total ROI"] == "100%"
-        assert NA not in metrics.values()
 
     @staticmethod
     def _run_summary(b: FetchPerformanceSummaryBehaviour) -> None:

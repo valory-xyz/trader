@@ -17,11 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Shared fixtures for the AgentPerformanceSummary ABCI tests."""
+"""Shared constants for the AgentPerformanceSummary ABCI tests."""
 
-# The Safe address every test in this package uses, in the two forms that
-# matter. OPE-1923: the Polymarket squid stores ids lowercased and matches
-# them by exact string equality, so the pair is what pins which casing a
-# query actually puts on the wire.
 SAFE_ADDRESS = "0xSafeAddress"
 SAFE_ADDRESS_LOWER = "0xsafeaddress"

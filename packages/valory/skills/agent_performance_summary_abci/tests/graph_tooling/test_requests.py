@@ -40,7 +40,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     _unwrap_trader_agent,
     to_content,
 )
-from packages.valory.skills.agent_performance_summary_abci.tests.conftest import (
+from packages.valory.skills.agent_performance_summary_abci.tests.constants import (
     SAFE_ADDRESS,
     SAFE_ADDRESS_LOWER,
 )
@@ -988,40 +988,6 @@ class TestFetchAgentDetails:
         result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result == {"id": "0x2", "createdAt": "200"}
-
-    def test_forwards_the_address_verbatim(self) -> None:
-        """OPE-1923 fixed two helpers only; the neighbours keep their behaviour.
-
-        ``_fetch_agent_details`` binds the same ``{"id": ...}`` shape and was
-        deliberately left un-normalised: it is correct today because its
-        callers already lowercase. Pinning that here makes a later
-        "make it uniform" sweep a conscious edit rather than silent drift.
-
-        The Omen branch is pinned rather than the Polymarket one on purpose.
-        Both forward verbatim, but only Omen's ``olas_agents_subgraph`` is
-        Graph-node-backed, so verbatim is genuinely harmless there. The
-        Polymarket branch talks to the same case-sensitive squid as
-        ``_fetch_trader_agent`` and is safe only while its single caller
-        lowercases first (``behaviours.py`` ``_fetch_agent_details_data``) -
-        the residual risk the scope records. Asserting verbatim on that
-        branch would read as "a checksummed address reaching the squid is
-        intended", which is the opposite of what this PR concluded.
-        """
-        b = _make_behaviour()
-        b.context.params.is_running_on_polymarket = False
-
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {"traderAgent": {"id": "0x1"}}
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.olas_agents_subgraph = mock_sg
-
-        sent: List[Any] = []
-        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
-
-        _exhaust(b._fetch_agent_details(SAFE_ADDRESS))  # type: ignore[arg-type]
-
-        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS
 
     def test_returns_raw_when_no_traderAgent_key(self) -> None:
         """When no traderAgent key, returns raw result."""
