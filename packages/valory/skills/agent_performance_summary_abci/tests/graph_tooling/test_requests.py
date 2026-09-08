@@ -40,6 +40,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     _unwrap_trader_agent,
     to_content,
 )
+from packages.valory.skills.agent_performance_summary_abci.tests.constants import (
+    SAFE_ADDRESS,
+    SAFE_ADDRESS_LOWER,
+)
 
 # ---------------------------------------------------------------------------
 # to_content tests
@@ -668,6 +672,42 @@ class TestFetchTraderAgent:
 
         assert result == "some_string"
 
+    def test_polymarket_path_sends_lowercased_address(self) -> None:
+        """OPE-1923: the squid matches ``id`` exactly, so ``$id`` must be lowercase."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = True
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"id": "0xagent"}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.polymarket_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
+    def test_omen_path_sends_lowercased_address(self) -> None:
+        """The Omen branch is pinned too, in case that endpoint ever moves."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = False
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"id": "0xagent"}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.olas_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
 
 # ---------------------------------------------------------------------------
 # _fetch_staking_service tests
@@ -863,6 +903,42 @@ class TestFetchTraderAgentBets:
         result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
+
+    def test_polymarket_path_sends_lowercased_address(self) -> None:
+        """OPE-1923: ``id_eq`` is exact equality, so ``$id`` must be lowercase."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = True
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = [{"bets": [{"id": "bet1"}]}]
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.polymarket_bets_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent_bets(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
+    def test_omen_path_sends_lowercased_address(self) -> None:
+        """The Omen branch is pinned too, in case that endpoint ever moves."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = False
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"bets": []}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.olas_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent_bets(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
 
 
 # ---------------------------------------------------------------------------

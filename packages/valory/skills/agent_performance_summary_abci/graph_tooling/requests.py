@@ -500,19 +500,28 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_trader_agent(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
-        """Fetch trader agent details - platform-aware."""
+        """Fetch trader agent details - platform-aware.
+
+        Both branches match ``id`` against ids stored lowercased, so a
+        checksummed address returns no rows rather than an error.
+
+        :param agent_safe_address: the agent Safe whose details to fetch.
+        :return: the trader agent record, or ``None`` when the query found
+            nothing or the request failed.
+        :yield: framework yields while the subgraph request is in flight.
+        """
         if self.params.is_running_on_polymarket:
 
             result = yield from self._fetch_from_subgraph(
                 query=GET_POLYMARKET_TRADER_AGENT_PERFORMANCE_QUERY,
-                variables={"id": agent_safe_address},
+                variables={"id": agent_safe_address.lower()},
                 subgraph=self.context.polymarket_agents_subgraph,
                 res_context="polymarket_trader_agent",
             )
         else:
             result = yield from self._fetch_from_subgraph(
                 query=GET_TRADER_AGENT_QUERY,
-                variables={"id": agent_safe_address},
+                variables={"id": agent_safe_address.lower()},
                 subgraph=self.context.olas_agents_subgraph,
                 res_context="trader_agent",
             )
@@ -556,12 +565,21 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
     def _fetch_trader_agent_bets(
         self, agent_safe_address: str
     ) -> Generator[None, None, Optional[Dict]]:
-        """Fetch trader agent bets - platform-aware."""
+        """Fetch trader agent bets - platform-aware.
+
+        Both branches match ``id`` against ids stored lowercased, so a
+        checksummed address returns no rows rather than an error.
+
+        :param agent_safe_address: the agent Safe whose bets to fetch.
+        :return: the bets payload, or ``None`` when the agent has no bets or
+            the request failed.
+        :yield: framework yields while the subgraph request is in flight.
+        """
         if self.params.is_running_on_polymarket:
             # Fetch Polymarket bets with resolution data
             result = yield from self._fetch_from_subgraph(
                 query=GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
-                variables={"id": agent_safe_address},
+                variables={"id": agent_safe_address.lower()},
                 subgraph=self.context.polymarket_bets_subgraph,
                 res_context="polymarket_trader_agent_bets",
             )
@@ -576,7 +594,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         # Omen uses olas_agents_subgraph for bet data
         result = yield from self._fetch_from_subgraph(
             query=GET_TRADER_AGENT_BETS_QUERY,
-            variables={"id": agent_safe_address},
+            variables={"id": agent_safe_address.lower()},
             subgraph=self.context.olas_agents_subgraph,
             res_context="trader_agent_bets",
         )

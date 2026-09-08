@@ -75,13 +75,14 @@ from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
     UpdateAchievementsPayload,
 )
+from packages.valory.skills.agent_performance_summary_abci.tests.constants import (
+    SAFE_ADDRESS,
+    SAFE_ADDRESS_LOWER,
+)
 
 # ---------------------------------------------------------------------------
 # Test helpers
 # ---------------------------------------------------------------------------
-
-SAFE_ADDRESS = "0xSafeAddress"
-SAFE_ADDRESS_LOWER = "0xsafeaddress"
 
 # Sentinel for optional-defaulted params where ``None`` is a real caller
 # value. Used by the save-summary helper to distinguish "caller didn't
@@ -1226,6 +1227,48 @@ class TestGetPredictionAccuracy:
                 next(gen)
             except StopIteration as e:
                 assert e.value is None
+
+    def _log_on_none_bets(self, call_failed: bool) -> MagicMock:
+        """Drive the no-bets branch and return the context logger.
+
+        :param call_failed: whether the preceding subgraph call failed.
+        :return: the mocked logger the behaviour logged through.
+        """
+        b = self._make()
+        b._call_failed = call_failed
+        ctx, params, synced_data, _ = _mock_context()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_trader_agent_bets", side_effect=_return_gen(None)),
+        ):
+            gen = b._get_prediction_accuracy()
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+
+        return ctx.logger
+
+    def test_none_agent_bets_reports_a_subgraph_failure_as_an_error(self) -> None:
+        """A failed call is reported as an outage, not as a bet-less agent."""
+        logger = self._log_on_none_bets(call_failed=True)
+
+        logger.info.assert_not_called()
+        message = logger.error.call_args.args[0]
+        assert SAFE_ADDRESS in message
+        assert SAFE_ADDRESS_LOWER in message
+        assert "unstaked" not in message
+
+    def test_none_agent_bets_reports_an_empty_result_as_info(self) -> None:
+        """OPE-1923: a successful empty result claims nothing about staking."""
+        logger = self._log_on_none_bets(call_failed=False)
+
+        logger.error.assert_not_called()
+        message = logger.info.call_args.args[0]
+        assert SAFE_ADDRESS in message
+        assert SAFE_ADDRESS_LOWER in message
+        assert "unstaked" not in message
 
     def test_empty_bets_list(self) -> None:
         """Returns None when bets list is empty."""
@@ -3312,6 +3355,28 @@ class TestFetchAvailableFunds:
             result = self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
         assert result is None
 
+    def test_balance_lookup_keeps_the_checksummed_address(self) -> None:
+        """OPE-1923 guard: only subgraph queries were lowercased.
+
+        ``account`` goes to an ERC-20 ``check_balance`` call, not a
+        subgraph, so it must keep its EIP-55 casing. This pins the
+        boundary the fix deliberately stopped at.
+        """
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        response = MagicMock()
+        response.performative = ContractApiMessage.Performative.ERROR
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "get_contract_api_response", side_effect=_return_gen(response)
+            ) as mock_call,
+        ):
+            self._run_gen(b._fetch_available_funds())  # type: ignore[arg-type]
+
+        assert mock_call.call_args.kwargs["account"] == SAFE_ADDRESS
+
     def test_token_or_wallet_none(self) -> None:
         """Returns None when token or wallet is None."""
         b = _make_fetch_behaviour()
@@ -3441,6 +3506,33 @@ class TestGetPolToUsdcRate:
             result = self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
         assert result == 0.5
         assert b._pol_usdc_rate == 0.5
+
+    def test_quote_keeps_the_checksummed_address(self) -> None:
+        """OPE-1923 guard: only subgraph queries were lowercased.
+
+        The LiFi quote is a REST call, not a subgraph, so ``fromAddress``
+        and ``toAddress`` must keep their EIP-55 casing.
+        """
+        b = _make_fetch_behaviour(
+            _pol_usdc_rate=0.5,
+            _pol_usdc_rate_timestamp=0.0,
+        )
+        ctx, _, synced_data, _ = _mock_context(synced_timestamp=1700000000)
+        response = MagicMock()
+        response.status_code = 200
+        response.body = json.dumps({"estimate": {"toAmount": "500000"}}).encode()
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "get_http_response", side_effect=_return_gen(response)
+            ) as mock_get,
+        ):
+            self._run_gen(b._get_pol_to_usdc_rate())  # type: ignore[arg-type]
+
+        url = mock_get.call_args.kwargs["url"]
+        assert f"fromAddress={SAFE_ADDRESS}" in url
+        assert f"toAddress={SAFE_ADDRESS}" in url
 
     def test_api_non_200_returns_stale(self) -> None:
         """Returns stale cache on non-200 response."""
@@ -5644,6 +5736,259 @@ class TestFetchAgentPerformanceSummaryIntegration:
         ):
             self._run_gen(b._fetch_agent_performance_summary())
         assert b._placed_mech_requests_count == 0
+
+
+# ---------------------------------------------------------------------------
+# OPE-1923 behaviour-level coverage: the two fixed paths driven end to end
+# through a subgraph that is keyed on the lowercased address, as the
+# Polymarket squid is. Every other test of these two paths patches the
+# fetch helper wholesale, so none of them can observe the casing; here the
+# helpers run for real and a checksummed ``$id`` retrieves nothing, exactly
+# as it did in production.
+# ---------------------------------------------------------------------------
+
+
+def _lowercase_keyed_subgraph(
+    hit: Any, miss: Any, url: str = "http://squid.test"
+) -> Tuple[MagicMock, Any]:
+    """Build a fake subgraph that only answers to the lowercased Safe address.
+
+    Mirrors the Subsquid endpoints behind OPE-1923: ids are stored
+    lowercased and resolved by exact string match, so a checksummed ``$id``
+    retrieves *miss* (the squid's ``null`` / ``[]``) rather than erroring.
+    The ``ApiSpecs`` stand-in and the ``get_http_response`` substitute are
+    returned as a pair because they share the recorded query variables --
+    that is what makes the fake key off what actually went on the wire
+    rather than off the argument the helper was called with.
+
+    :param hit: the payload to return for the lowercased address.
+    :param miss: the payload to return for any other address.
+    :param url: the endpoint to advertise; give two fakes distinct urls
+        when a single test drives both.
+    :return: the subgraph stand-in and the ``get_http_response`` substitute.
+    """
+    sent: dict = {}
+
+    subgraph = MagicMock()
+    subgraph.get_spec.return_value = {"method": "POST", "url": url}
+    subgraph.is_retries_exceeded.return_value = False
+    subgraph.process_response.side_effect = lambda _raw: (
+        hit if sent.get("id") == SAFE_ADDRESS_LOWER else miss
+    )
+
+    def _http_response(*args: Any, **kwargs: Any) -> Generator[Any, Any, Any]:
+        """Record the ``id`` bound into the outgoing query variables."""
+        sent["id"] = json.loads(kwargs["content"])["variables"].get("id")
+        yield
+        return MagicMock()
+
+    return subgraph, _http_response
+
+
+def _resolved_polymarket_bet(outcome_index: int, winning_index: int) -> dict:
+    """Build one resolved Polymarket bet as the bets squid returns it.
+
+    :param outcome_index: the outcome the agent bet on.
+    :param winning_index: the outcome the market resolved to.
+    :return: the raw bet dict.
+    """
+    return {
+        "outcomeIndex": outcome_index,
+        "question": {"resolution": {"winningIndex": winning_index}},
+    }
+
+
+def _exhaust_gen(gen: Generator[Any, Any, Any]) -> Any:
+    """Drive a generator to completion and return its value.
+
+    ``_drive_gen`` advances only once, which is enough for the helpers it
+    serves; the paths below yield several times because they run the real
+    subgraph transport.
+
+    :param gen: the generator to drive.
+    :return: the generator's return value.
+    """
+    try:
+        while True:
+            next(gen)
+    except StopIteration as exc:
+        return exc.value
+
+
+class TestLowercaseKeyedSubgraphEndToEnd:
+    """The two OPE-1923 paths against a subgraph keyed on the lowercase id."""
+
+    @staticmethod
+    def _polymarket_behaviour() -> (
+        Tuple[FetchPerformanceSummaryBehaviour, MagicMock, MagicMock]
+    ):
+        """Build a Polystrat behaviour with its context patched in.
+
+        :return: the behaviour, its context and its synchronized data.
+        """
+        b = _make_fetch_behaviour(_settled_mech_requests_count=0)
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        return b, ctx, synced_data
+
+    def test_prediction_accuracy_populates(self) -> None:
+        """Accuracy comes out numeric once the query id is lowercased.
+
+        Three of the four bets were called correctly, so the assertion is
+        on the arithmetic and not merely on "not None" -- a helper that
+        silently returned a placeholder would still fail here.
+        """
+        b, ctx, synced_data = self._polymarket_behaviour()
+        subgraph, http_response = _lowercase_keyed_subgraph(
+            hit=[
+                {
+                    "bets": [
+                        _resolved_polymarket_bet(0, 0),
+                        _resolved_polymarket_bet(1, 1),
+                        _resolved_polymarket_bet(0, 0),
+                        _resolved_polymarket_bet(1, 0),
+                    ]
+                }
+            ],
+            miss=[],
+        )
+        ctx.polymarket_bets_subgraph = subgraph
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "get_http_response", side_effect=http_response),
+        ):
+            accuracy = _exhaust_gen(b._get_prediction_accuracy())
+
+        assert accuracy == 75.0
+
+    def test_calculate_roi_populates(self) -> None:
+        """Total ROI comes out numeric once the query id is lowercased.
+
+        Only ``_fetch_trader_agent`` runs for real; the staking, price and
+        pre-deposit lookups are neighbours of the path under test, not part
+        of it, so they stay patched.
+        """
+        b, ctx, synced_data = self._polymarket_behaviour()
+        subgraph, http_response = _lowercase_keyed_subgraph(
+            hit={
+                "serviceId": "42",
+                "totalTraded": "1000000",
+                "totalTradedSettled": "1000000",
+                "totalFeesSettled": "0",
+                "totalExpectedPayout": "2000000",
+            },
+            miss={},
+        )
+        ctx.polymarket_agents_subgraph = subgraph
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "get_http_response", side_effect=http_response),
+            patch.object(
+                b,
+                "_fetch_staking_service",
+                side_effect=_return_gen({"olasRewardsEarned": "0"}),
+            ),
+            patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(0)),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
+        ):
+            final_roi, partial_roi = _exhaust_gen(b.calculate_roi())
+
+        # Paid 1.0 USDC, expects 2.0 back, no OLAS rewards and no mech
+        # spend: both ROIs are +100%.
+        assert final_roi == 100.0
+        assert partial_roi == 100.0
+
+    def test_metrics_render_numerically(self) -> None:
+        """The user-visible symptom: both metrics show a number, not ``NA``.
+
+        This is the assertion OPE-1923 actually reports on. It drives the
+        summary builder with ``calculate_roi`` and ``_get_prediction_accuracy``
+        left real, so a regression in the casing surfaces as the blank
+        metrics the ticket describes rather than as a helper returning None.
+        """
+        b, ctx, synced_data = self._polymarket_behaviour()
+        agents_subgraph, agents_http = _lowercase_keyed_subgraph(
+            hit={
+                "serviceId": "42",
+                "totalTraded": "1000000",
+                "totalTradedSettled": "1000000",
+                "totalFeesSettled": "0",
+                "totalExpectedPayout": "2000000",
+            },
+            miss={},
+            url="http://agents.squid.test",
+        )
+        bets_subgraph, bets_http = _lowercase_keyed_subgraph(
+            hit=[{"bets": [_resolved_polymarket_bet(0, 0)]}],
+            miss=[],
+            url="http://bets.squid.test",
+        )
+        ctx.polymarket_agents_subgraph = agents_subgraph
+        ctx.polymarket_bets_subgraph = bets_subgraph
+
+        def _route_http(*args: Any, **kwargs: Any) -> Generator[Any, Any, Any]:
+            """Dispatch to the fake whose subgraph the request targets."""
+            agents_url = agents_subgraph.get_spec.return_value["url"]
+            responder = agents_http if kwargs.get("url") == agents_url else bets_http
+            return (yield from responder(*args, **kwargs))
+
+        # ROI is only rendered once the agent has enough winning trades.
+        pred_history = PredictionHistory(
+            total_predictions=MIN_TRADES_FOR_ROI_DISPLAY,
+            stored_count=MIN_TRADES_FOR_ROI_DISPLAY,
+            items=[
+                {"id": str(i), "status": "won", "total_payout": 10}
+                for i in range(MIN_TRADES_FOR_ROI_DISPLAY)
+            ],
+        )
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "get_http_response", side_effect=_route_http),
+            patch.object(
+                b, "_calculate_settled_mech_requests", side_effect=_return_gen(0)
+            ),
+            patch.object(
+                b, "_build_profit_over_time_data", side_effect=_return_gen(None)
+            ),
+            patch.object(
+                b,
+                "_fetch_staking_service",
+                side_effect=_return_gen({"olasRewardsEarned": "0"}),
+            ),
+            patch.object(b, "_fetch_olas_in_usd_price", side_effect=_return_gen(0)),
+            patch.object(b, "_fetch_offchain_prepaid_wei", side_effect=_return_gen(0)),
+            patch.object(
+                b,
+                "_fetch_agent_details_data",
+                side_effect=_return_gen(AgentDetails(id="0xabc")),
+            ),
+            patch.object(
+                b,
+                "_fetch_agent_performance_data",
+                side_effect=_return_gen(AgentPerformanceData()),
+            ),
+            patch.object(b, "_fetch_prediction_history", return_value=pred_history),
+        ):
+            self._run_summary(b)
+
+        summary = b._agent_performance_summary
+        assert summary is not None
+        metrics = {m.name: m.value for m in summary.metrics}
+        assert metrics["Prediction accuracy"] == "100%"
+        assert metrics["Total ROI"] == "100%"
+
+    @staticmethod
+    def _run_summary(b: FetchPerformanceSummaryBehaviour) -> None:
+        """Drive the summary builder to completion.
+
+        :param b: the behaviour whose summary to build.
+        """
+        _exhaust_gen(b._fetch_agent_performance_summary())
 
 
 # ---------------------------------------------------------------------------

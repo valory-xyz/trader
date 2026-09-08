@@ -755,7 +755,8 @@ class FetchPerformanceSummaryBehaviour(
             or trader_agent.get("totalExpectedPayout") is None
         ):
             self.context.logger.warning(
-                f"Trader agent data not found or incomplete for {agent_safe_address=} and {trader_agent=}"
+                f"Trader agent data not found or incomplete for {agent_safe_address} "
+                f"(queried as {agent_safe_address.lower()}) and {trader_agent=}"
             )
             return None, None
 
@@ -933,9 +934,13 @@ class FetchPerformanceSummaryBehaviour(
             agent_safe_address=agent_safe_address,
         )
         if agent_bets_data is None:
-            self.context.logger.warning(
-                f"Agent bets data not found for {agent_safe_address=}. Trader may be unstaked."
+            addresses = (
+                f"for {agent_safe_address} (queried as {agent_safe_address.lower()})."
             )
+            if self._call_failed:
+                self.context.logger.error(f"Bets subgraph unavailable {addresses}")
+            else:
+                self.context.logger.info(f"No bets returned {addresses}")
             return None
 
         if len(agent_bets_data.get("bets", [])) == 0:
