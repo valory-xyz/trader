@@ -136,7 +136,7 @@ fingerprint:
   tests/states/test_sell_tokens.py: bafybeicgtuqe5vpdw3yyujeumglpmmjinfc3lh2phzdfqu7ifvyku3vwpy
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
-  tests/test_handlers.py: bafybeiazarqrb47m22od7trqhco7qsnrcurvz7a743a6jatmrpe6kbxlya
+  tests/test_handlers.py: bafybeieyvw4fwkzvovlswh6ghudwhrkdnzpgcnhhh4hngrakzk3gchz72a
   tests/test_models.py: bafybeiezmz5e4y5rzoxhbr4l4rtzd3seronzx6cuof775pqnhn36jawg2y
   tests/test_payloads.py: bafybeibw4y4eowsfj4wlsoghc7lxosedt5l4uhgxs6y5t2jshdtdkzncbe
   tests/test_policy.py: bafybeih5w6samohizmoi5wkl77nofowhjjz5m2rgjzqdrh75zmrdtpeuvm

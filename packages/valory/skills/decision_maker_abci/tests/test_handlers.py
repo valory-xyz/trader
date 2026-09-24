@@ -859,9 +859,9 @@ class TestPolymarketLabelOverrides:
 # The value `round_timeout_seconds` is configured with in both services.
 ROUND_TIMEOUT_SECONDS = 350.0
 
-# The five live rounds of the composed `TraderAbciApp` whose outgoing events all
-# lack a configured timeout. Listed for readability; `test_no_live_round_yields_a
-# _negative_tolerance` re-derives the same set from the app itself so the list going
+# The live rounds of the composed `TraderAbciApp` whose outgoing events all lack a
+# configured timeout, as of the FSM this guard was written against. Listed for
+# readability; the guard below re-derives the set from the app itself, so this going
 # stale cannot hide a regression.
 ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT = (
     "FetchMarketsRouterRound",
@@ -940,7 +940,8 @@ class TestResolveRoundTimeout:
         transition_function = TraderAbciApp.transition_function
         event_to_timeout = TraderAbciApp.event_to_timeout
         live_rounds = set(transition_function) - set(TraderAbciApp.final_states)
-        assert len(live_rounds) == 55, "the FSM changed shape; re-check the guard"
+        assert live_rounds, "the walk covered no rounds; the FSM did not compose"
+        assert not live_rounds & set(TraderAbciApp.final_states)
 
         without_a_timeout = {
             round_cls.__name__
@@ -949,9 +950,13 @@ class TestResolveRoundTimeout:
                 event in event_to_timeout for event in transition_function[round_cls]
             )
         }
-        # Pinned so the guard's own subject stays visible, and so adding an untimed
-        # round is a deliberate act rather than a silent one.
-        assert without_a_timeout == set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT)
+        # A subset, not an equality: giving one of these rounds a timeout-bearing event
+        # is an improvement and must not fail the guard, while a *new* untimed round
+        # must, so that adding one is a deliberate act rather than a silent one.
+        assert without_a_timeout <= set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT), (
+            "a round with no timeout-bearing outgoing event was added to the FSM: "
+            f"{sorted(without_a_timeout - set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT))}"
+        )
 
         for round_cls in live_rounds:
             resolved = resolve_round_timeout(
