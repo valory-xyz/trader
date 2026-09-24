@@ -941,7 +941,11 @@ class TestResolveRoundTimeout:
         event_to_timeout = TraderAbciApp.event_to_timeout
         live_rounds = set(transition_function) - set(TraderAbciApp.final_states)
         assert live_rounds, "the walk covered no rounds; the FSM did not compose"
-        assert not live_rounds & set(TraderAbciApp.final_states)
+        assert {round_cls.__name__ for round_cls in TraderAbciApp.final_states} == {
+            "FailedMultiplexerRound",
+            "ImpossibleRound",
+            "ServiceEvictedRound",
+        }, "the excluded sinks are no longer the three this docstring reasons about"
 
         without_a_timeout = {
             round_cls.__name__

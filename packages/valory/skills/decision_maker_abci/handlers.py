@@ -130,13 +130,16 @@ def resolve_round_timeout(
     """
     Resolve how long a round may legitimately take, from the events it can emit.
 
-    Five of the FSM's live rounds -- both registration rounds, `FetchMarketsRouterRound`,
-    `RedeemRouterRound` and `HandleFailedTxRound` -- emit no event that carries a
-    configured timeout. Such a round has no deadline of its own, so it falls back to
-    the timeout every other round is registered with rather than to a sentinel: a
-    negative timeout would make the `seconds_since_last_transition < 2 * timeout`
-    freshness check unsatisfiable, reporting a perfectly responsive agent as unhealthy
-    for the entire duration of the round that follows one of them.
+    A round whose outgoing events all lack a configured timeout has no deadline of its
+    own, so it falls back to the timeout every other round is registered with rather
+    than to a sentinel: a negative timeout would make the
+    `seconds_since_last_transition < 2 * timeout` freshness check unsatisfiable,
+    reporting a perfectly responsive agent as unhealthy for the entire duration of the
+    round that follows one of them.
+
+    Which rounds those are is deliberately not named here. The set is re-derived from
+    the composed app by `test_no_live_round_yields_a_negative_tolerance`, which is the
+    only place checked against the real FSM.
 
     :param event_to_timeout: the app's configured timeout per event.
     :param round_events: the events the round in question can emit.
