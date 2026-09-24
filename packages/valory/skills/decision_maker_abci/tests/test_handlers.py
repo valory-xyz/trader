@@ -20,9 +20,9 @@
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, cast
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -62,6 +62,7 @@ from packages.valory.skills.decision_maker_abci.handlers import (
     LedgerApiHandler,
     SigningHandler,
     TendermintHandler,
+    resolve_round_timeout,
 )
 
 
@@ -849,3 +850,323 @@ class TestPolymarketLabelOverrides:
 
         # The removed key should not appear, and no KeyError raised
         assert "polymarket_swap_usdc_round" not in handler.rounds_info
+
+
+# ---------------------------------------------------------------------------
+# Health-report freshness derivation (OPE-1941)
+# ---------------------------------------------------------------------------
+
+# The value `round_timeout_seconds` is configured with in both services.
+ROUND_TIMEOUT_SECONDS = 350.0
+
+# The five live rounds of the composed `TraderAbciApp` whose outgoing events all
+# lack a configured timeout. Listed for readability; `test_no_live_round_yields_a
+# _negative_tolerance` re-derives the same set from the app itself so the list going
+# stale cannot hide a regression.
+ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT = (
+    "FetchMarketsRouterRound",
+    "HandleFailedTxRound",
+    "RedeemRouterRound",
+    "RegistrationRound",
+    "RegistrationStartupRound",
+)
+
+
+class TestResolveRoundTimeout:
+    """Tests for the `last_round_timeout` derivation behind the freshness check."""
+
+    def test_longest_configured_timeout_wins(self) -> None:
+        """A round with configured timeouts resolves to the longest of them."""
+        assert (
+            resolve_round_timeout(
+                {"ROUND_TIMEOUT": 350.0, "REDEEM_ROUND_TIMEOUT": 3600.0},
+                ["DONE", "ROUND_TIMEOUT", "REDEEM_ROUND_TIMEOUT"],
+                ROUND_TIMEOUT_SECONDS,
+            )
+            == 3600.0
+        )
+
+    def test_untimed_events_do_not_lower_the_result(self) -> None:
+        """Events without a configured timeout are ignored, not treated as zero or -1."""
+        assert (
+            resolve_round_timeout(
+                {"ROUND_TIMEOUT": 350.0},
+                ["DONE", "NO_MAJORITY", "ROUND_TIMEOUT"],
+                ROUND_TIMEOUT_SECONDS,
+            )
+            == 350.0
+        )
+
+    def test_falls_back_when_no_event_carries_a_timeout(self) -> None:
+        """A round with no timeout-bearing event falls back to the default."""
+        assert (
+            resolve_round_timeout(
+                {"ROUND_TIMEOUT": 350.0},
+                ["DONE", "NONE", "NO_MAJORITY", "POLYMARKET_FETCH_MARKETS"],
+                ROUND_TIMEOUT_SECONDS,
+            )
+            == ROUND_TIMEOUT_SECONDS
+        )
+
+    def test_falls_back_on_a_round_with_no_outgoing_events(self) -> None:
+        """An empty event set falls back rather than raising on `max()`."""
+        assert (
+            resolve_round_timeout({"ROUND_TIMEOUT": 350.0}, [], ROUND_TIMEOUT_SECONDS)
+            == ROUND_TIMEOUT_SECONDS
+        )
+
+    def test_no_live_round_yields_a_negative_tolerance(self) -> None:
+        """
+        No live round of the composed FSM may resolve to a negative timeout.
+
+        This is the regression guard for OPE-1941: a negative `last_round_timeout`
+        makes `seconds_since_last_transition < 2 * last_round_timeout` unsatisfiable,
+        so the agent reports itself unhealthy for the whole of the round that follows.
+        It fails the moment a round is added to the FSM without a timeout-bearing
+        outgoing event.
+
+        The walk is over the live rounds only. `FailedMultiplexerRound`,
+        `ImpossibleRound` and `ServiceEvictedRound` are `DegenerateRound` sinks with
+        no outgoing transitions at all; they are excluded deliberately, because a
+        `DegenerateRound` never emits an event and so never becomes the previous
+        round at runtime.
+
+        Membership is tested against the populated `event_to_timeout` rather than
+        against the event's name. Every timeout registered today happens to be named
+        `*_TIMEOUT`, but that is a convention rather than a constraint.
+        """
+        from packages.valory.skills.trader_abci.composition import TraderAbciApp
+
+        transition_function = TraderAbciApp.transition_function
+        event_to_timeout = TraderAbciApp.event_to_timeout
+        live_rounds = set(transition_function) - set(TraderAbciApp.final_states)
+        assert len(live_rounds) == 55, "the FSM changed shape; re-check the guard"
+
+        without_a_timeout = {
+            round_cls.__name__
+            for round_cls in live_rounds
+            if not any(
+                event in event_to_timeout for event in transition_function[round_cls]
+            )
+        }
+        # Pinned so the guard's own subject stays visible, and so adding an untimed
+        # round is a deliberate act rather than a silent one.
+        assert without_a_timeout == set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT)
+
+        for round_cls in live_rounds:
+            resolved = resolve_round_timeout(
+                event_to_timeout,
+                transition_function[round_cls],
+                ROUND_TIMEOUT_SECONDS,
+            )
+            assert resolved > 0, (
+                f"{round_cls.__name__} resolves to a tolerance of {2 * resolved}s, so "
+                "the agent can never report itself healthy while it is the previous "
+                "round"
+            )
+
+
+class TestHandleGetHealthFreshness:
+    """Tests for the health reported across the FSM's rounds."""
+
+    def setup_method(self) -> None:
+        """Set up the tests."""
+        self.context = MagicMock()
+        self.context.logger = MagicMock()
+        self.handler = HttpHandler(name="", skill_context=self.context)
+        self.handler.context.params.service_endpoint = "http://localhost:8080/some/path"
+        self.handler.setup()
+
+    def _report_health(
+        self,
+        configured_timeouts: Dict[str, float],
+        previous_round_events: Any,
+        seconds_since_last_transition: float = 0.1,
+        is_tm_unhealthy: bool = False,
+        waiting_for_a_mech_response: bool = False,
+        reset_pause_duration: int = 90,
+        round_timeout_seconds: float = ROUND_TIMEOUT_SECONDS,
+    ) -> Dict[str, Any]:
+        """Drive `_handle_get_health` and return the decoded response body."""
+        http_msg = MagicMock()
+        http_msg.headers = ""
+        http_dialogue = MagicMock()
+        http_dialogue.reply.return_value = MagicMock()
+
+        class MockStakingState(Enum):
+            """Mock staking state."""
+
+            STAKED = 1
+
+        with (
+            patch.object(self.handler, "_has_transitioned", return_value=True),
+            patch.object(self.handler, "_check_required_funds", return_value=True),
+            patch.object(self.handler, "_is_mech_reliable", return_value=True),
+            patch.object(
+                type(self.handler), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sync,
+            patch.object(
+                type(self.handler), "round_sequence", new_callable=PropertyMock
+            ) as mock_rs,
+            patch.object(
+                type(self.handler),
+                "waiting_for_a_mech_response",
+                new_callable=PropertyMock,
+                return_value=waiting_for_a_mech_response,
+            ),
+        ):
+            mock_sync_data = MagicMock()
+            mock_sync_data.is_staking_kpi_met = True
+            mock_sync_data.is_activity_target_met = False
+            mock_sync_data.activity_target = 8
+            mock_sync_data.activity_completed = 5
+            mock_sync_data.service_staking_state = MockStakingState.STAKED
+            mock_sync_data.period_count = 5
+            mock_sync.return_value = mock_sync_data
+
+            mock_round_seq = MagicMock()
+            mock_round_seq.block_stall_deadline_expired = is_tm_unhealthy
+            mock_round_seq.last_round_transition_timestamp = datetime.now() - timedelta(
+                seconds=seconds_since_last_transition
+            )
+            mock_round_seq.current_round_id = "some_round"
+
+            mock_prev_round = MagicMock()
+            mock_prev_round.round_id = "prev_round"
+            mock_round_seq.abci_app._previous_rounds = [mock_prev_round]
+            mock_round_seq.abci_app.transition_function = {
+                type(mock_prev_round): {
+                    event: MagicMock() for event in previous_round_events
+                }
+            }
+            mock_round_seq.abci_app.event_to_timeout = configured_timeouts
+            mock_rs.return_value = mock_round_seq
+
+            self.handler.context.params.reset_pause_duration = reset_pause_duration
+            self.handler.context.params.round_timeout_seconds = round_timeout_seconds
+
+            self.handler._handle_get_health(http_msg, http_dialogue)
+
+        call_kwargs = http_dialogue.reply.call_args[1]
+        assert call_kwargs["status_code"] == 200
+        return cast(Dict[str, Any], json.loads(call_kwargs["body"]))
+
+    @pytest.mark.parametrize(
+        "previous_round_events",
+        [
+            pytest.param(
+                ["DONE", "NONE", "NO_MAJORITY", "POLYMARKET_FETCH_MARKETS"],
+                id="FetchMarketsRouterRound",
+            ),
+            pytest.param(
+                ["DONE", "NONE", "NO_MAJORITY", "POLYMARKET_DONE"],
+                id="RedeemRouterRound",
+            ),
+            pytest.param(["DONE", "NO_MAJORITY"], id="RegistrationRound"),
+            pytest.param(["DONE"], id="RegistrationStartupRound"),
+            pytest.param(
+                ["BLACKLIST", "NO_MAJORITY", "NO_OP"], id="HandleFailedTxRound"
+            ),
+        ],
+    )
+    def test_healthy_after_an_untimed_previous_round(
+        self, previous_round_events: Any
+    ) -> None:
+        """A round following one of the five untimed rounds reports healthy.
+
+        :param previous_round_events: the untimed round's outgoing events.
+        """
+        body = self._report_health(
+            {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS}, previous_round_events
+        )
+        assert body["is_transitioning_fast"] is True
+        assert body["is_healthy"] is True
+        assert body["is_tm_healthy"] is True
+
+    def test_untimed_previous_round_still_reports_unhealthy_once_overdue(self) -> None:
+        """The fallback is a tolerance, not an exemption: it still expires."""
+        events = ["DONE", "NONE", "NO_MAJORITY", "POLYMARKET_FETCH_MARKETS"]
+        timeouts = {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS}
+
+        body = self._report_health(
+            timeouts, events, seconds_since_last_transition=699.0
+        )
+        assert body["is_healthy"] is True
+
+        body = self._report_health(
+            timeouts, events, seconds_since_last_transition=701.0
+        )
+        assert body["is_healthy"] is False
+
+    def test_timed_previous_round_is_unaffected(self) -> None:
+        """A timeout-bearing predecessor keeps its own tolerance either side of 700s."""
+        events = ["DONE", "NO_MAJORITY", "ROUND_TIMEOUT"]
+        timeouts = {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS}
+
+        body = self._report_health(
+            timeouts, events, seconds_since_last_transition=699.0
+        )
+        assert body["is_healthy"] is True
+
+        body = self._report_health(
+            timeouts, events, seconds_since_last_transition=701.0
+        )
+        assert body["is_healthy"] is False
+
+    def test_tendermint_stall_still_reports_unhealthy(self) -> None:
+        """A wedged Tendermint reports unhealthy whatever the predecessor was."""
+        body = self._report_health(
+            {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS},
+            ["DONE", "NONE", "NO_MAJORITY", "POLYMARKET_FETCH_MARKETS"],
+            is_tm_unhealthy=True,
+        )
+        assert body["is_tm_healthy"] is False
+        assert body["is_transitioning_fast"] is False
+        assert body["is_healthy"] is False
+
+    def test_mech_wait_keeps_reporting_healthy(self) -> None:
+        """An overdue round still reports healthy while waiting on a mech."""
+        body = self._report_health(
+            {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS},
+            ["DONE", "NO_MAJORITY", "ROUND_TIMEOUT"],
+            seconds_since_last_transition=701.0,
+            waiting_for_a_mech_response=True,
+        )
+        assert body["is_transitioning_fast"] is False
+        assert body["is_healthy"] is True
+
+    @pytest.mark.parametrize("reset_pause_duration", [90, 30])
+    def test_reset_pause_is_not_an_untimed_round(
+        self, reset_pause_duration: int
+    ) -> None:
+        """
+        The deliberate inter-cycle pause reports healthy for its whole duration.
+
+        `ResetAndPauseRound` carries `RESET_AND_PAUSE_TIMEOUT`, registered at
+        `reset_pause_duration + MARGIN`, so it is not a sixth untimed round and the
+        fallback never applies to it. Parameterised over the two shipped values:
+        90s on Polystrat, 30s on Omenstrat.
+
+        :param reset_pause_duration: the service's configured pause, in seconds.
+        """
+        margin = 5
+        reset_pause_timeout = float(reset_pause_duration + margin)
+        events = ["DONE", "NO_MAJORITY", "RESET_AND_PAUSE_TIMEOUT"]
+        timeouts = {"RESET_AND_PAUSE_TIMEOUT": reset_pause_timeout}
+
+        body = self._report_health(
+            timeouts,
+            events,
+            seconds_since_last_transition=2 * reset_pause_timeout - 1,
+            reset_pause_duration=reset_pause_duration,
+        )
+        assert body["reset_pause_duration"] == reset_pause_duration
+        assert body["is_healthy"] is True
+
+        body = self._report_health(
+            timeouts,
+            events,
+            seconds_since_last_transition=2 * reset_pause_timeout + 1,
+            reset_pause_duration=reset_pause_duration,
+        )
+        assert body["is_healthy"] is False
