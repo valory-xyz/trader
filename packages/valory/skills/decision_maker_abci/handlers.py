@@ -22,7 +22,7 @@
 import re
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 from aea.protocols.base import Message
@@ -120,6 +120,25 @@ class HttpMethod(Enum):
     GET = "get"
     HEAD = "head"
     POST = "post"
+
+
+def resolve_round_timeout(
+    event_to_timeout: Mapping[Any, float],
+    round_events: Iterable[Any],
+    default: float,
+) -> float:
+    """
+    Resolve a round's timeout from its events, falling back to the default.
+
+    :param event_to_timeout: the app's configured timeout per event.
+    :param round_events: the events the round in question can emit.
+    :param default: the timeout to fall back to when none of the events carries one.
+    :return: the longest timeout the round's events carry, or the default.
+    """
+    configured_timeouts = {
+        event_to_timeout[event] for event in round_events if event in event_to_timeout
+    }
+    return max(configured_timeouts) if configured_timeouts else default
 
 
 class HttpHandler(BaseHttpHandler):
@@ -405,10 +424,11 @@ class HttpHandler(BaseHttpHandler):
         previous_round_events = abci_app.transition_function.get(
             previous_round_cls, {}
         ).keys()
-        previous_round_timeouts = {
-            abci_app.event_to_timeout.get(event, -1) for event in previous_round_events
-        }
-        last_round_timeout = max(previous_round_timeouts)
+        last_round_timeout = resolve_round_timeout(
+            abci_app.event_to_timeout,
+            previous_round_events,
+            self.context.params.round_timeout_seconds,
+        )
         is_transitioning_fast = (
             not is_tm_unhealthy
             and seconds_since_last_transition < 2 * last_round_timeout
