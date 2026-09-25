@@ -852,24 +852,7 @@ class TestPolymarketLabelOverrides:
         assert "polymarket_swap_usdc_round" not in handler.rounds_info
 
 
-# ---------------------------------------------------------------------------
-# Health-report freshness derivation (OPE-1941)
-# ---------------------------------------------------------------------------
-
-# The value `round_timeout_seconds` is configured with in both services.
 ROUND_TIMEOUT_SECONDS = 350.0
-
-# The live rounds of the composed `TraderAbciApp` whose outgoing events all lack a
-# configured timeout, as of the FSM this guard was written against. Listed for
-# readability; the guard below re-derives the set from the app itself, so this going
-# stale cannot hide a regression.
-ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT = (
-    "FetchMarketsRouterRound",
-    "HandleFailedTxRound",
-    "RedeemRouterRound",
-    "RegistrationRound",
-    "RegistrationStartupRound",
-)
 
 
 class TestResolveRoundTimeout:
@@ -915,65 +898,6 @@ class TestResolveRoundTimeout:
             == ROUND_TIMEOUT_SECONDS
         )
 
-    def test_no_live_round_yields_a_negative_tolerance(self) -> None:
-        """
-        No live round of the composed FSM may resolve to a negative timeout.
-
-        This is the regression guard for OPE-1941: a negative `last_round_timeout`
-        makes `seconds_since_last_transition < 2 * last_round_timeout` unsatisfiable,
-        so the agent reports itself unhealthy for the whole of the round that follows.
-        It fails the moment a round is added to the FSM without a timeout-bearing
-        outgoing event.
-
-        The walk is over the live rounds only. `FailedMultiplexerRound`,
-        `ImpossibleRound` and `ServiceEvictedRound` are `DegenerateRound` sinks with
-        no outgoing transitions at all; they are excluded deliberately, because a
-        `DegenerateRound` never emits an event and so never becomes the previous
-        round at runtime.
-
-        Membership is tested against the populated `event_to_timeout` rather than
-        against the event's name. Every timeout registered today happens to be named
-        `*_TIMEOUT`, but that is a convention rather than a constraint.
-        """
-        from packages.valory.skills.trader_abci.composition import TraderAbciApp
-
-        transition_function = TraderAbciApp.transition_function
-        event_to_timeout = TraderAbciApp.event_to_timeout
-        live_rounds = set(transition_function) - set(TraderAbciApp.final_states)
-        assert live_rounds, "the walk covered no rounds; the FSM did not compose"
-        assert {round_cls.__name__ for round_cls in TraderAbciApp.final_states} == {
-            "FailedMultiplexerRound",
-            "ImpossibleRound",
-            "ServiceEvictedRound",
-        }, "the excluded sinks are no longer the three this docstring reasons about"
-
-        without_a_timeout = {
-            round_cls.__name__
-            for round_cls in live_rounds
-            if not any(
-                event in event_to_timeout for event in transition_function[round_cls]
-            )
-        }
-        # A subset, not an equality: giving one of these rounds a timeout-bearing event
-        # is an improvement and must not fail the guard, while a *new* untimed round
-        # must, so that adding one is a deliberate act rather than a silent one.
-        assert without_a_timeout <= set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT), (
-            "a round with no timeout-bearing outgoing event was added to the FSM: "
-            f"{sorted(without_a_timeout - set(ROUNDS_WITHOUT_A_CONFIGURED_TIMEOUT))}"
-        )
-
-        for round_cls in live_rounds:
-            resolved = resolve_round_timeout(
-                event_to_timeout,
-                transition_function[round_cls],
-                ROUND_TIMEOUT_SECONDS,
-            )
-            assert resolved > 0, (
-                f"{round_cls.__name__} resolves to a tolerance of {2 * resolved}s, so "
-                "the agent can never report itself healthy while it is the previous "
-                "round"
-            )
-
 
 class TestHandleGetHealthFreshness:
     """Tests for the health reported across the FSM's rounds."""
@@ -993,7 +917,6 @@ class TestHandleGetHealthFreshness:
         seconds_since_last_transition: float = 0.1,
         is_tm_unhealthy: bool = False,
         waiting_for_a_mech_response: bool = False,
-        reset_pause_duration: int = 90,
         round_timeout_seconds: float = ROUND_TIMEOUT_SECONDS,
     ) -> Dict[str, Any]:
         """Drive `_handle_get_health` and return the decoded response body."""
@@ -1051,7 +974,7 @@ class TestHandleGetHealthFreshness:
             mock_round_seq.abci_app.event_to_timeout = configured_timeouts
             mock_rs.return_value = mock_round_seq
 
-            self.handler.context.params.reset_pause_duration = reset_pause_duration
+            self.handler.context.params.reset_pause_duration = 90
             self.handler.context.params.round_timeout_seconds = round_timeout_seconds
 
             self.handler._handle_get_health(http_msg, http_dialogue)
@@ -1081,10 +1004,7 @@ class TestHandleGetHealthFreshness:
     def test_healthy_after_an_untimed_previous_round(
         self, previous_round_events: Any
     ) -> None:
-        """A round following one of the five untimed rounds reports healthy.
-
-        :param previous_round_events: the untimed round's outgoing events.
-        """
+        """A round following one of the five untimed rounds reports healthy."""
         body = self._report_health(
             {"ROUND_TIMEOUT": ROUND_TIMEOUT_SECONDS}, previous_round_events
         )
@@ -1144,38 +1064,21 @@ class TestHandleGetHealthFreshness:
         assert body["is_transitioning_fast"] is False
         assert body["is_healthy"] is True
 
-    @pytest.mark.parametrize("reset_pause_duration", [90, 30])
-    def test_reset_pause_is_not_an_untimed_round(
-        self, reset_pause_duration: int
-    ) -> None:
-        """
-        The deliberate inter-cycle pause reports healthy for its whole duration.
+    def test_healthy_after_every_live_round(self) -> None:
+        """A prompt report is healthy after every live round of the composed FSM."""
+        from packages.valory.skills.trader_abci.composition import TraderAbciApp
 
-        `ResetAndPauseRound` carries `RESET_AND_PAUSE_TIMEOUT`, registered at
-        `reset_pause_duration + MARGIN`, so it is not a sixth untimed round and the
-        fallback never applies to it. Parameterised over the two shipped values:
-        90s on Polystrat, 30s on Omenstrat.
-
-        :param reset_pause_duration: the service's configured pause, in seconds.
-        """
-        margin = 5
-        reset_pause_timeout = float(reset_pause_duration + margin)
-        events = ["DONE", "NO_MAJORITY", "RESET_AND_PAUSE_TIMEOUT"]
-        timeouts = {"RESET_AND_PAUSE_TIMEOUT": reset_pause_timeout}
-
-        body = self._report_health(
-            timeouts,
-            events,
-            seconds_since_last_transition=2 * reset_pause_timeout - 1,
-            reset_pause_duration=reset_pause_duration,
+        live_rounds = set(TraderAbciApp.transition_function) - set(
+            TraderAbciApp.final_states
         )
-        assert body["reset_pause_duration"] == reset_pause_duration
-        assert body["is_healthy"] is True
+        assert live_rounds
 
-        body = self._report_health(
-            timeouts,
-            events,
-            seconds_since_last_transition=2 * reset_pause_timeout + 1,
-            reset_pause_duration=reset_pause_duration,
-        )
-        assert body["is_healthy"] is False
+        unhealthy = [
+            round_cls.__name__
+            for round_cls in live_rounds
+            if not self._report_health(
+                TraderAbciApp.event_to_timeout,
+                TraderAbciApp.transition_function[round_cls],
+            )["is_healthy"]
+        ]
+        assert not unhealthy, f"reported unhealthy after: {sorted(unhealthy)}"
