@@ -399,7 +399,7 @@ config:
   mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
   mech_chain: ${MECH_CHAIN:str:polygon}
   mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
-  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000000000000000}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
