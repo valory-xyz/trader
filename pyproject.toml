@@ -90,7 +90,7 @@ check_dependencies_extra_excludes = [
 upstream_pins = [
     "valory-xyz/mech-interact@v0.32.11",
     "valory-xyz/mech@v0.34.2-rc2",
-    "valory-xyz/genai@v7.2.2",
+    "valory-xyz/genai@v7.2.3",
     "valory-xyz/kv-store@v0.7.1",
     "valory-xyz/funds-manager@v3.1.2",
     "valory-xyz/omen-protocol@v0.1.3",
