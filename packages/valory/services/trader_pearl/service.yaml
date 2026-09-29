@@ -160,7 +160,7 @@ models:
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
-      is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
+      is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x21cE6799A22A3Da84B7c44a814a9c79ab1d2A50D}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
