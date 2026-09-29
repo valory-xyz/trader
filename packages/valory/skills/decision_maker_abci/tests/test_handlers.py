@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, Union, cast
+from typing import Any, Dict, Mapping, Union, cast
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -855,6 +855,18 @@ class TestPolymarketLabelOverrides:
 ROUND_TIMEOUT_SECONDS = 350.0
 
 
+class _PreviousRound:
+    """Stand-in for the round that just completed."""
+
+    round_id = "prev_round"
+
+
+class _CurrentRound:
+    """Stand-in for the round now running."""
+
+    round_id = "some_round"
+
+
 class TestResolveRoundTimeout:
     """Tests for the `last_round_timeout` derivation behind the freshness check."""
 
@@ -912,12 +924,13 @@ class TestHandleGetHealthFreshness:
 
     def _report_health(
         self,
-        configured_timeouts: Dict[str, float],
+        configured_timeouts: Mapping[Any, float],
         previous_round_events: Any,
         seconds_since_last_transition: float = 0.1,
         is_tm_unhealthy: bool = False,
         waiting_for_a_mech_response: bool = False,
         round_timeout_seconds: float = ROUND_TIMEOUT_SECONDS,
+        current_round_events: Any = (),
     ) -> Dict[str, Any]:
         """Drive `_handle_get_health` and return the decoded response body."""
         http_msg = MagicMock()
@@ -963,13 +976,11 @@ class TestHandleGetHealthFreshness:
             )
             mock_round_seq.current_round_id = "some_round"
 
-            mock_prev_round = MagicMock()
-            mock_prev_round.round_id = "prev_round"
-            mock_round_seq.abci_app._previous_rounds = [mock_prev_round]
+            mock_round_seq.abci_app._previous_rounds = [_PreviousRound()]
+            mock_round_seq.abci_app.current_round = _CurrentRound()
             mock_round_seq.abci_app.transition_function = {
-                type(mock_prev_round): {
-                    event: MagicMock() for event in previous_round_events
-                }
+                _PreviousRound: {event: MagicMock() for event in previous_round_events},
+                _CurrentRound: {event: MagicMock() for event in current_round_events},
             }
             mock_round_seq.abci_app.event_to_timeout = configured_timeouts
             mock_rs.return_value = mock_round_seq
@@ -1063,6 +1074,73 @@ class TestHandleGetHealthFreshness:
         )
         assert body["is_transitioning_fast"] is False
         assert body["is_healthy"] is True
+
+    @pytest.mark.parametrize(
+        ("reset_pause_timeout", "within_tolerance", "past_tolerance"),
+        [
+            pytest.param(95.0, 189.0, 191.0, id="polystrat-90s-pause"),
+            pytest.param(35.0, 69.0, 71.0, id="omenstrat-30s-pause"),
+        ],
+    )
+    def test_reset_pause_is_judged_against_its_own_timeout(
+        self,
+        reset_pause_timeout: float,
+        within_tolerance: float,
+        past_tolerance: float,
+    ) -> None:
+        """A pause outlasting the checkpoint round's 30s timeout is not a stall."""
+        from packages.valory.skills.reset_pause_abci.rounds import (
+            Event as ResetPauseEvent,
+        )
+        from packages.valory.skills.reset_pause_abci.rounds import (
+            ResetAndPauseRound,
+        )
+        from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
+        from packages.valory.skills.staking_abci.rounds import Event as StakingEvent
+        from packages.valory.skills.trader_abci.composition import TraderAbciApp
+
+        timeouts = {
+            StakingEvent.ROUND_TIMEOUT: 30.0,
+            ResetPauseEvent.RESET_AND_PAUSE_TIMEOUT: reset_pause_timeout,
+        }
+        checkpoint_events = TraderAbciApp.transition_function[CallCheckpointRound]
+        pause_events = TraderAbciApp.transition_function[ResetAndPauseRound]
+
+        body = self._report_health(
+            timeouts,
+            checkpoint_events,
+            seconds_since_last_transition=within_tolerance,
+            current_round_events=pause_events,
+        )
+        assert body["is_healthy"] is True
+
+        body = self._report_health(
+            timeouts,
+            checkpoint_events,
+            seconds_since_last_transition=past_tolerance,
+            current_round_events=pause_events,
+        )
+        assert body["is_healthy"] is False
+
+    def test_shorter_current_timeout_does_not_tighten_the_tolerance(self) -> None:
+        """A running round with a short timeout keeps the predecessor's tolerance."""
+        body = self._report_health(
+            {"SHORT_TIMEOUT": 30.0},
+            ["DONE", "NO_MAJORITY"],
+            seconds_since_last_transition=699.0,
+            current_round_events=["DONE", "SHORT_TIMEOUT"],
+        )
+        assert body["is_healthy"] is True
+
+    def test_untimed_current_round_does_not_widen_the_tolerance(self) -> None:
+        """A running round with no timeout does not fall back to the default."""
+        body = self._report_health(
+            {"SHORT_TIMEOUT": 30.0},
+            ["DONE", "SHORT_TIMEOUT"],
+            seconds_since_last_transition=61.0,
+            current_round_events=["DONE", "NO_MAJORITY"],
+        )
+        assert body["is_healthy"] is False
 
     def test_healthy_after_every_live_round(self) -> None:
         """A prompt report is healthy after every live round of the composed FSM."""
