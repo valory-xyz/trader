@@ -21,6 +21,7 @@
 
 from typing import Any, Callable, Dict, Type, Union, cast
 
+from packages.valory.connections.x402.clients.mech import slot_registry
 from packages.valory.skills.abstract_round_abci.models import (
     ApiSpecs,
 )
@@ -104,6 +105,9 @@ from packages.valory.skills.mech_interact_abci.models import (
 )
 from packages.valory.skills.mech_interact_abci.models import (
     MechsSubgraph as InteractMechsSubgraph,
+)
+from packages.valory.skills.mech_interact_abci.nonce_allocator import (
+    MECH_SLOT_REGISTRY,
 )
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
@@ -205,6 +209,11 @@ class SharedState(BaseSharedState):
     def setup(self) -> None:
         """Set up."""
         super().setup()
+
+        # The mech skill signs marketplace requests itself and the genai
+        # connection signs the paid chat calls, both spending this Safe's
+        # slots, and neither can see the other's unsettled ones.
+        self.context.shared_state[MECH_SLOT_REGISTRY] = slot_registry()
 
         params = self.params
         events = (

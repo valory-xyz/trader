@@ -31,6 +31,9 @@ from packages.valory.skills.decision_maker_abci.rounds import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+from packages.valory.skills.mech_interact_abci.nonce_allocator import (
+    MECH_SLOT_REGISTRY,
+)
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
 from packages.valory.skills.trader_abci.composition import TraderAbciApp
@@ -108,6 +111,12 @@ class TestSharedState:
                     new_callable=PropertyMock,
                     return_value=mock_params,
                 ),
+                patch.object(
+                    type(state),
+                    "context",
+                    new_callable=PropertyMock,
+                    return_value=MagicMock(shared_state={}),
+                ),
                 patch.object(BaseSharedState, "setup", return_value=None),
             ):
                 state.setup()
@@ -160,3 +169,81 @@ class TestSharedState:
         finally:
             # Restore original event_to_timeout to avoid side effects
             TraderAbciApp.event_to_timeout = original_event_to_timeout
+
+
+class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
+    """This agent pays from one Safe through two routes that cannot see each other.
+
+    The mech skill signs marketplace requests itself against the on-chain
+    counter, and the genai connection signs the paid chat calls against
+    the facilitator's view. ``mapNonces`` only moves at settlement, so an
+    unsettled slot is invisible to both, and each route is correct alone
+    and wrong together. ``setup`` is what joins them.
+    """
+
+    _CHAIN = "gnosis"
+    _SAFE = "0x000000000000000000000000000000000000AbCd"
+
+    @staticmethod
+    def _shared_state() -> dict:
+        """Run setup the way the skill loader does and return the shared state."""
+        state = SharedState.__new__(SharedState)
+        shared_state: dict = {}
+        mock_context = MagicMock()
+        mock_context.shared_state = shared_state
+        original = TraderAbciApp.event_to_timeout.copy()
+        try:
+            with (
+                patch.object(
+                    type(state),
+                    "context",
+                    new_callable=PropertyMock,
+                    return_value=mock_context,
+                ),
+                patch.object(
+                    type(state),
+                    "params",
+                    new_callable=PropertyMock,
+                    return_value=MagicMock(),
+                ),
+                patch.object(BaseSharedState, "setup", return_value=None),
+            ):
+                state.setup()
+        finally:
+            TraderAbciApp.event_to_timeout = original
+        return shared_state
+
+    def test_the_registry_is_bound_where_the_mech_skill_looks_for_it(self) -> None:
+        """The key is the contract between the two packages.
+
+        ``MECH_SLOT_REGISTRY`` is imported from the mech skill rather than
+        spelled out here, so a rename on either side fails this.
+        """
+        assert self._shared_state()[MECH_SLOT_REGISTRY] is not None
+
+    def test_the_second_route_is_not_offered_the_first_ones_slot(self) -> None:
+        """Both routes reading only their own view would sign slot 7 twice."""
+        registry = self._shared_state()[MECH_SLOT_REGISTRY]
+        registry.live.clear()
+
+        held = registry.reserve(self._CHAIN, self._SAFE, 7)
+        offered = registry.reserve(self._CHAIN, self._SAFE, 7)
+
+        assert (held, offered) == (7, 8)
+
+    def test_a_slot_one_route_hands_back_is_offered_to_the_other(self) -> None:
+        """A slot nothing will settle stalls every later request for the Safe."""
+        registry = self._shared_state()[MECH_SLOT_REGISTRY]
+        registry.live.clear()
+
+        taken = registry.reserve(self._CHAIN, self._SAFE, 7)
+        registry.release(self._CHAIN, self._SAFE, taken)
+
+        assert registry.reserve(self._CHAIN, self._SAFE, 7) == taken
+
+    def test_every_skill_in_the_agent_gets_the_same_registry(self) -> None:
+        """Two views of the count are two chances to hand out one slot twice."""
+        assert (
+            self._shared_state()[MECH_SLOT_REGISTRY]
+            is self._shared_state()[MECH_SLOT_REGISTRY]
+        )
