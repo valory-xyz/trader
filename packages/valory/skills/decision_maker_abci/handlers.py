@@ -429,9 +429,20 @@ class HttpHandler(BaseHttpHandler):
             previous_round_events,
             self.context.params.round_timeout_seconds,
         )
+        # A round may legitimately outlast its predecessor's timeout (the reset
+        # pause does), so its own timeout can widen the tolerance, never narrow it.
+        current_round_events = abci_app.transition_function.get(
+            type(abci_app.current_round), {}
+        ).keys()
+        current_round_timeout = resolve_round_timeout(
+            abci_app.event_to_timeout,
+            current_round_events,
+            last_round_timeout,
+        )
         is_transitioning_fast = (
             not is_tm_unhealthy
-            and seconds_since_last_transition < 2 * last_round_timeout
+            and seconds_since_last_transition
+            < 2 * max(last_round_timeout, current_round_timeout)
         )
 
         rounds = [r.round_id for r in previous_rounds[-FSM_REPR_MAX_DEPTH:]] + [
