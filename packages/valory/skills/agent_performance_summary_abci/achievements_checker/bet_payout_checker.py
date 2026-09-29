@@ -44,12 +44,14 @@ class BetPayoutChecker(AchievementsChecker):
         roi_threshold: float = 2.0,
         title_template: str = "High ROI on bet!",
         description_template: str = "Agent closed a bet at {roi}\u00d7 ROI.",
+        skip_settled_before_enabled: bool = False,
     ) -> None:
         """Initialize the achievement checker."""
         self._achievement_type = achievement_type
         self._roi_threshold = roi_threshold
         self._title_template = title_template
         self._description_template = description_template
+        self._skip_settled_before_enabled = skip_settled_before_enabled
 
     @property
     def achievement_type(self) -> str:
@@ -64,10 +66,21 @@ class BetPayoutChecker(AchievementsChecker):
 
         prediction_history: PredictionHistory = kwargs["prediction_history"]
 
-        if prediction_history is None:
-            return False
-
         achievements_updated = False
+        if (
+            self._skip_settled_before_enabled
+            and achievements.eligible_since is None
+        ):
+            if "now" not in kwargs:
+                raise ValueError("Missing 'now'")
+            # First enabled run: wins settled before it are a backlog the
+            # operator has long seen, so only later settlements qualify.
+            achievements.eligible_since = int(kwargs["now"])
+            achievements_updated = True
+
+        if prediction_history is None:
+            return achievements_updated
+
         for bet in prediction_history.items:
             # Sell-aware: only fire on resolved-and-redeemed wins. The
             # `status == WON` gate intentionally excludes:
@@ -94,6 +107,19 @@ class BetPayoutChecker(AchievementsChecker):
             if roi <= self._roi_threshold:
                 continue
 
+            settled_timestamp = int(
+                datetime.fromisoformat(
+                    bet["settled_at"].replace("Z", "+00:00")
+                ).timestamp()
+            )
+
+            if (
+                self._skip_settled_before_enabled
+                and achievements.eligible_since is not None
+                and settled_timestamp < achievements.eligible_since
+            ):
+                continue
+
             achievement_id = self.generate_achievement_id(bet["id"])
 
             if achievement_id in achievements.items:
@@ -111,11 +137,7 @@ class BetPayoutChecker(AchievementsChecker):
                 achievement_type=self.achievement_type,
                 title=title,
                 description=description,
-                timestamp=int(
-                    datetime.fromisoformat(
-                        bet["settled_at"].replace("Z", "+00:00")
-                    ).timestamp()
-                ),
+                timestamp=settled_timestamp,
                 data=bet,
             )
 

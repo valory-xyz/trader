@@ -434,3 +434,110 @@ class TestBetPayoutCheckerUpdateAchievements:
         )
         assert result is False
         assert len(achievements.items) == 0
+
+
+class TestBetPayoutCheckerSkipSettledBeforeEnabled:
+    """Tests for the opt-in backlog guard (``eligible_since`` watermark)."""
+
+    # 2024-01-15T12:00:00Z
+    WATERMARK = 1705320000
+
+    def _make_checker(self, enabled: bool = True) -> BetPayoutChecker:
+        """Create a checker with the backlog guard toggled."""
+        return BetPayoutChecker(
+            achievement_type="bet_payout",
+            roi_threshold=1.5,
+            skip_settled_before_enabled=enabled,
+        )
+
+    @staticmethod
+    def _won_bet(bet_id: str, settled_at: str) -> dict:
+        """Create a qualifying (3x) won bet settled at ``settled_at``."""
+        return {
+            "id": bet_id,
+            "bet_amount": 10.0,
+            "total_payout": 30.0,
+            "settled_at": settled_at,
+            "status": "won",
+        }
+
+    def test_first_run_sets_watermark_and_records_no_backlog(self) -> None:
+        """First guarded run stores ``now`` and skips wins settled earlier."""
+        checker = self._make_checker()
+        achievements = Achievements()
+        history = PredictionHistory(
+            items=[self._won_bet("old", "2024-01-15T11:59:59Z")]
+        )
+        result = checker.update_achievements(
+            achievements, prediction_history=history, now=self.WATERMARK
+        )
+        assert result is True
+        assert achievements.eligible_since == self.WATERMARK
+        assert achievements.items == {}
+
+    def test_first_run_persists_watermark_without_history(self) -> None:
+        """The watermark is reported as an update even with no history."""
+        checker = self._make_checker()
+        achievements = Achievements()
+        result = checker.update_achievements(
+            achievements, prediction_history=None, now=self.WATERMARK
+        )
+        assert result is True
+        assert achievements.eligible_since == self.WATERMARK
+
+    def test_missing_now_raises_on_first_run(self) -> None:
+        """Setting the watermark requires ``now``."""
+        checker = self._make_checker()
+        with pytest.raises(ValueError, match="Missing 'now'"):
+            checker.update_achievements(Achievements(), prediction_history=None)
+
+    @pytest.mark.parametrize(
+        ("settled_at", "recorded"),
+        [
+            ("2024-01-15T11:59:59Z", False),
+            ("2024-01-15T12:00:00Z", True),
+            ("2024-01-15T12:00:01Z", True),
+        ],
+    )
+    def test_existing_watermark_filters_by_settlement(
+        self, settled_at: str, recorded: bool
+    ) -> None:
+        """Only wins settled at or after the watermark are recorded."""
+        checker = self._make_checker()
+        achievements = Achievements(eligible_since=self.WATERMARK)
+        history = PredictionHistory(items=[self._won_bet("bet", settled_at)])
+        result = checker.update_achievements(
+            achievements, prediction_history=history, now=self.WATERMARK + 999
+        )
+        assert result is recorded
+        assert len(achievements.items) == int(recorded)
+        assert achievements.eligible_since == self.WATERMARK
+
+    def test_later_win_recorded_once(self) -> None:
+        """A win after the watermark is recorded exactly once across runs."""
+        checker = self._make_checker()
+        achievements = Achievements(eligible_since=self.WATERMARK)
+        history = PredictionHistory(
+            items=[self._won_bet("new", "2024-01-16T00:00:00Z")]
+        )
+        assert checker.update_achievements(
+            achievements, prediction_history=history, now=self.WATERMARK
+        )
+        assert not checker.update_achievements(
+            achievements, prediction_history=history, now=self.WATERMARK
+        )
+        assert len(achievements.items) == 1
+
+    def test_guard_off_ignores_watermark(self) -> None:
+        """Without the guard, behaviour is unchanged: no watermark, no filter."""
+        checker = self._make_checker(enabled=False)
+        achievements = Achievements()
+        history = PredictionHistory(
+            items=[self._won_bet("old", "2020-01-01T00:00:00Z")]
+        )
+        result = checker.update_achievements(
+            achievements, prediction_history=history
+        )
+        assert result is True
+        assert achievements.eligible_since is None
+        assert len(achievements.items) == 1

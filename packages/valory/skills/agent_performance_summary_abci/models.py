@@ -185,6 +185,9 @@ class Achievements:
     """Achievements dictionary."""
 
     items: Dict[str, Achievement] = field(default_factory=dict)
+    # UNIX timestamp (seconds); wins settled earlier are never recorded by
+    # checkers that opt into the backlog guard.
+    eligible_since: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
