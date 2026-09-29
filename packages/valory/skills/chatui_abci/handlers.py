@@ -418,7 +418,13 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.chatui_config.trading_strategy
         )
 
-        genai_response: dict = json.loads(llm_response_message.payload)
+        try:
+            genai_response: dict = json.loads(llm_response_message.payload)
+        except (json.JSONDecodeError, TypeError):
+            self._handle_unreadable_llm_reply(
+                llm_response_message.payload, http_msg, http_dialogue
+            )
+            return
 
         if "error" in genai_response:
             self._handle_chatui_llm_error(
@@ -427,7 +433,14 @@ class HttpHandler(BaseHttpHandler):
             return
 
         llm_response = genai_response.get(RESPONSE_FIELD, "{}")
-        llm_response_json = json.loads(llm_response)
+        try:
+            llm_response_json = json.loads(llm_response)
+        except (json.JSONDecodeError, TypeError):
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
+        if not isinstance(llm_response_json, dict):
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
 
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
@@ -636,6 +649,30 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.update_agent_behavior(behavior)
 
         return updated_params, issues
+
+    def _handle_unreadable_llm_reply(
+        self, reply: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer the caller when the model did not reply with the JSON object asked for.
+
+        :param reply: whatever the model sent back.
+        :param http_msg: the original HttpMessage.
+        :param http_dialogue: the original HttpDialogue.
+
+        The prompt asks for a JSON object but nothing makes the model
+        return one, so prose, a fenced block or an apology all land here.
+        Left to raise this ends the agent, because the service runs under
+        ``stop_and_exit``: one badly answered prompt would stop trading.
+        """
+        self.context.logger.error(
+            f"Could not read the LLM reply as a JSON object: {reply!r}"
+        )
+        self._send_internal_server_error_response(
+            http_msg,
+            http_dialogue,
+            {"error": "The model did not answer in the expected format."},
+            content_type=HttpContentType.JSON.header,
+        )
 
     def _handle_chatui_llm_error(
         self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue

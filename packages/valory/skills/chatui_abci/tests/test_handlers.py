@@ -1900,3 +1900,87 @@ class TestWithdrawalRouteRegistration:
         assert any(
             "withdrawal" in p for p in regex_strings
         ), f"no /api/v1/withdrawal GET route registered; found: {regex_strings}"
+
+
+class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
+    """The prompt asks the model for JSON; nothing makes it comply.
+
+    The service runs under ``stop_and_exit``, so an exception raised out
+    of this handler ends the agent. One prompt answered in prose would
+    stop trading until somebody restarted it.
+    """
+
+    @staticmethod
+    def _handler() -> Any:
+        handler = _make_handler()
+        handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+        handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+        return handler
+
+    @staticmethod
+    def _reply(payload: Any) -> Any:
+        message = MagicMock()
+        message.payload = payload
+        return message
+
+    @pytest.mark.parametrize(
+        "model_text",
+        [
+            pytest.param("I'm sorry, I can't help with that.", id="prose"),
+            pytest.param('```json\n{"message": "hi"}\n```', id="fenced block"),
+            pytest.param("", id="empty"),
+            pytest.param("[1, 2, 3]", id="a list, not an object"),
+            pytest.param('"just a string"', id="a bare string"),
+        ],
+    )
+    def test_a_reply_that_is_not_a_json_object_is_answered_not_raised(
+        self, model_text: str
+    ) -> None:
+        """Each of these used to raise straight out of the handler."""
+        handler = self._handler()
+        payload = json.dumps({"response": model_text})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        body = handler._send_internal_server_error_response.call_args[0][2]
+        assert "error" in body
+
+    def test_a_payload_that_is_not_json_at_all_is_answered_not_raised(self) -> None:
+        """The connection encodes this, but a handler must not end the agent on it."""
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply("not json"), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    def test_a_well_formed_reply_is_still_processed(self) -> None:
+        """The guard must not swallow the normal path."""
+        handler = self._handler()
+        payload = json.dumps(
+            {"response": json.dumps({"message": "done", "updated_config": {}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+
+    def test_an_llm_error_reply_still_takes_the_error_path(self) -> None:
+        """A reported error is not the same as an unreadable one."""
+        handler = self._handler()
+        payload = json.dumps({"error": "No GENAI_API_KEY set."})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._handle_chatui_llm_error.assert_called_once()
+        handler._send_internal_server_error_response.assert_not_called()
