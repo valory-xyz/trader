@@ -21,6 +21,8 @@
 
 from typing import Any, Callable, Dict, Type, Union, cast
 
+from aea.skills.base import SkillContext
+
 from packages.valory.connections.x402.clients.mech import slot_registry
 from packages.valory.skills.abstract_round_abci.models import (
     ApiSpecs,
@@ -201,6 +203,16 @@ class SharedState(BaseSharedState):
 
     abci_app_cls = TraderAbciApp
 
+    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
+        """Initialize the state."""
+        super().__init__(*args, skill_context=skill_context, **kwargs)
+        # The mech skill signs marketplace requests itself and the genai
+        # connection signs the paid chat calls, both spending this Safe's
+        # slots, and neither can see the other's unsettled ones. Bound on
+        # construction rather than in ``setup``, so nothing can make a
+        # paid call before the two routes share a count.
+        skill_context.shared_state[MECH_SLOT_REGISTRY] = slot_registry()
+
     @property
     def params(self) -> TraderParams:
         """Get the parameters."""
@@ -209,11 +221,6 @@ class SharedState(BaseSharedState):
     def setup(self) -> None:
         """Set up."""
         super().setup()
-
-        # The mech skill signs marketplace requests itself and the genai
-        # connection signs the paid chat calls, both spending this Safe's
-        # slots, and neither can see the other's unsettled ones.
-        self.context.shared_state[MECH_SLOT_REGISTRY] = slot_registry()
 
         params = self.params
         events = (

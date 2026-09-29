@@ -186,31 +186,12 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
 
     @staticmethod
     def _shared_state() -> dict:
-        """Run setup the way the skill loader does and return the shared state."""
-        state = SharedState.__new__(SharedState)
+        """Build the skill's shared state the way the skill loader does."""
         shared_state: dict = {}
-        mock_context = MagicMock()
-        mock_context.shared_state = shared_state
-        original = TraderAbciApp.event_to_timeout.copy()
-        try:
-            with (
-                patch.object(
-                    type(state),
-                    "context",
-                    new_callable=PropertyMock,
-                    return_value=mock_context,
-                ),
-                patch.object(
-                    type(state),
-                    "params",
-                    new_callable=PropertyMock,
-                    return_value=MagicMock(),
-                ),
-                patch.object(BaseSharedState, "setup", return_value=None),
-            ):
-                state.setup()
-        finally:
-            TraderAbciApp.event_to_timeout = original
+        context = MagicMock()
+        context.shared_state = shared_state
+        with patch.object(BaseSharedState, "__init__", return_value=None):
+            SharedState(name="state", skill_context=context)
         return shared_state
 
     def test_the_registry_is_bound_where_the_mech_skill_looks_for_it(self) -> None:
