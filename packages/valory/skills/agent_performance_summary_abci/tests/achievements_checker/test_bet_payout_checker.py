@@ -535,9 +535,7 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
         history = PredictionHistory(
             items=[self._won_bet("old", "2020-01-01T00:00:00Z")]
         )
-        result = checker.update_achievements(
-            achievements, prediction_history=history
-        )
+        result = checker.update_achievements(achievements, prediction_history=history)
         assert result is True
         assert achievements.eligible_since is None
         assert len(achievements.items) == 1

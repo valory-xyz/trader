@@ -67,10 +67,7 @@ class BetPayoutChecker(AchievementsChecker):
         prediction_history: PredictionHistory = kwargs["prediction_history"]
 
         achievements_updated = False
-        if (
-            self._skip_settled_before_enabled
-            and achievements.eligible_since is None
-        ):
+        if self._skip_settled_before_enabled and achievements.eligible_since is None:
             if "now" not in kwargs:
                 raise ValueError("Missing 'now'")
             # First enabled run: wins settled before it are a backlog the
