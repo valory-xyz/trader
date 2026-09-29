@@ -152,6 +152,7 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       outcomeTokenAmount
       feeAmount
       outcomeIndex
+      transactionHash
     }
   }
 }

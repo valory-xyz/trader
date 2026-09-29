@@ -1397,6 +1397,7 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 if market_ctx and prediction_status != "pending"
                 else None
             ),
+            "transaction_hash": bet.get("transactionHash"),
         }
 
     def _calculate_bet_net_profit(
