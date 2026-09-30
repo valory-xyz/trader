@@ -2128,6 +2128,35 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_called_once()
         handler._send_ok_response.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "field",
+        ["fixed_bet_size", "max_bet_size"],
+    )
+    def test_an_amount_beyond_the_float_range_is_answered(self, field: str) -> None:
+        """An int is finite however long it is.
+
+        So this is a value the update can read and reject with an issue,
+        rather than a reply it cannot read at all. The readability check runs ahead of the handler's own catch, so asking
+        whether such an int is finite the way a float is asked would end the
+        agent here, before anything could turn it into an issue.
+
+        :param field: the numeric config field carrying the amount.
+        """
+        handler = self._handler()
+        handler._store_chatui_param_to_json = MagicMock()
+        payload = json.dumps(
+            {"response": json.dumps({"updated_agent_config": {field: 10**400}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+        assert field not in handler._send_ok_response.call_args[0][2]
+        handler._store_chatui_param_to_json.assert_not_called()
+
     def test_a_field_failing_late_leaves_the_earlier_ones_unwritten(self) -> None:
         """The update is applied whole or not at all.
 

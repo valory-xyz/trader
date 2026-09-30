@@ -739,10 +739,15 @@ class HttpHandler(BaseHttpHandler):
         ``True`` is an ``int`` in Python, so a bool would otherwise read as
         one unit of the collateral, and an infinity or a NaN would pass a
         range check without ever being a meaningful amount.
+
+        Every ``int`` is finite by construction. ``math.isfinite`` converts
+        its argument to a float first, so an int of about 309 digits or more
+        raises rather than answering, and this guard runs ahead of the
+        handler's own catch.
         """
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return False
-        return math.isfinite(value)
+        return isinstance(value, int) or math.isfinite(value)
 
     def _handle_unreadable_llm_reply(
         self, reply: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
