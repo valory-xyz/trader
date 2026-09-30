@@ -1627,10 +1627,6 @@ class TestHandleGetFundsStatus:
 
 # type: ignore[attr-defined]
 # ---------------------------------------------------------------------------
-# The Safe that holds the payment token; the swap now targets it.
-_SAFE_FOR_PAYMENTS = "0x" + "5a" * 20
-
-
 # _get_eoa_account tests
 # ---------------------------------------------------------------------------
 class TestGetEoaAccount:
@@ -2250,9 +2246,7 @@ class TestEnsureSufficientFundsForX402Payments:
     def test_no_eoa_account(self) -> None:
         """Test failure when EOA account cannot be obtained."""
         with patch.object(self.handler, "_get_eoa_account", return_value=None):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_no_usdc_address(self) -> None:
@@ -2274,9 +2268,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_check_returns_none(self) -> None:
@@ -2288,9 +2280,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
             patch.object(self.handler, "_check_usdc_balance", return_value=None),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
     def test_balance_sufficient(self) -> None:
@@ -2302,9 +2292,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch.object(self.handler, "_get_eoa_account", return_value=mock_account),
             patch.object(self.handler, "_check_usdc_balance", return_value=2000000),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
     def test_balance_insufficient_quote_fails(self) -> None:
@@ -2317,9 +2305,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch.object(self.handler, "_check_usdc_balance", return_value=100),
             patch.object(self.handler, "_get_lifi_quote", return_value=None),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_insufficient_no_tx_request(self) -> None:
@@ -2336,9 +2322,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 return_value={"some": "data"},
             ),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_insufficient_nonce_fails(self) -> None:
@@ -2367,9 +2351,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 return_value=(None, None),
             ),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_insufficient_gas_estimation_fails(self) -> None:
@@ -2396,9 +2378,7 @@ class TestEnsureSufficientFundsForX402Payments:
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(None, False)),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_insufficient_tx_submit_fails(self) -> None:
@@ -2428,9 +2408,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_balance_insufficient_tx_fails(self) -> None:
@@ -2463,9 +2441,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_full_success_hex_value(self) -> None:
@@ -2498,9 +2474,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
     def test_full_success_int_value(self) -> None:
@@ -2533,9 +2507,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
 
     def test_gnosis_path(self) -> None:
@@ -2552,73 +2524,8 @@ class TestEnsureSufficientFundsForX402Payments:
             patch.object(handler, "_get_eoa_account", return_value=mock_account),
             patch.object(handler, "_check_usdc_balance", return_value=2000000),
         ):
-            result = handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = handler._ensure_sufficient_funds_for_x402_payments()
             assert result is True
-
-    def test_the_swap_sends_the_payment_token_to_the_safe(self) -> None:
-        """The marketplace debits the Safe, so topping up the EOA funds nobody.
-
-        The EOA still signs and pays for the swap, so what the user has to
-        fund is unchanged; only the destination moved.
-        """
-        handler = _make_handler()
-        handler.context.params.x402_payment_requirements = {
-            "threshold": 1000000,
-            "top_up": 5000000,
-        }
-        eoa = MagicMock()
-        eoa.address = "0xEOA"
-        seen: dict = {}
-
-        def capture_quote(**kwargs: Any) -> None:
-            seen.update(kwargs)
-            return None
-
-        with (
-            patch.object(handler, "_get_eoa_account", return_value=eoa),
-            patch.object(handler, "_check_usdc_balance", return_value=0),
-            patch.object(handler, "_get_lifi_quote", side_effect=capture_quote),
-        ):
-            handler._ensure_sufficient_funds_for_x402_payments(_SAFE_FOR_PAYMENTS)
-
-        assert seen["to_address"] == _SAFE_FOR_PAYMENTS, "swapped to the EOA"
-        assert seen["from_address"] == "0xEOA", "the EOA still funds the swap"
-
-    def test_the_safes_balance_is_what_decides_a_swap(self) -> None:
-        """Reading the EOA would swap forever while the Safe stays empty."""
-        handler = _make_handler()
-        handler.context.params.x402_payment_requirements = {
-            "threshold": 1000000,
-            "top_up": 5000000,
-        }
-        eoa = MagicMock()
-        eoa.address = "0xEOA"
-        checked: list = []
-
-        def record(address: str, *_a: Any, **_k: Any) -> int:
-            checked.append(address)
-            return 2000000
-
-        with (
-            patch.object(handler, "_get_eoa_account", return_value=eoa),
-            patch.object(handler, "_check_usdc_balance", side_effect=record),
-        ):
-            assert (
-                handler._ensure_sufficient_funds_for_x402_payments(_SAFE_FOR_PAYMENTS)
-                is True
-            )
-
-        assert checked == [_SAFE_FOR_PAYMENTS]
-
-    def test_no_safe_yet_skips_rather_than_swapping_to_nowhere(self) -> None:
-        """``setup`` runs before the first round has a Safe address."""
-        handler = _make_handler()
-
-        with patch.object(handler, "_get_eoa_account") as eoa:
-            assert handler._ensure_sufficient_funds_for_x402_payments(None) is False
-            eoa.assert_not_called()
 
     def test_outer_exception(self) -> None:
         """Test outer exception handler."""
@@ -2627,9 +2534,7 @@ class TestEnsureSufficientFundsForX402Payments:
             "_get_chain_config",
             side_effect=Exception("unexpected"),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
             assert result is False
 
     def test_route_revert_then_success(self) -> None:
@@ -2674,9 +2579,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is True
             assert mock_quote.call_count == 2
@@ -2714,9 +2617,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
             ) as mock_nonce,
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is False
             assert mock_quote.call_count == 3
@@ -2784,9 +2685,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is True
             assert mock_quote.call_count == 3
@@ -2820,9 +2719,7 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", return_value=(None, False)),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is False
             assert mock_quote.call_count == 1
@@ -2859,9 +2756,7 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", return_value=(None, True)),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is False
             assert mock_quote.call_count == 2
@@ -2887,9 +2782,7 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", return_value=(None, True)),
         ):
-            result = self.handler._ensure_sufficient_funds_for_x402_payments(
-                _SAFE_FOR_PAYMENTS
-            )
+            result = self.handler._ensure_sufficient_funds_for_x402_payments()
 
             assert result is False
             assert mock_quote.call_count == 1
