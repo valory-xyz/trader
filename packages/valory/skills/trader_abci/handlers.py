@@ -1027,13 +1027,46 @@ class HttpHandler(BaseHttpHandler):
         if self._x402_swap_future is not None and not self._x402_swap_future.done():
             self.context.logger.debug("x402 swap task already in progress, skipping")
             return
+        # Read on this thread and handed over rather than read inside the
+        # task: the FSM owns ``synchronized_data`` and the task runs on the
+        # executor. ``None`` before the first round has populated it, in
+        # which case the swap is skipped and retried on the next trigger.
+        safe_address = self._safe_address_for_payments()
         self._x402_swap_future = self.executor.submit(
-            self._ensure_sufficient_funds_for_x402_payments
+            self._ensure_sufficient_funds_for_x402_payments, safe_address
         )
 
-    def _ensure_sufficient_funds_for_x402_payments(self) -> bool:
-        """Ensure agent EOA has at sufficient funds for x402 requests payments"""
+    def _safe_address_for_payments(self) -> Optional[str]:
+        """Return the Safe that holds the x402 payment token, if known yet.
+
+        :return: the Safe address, or ``None`` before the FSM has one.
+        """
+        try:
+            return self.synchronized_data.safe_contract_address
+        except Exception:  # pylint: disable=broad-except
+            # Before the first round there is no synchronized data to read.
+            return None
+
+    def _ensure_sufficient_funds_for_x402_payments(
+        self, safe_address: Optional[str] = None
+    ) -> bool:
+        """Ensure the Safe holds enough of the payment token for x402 requests.
+
+        :param safe_address: the Safe that pays, read on the handler thread.
+        :return: whether the payment balance is, or was made, sufficient.
+
+        The EOA still funds and signs the swap, so what the user is asked to
+        fund does not change. Only the destination moved: the marketplace
+        debits the Safe, so topping up the EOA funds an account that no
+        longer pays.
+        """
         self.context.logger.info("Checking USDC balance for x402 payments...")
+        if not safe_address:
+            self.context.logger.info(
+                "No Safe address available yet; skipping the x402 top-up swap "
+                "and retrying on the next trigger."
+            )
+            return False
         try:
             chain_config = self._get_chain_config()
             chain = chain_config["chain_name"]
@@ -1053,7 +1086,7 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error(f"No USDC address for {chain}")
                 return False
 
-            usdc_balance = self._check_usdc_balance(eoa_address, chain, usdc_address)
+            usdc_balance = self._check_usdc_balance(safe_address, chain, usdc_address)
 
             if usdc_balance is None:
                 self.context.logger.warning("Could not check USDC balance, skipping")
@@ -1085,7 +1118,7 @@ class HttpHandler(BaseHttpHandler):
                     from_token=chain_config["native_token_address"],
                     to_token=usdc_address,
                     from_address=eoa_address,
-                    to_address=eoa_address,
+                    to_address=safe_address,
                     chain_config=chain_config,
                     to_amount=top_up_usdc_amount,
                     # Snapshot per call so the assertion-time mock state in
