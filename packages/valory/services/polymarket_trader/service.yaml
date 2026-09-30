@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeian2fzh2uthnr4ui5ailhmio5u4bq2mujh3ci4iajvwziqsyzo224
+agent: valory/trader:0.1.0:bafybeichqdx3m3bhiyy4mrlqmw7smjevf6xroto62sftodvi26du3ovhb4
 number_of_agents: 1
 deployment:
   agent:
@@ -397,7 +397,7 @@ config:
   use_x402: ${USE_X402:bool:false}
   use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
   mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
-  mech_chain: ${MECH_CHAIN:str:polygon}
+  mech_chain: ${MECH_CHAIN_ID:str:polygon}
   mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
   mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000}
 ---

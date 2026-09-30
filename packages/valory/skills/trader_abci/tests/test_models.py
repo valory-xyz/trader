@@ -22,6 +22,7 @@
 from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from packages.valory.connections.x402.clients.mech import slot_registry
 from packages.valory.skills.decision_maker_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -178,7 +179,7 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
     counter, and the genai connection signs the paid chat calls against
     the facilitator's view. ``mapNonces`` only moves at settlement, so an
     unsettled slot is invisible to both, and each route is correct alone
-    and wrong together. ``setup`` is what joins them.
+    and wrong together. ``__init__`` is what joins them.
     """
 
     _CHAIN = "gnosis"
@@ -198,17 +199,19 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
         """The key is the contract between the two packages.
 
         ``MECH_SLOT_REGISTRY`` is imported from the mech skill rather than
-        spelled out here, so a rename on either side fails this.
+        spelled out here, so a rename on either side fails this. And it is
+        the connection's own registry, not merely some object: a second
+        count is a second chance to hand out one slot twice.
         """
-        assert self._shared_state()[MECH_SLOT_REGISTRY] is not None
+        assert self._shared_state()[MECH_SLOT_REGISTRY] is slot_registry()
 
     def test_the_second_route_is_not_offered_the_first_ones_slot(self) -> None:
         """Both routes reading only their own view would sign slot 7 twice."""
         registry = self._shared_state()[MECH_SLOT_REGISTRY]
         registry.live.clear()
 
-        held = registry.reserve(self._CHAIN, self._SAFE, 7)
-        offered = registry.reserve(self._CHAIN, self._SAFE, 7)
+        held = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
+        offered = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
 
         assert (held, offered) == (7, 8)
 
@@ -217,10 +220,10 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
         registry = self._shared_state()[MECH_SLOT_REGISTRY]
         registry.live.clear()
 
-        taken = registry.reserve(self._CHAIN, self._SAFE, 7)
+        taken = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
         registry.release(self._CHAIN, self._SAFE, taken)
 
-        assert registry.reserve(self._CHAIN, self._SAFE, 7) == taken
+        assert registry.reserve(self._CHAIN, self._SAFE, 7, 7) == taken
 
     def test_every_skill_in_the_agent_gets_the_same_registry(self) -> None:
         """Two views of the count are two chances to hand out one slot twice."""

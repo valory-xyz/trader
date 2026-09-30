@@ -206,11 +206,8 @@ class SharedState(BaseSharedState):
     def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
         """Initialize the state."""
         super().__init__(*args, skill_context=skill_context, **kwargs)
-        # The mech skill signs marketplace requests itself and the genai
-        # connection signs the paid chat calls, both spending this Safe's
-        # slots, and neither can see the other's unsettled ones. Bound on
-        # construction rather than in ``setup``, so nothing can make a
-        # paid call before the two routes share a count.
+        # Bound here rather than in ``setup``: a paid call can be made
+        # before setup runs, and both routes must share one count by then.
         skill_context.shared_state[MECH_SLOT_REGISTRY] = slot_registry()
 
     @property

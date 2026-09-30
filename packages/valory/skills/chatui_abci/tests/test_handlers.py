@@ -1973,6 +1973,84 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_not_called()
         handler._send_ok_response.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param(
+                {"updated_agent_config": "set it to balanced"},
+                id="config as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": ["balanced"]},
+                id="config as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"trading_strategy": ["balanced"]}},
+                id="strategy as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"allowed_tools": "one-tool"}},
+                id="tools as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"selected_mechs": "0xabc"}},
+                id="mechs as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"removed_config_fields": "allowed_tools"}},
+                id="removals as a string",
+            ),
+            pytest.param({"message": ["hi"]}, id="message as a list"),
+        ],
+    )
+    def test_valid_json_of_the_wrong_shape_is_answered_not_raised(
+        self, reply: Any
+    ) -> None:
+        """The update walks this object field by field, so a wrong type raises.
+
+        Valid JSON shaped differently reads no better than prose, and the
+        model is free to produce it, so it has to be answered the same way.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param({"message": "done"}, id="no config at all"),
+            pytest.param(
+                {"message": "done", "updated_agent_config": {}}, id="empty config"
+            ),
+            pytest.param(
+                {
+                    "updated_agent_config": {
+                        "trading_strategy": "balanced",
+                        "allowed_tools": [],
+                        "removed_config_fields": [],
+                    }
+                },
+                id="right types throughout",
+            ),
+        ],
+    )
+    def test_a_reply_of_the_right_shape_is_not_turned_away(self, reply: Any) -> None:
+        """A field being absent is fine; the update defaults each one."""
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+
     def test_an_llm_error_reply_still_takes_the_error_path(self) -> None:
         """A reported error is not the same as an unreadable one."""
         handler = self._handler()

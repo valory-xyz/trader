@@ -438,7 +438,7 @@ class HttpHandler(BaseHttpHandler):
         except (json.JSONDecodeError, TypeError):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
-        if not isinstance(llm_response_json, dict):
+        if not self._llm_reply_has_the_expected_shape(llm_response_json):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
 
@@ -649,6 +649,44 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.update_agent_behavior(behavior)
 
         return updated_params, issues
+
+    # What each field of the reply has to be for the config update to be
+    # readable at all. Checked in one place, because the update walks the
+    # object field by field and a wrong type anywhere in it raises, and
+    # the service runs under ``stop_and_exit``.
+    _LLM_REPLY_FIELD_TYPES: Dict[str, type] = {
+        MESSAGE_FIELD: str,
+        UPDATED_CONFIG_FIELD: dict,
+    }
+    _LLM_CONFIG_FIELD_TYPES: Dict[str, type] = {
+        TRADING_STRATEGY_FIELD: str,
+        ALLOWED_TOOLS_FIELD: list,
+        SELECTED_MECHS_FIELD: list,
+        REMOVED_CONFIG_FIELDS_FIELD: list,
+    }
+
+    @classmethod
+    def _llm_reply_has_the_expected_shape(cls, reply: Any) -> bool:
+        """Return whether the parsed reply is shaped the way the update needs.
+
+        :param reply: the parsed model reply.
+        :return: whether every field present is of the type the update expects.
+
+        A field absent is fine, the update has a default for each. A field
+        present with the wrong type is not: valid JSON of the wrong shape
+        reads no better than prose.
+        """
+        if not isinstance(reply, dict):
+            return False
+        for field, expected in cls._LLM_REPLY_FIELD_TYPES.items():
+            if field in reply and not isinstance(reply[field], expected):
+                return False
+        config = reply.get(UPDATED_CONFIG_FIELD, {})
+        return all(
+            isinstance(config[field], expected)
+            for field, expected in cls._LLM_CONFIG_FIELD_TYPES.items()
+            if field in config
+        )
 
     def _handle_unreadable_llm_reply(
         self, reply: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue

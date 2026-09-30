@@ -34,6 +34,9 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
+from packages.valory.skills.mech_interact_abci.states.base import (
+    OFFCHAIN_NONCE_TAKEN,
+)
 from packages.valory.skills.mech_interact_abci.states.request import (
     MechRequestRound,
     OFFCHAIN_DEPOSIT_TX_SUBMITTER,
@@ -50,15 +53,20 @@ class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             tx_submitter = self.synchronized_data.tx_submitter
-            # An off-chain mech cycle exhausts its failover budget after
-            # the deposit has settled (sentinel set by the executor); a
-            # cycle that fails before any deposit carries the
-            # MechRequestRound id. Treat both as a mech timeout so the
-            # tool-quarantine / retry bookkeeping fires identically to
-            # the on-chain mech-timeout path.
-            mech_timed_out = tx_submitter in (
-                MechRequestRound.auto_round_id(),
-                OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+            # Both mech submitter ids count as a mech timeout, so the
+            # tool-quarantine and retry bookkeeping fires the same way it
+            # does on the on-chain path: the deposit sentinel for a cycle
+            # that exhausted its budget after depositing, MechRequestRound
+            # for one that failed before any deposit. A refused slot is the
+            # exception, because no mech ever saw that request.
+            mech_timed_out = (
+                tx_submitter
+                in (
+                    MechRequestRound.auto_round_id(),
+                    OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+                )
+                and self.synchronized_data.offchain_last_failure_reason
+                != OFFCHAIN_NONCE_TAKEN
             )
             self.shared_state.mech_timed_out = mech_timed_out
             after_bet_attempt = mech_timed_out or tx_submitter in (
