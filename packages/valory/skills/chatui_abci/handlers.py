@@ -438,7 +438,7 @@ class HttpHandler(BaseHttpHandler):
         except (json.JSONDecodeError, TypeError):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
-        if not self._llm_reply_has_the_expected_shape(llm_response_json):
+        if not isinstance(llm_response_json, dict):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
 
@@ -459,9 +459,26 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        updated_params, issues = self._process_updated_agent_config(
-            updated_agent_config
-        )
+        if not self._config_update_is_readable(updated_agent_config):
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
+
+        try:
+            updated_params, issues = self._process_updated_agent_config(
+                updated_agent_config
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            # The update reads this object field by field and expects a
+            # shape the model is under no obligation to produce. Any wrong
+            # type raises somewhere in there, and enumerating them cannot
+            # be complete: a list of the right type can still hold items
+            # that are unhashable or unformattable. So the answer is the
+            # same as for a reply that was never JSON.
+            self.context.logger.error(
+                f"LLM reply was JSON but not usable as a config update: {exc}"
+            )
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
         selected_trading_strategy = updated_params.get(
             TRADING_STRATEGY_FIELD, previous_trading_strategy
         )
@@ -650,14 +667,11 @@ class HttpHandler(BaseHttpHandler):
 
         return updated_params, issues
 
-    # What each field of the reply has to be for the config update to be
-    # readable at all. Checked in one place, because the update walks the
-    # object field by field and a wrong type anywhere in it raises, and
-    # the service runs under ``stop_and_exit``.
-    _LLM_REPLY_FIELD_TYPES: Dict[str, type] = {
-        MESSAGE_FIELD: str,
-        UPDATED_CONFIG_FIELD: dict,
-    }
+    # Fields the update would misread rather than reject if the type is
+    # wrong, so a broad guard around the update cannot see them. A string
+    # in ``removed_config_fields`` satisfies the membership test by
+    # substring and silently clears that setting; a string in the list
+    # fields is iterated character by character. Both look like success.
     _LLM_CONFIG_FIELD_TYPES: Dict[str, type] = {
         TRADING_STRATEGY_FIELD: str,
         ALLOWED_TOOLS_FIELD: list,
@@ -666,22 +680,17 @@ class HttpHandler(BaseHttpHandler):
     }
 
     @classmethod
-    def _llm_reply_has_the_expected_shape(cls, reply: Any) -> bool:
-        """Return whether the parsed reply is shaped the way the update needs.
+    def _config_update_is_readable(cls, config: Any) -> bool:
+        """Return whether a config update can be read as intended.
 
-        :param reply: the parsed model reply.
-        :return: whether every field present is of the type the update expects.
+        :param config: the ``updated_agent_config`` value from the reply.
+        :return: whether every field present is the type the update expects.
 
-        A field absent is fine, the update has a default for each. A field
-        present with the wrong type is not: valid JSON of the wrong shape
-        reads no better than prose.
+        Only the fields whose wrong type would pass silently. Everything
+        else that a wrong shape can do raises, and is caught at the call.
         """
-        if not isinstance(reply, dict):
+        if not isinstance(config, dict):
             return False
-        for field, expected in cls._LLM_REPLY_FIELD_TYPES.items():
-            if field in reply and not isinstance(reply[field], expected):
-                return False
-        config = reply.get(UPDATED_CONFIG_FIELD, {})
         return all(
             isinstance(config[field], expected)
             for field, expected in cls._LLM_CONFIG_FIELD_TYPES.items()

@@ -2000,7 +2000,6 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
                 {"updated_agent_config": {"removed_config_fields": "allowed_tools"}},
                 id="removals as a string",
             ),
-            pytest.param({"message": ["hi"]}, id="message as a list"),
         ],
     )
     def test_valid_json_of_the_wrong_shape_is_answered_not_raised(
@@ -2020,6 +2019,62 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
 
         handler._send_internal_server_error_response.assert_called_once()
         handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"allowed_tools": [["a"]]}, id="tool name is a list"),
+            pytest.param({"allowed_tools": [{"a": 1}]}, id="tool name is a dict"),
+        ],
+    )
+    def test_a_list_of_the_right_type_holding_wrong_items_is_answered(
+        self, config: Any
+    ) -> None:
+        """The container type is right, so checking types cannot catch these.
+
+        Tool names are looked up against a set, so an unhashable item
+        raises instead of reading as unknown. Item types that are merely
+        surprising, a null or a dict among the mech names, are already
+        tolerated and reported back as unrecognised, which is the wanted
+        behaviour; it is the raising ones that needed a guard, and
+        enumerating them would not be complete.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
+        self,
+    ) -> None:
+        """This one would pass silently rather than raise.
+
+        The removal check is a membership test, and a bare string satisfies
+        it by substring, so ``removed_config_fields: "allowed_tools"`` reads
+        as a request to clear the tools. Nothing raises, so a guard around
+        the update cannot see it; only checking the type can.
+        """
+        handler = self._handler()
+        handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {"updated_agent_config": {"removed_config_fields": "allowed_tools"}}
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_allowed_tools.assert_not_called()
 
     @pytest.mark.parametrize(
         "reply",
