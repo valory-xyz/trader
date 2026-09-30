@@ -22,7 +22,8 @@
 import copy
 import json
 import math
-from typing import Any, Dict, List, Optional, Set, cast
+from functools import partial
+from typing import Any, Callable, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -521,6 +522,11 @@ class HttpHandler(BaseHttpHandler):
         """
         updated_params: Dict = {}
         issues: List[str] = []
+        # Writes are collected and applied at the end rather than as each
+        # field is read. The model decides the shape of this object, so any
+        # field can fail part-way through, and writing as we go left the
+        # earlier settings saved while the caller was told the update failed.
+        writes: List[Callable[[], None]] = []
 
         updated_trading_strategy: Optional[str] = updated_agent_config.get(
             TRADING_STRATEGY_FIELD, None
@@ -528,7 +534,9 @@ class HttpHandler(BaseHttpHandler):
         if updated_trading_strategy:
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
                 updated_params.update({"trading_strategy": updated_trading_strategy})
-                self._store_trading_strategy(updated_trading_strategy)
+                writes.append(
+                    partial(self._store_trading_strategy, updated_trading_strategy)
+                )
             else:
                 issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
                 self.context.logger.warning(issue_message)
@@ -544,7 +552,7 @@ class HttpHandler(BaseHttpHandler):
 
         if allowed_tools_is_removed:
             updated_params.update({ALLOWED_TOOLS_FIELD: None})
-            self._store_allowed_tools(None)
+            writes.append(partial(self._store_allowed_tools, None))
 
         elif updated_allowed_tools is not None:
             available = self._available_tools()
@@ -559,11 +567,11 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid:
                 updated_params.update({ALLOWED_TOOLS_FIELD: valid})
-                self._store_allowed_tools(valid)
+                writes.append(partial(self._store_allowed_tools, valid))
             elif not unknown:
                 # empty list explicitly passed — treat as clear
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
-                self._store_allowed_tools(None)
+                writes.append(partial(self._store_allowed_tools, None))
 
         updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
             SELECTED_MECHS_FIELD, None
@@ -575,7 +583,7 @@ class HttpHandler(BaseHttpHandler):
 
         if selected_mechs_is_removed:
             updated_params.update({SELECTED_MECHS_FIELD: None})
-            self._store_selected_mechs(None)
+            writes.append(partial(self._store_selected_mechs, None))
 
         elif updated_selected_mechs is not None:
             # Address comparison is case-insensitive; the synced data stores
@@ -593,10 +601,10 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
-                self._store_selected_mechs(valid_mechs)
+                writes.append(partial(self._store_selected_mechs, valid_mechs))
             elif not unknown_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: None})
-                self._store_selected_mechs(None)
+                writes.append(partial(self._store_selected_mechs, None))
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -615,8 +623,7 @@ class HttpHandler(BaseHttpHandler):
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
-            self.shared_state.chatui_config.fixed_bet_size = None
-            self._store_chatui_param_to_json("fixed_bet_size", None)
+            writes.append(partial(self._set_chatui_param, "fixed_bet_size", None))
 
         elif updated_fixed_bet_size is not None:
             updated_fixed_bet_size_in_base_units = int(
@@ -627,11 +634,12 @@ class HttpHandler(BaseHttpHandler):
                 and updated_fixed_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"fixed_bet_size": updated_fixed_bet_size})
-                self.shared_state.chatui_config.fixed_bet_size = (
-                    updated_fixed_bet_size_in_base_units
-                )
-                self._store_chatui_param_to_json(
-                    "fixed_bet_size", updated_fixed_bet_size_in_base_units
+                writes.append(
+                    partial(
+                        self._set_chatui_param,
+                        "fixed_bet_size",
+                        updated_fixed_bet_size_in_base_units,
+                    )
                 )
             else:
                 issue_message = f"Fixed bet size {updated_fixed_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -647,8 +655,7 @@ class HttpHandler(BaseHttpHandler):
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
-            self.shared_state.chatui_config.max_bet_size = None
-            self._store_chatui_param_to_json("max_bet_size", None)
+            writes.append(partial(self._set_chatui_param, "max_bet_size", None))
         elif updated_max_bet_size is not None:
             updated_max_bet_size_in_base_units = int(
                 updated_max_bet_size * (10**decimals)
@@ -658,11 +665,12 @@ class HttpHandler(BaseHttpHandler):
                 and updated_max_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"max_bet_size": updated_max_bet_size})
-                self.shared_state.chatui_config.max_bet_size = (
-                    updated_max_bet_size_in_base_units
-                )
-                self._store_chatui_param_to_json(
-                    "max_bet_size", updated_max_bet_size_in_base_units
+                writes.append(
+                    partial(
+                        self._set_chatui_param,
+                        "max_bet_size",
+                        updated_max_bet_size_in_base_units,
+                    )
                 )
             else:
                 issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -672,6 +680,11 @@ class HttpHandler(BaseHttpHandler):
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
             self.shared_state.update_agent_behavior(behavior)
+
+        # Nothing above wrote anything, so reaching here means every field
+        # was readable and the update can be applied as a whole.
+        for write in writes:
+            write()
 
         return updated_params, issues
 
@@ -781,6 +794,15 @@ class HttpHandler(BaseHttpHandler):
             {"error": "An error occurred while processing the request."},
             content_type=HttpContentType.JSON.header,
         )
+
+    def _set_chatui_param(self, param_name: str, value: Any) -> None:
+        """Set one chat-ui config value and persist it.
+
+        :param param_name: the config attribute to set.
+        :param value: the value to store.
+        """
+        setattr(self.shared_state.chatui_config, param_name, value)
+        self._store_chatui_param_to_json(param_name, value)
 
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""

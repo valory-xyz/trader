@@ -2128,6 +2128,41 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_called_once()
         handler._send_ok_response.assert_not_called()
 
+    def test_a_field_failing_late_leaves_the_earlier_ones_unwritten(self) -> None:
+        """The update is applied whole or not at all.
+
+        The model decides this object's shape, so a later field can fail
+        after earlier ones have been read. Writing as each field was read
+        left the user with a half-changed config and an error, which is
+        worse than the error alone.
+        """
+        handler = self._handler()
+        handler._store_trading_strategy = MagicMock()
+        handler._store_allowed_tools = MagicMock()
+        handler._set_chatui_param = MagicMock()
+        # Valid strategy first, then a bet size that raises when scaled.
+        handler.get_units_and_decimals = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "trading_strategy": "kelly_criterion",
+                            "fixed_bet_size": 5,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_trading_strategy.assert_not_called()
+        handler._set_chatui_param.assert_not_called()
+
     def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
         self,
     ) -> None:
