@@ -205,10 +205,45 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
         """
         assert self._shared_state()[MECH_SLOT_REGISTRY] is slot_registry()
 
+    def test_the_mech_skill_can_actually_drive_the_bound_registry(self) -> None:
+        """This agent binds the real registry, so the contract is not a stub.
+
+        Every other test of this pairing runs against mech-interact's own
+        stand-in, which is a separate implementation, so a signature that
+        drifts between the two packages passes there and raises here. This
+        goes through the skill's own entry points against the real object.
+        """
+        from packages.valory.skills.mech_interact_abci.nonce_allocator import (
+            release_slot,
+            reserve_slot,
+            retire_expired_slots,
+            slot_is_held,
+            sweep_dead_slots,
+        )
+
+        shared_state = self._shared_state()
+        shared_state[MECH_SLOT_REGISTRY].clear()
+        common = {"chain": self._CHAIN, "safe": self._SAFE}
+
+        taken = reserve_slot(shared_state, on_chain_nonce=7, **common)
+        assert taken == 7
+        assert slot_is_held(shared_state, slot=7, **common) is True
+        assert retire_expired_slots(shared_state, **common) == []
+        assert (
+            sweep_dead_slots(
+                shared_state, on_chain_nonce=7, older_than_secs=10**6, **common
+            )
+            == []
+        )
+
+        release_slot(shared_state, slot=taken, **common)
+
+        assert slot_is_held(shared_state, slot=7, **common) is False
+
     def test_the_second_route_is_not_offered_the_first_ones_slot(self) -> None:
         """Both routes reading only their own view would sign slot 7 twice."""
         registry = self._shared_state()[MECH_SLOT_REGISTRY]
-        registry.live.clear()
+        registry.clear()
 
         held = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
         offered = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
@@ -218,7 +253,7 @@ class TestTheMechSkillAndTheGenaiConnectionShareOneSlotCount:
     def test_a_slot_one_route_hands_back_is_offered_to_the_other(self) -> None:
         """A slot nothing will settle stalls every later request for the Safe."""
         registry = self._shared_state()[MECH_SLOT_REGISTRY]
-        registry.live.clear()
+        registry.clear()
 
         taken = registry.reserve(self._CHAIN, self._SAFE, 7, 7)
         registry.release(self._CHAIN, self._SAFE, taken)
