@@ -2049,6 +2049,32 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_called_once()
         handler._send_ok_response.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": "5"}, id="bet size is a quoted number"),
+            pytest.param({"fixed_bet_size": [5]}, id="bet size is a list"),
+            pytest.param({"max_bet_size": float("inf")}, id="bet size is infinity"),
+        ],
+    )
+    def test_a_numeric_field_of_the_wrong_type_is_answered(self, config: Any) -> None:
+        """The update scales these by the token decimals before comparing.
+
+        A quoted number multiplies the string, a list multiplies the list, and
+        an infinity cannot be made an integer, so each raises somewhere inside
+        the update. Naming the fields one by one would not keep up with the
+        config growing, which is why the update is wrapped as a whole.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
     def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
         self,
     ) -> None:
