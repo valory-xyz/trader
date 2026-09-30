@@ -2075,6 +2075,59 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_called_once()
         handler._send_ok_response.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param("[" * 1200 + "]" * 1200, id="deeply nested"),
+            pytest.param("1" * 5000, id="integer over the digit limit"),
+        ],
+    )
+    def test_a_reply_that_breaks_the_parser_itself_is_answered(
+        self, payload: str
+    ) -> None:
+        """Neither of these raises JSONDecodeError.
+
+        Deep nesting raises RecursionError, which derives from neither
+        ValueError nor TypeError, and an oversized integer literal raises a
+        plain ValueError. A crafted reply would otherwise still end the agent.
+        """
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply(json.dumps({"response": payload})),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": True}, id="bet size is a bool"),
+            pytest.param({"max_bet_size": float("nan")}, id="bet size is a nan"),
+            pytest.param({"behavior": {"tone": "terse"}}, id="behavior is a dict"),
+        ],
+    )
+    def test_values_that_pass_a_type_check_but_are_not_amounts(
+        self, config: Any
+    ) -> None:
+        """A bool is an int in Python, so it reads as one unit of collateral.
+
+        A NaN passes a range comparison without being an amount at all, and
+        ``behavior`` was accepted whatever its type.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
     def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
         self,
     ) -> None:

@@ -21,6 +21,7 @@
 
 import copy
 import json
+import math
 from typing import Any, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
@@ -115,6 +116,13 @@ TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
+
+
+# What parsing a model reply can raise. ``JSONDecodeError`` is a ``ValueError``
+# but not the only one: an integer literal over the digit limit raises a plain
+# ``ValueError``, and about a thousand nested brackets raises ``RecursionError``,
+# which does not derive from either.
+_UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 
 
 class HttpHandler(BaseHttpHandler):
@@ -420,7 +428,7 @@ class HttpHandler(BaseHttpHandler):
 
         try:
             genai_response: dict = json.loads(llm_response_message.payload)
-        except (json.JSONDecodeError, TypeError):
+        except _UNPARSEABLE_REPLY:
             self._handle_unreadable_llm_reply(
                 llm_response_message.payload, http_msg, http_dialogue
             )
@@ -435,7 +443,7 @@ class HttpHandler(BaseHttpHandler):
         llm_response = genai_response.get(RESPONSE_FIELD, "{}")
         try:
             llm_response_json = json.loads(llm_response)
-        except (json.JSONDecodeError, TypeError):
+        except _UNPARSEABLE_REPLY:
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
         if not isinstance(llm_response_json, dict):
@@ -677,7 +685,12 @@ class HttpHandler(BaseHttpHandler):
         ALLOWED_TOOLS_FIELD: list,
         SELECTED_MECHS_FIELD: list,
         REMOVED_CONFIG_FIELDS_FIELD: list,
+        "behavior": str,
     }
+    # Scaled by the token decimals and then range-checked, so a bool passes
+    # as one unit of the collateral and an infinity or a NaN passes the
+    # comparison. Checked as finite numbers that are not bools.
+    _LLM_CONFIG_NUMERIC_FIELDS = ("fixed_bet_size", "max_bet_size")
 
     @classmethod
     def _config_update_is_readable(cls, config: Any) -> bool:
@@ -691,11 +704,32 @@ class HttpHandler(BaseHttpHandler):
         """
         if not isinstance(config, dict):
             return False
-        return all(
+        if not all(
             isinstance(config[field], expected)
             for field, expected in cls._LLM_CONFIG_FIELD_TYPES.items()
             if field in config
+        ):
+            return False
+        return all(
+            cls._is_finite_number(config[field])
+            for field in cls._LLM_CONFIG_NUMERIC_FIELDS
+            if field in config
         )
+
+    @staticmethod
+    def _is_finite_number(value: Any) -> bool:
+        """Return whether ``value`` is a real, finite number and not a bool.
+
+        :param value: the value from the reply.
+        :return: whether it can be scaled and compared as an amount.
+
+        ``True`` is an ``int`` in Python, so a bool would otherwise read as
+        one unit of the collateral, and an infinity or a NaN would pass a
+        range check without ever being a meaningful amount.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return False
+        return math.isfinite(value)
 
     def _handle_unreadable_llm_reply(
         self, reply: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
