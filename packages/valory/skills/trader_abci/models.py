@@ -195,21 +195,6 @@ class TraderParams(
         self.gnosis_ledger_rpc: str = self._ensure("gnosis_ledger_rpc", kwargs, str)
         self.polygon_ledger_rpc: str = self._ensure("polygon_ledger_rpc", kwargs, str)
         self.use_x402: bool = self._ensure("use_x402", kwargs, bool)
-        # Mirrors the genai connection's own flag. The skill needs it because
-        # which account pays, and therefore what has to be funded, differs
-        # between the two payment routes; see valory-xyz/genai#45 on folding
-        # both booleans into one payment-mode setting.
-        self.use_mech_facilitator: bool = bool(
-            kwargs.pop("use_mech_facilitator", False)
-        )
-        # Marketplace pre-deposit thresholds, in the payment asset's base units.
-        # ``floor`` is when to act, ``target`` is what to reach, and ``cap``
-        # bounds one top-up so a misconfiguration cannot drain the EOA.
-        self.mech_pre_deposit_floor: int = int(kwargs.pop("mech_pre_deposit_floor", 0))
-        self.mech_pre_deposit_target: int = int(
-            kwargs.pop("mech_pre_deposit_target", 0)
-        )
-        self.mech_pre_deposit_cap: int = int(kwargs.pop("mech_pre_deposit_cap", 0))
         super().__init__(*args, **kwargs)
 
 
