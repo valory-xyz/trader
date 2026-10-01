@@ -918,53 +918,85 @@ class HttpHandler(BaseHttpHandler):
     # from whoever sends it, on both tracker variants. That is what lets the EOA
     # fund the Safe's pre-deposit with a plain transaction instead of a Safe
     # transaction and the settlement rounds.
-    _PAYMENT_TYPE_SELECTOR = "0x2763b8da"  # paymentType()
-    _TRACKER_FOR_TYPE_SELECTOR = "0x4eb07dd3"  # mapPaymentTypeBalanceTrackers(bytes32)
-    _REQUESTER_BALANCE_SELECTOR = "0x6aeeffa8"  # mapRequesterBalances(address)
-    _TOKEN_SELECTOR = "0xfc0c546a"  # token()
-    _DEPOSIT_FOR_NATIVE_SELECTOR = "0xaa67c919"  # depositFor(address)
-    _DEPOSIT_FOR_TOKEN_SELECTOR = "0x2f4f21e2"  # depositFor(address,uint256)
-    _APPROVE_SELECTOR = "0x095ea7b3"  # approve(address,uint256)
+    #
+    # Minimal ABI fragments so web3 does the encoding, which is how
+    # ``_check_usdc_balance`` already reads a contract in this handler.
+    _MECH_ABI: List[Dict] = [
+        {
+            "inputs": [],
+            "name": "paymentType",
+            "outputs": [{"type": "bytes32"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+    _MARKETPLACE_ABI: List[Dict] = [
+        {
+            "inputs": [{"type": "bytes32"}],
+            "name": "mapPaymentTypeBalanceTrackers",
+            "outputs": [{"type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+    _TRACKER_ABI: List[Dict] = [
+        {
+            "inputs": [{"type": "address"}],
+            "name": "mapRequesterBalances",
+            "outputs": [{"type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [],
+            "name": "token",
+            "outputs": [{"type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [{"name": "account", "type": "address"}],
+            "name": "depositFor",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function",
+        },
+        {
+            "inputs": [
+                {"name": "account", "type": "address"},
+                {"name": "amount", "type": "uint256"},
+            ],
+            "name": "depositFor",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function",
+        },
+    ]
+    _ERC20_APPROVE_ABI: List[Dict] = [
+        {
+            "inputs": [
+                {"name": "spender", "type": "address"},
+                {"name": "amount", "type": "uint256"},
+            ],
+            "name": "approve",
+            "outputs": [{"type": "bool"}],
+            "stateMutability": "nonpayable",
+            "type": "function",
+        }
+    ]
 
-    @staticmethod
-    def _abi_address(address: str) -> str:
-        """Return ``address`` as a 32-byte ABI word.
-
-        :param address: a hex address, with or without the 0x prefix.
-        :return: the address left-padded to 64 hex characters.
-        """
-        return address.lower().removeprefix("0x").rjust(64, "0")
-
-    @staticmethod
-    def _abi_uint(value: int) -> str:
-        """Return ``value`` as a 32-byte ABI word.
-
-        :param value: a non-negative integer.
-        :return: the value as 64 hex characters.
-        """
-        return f"{value:064x}"
-
-    def _eth_call(self, chain: str, to_address: str, data: str) -> Optional[bytes]:
-        """Make a read-only call and return its raw return data.
+    def _contract(self, chain: str, address: str, abi: List[Dict]) -> Optional[Any]:
+        """Return a web3 contract bound to ``address``, or ``None``.
 
         :param chain: chain name, used to pick the RPC.
-        :param to_address: the contract to call.
-        :param data: ABI-encoded calldata.
-        :return: the return data, or ``None`` when the call fails or reverts.
-
-        A revert is a normal answer here rather than an error: a native tracker
-        has no ``token()``, and that is how the native case is recognised.
+        :param address: the contract address.
+        :param abi: the ABI fragments the caller needs.
+        :return: the contract object, or ``None`` when there is no RPC.
         """
         w3 = self._get_web3_instance(chain)
         if not w3:
             return None
-        try:
-            return bytes(
-                w3.eth.call({"to": Web3.to_checksum_address(to_address), "data": data})
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            self.context.logger.debug(f"eth_call to {to_address} failed: {exc}")
-            return None
+        return w3.eth.contract(address=Web3.to_checksum_address(address), abi=abi)
 
     def _resolve_balance_tracker(self, chain: str, mech_address: str) -> Optional[str]:
         """Resolve the balance tracker that holds this mech's pre-deposit.
@@ -977,7 +1009,16 @@ class HttpHandler(BaseHttpHandler):
         configuration rather than from any response, so every address the
         deposit touches is derived from a value the operator set.
         """
-        payment_type = self._eth_call(chain, mech_address, self._PAYMENT_TYPE_SELECTOR)
+        mech = self._contract(chain, mech_address, self._MECH_ABI)
+        if mech is None:
+            return None
+        try:
+            payment_type = mech.functions.paymentType().call()
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read paymentType from mech {mech_address} ({exc})."
+            )
+            return None
         if not payment_type or len(payment_type) != 32:
             self.context.logger.warning(
                 f"Could not read paymentType from mech {mech_address}; "
@@ -985,27 +1026,30 @@ class HttpHandler(BaseHttpHandler):
             )
             return None
 
-        marketplace = self.params.mech_marketplace_config.mech_marketplace_address
-        raw = self._eth_call(
-            chain,
-            marketplace,
-            self._TRACKER_FOR_TYPE_SELECTOR + payment_type.hex(),
+        marketplace_address = (
+            self.params.mech_marketplace_config.mech_marketplace_address
         )
-        if not raw or len(raw) < 32:
+        marketplace = self._contract(chain, marketplace_address, self._MARKETPLACE_ABI)
+        if marketplace is None:
+            return None
+        try:
+            tracker = marketplace.functions.mapPaymentTypeBalanceTrackers(
+                payment_type
+            ).call()
+        except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
-                f"Marketplace {marketplace} did not report a balance tracker "
-                f"for payment type 0x{payment_type.hex()}."
+                f"Marketplace {marketplace_address} could not map payment type "
+                f"0x{payment_type.hex()} to a tracker ({exc})."
             )
             return None
 
-        tracker = Web3.to_checksum_address(raw[-20:])
-        if int(tracker, 16) == 0:
+        if not tracker or int(tracker, 16) == 0:
             self.context.logger.warning(
-                f"Marketplace {marketplace} reports no balance tracker for "
-                f"payment type 0x{payment_type.hex()}."
+                f"Marketplace {marketplace_address} reports no balance tracker "
+                f"for payment type 0x{payment_type.hex()}."
             )
             return None
-        return tracker
+        return Web3.to_checksum_address(tracker)
 
     def _read_pre_deposit(
         self, chain: str, tracker: str, safe_address: str
@@ -1017,17 +1061,20 @@ class HttpHandler(BaseHttpHandler):
         :param safe_address: the Safe that pays.
         :return: the deposited amount in base units, or ``None`` if unreadable.
         """
-        raw = self._eth_call(
-            chain,
-            tracker,
-            self._REQUESTER_BALANCE_SELECTOR + self._abi_address(safe_address),
-        )
-        if not raw or len(raw) < 32:
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
+            return None
+        try:
+            return int(
+                contract.functions.mapRequesterBalances(
+                    Web3.to_checksum_address(safe_address)
+                ).call()
+            )
+        except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
-                "Could not read the mech pre-deposit; skipping the check."
+                f"Could not read the mech pre-deposit ({exc}); skipping the check."
             )
             return None
-        return int.from_bytes(raw[:32], "big")
 
     def _tracker_token(self, chain: str, tracker: str) -> Optional[str]:
         """Return the ERC20 a tracker takes, or ``None`` when it takes native.
@@ -1039,11 +1086,16 @@ class HttpHandler(BaseHttpHandler):
         Only a token tracker exposes ``token()``. The native one has no such
         function, so the call reverting is the signal rather than an error.
         """
-        raw = self._eth_call(chain, tracker, self._TOKEN_SELECTOR)
-        if not raw or len(raw) < 32:
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
             return None
-        token = Web3.to_checksum_address(raw[-20:])
-        return None if int(token, 16) == 0 else token
+        try:
+            token = contract.functions.token().call()
+        except Exception:  # pylint: disable=broad-except
+            return None
+        if not token or int(token, 16) == 0:
+            return None
+        return Web3.to_checksum_address(token)
 
     def _send_from_eoa(
         self,
@@ -1188,7 +1240,13 @@ class HttpHandler(BaseHttpHandler):
             return False
         amount = min(amount, spendable)
 
-        data = self._DEPOSIT_FOR_NATIVE_SELECTOR + self._abi_address(safe_address)
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
+            return False
+        data = contract.encode_abi(
+            abi_element_identifier="depositFor(address)",
+            args=[Web3.to_checksum_address(safe_address)],
+        )
         return self._send_from_eoa(
             chain, chain_id, eoa_account, tracker, data, value=amount
         )
@@ -1232,17 +1290,22 @@ class HttpHandler(BaseHttpHandler):
             return False
         amount = min(amount, held)
 
-        approve = (
-            self._APPROVE_SELECTOR + self._abi_address(tracker) + self._abi_uint(amount)
+        erc20 = self._contract(chain, token, self._ERC20_APPROVE_ABI)
+        tracker_contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if erc20 is None or tracker_contract is None:
+            return False
+
+        approve = erc20.encode_abi(
+            abi_element_identifier="approve",
+            args=[Web3.to_checksum_address(tracker), amount],
         )
         if not self._send_from_eoa(chain, chain_id, eoa_account, token, approve):
             self.context.logger.error("Pre-deposit approval failed.")
             return False
 
-        deposit = (
-            self._DEPOSIT_FOR_TOKEN_SELECTOR
-            + self._abi_address(safe_address)
-            + self._abi_uint(amount)
+        deposit = tracker_contract.encode_abi(
+            abi_element_identifier="depositFor(address,uint256)",
+            args=[Web3.to_checksum_address(safe_address), amount],
         )
         return self._send_from_eoa(chain, chain_id, eoa_account, tracker, deposit)
 
