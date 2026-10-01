@@ -1357,6 +1357,8 @@ class TestFormatPredictions:
 
         Winning cards (pearl-api, olas-predict) must reproduce these exact
         ``total_payout`` values from the same inputs, so keep them in sync.
+
+        :param mock_post: patched requests.post.
         """
         fetcher = _make_fetcher()
         participants = [
