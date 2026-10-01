@@ -19,6 +19,8 @@
 
 """This module contains tests for the BetPayoutChecker class."""
 
+from typing import Optional
+
 import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
@@ -409,31 +411,31 @@ class TestBetPayoutCheckerUpdateAchievements:
         assert result is False
         assert len(achievements.items) == 0
 
-    def test_won_with_none_settled_at_skipped_no_crash(self) -> None:
-        """Fully-sold-at-profit-pre-resolution: WON status, settled_at=None.
-
-        Under the hybrid status rule, a bet fully sold for >cost before the
-        market resolves classifies as WON via PnL sign. ``settled_at`` is
-        derived from ``resolution.blockTimestamp`` and is ``None`` for
-        unresolved markets. Pre-fix the checker would call
-        ``bet['settled_at'].replace(...)`` and crash with AttributeError.
-        """
-        checker = self._make_checker(roi_threshold=2.0)
+    @pytest.mark.parametrize("settled_at", [None, "2024-01-15T12:00:00Z"])
+    @pytest.mark.parametrize("has_remaining_shares", [False, None, True])
+    def test_sale_profit_and_unsettled_wins_are_skipped(
+        self, settled_at: Optional[str], has_remaining_shares: Optional[bool]
+    ) -> None:
+        """Omen sale-profit wins and legacy rows never become achievements."""
+        checker = BetPayoutChecker(
+            achievement_type="omenstrat/payout", require_remaining_shares=True
+        )
         achievements = Achievements()
         bet = self._make_bet(
-            bet_id="sold_at_profit_pre_resolution",
+            bet_id="sold_at_profit",
             bet_amount=10.0,
             total_payout=30.0,
-            settled_at=None,  # type: ignore[arg-type]
+            settled_at=settled_at,  # type: ignore[arg-type]
             status="won",
         )
-        prediction_history = PredictionHistory(items=[bet])
-        # Must not raise.
+        if has_remaining_shares is not None:
+            bet["has_remaining_shares"] = has_remaining_shares
         result = checker.update_achievements(
-            achievements, prediction_history=prediction_history
+            achievements, prediction_history=PredictionHistory(items=[bet])
         )
-        assert result is False
-        assert len(achievements.items) == 0
+        expected = bool(has_remaining_shares and settled_at)
+        assert result is expected
+        assert bool(achievements.items) is expected
 
 
 class TestBetPayoutCheckerSkipSettledBeforeEnabled:
@@ -448,6 +450,7 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
             achievement_type="bet_payout",
             roi_threshold=1.5,
             skip_settled_before_enabled=enabled,
+            require_remaining_shares=enabled,
         )
 
     @staticmethod
@@ -459,6 +462,7 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
             "total_payout": 30.0,
             "settled_at": settled_at,
             "status": "won",
+            "has_remaining_shares": True,
         }
 
     def test_first_run_sets_watermark_and_records_no_backlog(self) -> None:
@@ -475,21 +479,23 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
         assert achievements.eligible_since == self.WATERMARK
         assert achievements.items == {}
 
-    def test_first_run_persists_watermark_without_history(self) -> None:
-        """The watermark is reported as an update even with no history."""
+    def test_first_run_does_not_update_without_history(self) -> None:
+        """A degraded read must not cause a watermark-only summary overwrite."""
         checker = self._make_checker()
         achievements = Achievements()
         result = checker.update_achievements(
             achievements, prediction_history=None, now=self.WATERMARK
         )
-        assert result is True
-        assert achievements.eligible_since == self.WATERMARK
+        assert result is False
+        assert achievements.eligible_since is None
 
     def test_missing_now_raises_on_first_run(self) -> None:
         """Setting the watermark requires ``now``."""
         checker = self._make_checker()
         with pytest.raises(ValueError, match="Missing 'now'"):
-            checker.update_achievements(Achievements(), prediction_history=None)
+            checker.update_achievements(
+                Achievements(), prediction_history=PredictionHistory()
+            )
 
     @pytest.mark.parametrize(
         ("settled_at", "recorded"),

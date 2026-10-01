@@ -45,6 +45,7 @@ class BetPayoutChecker(AchievementsChecker):
         title_template: str = "High ROI on bet!",
         description_template: str = "Agent closed a bet at {roi}\u00d7 ROI.",
         skip_settled_before_enabled: bool = False,
+        require_remaining_shares: bool = False,
     ) -> None:
         """Initialize the achievement checker."""
         self._achievement_type = achievement_type
@@ -52,6 +53,7 @@ class BetPayoutChecker(AchievementsChecker):
         self._title_template = title_template
         self._description_template = description_template
         self._skip_settled_before_enabled = skip_settled_before_enabled
+        self._require_remaining_shares = require_remaining_shares
 
     @property
     def achievement_type(self) -> str:
@@ -66,17 +68,23 @@ class BetPayoutChecker(AchievementsChecker):
 
         prediction_history: PredictionHistory = kwargs["prediction_history"]
 
-        achievements_updated = False
-        if self._skip_settled_before_enabled and achievements.eligible_since is None:
-            if "now" not in kwargs:
-                raise ValueError("Missing 'now'")
-            # First enabled run: wins settled before it are a backlog the
-            # operator has long seen, so only later settlements qualify.
-            achievements.eligible_since = int(kwargs["now"])
-            achievements_updated = True
-
+        # A degraded read returns no history. Never persist a watermark-only
+        # update in that case: it would replace the stored summary with defaults.
         if prediction_history is None:
-            return achievements_updated
+            return False
+
+        achievements_updated = False
+        eligible_since = 0
+        if self._skip_settled_before_enabled:
+            if achievements.eligible_since is None:
+                if "now" not in kwargs:
+                    raise ValueError("Missing 'now'")
+                # Omen settled_at is the answer-posted time, not finalization
+                # or redemption time. The agreed rollout cutoff also excludes
+                # answers posted before enablement that finalize afterwards.
+                achievements.eligible_since = int(kwargs["now"])
+                achievements_updated = True
+            eligible_since = achievements.eligible_since
 
         for bet in prediction_history.items:
             # Sell-aware: only fire on resolved-and-redeemed wins. The
@@ -86,8 +94,11 @@ class BetPayoutChecker(AchievementsChecker):
             #   - INVALID: a market refund may technically exceed the ROI
             #     threshold, but the achievement copy ("Agent closed a bet at
             #     {roi}x ROI") celebrates prediction wins, not cancellations.
-            # The `settled_at is not None` gate excludes WON-via-PnL-sign-pre-
-            # resolution (fully-sold-at-profit before the market resolved).
+            # A sale-profit WON can acquire settled_at once any answer is
+            # posted. Omen additionally requires FIFO shares still held; legacy
+            # history without that marker waits for the next history refresh.
+            if self._require_remaining_shares and not bet.get("has_remaining_shares"):
+                continue
             if bet.get("status") != BetStatus.WON.value:
                 continue
             if bet.get("settled_at") is None:
@@ -110,11 +121,7 @@ class BetPayoutChecker(AchievementsChecker):
                 ).timestamp()
             )
 
-            if (
-                self._skip_settled_before_enabled
-                and achievements.eligible_since is not None
-                and settled_timestamp < achievements.eligible_since
-            ):
+            if self._skip_settled_before_enabled and settled_timestamp < eligible_since:
                 continue
 
             achievement_id = self.generate_achievement_id(bet["id"])

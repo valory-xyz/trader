@@ -26,6 +26,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
+    BetPayoutChecker,
+)
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
@@ -6047,6 +6050,7 @@ class TestUpdateAchievementsBehaviourInit:
             == POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE
         )
         assert b._bet_payout_checker._skip_settled_before_enabled is False
+        assert b._bet_payout_checker._require_remaining_shares is False
 
     def test_init_omen(self) -> None:
         """__init__ creates BetPayoutChecker with omen settings."""
@@ -6072,6 +6076,7 @@ class TestUpdateAchievementsBehaviourInit:
             == OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE
         )
         assert b._bet_payout_checker._skip_settled_before_enabled is True
+        assert b._bet_payout_checker._require_remaining_shares is True
 
 
 class TestUpdateAchievementsAsyncAct:
@@ -6154,14 +6159,16 @@ class TestUpdateAchievementsAsyncAct:
         assert kwargs["now"] == 1790000000
 
     def test_achievements_not_updated(self) -> None:
-        """Does not save when achievements are not updated."""
+        """A degraded read must not write a fresh summary over persisted data."""
         b = _make_update_behaviour()
         ctx, params, synced_data, state = _mock_context()
-        summary = _default_summary()
-        summary.achievements = Achievements()
-        summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
+        summary = AgentPerformanceSummary()
         state.read_existing_performance_summary.return_value = summary
-        b._bet_payout_checker.update_achievements.return_value = False  # type: ignore[attr-defined]
+        b._bet_payout_checker = BetPayoutChecker(
+            achievement_type="omenstrat/payout",
+            skip_settled_before_enabled=True,
+            require_remaining_shares=True,
+        )
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],

@@ -2600,6 +2600,7 @@ class UpdateAchievementsBehaviour(
                 roi_threshold=OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD,
                 description_template=OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
                 skip_settled_before_enabled=True,
+                require_remaining_shares=True,
             )
 
     def async_act(self) -> Generator:

@@ -1347,7 +1347,12 @@ class TestFormatPredictions:
 
         assert len(result) == 2
 
-    def test_multi_bet_per_buy_payout_parity_fixture(self) -> None:
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_multi_bet_per_buy_payout_parity_fixture(
+        self, mock_post: MagicMock
+    ) -> None:
         """Two buys and one sell on the winning outcome: per-buy payout.
 
         Winning cards (pearl-api, olas-predict) must reproduce these exact
@@ -1379,7 +1384,24 @@ class TestFormatPredictions:
             bet["blockTimestamp"] = block_ts
             bets.append(bet)
 
-        result = {item["id"]: item for item in fetcher._format_predictions(bets, "0x")}
+        market = bets[0]["fixedProductMarketMaker"]
+        history_response = MagicMock(status_code=200)
+        history_response.json.return_value = {
+            "data": {
+                "marketParticipants": [
+                    {**participants[0], "fixedProductMarketMaker": market, "bets": bets}
+                ]
+            }
+        }
+        finalization_response = MagicMock(status_code=200)
+        finalization_response.json.return_value = {
+            "data": {"fixedProductMarketMakers": [market]}
+        }
+        mock_post.side_effect = [history_response, finalization_response]
+        result = {
+            item["id"]: item
+            for item in fetcher.fetch_predictions("0x", first=100)["items"]
+        }
 
         assert set(result) == {"buy_1", "buy_2"}
         # buy_1: half sold for 1.0 (proceeds) + 4.0 x (1.0 / 2.0) remaining.
@@ -1388,6 +1410,7 @@ class TestFormatPredictions:
         # buy_2: never sold, 4.0 x (1.0 / 2.0) remaining.
         assert result["buy_2"]["bet_amount"] == 1.0
         assert result["buy_2"]["total_payout"] == 2.0
+        assert all(item["has_remaining_shares"] for item in result.values())
 
     def test_output_ordered_desc_by_blocktimestamp(self) -> None:
         """``_format_predictions`` output is DESC-by-blockTimestamp.
