@@ -20,7 +20,8 @@
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from types import SimpleNamespace
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 import pytest
@@ -2242,6 +2243,10 @@ class TestEnsureSufficientFundsForX402Payments:
             "threshold": 1000000,
             "top_up": 5000000,
         }
+        # These cover the plain x402 route, where the EOA pays each call from
+        # its own balance. Left as a MagicMock the flag reads truthy and the
+        # facilitator branch takes over, so it is set explicitly.
+        self.handler.context.params.use_mech_facilitator = False
 
     def test_no_eoa_account(self) -> None:
         """Test failure when EOA account cannot be obtained."""
@@ -2517,6 +2522,8 @@ class TestEnsureSufficientFundsForX402Payments:
             "threshold": 1000000,
             "top_up": 5000000,
         }
+        # Own handler, so it needs the plain-x402 flag set as the fixture does.
+        handler.context.params.use_mech_facilitator = False
         mock_account = MagicMock()
         mock_account.address = "0xEOA"
 
@@ -3065,3 +3072,383 @@ class TestHttpHandlerInit:
         assert handler._pol_usdc_rate is None
         assert handler._pol_usdc_rate_timestamp == 0.0
         assert handler.executor is not None
+
+
+# ---------------------------------------------------------------------------
+# mech pre-deposit top-up (the facilitator payment route)
+# ---------------------------------------------------------------------------
+_SAFE = "0x" + "5a" * 20
+_MECH = "0x" + "11" * 20
+_TRACKER = "0x" + "22" * 20
+_MARKETPLACE = "0x" + "44" * 20
+_TOKEN = "0x" + "33" * 20
+_ZERO_ADDR = "0x" + "00" * 20
+_NATIVE_PAYMENT_TYPE = bytes.fromhex("ba" * 32)
+
+_FLOOR = 150_000
+_TARGET = 500_000
+_CAP = 500_000
+
+
+def _same_address(left: str, right: str) -> bool:
+    """Compare two addresses ignoring checksum casing.
+
+    :param left: one address.
+    :param right: the other.
+    :return: whether they are the same address.
+    """
+    return left.lower() == right.lower()
+
+
+class _ContractStub:
+    """Stand in for a web3 contract, answering by function name.
+
+    Keyed on the function the handler asks for rather than on call order, so the
+    stub does not encode a sequence the handler is free to change. A read whose
+    answer is absent raises, which is how a native tracker's missing ``token()``
+    is represented.
+    """
+
+    def __init__(self, answers: Dict[str, Any], recorder: Any) -> None:
+        """Initialise the stub.
+
+        :param answers: function name to the value its ``call()`` returns.
+        :param recorder: the chain stub recording reads and encodings.
+        """
+        self._answers = answers
+        self._recorder = recorder
+
+    @property
+    def functions(self) -> Any:
+        """Return self, so ``contract.functions.f()`` resolves here.
+
+        :return: this stub.
+        """
+        return self
+
+    def __getattr__(self, name: str) -> Any:
+        """Return a callable standing in for one contract function.
+
+        :param name: the function the handler asked for.
+        :return: a callable returning an object with ``.call()``.
+        :raises AttributeError: for dunder and private lookups.
+        """
+        if name.startswith("_"):
+            raise AttributeError(name)
+        answers, recorder = self._answers, self._recorder
+
+        def _fn(*args: Any) -> Any:
+            recorder.reads.append((name, args))
+
+            def _call() -> Any:
+                if name not in answers:
+                    raise ValueError(f"execution reverted: {name}")
+                return answers[name]
+
+            return SimpleNamespace(call=_call)
+
+        return _fn
+
+    def encode_abi(self, abi_element_identifier: str, args: List[Any]) -> str:
+        """Record what the handler asked web3 to encode.
+
+        :param abi_element_identifier: the function signature or name.
+        :param args: the arguments.
+        :return: a marker carrying the identifier, for assertions.
+        """
+        self._recorder.encoded.append((abi_element_identifier, tuple(args)))
+        return f"0x{abi_element_identifier}"
+
+
+class _ChainStub:
+    """Hand out contract stubs per address and record what the handler did."""
+
+    def __init__(
+        self,
+        deposited: int,
+        token: Optional[str] = None,
+        payment_type: bytes = _NATIVE_PAYMENT_TYPE,
+        tracker: str = _TRACKER,
+    ) -> None:
+        """Initialise the stub.
+
+        :param deposited: what the tracker reports for the Safe.
+        :param token: the tracker's ERC20, or ``None`` for a native tracker.
+        :param payment_type: what the mech reports as its payment type.
+        :param tracker: what the marketplace maps the payment type to.
+        """
+        tracker_answers: Dict[str, Any] = {"mapRequesterBalances": deposited}
+        if token is not None:
+            tracker_answers["token"] = token
+        self._per_address: Dict[str, Dict[str, Any]] = {
+            _MECH.lower(): {"paymentType": payment_type},
+            _MARKETPLACE.lower(): {"mapPaymentTypeBalanceTrackers": tracker},
+            tracker.lower(): tracker_answers,
+            _TOKEN.lower(): {},
+        }
+        self.reads: List[Any] = []
+        self.encoded: List[Any] = []
+        self.sent: List[Dict[str, Any]] = []
+        self.bound: List[str] = []
+
+    def contract(self, chain: str, address: str, abi: List[Dict]) -> Any:
+        """Return the stub for ``address``.
+
+        :param chain: ignored.
+        :param address: the contract the handler wants.
+        :param abi: ignored.
+        :return: a contract stub.
+        """
+        self.bound.append(address.lower())
+        return _ContractStub(self._per_address.get(address.lower(), {}), self)
+
+    def send(
+        self,
+        chain: str,
+        chain_id: int,
+        eoa_account: Any,
+        to_address: str,
+        data: str,
+        value: int = 0,
+    ) -> bool:
+        """Record one transaction instead of sending it.
+
+        :param chain: ignored.
+        :param chain_id: ignored.
+        :param eoa_account: ignored.
+        :param to_address: the call target.
+        :param data: the calldata marker.
+        :param value: the native value attached.
+        :return: always True, as a mined transaction would.
+        """
+        self.sent.append({"to": to_address, "data": data, "value": value})
+        return True
+
+
+def _facilitator_handler(native_balance: int = 10**19) -> Any:
+    """Build a handler on the facilitator route with the pre-deposit configured.
+
+    :param native_balance: what the EOA holds natively, for the gas reserve.
+    :return: the handler under test.
+    """
+    handler = _make_handler(is_polymarket=False)
+    params = handler.context.params
+    params.use_x402 = True
+    params.use_mech_facilitator = True
+    params.mech_pre_deposit_floor = _FLOOR
+    params.mech_pre_deposit_target = _TARGET
+    params.mech_pre_deposit_cap = _CAP
+    params.mech_marketplace_config.priority_mech_address = _MECH
+    params.mech_marketplace_config.mech_marketplace_address = _MARKETPLACE
+    handler._safe_address_for_payments = MagicMock(return_value=_SAFE)  # type: ignore[method-assign]
+    w3 = MagicMock()
+    w3.eth.get_balance.return_value = native_balance
+    handler._get_web3_instance = MagicMock(return_value=w3)  # type: ignore[method-assign]
+    return handler
+
+
+def _run(handler: Any, chain_stub: _ChainStub) -> bool:
+    """Drive the pre-deposit check with contract reads and sends stubbed.
+
+    :param handler: the handler under test.
+    :param chain_stub: the stub answering reads and recording sends.
+    :return: what the check returned.
+    """
+    account = MagicMock()
+    account.address = "0x" + "ee" * 20
+    with (
+        patch.object(handler, "_contract", side_effect=chain_stub.contract),
+        patch.object(handler, "_send_from_eoa", side_effect=chain_stub.send),
+        patch.object(handler, "_get_eoa_account", return_value=account),
+    ):
+        return handler._ensure_sufficient_funds_for_x402_payments()
+
+
+class TestMechPreDepositTopUp:
+    """The facilitator route tops up the Safe's pre-deposit from the EOA."""
+
+    def test_the_plain_x402_route_is_left_alone(self) -> None:
+        """With the facilitator off, the EOA swap path must still run."""
+        handler = _facilitator_handler()
+        handler.context.params.use_mech_facilitator = False
+        chain = _ChainStub(deposited=0)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=10**9):
+            _run(handler, chain)
+
+        assert chain.sent == []
+
+    def test_a_deposit_at_the_floor_sends_nothing(self) -> None:
+        """At the floor the pot still covers the next call."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=_FLOOR)
+
+        assert _run(handler, chain) is True
+        assert chain.sent == []
+
+    def test_a_native_tracker_deposits_value(self) -> None:
+        """A native tracker takes depositFor(address) with the amount as value."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is True
+        # One payable call, crediting the Safe, with the amount as value.
+        assert [name for name, _ in chain.encoded] == ["depositFor(address)"]
+        assert _same_address(chain.encoded[0][1][0], _SAFE)
+        sent = chain.sent[0]
+        assert sent["to"] == _TRACKER
+        assert sent["value"] == _TARGET
+
+    def test_a_token_tracker_approves_then_deposits(self) -> None:
+        """A token tracker needs the allowance before the deposit can pull."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=10**9):
+            assert _run(handler, chain) is True
+
+        approve_call, deposit_call = chain.encoded
+        # The allowance has to name the tracker as spender, since that is what
+        # calls transferFrom; approving anything else makes the deposit revert.
+        assert approve_call[0] == "approve"
+        assert _same_address(approve_call[1][0], _TRACKER)
+        # And the deposit has to credit the Safe, not the caller.
+        assert deposit_call[0] == "depositFor(address,uint256)"
+        assert _same_address(deposit_call[1][0], _SAFE)
+        # Both must name the same amount or the deposit cannot pull it.
+        assert approve_call[1][1] == deposit_call[1][1]
+        # Approve goes to the token, deposit to the tracker, neither with value.
+        approve_tx, deposit_tx = chain.sent
+        assert _same_address(approve_tx["to"], _TOKEN)
+        assert _same_address(deposit_tx["to"], _TRACKER)
+        assert approve_tx["value"] == 0 and deposit_tx["value"] == 0
+
+    @pytest.mark.parametrize(
+        ("deposited", "cap", "expected"),
+        [
+            (0, _CAP, _TARGET),
+            (_FLOOR - 1, _CAP, _TARGET - (_FLOOR - 1)),
+            (0, 100_000, 100_000),
+        ],
+    )
+    def test_the_top_up_fills_to_target_within_the_cap(
+        self, deposited: int, cap: int, expected: int
+    ) -> None:
+        """One top-up never exceeds the cap nor overshoots the target.
+
+        :param deposited: what the tracker already holds.
+        :param cap: the per-cycle ceiling.
+        :param expected: the value the deposit must carry.
+        """
+        handler = _facilitator_handler()
+        handler.context.params.mech_pre_deposit_cap = cap
+        chain = _ChainStub(deposited=deposited, token=None)
+
+        assert _run(handler, chain) is True
+        assert chain.sent[0]["value"] == expected
+
+    def test_a_native_deposit_keeps_a_gas_reserve(self) -> None:
+        """Depositing the EOA out of gas would stop the agent entirely."""
+        from packages.valory.skills.trader_abci.handlers import (
+            NATIVE_GAS_RESERVE_WEI,
+        )
+
+        spendable = 40_000
+        handler = _facilitator_handler(
+            native_balance=NATIVE_GAS_RESERVE_WEI + spendable
+        )
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is True
+        assert chain.sent[0]["value"] == spendable
+
+    def test_no_native_headroom_sends_nothing(self) -> None:
+        """At or under the gas reserve there is nothing safe to deposit."""
+        from packages.valory.skills.trader_abci.handlers import (
+            NATIVE_GAS_RESERVE_WEI,
+        )
+
+        handler = _facilitator_handler(native_balance=NATIVE_GAS_RESERVE_WEI)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    def test_a_token_deposit_is_bounded_by_what_the_eoa_holds(self) -> None:
+        """Depositing above the balance would revert when the deposit pulls."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=120_000):
+            assert _run(handler, chain) is True
+
+        assert chain.encoded[1][1][1] == 120_000
+
+    @pytest.mark.parametrize("held", [0, None])
+    def test_no_token_held_sends_nothing(self, held: Any) -> None:
+        """An empty or unreadable EOA token balance cannot fund a deposit.
+
+        :param held: what the token balance read reports.
+        """
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=held):
+            assert _run(handler, chain) is False
+
+        assert chain.sent == []
+
+    def test_an_unknown_safe_sends_nothing(self) -> None:
+        """Before the first round there is no Safe to credit."""
+        handler = _facilitator_handler()
+        handler._safe_address_for_payments = MagicMock(return_value=None)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    @pytest.mark.parametrize("mech", [None, _ZERO_ADDR])
+    def test_no_priority_mech_sends_nothing(self, mech: Any) -> None:
+        """Without a mech there is no payment type, so no tracker.
+
+        :param mech: the configured priority mech.
+        """
+        handler = _facilitator_handler()
+        handler.context.params.mech_marketplace_config.priority_mech_address = mech
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    def test_an_unresolvable_tracker_sends_nothing(self) -> None:
+        """A marketplace with no tracker for the type gives nowhere to deposit."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None, tracker=_ZERO_ADDR)
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    def test_an_unreadable_payment_type_sends_nothing(self) -> None:
+        """A short or missing paymentType must not be used to pick a tracker."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None, payment_type=b"\x01\x02")
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    def test_the_marketplace_comes_from_config(self) -> None:
+        """Every address the deposit touches resolves from the configured one."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is True
+
+        # The payment type is read from the mech, the tracker from the
+        # configured marketplace, and nothing is read from an address that
+        # arrived in a response.
+        assert [name for name, _ in chain.reads][:2] == [
+            "paymentType",
+            "mapPaymentTypeBalanceTrackers",
+        ]
+        assert _same_address(chain.bound[0], _MECH)
+        assert _same_address(chain.bound[1], _MARKETPLACE)

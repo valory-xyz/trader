@@ -126,6 +126,13 @@ COINGECKO_RATE_CACHE_SECONDS = 7200  # 2 hours
 FALLBACK_POL_TO_USD_RATE = 0.089935  # AS of 2026-02-11T18:35:09Z
 
 X402_SWAP_MAX_ROUTE_ATTEMPTS = 3
+# Gas estimates on a fresh approval run light, and a deposit that runs out of
+# gas costs the fee and achieves nothing.
+GAS_ESTIMATE_HEADROOM = 1.3
+# The EOA pays gas from the same native balance a native deposit spends, so a
+# deposit never takes it below this. Sized to cover a handful of Safe
+# transactions, which is what the agent needs to keep functioning.
+NATIVE_GAS_RESERVE_WEI = 10**17  # 0.1 of the native token
 
 
 class HttpHandler(BaseHttpHandler):
@@ -795,8 +802,15 @@ class HttpHandler(BaseHttpHandler):
 
     def _check_usdc_balance(
         self, eoa_address: str, chain: str, usdc_address: str
-    ) -> Optional[float]:
-        """Check USDC balance using Web3 library."""
+    ) -> Optional[int]:
+        """Check an account's ERC20 balance using Web3.
+
+        :param eoa_address: the account to read.
+        :param chain: chain name, used to pick the RPC.
+        :param usdc_address: the token contract.
+        :return: ``balanceOf`` unscaled, so the unit is the token's base units
+            and never a decimal amount; ``None`` when the read fails.
+        """
         try:
             w3 = self._get_web3_instance(chain)
             if not w3:
@@ -898,6 +912,445 @@ class HttpHandler(BaseHttpHandler):
 
         except Exception as e:
             self.context.logger.error(f"Error getting LiFi quote: {str(e)}")
+            return None
+
+    # ``depositFor`` credits the account named in the call and takes the funds
+    # from whoever sends it, on both tracker variants. That is what lets the EOA
+    # fund the Safe's pre-deposit with a plain transaction instead of a Safe
+    # transaction and the settlement rounds.
+    #
+    # Minimal ABI fragments so web3 does the encoding, which is how
+    # ``_check_usdc_balance`` already reads a contract in this handler.
+    _MECH_ABI: List[Dict] = [
+        {
+            "inputs": [],
+            "name": "paymentType",
+            "outputs": [{"type": "bytes32"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+    _MARKETPLACE_ABI: List[Dict] = [
+        {
+            "inputs": [{"type": "bytes32"}],
+            "name": "mapPaymentTypeBalanceTrackers",
+            "outputs": [{"type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        }
+    ]
+    _TRACKER_ABI: List[Dict] = [
+        {
+            "inputs": [{"type": "address"}],
+            "name": "mapRequesterBalances",
+            "outputs": [{"type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [],
+            "name": "token",
+            "outputs": [{"type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "inputs": [{"name": "account", "type": "address"}],
+            "name": "depositFor",
+            "outputs": [],
+            "stateMutability": "payable",
+            "type": "function",
+        },
+        {
+            "inputs": [
+                {"name": "account", "type": "address"},
+                {"name": "amount", "type": "uint256"},
+            ],
+            "name": "depositFor",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function",
+        },
+    ]
+    _ERC20_APPROVE_ABI: List[Dict] = [
+        {
+            "inputs": [
+                {"name": "spender", "type": "address"},
+                {"name": "amount", "type": "uint256"},
+            ],
+            "name": "approve",
+            "outputs": [{"type": "bool"}],
+            "stateMutability": "nonpayable",
+            "type": "function",
+        }
+    ]
+
+    def _contract(self, chain: str, address: str, abi: List[Dict]) -> Optional[Any]:
+        """Return a web3 contract bound to ``address``, or ``None``.
+
+        :param chain: chain name, used to pick the RPC.
+        :param address: the contract address.
+        :param abi: the ABI fragments the caller needs.
+        :return: the contract object, or ``None`` when there is no RPC.
+        """
+        w3 = self._get_web3_instance(chain)
+        if not w3:
+            return None
+        return w3.eth.contract(address=Web3.to_checksum_address(address), abi=abi)
+
+    def _resolve_balance_tracker(self, chain: str, mech_address: str) -> Optional[str]:
+        """Resolve the balance tracker that holds this mech's pre-deposit.
+
+        :param chain: chain name.
+        :param mech_address: the mech whose payment type selects the tracker.
+        :return: the tracker address, or ``None`` when it cannot be resolved.
+
+        Trackers are keyed by payment type, and the marketplace comes from
+        configuration rather than from any response, so every address the
+        deposit touches is derived from a value the operator set.
+        """
+        mech = self._contract(chain, mech_address, self._MECH_ABI)
+        if mech is None:
+            return None
+        try:
+            payment_type = mech.functions.paymentType().call()
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read paymentType from mech {mech_address} ({exc})."
+            )
+            return None
+        if not payment_type or len(payment_type) != 32:
+            self.context.logger.warning(
+                f"Could not read paymentType from mech {mech_address}; "
+                "skipping the pre-deposit check."
+            )
+            return None
+
+        marketplace_address = (
+            self.params.mech_marketplace_config.mech_marketplace_address
+        )
+        marketplace = self._contract(chain, marketplace_address, self._MARKETPLACE_ABI)
+        if marketplace is None:
+            return None
+        try:
+            tracker = marketplace.functions.mapPaymentTypeBalanceTrackers(
+                payment_type
+            ).call()
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Marketplace {marketplace_address} could not map payment type "
+                f"0x{payment_type.hex()} to a tracker ({exc})."
+            )
+            return None
+
+        if not tracker or int(tracker, 16) == 0:
+            self.context.logger.warning(
+                f"Marketplace {marketplace_address} reports no balance tracker "
+                f"for payment type 0x{payment_type.hex()}."
+            )
+            return None
+        return Web3.to_checksum_address(tracker)
+
+    def _read_pre_deposit(
+        self, chain: str, tracker: str, safe_address: str
+    ) -> Optional[int]:
+        """Return what the tracker holds for ``safe_address``.
+
+        :param chain: chain name.
+        :param tracker: the balance tracker address.
+        :param safe_address: the Safe that pays.
+        :return: the deposited amount in base units, or ``None`` if unreadable.
+        """
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
+            return None
+        try:
+            return int(
+                contract.functions.mapRequesterBalances(
+                    Web3.to_checksum_address(safe_address)
+                ).call()
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read the mech pre-deposit ({exc}); skipping the check."
+            )
+            return None
+
+    def _tracker_token(self, chain: str, tracker: str) -> Optional[str]:
+        """Return the ERC20 a tracker takes, or ``None`` when it takes native.
+
+        :param chain: chain name.
+        :param tracker: the balance tracker address.
+        :return: the token address, or ``None`` for a native tracker.
+
+        Only a token tracker exposes ``token()``. The native one has no such
+        function, so the call reverting is the signal rather than an error.
+        """
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
+            return None
+        try:
+            token = contract.functions.token().call()
+        except Exception:  # pylint: disable=broad-except
+            return None
+        if not token or int(token, 16) == 0:
+            return None
+        return Web3.to_checksum_address(token)
+
+    def _send_from_eoa(
+        self,
+        chain: str,
+        chain_id: int,
+        eoa_account: Account,
+        to_address: str,
+        data: str,
+        value: int = 0,
+    ) -> bool:
+        """Send one transaction from the EOA and wait for its receipt.
+
+        :param chain: chain name, used to pick the RPC.
+        :param chain_id: the chain id to sign for.
+        :param eoa_account: the agent EOA.
+        :param to_address: the call target.
+        :param data: ABI-encoded calldata.
+        :param value: native value to attach.
+        :return: whether the transaction was mined successfully.
+        """
+        w3 = self._get_web3_instance(chain)
+        if not w3:
+            return False
+        address = Web3.to_checksum_address(eoa_account.address)
+        tx: Dict[str, Any] = {
+            "from": address,
+            "to": Web3.to_checksum_address(to_address),
+            "data": data,
+            "value": value,
+            "nonce": w3.eth.get_transaction_count(address),
+            "gasPrice": w3.eth.gas_price,
+            "chainId": chain_id,
+        }
+        try:
+            tx["gas"] = int(w3.eth.estimate_gas(tx) * GAS_ESTIMATE_HEADROOM)
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.error(f"Could not estimate gas for the deposit: {exc}")
+            return False
+
+        tx_hash = self._sign_and_submit_tx_web3(tx, chain, eoa_account)
+        if not tx_hash:
+            return False
+        self.context.logger.info(f"Pre-deposit tx submitted: {tx_hash}")
+        return self._check_transaction_status(tx_hash, chain)
+
+    def _top_up_mech_pre_deposit(
+        self,
+        chain: str,
+        chain_id: int,
+        eoa_account: Account,
+        safe_address: str,
+        mech_address: str,
+    ) -> bool:
+        """Keep the Safe's marketplace pre-deposit above the configured floor.
+
+        :param chain: chain name.
+        :param chain_id: the chain id to sign for.
+        :param eoa_account: the agent EOA, which pays for the deposit.
+        :param safe_address: the Safe the marketplace debits.
+        :param mech_address: the mech whose payment type selects the tracker.
+        :return: whether the pre-deposit is, or was made, sufficient.
+
+        Paid calls are debited from this pre-deposit rather than from any
+        account's token balance. The only other thing that tops it up is the
+        off-chain prediction path's 402 handler, which cannot run while the
+        agent is not trading, so without this a chat-only agent drains the pot
+        and never refills it.
+
+        The deposit is paid by the EOA rather than the Safe because
+        ``depositFor`` credits the account it is given and takes the funds from
+        the caller, which keeps this a plain transaction instead of a Safe
+        transaction routed through the settlement rounds.
+        """
+        tracker = self._resolve_balance_tracker(chain, mech_address)
+        if tracker is None:
+            return False
+
+        deposited = self._read_pre_deposit(chain, tracker, safe_address)
+        if deposited is None:
+            return False
+
+        floor = int(self.params.mech_pre_deposit_floor)
+        if deposited >= floor:
+            self.context.logger.info(
+                f"Mech pre-deposit {deposited} is at or above the floor {floor}."
+            )
+            return True
+
+        amount = min(
+            int(self.params.mech_pre_deposit_target) - deposited,
+            int(self.params.mech_pre_deposit_cap),
+        )
+        if amount <= 0:
+            return True
+
+        token = self._tracker_token(chain, tracker)
+        self.context.logger.info(
+            f"Mech pre-deposit {deposited} is below the floor {floor}; "
+            f"depositing {amount} into {tracker}."
+        )
+        if token is None:
+            return self._deposit_native(
+                chain, chain_id, eoa_account, safe_address, tracker, amount
+            )
+        return self._deposit_token(
+            chain, chain_id, eoa_account, safe_address, tracker, token, amount
+        )
+
+    def _deposit_native(
+        self,
+        chain: str,
+        chain_id: int,
+        eoa_account: Account,
+        safe_address: str,
+        tracker: str,
+        amount: int,
+    ) -> bool:
+        """Deposit native value into ``tracker`` on behalf of the Safe.
+
+        :param chain: chain name.
+        :param chain_id: the chain id to sign for.
+        :param eoa_account: the agent EOA.
+        :param safe_address: the account to credit.
+        :param tracker: the native balance tracker.
+        :param amount: how much to deposit, in wei.
+        :return: whether the deposit was made.
+
+        The EOA also pays gas from this balance, so the deposit is trimmed to
+        leave ``NATIVE_GAS_RESERVE_WEI`` behind. Depositing the agent out of gas
+        would stop it doing anything at all, which is worse than a short pot.
+        """
+        w3 = self._get_web3_instance(chain)
+        if not w3:
+            return False
+        balance = w3.eth.get_balance(Web3.to_checksum_address(eoa_account.address))
+        spendable = balance - NATIVE_GAS_RESERVE_WEI
+        if spendable <= 0:
+            self.context.logger.warning(
+                f"EOA holds {balance} wei, at or under the "
+                f"{NATIVE_GAS_RESERVE_WEI} wei gas reserve; not depositing."
+            )
+            return False
+        amount = min(amount, spendable)
+
+        contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if contract is None:
+            return False
+        data = contract.encode_abi(
+            abi_element_identifier="depositFor(address)",
+            args=[Web3.to_checksum_address(safe_address)],
+        )
+        return self._send_from_eoa(
+            chain, chain_id, eoa_account, tracker, data, value=amount
+        )
+
+    def _deposit_token(
+        self,
+        chain: str,
+        chain_id: int,
+        eoa_account: Account,
+        safe_address: str,
+        tracker: str,
+        token: str,
+        amount: int,
+    ) -> bool:
+        """Approve and deposit ``token`` into ``tracker`` for the Safe.
+
+        :param chain: chain name.
+        :param chain_id: the chain id to sign for.
+        :param eoa_account: the agent EOA, which holds the token.
+        :param safe_address: the account to credit.
+        :param tracker: the token balance tracker.
+        :param token: the ERC20 the tracker takes.
+        :param amount: how much to deposit, in the token's base units.
+        :return: whether the deposit was made.
+
+        Two transactions rather than a multisend: the EOA is not a Safe, so
+        there is nothing to batch through. The approve is sent first because the
+        deposit pulls the tokens with ``transferFrom``.
+        """
+        held = self._check_usdc_balance(eoa_account.address, chain, token)
+        if held is None:
+            self.context.logger.warning(
+                "Could not read the EOA's token balance; not depositing."
+            )
+            return False
+        if held <= 0:
+            self.context.logger.warning(
+                f"EOA holds none of {token}; cannot fund the pre-deposit. The "
+                "x402 top-up swap is what keeps this balance up."
+            )
+            return False
+        amount = min(amount, held)
+
+        erc20 = self._contract(chain, token, self._ERC20_APPROVE_ABI)
+        tracker_contract = self._contract(chain, tracker, self._TRACKER_ABI)
+        if erc20 is None or tracker_contract is None:
+            return False
+
+        approve = erc20.encode_abi(
+            abi_element_identifier="approve",
+            args=[Web3.to_checksum_address(tracker), amount],
+        )
+        if not self._send_from_eoa(chain, chain_id, eoa_account, token, approve):
+            self.context.logger.error("Pre-deposit approval failed.")
+            return False
+
+        deposit = tracker_contract.encode_abi(
+            abi_element_identifier="depositFor(address,uint256)",
+            args=[Web3.to_checksum_address(safe_address), amount],
+        )
+        return self._send_from_eoa(chain, chain_id, eoa_account, tracker, deposit)
+
+    def _ensure_mech_pre_deposit(
+        self, chain: str, chain_id: int, eoa_account: Account
+    ) -> bool:
+        """Top the Safe's marketplace pre-deposit up when it runs low.
+
+        :param chain: chain name.
+        :param chain_id: the chain id to sign for.
+        :param eoa_account: the agent EOA, which pays for the deposit.
+        :return: whether the pre-deposit is, or was made, sufficient.
+
+        Reads the Safe and the mech from the same configuration the request
+        path uses, so the deposit can only ever target the marketplace the
+        operator set.
+        """
+        safe_address = self._safe_address_for_payments()
+        if not safe_address:
+            self.context.logger.info(
+                "No Safe address available yet; skipping the mech pre-deposit "
+                "check and retrying on the next trigger."
+            )
+            return False
+
+        mech_address = self.params.mech_marketplace_config.priority_mech_address
+        if not mech_address or int(mech_address, 16) == 0:
+            self.context.logger.warning(
+                "No priority mech configured; cannot resolve which balance "
+                "tracker holds the pre-deposit."
+            )
+            return False
+
+        return self._top_up_mech_pre_deposit(
+            chain, chain_id, eoa_account, safe_address, mech_address
+        )
+
+    def _safe_address_for_payments(self) -> Optional[str]:
+        """Return the Safe the marketplace debits, if the FSM knows it yet.
+
+        :return: the Safe address, or ``None`` before the first round has run.
+        """
+        try:
+            return self.synchronized_data.safe_contract_address
+        except Exception:  # pylint: disable=broad-except
             return None
 
     def _sign_and_submit_tx_web3(
@@ -1032,7 +1485,16 @@ class HttpHandler(BaseHttpHandler):
         )
 
     def _ensure_sufficient_funds_for_x402_payments(self) -> bool:
-        """Ensure agent EOA has at sufficient funds for x402 requests payments"""
+        """Ensure the account that pays for x402 requests has enough funds.
+
+        :return: whether the paying balance is, or was made, sufficient.
+
+        Which account that is depends on the route. On the plain x402 path the
+        EOA pays each call from its own token balance, kept up by a swap. On the
+        facilitator path the marketplace debits the Safe's pre-deposit instead,
+        and the swap funds an account that no longer pays, so the pre-deposit is
+        what has to be topped up.
+        """
         self.context.logger.info("Checking USDC balance for x402 payments...")
         try:
             chain_config = self._get_chain_config()
@@ -1042,6 +1504,11 @@ class HttpHandler(BaseHttpHandler):
                 self.context.logger.error("Failed to get EOA account")
                 return False
             eoa_address = eoa_account.address
+
+            if self.params.use_mech_facilitator:
+                return self._ensure_mech_pre_deposit(
+                    chain, chain_config["chain_id"], eoa_account
+                )
 
             # For Polygon use USDC (native), for Gnosis use USDC.e (bridged)
             usdc_address = (
