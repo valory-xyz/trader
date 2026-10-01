@@ -67,6 +67,7 @@ from packages.valory.skills.funds_manager.models import (
     FundRequirements,
     TokenRequirement,
 )
+from packages.valory.skills.trader_abci import handlers as beh_handlers
 from packages.valory.skills.trader_abci.handlers import (
     ContractApiHandler,
     DEFAULT_HEADER,
@@ -3078,16 +3079,18 @@ class TestHttpHandlerInit:
 # mech pre-deposit top-up (the facilitator payment route)
 # ---------------------------------------------------------------------------
 _SAFE = "0x" + "5a" * 20
-_MECH = "0x" + "11" * 20
 _TRACKER = "0x" + "22" * 20
 _MARKETPLACE = "0x" + "44" * 20
 _TOKEN = "0x" + "33" * 20
 _ZERO_ADDR = "0x" + "00" * 20
 _NATIVE_PAYMENT_TYPE = bytes.fromhex("ba" * 32)
+_FACILITATOR_URL = "https://facilitator.example"
 
 _FLOOR = 150_000
 _TARGET = 500_000
 _CAP = 500_000
+# Above the deposits under test, so the reserve only bites where a test says so.
+_GAS_RESERVE = 10**17
 
 
 def _same_address(left: str, right: str) -> bool:
@@ -3174,14 +3177,14 @@ class _ChainStub:
 
         :param deposited: what the tracker reports for the Safe.
         :param token: the tracker's ERC20, or ``None`` for a native tracker.
-        :param payment_type: what the mech reports as its payment type.
+        :param payment_type: what the facilitator reports it charges in.
         :param tracker: what the marketplace maps the payment type to.
         """
+        self.payment_type = payment_type
         tracker_answers: Dict[str, Any] = {"mapRequesterBalances": deposited}
         if token is not None:
             tracker_answers["token"] = token
         self._per_address: Dict[str, Dict[str, Any]] = {
-            _MECH.lower(): {"paymentType": payment_type},
             _MARKETPLACE.lower(): {"mapPaymentTypeBalanceTrackers": tracker},
             tracker.lower(): tracker_answers,
             _TOKEN.lower(): {},
@@ -3190,6 +3193,8 @@ class _ChainStub:
         self.encoded: List[Any] = []
         self.sent: List[Dict[str, Any]] = []
         self.bound: List[str] = []
+        # Set by ``_run`` so a test can assert what the facilitator was asked.
+        self.facilitator_get: Any = None
 
     def contract(self, chain: str, address: str, abi: List[Dict]) -> Any:
         """Return the stub for ``address``.
@@ -3238,7 +3243,8 @@ def _facilitator_handler(native_balance: int = 10**19) -> Any:
     params.mech_pre_deposit_floor = _FLOOR
     params.mech_pre_deposit_target = _TARGET
     params.mech_pre_deposit_cap = _CAP
-    params.mech_marketplace_config.priority_mech_address = _MECH
+    params.mech_facilitator_base_url = _FACILITATOR_URL
+    params.native_gas_reserve = _GAS_RESERVE
     params.mech_marketplace_config.mech_marketplace_address = _MARKETPLACE
     handler._safe_address_for_payments = MagicMock(return_value=_SAFE)  # type: ignore[method-assign]
     w3 = MagicMock()
@@ -3247,20 +3253,51 @@ def _facilitator_handler(native_balance: int = 10**19) -> Any:
     return handler
 
 
-def _run(handler: Any, chain_stub: _ChainStub) -> bool:
-    """Drive the pre-deposit check with contract reads and sends stubbed.
+def _facilitator_reply(
+    payment_type: Optional[bytes], status: int = 200
+) -> SimpleNamespace:
+    """Build what the facilitator's requester-info endpoint answers with.
+
+    :param payment_type: the payment type it reports, or ``None`` for a body
+        that carries no usable one.
+    :param status: the HTTP status to report.
+    :return: a stand-in response.
+    """
+    body: Dict[str, Any] = {}
+    if payment_type is not None:
+        body["payment_type"] = "0x" + payment_type.hex()
+    return SimpleNamespace(status_code=status, json=lambda: body)
+
+
+def _run(
+    handler: Any,
+    chain_stub: _ChainStub,
+    reply: Optional[SimpleNamespace] = None,
+    error: Optional[Exception] = None,
+) -> bool:
+    """Drive the pre-deposit check with the chain and the facilitator stubbed.
 
     :param handler: the handler under test.
     :param chain_stub: the stub answering reads and recording sends.
+    :param reply: what the facilitator answers; by default the chain stub's own
+        payment type, so the two agree.
+    :param error: raised instead of answering, for the unreachable case.
     :return: what the check returned.
     """
     account = MagicMock()
     account.address = "0x" + "ee" * 20
+    if reply is None:
+        reply = _facilitator_reply(chain_stub.payment_type)
+    get_kwargs: Dict[str, Any] = (
+        {"side_effect": error} if error is not None else {"return_value": reply}
+    )
     with (
         patch.object(handler, "_contract", side_effect=chain_stub.contract),
         patch.object(handler, "_send_from_eoa", side_effect=chain_stub.send),
         patch.object(handler, "_get_eoa_account", return_value=account),
+        patch.object(beh_handlers.requests, "get", **get_kwargs) as get,
     ):
+        chain_stub.facilitator_get = get
         return handler._ensure_sufficient_funds_for_x402_payments()
 
 
@@ -3349,14 +3386,19 @@ class TestMechPreDepositTopUp:
 
     def test_a_native_deposit_keeps_a_gas_reserve(self) -> None:
         """Depositing the EOA out of gas would stop the agent entirely."""
-        from packages.valory.skills.trader_abci.handlers import (
-            NATIVE_GAS_RESERVE_WEI,
-        )
-
         spendable = 40_000
-        handler = _facilitator_handler(
-            native_balance=NATIVE_GAS_RESERVE_WEI + spendable
-        )
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE + spendable)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is True
+        assert chain.sent[0]["value"] == spendable
+
+    def test_the_gas_reserve_is_the_configured_one(self) -> None:
+        """The reserve follows the agent's own refill threshold, not a constant."""
+        spendable = 40_000
+        reserve = 7 * 10**17
+        handler = _facilitator_handler(native_balance=reserve + spendable)
+        handler.context.params.native_gas_reserve = reserve
         chain = _ChainStub(deposited=0, token=None)
 
         assert _run(handler, chain) is True
@@ -3364,39 +3406,92 @@ class TestMechPreDepositTopUp:
 
     def test_no_native_headroom_sends_nothing(self) -> None:
         """At or under the gas reserve there is nothing safe to deposit."""
-        from packages.valory.skills.trader_abci.handlers import (
-            NATIVE_GAS_RESERVE_WEI,
-        )
-
-        handler = _facilitator_handler(native_balance=NATIVE_GAS_RESERVE_WEI)
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
         chain = _ChainStub(deposited=0, token=None)
 
         assert _run(handler, chain) is False
         assert chain.sent == []
 
     def test_a_token_deposit_is_bounded_by_what_the_eoa_holds(self) -> None:
-        """Depositing above the balance would revert when the deposit pulls."""
-        handler = _facilitator_handler()
-        chain = _ChainStub(deposited=0, token=_TOKEN)
+        """A swap can deliver less than quoted, and the deposit must follow it.
 
-        with patch.object(handler, "_check_usdc_balance", return_value=120_000):
-            assert _run(handler, chain) is True
-
-        assert chain.encoded[1][1][1] == 120_000
-
-    @pytest.mark.parametrize("held", [0, None])
-    def test_no_token_held_sends_nothing(self, held: Any) -> None:
-        """An empty or unreadable EOA token balance cannot fund a deposit.
-
-        :param held: what the token balance read reports.
+        Approving or depositing more than the EOA holds reverts when the tracker
+        pulls, so the amount tracks the balance rather than the target.
         """
         handler = _facilitator_handler()
         chain = _ChainStub(deposited=0, token=_TOKEN)
 
-        with patch.object(handler, "_check_usdc_balance", return_value=held):
+        with (
+            patch.object(handler, "_check_usdc_balance", return_value=120_000),
+            patch.object(handler, "_swap_native_for_token", return_value=True),
+        ):
+            assert _run(handler, chain) is True
+
+        assert chain.encoded[1][1][1] == 120_000
+
+    def test_an_unreadable_token_balance_sends_nothing(self) -> None:
+        """Without knowing the balance there is no safe amount to deposit."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=None):
             assert _run(handler, chain) is False
 
         assert chain.sent == []
+
+    def test_a_short_token_balance_swaps_for_the_shortfall(self) -> None:
+        """Nothing else refills the EOA's token on this route, so this must."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with (
+            patch.object(handler, "_check_usdc_balance", return_value=20_000),
+            patch.object(handler, "_swap_native_for_token", return_value=True) as swap,
+        ):
+            assert _run(handler, chain) is True
+
+        # Only the shortfall, since the EOA already holds the rest.
+        assert swap.call_args.args[2:] == (_TOKEN, _TARGET - 20_000)
+        assert [name for name, _ in chain.encoded] == [
+            "approve",
+            "depositFor(address,uint256)",
+        ]
+
+    def test_a_failed_swap_sends_nothing(self) -> None:
+        """Approving and depositing without the token would just revert."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with (
+            patch.object(handler, "_check_usdc_balance", return_value=0),
+            patch.object(handler, "_swap_native_for_token", return_value=False),
+        ):
+            assert _run(handler, chain) is False
+
+        assert chain.sent == []
+
+    def test_a_sufficient_token_balance_does_not_swap(self) -> None:
+        """Swapping native that is not needed would spend gas for nothing."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with (
+            patch.object(handler, "_check_usdc_balance", return_value=10**9),
+            patch.object(handler, "_swap_native_for_token", return_value=True) as swap,
+        ):
+            assert _run(handler, chain) is True
+
+        swap.assert_not_called()
+
+    def test_a_native_tracker_does_not_swap(self) -> None:
+        """A native tracker is funded from the balance the EOA already has."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        with patch.object(handler, "_swap_native_for_token", return_value=True) as swap:
+            assert _run(handler, chain) is True
+
+        swap.assert_not_called()
 
     def test_an_unknown_safe_sends_nothing(self) -> None:
         """Before the first round there is no Safe to credit."""
@@ -3408,8 +3503,8 @@ class TestMechPreDepositTopUp:
         assert chain.sent == []
 
     @pytest.mark.parametrize("mech", [None, _ZERO_ADDR])
-    def test_no_priority_mech_sends_nothing(self, mech: Any) -> None:
-        """Without a mech there is no payment type, so no tracker.
+    def test_an_absent_priority_mech_still_deposits(self, mech: Any) -> None:
+        """Services that let mech-interact pick a mech leave this unset.
 
         :param mech: the configured priority mech.
         """
@@ -3417,8 +3512,8 @@ class TestMechPreDepositTopUp:
         handler.context.params.mech_marketplace_config.priority_mech_address = mech
         chain = _ChainStub(deposited=0, token=None)
 
-        assert _run(handler, chain) is False
-        assert chain.sent == []
+        assert _run(handler, chain) is True
+        assert chain.sent[0]["value"] == _TARGET
 
     def test_an_unresolvable_tracker_sends_nothing(self) -> None:
         """A marketplace with no tracker for the type gives nowhere to deposit."""
@@ -3429,12 +3524,72 @@ class TestMechPreDepositTopUp:
         assert chain.sent == []
 
     def test_an_unreadable_payment_type_sends_nothing(self) -> None:
-        """A short or missing paymentType must not be used to pick a tracker."""
+        """A short payment type must not be used to pick a tracker."""
         handler = _facilitator_handler()
         chain = _ChainStub(deposited=0, token=None, payment_type=b"\x01\x02")
 
         assert _run(handler, chain) is False
         assert chain.sent == []
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            _facilitator_reply(_NATIVE_PAYMENT_TYPE, status=500),
+            _facilitator_reply(None),
+            SimpleNamespace(status_code=200, json=lambda: {"payment_type": "zz"}),
+            SimpleNamespace(status_code=200, json=lambda: {"payment_type": 7}),
+            SimpleNamespace(status_code=200, json=lambda: {}),
+        ],
+    )
+    def test_an_unusable_facilitator_answer_sends_nothing(
+        self, reply: SimpleNamespace
+    ) -> None:
+        """A bad answer must leave the pot alone rather than guess an asset.
+
+        :param reply: what the facilitator answers with.
+        """
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain, reply=reply) is False
+        assert chain.sent == []
+
+    def test_an_unreachable_facilitator_sends_nothing(self) -> None:
+        """A timeout must skip the period rather than deposit into a guess."""
+        handler = _facilitator_handler()
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain, error=OSError("timed out")) is False
+        assert chain.sent == []
+
+    def test_no_facilitator_url_sends_nothing(self) -> None:
+        """Without somewhere to ask, which asset to deposit is unknown."""
+        handler = _facilitator_handler()
+        handler.context.params.mech_facilitator_base_url = ""
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        assert chain.sent == []
+
+    def test_the_payment_type_comes_from_the_facilitator(self) -> None:
+        """The facilitator decides what it charges, so it decides the pot."""
+        handler = _facilitator_handler()
+        other = bytes.fromhex("cd" * 32)
+        chain = _ChainStub(deposited=0, token=None, payment_type=_NATIVE_PAYMENT_TYPE)
+
+        assert _run(handler, chain, reply=_facilitator_reply(other)) is True
+
+        # The type looked up is the one the facilitator named.
+        lookups = [
+            args
+            for name, args in chain.reads
+            if name == "mapPaymentTypeBalanceTrackers"
+        ]
+        assert lookups == [(other,)]
+        # Asked about this Safe, at the configured base URL.
+        url = chain.facilitator_get.call_args.args[0]
+        assert url.startswith(_FACILITATOR_URL)
+        assert _SAFE[2:].lower() in url.lower()
 
     def test_the_marketplace_comes_from_config(self) -> None:
         """Every address the deposit touches resolves from the configured one."""
@@ -3443,12 +3598,7 @@ class TestMechPreDepositTopUp:
 
         assert _run(handler, chain) is True
 
-        # The payment type is read from the mech, the tracker from the
-        # configured marketplace, and nothing is read from an address that
-        # arrived in a response.
-        assert [name for name, _ in chain.reads][:2] == [
-            "paymentType",
-            "mapPaymentTypeBalanceTrackers",
-        ]
-        assert _same_address(chain.bound[0], _MECH)
-        assert _same_address(chain.bound[1], _MARKETPLACE)
+        # The tracker comes from the configured marketplace, and nothing is
+        # read from an address that arrived in a response.
+        assert [name for name, _ in chain.reads][0] == "mapPaymentTypeBalanceTrackers"
+        assert _same_address(chain.bound[0], _MARKETPLACE)

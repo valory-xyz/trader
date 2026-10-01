@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeifp2fbvyozblwwa5rj7mtudyvmqps7gu65rdyhklnu5bmyu72raoy
+agent: valory/trader:0.1.0:bafybeihijygr663dtjcuzch4gfoz2k7wvo6q56a3wgkpltek2oqaf7gpvu
 number_of_agents: 1
 deployment:
   agent:
@@ -165,6 +165,8 @@ models:
       mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000}
       mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000}
       mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:3200000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x5C50ebc17d002A4484585C8fbf62f51953493c0B}

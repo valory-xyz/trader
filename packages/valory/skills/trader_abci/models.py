@@ -164,6 +164,10 @@ PolymarketQuestionsSubgraph = APTPolymarketQuestionsSubgraph
 
 MARGIN = 5
 
+# Fallback for ``native_gas_reserve`` when a service does not set it. Below
+# every shipped agent threshold, so services are expected to override it.
+DEFAULT_NATIVE_GAS_RESERVE_WEI = 10**17
+
 
 class RandomnessApi(ApiSpecs):
     """A model for randomness api specifications."""
@@ -210,6 +214,17 @@ class TraderParams(
             kwargs.pop("mech_pre_deposit_target", 0)
         )
         self.mech_pre_deposit_cap: int = int(kwargs.pop("mech_pre_deposit_cap", 0))
+        # Where to ask which payment asset the facilitator charges this Safe in.
+        # The same base URL the genai connection sends paid calls to.
+        self.mech_facilitator_base_url: str = str(
+            kwargs.pop("mech_facilitator_base_url", "") or ""
+        )
+        # Native balance a top-up must leave the EOA. At or above the agent's
+        # own refill threshold in ``fund_requirements``, or a deposit drops the
+        # EOA under it and the service reports itself low on funds.
+        self.native_gas_reserve: int = int(
+            kwargs.pop("native_gas_reserve", DEFAULT_NATIVE_GAS_RESERVE_WEI)
+        )
         super().__init__(*args, **kwargs)
 
 
