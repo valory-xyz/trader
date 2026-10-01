@@ -679,7 +679,7 @@ class HttpHandler(BaseHttpHandler):
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
-            self.shared_state.update_agent_behavior(behavior)
+            writes.append(partial(self.shared_state.update_agent_behavior, behavior))
 
         # Nothing above wrote anything, so reaching here means every field
         # was readable and the update can be applied as a whole.

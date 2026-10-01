@@ -2192,6 +2192,35 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._store_trading_strategy.assert_not_called()
         handler._set_chatui_param.assert_not_called()
 
+    def test_the_behaviour_text_waits_for_the_other_writes(self) -> None:
+        """The behaviour text is part of the same whole-or-nothing update.
+
+        Applied where it is read, it lands before the amounts it was meant to
+        go with, so a write that fails leaves the agent told to behave one way
+        about sizes it never took.
+        """
+        handler = self._handler()
+        handler._set_chatui_param = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "behavior": "Trade conservatively.",
+                            "fixed_bet_size": 0.05,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler.shared_state.update_agent_behavior.assert_not_called()
+
     def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
         self,
     ) -> None:
