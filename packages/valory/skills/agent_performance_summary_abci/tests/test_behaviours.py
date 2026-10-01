@@ -26,6 +26,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
+    BetPayoutChecker,
+)
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
@@ -36,9 +39,12 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     MORE_TRADES_NEEDED_TEXT,
     NA,
     OFFCHAIN_MAX_SCAN_RANGE,
+    OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
+    OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD,
     PERCENTAGE_FACTOR,
     POLYGON_CHAIN_ID,
     POLYGON_NATIVE_TOKEN_ADDRESS,
+    POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
     POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD,
     PREDICT_MARKET_DURATION_DAYS,
     PUSD_ADDRESS,
@@ -305,6 +311,17 @@ class TestModuleConstants:
     def test_polymarket_achievement_roi_threshold(self) -> None:
         """POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD is 1.5."""
         assert POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD == 1.5
+
+    def test_omenstrat_achievement_roi_threshold(self) -> None:
+        """OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD matches Polystrat's 1.5."""
+        assert OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD == 1.5
+
+    def test_omenstrat_achievement_description_renders_share_copy(self) -> None:
+        """The Omenstrat template leaves the URL placeholder for Pearl."""
+        assert OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE.format(roi="2.4") == (
+            "My Omenstrat agent just made 2.4\u00d7 ROI on Omen Markets! \U0001f680"
+            "\n\nCheck it out\U0001f447\n{achievement_url}"
+        )
 
     def test_min_trades_for_roi_display(self) -> None:
         """MIN_TRADES_FOR_ROI_DISPLAY is 10."""
@@ -6028,6 +6045,12 @@ class TestUpdateAchievementsBehaviourInit:
         assert (
             b._bet_payout_checker._roi_threshold == POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD
         )
+        assert (
+            b._bet_payout_checker._description_template
+            == POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE
+        )
+        assert b._bet_payout_checker._skip_settled_before_enabled is False
+        assert b._bet_payout_checker._require_remaining_shares is False
 
     def test_init_omen(self) -> None:
         """__init__ creates BetPayoutChecker with omen settings."""
@@ -6044,7 +6067,16 @@ class TestUpdateAchievementsBehaviourInit:
             ),
         ):
             b = UpdateAchievementsBehaviour()
-        assert b._bet_payout_checker._achievement_type == "omen/payout"
+        assert b._bet_payout_checker._achievement_type == "omenstrat/payout"
+        assert (
+            b._bet_payout_checker._roi_threshold == OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD
+        )
+        assert (
+            b._bet_payout_checker._description_template
+            == OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE
+        )
+        assert b._bet_payout_checker._skip_settled_before_enabled is True
+        assert b._bet_payout_checker._require_remaining_shares is True
 
 
 class TestUpdateAchievementsAsyncAct:
@@ -6108,15 +6140,35 @@ class TestUpdateAchievementsAsyncAct:
             self._run_gen(b.async_act())
         state.overwrite_performance_summary.assert_called_once_with(summary)
 
-    def test_achievements_not_updated(self) -> None:
-        """Does not save when achievements are not updated."""
+    def test_passes_synced_timestamp_as_now(self) -> None:
+        """The checker receives the synced timestamp for its watermark."""
         b = _make_update_behaviour()
-        ctx, params, synced_data, state = _mock_context()
+        ctx, params, synced_data, state = _mock_context(synced_timestamp=1790000000)
         summary = _default_summary()
         summary.achievements = Achievements()
         summary.prediction_history = PredictionHistory()  # type: ignore[attr-defined]
         state.read_existing_performance_summary.return_value = summary
         b._bet_payout_checker.update_achievements.return_value = False  # type: ignore[attr-defined]
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "finish_behaviour", side_effect=_noop_gen),
+        ):
+            self._run_gen(b.async_act())
+        kwargs = b._bet_payout_checker.update_achievements.call_args.kwargs  # type: ignore[attr-defined]
+        assert kwargs["now"] == 1790000000
+
+    def test_achievements_not_updated(self) -> None:
+        """A degraded read must not write a fresh summary over persisted data."""
+        b = _make_update_behaviour()
+        ctx, params, synced_data, state = _mock_context()
+        summary = AgentPerformanceSummary()
+        state.read_existing_performance_summary.return_value = summary
+        b._bet_payout_checker = BetPayoutChecker(
+            achievement_type="omenstrat/payout",
+            skip_settled_before_enabled=True,
+            require_remaining_shares=True,
+        )
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],

@@ -380,6 +380,21 @@ class TestAchievements:
         a = Achievements(items={"first-bet": ach})
         assert a.items["first-bet"] is ach
 
+    def test_legacy_json_without_eligible_since_loads_as_none(self) -> None:
+        """A file written before the watermark existed loads with ``None``."""
+        s = AgentPerformanceSummary(**json.loads('{"achievements": {"items": {}}}'))
+        assert s.achievements is not None
+        assert s.achievements.eligible_since is None
+
+    def test_eligible_since_round_trips_through_json(self) -> None:
+        """The watermark survives a JSON write and read."""
+        original = AgentPerformanceSummary(
+            achievements=Achievements(eligible_since=1790000000)
+        )
+        restored = AgentPerformanceSummary(**json.loads(json.dumps(asdict(original))))
+        assert restored.achievements is not None
+        assert restored.achievements.eligible_since == 1790000000
+
 
 class TestAgentPerformanceSummary:
     """Tests for the AgentPerformanceSummary dataclass."""

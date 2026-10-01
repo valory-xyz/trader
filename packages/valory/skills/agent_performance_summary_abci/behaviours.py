@@ -135,6 +135,11 @@ POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Polystrat agent just made {r
 
 Check it out\U0001f447
 {{achievement_url}}"""
+OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD = 1.5
+OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Omenstrat agent just made {roi}\u00d7 ROI on Omen Markets! \U0001f680
+
+Check it out\U0001f447
+{{achievement_url}}"""
 
 
 MIN_TRADES_FOR_ROI_DISPLAY = 10
@@ -2427,6 +2432,10 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
+        # Achievements are written by ``UpdateAchievementsBehaviour``; losing
+        # them here would reset the backlog-guard watermark every cycle.
+        agent_performance_summary.achievements = existing_data.achievements
+
         # Preserve ``offchain_deposits`` via a raw-JSON re-read that
         # bypasses ``AgentPerformanceSummary.__post_init__`` on sibling
         # fields. ``_fetch_offchain_prepaid_wei`` writes this state
@@ -2586,7 +2595,13 @@ class UpdateAchievementsBehaviour(
                 description_template=POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
             )
         else:
-            self._bet_payout_checker = BetPayoutChecker(achievement_type="omen/payout")
+            self._bet_payout_checker = BetPayoutChecker(
+                achievement_type="omenstrat/payout",
+                roi_threshold=OMENSTRAT_ACHIEVEMENT_ROI_THRESHOLD,
+                description_template=OMENSTRAT_ACHIEVEMENT_DESCRIPTION_TEMPLATE,
+                skip_settled_before_enabled=True,
+                require_remaining_shares=True,
+            )
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -2615,6 +2630,7 @@ class UpdateAchievementsBehaviour(
         achievements_updated = self._bet_payout_checker.update_achievements(
             achievements=agent_performance_summary.achievements,
             prediction_history=agent_performance_summary.prediction_history,
+            now=self.shared_state.synced_timestamp,
         )
 
         if achievements_updated:

@@ -27,6 +27,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     NA,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    Achievements,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
@@ -368,6 +369,26 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.agent_behavior == "some_behavior"
+
+    def test_save_preserves_achievements(self) -> None:
+        """Achievements, including the backlog-guard watermark, survive a save."""
+        existing = _good_existing_summary()
+        existing.achievements = Achievements(eligible_since=1790000000)
+        behaviour = _make_behaviour(existing)
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_good_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.achievements is existing.achievements
 
     def test_save_partial_failure_preserves_failed_sections_only(self) -> None:
         """Mixed case: some sections succeed, others fail (preserve existing)."""
