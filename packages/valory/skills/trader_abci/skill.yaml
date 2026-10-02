@@ -12,15 +12,15 @@ fingerprint:
   composition.py: bafybeifelwc7ugcvtffbnqkbtxpicgbvh7ih3hu4y7e5kju5uxj4ncmave
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeig7fywd26sybd7edhrhnyeqcyo5rfi7hdhy75eiozakmft77xinsi
-  handlers.py: bafybeidefu2bxiadnxbnlaiz2e4ntrcrraxhrvmvyd7uce3e274lfdodti
-  models.py: bafybeigqefgpbkjd7tz63sdj363cizuecbkrf6kkkvljvb2fjf5j6thuq4
+  handlers.py: bafybeiaa3gk6fdiuwrip2moiazstehxc4ekjpncurszq3rdenwgtvff3gy
+  models.py: bafybeidqxl26hxm7g3mk3j642hv5r62o27j35rqj5zec2pfo6ouoaozhty
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeiemy26ij7parlduqt6i2aibda2ww2easaghkxrkvhltiuborjzu5i
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeig36t6xlip4xyylis3n7t6wx45zftfpfk75fztlz3fgycrd3ad7na
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeiewoqdpdnjvjirx2vpwt5u5m4qwba4easgivgsikqk7tbcp2abisq
-  tests/test_models.py: bafybeianja6z3rspswf4cag3pnq2hgtsbc3hq7ndggyr2p3q6ye34wnoqq
+  tests/test_handlers.py: bafybeiharcawqv2r6r77vtz4y7kj5gjvcyilpwn3pmlhwfs723tzlh5uoy
+  tests/test_models.py: bafybeicscwwtmlxvkzpptzzc66gbhuzxuycgveanrvcflw7qyivlpts774
   ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/omenstrat/assets/index-C66CmaPc.js: bafybeihncox2g2imhf6gsd4ngqp4por6iwmridwzeqkppw7h7l6n6quy3y
@@ -47,6 +47,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
+- valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
@@ -58,12 +59,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeietjjsqvjtpvnzmoz22k32nl4iqkrfpp2sjmrwwxvpoad62e3rbdy
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifzhpv4zk6kged2if7mgbrf3mafl7mqwzxgem34cujnfzfzpzq2qi
+- valory/decision_maker_abci:0.1.0:bafybeifh3yk7thplr72cgcj75koffkgbqiatcq4sctvabxhwnlzki44bny
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif5xwjkbay5wsghfhhalyrrpyi34kiylx7auzwajdyypbajbo6vfu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeidsd5if4uawqrgp6pg2iyzm56mmrqb6uxgftexd5m34xh45zzzxpe
-- valory/mech_interact_abci:0.1.0:bafybeifhlr7bzgo7s465ie3icfj3wibsujf4tisf4wfwbhvvz6g4fnu6ka
-- valory/chatui_abci:0.1.0:bafybeihbn47gettztofli3zh3yk3q5fu32unmoj7cbjczzvpit4ptcngbq
+- valory/check_stop_trading_abci:0.1.0:bafybeih5xuk7pnthbvzilyjluaollseun5wfcffb2oquep7442bq3mjd4a
+- valory/mech_interact_abci:0.1.0:bafybeib76vouxqxbx77dn2yd2u7u7czdn2xnfi674qn32yfxoat4vmwiwu
+- valory/chatui_abci:0.1.0:bafybeiaaimkuwmadhzfc5orjw2hmlvxcvy73hk74mofkh3ckqnymlaiucy
 - valory/agent_performance_summary_abci:0.1.0:bafybeibeqbr5tvsv7sbopbznk5ggwvsmzuyfwwupcmfi47gs6qk5rbkgna
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:
@@ -330,6 +331,12 @@ models:
       polygon_ledger_rpc: https://1rpc.io/matic
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
+      use_mech_facilitator: false
+      mech_pre_deposit_floor: 150000000000000000
+      mech_pre_deposit_target: 500000000000000000
+      mech_pre_deposit_cap: 500000000000000000
+      mech_facilitator_base_url: https://x402.olas.autonolas.tech
+      native_gas_reserve: 210000000000000000
       is_agent_performance_summary_enabled: true
       is_achievement_checker_enabled: true
       is_running_on_polymarket: false

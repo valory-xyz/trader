@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeieovxqly4vx43lbw52v4rmn7kffko6xlbykhhx6upbpsm3ebccx4q
+agent: valory/trader:0.1.0:bafybeianzzm7etpheotkr7sf2sqmgmnjsctalj2pxhrl4tt7pzzwh4q64q
 number_of_agents: 1
 deployment:
   agent:
@@ -159,6 +159,12 @@ models:
       gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+      mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000000000000000}
+      mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000000000000000}
+      mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000000000000000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:false}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x21cE6799A22A3Da84B7c44a814a9c79ab1d2A50D}
@@ -372,6 +378,11 @@ config:
   genai_api_key: ${GENAI_API_KEY:str:""}
   genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
   use_x402: ${USE_X402:bool:false}
+  use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+  mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_chain: ${MECH_CHAIN_ID:str:gnosis}
+  mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000000000000000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill

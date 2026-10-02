@@ -34,6 +34,10 @@ from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
     SellOutcomeTokensRound,
 )
+from packages.valory.skills.mech_interact_abci.states.base import (
+    OFFCHAIN_NONCE_TAKEN,
+    OFFCHAIN_TIMEOUT_ALL_MECHS,
+)
 from packages.valory.skills.mech_interact_abci.states.request import (
     MechRequestRound,
     OFFCHAIN_DEPOSIT_TX_SUBMITTER,
@@ -53,7 +57,9 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     return behaviour
 
 
-def _run_async_act(behaviour, tx_submitter):  # type: ignore[no-untyped-def]
+def _run_async_act(  # type: ignore[no-untyped-def]
+    behaviour, tx_submitter, failure_reason=None, shared_state=None
+):
     """Drive async_act to completion and return the payload."""
     payloads_sent = []  # type: ignore[no-untyped-def]
 
@@ -68,12 +74,13 @@ def _run_async_act(behaviour, tx_submitter):  # type: ignore[no-untyped-def]
     ) as mock_sd:
         sd = MagicMock()
         sd.tx_submitter = tx_submitter
+        sd.offchain_last_failure_reason = failure_reason
         mock_sd.return_value = sd
 
         with patch.object(
             type(behaviour), "shared_state", new_callable=PropertyMock
         ) as mock_ss:
-            mock_ss.return_value = MagicMock()
+            mock_ss.return_value = MagicMock() if shared_state is None else shared_state
 
             gen = behaviour.async_act()
             try:
@@ -191,3 +198,55 @@ class TestHandleFailedTxBehaviour:
         # Pin the literal sentinel value so a silent rename in
         # mech-interact fails a trader test instead of a runtime warning.
         assert OFFCHAIN_DEPOSIT_TX_SUBMITTER == "mech_request_round_offchain_deposit"
+
+
+class TestASlotRefusedIsNotTheMechsFault:
+    """No mech saw a request that was refused its slot.
+
+    Charging the mech for it quarantines a tool that answered nothing and
+    blacklists a market that was never bet on, so the agent loses both the
+    tool and the market to a clash it can simply retry next period.
+    """
+
+    def test_a_refused_slot_is_not_counted_against_the_mech(self) -> None:
+        """Otherwise a slot clash penalizes a tool that was never asked."""
+        shared_state = MagicMock()
+
+        payload = _run_async_act(
+            _make_behaviour(),
+            MechRequestRound.auto_round_id(),
+            failure_reason=OFFCHAIN_NONCE_TAKEN,
+            shared_state=shared_state,
+        )
+
+        assert shared_state.mech_timed_out is False
+        # False routes the round to NO_OP, so the market is not blacklisted.
+        assert payload.vote is False
+
+    def test_a_real_timeout_is_still_counted(self) -> None:
+        """The mech was asked and did not answer, which is its own failure."""
+        shared_state = MagicMock()
+
+        payload = _run_async_act(
+            _make_behaviour(),
+            MechRequestRound.auto_round_id(),
+            failure_reason=OFFCHAIN_TIMEOUT_ALL_MECHS,
+            shared_state=shared_state,
+        )
+
+        assert shared_state.mech_timed_out is True
+        assert payload.vote is True
+
+    def test_a_refused_slot_after_a_deposit_is_also_not_counted(self) -> None:
+        """The deposit sentinel carries the same cycle, so the same rule holds."""
+        shared_state = MagicMock()
+
+        payload = _run_async_act(
+            _make_behaviour(),
+            OFFCHAIN_DEPOSIT_TX_SUBMITTER,
+            failure_reason=OFFCHAIN_NONCE_TAKEN,
+            shared_state=shared_state,
+        )
+
+        assert shared_state.mech_timed_out is False
+        assert payload.vote is False
