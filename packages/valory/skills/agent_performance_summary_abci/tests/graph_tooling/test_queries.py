@@ -197,6 +197,12 @@ def test_omen_finalization_query_selects_required_fields() -> None:
     )
 
 
+def test_omen_prediction_history_query_selects_bet_transaction_hash() -> None:
+    """Achievement records link to the bet's transaction on the explorer."""
+    bets_selection = GET_PREDICTION_HISTORY_QUERY.split("bets {", 1)[1]
+    assert "transactionHash" in bets_selection.split("}", 1)[0]
+
+
 # The predict-polymarket squid speaks OpenReader, not The Graph. These pin the
 # dialect differences that fail the query outright rather than return wrong data.
 POLYMARKET_SQUID_QUERIES = {

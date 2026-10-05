@@ -185,6 +185,9 @@ class Achievements:
     """Achievements dictionary."""
 
     items: Dict[str, Achievement] = field(default_factory=dict)
+    # UNIX timestamp (seconds); wins settled earlier are never recorded by
+    # checkers that opt into the backlog guard.
+    eligible_since: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -474,6 +477,37 @@ class SharedState(BaseSharedState):
             self.context.logger.warning(
                 f"Persisted offchain_deposits failed validation ({e}); "
                 "leaving it unpreserved on this save."
+            )
+            return None
+
+    def read_achievements_from_disk(self) -> Optional[Achievements]:
+        """Return the persisted ``achievements`` sub-field with lenient parsing.
+
+        Sibling-agnostic like ``read_offchain_deposits_from_disk``: a corrupt
+        sibling field must not drop the backlog-guard watermark on save.
+
+        :return: the persisted ``Achievements``, or ``None`` if the file is
+            missing, unreadable, has no ``achievements`` key, or the field
+            itself fails validation (logged).
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+
+        sub = raw.get("achievements") if isinstance(raw, dict) else None
+        if not isinstance(sub, dict):
+            return None
+
+        try:
+            return Achievements(**sub)
+        except (AttributeError, TypeError, ValueError) as e:
+            self.context.logger.warning(
+                f"Persisted achievements failed validation ({e}); "
+                "leaving them unpreserved on this save."
             )
             return None
 

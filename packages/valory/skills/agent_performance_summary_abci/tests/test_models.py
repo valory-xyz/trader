@@ -380,6 +380,21 @@ class TestAchievements:
         a = Achievements(items={"first-bet": ach})
         assert a.items["first-bet"] is ach
 
+    def test_legacy_json_without_eligible_since_loads_as_none(self) -> None:
+        """A file written before the watermark existed loads with ``None``."""
+        s = AgentPerformanceSummary(**json.loads('{"achievements": {"items": {}}}'))
+        assert s.achievements is not None
+        assert s.achievements.eligible_since is None
+
+    def test_eligible_since_round_trips_through_json(self) -> None:
+        """The watermark survives a JSON write and read."""
+        original = AgentPerformanceSummary(
+            achievements=Achievements(eligible_since=1790000000)
+        )
+        restored = AgentPerformanceSummary(**json.loads(json.dumps(asdict(original))))
+        assert restored.achievements is not None
+        assert restored.achievements.eligible_since == 1790000000
+
 
 class TestAgentPerformanceSummary:
     """Tests for the AgentPerformanceSummary dataclass."""
@@ -863,6 +878,76 @@ class TestSharedState:
         result = state.read_existing_performance_summary()
         assert isinstance(result, AgentPerformanceSummary)
         assert result.timestamp is None
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_read_achievements_from_disk_survives_corrupt_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        """Achievements are returned even when a sibling field fails validation.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps(
+                {
+                    "prediction_history": {"unexpected": 1},
+                    "achievements": {"items": {}, "eligible_since": 1790000000},
+                }
+            )
+        )
+
+        assert state.read_existing_performance_summary().achievements is None
+        assert state.read_achievements_from_disk() == Achievements(
+            eligible_since=1790000000
+        )
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            None,
+            "not valid json {{{",
+            json.dumps([]),
+            json.dumps({"timestamp": 1}),
+            json.dumps({"achievements": None}),
+        ],
+    )
+    def test_read_achievements_from_disk_absent(
+        self, tmp_path: Path, content: Any
+    ) -> None:
+        """A missing file, unreadable JSON or absent field yields None silently.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param content: file content, or None for no file.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        if content is not None:
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
+
+        assert state.read_achievements_from_disk() is None
+        state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "achievements",
+        [{"unexpected": 1}, {"items": {"id": {"unexpected": 1}}}, {"items": [1]}],
+    )
+    def test_read_achievements_from_disk_invalid(
+        self, tmp_path: Path, achievements: Dict[str, Any]
+    ) -> None:
+        """An invalid achievements field yields None and logs a warning.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param achievements: the persisted achievements field.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"achievements": achievements})
+        )
+
+        assert state.read_achievements_from_disk() is None
         state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_write_offchain_deposits_preserves_sibling_fields(

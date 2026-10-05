@@ -639,11 +639,9 @@ class PredictionsFetcher(BasePredictionsFetcher):
             for participant in participants:
                 fpmm = participant.get("fixedProductMarketMaker") or {}
                 participant_totals = {
-                    "totalPayout": float(participant.get("totalPayout", 0))
-                    / WEI_TO_NATIVE,
-                    "totalTraded": float(participant.get("totalTraded", 0))
-                    / WEI_TO_NATIVE,
-                    "totalFees": float(participant.get("totalFees", 0)) / WEI_TO_NATIVE,
+                    "totalPayout": participant.get("totalPayout", 0),
+                    "totalTraded": participant.get("totalTraded", 0),
+                    "totalFees": participant.get("totalFees", 0),
                     "totalBets": participant.get("totalBets", 0),
                 }
                 for bet in participant.get("bets", []) or []:
@@ -1323,9 +1321,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
             # consumer (``_calculate_bet_net_profit``) can multiply against
             # unitless wxDAI ratios (``remaining_cost /
             # participant_remaining_cost``) without a 1e18 scale error.
-            # Mirrors the specific-market path which already scales
-            # ``totalPayout`` / ``totalTraded`` / ``totalFees`` by
-            # ``WEI_TO_NATIVE`` at construction time.
+            # Both bulk and specific-market fetches retain raw participant
+            # values; this is the single conversion boundary for the context.
             if entry["total_payout"] is None:
                 entry["total_payout"] = (
                     float(participant.get("totalPayout", 0)) / WEI_TO_NATIVE
@@ -1397,6 +1394,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
                 if market_ctx and prediction_status != "pending"
                 else None
             ),
+            "transaction_hash": bet.get("transactionHash"),
+            "has_remaining_shares": (fifo["remaining_shares"] > SHARES_EPSILON_OMEN),
         }
 
     def _calculate_bet_net_profit(
