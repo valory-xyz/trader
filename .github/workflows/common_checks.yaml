@@ -129,11 +129,25 @@ jobs:
         # ``[testenv:safety]`` currently declares neither key, so the
         # override is only additive if a future tomte bump adds one
         # on that section directly.
+        #
+        # The ``commands`` override ignores SFTY-20260902-58666
+        # (CVE-2026-81726, nltk ``<=3.10.3``). nltk is not a dependency
+        # of this repo: ``safety`` requires ``nltk>=3.9`` and the scan
+        # covers the venv safety itself runs in. 3.10.3 is the latest
+        # release, so there is no patched version to upgrade to, and
+        # the advisory is a path traversal through ``open()`` while the
+        # only call safety makes into nltk is ``nltk.edit_distance`` on
+        # package names, which opens no files. The policy-file argument
+        # is dropped because ``{envsitepackagesdir}`` is not substituted
+        # inside an override; tomte's policy only restates safety's
+        # defaults. Remove once tomte carries the ignore
+        # (valory-xyz/tomte#60) or a fixed nltk ships.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
             -x 'testenv:safety.commands_pre+=python -m ensurepip --upgrade
-                python -m pip install --upgrade pip>=26.1.2 setuptools>=83.0.0'
+                python -m pip install --upgrade pip>=26.1.2 setuptools>=83.0.0' \
+            -x 'testenv:safety.commands=safety check --ignore SFTY-20260902-58666'
       - name: Bandit scan
         # ``!cancelled()`` runs bandit whether the safety scan above
         # succeeded or failed, but skips it when the run itself is
