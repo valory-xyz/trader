@@ -2433,8 +2433,12 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
         # Achievements are written by ``UpdateAchievementsBehaviour``; losing
-        # them here would reset the backlog-guard watermark every cycle.
-        agent_performance_summary.achievements = existing_data.achievements
+        # them here would reset the backlog-guard watermark. Re-read them
+        # leniently, like ``offchain_deposits`` below, so a corrupt sibling
+        # that degraded ``existing_data`` cannot wipe them.
+        agent_performance_summary.achievements = (
+            self.shared_state.read_achievements_from_disk()
+        )
 
         # Preserve ``offchain_deposits`` via a raw-JSON re-read that
         # bypasses ``AgentPerformanceSummary.__post_init__`` on sibling

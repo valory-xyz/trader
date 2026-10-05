@@ -57,6 +57,9 @@ def _make_behaviour(
 
     shared_state = MagicMock()
     shared_state.read_existing_performance_summary.return_value = existing_summary
+    shared_state.read_achievements_from_disk.return_value = (
+        existing_summary.achievements
+    )
     shared_state.overwrite_performance_summary = MagicMock()
 
     behaviour.shared_state = shared_state
@@ -389,6 +392,27 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.achievements is existing.achievements
+
+    def test_save_preserves_achievements_on_degraded_read(self) -> None:
+        """A degraded summary read must not wipe the persisted watermark."""
+        degraded = AgentPerformanceSummary()
+        behaviour = _make_behaviour(degraded)
+        on_disk = Achievements(eligible_since=1790000000)
+        behaviour.shared_state.read_achievements_from_disk.return_value = on_disk
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_good_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.achievements is on_disk
 
     def test_save_partial_failure_preserves_failed_sections_only(self) -> None:
         """Mixed case: some sections succeed, others fail (preserve existing)."""

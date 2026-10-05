@@ -5161,6 +5161,7 @@ class TestSaveAgentPerformanceSummary:
         if disk_offchain is _UNSET:
             disk_offchain = existing.offchain_deposits
         state.read_offchain_deposits_from_disk.return_value = disk_offchain
+        state.read_achievements_from_disk.return_value = existing.achievements
         with _patch_context(b, ctx, synced_data)[0]:
             b._save_agent_performance_summary(new_summary)
 
