@@ -1900,3 +1900,392 @@ class TestWithdrawalRouteRegistration:
         assert any(
             "withdrawal" in p for p in regex_strings
         ), f"no /api/v1/withdrawal GET route registered; found: {regex_strings}"
+
+
+class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
+    """The prompt asks the model for JSON; nothing makes it comply.
+
+    The service runs under ``stop_and_exit``, so an exception raised out
+    of this handler ends the agent. One prompt answered in prose would
+    stop trading until somebody restarted it.
+    """
+
+    @staticmethod
+    def _handler() -> Any:
+        handler = _make_handler()
+        handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+        handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+        return handler
+
+    @staticmethod
+    def _reply(payload: Any) -> Any:
+        message = MagicMock()
+        message.payload = payload
+        return message
+
+    @pytest.mark.parametrize(
+        "model_text",
+        [
+            pytest.param("I'm sorry, I can't help with that.", id="prose"),
+            pytest.param('```json\n{"message": "hi"}\n```', id="fenced block"),
+            pytest.param("", id="empty"),
+            pytest.param("[1, 2, 3]", id="a list, not an object"),
+            pytest.param('"just a string"', id="a bare string"),
+        ],
+    )
+    def test_a_reply_that_is_not_a_json_object_is_answered_not_raised(
+        self, model_text: str
+    ) -> None:
+        """Each of these used to raise straight out of the handler."""
+        handler = self._handler()
+        payload = json.dumps({"response": model_text})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        body = handler._send_internal_server_error_response.call_args[0][2]
+        assert "error" in body
+
+    def test_a_payload_that_is_not_json_at_all_is_answered_not_raised(self) -> None:
+        """The connection encodes this, but a handler must not end the agent on it."""
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply("not json"), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    def test_a_well_formed_reply_is_still_processed(self) -> None:
+        """The guard must not swallow the normal path."""
+        handler = self._handler()
+        payload = json.dumps(
+            {"response": json.dumps({"message": "done", "updated_config": {}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param(
+                {"updated_agent_config": "set it to balanced"},
+                id="config as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": ["balanced"]},
+                id="config as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"trading_strategy": ["balanced"]}},
+                id="strategy as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"allowed_tools": "one-tool"}},
+                id="tools as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"selected_mechs": "0xabc"}},
+                id="mechs as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"removed_config_fields": "allowed_tools"}},
+                id="removals as a string",
+            ),
+        ],
+    )
+    def test_valid_json_of_the_wrong_shape_is_answered_not_raised(
+        self, reply: Any
+    ) -> None:
+        """The update walks this object field by field, so a wrong type raises.
+
+        Valid JSON shaped differently reads no better than prose, and the
+        model is free to produce it, so it has to be answered the same way.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"allowed_tools": [["a"]]}, id="tool name is a list"),
+            pytest.param({"allowed_tools": [{"a": 1}]}, id="tool name is a dict"),
+        ],
+    )
+    def test_a_list_of_the_right_type_holding_wrong_items_is_answered(
+        self, config: Any
+    ) -> None:
+        """The container type is right, so checking types cannot catch these.
+
+        Tool names are looked up against a set, so an unhashable item
+        raises instead of reading as unknown. Item types that are merely
+        surprising, a null or a dict among the mech names, are already
+        tolerated and reported back as unrecognised, which is the wanted
+        behaviour; it is the raising ones that needed a guard, and
+        enumerating them would not be complete.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": "5"}, id="bet size is a quoted number"),
+            pytest.param({"fixed_bet_size": [5]}, id="bet size is a list"),
+            pytest.param({"max_bet_size": float("inf")}, id="bet size is infinity"),
+        ],
+    )
+    def test_a_numeric_field_of_the_wrong_type_is_answered(self, config: Any) -> None:
+        """The update scales these by the token decimals before comparing.
+
+        A quoted number multiplies the string, a list multiplies the list, and
+        an infinity cannot be made an integer, so each raises somewhere inside
+        the update. Naming the fields one by one would not keep up with the
+        config growing, which is why the update is wrapped as a whole.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param("[" * 1200 + "]" * 1200, id="deeply nested"),
+            pytest.param("1" * 5000, id="integer over the digit limit"),
+        ],
+    )
+    def test_a_reply_that_breaks_the_parser_itself_is_answered(
+        self, payload: str
+    ) -> None:
+        """Neither of these raises JSONDecodeError.
+
+        Deep nesting raises RecursionError, which derives from neither
+        ValueError nor TypeError, and an oversized integer literal raises a
+        plain ValueError. A crafted reply would otherwise still end the agent.
+        """
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply(json.dumps({"response": payload})),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": True}, id="bet size is a bool"),
+            pytest.param({"max_bet_size": float("nan")}, id="bet size is a nan"),
+            pytest.param({"behavior": {"tone": "terse"}}, id="behavior is a dict"),
+        ],
+    )
+    def test_values_that_pass_a_type_check_but_are_not_amounts(
+        self, config: Any
+    ) -> None:
+        """A bool is an int in Python, so it reads as one unit of collateral.
+
+        A NaN passes a range comparison without being an amount at all, and
+        ``behavior`` was accepted whatever its type.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "field",
+        ["fixed_bet_size", "max_bet_size"],
+    )
+    def test_an_amount_beyond_the_float_range_is_answered(self, field: str) -> None:
+        """An int is finite however long it is.
+
+        So this is a value the update can read and reject with an issue,
+        rather than a reply it cannot read at all. The readability check runs ahead of the handler's own catch, so asking
+        whether such an int is finite the way a float is asked would end the
+        agent here, before anything could turn it into an issue.
+
+        :param field: the numeric config field carrying the amount.
+        """
+        handler = self._handler()
+        handler._store_chatui_param_to_json = MagicMock()
+        payload = json.dumps(
+            {"response": json.dumps({"updated_agent_config": {field: 10**400}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+        assert field not in handler._send_ok_response.call_args[0][2]
+        handler._store_chatui_param_to_json.assert_not_called()
+
+    def test_a_field_failing_late_leaves_the_earlier_ones_unwritten(self) -> None:
+        """The update is applied whole or not at all.
+
+        The model decides this object's shape, so a later field can fail
+        after earlier ones have been read. Writing as each field was read
+        left the user with a half-changed config and an error, which is
+        worse than the error alone.
+        """
+        handler = self._handler()
+        handler._store_trading_strategy = MagicMock()
+        handler._store_allowed_tools = MagicMock()
+        handler._set_chatui_param = MagicMock()
+        # Valid strategy first, then a bet size that raises when scaled.
+        handler.get_units_and_decimals = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "trading_strategy": "kelly_criterion",
+                            "fixed_bet_size": 5,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_trading_strategy.assert_not_called()
+        handler._set_chatui_param.assert_not_called()
+
+    def test_the_behaviour_text_waits_for_the_other_writes(self) -> None:
+        """The behaviour text is part of the same whole-or-nothing update.
+
+        Applied where it is read, it lands before the amounts it was meant to
+        go with, so a write that fails leaves the agent told to behave one way
+        about sizes it never took.
+        """
+        handler = self._handler()
+        handler._set_chatui_param = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "behavior": "Trade conservatively.",
+                            "fixed_bet_size": 0.05,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler.shared_state.update_agent_behavior.assert_not_called()
+
+    def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
+        self,
+    ) -> None:
+        """This one would pass silently rather than raise.
+
+        The removal check is a membership test, and a bare string satisfies
+        it by substring, so ``removed_config_fields: "allowed_tools"`` reads
+        as a request to clear the tools. Nothing raises, so a guard around
+        the update cannot see it; only checking the type can.
+        """
+        handler = self._handler()
+        handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {"updated_agent_config": {"removed_config_fields": "allowed_tools"}}
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_allowed_tools.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param({"message": "done"}, id="no config at all"),
+            pytest.param(
+                {"message": "done", "updated_agent_config": {}}, id="empty config"
+            ),
+            pytest.param(
+                {
+                    "updated_agent_config": {
+                        "trading_strategy": "balanced",
+                        "allowed_tools": [],
+                        "removed_config_fields": [],
+                    }
+                },
+                id="right types throughout",
+            ),
+        ],
+    )
+    def test_a_reply_of_the_right_shape_is_not_turned_away(self, reply: Any) -> None:
+        """A field being absent is fine; the update defaults each one."""
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+
+    def test_an_llm_error_reply_still_takes_the_error_path(self) -> None:
+        """A reported error is not the same as an unreadable one."""
+        handler = self._handler()
+        payload = json.dumps({"error": "No GENAI_API_KEY set."})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._handle_chatui_llm_error.assert_called_once()
+        handler._send_internal_server_error_response.assert_not_called()

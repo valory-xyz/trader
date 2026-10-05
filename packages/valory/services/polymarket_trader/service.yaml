@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeiaznclex6d2mrx5m32bjjadl2egrvgblqnpausi2ghs66clegvsci
+agent: valory/trader:0.1.0:bafybeif4puuoqtndmkhlugfbiybpwoou42n7svrwob6nuparlxhgucwd2i
 number_of_agents: 1
 deployment:
   agent:
@@ -161,6 +161,12 @@ models:
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+      mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000}
+      mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000}
+      mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:3200000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x5C50ebc17d002A4484585C8fbf62f51953493c0B}
@@ -395,6 +401,11 @@ config:
   genai_api_key: ${GENAI_API_KEY:str:""}
   genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/polygon/v1beta}
   use_x402: ${USE_X402:bool:false}
+  use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+  mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_chain: ${MECH_CHAIN_ID:str:polygon}
+  mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill

@@ -15,8 +15,8 @@ connections:
 - valory/ledger:0.19.0:bafybeicynh5l5f5f5jpx72qwzis7jvmxk5p4eqltk32uxbj2pgu2x4rqz4
 - valory/p2p_libp2p_client:0.1.0:bafybeielj3jso3wvrarp5n5rq7llpw4vgxybqiyensgjalb5ubfiawwhhu
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
-- valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
-- valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
+- valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
+- valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
 - valory/polymarket_client:0.1.0:bafybeihm4rw5frtbbocbabsue64j5h3mzhdxnitgcitphx2cn5t5orpfaq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
@@ -70,14 +70,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibp7f2izjstk54467gl2jzldwtxjah4c3ytf66222x2sxcsj4fcu4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicnum3kp5j5gy3e4cbkgrqkcurrqpvniplodud6b6n6vtxqm5g7wq
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeid45ubqrsflrsluezu4ss4vz2juaddekiiwe76gitwxta5bcy5xce
-- valory/trader_abci:0.1.0:bafybeidraofoutp6dqmdqix44icjpam7qv3tinkh6mz4twelpl4ptw3eiu
+- valory/decision_maker_abci:0.1.0:bafybeihp3yc325rqiec3wezbz7cfjsk76ixv5edto5vvvmsh6ur3x3cspi
+- valory/trader_abci:0.1.0:bafybeiaq5l52hjct6puhwxarcyqjcne3cnewfsmahh65ktxymhuttemdeu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeibuilsrxnhjagmbgbevda6zrbzf4ywdfj77ulq33vdgby3df54dua
-- valory/mech_interact_abci:0.1.0:bafybeifhlr7bzgo7s465ie3icfj3wibsujf4tisf4wfwbhvvz6g4fnu6ka
-- valory/chatui_abci:0.1.0:bafybeiag4wvz63q45pykgjlcooybfcga4qkxp47xxs745iqr6v4gxu536e
+- valory/check_stop_trading_abci:0.1.0:bafybeicmjsb3ltoxf5vw2e5hmqxw2l2ntnuap7wscgwpqtqevc3b5pasw4
+- valory/mech_interact_abci:0.1.0:bafybeib76vouxqxbx77dn2yd2u7u7czdn2xnfi674qn32yfxoat4vmwiwu
+- valory/chatui_abci:0.1.0:bafybeiefxlwl4wkhk55eh4l54k34c62axutmgi4svkclwr6pdqbag6vewa
 - valory/agent_performance_summary_abci:0.1.0:bafybeieizys2lgcjbmccqwhpaunv2zpkaez4htcatuggy6vv6333fhxouq
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
@@ -280,6 +280,12 @@ models:
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+      mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000000000000000}
+      mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000000000000000}
+      mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000000000000000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
@@ -559,6 +565,11 @@ config:
   genai_api_key: ${GENAI_API_KEY:str:""}
   genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
   use_x402: ${USE_X402:bool:false}
+  use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+  mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_chain: ${MECH_CHAIN_ID:str:gnosis}
+  mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000000000000000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill
