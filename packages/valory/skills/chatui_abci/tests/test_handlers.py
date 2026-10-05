@@ -35,6 +35,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     HttpHandler,
     LLM_MESSAGE_FIELD,
+    MECH_DEPOSIT_REQUIRED_CODE,
     PREVIOUS_TRADING_TYPE_FIELD,
     SELECTED_MECHS_FIELD,
     SrrHandler,
@@ -2289,3 +2290,226 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
 
         handler._handle_chatui_llm_error.assert_called_once()
         handler._send_internal_server_error_response.assert_not_called()
+
+
+# The reply logged in #1050: every field the model had no reason to change,
+# set to null as the prompt asks.
+_ALL_FIELDS_UNCHANGED: Dict[str, Any] = {
+    "trading_strategy": None,
+    "allowed_tools": None,
+    "selected_mechs": None,
+    "fixed_bet_size": None,
+    "max_bet_size": None,
+    "removed_config_fields": [],
+    "behavior": None,
+}
+_NULLABLE_CONFIG_FIELDS = [
+    *HttpHandler._LLM_CONFIG_FIELD_TYPES,
+    *HttpHandler._LLM_CONFIG_NUMERIC_FIELDS,
+]
+
+
+def _llm_payload(reply: Dict[str, Any]) -> MagicMock:
+    """Wrap a model reply the way the genai connection delivers it."""
+    message = MagicMock()
+    message.payload = json.dumps({"response": json.dumps(reply)})
+    return message
+
+
+def _make_reply_handler(**handler_kwargs: Any) -> Any:
+    """Return a handler whose HTTP answers can be inspected."""
+    handler = _make_handler(**handler_kwargs)
+    handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
+    handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+    handler._send_http_response = MagicMock()  # type: ignore[method-assign]
+    return handler
+
+
+class TestANullFieldMeansLeaveItUnchanged:
+    """The prompt tells the model to set every field it is not changing to null."""
+
+    def test_a_reply_changing_nothing_is_answered_with_its_message(self) -> None:
+        """All fields null is the normal answer to a question, not a bad reply."""
+        handler = _make_reply_handler()
+        reply = {"updated_agent_config": _ALL_FIELDS_UNCHANGED, "message": "Hello"}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload(reply), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        body = handler._send_ok_response.call_args[0][2]
+        assert body[LLM_MESSAGE_FIELD] == "Hello"
+        handler._store_trading_strategy.assert_not_called()
+        handler._store_allowed_tools.assert_not_called()
+        handler._store_selected_mechs.assert_not_called()
+
+    def test_the_one_field_that_is_set_is_applied(self) -> None:
+        """Nulls around a real change must not stop the change."""
+        handler = _make_reply_handler()
+        strategy = next(iter(AVAILABLE_TRADING_STRATEGIES))
+        config = {**_ALL_FIELDS_UNCHANGED, "trading_strategy": strategy}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._store_trading_strategy.assert_called_once_with(strategy)
+
+    @pytest.mark.parametrize("field", _NULLABLE_CONFIG_FIELDS)
+    def test_each_field_may_be_null(self, field: str) -> None:
+        """No single field turns the reply unreadable by being null."""
+        handler = _make_reply_handler()
+        strategy = next(iter(AVAILABLE_TRADING_STRATEGIES))
+        config = {"trading_strategy": strategy, field: None}
+        expects_a_change = field != "trading_strategy"
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+        assert handler._store_trading_strategy.called is expects_a_change
+
+    @pytest.mark.parametrize(
+        "wrong",
+        [
+            pytest.param({"trading_strategy": ["balanced"]}, id="strategy as a list"),
+            pytest.param({"allowed_tools": "one-tool"}, id="tools as a string"),
+            pytest.param(
+                {"removed_config_fields": "allowed_tools"}, id="removals as a string"
+            ),
+            pytest.param({"fixed_bet_size": "5"}, id="bet size as a string"),
+            pytest.param({"max_bet_size": True}, id="bet size as a bool"),
+            pytest.param({"max_bet_size": False}, id="bet size as a falsy bool"),
+            pytest.param({"allowed_tools": ""}, id="tools as an empty string"),
+            pytest.param({"trading_strategy": []}, id="strategy as an empty list"),
+            pytest.param({"removed_config_fields": ""}, id="removals as empty string"),
+        ],
+    )
+    def test_a_wrong_type_among_nulls_is_still_refused(self, wrong: Any) -> None:
+        """Accepting null must not loosen what a set value has to be."""
+        handler = _make_reply_handler()
+        config = {**_ALL_FIELDS_UNCHANGED, **wrong}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+        handler._store_trading_strategy.assert_not_called()
+
+    def test_null_removals_do_not_clear_a_setting(self) -> None:
+        """A null removal list removes nothing, the same as an empty one."""
+        handler = _make_reply_handler(
+            current_config=ChatuiConfig(allowed_tools=["prediction-online"])
+        )
+
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": None}
+        )
+
+        assert (params, issues) == ({}, [])
+        handler._store_allowed_tools.assert_not_called()
+
+
+class TestAnEmptyMechPreDepositIsExplained:
+    """The user can fix an unfunded agent, so the answer has to say so."""
+
+    @staticmethod
+    def _error_payload(**extra: Any) -> MagicMock:
+        message = MagicMock()
+        message.payload = json.dumps(
+            {"error": "mech pre-deposit required: available 0 < required 10", **extra}
+        )
+        return message
+
+    @pytest.mark.parametrize(
+        "on_polymarket,native_token",
+        [
+            pytest.param(False, "xDAI", id="omen"),
+            pytest.param(True, "POL", id="polymarket"),
+        ],
+    )
+    def test_it_names_the_token_to_add(
+        self, on_polymarket: bool, native_token: str
+    ) -> None:
+        """The agent pays for the top-up in the chain's native token."""
+        handler = _make_reply_handler()
+        handler.context.params.is_running_on_polymarket = on_polymarket
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        args = handler._send_http_response.call_args[0]
+        assert f"Add {native_token} to your agent" in args[2]["error"]
+        assert args[3] == 402
+
+    def test_it_is_not_reported_as_a_server_error(self) -> None:
+        """A 500 reads as "the agent is broken", which topping up cannot fix."""
+        handler = _make_reply_handler()
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._handle_chatui_llm_error.assert_not_called()
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_not_called()
+
+    def test_the_balances_reach_the_agent_log(self) -> None:
+        """They tell an empty deposit from one held up by requests in flight."""
+        handler = _make_reply_handler()
+        context = {"balance": 30, "reserved": 25, "available": 5, "required": 10}
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE, context=context),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        logged = handler.context.logger.warning.call_args[0][0]
+        assert str(context) in logged
+        assert "available 0 < required 10" in logged
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            pytest.param({}, id="no code"),
+            pytest.param({"code": None}, id="null code"),
+            pytest.param({"code": "something_else"}, id="another code"),
+            pytest.param({"code": ""}, id="empty code"),
+        ],
+    )
+    def test_any_other_error_keeps_the_generic_answer(self, extra: Any) -> None:
+        """Only the marketplace's own code selects the funding message."""
+        handler = _make_reply_handler()
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(**extra), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._handle_chatui_llm_error.assert_called_once()
+        handler._send_http_response.assert_not_called()

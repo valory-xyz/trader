@@ -23,6 +23,7 @@ import copy
 import json
 import math
 from functools import partial
+from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
@@ -113,6 +114,7 @@ SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
+MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
 TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
@@ -436,6 +438,11 @@ class HttpHandler(BaseHttpHandler):
             return
 
         if "error" in genai_response:
+            if genai_response.get("code") == MECH_DEPOSIT_REQUIRED_CODE:
+                self._handle_mech_deposit_required(
+                    genai_response, http_msg, http_dialogue
+                )
+                return
             self._handle_chatui_llm_error(
                 genai_response["error"], http_msg, http_dialogue
             )
@@ -527,6 +534,11 @@ class HttpHandler(BaseHttpHandler):
         # field can fail part-way through, and writing as we go left the
         # earlier settings saved while the caller was told the update failed.
         writes: List[Callable[[], None]] = []
+        # A list, not a set: the guard ahead of this refuses a bare string,
+        # on which ``in`` would match by substring.
+        removed_fields: List[str] = (
+            updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD) or []
+        )
 
         updated_trading_strategy: Optional[str] = updated_agent_config.get(
             TRADING_STRATEGY_FIELD, None
@@ -546,8 +558,7 @@ class HttpHandler(BaseHttpHandler):
             ALLOWED_TOOLS_FIELD, None
         )
         allowed_tools_is_removed: bool = (
-            FieldsThatCanBeRemoved.ALLOWED_TOOLS.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.ALLOWED_TOOLS.value in removed_fields
         )
 
         if allowed_tools_is_removed:
@@ -577,8 +588,7 @@ class HttpHandler(BaseHttpHandler):
             SELECTED_MECHS_FIELD, None
         )
         selected_mechs_is_removed: bool = (
-            FieldsThatCanBeRemoved.SELECTED_MECHS.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.SELECTED_MECHS.value in removed_fields
         )
 
         if selected_mechs_is_removed:
@@ -618,8 +628,7 @@ class HttpHandler(BaseHttpHandler):
             "fixed_bet_size", None
         )
         fixed_bet_size_is_removed: bool = (
-            FieldsThatCanBeRemoved.FIXED_BET_SIZE.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.FIXED_BET_SIZE.value in removed_fields
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
@@ -650,8 +659,7 @@ class HttpHandler(BaseHttpHandler):
             "max_bet_size", None
         )
         max_bet_size_is_removed: bool = (
-            FieldsThatCanBeRemoved.MAX_BET_SIZE.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.MAX_BET_SIZE.value in removed_fields
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
@@ -710,7 +718,7 @@ class HttpHandler(BaseHttpHandler):
         """Return whether a config update can be read as intended.
 
         :param config: the ``updated_agent_config`` value from the reply.
-        :return: whether every field present is the type the update expects.
+        :return: whether every field set is the type the update expects.
 
         Only the fields whose wrong type would pass silently. Everything
         else that a wrong shape can do raises, and is caught at the call.
@@ -720,13 +728,13 @@ class HttpHandler(BaseHttpHandler):
         if not all(
             isinstance(config[field], expected)
             for field, expected in cls._LLM_CONFIG_FIELD_TYPES.items()
-            if field in config
+            if config.get(field) is not None
         ):
             return False
         return all(
             cls._is_finite_number(config[field])
             for field in cls._LLM_CONFIG_NUMERIC_FIELDS
-            if field in config
+            if config.get(field) is not None
         )
 
     @staticmethod
@@ -798,6 +806,32 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             {"error": "An error occurred while processing the request."},
             content_type=HttpContentType.JSON.header,
+        )
+
+    def _handle_mech_deposit_required(
+        self, genai_response: dict, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Tell the user to fund the agent; it normally tops this deposit up itself."""
+        native_token = "POL" if self.context.params.is_running_on_polymarket else "xDAI"
+        # The balances tell an empty deposit from one that is below what this
+        # call needs, or held up by requests still in flight.
+        self.context.logger.warning(
+            f"Chat request refused for want of a mech pre-deposit: "
+            f"{genai_response.get('error')} (context: {genai_response.get('context')})"
+        )
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            {
+                "error": (
+                    "Chat needs a small prepaid balance that your agent "
+                    f"couldn't fund. Add {native_token} to your agent in Pearl, "
+                    "then try again in a few minutes."
+                )
+            },
+            HTTPStatus.PAYMENT_REQUIRED.value,
+            HTTPStatus.PAYMENT_REQUIRED.phrase,
+            HttpContentType.JSON.header,
         )
 
     def _set_chatui_param(self, param_name: str, value: Any) -> None:
