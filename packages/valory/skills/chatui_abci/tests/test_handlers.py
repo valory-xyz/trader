@@ -2292,8 +2292,8 @@ class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
         handler._send_internal_server_error_response.assert_not_called()
 
 
-# The reply the agent logged while rejecting a plain question on v0.41.0:
-# every field the model had no reason to change, set to null as the prompt asks.
+# The reply logged in #1050: every field the model had no reason to change,
+# set to null as the prompt asks.
 _ALL_FIELDS_UNCHANGED: Dict[str, Any] = {
     "trading_strategy": None,
     "allowed_tools": None,
@@ -2303,7 +2303,10 @@ _ALL_FIELDS_UNCHANGED: Dict[str, Any] = {
     "removed_config_fields": [],
     "behavior": None,
 }
-_NULLABLE_CONFIG_FIELDS = sorted(_ALL_FIELDS_UNCHANGED)
+_NULLABLE_CONFIG_FIELDS = [
+    *HttpHandler._LLM_CONFIG_FIELD_TYPES,
+    *HttpHandler._LLM_CONFIG_NUMERIC_FIELDS,
+]
 
 
 def _llm_payload(reply: Dict[str, Any]) -> MagicMock:
@@ -2386,6 +2389,10 @@ class TestANullFieldMeansLeaveItUnchanged:
             ),
             pytest.param({"fixed_bet_size": "5"}, id="bet size as a string"),
             pytest.param({"max_bet_size": True}, id="bet size as a bool"),
+            pytest.param({"max_bet_size": False}, id="bet size as a falsy bool"),
+            pytest.param({"allowed_tools": ""}, id="tools as an empty string"),
+            pytest.param({"trading_strategy": []}, id="strategy as an empty list"),
+            pytest.param({"removed_config_fields": ""}, id="removals as empty string"),
         ],
     )
     def test_a_wrong_type_among_nulls_is_still_refused(self, wrong: Any) -> None:
@@ -2470,6 +2477,22 @@ class TestAnEmptyMechPreDepositIsExplained:
         handler._send_internal_server_error_response.assert_not_called()
         handler._send_ok_response.assert_not_called()
 
+    def test_the_balances_reach_the_agent_log(self) -> None:
+        """They tell an empty deposit from one held up by requests in flight."""
+        handler = _make_reply_handler()
+        context = {"balance": 30, "reserved": 25, "available": 5, "required": 10}
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE, context=context),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        logged = handler.context.logger.warning.call_args[0][0]
+        assert str(context) in logged
+        assert "available 0 < required 10" in logged
+
     @pytest.mark.parametrize(
         "extra",
         [
@@ -2480,11 +2503,7 @@ class TestAnEmptyMechPreDepositIsExplained:
         ],
     )
     def test_any_other_error_keeps_the_generic_answer(self, extra: Any) -> None:
-        """Only the marketplace's own code selects the funding message.
-
-        The error text alone mentions the pre-deposit here, so matching on
-        wording instead of the code would send these down the 402 path too.
-        """
+        """Only the marketplace's own code selects the funding message."""
         handler = _make_reply_handler()
         handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
 
