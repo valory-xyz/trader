@@ -2631,6 +2631,7 @@ class UpdateAchievementsBehaviour(
             achievements=agent_performance_summary.achievements,
             prediction_history=agent_performance_summary.prediction_history,
             now=self.shared_state.synced_timestamp,
+            logger=self.context.logger,
         )
 
         if achievements_updated:

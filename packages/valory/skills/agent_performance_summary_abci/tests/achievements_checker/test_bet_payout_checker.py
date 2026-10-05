@@ -19,7 +19,8 @@
 
 """This module contains tests for the BetPayoutChecker class."""
 
-from typing import Optional
+from typing import Any, Optional
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -30,6 +31,14 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     Achievements,
     PredictionHistory,
 )
+
+_QUALIFYING_BET = {
+    "id": "bad",
+    "bet_amount": 10.0,
+    "total_payout": 30.0,
+    "settled_at": "2024-01-15T12:00:00Z",
+    "status": "won",
+}
 
 
 class TestBetPayoutCheckerInit:
@@ -437,6 +446,31 @@ class TestBetPayoutCheckerUpdateAchievements:
         assert result is expected
         assert bool(achievements.items) is expected
 
+    @pytest.mark.parametrize(
+        "malformed",
+        [
+            {**_QUALIFYING_BET, "total_payout": None},
+            {**_QUALIFYING_BET, "bet_amount": None},
+            {**_QUALIFYING_BET, "settled_at": "15/01/2024"},
+            {k: v for k, v in _QUALIFYING_BET.items() if k != "id"},
+            "not a bet",
+        ],
+    )
+    def test_malformed_bet_is_logged_and_skipped(self, malformed: Any) -> None:
+        """A malformed item is skipped with a warning; later bets still qualify."""
+        logger = MagicMock()
+        achievements = Achievements()
+        result = self._make_checker().update_achievements(
+            achievements,
+            prediction_history=PredictionHistory(
+                items=[malformed, self._make_bet(bet_id="good")]
+            ),
+            logger=logger,
+        )
+        assert result is True
+        assert [a.data["id"] for a in achievements.items.values()] == ["good"]
+        logger.warning.assert_called_once()
+
 
 class TestBetPayoutCheckerSkipSettledBeforeEnabled:
     """Tests for the opt-in backlog guard (``eligible_since`` watermark)."""
@@ -545,3 +579,59 @@ class TestBetPayoutCheckerSkipSettledBeforeEnabled:
         assert result is True
         assert achievements.eligible_since is None
         assert len(achievements.items) == 1
+
+    def test_first_run_logs_watermark(self) -> None:
+        """Stamping the watermark is logged with its value."""
+        logger = MagicMock()
+        self._make_checker().update_achievements(
+            Achievements(),
+            prediction_history=PredictionHistory(),
+            now=self.WATERMARK,
+            logger=logger,
+        )
+        logger.info.assert_called_once()
+        assert f"eligible_since={self.WATERMARK}" in logger.info.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        ("overrides", "reason"),
+        [
+            ({"settled_at": "2024-01-15T11:59:59Z"}, "eligible_since="),
+            ({"has_remaining_shares": False}, "has_remaining_shares=False"),
+            ({"has_remaining_shares": None}, "has_remaining_shares=None"),
+        ],
+    )
+    def test_skipped_qualifying_win_is_logged(
+        self, overrides: dict, reason: str
+    ) -> None:
+        """A WON bet above the threshold that is skipped logs its id and reason."""
+        logger = MagicMock()
+        bet = {**self._won_bet("skipped", "2024-01-16T00:00:00Z"), **overrides}
+        result = self._make_checker().update_achievements(
+            Achievements(eligible_since=self.WATERMARK),
+            prediction_history=PredictionHistory(items=[bet]),
+            logger=logger,
+        )
+        assert result is False
+        logger.info.assert_called_once()
+        message = logger.info.call_args[0][0]
+        assert "skipped" in message
+        assert reason in message
+
+    def test_non_qualifying_and_recorded_bets_are_not_logged(self) -> None:
+        """Bets below the threshold or already recorded produce no skip log."""
+        logger = MagicMock()
+        checker = self._make_checker()
+        achievements = Achievements(eligible_since=self.WATERMARK)
+        recorded = self._won_bet("recorded", "2024-01-16T00:00:00Z")
+        checker.update_achievements(
+            achievements, prediction_history=PredictionHistory(items=[recorded])
+        )
+        low_roi = {**recorded, "id": "low", "total_payout": 15.0}
+        result = checker.update_achievements(
+            achievements,
+            prediction_history=PredictionHistory(items=[recorded, low_roi]),
+            logger=logger,
+        )
+        assert result is False
+        logger.info.assert_not_called()
+        logger.warning.assert_not_called()

@@ -6157,6 +6157,33 @@ class TestUpdateAchievementsAsyncAct:
             self._run_gen(b.async_act())
         kwargs = b._bet_payout_checker.update_achievements.call_args.kwargs  # type: ignore[attr-defined]
         assert kwargs["now"] == 1790000000
+        assert kwargs["logger"] is ctx.logger
+
+    def test_first_enabled_run_persists_watermark_only(self) -> None:
+        """With history but no qualifying bets, the watermark alone is saved."""
+        b = _make_update_behaviour()
+        ctx, params, synced_data, state = _mock_context(synced_timestamp=1790000000)
+        summary = _default_summary()
+        summary.achievements = None
+        summary.prediction_history = PredictionHistory(  # type: ignore[attr-defined]
+            items=[{"id": "lost", "status": "lost", "bet_amount": 1.0}]
+        )
+        state.read_existing_performance_summary.return_value = summary
+        b._bet_payout_checker = BetPayoutChecker(
+            achievement_type="omenstrat/payout",
+            skip_settled_before_enabled=True,
+            require_remaining_shares=True,
+        )
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "finish_behaviour", side_effect=_noop_gen),
+        ):
+            self._run_gen(b.async_act())
+        state.overwrite_performance_summary.assert_called_once_with(summary)
+        saved = state.overwrite_performance_summary.call_args[0][0]
+        assert saved.achievements.eligible_since == 1790000000
+        assert saved.achievements.items == {}
 
     def test_achievements_not_updated(self) -> None:
         """A degraded read must not write a fresh summary over persisted data."""
