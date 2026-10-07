@@ -115,8 +115,7 @@ REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
 MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
-# Agent-wide shared-state key the funding check sets when the EOA cannot pay
-# for the pre-deposit. Only then is the user asked to add funds.
+# Set by trader_abci's funding check.
 MECH_PRE_DEPOSIT_EOA_SHORT = "mech_pre_deposit_eoa_short"
 TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
@@ -814,12 +813,7 @@ class HttpHandler(BaseHttpHandler):
     def _handle_mech_deposit_required(
         self, genai_response: dict, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Explain an unfunded deposit; the agent normally tops it up itself.
-
-        The user is asked for funds only when the funding check found the
-        EOA short. Otherwise the top-up is on its way (or was refused by the
-        chain for a moment) and asking for money would be wrong.
-        """
+        """Explain an unfunded deposit; ask for funds only when the EOA is known short."""
         native_token = "POL" if self.context.params.is_running_on_polymarket else "xDAI"
         # The balances tell an empty deposit from one that is below what this
         # call needs, or held up by requests still in flight.
