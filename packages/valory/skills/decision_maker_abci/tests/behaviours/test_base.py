@@ -37,6 +37,9 @@ from hypothesis import strategies as st
 
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    read_trades,
+)
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
 )
@@ -1021,6 +1024,61 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                     behaviour.update_bet_transaction_information()
 
         behaviour.context.logger.error.assert_called()  # type: ignore[method-assign]
+
+    def _apply_trade_bookkeeping(
+        self, store_path: Path, benchmarking: bool, sell: bool = False
+    ) -> None:
+        """Run the bet or sell bookkeeping against a store at ``store_path``."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = store_path
+        behaviour.benchmarking_mode.enabled = benchmarking
+        mock_bet = MagicMock()
+        mock_bet.update_investments.return_value = True
+        mock_bet.id = "test_bet"
+
+        db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
+        behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
+        mock_timestamp = MagicMock()
+        mock_timestamp.timestamp.return_value = 1700000000.0
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
+
+        with (
+            mock.patch.object(
+                type(behaviour),
+                "sampled_bet",
+                new_callable=PropertyMock,
+                return_value=mock_bet,
+            ),
+            mock.patch.object(behaviour, "store_bets"),
+            mock.patch.object(behaviour, "_update_bet_strategy"),
+        ):
+            if sell:
+                behaviour.update_sell_transaction_information()
+            else:
+                behaviour.update_bet_transaction_information()
+
+    def test_update_bet_transaction_information_records_one_trade(
+        self, tmp_path: Path
+    ) -> None:
+        """A placed bet adds exactly one timestamped entry to the trades ledger."""
+        self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
+
+        assert read_trades(tmp_path) == [
+            {"timestamp": 1700000000, "bet_id": "test_bet"}
+        ]
+
+    @pytest.mark.parametrize(
+        "benchmarking, sell",
+        [(True, False), (False, True)],
+        ids=["benchmarking_bet", "sell"],
+    )
+    def test_trade_bookkeeping_records_nothing(
+        self, tmp_path: Path, benchmarking: bool, sell: bool
+    ) -> None:
+        """Benchmarking placements and sells never count as trades."""
+        self._apply_trade_bookkeeping(tmp_path, benchmarking=benchmarking, sell=sell)
+
+        assert read_trades(tmp_path) == []
 
     def test_update_sell_transaction_information(self) -> None:
         """Test `update_sell_transaction_information` method."""  # type: ignore[misc]

@@ -46,6 +46,9 @@ from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ipfs import IpfsMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    record_trade,
+)
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
@@ -447,6 +450,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
         # Update strategy for the bet that was just placed
         self._update_bet_strategy(sampled_bet)
+
+        if not self.benchmarking_mode.enabled:
+            record_trade(self.params.store_path, self.synced_timestamp, sampled_bet.id)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
