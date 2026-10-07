@@ -452,7 +452,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._update_bet_strategy(sampled_bet)
 
         if not self.benchmarking_mode.enabled:
-            record_trade(self.params.store_path, self.synced_timestamp, sampled_bet.id)
+            # The bet has already landed on-chain, so a ledger failure must not
+            # stop it from being persisted below; it only under-counts the goal.
+            try:
+                record_trade(
+                    self.params.store_path, self.synced_timestamp, sampled_bet.id
+                )
+            except OSError as e:
+                self.context.logger.error(
+                    f"Could not record trade for bet {sampled_bet.id}: {e}"
+                )
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service

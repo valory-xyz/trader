@@ -679,6 +679,7 @@ class TestActivityGoalStore:
 
         assert state._chatui_config is not None
         assert state._chatui_config.activity_goal is None
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

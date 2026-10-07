@@ -12,7 +12,7 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih4hqutxbtqml3dqbs3qivms5atletbpsqsiigzgzmoashwx6c3g4
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeihslzeokpjit25kglgmn44qytgqir5ueogdbbsxo2prswyheklmzm
+  behaviours/base.py: bafybeic6jekfwrlgex5avkxpoqlhttmbq3bfrmpytabehnm4zdo2rytdlu
   behaviours/bet_placement.py: bafybeiaq357hi3tw3di3tdygv2vudlhmeghdrohbok7zshv2zfn3pluuxu
   behaviours/blacklisting.py: bafybeiauemrfiut7bwc2tjwujvdxqb72vhdrhffqg4shrpdngzntdnu72m
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
@@ -87,7 +87,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
-  tests/behaviours/test_base.py: bafybeih43ty2a4vj4jfzyprw53f352kjx7u6nowri4jxv4y6ucbqqmqs6e
+  tests/behaviours/test_base.py: bafybeig57utemp5m3n425qpxsw5sg5zcmoi6qjiqfzrtleihhckc75j33m
   tests/behaviours/test_bet_placement.py: bafybeifum6ilmcohsdci2z447kr7jnlw2hhicjdpxg5y2pr7gwul4rogy4
   tests/behaviours/test_blacklisting.py: bafybeiaonnticght7qtabdwpieax4b7i6wyrl6u4xb3misvqiynpaf67ku
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
@@ -182,7 +182,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeib76vouxqxbx77dn2yd2u7u7czdn2xnfi674qn32yfxoat4vmwiwu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeicqiuqi3s3zqfyxhprwnkqbuq33bmxzkklvd34m3nyhfap7pntlyq
-- valory/chatui_abci:0.1.0:bafybeih5fbiiufmq3zbhqxcpiaitx7vzgx7ejektddtr4zr73msvzvmlje
+- valory/chatui_abci:0.1.0:bafybeic6nwbvgzk5mx3ce5mzjlvzqduxq2qhqitsqvoyk4w4t63fezpnyi
 behaviours:
   main:
     args: {}

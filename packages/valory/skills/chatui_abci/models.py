@@ -217,6 +217,10 @@ class SharedState(BaseSharedState):
             self._chatui_config.initial_trading_strategy = trading_strategy_yaml
 
         if not is_valid_activity_goal(self._chatui_config.activity_goal):
+            self.context.logger.warning(
+                f"invalid activity_goal {self._chatui_config.activity_goal!r} "
+                "on disk; resetting to the default"
+            )
             self._chatui_config.activity_goal = None
 
         if self._chatui_config.withdrawal_state not in WITHDRAWAL_STATES:

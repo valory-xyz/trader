@@ -1027,8 +1027,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
     def _apply_trade_bookkeeping(
         self, store_path: Path, benchmarking: bool, sell: bool = False
-    ) -> None:
-        """Run the bet or sell bookkeeping against a store at ``store_path``."""
+    ) -> MagicMock:
+        """Run the bet or sell bookkeeping against a store at ``store_path``.
+
+        :param store_path: the store directory the ledger is written to.
+        :param benchmarking: whether benchmarking mode is enabled.
+        :param sell: run the sell bookkeeping instead of the bet one.
+        :return: the patched ``store_bets``.
+        """
         behaviour = self.behaviour
         behaviour.params.store_path = store_path
         behaviour.benchmarking_mode.enabled = benchmarking
@@ -1049,13 +1055,14 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 new_callable=PropertyMock,
                 return_value=mock_bet,
             ),
-            mock.patch.object(behaviour, "store_bets"),
+            mock.patch.object(behaviour, "store_bets") as store_bets,
             mock.patch.object(behaviour, "_update_bet_strategy"),
         ):
             if sell:
                 behaviour.update_sell_transaction_information()
             else:
                 behaviour.update_bet_transaction_information()
+        return store_bets
 
     def test_update_bet_transaction_information_records_one_trade(
         self, tmp_path: Path
@@ -1066,6 +1073,16 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert read_trades(tmp_path) == [
             {"timestamp": 1700000000, "bet_id": "test_bet"}
         ]
+
+    def test_ledger_write_failure_still_stores_bets(self, tmp_path: Path) -> None:
+        """A failed ledger write is logged and the placed bet is still persisted."""
+        missing_store = tmp_path / "missing"
+        store_bets = self._apply_trade_bookkeeping(missing_store, benchmarking=False)
+
+        store_bets.assert_called_once()
+        logged = [c.args[0] for c in self.behaviour.context.logger.error.call_args_list]  # type: ignore[attr-defined]
+        assert any("Could not record trade for bet test_bet" in m for m in logged)
+        assert not missing_store.exists()
 
     @pytest.mark.parametrize(
         "benchmarking, sell",
