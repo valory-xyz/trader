@@ -33,6 +33,7 @@ from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BasePara
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
+    ActivityGoal,
     Achievements,
     AgentDetails,
     AgentPerformanceData,
@@ -57,6 +58,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState,
     Subgraph,
     TradesSubgraph,
+    read_activity_goal,
+    write_json_atomically,
 )
 
 
@@ -1284,6 +1287,155 @@ class TestSharedState:
             data = json.load(f)
         assert data["agent_performance"]["metrics"] is not None
         assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 75.0
+
+
+ACTIVITY_GOAL_BLOCK: Dict[str, Any] = {
+    "unit": "trades",
+    "target": 8,
+    "progress": 3,
+    "is_met": False,
+    "period_start": 1_791_331_200,
+    "last_met_at": None,
+    "updated_at": 1_791_363_317,
+}
+
+
+class TestActivityGoalPersistence:
+    """The ``activity_goal`` block must survive every summary writer."""
+
+    @staticmethod
+    def _make_state(store_path: Path) -> _TestableSharedState:
+        """Create a shared state storing under ``store_path``."""
+        state = object.__new__(_TestableSharedState)
+        state.context = MagicMock()  # type: ignore[assignment]
+        state.context.params.store_path = store_path  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1_791_400_000.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+        return state
+
+    @staticmethod
+    def _seed(store_path: Path, data: Any) -> Path:
+        """Write ``data`` as the summary file and return its path."""
+        file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(data, f)
+        return file_path
+
+    def test_summary_round_trips_activity_goal(self, tmp_path: Path) -> None:
+        """A file holding the block reads back without degrading the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {"agent_behavior": "observing", "activity_goal": ACTIVITY_GOAL_BLOCK},
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.agent_behavior == "observing"
+        assert summary.activity_goal == ActivityGoal(**ACTIVITY_GOAL_BLOCK)
+        assert asdict(summary)["activity_goal"] == ACTIVITY_GOAL_BLOCK
+
+    @pytest.mark.parametrize(
+        "update",
+        [
+            lambda state: state.update_agent_behavior("active"),
+            lambda state: state.update_funds_locked_in_markets(1.5),
+        ],
+        ids=["update_agent_behavior", "update_funds_locked_in_markets"],
+    )
+    def test_whole_summary_writers_keep_block_and_siblings(
+        self, tmp_path: Path, update: Any
+    ) -> None:
+        """Read-modify-write updates keep the block and every sibling field."""
+        state = self._make_state(tmp_path)
+        file_path = self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        update(state)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["activity_goal"] == ACTIVITY_GOAL_BLOCK
+        assert data["agent_details"]["id"] == "agent-x"
+
+    def test_read_activity_goal_from_disk_ignores_corrupt_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        """A sibling that fails validation does not hide the block."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "offchain_deposits": {"total_deposited_wei": -1},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        assert state.read_existing_performance_summary().activity_goal is None
+        assert state.read_activity_goal_from_disk() == ActivityGoal(
+            **ACTIVITY_GOAL_BLOCK
+        )
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            None,
+            "{not json",
+            "[]",
+            json.dumps({"agent_behavior": "observing"}),
+            json.dumps({"activity_goal": "eight"}),
+            json.dumps({"activity_goal": {"target": 8}}),
+        ],
+        ids=[
+            "missing",
+            "corrupt",
+            "not_a_dict",
+            "no_key",
+            "not_a_block",
+            "incomplete_block",
+        ],
+    )
+    def test_read_activity_goal_unavailable(
+        self, tmp_path: Path, content: Any
+    ) -> None:
+        """Anything but a complete block reads as ``None``."""
+        if content is not None:
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
+
+        assert read_activity_goal(tmp_path) is None
+
+    def test_write_json_atomically_leaves_no_temp_file_on_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A failed write removes its temp file and keeps the previous content."""
+        file_path = tmp_path / "data.json"
+        file_path.write_text('{"kept": true}')
+
+        with pytest.raises(TypeError):
+            write_json_atomically(file_path, {"unserialisable": object()})
+
+        assert list(tmp_path.iterdir()) == [file_path]
+        assert json.loads(file_path.read_text()) == {"kept": True}
+
+    def test_write_json_atomically_tolerates_cleanup_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """The original error surfaces even when the temp file cannot be removed."""
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.models.os.unlink",
+                side_effect=OSError("busy"),
+            ),
+            pytest.raises(TypeError),
+        ):
+            write_json_atomically(tmp_path / "data.json", {"bad": object()})
 
 
 class _TestableSubgraph(Subgraph):

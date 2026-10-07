@@ -28,6 +28,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     Achievements,
+    ActivityGoal,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
@@ -59,6 +60,9 @@ def _make_behaviour(
     shared_state.read_existing_performance_summary.return_value = existing_summary
     shared_state.read_achievements_from_disk.return_value = (
         existing_summary.achievements
+    )
+    shared_state.read_activity_goal_from_disk.return_value = (
+        existing_summary.activity_goal
     )
     shared_state.overwrite_performance_summary = MagicMock()
 
@@ -413,6 +417,34 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.achievements is on_disk
+
+    def test_save_preserves_activity_goal_on_degraded_read(self) -> None:
+        """The cycle-end rebuild keeps the block even when a sibling is corrupt."""
+        degraded = AgentPerformanceSummary()
+        behaviour = _make_behaviour(degraded)
+        on_disk = ActivityGoal(
+            unit="trades",
+            target=8,
+            progress=3,
+            is_met=False,
+            period_start=1790000000,
+            updated_at=1790000100,
+        )
+        behaviour.shared_state.read_activity_goal_from_disk.return_value = on_disk
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_good_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.activity_goal is on_disk
 
     def test_save_partial_failure_preserves_failed_sections_only(self) -> None:
         """Mixed case: some sections succeed, others fail (preserve existing)."""

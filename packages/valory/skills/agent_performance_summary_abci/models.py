@@ -263,6 +263,19 @@ class OffchainDepositState:
 
 
 @dataclass
+class ActivityGoal:
+    """Per-epoch activity goal progress, read by Pearl."""
+
+    unit: str
+    target: int
+    progress: int
+    is_met: bool
+    period_start: int
+    updated_at: int
+    last_met_at: Optional[int] = None
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -280,6 +293,7 @@ class AgentPerformanceSummary:
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
     offchain_deposits: Optional[OffchainDepositState] = None
+    activity_goal: Optional[ActivityGoal] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -308,6 +322,82 @@ class AgentPerformanceSummary:
 
         if isinstance(self.offchain_deposits, dict):
             self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
+
+        if isinstance(self.activity_goal, dict):
+            self.activity_goal = ActivityGoal(**self.activity_goal)
+
+
+def write_json_atomically(file_path: Path, data: Any) -> None:
+    """Write JSON so that a crash mid-write never leaves a truncated file.
+
+    :param file_path: the file to (over)write.
+    :param data: the JSON-serialisable content.
+    """
+    # tempfile in the same directory so ``os.replace`` is atomic on
+    # POSIX (both paths on one filesystem).
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=file_path.name + ".", dir=str(file_path.parent)
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, file_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
+    """Return the persisted ``activity_goal`` block, ignoring every sibling field.
+
+    :param store_path: directory containing the performance summary file.
+    :return: the block, or ``None`` if the file or the key is missing or invalid.
+    """
+    try:
+        with open(store_path / AGENT_PERFORMANCE_SUMMARY_FILE, "r") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    sub = raw.get("activity_goal") if isinstance(raw, dict) else None
+    if not isinstance(sub, dict):
+        return None
+
+    try:
+        return ActivityGoal(**sub)
+    except TypeError:
+        return None
+
+
+def write_performance_summary_key(store_path: Path, key: str, value: Any) -> None:
+    """Atomically replace one top-level key of the summary file, keeping the others.
+
+    The raw JSON is updated rather than a dataclass round-trip, because a
+    summary read degrades to an empty one when any nested field fails
+    validation, and writing that back would wipe every sibling field. A missing
+    or corrupt file is replaced by a minimal one holding just this key.
+
+    :param store_path: directory containing the performance summary file.
+    :param key: the top-level key to replace.
+    :param value: the JSON-serialisable value to store under ``key``.
+    """
+    file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+    try:
+        with open(file_path, "r") as f:
+            raw = json.load(f)
+        if not isinstance(raw, dict):
+            raw = {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        raw = {}
+
+    raw[key] = value
+    write_json_atomically(file_path, raw)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
@@ -511,6 +601,16 @@ class SharedState(BaseSharedState):
             )
             return None
 
+    def read_activity_goal_from_disk(self) -> Optional[ActivityGoal]:
+        """Return the persisted ``activity_goal`` block with lenient parsing.
+
+        Sibling-agnostic like ``read_achievements_from_disk``, so a corrupt
+        sibling field cannot drop the block on the cycle-end save.
+
+        :return: the persisted ``ActivityGoal``, or ``None`` if unavailable.
+        """
+        return read_activity_goal(self.params.store_path)
+
     def write_offchain_deposits_to_disk(self, state: "OffchainDepositState") -> None:
         """Atomic-write ``offchain_deposits`` to disk, preserving sibling fields.
 
@@ -537,35 +637,9 @@ class SharedState(BaseSharedState):
 
         :param state: the ``OffchainDepositState`` to persist.
         """
-        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
-
-        try:
-            with open(file_path, "r") as f:
-                raw = json.load(f)
-            if not isinstance(raw, dict):
-                raw = {}
-        except (FileNotFoundError, json.JSONDecodeError):
-            raw = {}
-
-        raw["offchain_deposits"] = asdict(state)
-
-        # tempfile in the same directory so ``os.replace`` is atomic on
-        # POSIX (both paths on one filesystem).
-        fd, tmp_path = tempfile.mkstemp(
-            prefix=file_path.name + ".", dir=str(file_path.parent)
+        write_performance_summary_key(
+            self.params.store_path, "offchain_deposits", asdict(state)
         )
-        try:
-            with os.fdopen(fd, "w") as f:
-                json.dump(raw, f, indent=4)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path, file_path)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
 
     def overwrite_performance_summary(self, summary: AgentPerformanceSummary) -> None:
         """Write the agent performance summary to a file atomically.
@@ -580,26 +654,9 @@ class SharedState(BaseSharedState):
         :param summary: fully-populated summary to overwrite the persisted
             copy with.
         """
-        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
-
-        # tempfile in the same directory so ``os.replace`` is atomic on
-        # POSIX (both paths on one filesystem).
-        fd, tmp_path = tempfile.mkstemp(
-            prefix=file_path.name + ".", dir=str(file_path.parent)
+        write_json_atomically(
+            self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE, asdict(summary)
         )
-        try:
-            with os.fdopen(fd, "w") as f:
-                json.dump(asdict(summary), f, indent=4)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path, file_path)
-        except Exception:
-            # Best-effort cleanup of the stale temp file.
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""
