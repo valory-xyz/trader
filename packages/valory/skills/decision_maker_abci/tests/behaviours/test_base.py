@@ -1085,6 +1085,23 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert any("Could not record trade for bet test_bet" in m for m in logged)
         assert not missing_store.exists()
 
+    @pytest.mark.parametrize(
+        "error", [OSError("disk full"), ValueError("bad ledger")], ids=["os", "value"]
+    )
+    def test_ledger_error_still_stores_bets(
+        self, tmp_path: Path, error: Exception
+    ) -> None:
+        """Any ledger read or write error is logged and the bet is still persisted."""
+        with mock.patch(
+            "packages.valory.skills.decision_maker_abci.behaviours.base.record_trade",
+            side_effect=error,
+        ):
+            store_bets = self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
+
+        store_bets.assert_called_once()
+        logged = [c.args[0] for c in self.behaviour.context.logger.error.call_args_list]  # type: ignore[attr-defined]
+        assert any(str(error) in m for m in logged)
+
     def test_non_utf8_ledger_still_stores_bets(self, tmp_path: Path) -> None:
         """An undecodable ledger is replaced and the placed bet is still persisted."""
         (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(b"\xff\xfe")
