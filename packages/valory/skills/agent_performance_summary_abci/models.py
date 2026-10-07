@@ -361,7 +361,7 @@ def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
     try:
         with open(store_path / AGENT_PERFORMANCE_SUMMARY_FILE, "r") as f:
             raw = json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):
         return None
 
     sub = raw.get("activity_goal") if isinstance(raw, dict) else None
@@ -369,18 +369,47 @@ def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
         return None
 
     try:
-        return ActivityGoal(**sub)
+        goal = ActivityGoal(**sub)
     except TypeError:
         return None
+    return goal if _has_valid_field_types(goal) else None
+
+
+def _is_int(value: Any) -> bool:
+    """Return whether ``value`` is an int and not a bool.
+
+    :param value: the value to check.
+    :return: whether it is a plain int.
+    """
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _has_valid_field_types(goal: ActivityGoal) -> bool:
+    """Return whether every field of a block read from disk has its declared type.
+
+    :param goal: the block to check.
+    :return: whether it is safe to compute with.
+    """
+    return (
+        isinstance(goal.unit, str)
+        and isinstance(goal.is_met, bool)
+        and all(
+            _is_int(value)
+            for value in (
+                goal.target,
+                goal.progress,
+                goal.period_start,
+                goal.updated_at,
+            )
+        )
+        and (goal.last_met_at is None or _is_int(goal.last_met_at))
+    )
 
 
 def write_performance_summary_key(store_path: Path, key: str, value: Any) -> None:
     """Atomically replace one top-level key of the summary file, keeping the others.
 
-    The raw JSON is updated rather than a dataclass round-trip, because a
-    summary read degrades to an empty one when any nested field fails
-    validation, and writing that back would wipe every sibling field. A missing
-    or corrupt file is replaced by a minimal one holding just this key.
+    Edits raw JSON so a degraded typed read cannot wipe sibling keys.
 
     :param store_path: directory containing the performance summary file.
     :param key: the top-level key to replace.
@@ -393,7 +422,7 @@ def write_performance_summary_key(store_path: Path, key: str, value: Any) -> Non
             raw = json.load(f)
         if not isinstance(raw, dict):
             raw = {}
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, ValueError):
         raw = {}
 
     raw[key] = value
@@ -603,9 +632,6 @@ class SharedState(BaseSharedState):
 
     def read_activity_goal_from_disk(self) -> Optional[ActivityGoal]:
         """Return the persisted ``activity_goal`` block with lenient parsing.
-
-        Sibling-agnostic like ``read_achievements_from_disk``, so a corrupt
-        sibling field cannot drop the block on the cycle-end save.
 
         :return: the persisted ``ActivityGoal``, or ``None`` if unavailable.
         """

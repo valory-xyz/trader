@@ -22,7 +22,7 @@
 import json
 from pathlib import Path
 from typing import Any, Optional
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -30,6 +30,7 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
     ACTIVITY_GOAL_TRADES_FILE,
     build_activity_goal,
     count_trades_since,
+    effective_activity_goal,
     is_valid_activity_goal,
     read_trades,
     record_trade,
@@ -79,44 +80,68 @@ class TestIsValidActivityGoal:
         assert not is_valid_activity_goal(value)
 
 
+class TestEffectiveActivityGoal:
+    """Tests for effective_activity_goal."""
+
+    @pytest.mark.parametrize(
+        "stored_goal, expected", [(None, 8), (0, 0), (20, 20)], ids=["unset", "0", "20"]
+    )
+    def test_stored_goal_else_default(
+        self, stored_goal: Optional[int], expected: int
+    ) -> None:
+        """The user's goal wins, including 0; unset falls back to the default."""
+        assert effective_activity_goal(stored_goal, 8) == expected
+
+
 class TestTradesLedger:
     """Tests for the trades ledger."""
 
     def test_append_count_and_prune_across_period_start(self, tmp_path: Path) -> None:
         """Trades before the epoch start are not counted and are pruned."""
-        record_trade(tmp_path, PERIOD_START - 1, "old")
-        record_trade(tmp_path, PERIOD_START, "at_start")
-        record_trade(tmp_path, PERIOD_START + 60, "later")
+        record_trade(tmp_path, PERIOD_START - 1, "old", MagicMock())
+        record_trade(tmp_path, PERIOD_START, "at_start", MagicMock())
+        record_trade(tmp_path, PERIOD_START + 60, "later", MagicMock())
 
-        assert count_trades_since(tmp_path, PERIOD_START) == 2
-        assert read_trades(tmp_path) == [
+        assert count_trades_since(tmp_path, PERIOD_START, MagicMock()) == 2
+        assert read_trades(tmp_path, MagicMock()) == [
             {"timestamp": PERIOD_START, "bet_id": "at_start"},
             {"timestamp": PERIOD_START + 60, "bet_id": "later"},
         ]
 
     def test_count_does_not_rewrite_when_nothing_to_prune(self, tmp_path: Path) -> None:
         """A ledger holding only current trades is left as it is."""
-        record_trade(tmp_path, PERIOD_START, "a")
+        record_trade(tmp_path, PERIOD_START, "a", MagicMock())
         with patch(
             "packages.valory.skills.agent_performance_summary_abci.activity_goal.write_json_atomically"
         ) as write:
-            assert count_trades_since(tmp_path, PERIOD_START) == 1
+            assert count_trades_since(tmp_path, PERIOD_START, MagicMock()) == 1
         write.assert_not_called()
+
+    def test_missing_ledger_reads_as_empty_without_warning(
+        self, tmp_path: Path
+    ) -> None:
+        """No ledger yet is the normal first-run state."""
+        logger = MagicMock()
+
+        assert read_trades(tmp_path, logger) == []
+        assert count_trades_since(tmp_path, 0, logger) == 0
+        logger.warning.assert_not_called()
 
     @pytest.mark.parametrize(
         "content",
-        [None, "{not json", json.dumps({"timestamp": PERIOD_START})],
-        ids=["missing", "corrupt", "not_a_list"],
+        [b"{not json", b"\xff\xfe", json.dumps({"timestamp": PERIOD_START}).encode()],
+        ids=["corrupt", "not_utf8", "not_a_list"],
     )
-    def test_unusable_ledger_reads_as_empty(
-        self, tmp_path: Path, content: Optional[str]
+    def test_unusable_ledger_reads_as_empty_with_warning(
+        self, tmp_path: Path, content: bytes
     ) -> None:
-        """A missing, corrupt or non-list ledger counts no trades."""
-        if content is not None:
-            (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_text(content)
+        """A ledger that exists but cannot be used counts no trades and is reported."""
+        (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(content)
+        logger = MagicMock()
 
-        assert read_trades(tmp_path) == []
-        assert count_trades_since(tmp_path, 0) == 0
+        assert read_trades(tmp_path, logger) == []
+        logger.warning.assert_called_once()
+        assert ACTIVITY_GOAL_TRADES_FILE in logger.warning.call_args.args[0]
 
     def test_entries_without_a_timestamp_are_ignored(self, tmp_path: Path) -> None:
         """Malformed entries are skipped rather than failing the count."""
@@ -132,15 +157,24 @@ class TestTradesLedger:
             )
         )
 
-        assert read_trades(tmp_path) == [{"timestamp": PERIOD_START, "bet_id": "ok"}]
+        assert read_trades(tmp_path, MagicMock()) == [
+            {"timestamp": PERIOD_START, "bet_id": "ok"}
+        ]
 
-    def test_corrupt_ledger_is_replaced_on_next_trade(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        "content", [b"{not json", b"\xff\xfe"], ids=["corrupt", "not_utf8"]
+    )
+    def test_corrupt_ledger_is_replaced_on_next_trade(
+        self, tmp_path: Path, content: bytes
+    ) -> None:
         """Recording a trade over a corrupt ledger starts a fresh one."""
-        (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_text("{not json")
+        (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(content)
 
-        record_trade(tmp_path, PERIOD_START, "a")
+        record_trade(tmp_path, PERIOD_START, "a", MagicMock())
 
-        assert read_trades(tmp_path) == [{"timestamp": PERIOD_START, "bet_id": "a"}]
+        assert read_trades(tmp_path, MagicMock()) == [
+            {"timestamp": PERIOD_START, "bet_id": "a"}
+        ]
 
 
 class TestBuildActivityGoal:
@@ -221,12 +255,16 @@ class TestUpdateActivityGoal:
         }
 
     @pytest.mark.parametrize(
-        "content", [None, "{not json", "[]"], ids=["missing", "corrupt", "list"]
+        "content",
+        [None, b"{not json", b"\xff\xfe", b"[]"],
+        ids=["missing", "corrupt", "not_utf8", "list"],
     )
-    def test_writes_minimal_file(self, tmp_path: Path, content: Optional[str]) -> None:
+    def test_writes_minimal_file(
+        self, tmp_path: Path, content: Optional[bytes]
+    ) -> None:
         """A missing or unusable summary is replaced by one holding the block."""
         if content is not None:
-            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(content)
 
         update_activity_goal(tmp_path, 1, 1, PERIOD_START, PERIOD_START + 5)
 
@@ -243,23 +281,6 @@ class TestUpdateActivityGoal:
         block = _read_summary(tmp_path)["activity_goal"]
         assert block["last_met_at"] == PERIOD_START + 5
         assert block["updated_at"] == PERIOD_START + 9
-
-    def test_leaves_no_temp_file_on_failure(self, tmp_path: Path) -> None:
-        """A failed write keeps the old file and leaves no temp file behind."""
-        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        file_path.write_text('{"agent_behavior": "observing"}')
-
-        with (
-            patch(
-                "packages.valory.skills.agent_performance_summary_abci.models.os.replace",
-                side_effect=OSError("disk full"),
-            ),
-            pytest.raises(OSError),
-        ):
-            update_activity_goal(tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5)
-
-        assert list(tmp_path.iterdir()) == [file_path]
-        assert _read_summary(tmp_path) == {"agent_behavior": "observing"}
 
     def test_retarget_keeps_progress_and_epoch(self, tmp_path: Path) -> None:
         """A goal change reuses the last progress and recomputes ``is_met``."""

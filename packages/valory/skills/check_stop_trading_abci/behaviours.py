@@ -29,13 +29,16 @@ from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
-    ACTIVITY_GOAL_KEY,
     count_trades_since,
+    effective_activity_goal,
     is_valid_activity_goal,
     update_activity_goal,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import ActivityGoal
-from packages.valory.skills.chatui_abci.models import CHATUI_PARAM_STORE
+from packages.valory.skills.chatui_abci.models import (
+    ACTIVITY_GOAL_FIELD,
+    CHATUI_PARAM_STORE,
+)
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.check_stop_trading_abci.payloads import (
     CheckStopTradingPayload,
@@ -210,37 +213,29 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
     def _read_stored_activity_goal(self) -> Optional[int]:
         """Read the user's goal from the chat-UI store.
 
-        Read from the file, like ``CheckStopTradingRound._read_withdrawal_flag``,
-        so this skill does not depend on the composed shared state.
-
         :return: the stored goal, or ``None`` if unset, invalid or unreadable.
         """
         try:
             with open(self.params.store_path / CHATUI_PARAM_STORE, "r") as f:
                 store = json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError):
             return None
-        goal = store.get(ACTIVITY_GOAL_KEY) if isinstance(store, dict) else None
+        goal = store.get(ACTIVITY_GOAL_FIELD) if isinstance(store, dict) else None
         return goal if is_valid_activity_goal(goal) else None
 
-    def _evaluate_activity_goal(self) -> Tuple[ActivityGoal, str]:
+    def _evaluate_activity_goal(self, stored_goal: Optional[int]) -> ActivityGoal:
         """Count this epoch's trades against the effective goal and publish the block.
 
-        :return: the block written and where its target came from.
+        :param stored_goal: the goal the user set, or ``None`` if unset.
+        :return: the block written.
         """
-        stored_goal = self._read_stored_activity_goal()
-        if stored_goal is None:
-            target, source = self.params.default_activity_goal, "default_activity_goal"
-        else:
-            target, source = stored_goal, CHATUI_PARAM_STORE
-
+        target = effective_activity_goal(stored_goal, self.params.default_activity_goal)
         store_path = self.params.store_path
         period_start = self.ts_checkpoint
-        progress = count_trades_since(store_path, period_start)
-        goal = update_activity_goal(
+        progress = count_trades_since(store_path, period_start, self.context.logger)
+        return update_activity_goal(
             store_path, target, progress, period_start, self.synced_timestamp
         )
-        return goal, source
 
     def _compute_stop_trading(self) -> Generator[None, None, StopTradingResult]:
         """Compute the stop-trading decision and the activity signals for the cycle.
@@ -265,19 +260,17 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
             completed,
         ) = yield from self._compute_activity_status()
         self.context.logger.debug(f"{self.params.stop_trading_if_staking_kpi_met=}")
-        # NOTE: post-decoupling this config flag gates on ``activity_target_met``,
-        # not the on-chain staking KPI. The name is retained for config
-        # back-compat, but it now means "stop when the (regime-aware) activity
-        # target and the activity goal are met". See ``StopTradingResult`` for
-        # the distinction.
+        # NOTE: gates on activity_target_met (not the on-chain KPI) and, when
+        # staked, the activity goal. See StopTradingResult.
         stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
 
         # Unstaked services have no epoch to count trades against.
         if self.service_staking_state == StakingState.STAKED:
-            goal, source = self._evaluate_activity_goal()
+            stored_goal = self._read_stored_activity_goal()
+            goal = self._evaluate_activity_goal(stored_goal)
             stop = stop and goal.is_met
             self.context.logger.info(
-                f"Activity goal: target={goal.target} (from {source}, "
+                f"Activity goal: target={goal.target} (user_goal={stored_goal}, "
                 f"default_activity_goal={self.params.default_activity_goal}), "
                 f"progress={goal.progress}, period_start={goal.period_start}, "
                 f"goal_met={goal.is_met}, {activity_target_met=}, stop_trading={stop}"

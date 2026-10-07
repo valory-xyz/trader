@@ -39,6 +39,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
+# The chat store key of the user's activity goal.
+ACTIVITY_GOAL_FIELD = "activity_goal"
 
 FILE_WRITE_MODE = "w"
 FILE_READ_MODE = "r"

@@ -24,7 +24,7 @@ import platform
 import stat
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -60,6 +60,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     TradesSubgraph,
     read_activity_goal,
     write_json_atomically,
+    write_performance_summary_key,
 )
 
 
@@ -1387,27 +1388,76 @@ class TestActivityGoalPersistence:
         "content",
         [
             None,
-            "{not json",
-            "[]",
-            json.dumps({"agent_behavior": "observing"}),
-            json.dumps({"activity_goal": "eight"}),
-            json.dumps({"activity_goal": {"target": 8}}),
+            b"{not json",
+            b"\xff\xfe",
+            b"[]",
+            json.dumps({"agent_behavior": "observing"}).encode(),
+            json.dumps({"activity_goal": "eight"}).encode(),
+            json.dumps({"activity_goal": {"target": 8}}).encode(),
         ],
         ids=[
             "missing",
             "corrupt",
+            "not_utf8",
             "not_a_dict",
             "no_key",
             "not_a_block",
             "incomplete_block",
         ],
     )
-    def test_read_activity_goal_unavailable(self, tmp_path: Path, content: Any) -> None:
+    def test_read_activity_goal_unavailable(
+        self, tmp_path: Path, content: Optional[bytes]
+    ) -> None:
         """Anything but a complete block reads as ``None``."""
         if content is not None:
-            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(content)
 
         assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("unit", 1),
+            ("target", "8"),
+            ("target", True),
+            ("progress", "3"),
+            ("progress", 3.0),
+            ("is_met", 0),
+            ("period_start", None),
+            ("updated_at", "now"),
+            ("last_met_at", "yesterday"),
+            ("last_met_at", False),
+        ],
+    )
+    def test_read_activity_goal_rejects_wrongly_typed_field(
+        self, tmp_path: Path, field: str, value: Any
+    ) -> None:
+        """A block that would fail arithmetic later reads as ``None`` instead."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, field: value}})
+
+        assert read_activity_goal(tmp_path) is None
+
+    def test_read_activity_goal_accepts_last_met_at_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """A met block carries an int ``last_met_at``."""
+        block = {**ACTIVITY_GOAL_BLOCK, "is_met": True, "last_met_at": 1_791_340_000}
+        self._seed(tmp_path, {"activity_goal": block})
+
+        assert read_activity_goal(tmp_path) == ActivityGoal(**block)
+
+    def test_write_performance_summary_key_replaces_non_utf8_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A summary that cannot be decoded is replaced rather than raising."""
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        file_path.write_bytes(b"\xff\xfe")
+
+        write_performance_summary_key(tmp_path, "activity_goal", ACTIVITY_GOAL_BLOCK)
+
+        assert json.loads(file_path.read_text()) == {
+            "activity_goal": ACTIVITY_GOAL_BLOCK
+        }
 
     def test_write_json_atomically_leaves_no_temp_file_on_failure(
         self, tmp_path: Path

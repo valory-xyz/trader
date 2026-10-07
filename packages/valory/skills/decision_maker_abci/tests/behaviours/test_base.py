@@ -41,6 +41,7 @@ from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
 )
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    ACTIVITY_GOAL_TRADES_FILE,
     read_trades,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
@@ -1070,7 +1071,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """A placed bet adds exactly one timestamped entry to the trades ledger."""
         self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
 
-        assert read_trades(tmp_path) == [
+        assert read_trades(tmp_path, MagicMock()) == [
             {"timestamp": 1700000000, "bet_id": "test_bet"}
         ]
 
@@ -1084,6 +1085,17 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert any("Could not record trade for bet test_bet" in m for m in logged)
         assert not missing_store.exists()
 
+    def test_non_utf8_ledger_still_stores_bets(self, tmp_path: Path) -> None:
+        """An undecodable ledger is replaced and the placed bet is still persisted."""
+        (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(b"\xff\xfe")
+
+        store_bets = self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
+
+        store_bets.assert_called_once()
+        assert read_trades(tmp_path, MagicMock()) == [
+            {"timestamp": 1700000000, "bet_id": "test_bet"}
+        ]
+
     @pytest.mark.parametrize(
         "benchmarking, sell",
         [(True, False), (False, True)],
@@ -1095,7 +1107,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Benchmarking placements and sells never count as trades."""
         self._apply_trade_bookkeeping(tmp_path, benchmarking=benchmarking, sell=sell)
 
-        assert read_trades(tmp_path) == []
+        assert read_trades(tmp_path, MagicMock()) == []
 
     def test_update_sell_transaction_information(self) -> None:
         """Test `update_sell_transaction_information` method."""  # type: ignore[misc]

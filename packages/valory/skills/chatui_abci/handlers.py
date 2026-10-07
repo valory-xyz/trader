@@ -59,6 +59,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    effective_activity_goal,
     is_valid_activity_goal,
     retarget_activity_goal,
 )
@@ -73,6 +74,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import (
+    ACTIVITY_GOAL_FIELD,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -116,7 +118,6 @@ TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
 SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
-ACTIVITY_GOAL_FIELD = "activity_goal"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
 MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
@@ -307,10 +308,8 @@ class HttpHandler(BaseHttpHandler):
             absolute_max_bet_size=absolute_max_bet_size / (10**decimals),
             units=units,
             decimals=decimals,
-            current_activity_goal=(
-                default_activity_goal
-                if current_activity_goal is None
-                else current_activity_goal
+            current_activity_goal=effective_activity_goal(
+                current_activity_goal, default_activity_goal
             ),
             activity_goal_source=(
                 "the default" if current_activity_goal is None else "set by the user"
@@ -899,21 +898,25 @@ class HttpHandler(BaseHttpHandler):
         """
         previous = self.shared_state.chatui_config.activity_goal
         self._set_chatui_param(ACTIVITY_GOAL_FIELD, goal)
-
         default_goal = self.context.params.default_activity_goal
-        target = default_goal if goal is None else goal
-        retarget_activity_goal(
-            self.context.params.store_path,
-            target,
-            self.shared_state.synced_timestamp,
-        )
-
-        def describe(value: Optional[int]) -> str:
-            return f"default ({default_goal})" if value is None else str(value)
-
         self.context.logger.info(
-            f"Activity goal changed from {describe(previous)} to {describe(goal)}."
+            f"Activity goal changed from {previous} to {goal} "
+            f"(None is the default, {default_goal})."
         )
+
+        # Runs inside the reply's broad guard after the other writes, so a
+        # failure here must not surface as an unreadable reply. The next
+        # evaluation rebuilds the block anyway.
+        try:
+            retarget_activity_goal(
+                self.context.params.store_path,
+                effective_activity_goal(goal, default_goal),
+                self.shared_state.synced_timestamp,
+            )
+        except OSError as e:
+            self.context.logger.error(
+                f"Could not publish the new activity goal to Pearl: {e}"
+            )
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""

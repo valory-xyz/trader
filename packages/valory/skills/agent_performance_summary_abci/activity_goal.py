@@ -17,14 +17,11 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Per-epoch activity goal: the trades ledger and the block Pearl reads.
-
-Plain functions over ``store_path`` so that every skill touching the goal can
-use them without depending on a particular ``SharedState`` subclass.
-"""
+"""Per-epoch activity goal: the trades ledger and the block Pearl reads."""
 
 import json
 from dataclasses import asdict
+from logging import Logger
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +46,16 @@ def is_valid_activity_goal(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
+def effective_activity_goal(stored_goal: Optional[int], default_goal: int) -> int:
+    """Return the goal in force: the user's, else the default.
+
+    :param stored_goal: the goal the user set, or ``None`` if unset.
+    :param default_goal: the ``default_activity_goal`` param.
+    :return: the effective goal.
+    """
+    return default_goal if stored_goal is None else stored_goal
+
+
 def _is_trade_entry(entry: Any) -> bool:
     """Return whether a ledger entry carries a usable timestamp.
 
@@ -61,49 +68,53 @@ def _is_trade_entry(entry: Any) -> bool:
     return isinstance(timestamp, int) and not isinstance(timestamp, bool)
 
 
-def read_trades(store_path: Path) -> List[Dict[str, Any]]:
+def read_trades(store_path: Path, logger: Logger) -> List[Dict[str, Any]]:
     """Return the ledger of placed trades.
 
     A missing or corrupt ledger reads as empty: under-counting keeps the agent
     trading, which is the safe direction.
 
     :param store_path: directory containing the ledger.
+    :param logger: where to warn about an unusable ledger.
     :return: the ledger entries with a usable timestamp.
     """
+    file_path = store_path / ACTIVITY_GOAL_TRADES_FILE
     try:
-        with open(store_path / ACTIVITY_GOAL_TRADES_FILE, "r") as f:
+        with open(file_path, "r") as f:
             trades = json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError) as e:
+        logger.warning(f"Unusable trades ledger {file_path}, reading it as empty: {e}")
         return []
     if not isinstance(trades, list):
+        logger.warning(f"Trades ledger {file_path} is not a list, reading it as empty.")
         return []
     return [entry for entry in trades if _is_trade_entry(entry)]
 
 
-def record_trade(store_path: Path, timestamp: int, bet_id: str) -> None:
+def record_trade(store_path: Path, timestamp: int, bet_id: str, logger: Logger) -> None:
     """Append one placed trade to the ledger.
 
     :param store_path: directory containing the ledger.
     :param timestamp: when the trade was placed.
     :param bet_id: the id of the bet traded.
+    :param logger: where to warn about an unusable ledger.
     """
-    trades = read_trades(store_path)
+    trades = read_trades(store_path, logger)
     trades.append({"timestamp": timestamp, "bet_id": bet_id})
     write_json_atomically(store_path / ACTIVITY_GOAL_TRADES_FILE, trades)
 
 
-def count_trades_since(store_path: Path, period_start: int) -> int:
+def count_trades_since(store_path: Path, period_start: int, logger: Logger) -> int:
     """Count the trades placed at or after ``period_start``, pruning older ones.
-
-    Counting against the epoch start, rather than resetting a counter when the
-    epoch rolls over, keeps a trade placed between the checkpoint call and the
-    next evaluation in the epoch it belongs to.
 
     :param store_path: directory containing the ledger.
     :param period_start: the start of the current staking epoch.
+    :param logger: where to warn about an unusable ledger.
     :return: the number of trades in the current epoch.
     """
-    trades = read_trades(store_path)
+    trades = read_trades(store_path, logger)
     current = [entry for entry in trades if entry["timestamp"] >= period_start]
     if len(current) != len(trades):
         write_json_atomically(store_path / ACTIVITY_GOAL_TRADES_FILE, current)

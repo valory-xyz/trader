@@ -452,13 +452,15 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._update_bet_strategy(sampled_bet)
 
         if not self.benchmarking_mode.enabled:
-            # The bet has already landed on-chain, so a ledger failure must not
-            # stop it from being persisted below; it only under-counts the goal.
+            # Bet is already on-chain; a ledger failure must not skip store_bets below.
             try:
                 record_trade(
-                    self.params.store_path, self.synced_timestamp, sampled_bet.id
+                    self.params.store_path,
+                    self.synced_timestamp,
+                    sampled_bet.id,
+                    self.context.logger,
                 )
-            except OSError as e:
+            except (OSError, ValueError) as e:
                 self.context.logger.error(
                     f"Could not record trade for bet {sampled_bet.id}: {e}"
                 )

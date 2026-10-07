@@ -586,7 +586,7 @@ class TestActivityGoal:
         assert block.is_met is (3 >= goal)
         assert block.updated_at == GOAL_NOW
         assert self._info_lines(handler) == [
-            f"Activity goal changed from default (8) to {goal}."
+            f"Activity goal changed from None to {goal} (None is the default, 8)."
         ]
 
     @pytest.mark.parametrize("goal", [True, False, 20.0, 2.5, -1, "20", [20]])
@@ -639,8 +639,63 @@ class TestActivityGoal:
         assert block is not None
         assert block.target == 8
         assert self._info_lines(handler) == [
-            "Activity goal changed from 20 to default (8)."
+            "Activity goal changed from 20 to None (None is the default, 8)."
         ]
+
+    def test_publish_failure_keeps_the_reply_applied(self, tmp_path: Path) -> None:
+        """A failed block write is logged; the reply's writes and the goal stand."""
+        handler = self._handler(tmp_path, current_goal=5)
+
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.activity_goal.write_performance_summary_key",
+            side_effect=OSError("disk full"),
+        ):
+            params, issues = handler._process_updated_agent_config(
+                {"activity_goal": 20, "behavior": "A steady strategy."}
+            )
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
+    @pytest.mark.parametrize(
+        "block_content",
+        [
+            b"\xff\xfe",
+            json.dumps(
+                {
+                    "activity_goal": {
+                        "unit": "trades",
+                        "target": 8,
+                        "progress": "3",
+                        "is_met": False,
+                        "period_start": GOAL_PERIOD_START,
+                        "updated_at": GOAL_NOW,
+                        "last_met_at": None,
+                    }
+                }
+            ).encode(),
+        ],
+        ids=["not_utf8", "wrongly_typed_block"],
+    )
+    def test_unusable_published_block_does_not_fail_the_reply(
+        self, tmp_path: Path, block_content: bytes
+    ) -> None:
+        """An unreadable summary leaves the goal stored and is rebuilt later."""
+        handler = self._handler(tmp_path, current_goal=5)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(block_content)
+
+        params, issues = handler._process_updated_agent_config({"activity_goal": 20})
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        assert read_activity_goal(tmp_path) is None
 
     def test_goal_stored_before_any_evaluation(self, tmp_path: Path) -> None:
         """Without a published block the goal is still stored; no block is invented."""
