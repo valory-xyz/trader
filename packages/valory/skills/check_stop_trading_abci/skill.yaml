@@ -8,18 +8,18 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeicssvt4i6baftftxesv3k5ylc33mpinpyexsmvvgm7d2yyl425n5y
-  behaviours.py: bafybeibbmvffdeqgvpcbo55ep7lu6yagrofi2ifuhn5wsm43w6xsr7ujcu
+  behaviours.py: bafybeife74cfx2o6nnryh5l5yvv2mor3dnixpofxut6uhhygvunj2w6mvm
   dialogues.py: bafybeidoayetmxsxmgdncfsmx4wx66nfmkgayxmbd4tenvu2wu2mj7egny
   fsm_specification.yaml: bafybeia36i2fptxs2db5fesccflue4wmpxztbfp2ec5bot5r776cgwrlpe
   handlers.py: bafybeihazdnlbsh4nt7z4ddffmoewa6hyzcmgdyu3jpjiauihqf4p6iz44
-  models.py: bafybeiakdzpbhlavcszjycnss6z6edxhazxvfiwzcph3vguwefscnzpacu
+  models.py: bafybeiciqbznbyoev4jpxmkvjsud5dee7nmlmgjopmgjd4ldvn2rvw3p4a
   payloads.py: bafybeidwdk6dztgb4i4hmfksd7scay2mtdmamve7l73gjusoyryosni6ru
   rounds.py: bafybeid3rd3txa53gmm7ticy5crzupjky7cfyvzgdshbwevrmou2mgadsi
   tests/__init__.py: bafybeihv2cjk4va5bc5ncqtppqg2xmmxcro34bma36trtvk32gtmhdycxu
-  tests/test_behaviours.py: bafybeig2gmsr26444artzkruvt2h4verdn72k2wyftlfu72fw5xmbwqety
+  tests/test_behaviours.py: bafybeihx735uxd4wq4d5hird7jq2ryfaiiiycmxyk3ek7jyg2cnam6enbm
   tests/test_dialogues.py: bafybeia5ac27w7ijx2nyx5dqyrnv4troo4572gjq7nrcxdncexoxucnqti
   tests/test_handlers.py: bafybeifbyuut7gzyblee7l34sw3m4nru7fbrrrdkahjb5son27zfvpus7y
-  tests/test_models.py: bafybeif4hc3osna6pe2f4k7p5gjpp2qn6dji4uzi75b7mek7jg47n4fso4
+  tests/test_models.py: bafybeiah7rgixqhl57juzdoaffr6hiwyhrhbyodu4yz6oawkgzfq3sfgsu
   tests/test_payloads.py: bafybeifz7mqdviymys7ham6ww6b5eayvsuzjuul2jbbgsldpw2m6iso3cu
   tests/test_rounds.py: bafybeibiwes3gzkzjklwxxaln4pszqfpz3mvatyic3xexguln4ojrjr3rm
 fingerprint_ignore_patterns: []
@@ -30,8 +30,8 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeicnego6zgmbv62lhig4fimgvkzgyvdtmqlx6sep5vstczcm3xkbhq
-- valory/chatui_abci:0.1.0:bafybeiamsd5tuz47sdchkvi5qu5yuw4bgnzofkmpjq3qww6exo5yxgrrai
+- valory/agent_performance_summary_abci:0.1.0:bafybeicqiuqi3s3zqfyxhprwnkqbuq33bmxzkklvd34m3nyhfap7pntlyq
+- valory/chatui_abci:0.1.0:bafybeih5fbiiufmq3zbhqxcpiaitx7vzgx7ejektddtr4zr73msvzvmlje
 - valory/mech_interact_abci:0.1.0:bafybeib76vouxqxbx77dn2yd2u7u7czdn2xnfi674qn32yfxoat4vmwiwu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 behaviours:
