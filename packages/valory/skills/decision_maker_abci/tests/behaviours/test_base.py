@@ -37,11 +37,11 @@ from hypothesis import strategies as st
 
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutException
-from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
-    read_trades,
-)
 from packages.valory.skills.abstract_round_abci.test_tools.base import (
     FSMBehaviourBaseCase,
+)
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    read_trades,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,

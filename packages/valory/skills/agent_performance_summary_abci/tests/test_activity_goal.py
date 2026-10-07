@@ -94,9 +94,7 @@ class TestTradesLedger:
             {"timestamp": PERIOD_START + 60, "bet_id": "later"},
         ]
 
-    def test_count_does_not_rewrite_when_nothing_to_prune(
-        self, tmp_path: Path
-    ) -> None:
+    def test_count_does_not_rewrite_when_nothing_to_prune(self, tmp_path: Path) -> None:
         """A ledger holding only current trades is left as it is."""
         record_trade(tmp_path, PERIOD_START, "a")
         with patch(

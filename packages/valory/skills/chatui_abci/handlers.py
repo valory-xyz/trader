@@ -317,9 +317,7 @@ class HttpHandler(BaseHttpHandler):
             ),
             default_activity_goal=default_activity_goal,
             activity_goal_progress=(
-                "not counted yet"
-                if published_goal is None
-                else published_goal.progress
+                "not counted yet" if published_goal is None else published_goal.progress
             ),
         )
         self._send_chatui_llm_request(

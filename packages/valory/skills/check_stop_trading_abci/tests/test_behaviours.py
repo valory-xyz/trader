@@ -250,6 +250,17 @@ class TestActivityGoalGate:
 
         In the new regime the staking side is met at 8 mech requests; in the
         old regime it is met at the derived requirement of 11.
+
+        :param store_path: the store directory.
+        :param completed: mech requests made this epoch.
+        :param new_regime: whether the staking contract is new-regime.
+        :param staked: whether the service is staked.
+        :param trades: trades placed this epoch before the evaluation.
+        :param default_goal: the ``default_activity_goal`` param.
+        :param stored_goal: the goal written to the chat store, if any.
+        :param store_content: raw chat store content, overriding ``stored_goal``.
+        :param disable_trading: the ``disable_trading`` param.
+        :return: the evaluation result.
         """
         for i in range(trades):
             record_trade(store_path, PERIOD_START + i, f"bet_{i}")
@@ -420,7 +431,8 @@ class TestActivityGoalGate:
         assert self._block(tmp_path)["target"] == 5
 
     @pytest.mark.parametrize(
-        "stored_goal, source", [(None, "default_activity_goal"), (2, CHATUI_PARAM_STORE)]
+        "stored_goal, source",
+        [(None, "default_activity_goal"), (2, CHATUI_PARAM_STORE)],
     )
     def test_logs_goal_line(
         self,

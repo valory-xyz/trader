@@ -33,8 +33,8 @@ from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BasePara
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
-    ActivityGoal,
     Achievements,
+    ActivityGoal,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
@@ -1402,9 +1402,7 @@ class TestActivityGoalPersistence:
             "incomplete_block",
         ],
     )
-    def test_read_activity_goal_unavailable(
-        self, tmp_path: Path, content: Any
-    ) -> None:
+    def test_read_activity_goal_unavailable(self, tmp_path: Path, content: Any) -> None:
         """Anything but a complete block reads as ``None``."""
         if content is not None:
             (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
