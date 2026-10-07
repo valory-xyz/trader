@@ -25,6 +25,7 @@ import concurrent.futures
 import copy
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -54,7 +55,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
-from packages.valory.skills.chatui_abci.handlers import HTTP_CONTENT_TYPE_MAP
+from packages.valory.skills.chatui_abci.handlers import (
+    HTTP_CONTENT_TYPE_MAP,
+    MECH_PRE_DEPOSIT_EOA_SHORT,
+)
 from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
@@ -132,6 +136,14 @@ GAS_ESTIMATE_HEADROOM = 1.3
 # Asking the facilitator which asset it charges in runs on the periodic funding
 # check, so a slow answer delays nothing that matters and is better dropped.
 FACILITATOR_REQUEST_TIMEOUT = 10
+# Fees for the EOA's own transactions. The tip floor is what the ledger
+# connection pays for the agent's Safe transactions, so one of those at the
+# same nonce can never out-bid a deposit; the cap leaves the base fee room to
+# double before the transaction is mined.
+EOA_TX_MIN_PRIORITY_FEE_WEI = 10**9
+EOA_TX_BASE_FEE_HEADROOM = 2
+EOA_TX_RECEIPT_TIMEOUT = 60
+EOA_TX_RECEIPT_POLL_SECS = 5
 
 
 class HttpHandler(BaseHttpHandler):
@@ -1150,26 +1162,117 @@ class HttpHandler(BaseHttpHandler):
         if not w3:
             return False
         address = Web3.to_checksum_address(eoa_account.address)
-        tx: Dict[str, Any] = {
+        # The estimate carries no fee or nonce: a node judges a price it is
+        # given against the base fee of the block it simulates in, and the
+        # answer is a refusal whenever that has moved since the price was read.
+        call: Dict[str, Any] = {
             "from": address,
             "to": Web3.to_checksum_address(to_address),
             "data": data,
             "value": value,
-            "nonce": w3.eth.get_transaction_count(address),
-            "gasPrice": w3.eth.gas_price,
-            "chainId": chain_id,
         }
         try:
-            tx["gas"] = int(w3.eth.estimate_gas(tx) * GAS_ESTIMATE_HEADROOM)
+            gas = int(w3.eth.estimate_gas(call) * GAS_ESTIMATE_HEADROOM)
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.error(f"Could not estimate gas for the deposit: {exc}")
             return False
-
+        nonce = w3.eth.get_transaction_count(address, "pending")
+        tx = {
+            **call,
+            "gas": gas,
+            "nonce": nonce,
+            "chainId": chain_id,
+            **self._eoa_fee_fields(w3),
+        }
         tx_hash = self._sign_and_submit_tx_web3(tx, chain, eoa_account)
         if not tx_hash:
             return False
         self.context.logger.info(f"Pre-deposit tx submitted: {tx_hash}")
-        return self._check_transaction_status(tx_hash, chain)
+        return self._wait_for_eoa_tx(w3, tx_hash, address, nonce)
+
+    @staticmethod
+    def _eoa_fee_fields(w3: Web3) -> Dict[str, int]:
+        """Return the fee fields for one of the EOA's own transactions.
+
+        :param w3: the chain connection.
+        :return: EIP-1559 fields, or a legacy price on a chain with no base fee.
+
+        The tip is the node's suggestion floored at
+        ``EOA_TX_MIN_PRIORITY_FEE_WEI``; a price read straight off
+        ``eth_gasPrice`` sits on the base fee on some chains and is refused
+        for carrying no tip.
+        """
+        # The base fee comes from the fee history rather than the block: a
+        # block read fails the extra-data check on POA chains such as Polygon
+        # without the middleware, and the history also carries the next
+        # block's base fee, which is the one the transaction will meet.
+        try:
+            base_fees = list(w3.eth.fee_history(1, "latest")["baseFeePerGas"])
+        except Exception:  # pylint: disable=broad-except
+            base_fees = []
+        if not base_fees:
+            return {"gasPrice": int(w3.eth.gas_price)}
+        try:
+            suggested = int(w3.eth.max_priority_fee)
+        except Exception:  # pylint: disable=broad-except
+            suggested = 0
+        tip = max(suggested, EOA_TX_MIN_PRIORITY_FEE_WEI)
+        return {
+            "maxFeePerGas": EOA_TX_BASE_FEE_HEADROOM * int(base_fees[-1]) + tip,
+            "maxPriorityFeePerGas": tip,
+        }
+
+    def _wait_for_eoa_tx(
+        self,
+        w3: Web3,
+        tx_hash: str,
+        address: str,
+        nonce: int,
+        timeout: int = EOA_TX_RECEIPT_TIMEOUT,
+    ) -> bool:
+        """Wait for one of the EOA's transactions to be mined.
+
+        :param w3: the chain connection.
+        :param tx_hash: the transaction to wait for.
+        :param address: the EOA that sent it.
+        :param nonce: the nonce it was sent with.
+        :param timeout: how long to wait, in seconds.
+        :return: whether it was mined successfully.
+
+        The EOA also sends the agent's Safe transactions, so a transaction can
+        be replaced by one of those at the same nonce. Once the nonce has been
+        consumed by something else there is nothing left to wait for.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                receipt = w3.eth.get_transaction_receipt(tx_hash)
+            except Exception:  # pylint: disable=broad-except
+                receipt = None
+            if receipt is not None:
+                if receipt.status == 1:
+                    self.context.logger.info(f"Transaction {tx_hash} successful")
+                    return True
+                self.context.logger.error(
+                    f"Transaction {tx_hash} failed (status: {receipt.status})"
+                )
+                return False
+            try:
+                consumed = w3.eth.get_transaction_count(address) > nonce
+            except Exception:  # pylint: disable=broad-except
+                consumed = False
+            if consumed:
+                self.context.logger.warning(
+                    f"Transaction {tx_hash} was replaced by another transaction "
+                    f"at nonce {nonce}; the deposit was not made."
+                )
+                return False
+            if time.monotonic() >= deadline:
+                self.context.logger.error(
+                    f"Transaction {tx_hash} was not mined within {timeout}s."
+                )
+                return False
+            time.sleep(EOA_TX_RECEIPT_POLL_SECS)
 
     def _top_up_mech_pre_deposit(
         self,
@@ -1262,6 +1365,9 @@ class HttpHandler(BaseHttpHandler):
             return True
 
         shortfall = amount - held
+        w3 = self._get_web3_instance(chain)
+        if not w3 or self._eoa_spendable_native(w3, eoa_account.address) <= 0:
+            return False
         self.context.logger.info(
             f"EOA holds {held} of {token}, needs {amount}; swapping native for "
             f"{shortfall}."
@@ -1274,6 +1380,31 @@ class HttpHandler(BaseHttpHandler):
             )
             return False
         return True
+
+    def _eoa_spendable_native(self, w3: Web3, address: str) -> int:
+        """Return how much native the EOA can put towards a deposit.
+
+        :param w3: the chain connection.
+        :param address: the EOA.
+        :return: the balance above the gas reserve, or 0 when there is none.
+
+        The EOA also pays gas from this balance, so the reserve is kept
+        back: a deposit cannot leave the service reporting itself low on
+        funds, nor deposit the agent out of gas. Whether the EOA is short
+        is left for the chat handler, which turns it into the one message
+        the user can act on.
+        """
+        reserve = int(self.params.native_gas_reserve)
+        balance = int(w3.eth.get_balance(Web3.to_checksum_address(address)))
+        short = balance <= reserve
+        self.context.shared_state[MECH_PRE_DEPOSIT_EOA_SHORT] = short
+        if short:
+            self.context.logger.warning(
+                f"EOA holds {balance} wei, at or under the "
+                f"{reserve} wei gas reserve; not depositing."
+            )
+            return 0
+        return balance - reserve
 
     def _deposit_native(
         self,
@@ -1302,14 +1433,8 @@ class HttpHandler(BaseHttpHandler):
         w3 = self._get_web3_instance(chain)
         if not w3:
             return False
-        reserve = int(self.params.native_gas_reserve)
-        balance = w3.eth.get_balance(Web3.to_checksum_address(eoa_account.address))
-        spendable = balance - reserve
+        spendable = self._eoa_spendable_native(w3, eoa_account.address)
         if spendable <= 0:
-            self.context.logger.warning(
-                f"EOA holds {balance} wei, at or under the "
-                f"{reserve} wei gas reserve; not depositing."
-            )
             return False
         amount = min(amount, spendable)
 
@@ -1472,17 +1597,23 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_nonce_and_gas_web3(
         self, address: str, chain: str
-    ) -> Tuple[Optional[int], Optional[int]]:
-        """Get nonce and gas price using Web3."""
+    ) -> Tuple[Optional[int], Optional[Dict[str, int]]]:
+        """Get the next nonce and the fee fields for an EOA transaction.
+
+        :param address: the EOA that will send.
+        :param chain: the chain to send on.
+        :return: the nonce and the fee fields, or ``None`` for both when the
+            chain cannot be read.
+        """
         try:
             w3 = self._get_web3_instance(chain)
             if not w3:
                 return None, None
 
-            nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(address))
-            gas_price = w3.eth.gas_price
-
-            return nonce, gas_price
+            nonce = w3.eth.get_transaction_count(
+                Web3.to_checksum_address(address), "pending"
+            )
+            return nonce, self._eoa_fee_fields(w3)
 
         except Exception as e:
             self.context.logger.error(f"Error getting nonce/gas: {str(e)}")
@@ -1706,8 +1837,8 @@ class HttpHandler(BaseHttpHandler):
         # tx_gas, tx_request now belong to a route that passed estimation.
         # Fetch nonce/gas-price only after a working route is found so the
         # nonce window stays small even if the loop ran multiple LiFi calls.
-        nonce, gas_price = self._get_nonce_and_gas_web3(eoa_address, chain)
-        if nonce is None or gas_price is None:
+        nonce, fee_fields = self._get_nonce_and_gas_web3(eoa_address, chain)
+        if nonce is None or fee_fields is None:
             self.context.logger.error("Failed to get nonce or gas price")
             return False
 
@@ -1722,9 +1853,9 @@ class HttpHandler(BaseHttpHandler):
             "data": tx_request["data"],
             "value": tx_value,
             "gas": tx_gas,
-            "gasPrice": gas_price,
             "nonce": nonce,
             "chainId": chain_config["chain_id"],
+            **fee_fields,
         }
 
         self.context.logger.info(

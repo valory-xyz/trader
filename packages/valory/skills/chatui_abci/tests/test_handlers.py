@@ -36,6 +36,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     HttpHandler,
     LLM_MESSAGE_FIELD,
     MECH_DEPOSIT_REQUIRED_CODE,
+    MECH_PRE_DEPOSIT_EOA_SHORT,
     PREVIOUS_TRADING_TYPE_FIELD,
     SELECTED_MECHS_FIELD,
     SrrHandler,
@@ -2449,6 +2450,7 @@ class TestAnEmptyMechPreDepositIsExplained:
         """The agent pays for the top-up in the chain's native token."""
         handler = _make_reply_handler()
         handler.context.params.is_running_on_polymarket = on_polymarket
+        handler.context.shared_state = {MECH_PRE_DEPOSIT_EOA_SHORT: True}
 
         handler._handle_chatui_llm_response(
             self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
@@ -2459,6 +2461,32 @@ class TestAnEmptyMechPreDepositIsExplained:
 
         args = handler._send_http_response.call_args[0]
         assert f"Add {native_token} to your agent" in args[2]["error"]
+        assert args[3] == 402
+
+    @pytest.mark.parametrize(
+        "shared_state",
+        [
+            pytest.param({MECH_PRE_DEPOSIT_EOA_SHORT: False}, id="eoa funded"),
+            pytest.param({}, id="no funding check yet"),
+        ],
+    )
+    def test_a_funded_eoa_is_not_asked_for_money(
+        self, shared_state: Dict[str, Any]
+    ) -> None:
+        """The top-up is on its way, or the chain refused it for a moment."""
+        handler = _make_reply_handler()
+        handler.context.shared_state = shared_state
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        args = handler._send_http_response.call_args[0]
+        assert "temporarily unavailable" in args[2]["error"]
+        assert "Add " not in args[2]["error"]
         assert args[3] == 402
 
     def test_it_is_not_reported_as_a_server_error(self) -> None:
