@@ -58,6 +58,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    is_valid_activity_goal,
+    retarget_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpContentType,
 )
@@ -112,6 +116,7 @@ TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
 SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
+ACTIVITY_GOAL_FIELD = "activity_goal"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
 MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
@@ -273,6 +278,10 @@ class HttpHandler(BaseHttpHandler):
 
         units, decimals = self.get_units_and_decimals()
 
+        default_activity_goal = self.context.params.default_activity_goal
+        current_activity_goal = self.shared_state.chatui_config.activity_goal
+        published_goal = self.shared_state.read_activity_goal_from_disk()
+
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
@@ -298,6 +307,20 @@ class HttpHandler(BaseHttpHandler):
             absolute_max_bet_size=absolute_max_bet_size / (10**decimals),
             units=units,
             decimals=decimals,
+            current_activity_goal=(
+                default_activity_goal
+                if current_activity_goal is None
+                else current_activity_goal
+            ),
+            activity_goal_source=(
+                "the default" if current_activity_goal is None else "set by the user"
+            ),
+            default_activity_goal=default_activity_goal,
+            activity_goal_progress=(
+                "not counted yet"
+                if published_goal is None
+                else published_goal.progress
+            ),
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -689,6 +712,27 @@ class HttpHandler(BaseHttpHandler):
         if behavior:
             writes.append(partial(self.shared_state.update_agent_behavior, behavior))
 
+        updated_activity_goal: Any = updated_agent_config.get(ACTIVITY_GOAL_FIELD)
+        if FieldsThatCanBeRemoved.ACTIVITY_GOAL.value in removed_fields:
+            updated_params.update({ACTIVITY_GOAL_FIELD: None})
+            writes.append(partial(self._store_activity_goal, None))
+        elif updated_activity_goal is not None:
+            if not is_valid_activity_goal(updated_activity_goal):
+                issue_message = (
+                    f"Activity goal {updated_activity_goal!r} is not valid. It must "
+                    "be a whole number of trades per staking epoch, 0 or more. "
+                    "No changes were made."
+                )
+                self.context.logger.info(
+                    f"Declined activity goal change: {issue_message}"
+                )
+                issues.append(issue_message)
+                # The goal decides when the agent stops trading, so a reply that
+                # misreads it is declined as a whole rather than half-applied.
+                return {}, issues
+            updated_params.update({ACTIVITY_GOAL_FIELD: updated_activity_goal})
+            writes.append(partial(self._store_activity_goal, updated_activity_goal))
+
         # Nothing above wrote anything, so reaching here means every field
         # was readable and the update can be applied as a whole.
         for write in writes:
@@ -849,6 +893,29 @@ class HttpHandler(BaseHttpHandler):
         current_store: dict = self.shared_state._get_current_json_store()
         current_store.update({param_name: value})
         self.shared_state._set_json_store(current_store)
+
+    def _store_activity_goal(self, goal: Optional[int]) -> None:
+        """Store the user's activity goal and show it to Pearl at once.
+
+        :param goal: the new goal, or ``None`` to revert to the default.
+        """
+        previous = self.shared_state.chatui_config.activity_goal
+        self._set_chatui_param(ACTIVITY_GOAL_FIELD, goal)
+
+        default_goal = self.context.params.default_activity_goal
+        target = default_goal if goal is None else goal
+        retarget_activity_goal(
+            self.context.params.store_path,
+            target,
+            self.shared_state.synced_timestamp,
+        )
+
+        def describe(value: Optional[int]) -> str:
+            return f"default ({default_goal})" if value is None else str(value)
+
+        self.context.logger.info(
+            f"Activity goal changed from {describe(previous)} to {describe(goal)}."
+        )
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""

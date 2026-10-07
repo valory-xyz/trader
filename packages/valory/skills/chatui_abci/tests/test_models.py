@@ -649,6 +649,38 @@ class TestEnsureChatuiStoreBranches:
         assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE
 
 
+class TestActivityGoalStore:
+    """Tests for loading the user's activity goal from the store."""
+
+    def test_store_without_key_uses_default(self) -> None:
+        """An existing store from before the goal existed loads with no goal set."""
+        state = _make_shared_state({"trading_strategy": DEFAULT_TRADING_STRATEGY})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal is None
+        persisted = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
+        assert persisted["activity_goal"] is None
+
+    @pytest.mark.parametrize("goal", [0, 20, 500])
+    def test_store_with_valid_goal_keeps_it(self, goal: int) -> None:
+        """A stored goal is loaded as it is."""
+        state = _make_shared_state({"activity_goal": goal})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal == goal
+
+    @pytest.mark.parametrize("goal", [True, 2.5, -1, "8", [8]])
+    def test_invalid_stored_goal_reverts_to_default(self, goal: Any) -> None:
+        """An invalid stored goal is reset to "use the default"."""
+        state = _make_shared_state({"activity_goal": goal})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal is None
+
+
 # ---------------------------------------------------------------------------
 # Withdrawal-fields migration & validation tests
 # ---------------------------------------------------------------------------

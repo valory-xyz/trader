@@ -30,6 +30,9 @@ from aea.skills.base import SkillContext
 
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    is_valid_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -78,6 +81,8 @@ class ChatuiConfig:
     withdrawal_state: str = WITHDRAWAL_STATE_IDLE
     withdrawal_fills: List[Dict[str, Any]] = field(default_factory=list)
     withdrawal_errors: List[Dict[str, Any]] = field(default_factory=list)
+    # Trades per staking epoch; ``None`` means the ``default_activity_goal`` param.
+    activity_goal: Optional[int] = None
 
 
 class SharedState(BaseSharedState):
@@ -210,6 +215,9 @@ class SharedState(BaseSharedState):
             # update the store with the YAML value
             self._chatui_config.trading_strategy = trading_strategy_yaml
             self._chatui_config.initial_trading_strategy = trading_strategy_yaml
+
+        if not is_valid_activity_goal(self._chatui_config.activity_goal):
+            self._chatui_config.activity_goal = None
 
         if self._chatui_config.withdrawal_state not in WITHDRAWAL_STATES:
             self.context.logger.warning(
