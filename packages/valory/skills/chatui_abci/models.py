@@ -216,7 +216,10 @@ class SharedState(BaseSharedState):
             self._chatui_config.trading_strategy = trading_strategy_yaml
             self._chatui_config.initial_trading_strategy = trading_strategy_yaml
 
-        if not is_valid_activity_goal(self._chatui_config.activity_goal):
+        if (
+            self._chatui_config.activity_goal is not None
+            and not is_valid_activity_goal(self._chatui_config.activity_goal)
+        ):
             self.context.logger.warning(
                 f"invalid activity_goal {self._chatui_config.activity_goal!r} "
                 "on disk; resetting to the default"

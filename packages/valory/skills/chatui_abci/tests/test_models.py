@@ -661,6 +661,7 @@ class TestActivityGoalStore:
         assert state._chatui_config.activity_goal is None
         persisted = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
         assert persisted["activity_goal"] is None
+        state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
 
     @pytest.mark.parametrize("goal", [0, 20, 500])
     def test_store_with_valid_goal_keeps_it(self, goal: int) -> None:
