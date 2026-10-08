@@ -526,6 +526,15 @@ class TestGetCurrentJsonStore:
         assert result == {}
         state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
+    def test_non_utf8_file_returns_empty_dict(self, tmp_path: Path) -> None:
+        """A store that cannot be decoded resets like invalid JSON instead of raising."""
+        (tmp_path / CHATUI_PARAM_STORE).write_bytes(b"\xff\xfe")
+
+        state = self._make_state_with_store_path(tmp_path)
+        result = state._get_current_json_store()
+        assert result == {}
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
 
 # ---------------------------------------------------------------------------
 # SharedState._set_json_store tests (real file I/O, lines 104-107)
