@@ -1366,6 +1366,35 @@ class TestActivityGoalPersistence:
         assert data["activity_goal"] == ACTIVITY_GOAL_BLOCK
         assert data["agent_details"]["id"] == "agent-x"
 
+    @pytest.mark.parametrize(
+        "block",
+        [
+            {**ACTIVITY_GOAL_BLOCK, "is_met": True},
+            {"target": 8},
+        ],
+        ids=["inconsistent_block", "incomplete_block"],
+    )
+    def test_summary_drops_invalid_block_and_keeps_siblings(
+        self, tmp_path: Path, block: Dict[str, Any]
+    ) -> None:
+        """An invalid block reads as ``None`` without degrading the rest of the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": block,
+            },
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.activity_goal is None
+        assert summary.agent_behavior == "observing"
+        assert summary.agent_details is not None
+        assert summary.agent_details.id == "agent-x"
+
     def test_read_activity_goal_from_disk_ignores_corrupt_sibling(
         self, tmp_path: Path
     ) -> None:
@@ -1477,6 +1506,18 @@ class TestActivityGoalPersistence:
         self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, **overrides}})
 
         assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [{"is_met": True}, {"progress": -1}, {"target": True}],
+        ids=["met_below_target", "negative_progress", "bool_target"],
+    )
+    def test_activity_goal_refuses_invalid_construction(
+        self, overrides: Dict[str, Any]
+    ) -> None:
+        """An invalid block cannot be built in memory either."""
+        with pytest.raises(ValueError, match="invalid ActivityGoal"):
+            ActivityGoal(**{**ACTIVITY_GOAL_BLOCK, **overrides})
 
     def test_write_performance_summary_key_replaces_non_utf8_file(
         self, tmp_path: Path

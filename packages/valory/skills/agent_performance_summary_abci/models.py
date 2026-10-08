@@ -274,6 +274,11 @@ class ActivityGoal:
     updated_at: int
     last_met_at: Optional[int] = None
 
+    def __post_init__(self) -> None:
+        """Refuse a block that is ill-typed or contradicts its own counts."""
+        if not _is_valid_activity_goal_block(self):
+            raise ValueError(f"invalid ActivityGoal: {self!r}")
+
 
 @dataclass
 class AgentPerformanceSummary:
@@ -324,7 +329,12 @@ class AgentPerformanceSummary:
             self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
 
         if isinstance(self.activity_goal, dict):
-            self.activity_goal = ActivityGoal(**self.activity_goal)
+            # Rebuilt from the ledger on every evaluation, so a bad block is
+            # dropped rather than degrading the whole summary read.
+            try:
+                self.activity_goal = ActivityGoal(**self.activity_goal)
+            except (TypeError, ValueError):
+                self.activity_goal = None
 
 
 def write_json_atomically(file_path: Path, data: Any) -> None:
@@ -369,10 +379,9 @@ def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
         return None
 
     try:
-        goal = ActivityGoal(**sub)
-    except TypeError:
+        return ActivityGoal(**sub)
+    except (TypeError, ValueError):
         return None
-    return goal if _is_valid_activity_goal_block(goal) else None
 
 
 def is_plain_int(value: Any) -> bool:
@@ -385,7 +394,7 @@ def is_plain_int(value: Any) -> bool:
 
 
 def _is_valid_activity_goal_block(goal: ActivityGoal) -> bool:
-    """Return whether a block read from disk is well-typed and self-consistent.
+    """Return whether a block is well-typed and self-consistent.
 
     :param goal: the block to check.
     :return: whether it is safe to compute with.
