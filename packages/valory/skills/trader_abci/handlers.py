@@ -25,6 +25,7 @@ import concurrent.futures
 import copy
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -33,7 +34,7 @@ import requests
 from aea_ledger_ethereum.ethereum import EthereumCrypto
 from eth_account import Account
 from web3 import Web3
-from web3.exceptions import ContractLogicError
+from web3.exceptions import ContractLogicError, TransactionNotFound
 
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
@@ -54,7 +55,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
-from packages.valory.skills.chatui_abci.handlers import HTTP_CONTENT_TYPE_MAP
+from packages.valory.skills.chatui_abci.handlers import (
+    HTTP_CONTENT_TYPE_MAP,
+    MECH_PRE_DEPOSIT_EOA_SHORT,
+)
 from packages.valory.skills.chatui_abci.handlers import SrrHandler as BaseSrrHandler
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.chatui_abci.prompts import TradingStrategy
@@ -132,6 +136,12 @@ GAS_ESTIMATE_HEADROOM = 1.3
 # Asking the facilitator which asset it charges in runs on the periodic funding
 # check, so a slow answer delays nothing that matters and is better dropped.
 FACILITATOR_REQUEST_TIMEOUT = 10
+# Tip floor for the EOA's own transactions: the ledger's Gnosis minimum, so a
+# Safe tx at the same nonce cannot out-bid a deposit. The cap lets the base fee double.
+EOA_TX_MIN_PRIORITY_FEE_WEI = 10**9
+EOA_TX_BASE_FEE_HEADROOM = 2
+EOA_TX_RECEIPT_TIMEOUT = 60
+EOA_TX_RECEIPT_POLL_SECS = 5
 
 
 class HttpHandler(BaseHttpHandler):
@@ -1150,26 +1160,140 @@ class HttpHandler(BaseHttpHandler):
         if not w3:
             return False
         address = Web3.to_checksum_address(eoa_account.address)
-        tx: Dict[str, Any] = {
+        # No fee or nonce: the node rejects estimates priced under a moved base fee.
+        call: Dict[str, Any] = {
             "from": address,
             "to": Web3.to_checksum_address(to_address),
             "data": data,
             "value": value,
-            "nonce": w3.eth.get_transaction_count(address),
-            "gasPrice": w3.eth.gas_price,
-            "chainId": chain_id,
         }
         try:
-            tx["gas"] = int(w3.eth.estimate_gas(tx) * GAS_ESTIMATE_HEADROOM)
+            gas = int(w3.eth.estimate_gas(call) * GAS_ESTIMATE_HEADROOM)
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.error(f"Could not estimate gas for the deposit: {exc}")
             return False
-
+        fee_fields = self._eoa_fee_fields(w3)
+        if fee_fields is None:
+            return False
+        nonce = w3.eth.get_transaction_count(address, "pending")
+        tx = {
+            **call,
+            "gas": gas,
+            "nonce": nonce,
+            "chainId": chain_id,
+            **fee_fields,
+        }
         tx_hash = self._sign_and_submit_tx_web3(tx, chain, eoa_account)
         if not tx_hash:
             return False
         self.context.logger.info(f"Pre-deposit tx submitted: {tx_hash}")
-        return self._check_transaction_status(tx_hash, chain)
+        return self._wait_for_eoa_tx(chain, tx_hash, address, nonce)
+
+    def _eoa_fee_fields(self, w3: Web3) -> Optional[Dict[str, int]]:
+        """Return the EIP-1559 fee fields for one of the EOA's own transactions.
+
+        :param w3: the chain connection.
+        :return: the fields, or ``None`` when the base fee cannot be read.
+        """
+        # fee_history, not get_block: block reads fail POA extra-data checks without middleware.
+        try:
+            base_fee = int(w3.eth.fee_history(1, "latest")["baseFeePerGas"][-1])
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read the base fee ({exc}); not sending from the EOA."
+            )
+            return None
+        try:
+            suggested = int(w3.eth.max_priority_fee)
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read the suggested tip ({exc}); using the floor."
+            )
+            suggested = 0
+        tip = max(suggested, EOA_TX_MIN_PRIORITY_FEE_WEI)
+        return {
+            "maxFeePerGas": EOA_TX_BASE_FEE_HEADROOM * base_fee + tip,
+            "maxPriorityFeePerGas": tip,
+        }
+
+    def _wait_for_eoa_tx(
+        self,
+        chain: str,
+        tx_hash: str,
+        address: str,
+        nonce: int,
+        timeout: int = EOA_TX_RECEIPT_TIMEOUT,
+    ) -> bool:
+        """Wait for one of the EOA's transactions to be mined.
+
+        :param chain: the chain it was sent on.
+        :param tx_hash: the transaction to wait for.
+        :param address: the EOA that sent it.
+        :param nonce: the nonce it was sent with.
+        :param timeout: how long to wait, in seconds.
+        :return: whether it was mined successfully.
+        """
+        w3 = self._get_web3_instance(chain)
+        if not w3:
+            return False
+        deadline = time.monotonic() + timeout
+        while True:
+            receipt = self._eoa_tx_receipt(w3, tx_hash)
+            if receipt is None and self._eoa_nonce_consumed(w3, address, nonce):
+                # Our own transaction may have been mined between the two
+                # reads; only a receipt still missing now means it was replaced.
+                receipt = self._eoa_tx_receipt(w3, tx_hash)
+                if receipt is None:
+                    self.context.logger.warning(
+                        f"Transaction {tx_hash} was replaced by another "
+                        f"transaction at nonce {nonce}; it was not mined."
+                    )
+                    return False
+            if receipt is not None:
+                if receipt.status == 1:
+                    self.context.logger.info(f"Transaction {tx_hash} successful")
+                    return True
+                self.context.logger.error(
+                    f"Transaction {tx_hash} failed (status: {receipt.status})"
+                )
+                return False
+            if time.monotonic() >= deadline:
+                self.context.logger.error(
+                    f"Transaction {tx_hash} was not mined within {timeout}s."
+                )
+                return False
+            time.sleep(EOA_TX_RECEIPT_POLL_SECS)
+
+    def _eoa_tx_receipt(self, w3: Web3, tx_hash: str) -> Optional[Any]:
+        """Return a transaction's receipt, or ``None`` while it is not mined.
+
+        :param w3: the chain connection.
+        :param tx_hash: the transaction.
+        :return: the receipt, or ``None``.
+        """
+        try:
+            return w3.eth.get_transaction_receipt(tx_hash)
+        except TransactionNotFound:
+            return None
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Could not read the receipt of {tx_hash}: {exc}"
+            )
+            return None
+
+    def _eoa_nonce_consumed(self, w3: Web3, address: str, nonce: int) -> bool:
+        """Return whether the chain has moved past ``nonce`` for ``address``.
+
+        :param w3: the chain connection.
+        :param address: the EOA.
+        :param nonce: the nonce to check.
+        :return: whether a transaction at that nonce has been mined.
+        """
+        try:
+            return int(w3.eth.get_transaction_count(address)) > nonce
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(f"Could not read the EOA's nonce: {exc}")
+            return False
 
     def _top_up_mech_pre_deposit(
         self,
@@ -1199,6 +1323,12 @@ class HttpHandler(BaseHttpHandler):
         the caller, which keeps this a plain transaction instead of a Safe
         transaction routed through the settlement rounds.
         """
+        # Refreshed on every check, so the chat message follows the EOA's
+        # balance rather than the last path that happened to read it.
+        self.context.shared_state[MECH_PRE_DEPOSIT_EOA_SHORT] = False
+        w3 = self._get_web3_instance(chain)
+        if w3 is not None:
+            self._eoa_spendable_native(w3, eoa_account.address)
         tracker = self._resolve_balance_tracker(chain, payment_type)
         if tracker is None:
             return False
@@ -1262,6 +1392,10 @@ class HttpHandler(BaseHttpHandler):
             return True
 
         shortfall = amount - held
+        w3 = self._get_web3_instance(chain)
+        if not w3 or self._eoa_spendable_native(w3, eoa_account.address) <= 0:
+            self.context.logger.warning("Not swapping: the EOA is out of native.")
+            return False
         self.context.logger.info(
             f"EOA holds {held} of {token}, needs {amount}; swapping native for "
             f"{shortfall}."
@@ -1274,6 +1408,24 @@ class HttpHandler(BaseHttpHandler):
             )
             return False
         return True
+
+    def _eoa_spendable_native(self, w3: Web3, address: str) -> int:
+        """Return the EOA's native balance above the gas reserve, and note if short.
+
+        :param w3: the chain connection.
+        :param address: the EOA.
+        :return: the balance above the gas reserve, or 0 when there is none.
+        """
+        reserve = int(self.params.native_gas_reserve)
+        balance = int(w3.eth.get_balance(Web3.to_checksum_address(address)))
+        short = balance <= reserve
+        self.context.shared_state[MECH_PRE_DEPOSIT_EOA_SHORT] = short
+        if short:
+            self.context.logger.warning(
+                f"EOA holds {balance} wei, at or under the {reserve} wei gas reserve."
+            )
+            return 0
+        return balance - reserve
 
     def _deposit_native(
         self,
@@ -1302,14 +1454,9 @@ class HttpHandler(BaseHttpHandler):
         w3 = self._get_web3_instance(chain)
         if not w3:
             return False
-        reserve = int(self.params.native_gas_reserve)
-        balance = w3.eth.get_balance(Web3.to_checksum_address(eoa_account.address))
-        spendable = balance - reserve
+        spendable = self._eoa_spendable_native(w3, eoa_account.address)
         if spendable <= 0:
-            self.context.logger.warning(
-                f"EOA holds {balance} wei, at or under the "
-                f"{reserve} wei gas reserve; not depositing."
-            )
+            self.context.logger.warning("Not depositing: the EOA is out of native.")
             return False
         amount = min(amount, spendable)
 
@@ -1441,48 +1588,25 @@ class HttpHandler(BaseHttpHandler):
             self.context.logger.error(f"Error submitting transaction: {str(e)}")
             return None
 
-    def _check_transaction_status(
-        self, tx_hash: str, chain: str, timeout: int = 60
-    ) -> bool:
-        """Check if transaction was successful by waiting for receipt."""
-        try:
-            w3 = self._get_web3_instance(chain)
-            if not w3:
-                return False
-
-            self.context.logger.info(
-                f"Waiting for transaction {tx_hash} to be mined..."
-            )
-
-            # Wait for transaction receipt with timeout
-            receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
-
-            if receipt.status == 1:
-                self.context.logger.info(f"Transaction {tx_hash} successful")
-                return True
-            else:
-                self.context.logger.error(
-                    f"Transaction {tx_hash} failed (status: {receipt.status})"
-                )
-                return False
-
-        except Exception as e:
-            self.context.logger.error(f"Error checking transaction status: {str(e)}")
-            return False
-
-    def _get_nonce_and_gas_web3(
+    def _get_nonce_and_fees_web3(
         self, address: str, chain: str
-    ) -> Tuple[Optional[int], Optional[int]]:
-        """Get nonce and gas price using Web3."""
+    ) -> Tuple[Optional[int], Optional[Dict[str, int]]]:
+        """Get the next nonce and the fee fields for an EOA transaction.
+
+        :param address: the EOA that will send.
+        :param chain: the chain to send on.
+        :return: the nonce and the fee fields, or ``None`` for both when the
+            chain cannot be read.
+        """
         try:
             w3 = self._get_web3_instance(chain)
             if not w3:
                 return None, None
 
-            nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(address))
-            gas_price = w3.eth.gas_price
-
-            return nonce, gas_price
+            nonce = w3.eth.get_transaction_count(
+                Web3.to_checksum_address(address), "pending"
+            )
+            return nonce, self._eoa_fee_fields(w3)
 
         except Exception as e:
             self.context.logger.error(f"Error getting nonce/gas: {str(e)}")
@@ -1704,11 +1828,11 @@ class HttpHandler(BaseHttpHandler):
             return False
 
         # tx_gas, tx_request now belong to a route that passed estimation.
-        # Fetch nonce/gas-price only after a working route is found so the
+        # Fetch nonce and fees only after a working route is found so the
         # nonce window stays small even if the loop ran multiple LiFi calls.
-        nonce, gas_price = self._get_nonce_and_gas_web3(eoa_address, chain)
-        if nonce is None or gas_price is None:
-            self.context.logger.error("Failed to get nonce or gas price")
+        nonce, fee_fields = self._get_nonce_and_fees_web3(eoa_address, chain)
+        if nonce is None or fee_fields is None:
+            self.context.logger.error("Failed to get nonce or fee fields")
             return False
 
         tx_value = (
@@ -1722,9 +1846,9 @@ class HttpHandler(BaseHttpHandler):
             "data": tx_request["data"],
             "value": tx_value,
             "gas": tx_gas,
-            "gasPrice": gas_price,
             "nonce": nonce,
             "chainId": chain_config["chain_id"],
+            **fee_fields,
         }
 
         self.context.logger.info(
@@ -1742,8 +1866,9 @@ class HttpHandler(BaseHttpHandler):
             f"{native_token_name} to token swap submitted: {tx_hash}"
         )
 
-        # Check transaction status to ensure it was successful
-        tx_successful = self._check_transaction_status(tx_hash, chain)
+        tx_successful = self._wait_for_eoa_tx(
+            chain, tx_hash, Web3.to_checksum_address(eoa_address), nonce
+        )
 
         if not tx_successful:
             self.context.logger.error(f"Transaction {tx_hash} failed or timed out")

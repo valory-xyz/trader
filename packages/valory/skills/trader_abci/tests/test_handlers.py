@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 import pytest
 from aea.configurations.data_types import PublicId
 from aea.skills.base import Handler
+from web3.exceptions import TransactionNotFound
 
 from packages.valory.connections.http_server.connection import (
     PUBLIC_ID as HTTP_SERVER_PUBLIC_ID,
@@ -92,6 +93,9 @@ from packages.valory.skills.trader_abci.handlers import (
     TendermintHandler,
     TraderHandler,
 )
+
+# Fee fields a swap test hands to the signer; the values are not inspected.
+_FEES = {"maxFeePerGas": 1000, "maxPriorityFeePerGas": 1}
 
 
 # ---------------------------------------------------------------------------
@@ -2042,82 +2046,228 @@ class TestSignAndSubmitTxWeb3:
 
 
 # ---------------------------------------------------------------------------
-# _check_transaction_status tests
+# _send_from_eoa tests
 # ---------------------------------------------------------------------------
-class TestCheckTransactionStatus:
-    """Test _check_transaction_status."""
+_EOA = "0x" + "ee" * 20
+_BASE_FEE = 20
+_SUGGESTED_TIP = 3
+_MINED = SimpleNamespace(status=1)
+
+
+def _chain_for_eoa_tx(
+    base_fee: Optional[int] = _BASE_FEE,
+    suggested_tip: Any = _SUGGESTED_TIP,
+    nonce: int = 10,
+    receipts: Optional[List[Any]] = None,
+    counts: Optional[List[Any]] = None,
+) -> MagicMock:
+    """Return a web3 stand-in for one EOA transaction.
+
+    :param base_fee: the next block's base fee, or ``None`` when unreadable.
+    :param suggested_tip: what the node suggests as a tip, or an exception.
+    :param nonce: the pending nonce.
+    :param receipts: what each receipt lookup answers, in order.
+    :param counts: what each later nonce read answers or raises, in order.
+    :return: the stand-in.
+    """
+    w3 = MagicMock()
+    if base_fee is None:
+        w3.eth.fee_history.side_effect = ValueError("eth_feeHistory not supported")
+    else:
+        # The history ends with the next block's base fee, the one that counts.
+        w3.eth.fee_history.return_value = {"baseFeePerGas": [base_fee - 1, base_fee]}
+    if isinstance(suggested_tip, Exception):
+        type(w3.eth).max_priority_fee = PropertyMock(side_effect=suggested_tip)
+    else:
+        w3.eth.max_priority_fee = suggested_tip
+    w3.eth.estimate_gas.return_value = 100_000
+    w3.eth.get_transaction_count.side_effect = [nonce, *(counts or [])]
+    # A receipt of ``None`` stands for "not mined yet", which web3 raises for.
+    w3.eth.get_transaction_receipt.side_effect = [
+        TransactionNotFound("not yet") if r is None else r
+        for r in (receipts or [_MINED])
+    ]
+    return w3
+
+
+class TestSendFromEoa:
+    """The EOA's own transactions are priced to be mined, not just accepted."""
 
     def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
+        self.account = MagicMock()
+        self.account.address = _EOA
+        self.sent: List[Dict[str, Any]] = []
 
-    def test_successful_transaction(self) -> None:
-        """Test successful transaction receipt."""
-        mock_w3 = MagicMock()
-        mock_receipt = MagicMock()
-        mock_receipt.status = 1
-        mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
+    @pytest.fixture(autouse=True)
+    def _no_polling_wait(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Poll without sleeping."""
+        monkeypatch.setattr(beh_handlers, "EOA_TX_RECEIPT_POLL_SECS", 0)
 
-        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
-            result = self.handler._check_transaction_status("0xhash", "polygon")
-            assert result is True
+    def _send(self, w3: MagicMock, submitted: Optional[str] = "0xhash") -> bool:
+        """Send one transaction with the chain stubbed.
 
-    def test_failed_transaction(self) -> None:
-        """Test failed transaction receipt."""
-        mock_w3 = MagicMock()
-        mock_receipt = MagicMock()
-        mock_receipt.status = 0
-        mock_w3.eth.wait_for_transaction_receipt.return_value = mock_receipt
+        :param w3: the chain stand-in.
+        :param submitted: what submitting returns; ``None`` for a rejection.
+        :return: what the send returned.
+        """
 
-        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
-            result = self.handler._check_transaction_status("0xhash", "polygon")
-            assert result is False
+        def submit(tx: Dict[str, Any], _chain: str, _account: Any) -> Optional[str]:
+            self.sent.append(tx)
+            return submitted
 
-    def test_no_web3(self) -> None:
-        """Test when web3 is None."""
+        with (
+            patch.object(self.handler, "_get_web3_instance", return_value=w3),
+            patch.object(self.handler, "_sign_and_submit_tx_web3", side_effect=submit),
+        ):
+            return self.handler._send_from_eoa(
+                "gnosis", 100, self.account, "0x" + "ab" * 20, "0xdata", value=5
+            )
+
+    def test_the_estimate_carries_no_fee_or_nonce(self) -> None:
+        """A price in the estimate is judged against a base fee that has moved."""
+        w3 = _chain_for_eoa_tx()
+        assert self._send(w3) is True
+        call = w3.eth.estimate_gas.call_args[0][0]
+        assert set(call) == {"from", "to", "data", "value"}
+
+    def test_the_transaction_is_eip1559_from_the_pending_nonce(self) -> None:
+        """No legacy price, and the nonce counts the agent's in-flight sends."""
+        w3 = _chain_for_eoa_tx(nonce=10)
+        assert self._send(w3) is True
+        tx = self.sent[0]
+        tip = beh_handlers.EOA_TX_MIN_PRIORITY_FEE_WEI
+        assert "gasPrice" not in tx
+        assert tx["maxPriorityFeePerGas"] == tip
+        assert tx["maxFeePerGas"] == 2 * _BASE_FEE + tip
+        assert tx["nonce"] == 10
+        assert tx["gas"] == int(100_000 * beh_handlers.GAS_ESTIMATE_HEADROOM)
+        assert tx["chainId"] == 100
+        w3.eth.get_transaction_count.assert_any_call(
+            beh_handlers.Web3.to_checksum_address(_EOA), "pending"
+        )
+
+    @pytest.mark.parametrize(
+        "suggested,expected",
+        [
+            pytest.param(3, 10**9, id="below the floor"),
+            pytest.param(5 * 10**9, 5 * 10**9, id="above the floor"),
+            pytest.param(RuntimeError("no fee history"), 10**9, id="unavailable"),
+        ],
+    )
+    def test_the_tip_is_the_suggestion_floored(
+        self, suggested: Any, expected: int
+    ) -> None:
+        """A tip of a few wei is refused or out-bid; the floor is what the ledger pays."""
+        assert self._send(_chain_for_eoa_tx(suggested_tip=suggested)) is True
+        assert self.sent[0]["maxPriorityFeePerGas"] == expected
+
+    def test_an_unreadable_base_fee_sends_nothing(self) -> None:
+        """Falling back to a legacy price would bring the tip-less tx back."""
+        assert self._send(_chain_for_eoa_tx(base_fee=None)) is False
+        assert self.sent == []
+        assert "base fee" in self.handler.context.logger.warning.call_args[0][0]
+
+    def test_an_unreadable_tip_is_logged(self) -> None:
+        """The floor is used, but silently would hide a misbehaving node."""
+        w3 = _chain_for_eoa_tx(suggested_tip=RuntimeError("no fee history"))
+        assert self._send(w3) is True
+        assert "suggested tip" in self.handler.context.logger.warning.call_args[0][0]
+
+    def test_a_failed_estimate_sends_nothing(self) -> None:
+        """The chain's refusal is the answer."""
+        w3 = _chain_for_eoa_tx()
+        w3.eth.estimate_gas.side_effect = ValueError("miner premium is negative")
+        assert self._send(w3) is False
+        assert self.sent == []
+
+    def test_a_rejected_submission_is_a_failure(self) -> None:
+        """Nothing to wait for when the node did not take the transaction."""
+        assert self._send(_chain_for_eoa_tx(), submitted=None) is False
+
+    def test_a_reverted_transaction_is_a_failure(self) -> None:
+        """Mined is not enough; the deposit has to have happened."""
+        w3 = _chain_for_eoa_tx(receipts=[SimpleNamespace(status=0)])
+        assert self._send(w3) is False
+
+    def test_a_replaced_transaction_is_not_waited_for(self) -> None:
+        """Once another transaction consumed the nonce, this one can never mine.
+
+        The EOA also sends the agent's Safe transactions, so this is how a
+        deposit loses a race with one of them.
+        """
+        w3 = _chain_for_eoa_tx(nonce=10, receipts=[None, None], counts=[11])
+        assert self._send(w3) is False
+        assert w3.eth.get_transaction_receipt.call_count == 2
+        assert "replaced" in self.handler.context.logger.warning.call_args[0][0]
+
+    def test_a_transaction_mined_between_the_two_reads_is_a_success(self) -> None:
+        """The nonce moving on is not proof of replacement; the receipt is."""
+        w3 = _chain_for_eoa_tx(nonce=10, receipts=[None, _MINED], counts=[11])
+        assert self._send(w3) is True
+
+    def test_a_receipt_read_error_is_logged_and_retried(self) -> None:
+        """An unreachable node must not read as a transaction that never mined."""
+        w3 = _chain_for_eoa_tx(receipts=[RuntimeError("rpc down"), _MINED], counts=[10])
+        assert self._send(w3) is True
+        assert "receipt" in self.handler.context.logger.warning.call_args[0][0]
+
+    def test_a_nonce_read_error_is_logged_and_retried(self) -> None:
+        """Same for the nonce read that decides whether the tx was replaced."""
+        w3 = _chain_for_eoa_tx(receipts=[None, _MINED], counts=[RuntimeError("rpc")])
+        assert self._send(w3) is True
+        assert "nonce" in self.handler.context.logger.warning.call_args[0][0]
+
+    def test_a_transaction_not_mined_in_time_is_a_failure(self) -> None:
+        """The wait is bounded; the next funding check tries again."""
+        w3 = _chain_for_eoa_tx(nonce=10, receipts=[None] * 5, counts=[10] * 5)
+        with patch.object(
+            beh_handlers.time, "monotonic", side_effect=[0, 10, 20, 30, 70]
+        ):
+            assert self._send(w3) is False
+        assert "not mined" in self.handler.context.logger.error.call_args[0][0]
+
+    def test_no_chain_connection_is_a_failure(self) -> None:
+        """Without a node there is nothing to wait on."""
         with patch.object(self.handler, "_get_web3_instance", return_value=None):
-            result = self.handler._check_transaction_status("0xhash", "polygon")
-            assert result is False
-
-    def test_exception(self) -> None:
-        """Test exception handling."""
-        mock_w3 = MagicMock()
-        mock_w3.eth.wait_for_transaction_receipt.side_effect = Exception("timeout")
-
-        with patch.object(self.handler, "_get_web3_instance", return_value=mock_w3):
-            result = self.handler._check_transaction_status("0xhash", "polygon")
-            assert result is False
+            assert self.handler._wait_for_eoa_tx("gnosis", "0xhash", _EOA, 1) is False
 
 
 # ---------------------------------------------------------------------------
-# _get_nonce_and_gas_web3 tests
+# _get_nonce_and_fees_web3 tests
 # ---------------------------------------------------------------------------
-class TestGetNonceAndGasWeb3:
-    """Test _get_nonce_and_gas_web3."""
+class TestGetNonceAndFeesWeb3:
+    """Test _get_nonce_and_fees_web3."""
 
     def setup_method(self) -> None:
         """Set up."""
         self.handler = _make_handler()
 
     def test_success(self) -> None:
-        """Test successful nonce and gas retrieval."""
+        """The nonce counts pending transactions and the fees are EIP-1559."""
         mock_w3 = MagicMock()
         mock_w3.eth.get_transaction_count.return_value = 42
-        mock_w3.eth.gas_price = 50000000000
+        mock_w3.eth.fee_history.return_value = {"baseFeePerGas": [90, 100]}
+        mock_w3.eth.max_priority_fee = 7
 
         with (
             patch.object(self.handler, "_get_web3_instance", return_value=mock_w3),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
+            nonce, fees = self.handler._get_nonce_and_fees_web3("0xAddress", "polygon")
             assert nonce == 42
-            assert gas == 50000000000
+            mock_w3.eth.get_transaction_count.assert_called_once_with(
+                "0xAddress", "pending"
+            )
+            tip = beh_handlers.EOA_TX_MIN_PRIORITY_FEE_WEI
+            assert fees == {"maxFeePerGas": 200 + tip, "maxPriorityFeePerGas": tip}
 
     def test_no_web3(self) -> None:
         """Test when web3 is None."""
         with patch.object(self.handler, "_get_web3_instance", return_value=None):
-            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
+            nonce, gas = self.handler._get_nonce_and_fees_web3("0xAddress", "polygon")
             assert nonce is None
             assert gas is None
 
@@ -2131,7 +2281,7 @@ class TestGetNonceAndGasWeb3:
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
-            nonce, gas = self.handler._get_nonce_and_gas_web3("0xAddress", "polygon")
+            nonce, gas = self.handler._get_nonce_and_fees_web3("0xAddress", "polygon")
             assert nonce is None
             assert gas is None
 
@@ -2353,7 +2503,7 @@ class TestEnsureSufficientFundsForX402Payments:
             patch.object(self.handler, "_estimate_gas", return_value=(150000, False)),
             patch.object(
                 self.handler,
-                "_get_nonce_and_gas_web3",
+                "_get_nonce_and_fees_web3",
                 return_value=(None, None),
             ),
         ):
@@ -2380,7 +2530,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(None, False)),
         ):
@@ -2407,7 +2557,7 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(150000, False)),
             patch.object(self.handler, "_sign_and_submit_tx_web3", return_value=None),
@@ -2437,13 +2587,13 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(150000, False)),
             patch.object(
                 self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
             ),
-            patch.object(self.handler, "_check_transaction_status", return_value=False),
+            patch.object(self.handler, "_wait_for_eoa_tx", return_value=False),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
@@ -2470,13 +2620,13 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(150000, False)),
             patch.object(
                 self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
             ),
-            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch.object(self.handler, "_wait_for_eoa_tx", return_value=True),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
@@ -2503,13 +2653,13 @@ class TestEnsureSufficientFundsForX402Payments:
                 },
             ),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(self.handler, "_estimate_gas", return_value=(150000, False)),
             patch.object(
                 self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
             ),
-            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch.object(self.handler, "_wait_for_eoa_tx", return_value=True),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
@@ -2578,12 +2728,12 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", side_effect=gas_results),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ) as mock_nonce,
             patch.object(
                 self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
             ),
-            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch.object(self.handler, "_wait_for_eoa_tx", return_value=True),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
@@ -2622,7 +2772,7 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", return_value=(None, True)),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ) as mock_nonce,
         ):
             result = self.handler._ensure_sufficient_funds_for_x402_payments()
@@ -2684,12 +2834,12 @@ class TestEnsureSufficientFundsForX402Payments:
             ) as mock_quote,
             patch.object(self.handler, "_estimate_gas", side_effect=gas_results),
             patch.object(
-                self.handler, "_get_nonce_and_gas_web3", return_value=(5, 1000)
+                self.handler, "_get_nonce_and_fees_web3", return_value=(5, _FEES)
             ),
             patch.object(
                 self.handler, "_sign_and_submit_tx_web3", return_value="0xhash"
             ),
-            patch.object(self.handler, "_check_transaction_status", return_value=True),
+            patch.object(self.handler, "_wait_for_eoa_tx", return_value=True),
             patch("packages.valory.skills.trader_abci.handlers.Web3") as MockWeb3,
         ):
             MockWeb3.to_checksum_address = lambda addr: addr
@@ -3091,6 +3241,7 @@ _TARGET = 500_000
 _CAP = 500_000
 # Above the deposits under test, so the reserve only bites where a test says so.
 _GAS_RESERVE = 10**17
+_EOA_SHORT = beh_handlers.MECH_PRE_DEPOSIT_EOA_SHORT
 
 
 def _same_address(left: str, right: str) -> bool:
@@ -3237,6 +3388,7 @@ def _facilitator_handler(native_balance: int = 10**19) -> Any:
     :return: the handler under test.
     """
     handler = _make_handler(is_polymarket=False)
+    handler.context.shared_state = {}
     params = handler.context.params
     params.use_x402 = True
     params.use_mech_facilitator = True
@@ -3392,6 +3544,7 @@ class TestMechPreDepositTopUp:
 
         assert _run(handler, chain) is True
         assert chain.sent[0]["value"] == spendable
+        assert handler.context.shared_state[_EOA_SHORT] is False
 
     def test_the_gas_reserve_is_the_configured_one(self) -> None:
         """The reserve follows the agent's own refill threshold, not a constant."""
@@ -3411,6 +3564,50 @@ class TestMechPreDepositTopUp:
 
         assert _run(handler, chain) is False
         assert chain.sent == []
+        # This is the one case where asking the user for funds is right.
+        assert handler.context.shared_state[_EOA_SHORT] is True
+
+    def test_the_eoa_flag_is_refreshed_even_when_nothing_is_deposited(self) -> None:
+        """A user who funded the agent must stop being asked for funds."""
+        handler = _facilitator_handler()
+        handler.context.shared_state[_EOA_SHORT] = True
+        chain = _ChainStub(deposited=_FLOOR, token=None)
+
+        assert _run(handler, chain) is True
+        assert handler.context.shared_state[_EOA_SHORT] is False
+
+    def test_a_short_eoa_is_noted_even_when_the_token_is_held(self) -> None:
+        """The token path needs native for gas too, so the flag follows native."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=10**9):
+            _run(handler, chain)
+        assert handler.context.shared_state[_EOA_SHORT] is True
+
+    def test_without_a_chain_connection_the_flag_is_not_set(self) -> None:
+        """No balance read means no claim about the EOA, in either direction."""
+        handler = _facilitator_handler()
+        handler.context.shared_state[_EOA_SHORT] = True
+        chain = _ChainStub(deposited=_FLOOR, token=None)
+
+        with patch.object(handler, "_get_web3_instance", return_value=None):
+            assert _run(handler, chain) is True
+        assert handler.context.shared_state[_EOA_SHORT] is False
+
+    def test_no_native_headroom_does_not_swap_for_a_token_deposit(self) -> None:
+        """A swap the EOA cannot pay for would only fail later, at the node."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with (
+            patch.object(handler, "_check_usdc_balance", return_value=0),
+            patch.object(handler, "_swap_native_for_token") as swap,
+        ):
+            assert _run(handler, chain) is False
+        swap.assert_not_called()
+        assert chain.sent == []
+        assert handler.context.shared_state[_EOA_SHORT] is True
 
     def test_a_token_deposit_is_bounded_by_what_the_eoa_holds(self) -> None:
         """A swap can deliver less than quoted, and the deposit must follow it.
