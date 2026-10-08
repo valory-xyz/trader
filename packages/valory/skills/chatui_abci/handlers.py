@@ -115,6 +115,8 @@ REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
 MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
+# Set by trader_abci's funding check.
+MECH_PRE_DEPOSIT_EOA_SHORT = "mech_pre_deposit_eoa_short"
 TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
@@ -811,7 +813,7 @@ class HttpHandler(BaseHttpHandler):
     def _handle_mech_deposit_required(
         self, genai_response: dict, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Tell the user to fund the agent; it normally tops this deposit up itself."""
+        """Explain an unfunded deposit; ask for funds only when the EOA is known short."""
         native_token = "POL" if self.context.params.is_running_on_polymarket else "xDAI"
         # The balances tell an empty deposit from one that is below what this
         # call needs, or held up by requests still in flight.
@@ -819,16 +821,21 @@ class HttpHandler(BaseHttpHandler):
             f"Chat request refused for want of a mech pre-deposit: "
             f"{genai_response.get('error')} (context: {genai_response.get('context')})"
         )
+        if self.context.shared_state.get(MECH_PRE_DEPOSIT_EOA_SHORT, False):
+            message = (
+                "Chat needs a small prepaid balance that your agent couldn't "
+                f"fund. Add {native_token} to your agent in Pearl, then try "
+                "again in a few minutes."
+            )
+        else:
+            message = (
+                "Chat is temporarily unavailable while your agent tops up its "
+                "prepaid balance. Please try again in a minute."
+            )
         self._send_http_response(
             http_msg,
             http_dialogue,
-            {
-                "error": (
-                    "Chat needs a small prepaid balance that your agent "
-                    f"couldn't fund. Add {native_token} to your agent in Pearl, "
-                    "then try again in a few minutes."
-                )
-            },
+            {"error": message},
             HTTPStatus.PAYMENT_REQUIRED.value,
             HTTPStatus.PAYMENT_REQUIRED.phrase,
             HttpContentType.JSON.header,
