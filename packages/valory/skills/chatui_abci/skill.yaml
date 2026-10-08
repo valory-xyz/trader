@@ -10,7 +10,7 @@ fingerprint:
   behaviours.py: bafybeidu4jsysd6mh25cnkxmwunrsis77nqjcz2x4o72gor77fun7h4m4a
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeihp53wd6suc5kwyrq6bdjvy6xycfegngvhqdwsskmdh63jcjq7r3a
+  handlers.py: bafybeihwpqxlq5b6x3lzjzf2egutac72l27pluusqrk2ihrmdkewlzd22e
   models.py: bafybeif2cj5xyftlutgtvp6ghtrd7kalere6sg7a4dnmwvr5iexfcqauli
   payloads.py: bafybeib7q5bppbxctnfonjmats2guu76r4dfc5hghnl3dfdp7vzmapk5ji
   prompts.py: bafybeig6wi4phgm237ohdldpxb2axstfv5j7hyr7zfurjkiaviddovxirq
@@ -18,7 +18,7 @@ fingerprint:
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeidqhd3xqqhoych2x3zzz4scs732cdudxx5mefn4dxjml4qagkxsyy
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeibvkc47wdw644i6evzgrvnoajxrphofwuswxtadyyanhpaf65rabu
+  tests/test_handlers.py: bafybeiea6dzy2ufpzxuufsm6dade7nyqyijvtuqt6d3riffmsre5wonwnq
   tests/test_models.py: bafybeicmmoh3x3qdmdumn6j3tl34dfpw2erx7eaxhururtmylsjltf5xwm
   tests/test_payloads.py: bafybeiggrgq7zujlhjpqiefqkwqjiyngs7gcguwiet4n7fkidgjpa5rjni
   tests/test_prompts.py: bafybeidcc22taysehvglfv5be46lti4iqvkhzor5ysafemltqntskmrlca
