@@ -557,6 +557,28 @@ class TestSetJsonStore:
             written = json.load(f)
         assert written == payload
 
+    def test_failed_write_keeps_the_previous_store(self, tmp_path: Path) -> None:
+        """A write that dies part-way leaves the previous store, user goal included."""
+        state = object.__new__(_TestableSharedState)
+        context = MagicMock()
+        context.params.store_path = tmp_path
+        state.context = context  # type: ignore[assignment]
+        state._set_json_store({"activity_goal": 50})
+
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.models.json.dump",
+                side_effect=OSError("disk full"),
+            ),
+            pytest.raises(OSError),
+        ):
+            state._set_json_store({"activity_goal": 8})
+
+        assert json.loads((tmp_path / CHATUI_PARAM_STORE).read_text()) == {
+            "activity_goal": 50
+        }
+        assert [p.name for p in tmp_path.iterdir()] == [CHATUI_PARAM_STORE]
+
 
 # ---------------------------------------------------------------------------
 # ChatuiParams.__init__ tests (lines 177-179)
