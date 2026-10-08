@@ -734,8 +734,17 @@ class HttpHandler(BaseHttpHandler):
 
         # Nothing above wrote anything, so reaching here means every field
         # was readable and the update can be applied as a whole.
-        for write in writes:
-            write()
+        try:
+            for write in writes:
+                write()
+        except OSError as e:
+            # Raised past here, the caller would report an unreadable reply
+            # while the writes before this one stay applied.
+            self.context.logger.error(f"Could not save the config update: {e}")
+            issues.append(
+                "Some of your changes could not be saved. "
+                "Please check your settings and try again."
+            )
 
         return updated_params, issues
 

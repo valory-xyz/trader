@@ -665,6 +665,23 @@ class TestActivityGoal:
         handler.context.logger.error.assert_called_once()
         assert "disk full" in handler.context.logger.error.call_args.args[0]
 
+    def test_store_failure_is_reported_not_raised(self, tmp_path: Path) -> None:
+        """A failed store write reports an issue instead of an unreadable reply."""
+        handler = self._handler(tmp_path, current_goal=5)
+        handler._store_chatui_param_to_json.side_effect = OSError("disk full")  # type: ignore[attr-defined]
+
+        _, issues = handler._process_updated_agent_config(
+            {"activity_goal": 20, "behavior": "A steady strategy."}
+        )
+
+        assert len(issues) == 1
+        assert "could not be saved" in issues[0]
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
     @pytest.mark.parametrize(
         "block_content",
         [
