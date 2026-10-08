@@ -551,6 +551,7 @@ class TestActivityGoal:
             progress,
             GOAL_PERIOD_START,
             GOAL_PERIOD_START + 60,
+            MagicMock(),
         )
         return handler
 

@@ -1027,13 +1027,18 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.context.logger.error.assert_called()  # type: ignore[method-assign]
 
     def _apply_trade_bookkeeping(
-        self, store_path: Path, benchmarking: bool, sell: bool = False
+        self,
+        store_path: Path,
+        benchmarking: bool,
+        sell: bool = False,
+        record_ledger: bool = True,
     ) -> MagicMock:
         """Run the bet or sell bookkeeping against a store at ``store_path``.
 
         :param store_path: the store directory the ledger is written to.
         :param benchmarking: whether benchmarking mode is enabled.
         :param sell: run the sell bookkeeping instead of the bet one.
+        :param record_ledger: the ``record_ledger`` argument of the bet bookkeeping.
         :return: the patched ``store_bets``.
         """
         behaviour = self.behaviour
@@ -1062,7 +1067,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             if sell:
                 behaviour.update_sell_transaction_information()
             else:
-                behaviour.update_bet_transaction_information()
+                behaviour.update_bet_transaction_information(record_ledger)
         return store_bets
 
     def test_update_bet_transaction_information_records_one_trade(
@@ -1071,7 +1076,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """A placed bet adds exactly one timestamped entry to the trades ledger."""
         self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
 
-        assert read_trades(tmp_path, MagicMock()) == [
+        assert read_trades(tmp_path) == [
             {"timestamp": 1700000000, "bet_id": "test_bet"}
         ]
 
@@ -1103,15 +1108,26 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert any(str(error) in m for m in logged)
 
     def test_non_utf8_ledger_still_stores_bets(self, tmp_path: Path) -> None:
-        """An undecodable ledger is replaced and the placed bet is still persisted."""
+        """An undecodable ledger is left intact and the placed bet is still persisted."""
         (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(b"\xff\xfe")
 
         store_bets = self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
 
         store_bets.assert_called_once()
-        assert read_trades(tmp_path, MagicMock()) == [
-            {"timestamp": 1700000000, "bet_id": "test_bet"}
-        ]
+        assert (tmp_path / ACTIVITY_GOAL_TRADES_FILE).read_bytes() == b"\xff\xfe"
+        logged = [c.args[0] for c in self.behaviour.context.logger.error.call_args_list]  # type: ignore[attr-defined]
+        assert any("Could not record trade for bet test_bet" in m for m in logged)
+
+    def test_bet_bookkeeping_without_ledger_records_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        """``record_ledger=False`` updates and stores the bet without counting it."""
+        store_bets = self._apply_trade_bookkeeping(
+            tmp_path, benchmarking=False, record_ledger=False
+        )
+
+        store_bets.assert_called_once()
+        assert read_trades(tmp_path) == []
 
     @pytest.mark.parametrize(
         "benchmarking, sell",
@@ -1124,7 +1140,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         """Benchmarking placements and sells never count as trades."""
         self._apply_trade_bookkeeping(tmp_path, benchmarking=benchmarking, sell=sell)
 
-        assert read_trades(tmp_path, MagicMock()) == []
+        assert read_trades(tmp_path) == []
 
     def test_update_sell_transaction_information(self) -> None:
         """Test `update_sell_transaction_information` method."""  # type: ignore[misc]

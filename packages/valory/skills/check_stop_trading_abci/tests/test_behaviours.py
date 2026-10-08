@@ -29,6 +29,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    ACTIVITY_GOAL_TRADES_FILE,
     read_trades,
     record_trade,
 )
@@ -281,7 +282,7 @@ class TestActivityGoalGate:
         :return: the evaluation result.
         """
         for i in range(trades):
-            record_trade(store_path, period_start + i, f"bet_{i}", MagicMock())
+            record_trade(store_path, period_start + i, f"bet_{i}")
         if store_content is not None:
             (store_path / CHATUI_PARAM_STORE).write_bytes(store_content)
         elif stored_goal is not None:
@@ -374,9 +375,25 @@ class TestActivityGoalGate:
         assert result.stop is False
         assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
 
+    def test_unstaked_drops_the_ledger(self, tmp_path: Path) -> None:
+        """Trades placed while unstaked do not pile up in the ledger."""
+        self._run(tmp_path, completed=100, staked=False, trades=NOW - PERIOD_START)
+
+        assert read_trades(tmp_path) == []
+
+    def test_unstaked_with_unusable_ledger_still_votes(self, tmp_path: Path) -> None:
+        """A ledger that cannot be pruned does not block the vote."""
+        ledger = tmp_path / ACTIVITY_GOAL_TRADES_FILE
+        ledger.write_bytes(b"{not json")
+
+        result = self._run(tmp_path, completed=100, staked=False)
+
+        assert result.stop is False
+        assert ledger.read_bytes() == b"{not json"
+
     def test_trades_before_period_start_do_not_count(self, tmp_path: Path) -> None:
         """Trades from the previous epoch are not progress."""
-        record_trade(tmp_path, PERIOD_START - 1, "old", MagicMock())
+        record_trade(tmp_path, PERIOD_START - 1, "old")
 
         result = self._run(tmp_path, completed=8, default_goal=1)
 
@@ -412,17 +429,17 @@ class TestActivityGoalGate:
         assert self._block(tmp_path)["last_met_at"] == NOW
 
     @pytest.mark.parametrize(
-        "store_content",
+        "store_content, warns",
         [
-            json.dumps({"activity_goal": None}).encode(),
-            json.dumps({"activity_goal": True}).encode(),
-            json.dumps({"activity_goal": 2.0}).encode(),
-            json.dumps({"activity_goal": -1}).encode(),
-            json.dumps({"activity_goal": "3"}).encode(),
-            json.dumps({"trading_strategy": "kelly_criterion"}).encode(),
-            json.dumps(["not", "a", "dict"]).encode(),
-            b"{not json",
-            b"\xff\xfe",
+            (json.dumps({"activity_goal": None}).encode(), False),
+            (json.dumps({"activity_goal": True}).encode(), True),
+            (json.dumps({"activity_goal": 2.0}).encode(), True),
+            (json.dumps({"activity_goal": -1}).encode(), True),
+            (json.dumps({"activity_goal": "3"}).encode(), True),
+            (json.dumps({"trading_strategy": "kelly_criterion"}).encode(), False),
+            (json.dumps(["not", "a", "dict"]).encode(), True),
+            (b"{not json", True),
+            (b"\xff\xfe", True),
         ],
         ids=[
             "null",
@@ -437,12 +454,21 @@ class TestActivityGoalGate:
         ],
     )
     def test_unusable_stored_goal_falls_back_to_default(
-        self, tmp_path: Path, store_content: bytes
+        self,
+        tmp_path: Path,
+        caplog: pytest.LogCaptureFixture,
+        store_content: bytes,
+        warns: bool,
     ) -> None:
-        """Anything but a valid stored goal uses the param default."""
-        self._run(tmp_path, completed=8, default_goal=5, store_content=store_content)
+        """Anything but a valid stored goal uses the param default; only a broken one warns."""
+        with caplog.at_level(logging.WARNING, logger="check_stop_trading_test"):
+            self._run(
+                tmp_path, completed=8, default_goal=5, store_content=store_content
+            )
 
         assert self._block(tmp_path)["target"] == 5
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert bool(warnings) is warns
 
     def test_missing_store_falls_back_to_default(self, tmp_path: Path) -> None:
         """No chat store at all uses the param default."""
@@ -474,18 +500,34 @@ class TestActivityGoalGate:
         )
 
     @pytest.mark.parametrize(
-        "ledger", [b"{not json", b"\xff\xfe"], ids=["corrupt", "not_utf8"]
+        "ledger",
+        [b"{not json", b"\xff\xfe", b"{}"],
+        ids=["corrupt", "not_utf8", "not_a_list"],
     )
-    def test_unusable_ledger_counts_no_trades(
-        self, tmp_path: Path, ledger: bytes
+    def test_unusable_ledger_keeps_trading_and_is_left_intact(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture, ledger: bytes
     ) -> None:
-        """A ledger that cannot be read keeps the agent trading instead of raising."""
-        (tmp_path / "activity_goal_trades.json").write_bytes(ledger)
+        """A ledger that cannot be read votes to keep trading and is not overwritten."""
+        (tmp_path / ACTIVITY_GOAL_TRADES_FILE).write_bytes(ledger)
 
-        result = self._run(tmp_path, completed=8)
+        with caplog.at_level(logging.ERROR, logger="check_stop_trading_test"):
+            result = self._run(tmp_path, completed=8, default_goal=0)
 
         assert result.stop is False
-        assert self._block(tmp_path)["progress"] == 0
+        assert (tmp_path / ACTIVITY_GOAL_TRADES_FILE).read_bytes() == ledger
+        assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+        assert any(r.levelno == logging.ERROR for r in caplog.records)
+
+    def test_failed_publish_does_not_change_the_vote(self, tmp_path: Path) -> None:
+        """A block that cannot be written still drives the stop vote."""
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.activity_goal.write_performance_summary_key",
+            side_effect=OSError("disk full"),
+        ):
+            result = self._run(tmp_path, completed=8, trades=8)
+
+        assert result.stop is True
+        assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
 
     def test_epoch_rollover_resets_the_goal(self, tmp_path: Path) -> None:
         """A new tsCheckpoint prunes the old trades and lifts the standby."""
@@ -506,7 +548,7 @@ class TestActivityGoalGate:
         assert block["updated_at"] == next_start + 10
         # The last time the goal was met, which is still the previous epoch.
         assert block["last_met_at"] == NOW
-        assert read_trades(tmp_path, MagicMock()) == []
+        assert read_trades(tmp_path) == []
 
         third = self._run(
             tmp_path,

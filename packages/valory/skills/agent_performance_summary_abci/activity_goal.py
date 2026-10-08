@@ -68,15 +68,15 @@ def _is_trade_entry(entry: Any) -> bool:
     return is_plain_int(entry.get("timestamp"))
 
 
-def read_trades(store_path: Path, logger: Logger) -> List[Dict[str, Any]]:
+def read_trades(store_path: Path) -> List[Dict[str, Any]]:
     """Return the ledger of placed trades.
 
-    A missing or corrupt ledger reads as empty: under-counting keeps the agent
-    trading, which is the safe direction.
+    A missing ledger reads as empty. An unusable one raises rather than reading
+    as empty, so that no caller overwrites the trades already recorded in it.
 
     :param store_path: directory containing the ledger.
-    :param logger: where to warn about an unusable ledger.
     :return: the ledger entries with a usable timestamp.
+    :raises ValueError: if the ledger exists but is not a JSON list.
     """
     file_path = store_path / ACTIVITY_GOAL_TRADES_FILE
     try:
@@ -84,25 +84,24 @@ def read_trades(store_path: Path, logger: Logger) -> List[Dict[str, Any]]:
             trades = json.load(f)
     except FileNotFoundError:
         return []
-    except (OSError, ValueError) as e:
-        logger.warning(f"Unusable trades ledger {file_path}, reading it as empty: {e}")
-        return []
     if not isinstance(trades, list):
-        logger.warning(f"Trades ledger {file_path} is not a list, reading it as empty.")
-        return []
+        raise ValueError(f"Trades ledger {file_path} is not a list.")
     return [entry for entry in trades if _is_trade_entry(entry)]
 
 
-def record_trade(store_path: Path, timestamp: int, bet_id: str, logger: Logger) -> None:
-    """Append one placed trade to the ledger.
+def record_trade(store_path: Path, timestamp: int, bet_id: str) -> None:
+    """Append one placed trade to the ledger, once.
 
     :param store_path: directory containing the ledger.
     :param timestamp: when the trade was placed.
     :param bet_id: the id of the bet traded.
-    :param logger: where to warn about an unusable ledger.
     """
-    trades = read_trades(store_path, logger)
-    trades.append({"timestamp": timestamp, "bet_id": bet_id})
+    trades = read_trades(store_path)
+    entry = {"timestamp": timestamp, "bet_id": bet_id}
+    # One placement per round, so a repeat of the same pair is a retried write.
+    if entry in trades:
+        return
+    trades.append(entry)
     write_json_atomically(store_path / ACTIVITY_GOAL_TRADES_FILE, trades)
 
 
@@ -111,13 +110,16 @@ def count_trades_since(store_path: Path, period_start: int, logger: Logger) -> i
 
     :param store_path: directory containing the ledger.
     :param period_start: the start of the current staking epoch.
-    :param logger: where to warn about an unusable ledger.
+    :param logger: where to warn about a failed prune.
     :return: the number of trades in the current epoch.
     """
-    trades = read_trades(store_path, logger)
+    trades = read_trades(store_path)
     current = [entry for entry in trades if entry["timestamp"] >= period_start]
     if len(current) != len(trades):
-        write_json_atomically(store_path / ACTIVITY_GOAL_TRADES_FILE, current)
+        try:
+            write_json_atomically(store_path / ACTIVITY_GOAL_TRADES_FILE, current)
+        except OSError as e:
+            logger.warning(f"Could not prune the trades ledger: {e}")
     return len(current)
 
 
@@ -158,21 +160,32 @@ def build_activity_goal(
 
 
 def update_activity_goal(
-    store_path: Path, target: int, progress: int, period_start: int, now: int
+    store_path: Path,
+    target: int,
+    progress: int,
+    period_start: int,
+    now: int,
+    logger: Logger,
 ) -> ActivityGoal:
     """Rebuild the block and merge it into the performance summary.
+
+    A failed publish is logged and does not change the block returned.
 
     :param store_path: directory containing the performance summary.
     :param target: the effective goal.
     :param progress: trades placed in the current epoch.
     :param period_start: the start of the current staking epoch.
     :param now: the current timestamp.
-    :return: the block written.
+    :param logger: where to report a failed publish.
+    :return: the block built.
     """
     goal = build_activity_goal(
         target, progress, period_start, now, read_activity_goal(store_path)
     )
-    write_performance_summary_key(store_path, ACTIVITY_GOAL_KEY, asdict(goal))
+    try:
+        write_performance_summary_key(store_path, ACTIVITY_GOAL_KEY, asdict(goal))
+    except OSError as e:
+        logger.error(f"Failed to publish the activity_goal block: {e}")
     return goal
 
 

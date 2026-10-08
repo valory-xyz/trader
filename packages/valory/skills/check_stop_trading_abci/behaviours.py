@@ -215,27 +215,65 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
 
         :return: the stored goal, or ``None`` if unset, invalid or unreadable.
         """
+        file_path = self.params.store_path / CHATUI_PARAM_STORE
         try:
-            with open(self.params.store_path / CHATUI_PARAM_STORE, "r") as f:
+            with open(file_path, "r") as f:
                 store = json.load(f)
-        except (OSError, ValueError):
+        except FileNotFoundError:
             return None
-        goal = store.get(ACTIVITY_GOAL_FIELD) if isinstance(store, dict) else None
-        return goal if is_valid_activity_goal(goal) else None
+        except (OSError, ValueError) as e:
+            self.context.logger.warning(
+                f"Could not read {file_path}, using the default activity goal: {e}"
+            )
+            return None
+        if not isinstance(store, dict):
+            self.context.logger.warning(
+                f"{file_path} is not a JSON object, using the default activity goal."
+            )
+            return None
+        goal = store.get(ACTIVITY_GOAL_FIELD)
+        if goal is not None and not is_valid_activity_goal(goal):
+            self.context.logger.warning(
+                f"Invalid stored activity goal {goal!r}, using the default."
+            )
+            return None
+        return goal
 
-    def _evaluate_activity_goal(self, stored_goal: Optional[int]) -> ActivityGoal:
+    def _evaluate_activity_goal(
+        self, stored_goal: Optional[int]
+    ) -> Optional[ActivityGoal]:
         """Count this epoch's trades against the effective goal and publish the block.
 
         :param stored_goal: the goal the user set, or ``None`` if unset.
-        :return: the block written.
+        :return: the block built, or ``None`` if the trades ledger is unreadable.
         """
         target = effective_activity_goal(stored_goal, self.params.default_activity_goal)
         store_path = self.params.store_path
         period_start = self.ts_checkpoint
-        progress = count_trades_since(store_path, period_start, self.context.logger)
+        try:
+            progress = count_trades_since(store_path, period_start, self.context.logger)
+        except (OSError, ValueError) as e:
+            self.context.logger.error(
+                f"Unusable trades ledger, treating the activity goal as not met: {e}"
+            )
+            return None
         return update_activity_goal(
-            store_path, target, progress, period_start, self.synced_timestamp
+            store_path,
+            target,
+            progress,
+            period_start,
+            self.synced_timestamp,
+            self.context.logger,
         )
+
+    def _prune_unstaked_trades(self) -> None:
+        """Drop the trades ledger, which has no epoch to count against when unstaked."""
+        try:
+            count_trades_since(
+                self.params.store_path, self.synced_timestamp, self.context.logger
+            )
+        except (OSError, ValueError) as e:
+            self.context.logger.warning(f"Could not prune the trades ledger: {e}")
 
     def _compute_stop_trading(self) -> Generator[None, None, StopTradingResult]:
         """Compute the stop-trading decision and the activity signals for the cycle.
@@ -265,16 +303,20 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
 
         # Unstaked services have no epoch to count trades against.
-        if self.service_staking_state == StakingState.STAKED:
+        if self.service_staking_state != StakingState.STAKED:
+            self._prune_unstaked_trades()
+        else:
             stored_goal = self._read_stored_activity_goal()
             goal = self._evaluate_activity_goal(stored_goal)
-            stop = stop and goal.is_met
-            self.context.logger.info(
-                f"Activity goal: target={goal.target} (user_goal={stored_goal}, "
-                f"default_activity_goal={self.params.default_activity_goal}), "
-                f"progress={goal.progress}, period_start={goal.period_start}, "
-                f"goal_met={goal.is_met}, {activity_target_met=}, stop_trading={stop}"
-            )
+            stop = stop and goal is not None and goal.is_met
+            if goal is not None:
+                self.context.logger.info(
+                    f"Activity goal: target={goal.target} (user_goal={stored_goal}, "
+                    f"default_activity_goal={self.params.default_activity_goal}), "
+                    f"progress={goal.progress}, period_start={goal.period_start}, "
+                    f"goal_met={goal.is_met}, {activity_target_met=}, "
+                    f"stop_trading={stop}"
+                )
 
         return StopTradingResult(
             stop, staking_kpi_met, activity_target_met, target, completed

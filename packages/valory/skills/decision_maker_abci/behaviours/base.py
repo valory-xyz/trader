@@ -435,8 +435,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self._report_balance()
         return True
 
-    def update_bet_transaction_information(self) -> None:
-        """Update the bet's invested amount and timestamp after placing a bet."""
+    def update_bet_transaction_information(self, record_ledger: bool = True) -> None:
+        """Update the bet's invested amount and timestamp after placing a bet.
+
+        :param record_ledger: whether to count the bet towards the activity goal.
+        """
         sampled_bet = self.sampled_bet
         # Update bet transaction timestamp
         sampled_bet.processed_timestamp = self.synced_timestamp
@@ -451,18 +454,16 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # Update strategy for the bet that was just placed
         self._update_bet_strategy(sampled_bet)
 
-        if not self.benchmarking_mode.enabled:
+        if record_ledger and not self.benchmarking_mode.enabled:
             # Bet is already on-chain; a ledger failure must not skip store_bets below.
             try:
                 record_trade(
-                    self.params.store_path,
-                    self.synced_timestamp,
-                    sampled_bet.id,
-                    self.context.logger,
+                    self.params.store_path, self.synced_timestamp, sampled_bet.id
                 )
             except (OSError, ValueError) as e:
                 self.context.logger.error(
-                    f"Could not record trade for bet {sampled_bet.id}: {e}"
+                    f"Could not record trade for bet {sampled_bet.id}, leaving the "
+                    f"trades ledger untouched: {e}"
                 )
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
