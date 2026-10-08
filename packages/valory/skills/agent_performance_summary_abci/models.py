@@ -375,7 +375,7 @@ def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
     return goal if _has_valid_field_types(goal) else None
 
 
-def _is_int(value: Any) -> bool:
+def is_plain_int(value: Any) -> bool:
     """Return whether ``value`` is an int and not a bool.
 
     :param value: the value to check.
@@ -394,7 +394,7 @@ def _has_valid_field_types(goal: ActivityGoal) -> bool:
         isinstance(goal.unit, str)
         and isinstance(goal.is_met, bool)
         and all(
-            _is_int(value)
+            is_plain_int(value)
             for value in (
                 goal.target,
                 goal.progress,
@@ -402,7 +402,7 @@ def _has_valid_field_types(goal: ActivityGoal) -> bool:
                 goal.updated_at,
             )
         )
-        and (goal.last_met_at is None or _is_int(goal.last_met_at))
+        and (goal.last_met_at is None or is_plain_int(goal.last_met_at))
     )
 
 

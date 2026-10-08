@@ -904,9 +904,7 @@ class HttpHandler(BaseHttpHandler):
             f"(None is the default, {default_goal})."
         )
 
-        # Runs inside the reply's broad guard after the other writes, so a
-        # failure here must not surface as an unreadable reply. The next
-        # evaluation rebuilds the block anyway.
+        # Must not fail the reply; the next evaluation rebuilds the block.
         try:
             retarget_activity_goal(
                 self.context.params.store_path,

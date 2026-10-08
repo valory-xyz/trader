@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Optional
 
 from packages.valory.skills.agent_performance_summary_abci.models import (
     ActivityGoal,
+    is_plain_int,
     read_activity_goal,
     write_json_atomically,
     write_performance_summary_key,
@@ -43,7 +44,7 @@ def is_valid_activity_goal(value: Any) -> bool:
     :param value: the candidate goal.
     :return: whether it is valid.
     """
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return is_plain_int(value) and value >= 0
 
 
 def effective_activity_goal(stored_goal: Optional[int], default_goal: int) -> int:
@@ -64,8 +65,7 @@ def _is_trade_entry(entry: Any) -> bool:
     """
     if not isinstance(entry, dict):
         return False
-    timestamp = entry.get("timestamp")
-    return isinstance(timestamp, int) and not isinstance(timestamp, bool)
+    return is_plain_int(entry.get("timestamp"))
 
 
 def read_trades(store_path: Path, logger: Logger) -> List[Dict[str, Any]]:
