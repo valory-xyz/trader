@@ -1441,10 +1441,42 @@ class TestActivityGoalPersistence:
         self, tmp_path: Path
     ) -> None:
         """A met block carries an int ``last_met_at``."""
-        block = {**ACTIVITY_GOAL_BLOCK, "is_met": True, "last_met_at": 1_791_340_000}
+        block = {
+            **ACTIVITY_GOAL_BLOCK,
+            "progress": 8,
+            "is_met": True,
+            "last_met_at": 1_791_340_000,
+        }
         self._seed(tmp_path, {"activity_goal": block})
 
         assert read_activity_goal(tmp_path) == ActivityGoal(**block)
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"is_met": True},
+            {"progress": 8, "is_met": False},
+            {"target": -1},
+            {"progress": -1},
+            {"period_start": -1},
+            {"updated_at": -1},
+        ],
+        ids=[
+            "met_below_target",
+            "unmet_at_target",
+            "negative_target",
+            "negative_progress",
+            "negative_period_start",
+            "negative_updated_at",
+        ],
+    )
+    def test_read_activity_goal_rejects_inconsistent_block(
+        self, tmp_path: Path, overrides: Dict[str, Any]
+    ) -> None:
+        """A block whose ``is_met`` contradicts its counts, or with a negative count, reads as ``None``."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, **overrides}})
+
+        assert read_activity_goal(tmp_path) is None
 
     def test_write_performance_summary_key_replaces_non_utf8_file(
         self, tmp_path: Path

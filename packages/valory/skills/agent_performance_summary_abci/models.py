@@ -262,7 +262,7 @@ class OffchainDepositState:
                 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ActivityGoal:
     """Per-epoch activity goal progress, read by Pearl."""
 
@@ -372,7 +372,7 @@ def read_activity_goal(store_path: Path) -> Optional[ActivityGoal]:
         goal = ActivityGoal(**sub)
     except TypeError:
         return None
-    return goal if _has_valid_field_types(goal) else None
+    return goal if _is_valid_activity_goal_block(goal) else None
 
 
 def is_plain_int(value: Any) -> bool:
@@ -384,25 +384,19 @@ def is_plain_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _has_valid_field_types(goal: ActivityGoal) -> bool:
-    """Return whether every field of a block read from disk has its declared type.
+def _is_valid_activity_goal_block(goal: ActivityGoal) -> bool:
+    """Return whether a block read from disk is well-typed and self-consistent.
 
     :param goal: the block to check.
     :return: whether it is safe to compute with.
     """
+    counters = (goal.target, goal.progress, goal.period_start, goal.updated_at)
     return (
         isinstance(goal.unit, str)
         and isinstance(goal.is_met, bool)
-        and all(
-            is_plain_int(value)
-            for value in (
-                goal.target,
-                goal.progress,
-                goal.period_start,
-                goal.updated_at,
-            )
-        )
+        and all(is_plain_int(value) and value >= 0 for value in counters)
         and (goal.last_met_at is None or is_plain_int(goal.last_met_at))
+        and goal.is_met == (goal.progress >= goal.target)
     )
 
 
