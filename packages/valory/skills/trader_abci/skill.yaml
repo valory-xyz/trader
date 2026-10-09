@@ -342,6 +342,7 @@ models:
       is_running_on_polymarket: false
       balance_tracker_address: '0x0000000000000000000000000000000000000000'
       mech_analytics_url: ''
+      olas_predict_leaderboard_url: https://predict.olas.network/api/leaderboard/agents
       use_mech_analytics: false
       polymarket_builder_program_enabled: true
       polymarket_collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'

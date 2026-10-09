@@ -44,6 +44,9 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
+# Leaderboard windows, spelled as olas-predict's ``GET /api/leaderboard/agents`` expects
+LEADERBOARD_WINDOWS = ("7d", "30d", "90d", "1y")
+
 # Bump when on-disk profit_over_time must be rebuilt against the current
 # subgraph endpoint/schema. Files with a lower version are rebuilt once on
 # first run via _perform_initial_backfill.
@@ -263,6 +266,37 @@ class OffchainDepositState:
 
 
 @dataclass
+class LeaderboardWindowRank:
+    """The last successful olas-predict leaderboard answer for one window."""
+
+    ranked: bool
+    fetched_at: int  # UNIX timestamp (seconds) of the successful answer
+    not_ranked_reason: Optional[str] = None
+    rank_by_roi: Optional[int] = None
+    rank_by_pnl: Optional[int] = None
+    total_ranked: Optional[int] = None
+    leaderboard_url: Optional[str] = None
+
+
+@dataclass
+class LeaderboardData:
+    """This agent's leaderboard rank per window, fetched from olas-predict."""
+
+    windows: Dict[str, LeaderboardWindowRank] = field(default_factory=dict)
+    # Throttle watermark: when a refresh was last attempted, successful or not
+    last_attempt_at: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Convert dicts to dataclass instances."""
+        self.windows = {
+            window: (
+                LeaderboardWindowRank(**entry) if isinstance(entry, dict) else entry
+            )
+            for window, entry in self.windows.items()
+        }
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -280,6 +314,7 @@ class AgentPerformanceSummary:
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
     offchain_deposits: Optional[OffchainDepositState] = None
+    leaderboard: Optional[LeaderboardData] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -308,6 +343,9 @@ class AgentPerformanceSummary:
 
         if isinstance(self.offchain_deposits, dict):
             self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
+
+        if isinstance(self.leaderboard, dict):
+            self.leaderboard = LeaderboardData(**self.leaderboard)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
@@ -358,6 +396,11 @@ class AgentPerformanceSummaryParams(BaseParams):
                 "use_mech_analytics is true but mech_analytics_url is empty; "
                 "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
             )
+        # Full URL of olas-predict's per-address leaderboard endpoint. ``None``
+        # (a ``null`` override) disables the Agent Profile rank fetch.
+        self.olas_predict_leaderboard_url: str = (
+            self._ensure("olas_predict_leaderboard_url", kwargs, Optional[str]) or ""
+        )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves
@@ -633,6 +676,18 @@ class SharedState(BaseSharedState):
             existing.agent_performance.metrics = PerformanceMetricsData()
         existing.agent_performance.metrics.funds_locked_in_markets = value
         existing.timestamp = self.synced_timestamp
+        self.overwrite_performance_summary(existing)
+
+    def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
+        """Update only the ``leaderboard`` section of the summary.
+
+        Leaves ``timestamp`` alone: it tracks the performance-summary refresh,
+        which has its own schedule.
+
+        :param leaderboard: the leaderboard section to persist.
+        """
+        existing = self.read_existing_performance_summary()
+        existing.leaderboard = leaderboard
         self.overwrite_performance_summary(existing)
 
 

@@ -484,6 +484,7 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
     "mech_analytics_url": "",
     "use_mech_analytics": False,
+    "olas_predict_leaderboard_url": "https://predict.olas.network/api/leaderboard/agents",
 }
 
 
@@ -509,6 +510,23 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_running_on_polymarket is False
         assert params.mech_analytics_url == ""
         assert params.use_mech_analytics is False
+        assert (
+            params.olas_predict_leaderboard_url
+            == "https://predict.olas.network/api/leaderboard/agents"
+        )
+
+    def test_unset_leaderboard_url_normalises_to_empty(self, tmp_path: Path) -> None:
+        """A ``null`` leaderboard URL override arrives as ``None`` and disables the fetch.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=MagicMock(),
+                store_path=str(tmp_path),
+                **{**DEFAULT_APS_KWARGS, "olas_predict_leaderboard_url": None},
+            )
+        assert params.olas_predict_leaderboard_url == ""
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -542,6 +560,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
@@ -682,6 +701,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         assert params.is_running_on_polymarket is True
 

@@ -118,6 +118,7 @@ models:
       is_achievement_checker_enabled: true
       balance_tracker_address: '0x0000000000000000000000000000000000000000'
       mech_analytics_url: ''
+      olas_predict_leaderboard_url: https://predict.olas.network/api/leaderboard/agents
       use_mech_analytics: false
     class_name: AgentPerformanceSummaryParams
   olas_agents_subgraph:
