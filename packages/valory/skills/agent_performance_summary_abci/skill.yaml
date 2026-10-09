@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeiahyu3zepvnuk45e6elxso63lfmoxgk3vfpnp6mr4mjsebsr44nqq
-  behaviours.py: bafybeidgwcveoojmdxhvoxf22u7dhwzobrxoxh7shmmrhhj4obic55arbu
+  behaviours.py: bafybeiesgstz2fzwnpjtr7vkuqux57srlu3rrwpgspkebob7gnj4kqe4bq
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
   graph_tooling/__init__.py: bafybeicek36kwi7hlbhxz4ry5j662srevbhfrhx7ocb2ihc77hhil2utqu
@@ -20,8 +20,8 @@ fingerprint:
   graph_tooling/predictions_helper.py: bafybeigsc6np2yjhd6iy63rzm2s2a4qfqaliaak7tslve7vhfp573oukwe
   graph_tooling/queries.py: bafybeibvnr7xc3dqzmktnz65u6rkzfjbxo555ayg22t66cagazs4vdcyee
   graph_tooling/requests.py: bafybeihgnzidwb3nw2sbhopiloo2i6mulr6jj4fsh3r274e2bcnqpez724
-  handlers.py: bafybeibs45qlzj4t4hpv4etxui7gmc25ubcp7cjnhygkwwbnju6ag2nmmq
-  models.py: bafybeieagezv3nuak5sl3ofnur5kyfzygcsivqswi3y5y3jxpxehhiikrm
+  handlers.py: bafybeia4x6qogvivyqaqrm3qmzuqm6q32jp3lxd5pfs2yp2ru4i7mobg7u
+  models.py: bafybeiclgxi3rzhyqr4fvq5ucvc7urmjdx4cbebu4motnc5ggsweal3csa
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -37,13 +37,13 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeihigcnqai6ig24k7vq4wjag3nyftjhrlantcuqsalv7r3a4vg7kme
   tests/graph_tooling/test_queries.py: bafybeih4mebhlhdb5nzulmkl3xh2322gwwmej66xdqmmzfsijaii4w5qna
   tests/graph_tooling/test_requests.py: bafybeielxjdvbf6vncak54yy3h5cmxrt64viniuu4ti47rgvnwgo7r3h4i
-  tests/test_behaviours.py: bafybeihvk74arei5kwf5gij2uvo6pe2husfxv437lfvwvbk2xa7u3xdwwm
+  tests/test_behaviours.py: bafybeib72qp56cyfq7pehri4cytw5tpa7zt3xw2nuw2xrg6ijcozb7vwau
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
-  tests/test_handlers.py: bafybeicj4xtg2bpraid72orvjvr7votp223vqmzgmgilczrqh27kanumre
-  tests/test_models.py: bafybeien5sjrennoilzggperzwrmg7rpvy3c6hwncg5mdn3666hfur2wuq
+  tests/test_handlers.py: bafybeiba3l5kfpttlanjk6mk453rfsurmgu6m7522xasobj2byifwsjtd4
+  tests/test_models.py: bafybeihskeisibtslna4l4vyoaesccyst2djs7iviwqbxybolxwuc7kwaa
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
-  tests/test_save_performance_summary.py: bafybeie2fwvyihglrbeqd3xobnpzwuv3huf3gdjxu6r7jlraywxo33tlgm
+  tests/test_save_performance_summary.py: bafybeifposuvqriu2cavcsd3u6ruoybitynv6m4heeobq7z7hzstlcaaoy
 fingerprint_ignore_patterns: []
 contracts:
 - valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
