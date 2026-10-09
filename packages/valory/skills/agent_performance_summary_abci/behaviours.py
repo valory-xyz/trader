@@ -23,6 +23,7 @@ import bisect
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
+from urllib.parse import urlencode
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
@@ -69,6 +70,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    LEADERBOARD_WINDOWS,
+    LeaderboardData,
+    LeaderboardWindowRank,
     OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
@@ -129,6 +133,8 @@ SECONDS_PER_DAY = 86400
 MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
+# olas-predict rebuilds its leaderboard snapshot hourly; asking more often re-reads it
+LEADERBOARD_REFRESH_INTERVAL = 3600
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.5
 POLYMARKET_ACHIEVEMENT_DESCRIPTION_TEMPLATE = """My Polystrat agent just made {roi}\u00d7 ROI on Polymarket! \U0001f680
@@ -150,6 +156,15 @@ MORE_TRADES_NEEDED_TEXT = "More trades needed"
 # (a mech landing on an open market between the two reads); anything
 # larger is a genuine drift worth surfacing.
 _M5_RESIDUAL_TOLERANCE = 5
+
+
+def _optional_int(value: Any) -> Optional[int]:
+    """Return ``value`` if it is an integer (not a bool), else ``None``.
+
+    :param value: a value from a decoded JSON response
+    :return: the integer, or ``None``
+    """
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -2432,6 +2447,10 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
+        # The leaderboard section is written by ``_update_leaderboard`` on its
+        # own throttle; the rebuilt summary does not carry it.
+        agent_performance_summary.leaderboard = existing_data.leaderboard
+
         # Achievements are written by ``UpdateAchievementsBehaviour``; losing
         # them here would reset the backlog-guard watermark. Re-read them
         # leniently, like ``offchain_deposits`` below, so a corrupt sibling
@@ -2525,6 +2544,111 @@ class FetchPerformanceSummaryBehaviour(
 
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
+    def _fetch_leaderboard_window(
+        self, agent_type: str, window: str, safe_address: str, now: int
+    ) -> Generator[None, None, Optional[LeaderboardWindowRank]]:
+        """Fetch this agent's rank in one window from olas-predict.
+
+        :param agent_type: ``omenstrat`` or ``polystrat``
+        :param window: one of ``LEADERBOARD_WINDOWS``
+        :param safe_address: the agent's lowercased Safe address
+        :param now: the timestamp to stamp a successful answer with
+        :return: the window's rank, or ``None`` when the answer is unusable
+        :yield: None
+        """
+        query = urlencode(
+            {"agentType": agent_type, "window": window, "addresses": safe_address}
+        )
+        url = f"{self.params.olas_predict_leaderboard_url}?{query}"
+        # Async GET, as in ``_get_total_mech_requests``: a sync request would
+        # block the FSM round while the socket waits.
+        response = yield from self.get_http_response(method="GET", url=url)
+        if response.status_code != 200:
+            self.context.logger.warning(
+                f"Leaderboard {window} responded {response.status_code}; "
+                "keeping the previous rank"
+            )
+            return None
+
+        try:
+            data = json.loads(response.body.decode())
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            self.context.logger.warning(f"Leaderboard {window} JSON parse failed: {exc}")
+            return None
+
+        agents = data.get("agents") if isinstance(data, dict) else None
+        agent = agents[0] if isinstance(agents, list) and agents else None
+        if not isinstance(agent, dict) or (
+            str(agent.get("address", "")).lower() != safe_address
+        ):
+            self.context.logger.warning(
+                f"Leaderboard {window} answer has no entry for this agent; "
+                "keeping the previous rank"
+            )
+            return None
+
+        ranked = agent.get("ranked") is True
+        rank_by_roi = _optional_int(agent.get("rankByRoi"))
+        rank_by_pnl = _optional_int(agent.get("rankByPnl"))
+        reason = agent.get("notRankedReason")
+        if ranked and (rank_by_roi is None or rank_by_pnl is None):
+            self.context.logger.warning(
+                f"Leaderboard {window} marks the agent ranked without ranks; "
+                "keeping the previous rank"
+            )
+            return None
+
+        url_value = agent.get("leaderboardUrl")
+        return LeaderboardWindowRank(
+            ranked=ranked,
+            fetched_at=now,
+            not_ranked_reason=None if ranked or not isinstance(reason, str) else reason,
+            rank_by_roi=rank_by_roi if ranked else None,
+            rank_by_pnl=rank_by_pnl if ranked else None,
+            total_ranked=_optional_int(data.get("totalRanked")),
+            leaderboard_url=url_value if isinstance(url_value, str) else None,
+        )
+
+    def _update_leaderboard(self) -> Generator:
+        """Refresh this agent's leaderboard ranks, at most once per interval.
+
+        Each window succeeds or fails on its own; a failed window keeps its
+        previous answer. Never raises, so a leaderboard outage cannot affect
+        the performance summary or the round.
+
+        :yield: None
+        """
+        if not self.params.olas_predict_leaderboard_url:
+            return
+        try:
+            existing = (
+                self.shared_state.read_existing_performance_summary().leaderboard
+                or LeaderboardData()
+            )
+            now = self.shared_state.synced_timestamp
+            if (
+                existing.last_attempt_at is not None
+                and now - existing.last_attempt_at < LEADERBOARD_REFRESH_INTERVAL
+            ):
+                return
+
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            agent_type = (
+                "polystrat" if self.params.is_running_on_polymarket else "omenstrat"
+            )
+            windows = dict(existing.windows)
+            for window in LEADERBOARD_WINDOWS:
+                entry = yield from self._fetch_leaderboard_window(
+                    agent_type, window, safe_address, now
+                )
+                if entry is not None:
+                    windows[window] = entry
+            self.shared_state.update_leaderboard(
+                LeaderboardData(windows=windows, last_attempt_at=now)
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            self.context.logger.warning(f"Leaderboard refresh failed: {e}")
+
     def async_act(self) -> Generator:
         """Do the action."""
         if not self.params.is_agent_performance_summary_enabled:
@@ -2540,6 +2664,7 @@ class FetchPerformanceSummaryBehaviour(
 
         if not self._should_update():
             self.context.logger.info("Skipping update - too soon")
+            yield from self._update_leaderboard()
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
                 vote=False,
@@ -2564,6 +2689,8 @@ class FetchPerformanceSummaryBehaviour(
             else:
                 success = False
                 self.context.logger.error("Agent performance summary is None")
+
+            yield from self._update_leaderboard()
 
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
