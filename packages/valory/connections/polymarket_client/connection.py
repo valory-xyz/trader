@@ -89,7 +89,7 @@ POLYMARKET_CATEGORY_TAGS = [
     "international",
 ]
 MARKETS_LIMIT = 300
-EVENTS_LIMIT = 200
+EVENTS_LIMIT = 200`nMAX_PAGES = 100  # Safety cap on the keyset cursor loop (issue #936)
 MARKETS_TIME_WINDOW_DAYS = 4
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
@@ -1019,7 +1019,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         after_cursor: Optional[str] = None
         all_markets: list = []
 
-        while True:
+        for _ in range(MAX_PAGES):
             params: Dict[str, Any] = {
                 "tag_slug": tag_slug,
                 "end_date_max": end_date_max,
@@ -1035,6 +1035,18 @@ class PolymarketClientConnection(BaseSyncConnection):
 
             if error:
                 return None, error
+
+            # _request_with_retries can return a non-dict payload (JSON null, a
+            # stray list, or a string from a misbehaving edge proxy). Calling
+            # .get() on it would raise AttributeError and bubble up to
+            # fetch_markets' blanket except Exception, dropping the whole
+            # category. Degrade gracefully instead. (See issue 936.)
+            if not isinstance(response, dict):
+                self.logger.warning(
+                    f"fetch_markets: non-dict response from keyset API "
+                    f"(type={type(response).__name__}); breaking pagination"
+                )
+                break
 
             events_data = response.get("events") or []
 
@@ -1056,6 +1068,14 @@ class PolymarketClientConnection(BaseSyncConnection):
             after_cursor = response.get("next_cursor")
             if not after_cursor:
                 break
+        else:
+            # Hit MAX_PAGES without exhausting next_cursor -- upstream may be
+            # returning the same cursor (server bug, cache poisoning, partial
+            # outage). Warn so the next refresh can re-attempt. (See issue 936.)
+            self.logger.warning(
+                f"fetch_markets: hit MAX_PAGES={MAX_PAGES} cap with non-empty "
+                f"next_cursor; truncating market list at {len(all_markets)}"
+            )
 
         return all_markets, None
 
