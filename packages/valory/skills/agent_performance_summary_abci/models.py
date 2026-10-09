@@ -580,6 +580,19 @@ class SharedState(BaseSharedState):
 
         :param state: the ``OffchainDepositState`` to persist.
         """
+        self._write_section_to_disk("offchain_deposits", asdict(state))
+
+    def _write_section_to_disk(self, key: str, value: Any) -> None:
+        """Atomic-write one top-level key of the summary file, keeping the others.
+
+        Works on the raw JSON dict, bypassing every dataclass
+        ``__post_init__``, so a corrupt sibling field cannot degrade the
+        read into a fresh summary that would wipe the rest of the file.
+        A missing or unreadable file is replaced by one holding only ``key``.
+
+        :param key: the top-level key to set.
+        :param value: its JSON-serialisable value.
+        """
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
         try:
@@ -590,7 +603,7 @@ class SharedState(BaseSharedState):
         except (FileNotFoundError, json.JSONDecodeError):
             raw = {}
 
-        raw["offchain_deposits"] = asdict(state)
+        raw[key] = value
 
         # tempfile in the same directory so ``os.replace`` is atomic on
         # POSIX (both paths on one filesystem).
@@ -681,14 +694,15 @@ class SharedState(BaseSharedState):
     def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
         """Update only the ``leaderboard`` section of the summary.
 
+        Writes the raw section, like ``write_offchain_deposits_to_disk``: this
+        runs hourly, so going through ``read_existing_performance_summary``
+        would let a corrupt sibling field wipe irreversible state on disk.
         Leaves ``timestamp`` alone: it tracks the performance-summary refresh,
         which has its own schedule.
 
         :param leaderboard: the leaderboard section to persist.
         """
-        existing = self.read_existing_performance_summary()
-        existing.leaderboard = leaderboard
-        self.overwrite_performance_summary(existing)
+        self._write_section_to_disk("leaderboard", asdict(leaderboard))
 
 
 class Subgraph(ApiSpecs):

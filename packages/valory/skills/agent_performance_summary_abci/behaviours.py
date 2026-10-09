@@ -2640,9 +2640,17 @@ class FetchPerformanceSummaryBehaviour(
             )
             windows = dict(existing.windows)
             for window in LEADERBOARD_WINDOWS:
-                entry = yield from self._fetch_leaderboard_window(
-                    agent_type, window, safe_address, now
-                )
+                try:
+                    entry = yield from self._fetch_leaderboard_window(
+                        agent_type, window, safe_address, now
+                    )
+                except Exception as e:  # pylint: disable=broad-except
+                    # e.g. a transport timeout: keep the other windows going
+                    self.context.logger.warning(
+                        f"Leaderboard {window} fetch failed: {e}; "
+                        "keeping the previous rank"
+                    )
+                    continue
                 if entry is not None:
                     windows[window] = entry
             self.shared_state.update_leaderboard(

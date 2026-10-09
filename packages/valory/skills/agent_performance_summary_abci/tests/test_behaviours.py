@@ -8184,6 +8184,13 @@ class TestUpdateLeaderboard:
             _leaderboard_response(body={"agents": []}),
             _leaderboard_response(body=["unexpected"]),
             _leaderboard_response(body=_ranked_body("7d", address="0xsomeoneelse")),
+            # A boolean is not a rank, even though bool is an int in Python
+            _leaderboard_response(
+                body={
+                    **_ranked_body("7d"),
+                    "agents": [{**_ranked_body("7d")["agents"][0], "rankByRoi": True}],
+                }
+            ),
             _leaderboard_response(
                 body={
                     **_ranked_body("7d"),
@@ -8209,6 +8216,19 @@ class TestUpdateLeaderboard:
 
         saved = self._saved(self._run(respond)[0])
         assert set(saved.windows) == {"7d", "30d", "1y"}
+
+    def test_transport_error_in_one_window_keeps_the_others(self) -> None:
+        """An exception while fetching one window does not drop the rest."""
+
+        def respond(url: str) -> MagicMock:
+            window = self._window_of(url)
+            if window == "30d":
+                raise TimeoutError("no response")
+            return _leaderboard_response(body=_ranked_body(window))
+
+        saved = self._saved(self._run(respond)[0])
+        assert set(saved.windows) == {"7d", "90d", "1y"}
+        assert saved.last_attempt_at == NOW
 
     def test_never_raises(self) -> None:
         """An unexpected error is logged, not raised."""

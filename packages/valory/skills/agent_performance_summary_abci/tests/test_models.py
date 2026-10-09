@@ -1254,6 +1254,30 @@ class TestSharedState:
         assert data["agent_behavior"] == "active"
         assert data["agent_details"]["id"] == "agent-x"
 
+    def test_update_leaderboard_keeps_siblings_of_a_corrupt_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A corrupt sibling field cannot make the writer wipe the rest of the file.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        raw = {
+            "offchain_deposits": {"total_deposited_wei": 5, "last_scanned_block": 9},
+            "prediction_history": {"not_a_field": 1},
+        }
+        with open(file_path, "w") as f:
+            json.dump(raw, f)
+
+        state.update_leaderboard(LeaderboardData(last_attempt_at=3))
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["offchain_deposits"] == raw["offchain_deposits"]
+        assert data["prediction_history"] == raw["prediction_history"]
+        assert data["leaderboard"]["last_attempt_at"] == 3
+
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path
     ) -> None:
