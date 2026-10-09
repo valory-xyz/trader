@@ -23,12 +23,12 @@ import json
 import tempfile
 from io import StringIO
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.chatui_abci.tool_keys import VALORY_LABEL, tool_key
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     AVAILABLE_TOOLS_STORE,
     NO_METADATA_HASH,
@@ -41,8 +41,6 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     ConsecutiveFailures,
     EGreedyPolicy,
-    LEGACY_OPERATOR_DOMAIN,
-    tool_key,
 )
 from packages.valory.skills.mech_interact_abci.states.base import MechInfo, Service
 
@@ -50,15 +48,9 @@ V1_MECH = "0x" + "1" * 40
 MECH_A = "0x" + "a" * 40
 MECH_B = "0x" + "b" * 40
 MECH_C = "0x" + "c" * 40
-THIRD_PARTY_DOMAIN = "mechs.example.org"
 
 
-def _mech_info(
-    address: str,
-    relevant_tools: set,
-    operator_domain: Optional[str] = None,
-    verified: bool = False,
-) -> MechInfo:
+def _mech_info(address: str, relevant_tools: set) -> MechInfo:
     """A discovered mech as mech-interact records it."""
     return MechInfo(
         id="1",
@@ -69,14 +61,12 @@ def _mech_info(
         self_delivered=1,
         max_delivery_rate=1,
         relevant_tools=relevant_tools,
-        operator_domain=operator_domain,
-        operator_domain_verified=verified,
     )
 
 
 def _valory(tool: str) -> str:
-    """The key of a tool served by the legacy operator."""
-    return tool_key(LEGACY_OPERATOR_DOMAIN, tool)
+    """The key of a tool served by Valory's mechs."""
+    return tool_key(VALORY_LABEL, tool)
 
 
 # ---------------------------------------------------------------------------
@@ -801,35 +791,41 @@ class TestGetTools:
         bm = MagicMock()
         bm.enabled = False
 
-        with patch.object(
-            type(behaviour),
-            "benchmarking_mode",
-            new_callable=PropertyMock,
-            return_value=bm,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ),
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
-            ) as mock_sd:
-                mock_sd.return_value = MagicMock(
-                    is_marketplace_v2=True,
-                    mechs_info=[
-                        _mech_info(
-                            MECH_A, {"tool_a", "tool_b"}, LEGACY_OPERATOR_DOMAIN, True
-                        ),
-                        _mech_info(MECH_B, {"tool_b"}, LEGACY_OPERATOR_DOMAIN, True),
-                        _mech_info(MECH_C.upper().replace("0X", "0x"), {"tool_b"}),
-                    ],
-                    selected_mechs=[MECH_C],
-                )
-                gen = behaviour._get_tools()
-                try:
-                    while True:
-                        next(gen)
-                except StopIteration:
-                    pass
+            ) as mock_sd,
+        ):
+            mock_params.return_value = MagicMock(
+                valid_mechs=frozenset({MECH_A, MECH_B})
+            )
+            mock_sd.return_value = MagicMock(
+                is_marketplace_v2=True,
+                mechs_info=[
+                    _mech_info(MECH_A, {"tool_a", "tool_b"}),
+                    _mech_info(MECH_B.upper().replace("0X", "0x"), {"tool_b"}),
+                    _mech_info(MECH_C, {"tool_b"}),
+                ],
+                selected_mechs=[MECH_C],
+            )
+            gen = behaviour._get_tools()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
 
-        # The two verified mechs share one key per tool; the ChatUI pin is not
-        # applied here, so the pinned mech does not shrink the universe.
+        # Valory's mechs share one key per tool; the ChatUI pin does not shrink
+        # the universe.
         assert behaviour._mech_tools == {
             _valory("tool_a"),
             _valory("tool_b"),
@@ -1046,22 +1042,35 @@ class TestFetchAccuracyInfo:
 class TestPruneAccuracyStoreToCurrentTools:
     """Tests for _prune_accuracy_store_to_current_tools."""
 
-    def test_removes_tools_not_in_mech_tools(self) -> None:
-        """Should remove tools from accuracy_store that are not in mech_tools."""
+    def test_drops_only_unoffered_records_without_history(self) -> None:
+        """Unoffered records with requests or pending bets survive; empty ones go."""
         behaviour = _make_behaviour()
         behaviour._mech_tools = {"tool1"}
         policy = _make_policy(
             {
-                "tool1": AccuracyInfo(requests=5),
-                "tool2": AccuracyInfo(requests=3),
+                "tool1": AccuracyInfo(),
+                "earned": AccuracyInfo(requests=3, accuracy=0.5),
+                "pending": AccuracyInfo(pending=1),
+                "empty": AccuracyInfo(),
             }
         )
         behaviour._policy = policy
 
         behaviour._prune_accuracy_store_to_current_tools()
 
-        assert "tool1" in policy.accuracy_store
-        assert "tool2" not in policy.accuracy_store
+        assert set(policy.accuracy_store) == {"tool1", "earned", "pending"}
+        behaviour.context.logger.info.assert_called_once()
+        assert "['empty']" in behaviour.context.logger.info.call_args[0][0]
+
+    def test_logs_nothing_when_nothing_is_dropped(self) -> None:
+        """A store that only holds offered tools stays quiet."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._policy = _make_policy({"tool1": AccuracyInfo()})
+
+        behaviour._prune_accuracy_store_to_current_tools()
+
+        behaviour.context.logger.info.assert_not_called()
 
 
 # Tests for global_info_date_to_unix
@@ -1104,8 +1113,8 @@ class TestGlobalInfoDateToUnix:
 class TestParseGlobalInfoRow:
     """Tests for _parse_global_info_row."""
 
-    def test_row_lands_under_the_legacy_operator(self) -> None:
-        """The global file was measured on the legacy operator's mechs."""
+    def test_row_lands_under_valory(self) -> None:
+        """The global file was measured on Valory's mechs."""
         behaviour = _make_behaviour()
         behaviour._mech_tools = {_valory("tool1"), tool_key(MECH_C, "tool1")}
 
@@ -1128,7 +1137,7 @@ class TestParseGlobalInfoRow:
         assert tool_to_global_info == {_valory("tool1"): row}
 
     def test_row_is_skipped_when_only_other_identities_serve_the_tool(self) -> None:
-        """Another operator serving the same tool never inherits the global record."""
+        """A non-Valory mech serving the same tool never inherits the global record."""
         behaviour = _make_behaviour()
         behaviour._mech_tools = {tool_key(MECH_C, "tool1")}
 
@@ -1799,81 +1808,74 @@ class TestStoreMethods:
 # ---------------------------------------------------------------------------
 
 
+def _with_identity_context(behaviour, mechs: list, valid_mechs: set):  # type: ignore[no-untyped-def]
+    """Patch the behaviour's params and synchronized data, returning the patchers."""
+    patchers = [
+        patch.object(type(behaviour), "params", new_callable=PropertyMock),
+        patch.object(type(behaviour), "synchronized_data", new_callable=PropertyMock),
+    ]
+    mock_params, mock_sd = (patcher.start() for patcher in patchers)
+    mock_params.return_value = MagicMock(valid_mechs=frozenset(valid_mechs))
+    mock_sd.return_value = MagicMock(mechs_info=mechs)
+    return patchers
+
+
 class TestToolKeyUniverse:
-    """Tests for _get_v2_tools, _mechs_by_key, _v1_identity and mech_tool_names."""
+    """Tests for _identity, _mech_identities and _mechs_by_key."""
 
-    def _with_mechs(self, mechs: list):  # type: ignore[no-untyped-def]
-        """A behaviour whose synchronized data lists the given mechs."""
+    @pytest.mark.parametrize(
+        "address, valid_mechs, expected",
+        [
+            (MECH_A, {MECH_A}, VALORY_LABEL),
+            (MECH_A.upper().replace("0X", "0x"), {MECH_A}, VALORY_LABEL),
+            (MECH_C, {MECH_A}, MECH_C),
+            (MECH_A, set(), MECH_A),
+        ],
+    )
+    def test_identity(self, address: str, valid_mechs: set, expected: str) -> None:
+        """Only mechs in valid_mechs share the Valory label; an empty list labels none."""
         behaviour = _make_behaviour()
-        patcher = patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        )
-        mock_sd = patcher.start()
-        mock_sd.return_value = MagicMock(mechs_info=mechs)
-        return behaviour, patcher
-
-    def test_get_v2_tools_pools_verified_mechs_and_keys_the_rest_by_address(
-        self,
-    ) -> None:
-        """Only a verified domain pools; a claimed but unverified one keys by address."""
-        behaviour, patcher = self._with_mechs(
-            [
-                _mech_info(MECH_A, {"tool1"}, LEGACY_OPERATOR_DOMAIN, True),
-                _mech_info(MECH_B, {"tool1"}, LEGACY_OPERATOR_DOMAIN, False),
-                _mech_info(MECH_C, {"tool1"}, THIRD_PARTY_DOMAIN, True),
-            ]
-        )
+        patchers = _with_identity_context(behaviour, [], valid_mechs)
         try:
-            keys = behaviour._get_v2_tools()
+            assert behaviour._identity(address) == expected
         finally:
-            patcher.stop()
-        assert keys == {
-            _valory("tool1"),
-            tool_key(MECH_B, "tool1"),
-            tool_key(THIRD_PARTY_DOMAIN, "tool1"),
-        }
-
-    def test_get_v2_tools_without_mechs_is_empty(self) -> None:
-        """No discovered mechs means no keys, so the setup reports no tools."""
-        behaviour, patcher = self._with_mechs([])
-        try:
-            assert behaviour._get_v2_tools() == set()
-        finally:
-            patcher.stop()
+            for patcher in patchers:
+                patcher.stop()
 
     def test_mechs_by_key_lists_every_mech_behind_a_pooled_key(self) -> None:
         """A pooled key maps to all of its mechs; an address key to its own mech."""
-        behaviour, patcher = self._with_mechs(
+        behaviour = _make_behaviour()
+        patchers = _with_identity_context(
+            behaviour,
             [
-                _mech_info(MECH_A, {"tool1", "tool2"}, LEGACY_OPERATOR_DOMAIN, True),
-                _mech_info(
-                    MECH_B.upper().replace("0X", "0x"),
-                    {"tool1"},
-                    LEGACY_OPERATOR_DOMAIN,
-                    True,
-                ),
+                _mech_info(MECH_A, {"tool1", "tool2"}),
+                _mech_info(MECH_B.upper().replace("0X", "0x"), {"tool1"}),
                 _mech_info(MECH_C, {"tool1"}),
-            ]
+            ],
+            {MECH_A, MECH_B},
         )
         try:
             mechs = behaviour._mechs_by_key()
+            serving = behaviour._mech_identities("tool2")
         finally:
-            patcher.stop()
+            for patcher in patchers:
+                patcher.stop()
         assert mechs == {
             _valory("tool1"): [MECH_A, MECH_B],
             _valory("tool2"): [MECH_A],
             tool_key(MECH_C, "tool1"): [MECH_C],
         }
+        assert serving == {MECH_A: VALORY_LABEL}
 
-    def test_mech_tool_names_collapse_the_identity(self) -> None:
-        """Tool names are distinct across identities and bare keys pass through."""
+    def test_mechs_by_key_without_mechs_is_empty(self) -> None:
+        """No discovered mechs means no keys, so the setup reports no tools."""
         behaviour = _make_behaviour()
-        behaviour._mech_tools = {
-            _valory("tool1"),
-            tool_key(MECH_B, "tool1"),
-            "bare-tool",
-        }
-        assert behaviour.mech_tool_names == {"tool1", "bare-tool"}
+        patchers = _with_identity_context(behaviour, [], {MECH_A})
+        try:
+            assert behaviour._mechs_by_key() == {}
+        finally:
+            for patcher in patchers:
+                patcher.stop()
 
     @pytest.mark.parametrize(
         "use_mech_marketplace, expected",
@@ -1895,44 +1897,6 @@ class TestToolKeyUniverse:
             mock_params.return_value = params
             assert behaviour.v1_mech_address == expected
 
-    @pytest.mark.parametrize(
-        "body, verified, expected",
-        [
-            (
-                json.dumps({"operator": {"domain": "WWW.Valory.xyz"}}).encode(),
-                {V1_MECH: LEGACY_OPERATOR_DOMAIN},
-                LEGACY_OPERATOR_DOMAIN,
-            ),
-            (
-                json.dumps({"operator": {"domain": LEGACY_OPERATOR_DOMAIN}}).encode(),
-                {},
-                V1_MECH,
-            ),
-            (
-                json.dumps({"tools": ["t"]}).encode(),
-                {V1_MECH: LEGACY_OPERATOR_DOMAIN},
-                V1_MECH,
-            ),
-            (b"not json", {V1_MECH: LEGACY_OPERATOR_DOMAIN}, V1_MECH),
-            (None, {V1_MECH: LEGACY_OPERATOR_DOMAIN}, V1_MECH),
-        ],
-    )
-    def test_v1_identity(
-        self, body: Optional[bytes], verified: dict, expected: str
-    ) -> None:
-        """The V1 mech pools by domain only when its manifest declares the verified one."""
-        behaviour = _make_behaviour()
-        params = MagicMock(
-            use_mech_marketplace=False,
-            mech_contract_address=V1_MECH.upper().replace("0X", "0x"),
-            verified_operator_domains=verified,
-        )
-        with patch.object(
-            type(behaviour), "params", new_callable=PropertyMock
-        ) as mock_params:
-            mock_params.return_value = params
-            assert behaviour._v1_identity(SimpleNamespace(body=body)) == expected
-
 
 def _make_migrating_behaviour(benchmarking: bool = False):  # type: ignore[no-untyped-def]
     """A behaviour ready to run the legacy migration."""
@@ -1944,7 +1908,7 @@ def _make_migrating_behaviour(benchmarking: bool = False):  # type: ignore[no-un
 class TestMigrateLegacyKeys:
     """Tests for _migrate_legacy_keys."""
 
-    def test_moves_every_tool_keyed_record_under_the_legacy_operator(self) -> None:
+    def test_moves_every_tool_keyed_record_under_valory(self) -> None:
         """Accuracy, failures and utilized tools keyed by tool name are all kept."""
         behaviour = _make_migrating_behaviour()
         policy = _make_policy(
@@ -1976,13 +1940,7 @@ class TestMigrateLegacyKeys:
 
     @pytest.mark.parametrize(
         "stored, expected",
-        [
-            (66.0, 0.66),
-            (1.5, 0.015),
-            (1.0, 1.0),
-            (0.66, 0.66),
-            (0.0, 0.0),
-        ],
+        [(66.0, 0.66), (1.5, 0.015), (1.0, 1.0), (0.66, 0.66), (0.0, 0.0)],
     )
     def test_percent_accuracy_is_converted_to_a_fraction(
         self, stored: float, expected: float
@@ -2002,11 +1960,12 @@ class TestMigrateLegacyKeys:
     def test_identity_keyed_records_are_left_alone(self) -> None:
         """Running the migration on an already migrated store changes nothing."""
         behaviour = _make_migrating_behaviour()
-        keys = {
-            _valory("tool1"): AccuracyInfo(requests=7, accuracy=0.6),
-            tool_key(MECH_C, "tool1"): AccuracyInfo(requests=2, accuracy=1.0),
-        }
-        policy = _make_policy(dict(keys))
+        policy = _make_policy(
+            {
+                _valory("tool1"): AccuracyInfo(requests=7, accuracy=0.6),
+                tool_key(MECH_C, "tool1"): AccuracyInfo(requests=2, accuracy=1.0),
+            }
+        )
         behaviour._policy = policy
         behaviour._utilized_tools = {"0xtx": tool_key(MECH_C, "tool1")}
         before = policy.serialize()
@@ -2015,9 +1974,10 @@ class TestMigrateLegacyKeys:
 
         assert policy.serialize() == before
         assert behaviour._utilized_tools == {"0xtx": tool_key(MECH_C, "tool1")}
+        behaviour.context.logger.info.assert_not_called()
 
-    def test_existing_identity_record_wins_over_a_legacy_one(self) -> None:
-        """A record already earned under the identity key is not overwritten."""
+    def test_existing_valory_records_win_over_legacy_ones(self) -> None:
+        """Records and failure counts already under the new key are not overwritten."""
         behaviour = _make_migrating_behaviour()
         policy = _make_policy(
             {
@@ -2025,6 +1985,10 @@ class TestMigrateLegacyKeys:
                 "tool1": AccuracyInfo(requests=9, accuracy=50.0),
             }
         )
+        policy.consecutive_failures = {
+            _valory("tool1"): ConsecutiveFailures(n_failures=0, timestamp=9),
+            "tool1": ConsecutiveFailures(n_failures=4, timestamp=1),
+        }
         behaviour._policy = policy
 
         behaviour._migrate_legacy_keys()
@@ -2032,16 +1996,9 @@ class TestMigrateLegacyKeys:
         assert policy.accuracy_store == {
             _valory("tool1"): AccuracyInfo(requests=2, accuracy=1.0)
         }
-
-    def test_runs_without_a_known_tool_universe(self) -> None:
-        """Nothing is attributed by guesswork, so the tool list is not needed."""
-        behaviour = _make_migrating_behaviour()
-        behaviour._mech_tools = set()
-        behaviour._policy = _make_policy({"tool1": AccuracyInfo(requests=7)})
-
-        behaviour._migrate_legacy_keys()
-
-        assert set(behaviour.policy.accuracy_store) == {_valory("tool1")}
+        assert policy.consecutive_failures == {
+            _valory("tool1"): ConsecutiveFailures(n_failures=0, timestamp=9)
+        }
 
     def test_no_op_in_benchmarking_mode(self) -> None:
         """Benchmarking keys are bare tool names by design, not legacy rows."""
@@ -2057,3 +2014,23 @@ class TestMigrateLegacyKeys:
             "tool1": AccuracyInfo(requests=7, accuracy=60.0)
         }
         assert behaviour._utilized_tools == {"0xtx": "tool1"}
+
+
+def test_migrated_records_survive_the_first_period_prune() -> None:
+    """Migrate then prune, as on the first period: the history is kept."""
+    behaviour = _make_migrating_behaviour()
+    behaviour._mech_tools = {_valory("tool1")}
+    behaviour._policy = _make_policy(
+        {
+            "tool1": AccuracyInfo(requests=7, accuracy=60.0),
+            "retired": AccuracyInfo(requests=4, pending=1, accuracy=0.5),
+        }
+    )
+
+    behaviour._migrate_legacy_keys()
+    behaviour._prune_accuracy_store_to_current_tools()
+
+    assert set(behaviour.policy.accuracy_store) == {
+        _valory("tool1"),
+        _valory("retired"),
+    }

@@ -40,23 +40,6 @@ SERIALIZED_EMPTY_PIN = "[]"
 SELECTED_MECHS_DB_KEY = "selected_mechs"
 
 
-# Separator of the mech address and the tool name in a decision-maker policy key.
-MECH_TOOL_SEPARATOR = "::"
-
-
-def tool_names(policy_keys: Set[str]) -> Set[str]:
-    """Get the distinct tool names behind the decision maker's policy keys.
-
-    A key without an identity is a bare tool name and passes through.
-
-    :param policy_keys: keys of the form ``<identity>::<tool name>``.
-    :return: the tool names.
-    """
-    return {
-        str(key).partition(MECH_TOOL_SEPARATOR)[2] or str(key) for key in policy_keys
-    }
-
-
 class SynchronizedData(BaseSynchronizedData):
     """Class to represent the synchronized data.
 
@@ -65,14 +48,7 @@ class SynchronizedData(BaseSynchronizedData):
 
     @property
     def available_mech_tools(self) -> Set[str]:
-        """Get all the available mech tools, as the decision maker's policy keys.
-
-        The decision maker writes this key as ``<identity>::<tool name>``
-        (see ``decision_maker_abci.policy``), one entry per (identity, tool) pair;
-        use :func:`tool_names` to drop the mech part.
-
-        :return: the policy keys.
-        """
+        """Get all the available mech tools, as policy keys (see ``tool_keys``)."""
         tools = self.db.get_strict("available_mech_tools")
         return set(json.loads(tools))
 

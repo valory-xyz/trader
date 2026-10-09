@@ -78,14 +78,15 @@ class BlacklistingBehaviour(  # type: ignore
             bets_hash = (
                 None if self.benchmarking_mode.enabled else self.hash_stored_bets()
             )
-            if (
-                self.synchronized_data.tx_submitter
+            tool = (
+                self.creditable_tool_key
+                if self.synchronized_data.tx_submitter
                 != HandleFailedTxRound.auto_round_id()
-            ):
+                else None
+            )
+            if tool is not None:
                 # if we are here, then the tool has responded with an error
-                self.policy.tool_responded(
-                    self.synchronized_data.mech_tool_key, self.synced_timestamp
-                )
+                self.policy.tool_responded(tool, self.synced_timestamp)
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)
 

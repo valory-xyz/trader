@@ -32,8 +32,9 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.chatui_abci.rounds import (
     SynchronizedData as ChatuiSyncedData,
 )
+from packages.valory.skills.chatui_abci.tool_keys import tool_key
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
-from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy, tool_key
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
     SynchronizedData as MarketManagerSyncedData,
 )
@@ -158,28 +159,34 @@ class SynchronizedData(
         return None
 
     @property
-    def mech_tool_key(self) -> str:
-        """Get the policy key the current request's outcome is credited to.
+    def mech_identities(self) -> Dict[str, str]:
+        """Get the identity of each mech that may deliver the selected tool."""
+        raw = self.db.get("mech_identities", None)
+        return json.loads(raw) if raw else {}
 
-        On marketplace v2 another mech than the one asked may deliver, so the
-        key is rebuilt from the delivering mech's identity: the identity
-        `mechs_info` records for it, or its address when it is not listed
-        there. Otherwise the selected key stands, as the mech that was asked is
-        the one that answers. A bare tool name is returned when no key was
-        selected, e.g., in benchmarking mode.
+    @property
+    def mech_tool_key(self) -> Optional[str]:
+        """Get the key the current request's outcome is credited to.
 
-        :return: the policy key.
+        The outcome goes to the identity of the mech that delivered, which may
+        differ from the one asked. A deliverer outside `mech_identities` is not
+        eligible and gets no credit (`None`). Without a recorded deliverer or
+        identities, the selected key stands; a bare tool name is returned when
+        no key was selected, as written by an earlier version.
+
+        :return: the key, or `None` when the outcome is not to be credited.
         """
         selected = self.selected_tool_key
         if selected is None:
             return self.mech_tool
         delivering = self.delivering_mech
-        if delivering is None or not self.db.get("is_marketplace_v2", None):
+        identities = self.mech_identities
+        if delivering is None or not identities:
             return selected
-        for mech in self.mechs_info:
-            if mech.address.lower() == delivering:
-                return tool_key(mech.record_identity, self.mech_tool)
-        return tool_key(delivering, self.mech_tool)
+        identity = identities.get(delivering)
+        if identity is None:
+            return None
+        return tool_key(identity, self.mech_tool)
 
     @property
     def utilized_tools(self) -> Dict[str, str]:
@@ -250,7 +257,7 @@ class SynchronizedData(
         """Get the weighted accuracy of the selected tool, as served by its mech."""
         key = self.mech_tool_key
         store_tools = set(self.policy.weighted_accuracy.keys())
-        if key not in store_tools:
+        if key is None or key not in store_tools:
             raise ValueError(
                 f"The tool {key} was selected but it is not available in the policy!"
             )

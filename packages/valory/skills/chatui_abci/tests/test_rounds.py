@@ -32,30 +32,7 @@ from packages.valory.skills.chatui_abci.rounds import (
     Event,
     FinishedChatuiLoadRound,
     SynchronizedData,
-    tool_names,
 )
-
-
-def test_tool_names_drops_the_mech_part_of_policy_keys() -> None:
-    """Keys of several mechs serving one tool collapse to that tool's name."""
-    mech_a = "0x" + "a" * 40
-    mech_b = "0x" + "b" * 40
-    keys = {
-        f"{mech_a}::prediction-online",
-        f"{mech_b}::prediction-online",
-        f"{mech_b}::prediction-offline",
-        "legacy-tool",
-    }
-    assert tool_names(keys) == {
-        "prediction-online",
-        "prediction-offline",
-        "legacy-tool",
-    }
-
-
-def test_tool_names_of_nothing_is_nothing() -> None:
-    """An empty universe stays empty."""
-    assert tool_names(set()) == set()
 
 
 class TestSynchronizedData:

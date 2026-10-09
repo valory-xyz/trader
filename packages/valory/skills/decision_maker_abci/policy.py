@@ -25,10 +25,8 @@ from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from packages.valory.skills.chatui_abci.tool_keys import describe_tool_key
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
-from packages.valory.skills.mech_interact_abci.operator_identity import (
-    normalize_operator_domain,
-)
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
@@ -38,67 +36,6 @@ RandomnessType = Union[int, float, str, bytes, bytearray, None]
 VOLUME_FACTOR_REGULARIZATION = 0.001
 UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.005, 0.805)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
-
-# The policy is keyed per (identity, tool) pair, serialized as
-# ``<identity>::<tool name>``. The identity is the operator domain of mechs
-# whose domain was verified at approval, and the lowercase address of any other
-# mech (see ``mech_interact_abci.operator_identity``). A key with no identity is
-# a bare tool name: the pre-identity on-disk format, and the benchmarking mode,
-# where there is no mech.
-MECH_TOOL_SEPARATOR = "::"
-ADDRESS_HEX_LENGTH = 40
-# The operator every tool-keyed record was earned with: all traffic before
-# per-identity records went to this operator's mechs.
-LEGACY_OPERATOR_DOMAIN = "www.valory.xyz"
-
-
-def _is_address(value: str) -> bool:
-    """Check whether the given value is a ``0x``-prefixed 20-byte hex address."""
-    if len(value) != len("0x") + ADDRESS_HEX_LENGTH or value[:2].lower() != "0x":
-        return False
-    try:
-        int(value, 16)
-    except ValueError:
-        return False
-    return True
-
-
-def _is_identity(value: str) -> bool:
-    """Check whether the given value is a mech address or an operator domain."""
-    return _is_address(value) or normalize_operator_domain(value) is not None
-
-
-def tool_key(identity: Optional[str], tool: str) -> str:
-    """Build the policy key of a tool served under the given identity.
-
-    :param identity: the operator domain or mech address, or ``None`` when there
-        is no mech.
-    :param tool: the tool's name.
-    :return: the key the policy's stores are indexed by.
-    """
-    if not identity:
-        return tool
-    return f"{identity.lower()}{MECH_TOOL_SEPARATOR}{tool}"
-
-
-def split_tool_key(key: str) -> Tuple[Optional[str], str]:
-    """Split a policy key into its identity and tool name.
-
-    :param key: a key as built by :func:`tool_key`.
-    :return: the lowercase identity, or ``None`` for a bare tool name, and the tool.
-    """
-    identity, sep, tool = key.partition(MECH_TOOL_SEPARATOR)
-    if sep and _is_identity(identity):
-        return identity.lower(), tool
-    return None, key
-
-
-def describe_tool_key(key: str) -> str:
-    """Render a policy key for humans, e.g., ``prediction-online @ www.valory.xyz``."""
-    identity, tool = split_tool_key(key)
-    if identity is None:
-        return tool
-    return f"{tool} @ {identity}"
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -184,9 +121,8 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
 class EGreedyPolicy:
     """An e-Greedy policy for the tool selection based on tool accuracy.
 
-    Every store is indexed by the key returned by :func:`tool_key`, so each
-    (identity, tool) pair has its own accuracy record, consecutive failures, and
-    quarantine. Mechs of different identities never share a record.
+    Every store is indexed by a ``tool_keys`` key, so each (identity, tool)
+    pair has its own accuracy record, consecutive failures, and quarantine.
     """
 
     eps: float

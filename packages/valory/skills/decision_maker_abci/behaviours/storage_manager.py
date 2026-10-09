@@ -29,6 +29,12 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.chatui_abci.tool_keys import (
+    VALORY_LABEL,
+    split_tool_key,
+    tool_key,
+    tool_names,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     CID_PREFIX,
     DecisionMakerBaseBehaviour,
@@ -38,16 +44,9 @@ from packages.valory.skills.decision_maker_abci.models import AgentToolsSpecs
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
-    LEGACY_OPERATOR_DOMAIN,
-    split_tool_key,
-    tool_key,
 )
 from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
     is_prediction_tool,
-)
-from packages.valory.skills.mech_interact_abci.operator_identity import (
-    parse_operator_domain,
-    record_identity,
 )
 
 POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
@@ -132,11 +131,6 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def mech_tools_api(self) -> AgentToolsSpecs:
         """Get the mech agent api specs."""
         return self.context.agent_tools
-
-    @property
-    def mech_tool_names(self) -> Set[str]:
-        """Get the distinct tool names behind `mech_tools`, without the identity."""
-        return {split_tool_key(key)[1] for key in self.mech_tools}
 
     @property
     def v1_mech_address(self) -> str:
@@ -241,7 +235,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
         res = {str(tool).lower() for tool in res}
-        identity = self._v1_identity(res_raw)
+        identity = self._identity(self.v1_mech_address)
 
         if len(res) == 0:
             self.context.logger.error("The mech agent's manifest is empty!")
@@ -272,49 +266,46 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self.mech_tools_api.reset_retries()
         return True
 
-    def _v1_identity(self, res_raw: Any) -> str:
-        """Get the identity of the single V1 mech from its manifest response.
+    def _identity(self, address: str) -> str:
+        """Get the identity a mech's results are recorded under.
 
-        :param res_raw: the raw HTTP response carrying the mech's manifest.
-        :return: the identity its results are recorded under, see `record_identity`.
+        Every mech in `valid_mechs` is Valory's and shares `VALORY_LABEL`, so
+        mechs added to the agent by any other route, such as a user's
+        approval, must be kept out of `valid_mechs`. Any other mech is
+        recorded under its own address.
+
+        :param address: the mech's address.
+        :return: `VALORY_LABEL` or the lowercase address.
         """
-        try:
-            manifest = json.loads(res_raw.body)
-        except (AttributeError, TypeError, ValueError):
-            manifest = None
-        return record_identity(
-            self.v1_mech_address,
-            parse_operator_domain(manifest),
-            self.params.verified_operator_domains,
-        )
+        address = address.lower()
+        return VALORY_LABEL if address in self.params.valid_mechs else address
 
-    def _get_v2_tools(self) -> Set[str]:
-        """Get one policy key per (identity, tool) pair across the discovered mechs.
+    def _mech_identities(self, tool: Optional[str] = None) -> Dict[str, str]:
+        """Map the discovered mechs, optionally only those serving a tool, to identities.
 
-        `mechs_info` is already restricted to the operator's `valid_mechs`.
-        The ChatUI's `selected_mechs` pin is not applied here: it narrows the
-        candidates at selection time, so the records of unpinned mechs survive
-        a temporary pin instead of being pruned.
-
-        :return: the policy keys.
+        :param tool: the tool name to filter by, or `None` for every mech.
+        :return: lowercase mech address to identity, in `mechs_info` order.
         """
         return {
-            tool_key(mech.record_identity, tool)
+            mech.address.lower(): self._identity(mech.address)
             for mech in self.synchronized_data.mechs_info
-            for tool in mech.relevant_tools
+            if tool is None or tool in mech.relevant_tools
         }
 
     def _mechs_by_key(self) -> Dict[str, List[str]]:
-        """Map each policy key to the addresses of the discovered mechs behind it.
+        """Map each key of the discovered mechs to the mechs behind it.
 
         :return: lowercase mech addresses per key, in `mechs_info` order; empty
-            when no mech information is available (V1 and benchmarking).
+            without mech information (V1 and benchmarking).
         """
         mechs: Dict[str, List[str]] = {}
+        identities = self._mech_identities()
         for mech in self.synchronized_data.mechs_info:
+            address = mech.address.lower()
             for tool in mech.relevant_tools:
-                key = tool_key(mech.record_identity, tool)
-                mechs.setdefault(key, []).append(mech.address.lower())
+                mechs.setdefault(tool_key(identities[address], tool), []).append(
+                    address
+                )
         return mechs
 
     def _get_tools(
@@ -326,7 +317,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return
 
         if self.synchronized_data.is_marketplace_v2:
-            self.mech_tools = self._get_v2_tools()
+            self.mech_tools = set(self._mechs_by_key())
             return
 
         for step in (
@@ -498,66 +489,72 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         return True
 
     @staticmethod
-    def _legacy_key(key: str) -> Optional[str]:
-        """Get the identity-scoped key of a record that is keyed by tool name alone.
+    def _rekey_legacy(store: Dict[str, Any]) -> List[str]:
+        """Move a store's entries keyed by tool name alone under `VALORY_LABEL`.
 
-        :param key: a policy key.
-        :return: the key under `LEGACY_OPERATOR_DOMAIN`, or `None` when the key
-            already carries an identity.
+        An entry already present under the new key wins.
+
+        :param store: the store to re-key in place.
+        :return: the keys that were moved.
         """
-        if split_tool_key(key)[0] is not None:
-            return None
-        return tool_key(LEGACY_OPERATOR_DOMAIN, key)
+        moved = []
+        for key in list(store):
+            if split_tool_key(key)[0] is None:
+                store.setdefault(tool_key(VALORY_LABEL, key), store.pop(key))
+                moved.append(key)
+        return moved
 
     def _migrate_legacy_keys(self) -> None:
-        """Move the records keyed by tool name alone to `LEGACY_OPERATOR_DOMAIN`.
+        """Move the records keyed by tool name alone under `VALORY_LABEL`.
 
-        Records written before per-identity keys carry no mech, and all of that
-        traffic went to the legacy operator's mechs, so every such record is
-        kept under its identity. Their accuracy may be in percent, as seeded
-        from the global file before accuracy was kept as a fraction; a value
-        above 1 is converted. A record already present under the target key
-        wins. Idempotent; skipped in benchmarking mode, where keys are bare
-        tool names by design.
+        All traffic before records carried an identity went to Valory's mechs.
+        Accuracy seeded in percent (above 1) is converted to a fraction.
+        Idempotent; skipped in benchmarking, where keys are bare by design.
         """
         if self.benchmarking_mode.enabled:
             return
 
         policy = self.policy
-        migrated: List[str] = []
-        for key in list(policy.accuracy_store):
-            target = self._legacy_key(key)
-            if target is None:
-                continue
-            record = policy.accuracy_store.pop(key)
+        moved = self._rekey_legacy(policy.accuracy_store)
+        self._rekey_legacy(policy.consecutive_failures)
+        legacy_refs = {
+            ref: tool_key(VALORY_LABEL, key)
+            for ref, key in self.utilized_tools.items()
+            if split_tool_key(key)[0] is None
+        }
+        self.utilized_tools.update(legacy_refs)
+        if not moved:
+            return
+        for key in moved:
+            record = policy.accuracy_store[tool_key(VALORY_LABEL, key)]
             if record.accuracy > 1:
                 record.accuracy /= GLOBAL_ACCURACY_SCALE
-            policy.accuracy_store.setdefault(target, record)
-            migrated.append(key)
-        for key in list(policy.consecutive_failures):
-            target = self._legacy_key(key)
-            if target is not None:
-                failures = policy.consecutive_failures.pop(key)
-                policy.consecutive_failures.setdefault(target, failures)
-        for ref, key in list(self.utilized_tools.items()):
-            target = self._legacy_key(key)
-            if target is not None:
-                self.utilized_tools[ref] = target
-
-        if not migrated:
-            return
         policy.update_weighted_accuracy()
         self.context.logger.info(
-            f"Moved the accuracy records of {sorted(migrated)} under "
-            f"{LEGACY_OPERATOR_DOMAIN!r}."
+            f"Moved the accuracy records of {sorted(moved)} under {VALORY_LABEL!r}."
         )
 
     def _prune_accuracy_store_to_current_tools(self) -> None:
-        """Drop accuracy_store entries that are no longer in self.mech_tools."""
+        """Drop the records of tools no longer offered, unless they have history.
+
+        A record with requests or pending bets is kept, so a tool that returns,
+        and the credit of bets still pending, are not lost. Selection only picks
+        among the currently offered tools.
+        """
         accuracy_store = self.policy.accuracy_store
-        for tool in accuracy_store.copy():
-            if tool not in self.mech_tools:
-                accuracy_store.pop(tool, None)
+        dropped = [
+            key
+            for key, record in accuracy_store.items()
+            if key not in self.mech_tools
+            and record.requests == 0
+            and record.pending == 0
+        ]
+        for key in dropped:
+            del accuracy_store[key]
+        if dropped:
+            self.context.logger.info(
+                f"Dropped the records of tools no longer offered: {sorted(dropped)}."
+            )
 
     def _global_info_date_to_unix(self, tool_transaction_date: str) -> Optional[int]:
         """Convert the global information date to unix."""
@@ -582,15 +579,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     ) -> int:
         """Parse a row of the global information.
 
-        The global information is keyed by tool name alone and was measured on
-        the legacy operator's mechs, so a row is kept under that operator's key.
+        The global information was measured on Valory's mechs.
 
         :param row: the row to parse.
         :param max_transaction_date: the latest transaction date so far.
         :param tool_to_global_info: the rows kept so far, by policy key.
         :return: the latest transaction date, including this row.
         """
-        key = tool_key(LEGACY_OPERATOR_DOMAIN, row[self.acc_info_fields.tool])
+        key = tool_key(VALORY_LABEL, row[self.acc_info_fields.tool])
         if key not in self.mech_tools:
             # skip irrelevant tools
             return max_transaction_date
@@ -767,15 +763,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if not self._tool_metadata:
             return
 
-        tool_names = self.mech_tool_names
+        names = tool_names(self.mech_tools)
         suitable = {
-            tool
-            for tool in tool_names
-            if is_prediction_tool(self._tool_metadata.get(tool))
+            tool for tool in names if is_prediction_tool(self._tool_metadata.get(tool))
         }
         if not suitable:
             self.context.logger.warning(
-                f"Tool-suitability classifier marked all {len(tool_names)} "
+                f"Tool-suitability classifier marked all {len(names)} "
                 "tool(s) as unsuitable during setup; the ChatUI will fall back "
                 "to the raw mech_tools set."
             )

@@ -80,7 +80,8 @@ from packages.valory.skills.chatui_abci.prompts import (
     TradingStrategy,
     build_chatui_llm_response_schema,
 )
-from packages.valory.skills.chatui_abci.rounds import SynchronizedData, tool_names
+from packages.valory.skills.chatui_abci.rounds import SynchronizedData
+from packages.valory.skills.chatui_abci.tool_keys import tool_names
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler

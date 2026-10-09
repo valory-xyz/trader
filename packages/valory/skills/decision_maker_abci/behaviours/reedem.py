@@ -119,16 +119,22 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.earliest_block_number!r} as closest to timestamp {timestamp!r}"
         )
 
-    def _try_update_policy(self, tool: str, winning: bool) -> None:
-        """Try to update the policy for the given (identity, tool) key."""
+    def _try_update_policy(self, tool: str, winning: bool) -> bool:
+        """Try to update the policy for the given key.
+
+        :param tool: the key the outcome is credited to.
+        :param winning: whether the bet won.
+        :return: whether the policy has a record for the key and was updated.
+        """
         try:
             self.policy.update_accuracy_store(tool, winning)
         except KeyError:
             self.context.logger.warning(
-                f"The stored utilized tools seem to be outdated as no {tool=} was found. "
-                "The policy will not be updated. "
-                "No action is required as this will be automatically resolved."
+                f"No accuracy record for {tool=}; keeping its utilized-tools "
+                "entry so the outcome is credited once the record is back."
             )
+            return False
+        return True
 
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
@@ -137,9 +143,8 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
         if tool is None:
             return
 
-        # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
-        del self.utilized_tools[update.transactionHash]
-        self._try_update_policy(tool, update.is_winning)
+        if self._try_update_policy(tool, update.is_winning):
+            del self.utilized_tools[update.transactionHash]
 
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
@@ -918,8 +923,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
     def _benchmarking_act(self) -> RedeemPayload:
         """The act of the agent while running in benchmarking mode."""
         tool = self.synchronized_data.mech_tool_key
-        winning = self.mock_data.is_winning
-        self._try_update_policy(tool, winning)
+        if tool is not None:
+            self._try_update_policy(tool, self.mock_data.is_winning)
         return self._build_payload()
 
     def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:

@@ -216,6 +216,26 @@ class TestPostTxSettlementRoundEndBlock:
             utilized_tools=expected_tools  # type: ignore[attr-defined]
         )
 
+    def test_bet_by_an_ineligible_deliverer_is_not_recorded(self) -> None:
+        """No credit key means the bet is not tracked for an accuracy update."""
+        round_ = self._create_round()
+
+        with patch(
+            "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
+        ) as MockSyncData:
+            mock_synced = MagicMock()
+            mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+            mock_synced.utilized_tools = {}
+            mock_synced.final_tx_hash = "0xabc123"
+            mock_synced.mech_tool_key = None
+            MockSyncData.return_value = mock_synced
+
+            result = round_.end_block()
+
+        assert result is not None
+        assert result[1] == Event.BET_PLACEMENT_DONE
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
+
     def test_bet_placement_done_with_none_tx_hash(self) -> None:
         """Test end_block with BetPlacementRound submitter and None tx hash logs warning and returns early."""
         round_ = self._create_round()

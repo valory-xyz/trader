@@ -24,6 +24,7 @@ from time import time
 
 import pytest
 
+from packages.valory.skills.chatui_abci.tool_keys import tool_key
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     ConsecutiveFailures,
@@ -31,14 +32,10 @@ from packages.valory.skills.decision_maker_abci.policy import (
     EGreedyPolicy,
     EGreedyPolicyDecoder,
     argmax,
-    describe_tool_key,
-    split_tool_key,
-    tool_key,
 )
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
 
 MECH = "0x" + "ab" * 20
-OPERATOR = "www.valory.xyz"
 
 
 @pytest.fixture
@@ -626,57 +623,6 @@ def test_update_accuracy_store_pending_floor_at_zero() -> None:
     policy.update_accuracy_store("tool1", winning=True)
     assert policy.accuracy_store["tool1"].pending >= 0
     assert policy.accuracy_store["tool1"].requests == 6
-
-
-@pytest.mark.parametrize(
-    "identity, tool, expected",
-    [
-        (MECH, "prediction-online", f"{MECH}::prediction-online"),
-        (MECH.upper(), "prediction-online", f"{MECH}::prediction-online"),
-        (OPERATOR, "prediction-online", f"{OPERATOR}::prediction-online"),
-        ("WWW.Valory.XYZ", "prediction-online", f"{OPERATOR}::prediction-online"),
-        (None, "prediction-online", "prediction-online"),
-        ("", "prediction-online", "prediction-online"),
-    ],
-)
-def test_tool_key(identity: str, tool: str, expected: str) -> None:
-    """The key joins the lowercase identity and the tool; none yields the bare tool."""
-    assert tool_key(identity, tool) == expected
-
-
-@pytest.mark.parametrize(
-    "key, expected",
-    [
-        (f"{MECH}::prediction-online", (MECH, "prediction-online")),
-        (f"{MECH.upper()}::prediction-online", (MECH, "prediction-online")),
-        (f"{MECH}::odd::tool", (MECH, "odd::tool")),
-        (f"{OPERATOR}::prediction-online", (OPERATOR, "prediction-online")),
-        ("WWW.Valory.xyz::prediction-online", (OPERATOR, "prediction-online")),
-        ("https://www.valory.xyz::tool", (None, "https://www.valory.xyz::tool")),
-        ("localhost::tool", (None, "localhost::tool")),
-        ("prediction-online", (None, "prediction-online")),
-        ("not-an-address::tool", (None, "not-an-address::tool")),
-        ("0x1234::tool", (None, "0x1234::tool")),
-        ("", (None, "")),
-    ],
-)
-def test_split_tool_key(key: str, expected: tuple) -> None:
-    """Only an address or a bare hostname before the separator counts as an identity."""
-    assert split_tool_key(key) == expected
-
-
-def test_tool_key_round_trips() -> None:
-    """Splitting a built key gives back its parts."""
-    assert split_tool_key(tool_key(MECH, "tool")) == (MECH, "tool")
-    assert split_tool_key(tool_key(OPERATOR, "tool")) == (OPERATOR, "tool")
-    assert split_tool_key(tool_key(None, "tool")) == (None, "tool")
-
-
-def test_describe_tool_key() -> None:
-    """Keys render as ``tool @ mech`` and bare tools as themselves."""
-    assert describe_tool_key(tool_key(MECH, "tool")) == f"tool @ {MECH}"
-    assert describe_tool_key(tool_key(OPERATOR, "tool")) == f"tool @ {OPERATOR}"
-    assert describe_tool_key("tool") == "tool"
 
 
 def test_same_tool_on_two_mechs_has_two_records() -> None:

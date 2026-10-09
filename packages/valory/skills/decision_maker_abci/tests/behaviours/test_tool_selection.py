@@ -23,7 +23,13 @@ import json
 from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch
 
-from packages.valory.skills.decision_maker_abci.behaviours.base import CID_PREFIX
+import pytest
+
+from packages.valory.skills.chatui_abci.tool_keys import VALORY_LABEL, tool_key
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    CID_PREFIX,
+    ZERO_ADDRESS,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.tool_selection import (
     ToolSelectionBehaviour,
 )
@@ -31,7 +37,6 @@ from packages.valory.skills.decision_maker_abci.payloads import ToolSelectionPay
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
-    tool_key,
 )
 
 # ---------------------------------------------------------------------------
@@ -42,7 +47,6 @@ RANDOMNESS = "0xdeadbeef"
 MECH_A = "0x" + "a" * 40
 MECH_B = "0x" + "b" * 40
 MECH_C = "0x" + "c" * 40
-OPERATOR = "www.valory.xyz"
 
 
 def _make_policy(*tool_names: str) -> EGreedyPolicy:
@@ -139,6 +143,15 @@ def _make_behaviour(
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
     behaviour._mech_tools = mech_tools  # type: ignore[attr-defined]
     behaviour._tool_metadata = {}  # type: ignore[attr-defined]
+
+    # params: the stubs flagged `valory` make up `valid_mechs`; no static mech.
+    behaviour.params = MagicMock(  # type: ignore[assignment]
+        valid_mechs=frozenset(
+            m.address.lower() for m in (mechs_info or []) if getattr(m, "valory", False)
+        ),
+        use_mech_marketplace=False,
+        mech_contract_address=ZERO_ADDRESS,
+    )
 
     return behaviour
 
@@ -386,14 +399,13 @@ class TestCandidateToolsStaleAllowedTools:
 
 
 class _StubMech:
-    """Minimal stand-in for MechInfo: address, tools and recorded identity."""
+    """Minimal stand-in for MechInfo; `valory` puts the mech in `valid_mechs`."""
 
-    def __init__(
-        self, address: str, relevant_tools: set, identity: Optional[str] = None
-    ) -> None:
+    def __init__(self, address: str, relevant_tools: set, valory: bool = False) -> None:
         self.address = address
         self.relevant_tools = relevant_tools
-        self.record_identity = identity or address.lower()
+        self.valory = valory
+        self.identity = VALORY_LABEL if valory else address.lower()
 
 
 class TestSelectToolWithSelectedMechs:
@@ -405,7 +417,7 @@ class TestSelectToolWithSelectedMechs:
     ) -> Optional[str]:
         """Run ``_select_tool`` over the keys the given mechs produce."""
         keys = {
-            tool_key(mech.record_identity, tool)
+            tool_key(mech.identity, tool)
             for mech in mechs
             for tool in mech.relevant_tools
         }
@@ -425,12 +437,12 @@ class TestSelectToolWithSelectedMechs:
         """Pinned mechs restrict candidates to the keys they serve."""
         result = self._select(
             [
-                _StubMech(MECH_A, {"tool-a"}, OPERATOR),
+                _StubMech(MECH_A, {"tool-a"}, valory=True),
                 _StubMech(MECH_C, {"tool-b", "tool-c"}),
             ],
             selected_mechs=[MECH_A],
         )
-        assert result == tool_key(OPERATOR, "tool-a")
+        assert result == tool_key(VALORY_LABEL, "tool-a")
 
     def test_pin_lookup_is_case_insensitive(self) -> None:
         """Mech address comparison must be case-insensitive."""
@@ -444,20 +456,20 @@ class TestSelectToolWithSelectedMechs:
         """A key shared by several mechs stays a candidate when any of them is pinned."""
         result = self._select(
             [
-                _StubMech(MECH_A, {"tool-a"}, OPERATOR),
-                _StubMech(MECH_B, {"tool-a"}, OPERATOR),
+                _StubMech(MECH_A, {"tool-a"}, valory=True),
+                _StubMech(MECH_B, {"tool-a"}, valory=True),
                 _StubMech(MECH_C, {"tool-a"}),
             ],
             selected_mechs=[MECH_B],
         )
-        assert result == tool_key(OPERATOR, "tool-a")
+        assert result == tool_key(VALORY_LABEL, "tool-a")
 
     def test_same_tool_of_another_identity_is_not_reachable_through_the_pin(
         self,
     ) -> None:
         """A pin on one identity never selects the same tool recorded under another."""
         result = self._select(
-            [_StubMech(MECH_A, {"tool-a"}, OPERATOR), _StubMech(MECH_C, {"tool-a"})],
+            [_StubMech(MECH_A, {"tool-a"}, valory=True), _StubMech(MECH_C, {"tool-a"})],
             selected_mechs=[MECH_C],
         )
         assert result == tool_key(MECH_C, "tool-a")
@@ -466,14 +478,14 @@ class TestSelectToolWithSelectedMechs:
         """selected_mechs AND allowed_tools intersect together."""
         result = self._select(
             [
-                _StubMech(MECH_A, {"tool-b", "tool-c"}, OPERATOR),
+                _StubMech(MECH_A, {"tool-b", "tool-c"}, valory=True),
                 _StubMech(MECH_C, {"tool-a"}),
             ],
             selected_mechs=[MECH_A],
             allowed_tools=["tool-a", "tool-b"],
         )
         # tool-a is allowed but not served by the pinned mech; tool-b is both.
-        assert result == tool_key(OPERATOR, "tool-b")
+        assert result == tool_key(VALORY_LABEL, "tool-b")
 
     def test_empty_pin_is_no_op(self) -> None:
         """selected_mechs=None must not restrict beyond the existing filters."""
@@ -1479,47 +1491,82 @@ class TestAsyncActSplitsTheSelectedKey:
 
     def test_pooled_key_sends_its_mechs_and_the_key(self) -> None:
         """The payload carries the tool name, every mech behind the key, and the key."""
-        key = tool_key(OPERATOR, "tool-a")
+        key = tool_key(VALORY_LABEL, "tool-a")
         behaviour = _make_behaviour(
             _make_policy(key),
             {key},
             mechs_info=[
-                _StubMech(MECH_A, {"tool-a"}, OPERATOR),
+                _StubMech(MECH_A, {"tool-a"}, valory=True),
                 _StubMech(MECH_C, {"tool-a"}),
-                _StubMech(MECH_B.upper().replace("0X", "0x"), {"tool-a"}, OPERATOR),
+                _StubMech(MECH_B.upper().replace("0X", "0x"), {"tool-a"}, valory=True),
+                _StubMech(MECH_B[:-1] + "e", {"tool-b"}),
             ],
         )
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
         payload = self._act(behaviour, key)
         assert isinstance(payload, ToolSelectionPayload)
         assert payload.selected_tool == "tool-a"
         assert payload.selected_tool_key == key
         assert payload.preferred_mechs is not None
         assert json.loads(payload.preferred_mechs) == [MECH_A, MECH_B]
+        # every mech serving the tool may deliver; the one serving tool-b may not
+        assert payload.mech_identities is not None
+        assert json.loads(payload.mech_identities) == {
+            MECH_A: VALORY_LABEL,
+            MECH_B: VALORY_LABEL,
+            MECH_C: MECH_C,
+        }
         assert payload.mech_tools is not None and payload.policy is not None
         assert json.loads(payload.mech_tools) == [key]
 
     def test_preferred_mechs_follow_the_mech_pin_when_it_covers_them(self) -> None:
         """Within a pooled key, the pinned mechs are the ones preferred."""
-        key = tool_key(OPERATOR, "tool-a")
+        key = tool_key(VALORY_LABEL, "tool-a")
         behaviour = _make_behaviour(
             _make_policy(key),
             {key},
             selected_mechs=[MECH_B],
             mechs_info=[
-                _StubMech(MECH_A, {"tool-a"}, OPERATOR),
-                _StubMech(MECH_B, {"tool-a"}, OPERATOR),
+                _StubMech(MECH_A, {"tool-a"}, valory=True),
+                _StubMech(MECH_B, {"tool-a"}, valory=True),
             ],
         )
         payload = self._act(behaviour, key)
         assert json.loads(payload.preferred_mechs) == [MECH_B]
 
     def test_key_without_mech_information_has_no_preferred_mechs(self) -> None:
-        """V1 and benchmarking have no mech list, so no preference is sent."""
+        """Without a mech list or a static mech, neither preference nor identities are sent."""
         behaviour = _make_behaviour(_make_policy("tool-a"), {"tool-a"})
         payload = self._act(behaviour, "tool-a")
         assert payload.selected_tool == "tool-a"
         assert payload.selected_tool_key == "tool-a"
         assert payload.preferred_mechs is None
+        assert payload.mech_identities is None
+
+    @pytest.mark.parametrize(
+        "in_valid_mechs, identity", [(True, VALORY_LABEL), (False, None)]
+    )
+    def test_static_mech_is_creditable(
+        self, in_valid_mechs: bool, identity: Optional[str]
+    ) -> None:
+        """The configured static mech may deliver, under its identity."""
+        static = MECH_A.upper().replace("0X", "0x")
+        key = tool_key(identity or MECH_A, "tool-a")
+        behaviour = _make_behaviour(_make_policy(key), {key})
+        behaviour.params.mech_contract_address = static  # type: ignore[union-attr]
+        behaviour.params.valid_mechs = (  # type: ignore[union-attr]
+            frozenset({MECH_A}) if in_valid_mechs else frozenset()
+        )
+        payload = self._act(behaviour, key)
+        assert json.loads(payload.mech_identities) == {MECH_A: identity or MECH_A}
+
+    def test_benchmarking_sends_no_identities(self) -> None:
+        """Benchmarking has no mech, so nothing is creditable by identity."""
+        behaviour = _make_behaviour(_make_policy("tool-a"), {"tool-a"})
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[union-attr]
+        behaviour.params.mech_contract_address = MECH_A  # type: ignore[union-attr]
+        payload = self._act(behaviour, "tool-a")
+        assert payload.mech_identities is None
 
     def test_no_selection_sends_an_empty_payload(self) -> None:
         """Skipping the round sends neither a tool, a key, nor mechs."""
@@ -1528,5 +1575,6 @@ class TestAsyncActSplitsTheSelectedKey:
         assert payload.selected_tool is None
         assert payload.selected_tool_key is None
         assert payload.preferred_mechs is None
+        assert payload.mech_identities is None
         assert payload.policy is None
         behaviour._store_all.assert_not_called()  # type: ignore[attr-defined]
