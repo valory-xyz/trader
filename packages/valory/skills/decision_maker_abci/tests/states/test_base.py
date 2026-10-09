@@ -20,6 +20,7 @@
 """This package contains the tests for Decision Maker"""
 
 import json
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,6 +31,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
+    tool_key,
 )
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -211,9 +213,151 @@ def test_weighted_accuracy(sync_data: SynchronizedData, mocked_db: MagicMock) ->
     mocked_db.get_strict = lambda name: (
         policy_mock if name == policy_db_name else selected_mech_tool
     )
+    mocked_db.get = lambda name, default=None: default
     policy = EGreedyPolicy.deserialize(policy_mock)
     assert selected_mech_tool in policy.weighted_accuracy
     assert sync_data.weighted_accuracy == policy.weighted_accuracy[selected_mech_tool]
+
+
+OPERATOR = "www.valory.xyz"
+ASKED_MECH = "0x" + "a" * 40
+POOLED_MECH = "0x" + "b" * 40
+THIRD_PARTY_MECH = "0x" + "c" * 40
+UNLISTED_MECH = "0x" + "d" * 40
+
+
+def _mech_info_row(address: str, identity_verified: bool) -> Dict[str, Any]:
+    """A serialized ``mechs_info`` entry serving ``tool1``."""
+    return {
+        "id": "1",
+        "address": address,
+        "service": {"metadata": [{"metadata": "m"}], "deliveries": []},
+        "karma": 1,
+        "received_requests": 1,
+        "self_delivered": 1,
+        "max_delivery_rate": 1,
+        "relevant_tools": ["tool1"],
+        "operator_domain": OPERATOR,
+        "operator_domain_verified": identity_verified,
+    }
+
+
+def _wire_db(
+    mocked_db: MagicMock,
+    selected_key: Optional[str],
+    delivering: Optional[str],
+    is_marketplace_v2: bool = True,
+    policy: Optional[str] = None,
+) -> None:
+    """Back the synchronized data with the given selection and delivery."""
+    strict: Dict[str, Any] = {"mech_tool": "tool1"}
+    if policy is not None:
+        strict["policy"] = policy
+    loose = {
+        "is_marketplace_v2": is_marketplace_v2,
+        "selected_tool_key": selected_key,
+        "mech_responses": json.dumps([{"nonce": "n", "mech_address": delivering}]),
+        "mechs_info": json.dumps(
+            [
+                _mech_info_row(ASKED_MECH, True),
+                _mech_info_row(POOLED_MECH, True),
+                # claims the operator's domain without having it verified
+                _mech_info_row(THIRD_PARTY_MECH, False),
+            ]
+        ),
+    }
+    mocked_db.get_strict = lambda name: strict[name]
+    mocked_db.get = lambda name, default=None: loose.get(name, default)
+
+
+@pytest.mark.parametrize(
+    "selected_key, delivering, is_marketplace_v2, expected",
+    [
+        (tool_key(OPERATOR, "tool1"), None, True, tool_key(OPERATOR, "tool1")),
+        (tool_key(OPERATOR, "tool1"), ASKED_MECH, True, tool_key(OPERATOR, "tool1")),
+        (
+            tool_key(OPERATOR, "tool1"),
+            POOLED_MECH.upper().replace("0X", "0x"),
+            True,
+            tool_key(OPERATOR, "tool1"),
+        ),
+        (
+            tool_key(OPERATOR, "tool1"),
+            THIRD_PARTY_MECH,
+            True,
+            tool_key(THIRD_PARTY_MECH, "tool1"),
+        ),
+        (
+            tool_key(OPERATOR, "tool1"),
+            UNLISTED_MECH,
+            True,
+            tool_key(UNLISTED_MECH, "tool1"),
+        ),
+        (
+            tool_key(OPERATOR, "tool1"),
+            THIRD_PARTY_MECH,
+            False,
+            tool_key(OPERATOR, "tool1"),
+        ),
+        (None, THIRD_PARTY_MECH, True, "tool1"),
+    ],
+)
+def test_mech_tool_key_credits_the_delivering_mechs_identity(
+    sync_data: SynchronizedData,
+    mocked_db: MagicMock,
+    selected_key: Optional[str],
+    delivering: Optional[str],
+    is_marketplace_v2: bool,
+    expected: str,
+) -> None:
+    """On v2 the outcome follows the deliverer's identity; otherwise the selected key stands."""
+    _wire_db(mocked_db, selected_key, delivering, is_marketplace_v2)
+    assert sync_data.mech_tool_key == expected
+
+
+def test_mech_tool_key_without_a_version_check_keeps_the_selected_key(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Without the marketplace version flag (no marketplace), the asked mech answered."""
+    _wire_db(mocked_db, tool_key(OPERATOR, "tool1"), THIRD_PARTY_MECH)
+    loose_get = mocked_db.get
+    mocked_db.get = lambda name, default=None: (
+        default if name == "is_marketplace_v2" else loose_get(name, default)
+    )
+    assert sync_data.mech_tool_key == tool_key(OPERATOR, "tool1")
+
+
+def test_weighted_accuracy_is_the_delivering_identitys(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """The weighted accuracy read is the record the outcome will be credited to."""
+    pooled, third_party = tool_key(OPERATOR, "tool1"), tool_key(
+        THIRD_PARTY_MECH, "tool1"
+    )
+    policy_mock = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=1,
+        quarantine_duration=0,
+        accuracy_store={
+            pooled: AccuracyInfo(requests=4, accuracy=1.0),
+            third_party: AccuracyInfo(requests=4, accuracy=0.25),
+        },
+    ).serialize()
+    _wire_db(mocked_db, pooled, THIRD_PARTY_MECH, policy=policy_mock)
+    policy = EGreedyPolicy.deserialize(policy_mock)
+    assert sync_data.weighted_accuracy == policy.weighted_accuracy[third_party]
+    assert sync_data.weighted_accuracy != policy.weighted_accuracy[pooled]
+
+
+def test_delivering_mech_is_none_without_an_attributed_response(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Responses that name no mech leave the deliverer unknown."""
+    mocked_db.get = lambda name, default=None: (
+        json.dumps([{"nonce": "n"}]) if name == "mech_responses" else default
+    )
+    assert sync_data.delivering_mech is None
+    assert sync_data.selected_tool_key is None
 
 
 def test_mech_responses(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
@@ -327,6 +471,7 @@ def test_weighted_accuracy_tool_not_in_store(
     mocked_db.get_strict = lambda name: (
         policy_mock if name == "policy" else selected_mech_tool
     )
+    mocked_db.get = lambda name, default=None: default
     with pytest.raises(ValueError, match="not available in the policy"):
         sync_data.weighted_accuracy
 

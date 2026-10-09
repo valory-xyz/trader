@@ -84,7 +84,7 @@ class BlacklistingBehaviour(  # type: ignore
             ):
                 # if we are here, then the tool has responded with an error
                 self.policy.tool_responded(
-                    self.synchronized_data.mech_tool, self.synced_timestamp
+                    self.synchronized_data.mech_tool_key, self.synced_timestamp
                 )
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, bets_hash, policy)

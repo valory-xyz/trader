@@ -120,7 +120,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
         )
 
     def _try_update_policy(self, tool: str, winning: bool) -> None:
-        """Try to update the policy."""
+        """Try to update the policy for the given (identity, tool) key."""
         try:
             self.policy.update_accuracy_store(tool, winning)
         except KeyError:
@@ -132,7 +132,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
 
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
-        # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
+        # the mapping might not contain a key for a bet placement because it might have happened on a previous run
         tool = self.utilized_tools.get(update.transactionHash, None)
         if tool is None:
             return
@@ -883,6 +883,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if self.synchronized_data.is_policy_set:
             self._policy = self.synchronized_data.policy
             self.mech_tools = self.synchronized_data.available_mech_tools
+            self._migrate_legacy_keys()
             # The base setup is skipped here, so publish the suitable set for the
             # ChatUI explicitly. Covers db-replay restarts where `is_policy_set`
             # is already true at boot but `available_prediction_tools` (in-memory)
@@ -916,7 +917,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _benchmarking_act(self) -> RedeemPayload:
         """The act of the agent while running in benchmarking mode."""
-        tool = self.synchronized_data.mech_tool
+        tool = self.synchronized_data.mech_tool_key
         winning = self.mock_data.is_winning
         self._try_update_policy(tool, winning)
         return self._build_payload()

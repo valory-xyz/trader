@@ -26,12 +26,79 @@ from time import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
+from packages.valory.skills.mech_interact_abci.operator_identity import (
+    normalize_operator_domain,
+)
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
-VOLUME_FACTOR_REGULARIZATION = 0.1
-UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 80.5)
+# ``AccuracyInfo.accuracy`` is a fraction in [0, 1]. The volume term and the
+# interval are sized so that accuracy dominates the ranking and the volume term
+# only separates near-equal tools.
+VOLUME_FACTOR_REGULARIZATION = 0.001
+UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.005, 0.805)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
+
+# The policy is keyed per (identity, tool) pair, serialized as
+# ``<identity>::<tool name>``. The identity is the operator domain of mechs
+# whose domain was verified at approval, and the lowercase address of any other
+# mech (see ``mech_interact_abci.operator_identity``). A key with no identity is
+# a bare tool name: the pre-identity on-disk format, and the benchmarking mode,
+# where there is no mech.
+MECH_TOOL_SEPARATOR = "::"
+ADDRESS_HEX_LENGTH = 40
+# The operator every tool-keyed record was earned with: all traffic before
+# per-identity records went to this operator's mechs.
+LEGACY_OPERATOR_DOMAIN = "www.valory.xyz"
+
+
+def _is_address(value: str) -> bool:
+    """Check whether the given value is a ``0x``-prefixed 20-byte hex address."""
+    if len(value) != len("0x") + ADDRESS_HEX_LENGTH or value[:2].lower() != "0x":
+        return False
+    try:
+        int(value, 16)
+    except ValueError:
+        return False
+    return True
+
+
+def _is_identity(value: str) -> bool:
+    """Check whether the given value is a mech address or an operator domain."""
+    return _is_address(value) or normalize_operator_domain(value) is not None
+
+
+def tool_key(identity: Optional[str], tool: str) -> str:
+    """Build the policy key of a tool served under the given identity.
+
+    :param identity: the operator domain or mech address, or ``None`` when there
+        is no mech.
+    :param tool: the tool's name.
+    :return: the key the policy's stores are indexed by.
+    """
+    if not identity:
+        return tool
+    return f"{identity.lower()}{MECH_TOOL_SEPARATOR}{tool}"
+
+
+def split_tool_key(key: str) -> Tuple[Optional[str], str]:
+    """Split a policy key into its identity and tool name.
+
+    :param key: a key as built by :func:`tool_key`.
+    :return: the lowercase identity, or ``None`` for a bare tool name, and the tool.
+    """
+    identity, sep, tool = key.partition(MECH_TOOL_SEPARATOR)
+    if sep and _is_identity(identity):
+        return identity.lower(), tool
+    return None, key
+
+
+def describe_tool_key(key: str) -> str:
+    """Render a policy key for humans, e.g., ``prediction-online @ www.valory.xyz``."""
+    identity, tool = split_tool_key(key)
+    if identity is None:
+        return tool
+    return f"{tool} @ {identity}"
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -57,7 +124,7 @@ class AccuracyInfo:
     requests: int = 0
     # the number of pending evaluations, i.e., responses for which we have not redeemed yet
     pending: int = 0
-    # the accuracy of the tool
+    # the fraction of resolved responses that were correct, in [0, 1]
     accuracy: float = 0.0
 
 
@@ -115,7 +182,12 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
 
 @dataclass
 class EGreedyPolicy:
-    """An e-Greedy policy for the tool selection based on tool accuracy."""
+    """An e-Greedy policy for the tool selection based on tool accuracy.
+
+    Every store is indexed by the key returned by :func:`tool_key`, so each
+    (identity, tool) pair has its own accuracy record, consecutive failures, and
+    quarantine. Mechs of different identities never share a record.
+    """
 
     eps: float
     consecutive_failures_threshold: int
@@ -139,7 +211,7 @@ class EGreedyPolicy:
 
     @property
     def tools(self) -> List[str]:
-        """Get the policy's tools."""
+        """Get the policy's keys, one per (identity, tool) pair."""
         return list(self.accuracy_store.keys())
 
     @property
@@ -247,8 +319,14 @@ class EGreedyPolicy:
         return self.best_tool
 
     def tool_used(self, tool: str) -> None:
-        """Increase the times used for the given tool."""
-        self.accuracy_store[tool].pending += 1
+        """Increase the times used for the given key, starting a record if it has none.
+
+        A record may be missing when the mech that delivered differs from the
+        one the request was sent to.
+
+        :param tool: the key of the (identity, tool) pair that produced the prediction.
+        """
+        self.accuracy_store.setdefault(tool, AccuracyInfo()).pending += 1
         self.update_weighted_accuracy()
 
     def tool_responded(self, tool: str, timestamp: int, failed: bool = True) -> None:
@@ -280,12 +358,14 @@ class EGreedyPolicy:
 
         report = "Policy statistics so far (only for resolved markets):\n"
         stats = (
-            f"\t{tool} tool:\n"
+            f"\t{describe_tool_key(tool)} tool:\n"
             f"\t\tQuarantined: {self.is_quarantined(tool)}\n"
             f"\t\tTimes used: {self.accuracy_store[tool].requests}\n"
             f"\t\tWeighted Accuracy: {self.weighted_accuracy[tool]}"
             for tool in self.tools
         )
         report += "\n".join(stats)
-        report += f"\nBest non-quarantined tool so far is {self.best_tool!r}."
+        best_tool = self.best_tool
+        best = describe_tool_key(best_tool) if best_tool is not None else None
+        report += f"\nBest non-quarantined tool so far is {best!r}."
         return report

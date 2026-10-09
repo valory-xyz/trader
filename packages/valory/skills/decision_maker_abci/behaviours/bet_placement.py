@@ -151,7 +151,7 @@ class BetPlacementBehaviour(DecisionMakerBaseBehaviour):
             policy_str = None
             if betting_tx_hex is not None and self.synchronized_data.is_policy_set:
                 self._policy = self.synchronized_data.policy
-                self.policy.tool_used(self.synchronized_data.mech_tool)
+                self.policy.tool_used(self.synchronized_data.mech_tool_key)
                 policy_str = self.policy.serialize()
                 policy_path = self.params.store_path / POLICY_STORE
                 with open(policy_path, "w") as f:

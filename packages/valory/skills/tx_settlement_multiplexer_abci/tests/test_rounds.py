@@ -197,7 +197,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
             mock_synced.utilized_tools = {"existing_hash": "existing_tool"}
             mock_synced.final_tx_hash = "0xabc123"
-            mock_synced.mech_tool = "prediction-online"
+            mock_synced.mech_tool_key = "prediction-online"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -251,7 +251,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = SellOutcomeTokensRound.auto_round_id()
             mock_synced.utilized_tools = {}
             mock_synced.final_tx_hash = "0xdef456"
-            mock_synced.mech_tool = "prediction-offline"
+            mock_synced.mech_tool_key = "prediction-offline"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -471,7 +471,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced = MagicMock()
             mock_synced.tx_submitter = MechRequestRound.auto_round_id()
             mock_synced.policy = mock_policy
-            mock_synced.mech_tool = "prediction-online"
+            mock_synced.mech_tool_key = "prediction-online"
             MockSyncData.return_value = mock_synced
 
             round_.end_block()
@@ -492,7 +492,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
             mock_synced.utilized_tools = existing_tools.copy()
             mock_synced.final_tx_hash = "0xnew"
-            mock_synced.mech_tool = "new-tool"
+            mock_synced.mech_tool_key = "new-tool"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -536,7 +536,7 @@ class TestPostTxSettlementRoundEndBlock:
             # Provide attributes needed for MECH_REQUESTING_DONE path  # type: ignore[attr-defined]
             mock_synced.policy = MagicMock()
             mock_synced.policy.serialize.return_value = "serialized"
-            mock_synced.mech_tool = "test-tool"
+            mock_synced.mech_tool_key = "test-tool"
             # Provide attributes needed for BET_PLACEMENT_DONE / SELL_OUTCOME_TOKENS_DONE path
             mock_synced.utilized_tools = {}
             mock_synced.final_tx_hash = "0xhash"

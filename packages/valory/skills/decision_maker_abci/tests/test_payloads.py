@@ -125,6 +125,8 @@ from packages.valory.skills.decision_maker_abci.payloads import (
                 "policy": "dummy policy",
                 "utilized_tools": "dummy utilized tools",
                 "selected_tool": "dummy selected tool",
+                "preferred_mechs": '["0xmech"]',
+                "selected_tool_key": "www.valory.xyz::dummy selected tool",
             },
         ),
         (

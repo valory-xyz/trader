@@ -32,7 +32,30 @@ from packages.valory.skills.chatui_abci.rounds import (
     Event,
     FinishedChatuiLoadRound,
     SynchronizedData,
+    tool_names,
 )
+
+
+def test_tool_names_drops_the_mech_part_of_policy_keys() -> None:
+    """Keys of several mechs serving one tool collapse to that tool's name."""
+    mech_a = "0x" + "a" * 40
+    mech_b = "0x" + "b" * 40
+    keys = {
+        f"{mech_a}::prediction-online",
+        f"{mech_b}::prediction-online",
+        f"{mech_b}::prediction-offline",
+        "legacy-tool",
+    }
+    assert tool_names(keys) == {
+        "prediction-online",
+        "prediction-offline",
+        "legacy-tool",
+    }
+
+
+def test_tool_names_of_nothing_is_nothing() -> None:
+    """An empty universe stays empty."""
+    assert tool_names(set()) == set()
 
 
 class TestSynchronizedData:
@@ -45,6 +68,15 @@ class TestSynchronizedData:
             db=AbciAppDB(setup_data={"available_mech_tools": [json.dumps(tools)]})
         )
         assert data.available_mech_tools == set(tools)
+
+    def test_available_mech_tools_keeps_the_policy_keys(self) -> None:
+        """The property returns the decision maker's keys untouched."""
+        mech_a = "0x" + "a" * 40
+        keys = [f"{mech_a}::prediction-online", "legacy-tool"]
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"available_mech_tools": [json.dumps(keys)]})
+        )
+        assert data.available_mech_tools == set(keys)
 
     def test_available_mech_tools_empty(self) -> None:
         """Test available_mech_tools returns an empty set when no tools."""

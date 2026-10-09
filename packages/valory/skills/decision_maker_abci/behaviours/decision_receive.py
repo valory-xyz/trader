@@ -735,7 +735,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
             if prediction_response is not None:
                 self.policy.tool_responded(
-                    self.synchronized_data.mech_tool,
+                    self.synchronized_data.mech_tool_key,
                     self.synced_timestamp,
                     self.is_invalid_response,
                 )
