@@ -526,6 +526,15 @@ class TestGetCurrentJsonStore:
         assert result == {}
         state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
+    def test_non_utf8_file_returns_empty_dict(self, tmp_path: Path) -> None:
+        """A store that cannot be decoded resets like invalid JSON instead of raising."""
+        (tmp_path / CHATUI_PARAM_STORE).write_bytes(b"\xff\xfe")
+
+        state = self._make_state_with_store_path(tmp_path)
+        result = state._get_current_json_store()
+        assert result == {}
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
 
 # ---------------------------------------------------------------------------
 # SharedState._set_json_store tests (real file I/O, lines 104-107)
@@ -556,6 +565,28 @@ class TestSetJsonStore:
         with open(store_file) as f:
             written = json.load(f)
         assert written == payload
+
+    def test_failed_write_keeps_the_previous_store(self, tmp_path: Path) -> None:
+        """A write that dies part-way leaves the previous store, user goal included."""
+        state = object.__new__(_TestableSharedState)
+        context = MagicMock()
+        context.params.store_path = tmp_path
+        state.context = context  # type: ignore[assignment]
+        state._set_json_store({"activity_goal": 50})
+
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.models.json.dump",
+                side_effect=OSError("disk full"),
+            ),
+            pytest.raises(OSError),
+        ):
+            state._set_json_store({"activity_goal": 8})
+
+        assert json.loads((tmp_path / CHATUI_PARAM_STORE).read_text()) == {
+            "activity_goal": 50
+        }
+        assert [p.name for p in tmp_path.iterdir()] == [CHATUI_PARAM_STORE]
 
 
 # ---------------------------------------------------------------------------
@@ -647,6 +678,40 @@ class TestEnsureChatuiStoreBranches:
 
         assert state._chatui_config is not None
         assert state._chatui_config.fixed_bet_size == DEFAULT_MIN_BET_SIZE
+
+
+class TestActivityGoalStore:
+    """Tests for loading the user's activity goal from the store."""
+
+    def test_store_without_key_uses_default(self) -> None:
+        """An existing store from before the goal existed loads with no goal set."""
+        state = _make_shared_state({"trading_strategy": DEFAULT_TRADING_STRATEGY})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal is None
+        persisted = state._set_json_store.call_args[0][0]  # type: ignore[attr-defined]
+        assert persisted["activity_goal"] is None
+        state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize("goal", [0, 20, 500])
+    def test_store_with_valid_goal_keeps_it(self, goal: int) -> None:
+        """A stored goal is loaded as it is."""
+        state = _make_shared_state({"activity_goal": goal})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal == goal
+
+    @pytest.mark.parametrize("goal", [True, 2.5, -1, "8", [8]])
+    def test_invalid_stored_goal_reverts_to_default(self, goal: Any) -> None:
+        """An invalid stored goal is reset to "use the default"."""
+        state = _make_shared_state({"activity_goal": goal})
+        state._ensure_chatui_store()
+
+        assert state._chatui_config is not None
+        assert state._chatui_config.activity_goal is None
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

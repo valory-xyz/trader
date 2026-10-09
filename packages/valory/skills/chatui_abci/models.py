@@ -30,16 +30,21 @@ from aea.skills.base import SkillContext
 
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import BaseParams
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    is_valid_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
+)
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    write_json_atomically,
 )
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
+ACTIVITY_GOAL_FIELD = "activity_goal"
 
-FILE_WRITE_MODE = "w"
 FILE_READ_MODE = "r"
-JSON_FILE_INDENT_LEVEL = 4
 
 WITHDRAWAL_STATE_IDLE = "idle"
 WITHDRAWAL_STATE_ARMED = "armed"
@@ -78,6 +83,8 @@ class ChatuiConfig:
     withdrawal_state: str = WITHDRAWAL_STATE_IDLE
     withdrawal_fills: List[Dict[str, Any]] = field(default_factory=list)
     withdrawal_errors: List[Dict[str, Any]] = field(default_factory=list)
+    # Trades per staking epoch; ``None`` means the ``default_activity_goal`` param.
+    activity_goal: Optional[int] = None
 
 
 class SharedState(BaseSharedState):
@@ -134,22 +141,21 @@ class SharedState(BaseSharedState):
                 f"ChatUI JSON store {chatui_store_path!r} does not exist."
             )
             return {}
-        with open(chatui_store_path, FILE_READ_MODE) as store_file:
-            raw = store_file.read()
-            try:
-                return json.loads(raw)
-            except json.JSONDecodeError:
-                self.context.logger.error(
-                    f"{raw!r} is not valid JSON. Resetting the store."
-                )
-            return {}
+        try:
+            with open(chatui_store_path, FILE_READ_MODE) as store_file:
+                return json.loads(store_file.read())
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            self.context.logger.error(
+                f"ChatUI JSON store {chatui_store_path!r} is not valid JSON: {e}. "
+                "Resetting the store."
+            )
+        return {}
 
     def _set_json_store(self, store: Dict[str, Any]) -> None:
         """Set the store with the chat UI parameters."""
-        chatui_store_path = self.context.params.store_path / CHATUI_PARAM_STORE
-
-        with open(chatui_store_path, FILE_WRITE_MODE) as f:
-            json.dump(store, f, indent=JSON_FILE_INDENT_LEVEL)
+        write_json_atomically(
+            self.context.params.store_path / CHATUI_PARAM_STORE, store
+        )
 
     def _ensure_chatui_store(self) -> None:
         """Ensure that the chat UI store is set up correctly."""
@@ -210,6 +216,16 @@ class SharedState(BaseSharedState):
             # update the store with the YAML value
             self._chatui_config.trading_strategy = trading_strategy_yaml
             self._chatui_config.initial_trading_strategy = trading_strategy_yaml
+
+        if (
+            self._chatui_config.activity_goal is not None
+            and not is_valid_activity_goal(self._chatui_config.activity_goal)
+        ):
+            self.context.logger.warning(
+                f"invalid activity_goal {self._chatui_config.activity_goal!r} "
+                "on disk; resetting to the default"
+            )
+            self._chatui_config.activity_goal = None
 
         if self._chatui_config.withdrawal_state not in WITHDRAWAL_STATES:
             self.context.logger.warning(

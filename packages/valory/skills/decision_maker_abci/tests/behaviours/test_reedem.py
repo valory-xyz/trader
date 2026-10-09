@@ -3699,9 +3699,7 @@ class TestAsyncAct:
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet() -> None:
-            """Mock update_bet_transaction_information."""
-            pass
+        mock_update_bet = MagicMock()
 
         behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
@@ -3728,6 +3726,9 @@ class TestAsyncAct:
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
+
+        # Redeem never adds to the ledger; PostBetUpdate already did.
+        mock_update_bet.assert_called_once_with(record_ledger=False)
 
     def test_async_act_with_sell_outcome_transact(self) -> None:
         """Should call update_bet_transaction_information with sell outcome round."""
@@ -3760,9 +3761,7 @@ class TestAsyncAct:
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet() -> None:
-            """Mock update_bet_transaction_information."""
-            pass
+        mock_update_bet = MagicMock()
 
         behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
@@ -3789,3 +3788,6 @@ class TestAsyncAct:
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
+
+        # Redeem never adds to the ledger; PostBetUpdate already did.
+        mock_update_bet.assert_called_once_with(record_ledger=False)

@@ -24,7 +24,7 @@ import platform
 import stat
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -34,6 +34,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
     Achievements,
+    ActivityGoal,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
@@ -57,6 +58,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState,
     Subgraph,
     TradesSubgraph,
+    read_activity_goal,
+    write_json_atomically,
+    write_performance_summary_key,
 )
 
 
@@ -1284,6 +1288,275 @@ class TestSharedState:
             data = json.load(f)
         assert data["agent_performance"]["metrics"] is not None
         assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 75.0
+
+
+ACTIVITY_GOAL_BLOCK: Dict[str, Any] = {
+    "unit": "trades",
+    "target": 8,
+    "progress": 3,
+    "is_met": False,
+    "period_start": 1_791_331_200,
+    "last_met_at": None,
+    "updated_at": 1_791_363_317,
+}
+
+
+class TestActivityGoalPersistence:
+    """The ``activity_goal`` block must survive every summary writer."""
+
+    @staticmethod
+    def _make_state(store_path: Path) -> _TestableSharedState:
+        """Create a shared state storing under ``store_path``."""
+        state = object.__new__(_TestableSharedState)
+        state.context = MagicMock()  # type: ignore[assignment]
+        state.context.params.store_path = store_path  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1_791_400_000.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+        return state
+
+    @staticmethod
+    def _seed(store_path: Path, data: Any) -> Path:
+        """Write ``data`` as the summary file and return its path."""
+        file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(data, f)
+        return file_path
+
+    def test_summary_round_trips_activity_goal(self, tmp_path: Path) -> None:
+        """A file holding the block reads back without degrading the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {"agent_behavior": "observing", "activity_goal": ACTIVITY_GOAL_BLOCK},
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.agent_behavior == "observing"
+        assert summary.activity_goal == ActivityGoal(**ACTIVITY_GOAL_BLOCK)
+        assert asdict(summary)["activity_goal"] == ACTIVITY_GOAL_BLOCK
+
+    @pytest.mark.parametrize(
+        "update",
+        [
+            lambda state: state.update_agent_behavior("active"),
+            lambda state: state.update_funds_locked_in_markets(1.5),
+        ],
+        ids=["update_agent_behavior", "update_funds_locked_in_markets"],
+    )
+    def test_whole_summary_writers_keep_block_and_siblings(
+        self, tmp_path: Path, update: Any
+    ) -> None:
+        """Read-modify-write updates keep the block and every sibling field."""
+        state = self._make_state(tmp_path)
+        file_path = self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        update(state)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["activity_goal"] == ACTIVITY_GOAL_BLOCK
+        assert data["agent_details"]["id"] == "agent-x"
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            {**ACTIVITY_GOAL_BLOCK, "is_met": True},
+            {"target": 8},
+        ],
+        ids=["inconsistent_block", "incomplete_block"],
+    )
+    def test_summary_drops_invalid_block_and_keeps_siblings(
+        self, tmp_path: Path, block: Dict[str, Any]
+    ) -> None:
+        """An invalid block reads as ``None`` without degrading the rest of the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": block,
+            },
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.activity_goal is None
+        assert summary.agent_behavior == "observing"
+        assert summary.agent_details is not None
+        assert summary.agent_details.id == "agent-x"
+
+    def test_read_activity_goal_from_disk_ignores_corrupt_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        """A sibling that fails validation does not hide the block."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "offchain_deposits": {"total_deposited_wei": -1},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        assert state.read_existing_performance_summary().activity_goal is None
+        assert state.read_activity_goal_from_disk() == ActivityGoal(
+            **ACTIVITY_GOAL_BLOCK
+        )
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            None,
+            b"{not json",
+            b"\xff\xfe",
+            b"[]",
+            json.dumps({"agent_behavior": "observing"}).encode(),
+            json.dumps({"activity_goal": "eight"}).encode(),
+            json.dumps({"activity_goal": {"target": 8}}).encode(),
+        ],
+        ids=[
+            "missing",
+            "corrupt",
+            "not_utf8",
+            "not_a_dict",
+            "no_key",
+            "not_a_block",
+            "incomplete_block",
+        ],
+    )
+    def test_read_activity_goal_unavailable(
+        self, tmp_path: Path, content: Optional[bytes]
+    ) -> None:
+        """Anything but a complete block reads as ``None``."""
+        if content is not None:
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(content)
+
+        assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("unit", 1),
+            ("target", "8"),
+            ("target", True),
+            ("progress", "3"),
+            ("progress", 3.0),
+            ("is_met", 0),
+            ("period_start", None),
+            ("updated_at", "now"),
+            ("last_met_at", "yesterday"),
+            ("last_met_at", False),
+        ],
+    )
+    def test_read_activity_goal_rejects_wrongly_typed_field(
+        self, tmp_path: Path, field: str, value: Any
+    ) -> None:
+        """A block that would fail arithmetic later reads as ``None`` instead."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, field: value}})
+
+        assert read_activity_goal(tmp_path) is None
+
+    def test_read_activity_goal_accepts_last_met_at_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """A met block carries an int ``last_met_at``."""
+        block = {
+            **ACTIVITY_GOAL_BLOCK,
+            "progress": 8,
+            "is_met": True,
+            "last_met_at": 1_791_340_000,
+        }
+        self._seed(tmp_path, {"activity_goal": block})
+
+        assert read_activity_goal(tmp_path) == ActivityGoal(**block)
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"is_met": True},
+            {"progress": 8, "is_met": False},
+            {"target": -1},
+            {"progress": -1},
+            {"period_start": -1},
+            {"updated_at": -1},
+        ],
+        ids=[
+            "met_below_target",
+            "unmet_at_target",
+            "negative_target",
+            "negative_progress",
+            "negative_period_start",
+            "negative_updated_at",
+        ],
+    )
+    def test_read_activity_goal_rejects_inconsistent_block(
+        self, tmp_path: Path, overrides: Dict[str, Any]
+    ) -> None:
+        """A block whose ``is_met`` contradicts its counts, or with a negative count, reads as ``None``."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, **overrides}})
+
+        assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [{"is_met": True}, {"progress": -1}, {"target": True}],
+        ids=["met_below_target", "negative_progress", "bool_target"],
+    )
+    def test_activity_goal_refuses_invalid_construction(
+        self, overrides: Dict[str, Any]
+    ) -> None:
+        """An invalid block cannot be built in memory either."""
+        with pytest.raises(ValueError, match="invalid ActivityGoal"):
+            ActivityGoal(**{**ACTIVITY_GOAL_BLOCK, **overrides})
+
+    def test_write_performance_summary_key_replaces_non_utf8_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A summary that cannot be decoded is replaced rather than raising."""
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        file_path.write_bytes(b"\xff\xfe")
+
+        write_performance_summary_key(tmp_path, "activity_goal", ACTIVITY_GOAL_BLOCK)
+
+        assert json.loads(file_path.read_text()) == {
+            "activity_goal": ACTIVITY_GOAL_BLOCK
+        }
+
+    def test_write_json_atomically_leaves_no_temp_file_on_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A failed write removes its temp file and keeps the previous content."""
+        file_path = tmp_path / "data.json"
+        file_path.write_text('{"kept": true}')
+
+        with pytest.raises(TypeError):
+            write_json_atomically(file_path, {"unserialisable": object()})
+
+        assert list(tmp_path.iterdir()) == [file_path]
+        assert json.loads(file_path.read_text()) == {"kept": True}
+
+    def test_write_json_atomically_tolerates_cleanup_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """The original error surfaces even when the temp file cannot be removed."""
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.models.os.unlink",
+                side_effect=OSError("busy"),
+            ),
+            pytest.raises(TypeError),
+        ):
+            write_json_atomically(tmp_path / "data.json", {"bad": object()})
 
 
 class _TestableSubgraph(Subgraph):

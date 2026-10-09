@@ -65,6 +65,15 @@ Configuration details:
     -- Cannot exceed {absolute_max_bet_size} {units}.
     -- Can be deselected to fall back to the default value if the user says to remove it.
 
+- Activity goal: {current_activity_goal} trades per staking epoch ({activity_goal_source})
+    -- The number of trades the agent places in each staking epoch, which lasts roughly one day, before it stands by until the next epoch. For example, "20 trades a day" means an activity goal of 20.
+    -- A trade is a position the agent actually places on a market. Requests to the AI mech for a prediction are not trades and do not count.
+    -- Trades placed so far this epoch: {activity_goal_progress}.
+    -- The agent also keeps trading until its staking target for the epoch is met, so it can place more trades than the goal.
+    -- Default: {default_activity_goal}. Can be deselected to fall back to the default if the user says to remove or reset it.
+    -- Must be a whole number, 0 or more. There is no upper bound.
+    -- When you change it, state the new value in your message. If the user's request cannot be turned into a whole number of trades per staking epoch, leave it unchanged and explain why.
+
 Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
@@ -93,6 +102,7 @@ class FieldsThatCanBeRemoved(enum.Enum):
     SELECTED_MECHS = "selected_mechs"
     FIXED_BET_SIZE = "fixed_bet_size"
     MAX_BET_SIZE = "max_bet_size"
+    ACTIVITY_GOAL = "activity_goal"
 
 
 class UpdatedAgentConfig(BaseModel):
@@ -103,6 +113,7 @@ class UpdatedAgentConfig(BaseModel):
     selected_mechs: typing.Optional[List[str]]
     fixed_bet_size: typing.Optional[float]
     max_bet_size: typing.Optional[float]
+    activity_goal: typing.Optional[int]
     removed_config_fields: typing.List[FieldsThatCanBeRemoved]
     behavior: typing.Optional[str]
 

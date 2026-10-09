@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie4v3wxqaxbp7c354tonobwdzln6tvb3hbdaofzi7zpbuxj2d4hx4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibkfc346qmlyajj2rapgw2sd7rzwbq7nk577jrhy4yq2kzicovdqi
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeifrpeicgwfpzhpvijnqrcfqlpwee7qxdoefkvjn6o4hxms374z4tq
-- valory/trader_abci:0.1.0:bafybeiczlgbbtxhshaxdqfol3fc66vmlswiu24o2h6nrdqvezb5f5vbdfa
+- valory/decision_maker_abci:0.1.0:bafybeifeujrvyua3buml5aga2avgzjflwccu6oo7xsqpy3nqxixl5y5b4m
+- valory/trader_abci:0.1.0:bafybeibyspca43ap6cophzp2rqwxn2drmox3fwseltvm7rfzyajq62et6u
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeibffcisbvjkem5wto7ur75s2qknjznvy2fejckgoe67qi2zrtx6v4
+- valory/check_stop_trading_abci:0.1.0:bafybeigrwv7rt3bqnxwrbfkls7e55w3hzsmuru2sv3wafj76sqvd2xugju
 - valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
-- valory/chatui_abci:0.1.0:bafybeiaq5lr72oipkv3r3z44vi2wisbe3zahpr5i7kuakwrxvdvt5ifu7u
-- valory/agent_performance_summary_abci:0.1.0:bafybeicnego6zgmbv62lhig4fimgvkzgyvdtmqlx6sep5vstczcm3xkbhq
+- valory/chatui_abci:0.1.0:bafybeidj5jkcq5orm4gmywhw3hm2yuxw4glgwbdmp5l64ddksgsopgfcr4
+- valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -246,6 +246,7 @@ models:
       disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${bool:true}
       activity_target: ${ACTIVITY_TARGET:int:8}
+      default_activity_goal: ${DEFAULT_ACTIVITY_GOAL:int:8}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
