@@ -113,8 +113,8 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeicogm6qti4pzjhhumfivvfy4qut5ob6o5gsrcdvryllgapz4n672u
   tests/behaviours/test_sampling.py: bafybeiffjditwljfnx7sgch7zkvf5krnsvjioq3sgbjq6z3jvdgptaprki
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeifvvljenjuewnnyk2f6kby3zc4f7bdckxdfuqgkntddsvhyg5gpbe
-  tests/behaviours/test_tool_selection.py: bafybeibhu6rcxltozc75lekmw65l3awqm5iexq4uzv4xw4i7ddqq3cto5y
+  tests/behaviours/test_storage_manager.py: bafybeibli2znyrqo7wn2evurer4ozud6ycvq4yhzazuh6nmivmulzkjp2i
+  tests/behaviours/test_tool_selection.py: bafybeieunzjkwmw6hwvifbhymfo5cji2x2lve5a7yuv7k3ekkh4vkrerp4
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
   tests/io_/test_loader.py: bafybeidd2zyzrhhxv75ijofg7mqzobmf4yu32lsscqdi3zd3hwlrwe2kne

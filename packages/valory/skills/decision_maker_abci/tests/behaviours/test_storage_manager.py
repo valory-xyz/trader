@@ -23,7 +23,6 @@ import json
 import tempfile
 from io import StringIO
 from pathlib import Path
-from typing import Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest

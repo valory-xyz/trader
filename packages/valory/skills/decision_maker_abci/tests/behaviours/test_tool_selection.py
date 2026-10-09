@@ -1553,8 +1553,8 @@ class TestAsyncActSplitsTheSelectedKey:
         static = MECH_A.upper().replace("0X", "0x")
         key = tool_key(identity or MECH_A, "tool-a")
         behaviour = _make_behaviour(_make_policy(key), {key})
-        behaviour.params.mech_contract_address = static  # type: ignore[union-attr]
-        behaviour.params.valid_mechs = (  # type: ignore[union-attr]
+        behaviour.params.mech_contract_address = static  # type: ignore[attr-defined]
+        behaviour.params.valid_mechs = (  # type: ignore[attr-defined]
             frozenset({MECH_A}) if in_valid_mechs else frozenset()
         )
         payload = self._act(behaviour, key)
@@ -1563,8 +1563,8 @@ class TestAsyncActSplitsTheSelectedKey:
     def test_benchmarking_sends_no_identities(self) -> None:
         """Benchmarking has no mech, so nothing is creditable by identity."""
         behaviour = _make_behaviour(_make_policy("tool-a"), {"tool-a"})
-        behaviour.benchmarking_mode.enabled = True  # type: ignore[union-attr]
-        behaviour.params.mech_contract_address = MECH_A  # type: ignore[union-attr]
+        behaviour.benchmarking_mode.enabled = True  # type: ignore[attr-defined]
+        behaviour.params.mech_contract_address = MECH_A  # type: ignore[attr-defined]
         payload = self._act(behaviour, "tool-a")
         assert payload.mech_identities is None
 
