@@ -54,6 +54,8 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpHandler,
     HttpMethod,
     IpfsHandler,
+    LEADERBOARD_MAX_RANK_AGE_SECONDS,
+    LEADERBOARD_PAGE_URL,
     LedgerApiHandler,
     MAX_PAGE_SIZE,
     PREDICTION_STATUS_ALL,
@@ -65,6 +67,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceSummary,
+    LEADERBOARD_WINDOWS,
+    LeaderboardData,
+    LeaderboardWindowRank,
     PerformanceMetricsData,
     PerformanceStatsData,
     PredictionHistory,
@@ -303,6 +308,7 @@ class TestHttpHandlerSetup:
         assert handler._handle_get_predictions in route_handlers
         assert handler._handle_get_profit_over_time in route_handlers
         assert handler._handle_get_position_details in route_handlers
+        assert handler._handle_get_leaderboard in route_handlers
 
     def test_setup_route_regexes_contain_api_paths(self) -> None:
         """Test that route regexes contain expected API paths."""
@@ -319,6 +325,7 @@ class TestHttpHandlerSetup:
             r"\/api\/v1\/agent\/prediction-history",
             r"\/api\/v1\/agent\/profit-over-time",
             r"\/api\/v1\/agent\/position-details\/",
+            r"\/api\/v1\/agent\/leaderboard",
         ]
         for path in api_paths:
             assert any(
@@ -2424,3 +2431,182 @@ class TestEdgeCases:
         result = self.handler._filter_profit_data_by_window([], "7d")
         for point in result:
             assert point.daily_mech_requests == 0
+
+
+# ---------------------------------------------------------------------------
+# Test _handle_get_leaderboard
+# ---------------------------------------------------------------------------
+
+
+class TestHandleGetLeaderboard:
+    """Tests for _handle_get_leaderboard."""
+
+    URL = "http://localhost:8080/api/v1/agent/leaderboard"
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.handler = _make_handler()
+        self.handler.context.params.olas_predict_leaderboard_url = (  # type: ignore[attr-defined]
+            "https://predict.olas.network/api/leaderboard/agents"
+        )
+        self.http_dialogue = _make_http_dialogue()
+
+    def _respond(
+        self, query: str = "", leaderboard: Optional[LeaderboardData] = None
+    ) -> dict:
+        """Call the handler and return the 200 body."""
+        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
+            AgentPerformanceSummary(leaderboard=leaderboard)
+        )
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=f"{self.URL}{query}"), self.http_dialogue
+            )
+        return mock_ok.call_args[0][2]
+
+    @staticmethod
+    def _now() -> int:
+        """The current UNIX time."""
+        return int(datetime.now(timezone.utc).timestamp())
+
+    def _ranked(self, age: int = 60) -> LeaderboardWindowRank:
+        """A ranked entry fetched ``age`` seconds ago."""
+        return LeaderboardWindowRank(
+            ranked=True,
+            fetched_at=self._now() - age,
+            rank_by_roi=114,
+            rank_by_pnl=124,
+            total_ranked=242,
+            leaderboard_url="https://predict.olas.network/leaderboard?pin=0xabc123",
+        )
+
+    def test_missing_window_defaults_to_7d(self) -> None:
+        """No ``window`` serves the 7d entry."""
+        body = self._respond(
+            leaderboard=LeaderboardData(windows={"7d": self._ranked()})
+        )
+        assert body["window"] == "7d"
+        assert body["status"] == "ranked"
+
+    def test_each_valid_window(self) -> None:
+        """Every leaderboard window is served from its own entry."""
+        windows = {
+            window: LeaderboardWindowRank(
+                ranked=True, fetched_at=self._now(), rank_by_roi=i, rank_by_pnl=i
+            )
+            for i, window in enumerate(LEADERBOARD_WINDOWS, start=1)
+        }
+        for i, window in enumerate(LEADERBOARD_WINDOWS, start=1):
+            body = self._respond(f"?window={window}", LeaderboardData(windows=windows))
+            assert body["window"] == window
+            assert body["rank_by_roi"] == i
+
+    def test_invalid_window_is_400(self) -> None:
+        """An unknown window is a bad request."""
+        with patch.object(self.handler, "_send_bad_request_response") as mock_bad:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=f"{self.URL}?window=lifetime"), self.http_dialogue
+            )
+        assert mock_bad.call_args[0][2] == {
+            "error": "Invalid window parameter: lifetime. Must be one of: 7d, 30d, 90d, 1y"
+        }
+
+    def test_ranked(self) -> None:
+        """A fresh ranked entry is served with both ranks and its timestamp."""
+        entry = self._ranked()
+        body = self._respond("?window=30d", LeaderboardData(windows={"30d": entry}))
+        assert body == {
+            "agent_id": "0xabc123",
+            "agent_type": "omenstrat",
+            "window": "30d",
+            "status": "ranked",
+            "rank_by_roi": 114,
+            "rank_by_pnl": 124,
+            "total_ranked": 242,
+            "not_ranked_reason": None,
+            "leaderboard_url": entry.leaderboard_url,
+            "last_updated": datetime.fromtimestamp(
+                entry.fetched_at, tz=timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+
+    def test_polystrat_agent_type(self) -> None:
+        """A Polymarket agent reports the polystrat type."""
+        self.handler.context.params.is_running_on_polymarket = True  # type: ignore[attr-defined]
+        assert self._respond()["agent_type"] == "polystrat"
+
+    def test_not_ranked_reasons(self) -> None:
+        """Both upstream reasons pass through with null ranks."""
+        for reason in ("not_ranked_yet", "not_enough_trades_in_window"):
+            entry = LeaderboardWindowRank(
+                ranked=False,
+                fetched_at=self._now(),
+                not_ranked_reason=reason,
+                total_ranked=242,
+                leaderboard_url="https://predict.olas.network/leaderboard?pin=0xabc123",
+            )
+            body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+            assert body["status"] == "not_ranked"
+            assert body["not_ranked_reason"] == reason
+            assert body["rank_by_roi"] is None
+            assert body["total_ranked"] == 242
+            assert body["leaderboard_url"] == entry.leaderboard_url
+
+    def _assert_unavailable(self, body: dict) -> None:
+        """An unavailable answer has null figures and the bare page URL."""
+        assert body["status"] == "unavailable"
+        for key in ("rank_by_roi", "rank_by_pnl", "total_ranked", "not_ranked_reason"):
+            assert body[key] is None
+        assert body["last_updated"] is None
+        assert body["leaderboard_url"] == LEADERBOARD_PAGE_URL
+
+    def test_unavailable_without_section_or_window(self) -> None:
+        """No section, or no entry for the window, is unavailable."""
+        self._assert_unavailable(self._respond())
+        self._assert_unavailable(
+            self._respond(
+                "?window=90d", LeaderboardData(windows={"7d": self._ranked()})
+            )
+        )
+
+    def test_entry_under_24_hours_is_served(self) -> None:
+        """An entry just inside the maximum age is still served."""
+        entry = self._ranked(age=LEADERBOARD_MAX_RANK_AGE_SECONDS - 60)
+        body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        assert body["status"] == "ranked"
+
+    def test_entry_over_24_hours_is_unavailable(self) -> None:
+        """An entry past the maximum age is reported as unavailable."""
+        entry = self._ranked(age=LEADERBOARD_MAX_RANK_AGE_SECONDS + 60)
+        self._assert_unavailable(
+            self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        )
+
+    def test_unset_url_is_unavailable(self) -> None:
+        """With the leaderboard disabled, a stored entry is not served."""
+        self.handler.context.params.olas_predict_leaderboard_url = ""  # type: ignore[attr-defined]
+        self._assert_unavailable(
+            self._respond(leaderboard=LeaderboardData(windows={"7d": self._ranked()}))
+        )
+
+    def test_missing_url_in_entry_falls_back_to_page(self) -> None:
+        """An entry without a deep link still offers the bare page."""
+        entry = self._ranked()
+        entry.leaderboard_url = None
+        body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        assert body["leaderboard_url"] == LEADERBOARD_PAGE_URL
+
+    def test_exception_is_500(self) -> None:
+        """An unexpected error answers 500."""
+        self.handler.shared_state.read_existing_performance_summary.side_effect = (  # type: ignore[attr-defined]
+            RuntimeError("boom")
+        )
+        with patch.object(
+            self.handler, "_send_internal_server_error_response"
+        ) as mock_error:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=self.URL), self.http_dialogue
+            )
+        assert mock_error.call_args[0][2] == {
+            "error": "Failed to fetch leaderboard rank"
+        }

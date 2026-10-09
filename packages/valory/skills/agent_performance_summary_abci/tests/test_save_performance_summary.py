@@ -32,6 +32,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    LeaderboardData,
+    LeaderboardWindowRank,
     PerformanceMetricsData,
     PerformanceStatsData,
     PredictionHistory,
@@ -392,6 +394,29 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.achievements is existing.achievements
+
+    def test_save_preserves_leaderboard(self) -> None:
+        """The leaderboard section, written on its own throttle, survives a save."""
+        existing = _good_existing_summary()
+        existing.leaderboard = LeaderboardData(
+            windows={"7d": LeaderboardWindowRank(ranked=True, fetched_at=1)},
+            last_attempt_at=1,
+        )
+        behaviour = _make_behaviour(existing)
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_good_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.leaderboard is existing.leaderboard
 
     def test_save_preserves_achievements_on_degraded_read(self) -> None:
         """A degraded summary read must not wipe the persisted watermark."""
