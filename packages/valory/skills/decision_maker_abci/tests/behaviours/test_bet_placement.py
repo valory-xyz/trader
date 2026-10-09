@@ -436,6 +436,7 @@ class TestBetPlacementBehaviour:
             is_policy_set=True,
             policy=mock_policy,
             mech_tool="tool1",
+            mech_tool_key="tool1",
         )
 
         store_path = Path("/tmp/test_store")  # nosec

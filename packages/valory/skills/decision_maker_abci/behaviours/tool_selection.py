@@ -21,8 +21,14 @@
 
 import copy
 import json
-from typing import Dict, Generator, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
+from packages.valory.skills.chatui_abci.tool_keys import (
+    describe_tool_key,
+    split_tool_key,
+    tool_names,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.base import ZERO_ADDRESS
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -42,21 +48,28 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
     matching_round = ToolSelectionRound
 
     def _candidate_tools(self) -> Tuple[set, Optional[str]]:
-        """Apply suitability, ChatUI mech pin, ChatUI tool pin (in order)."""
+        """Apply suitability, ChatUI mech pin, ChatUI tool pin (in order).
+
+        Operates on policy keys, i.e., (identity, tool) pairs; the suitability
+        classifier and the tool pin look at the tool name, and the mech pin
+        keeps a key when any discovered mech behind it is pinned.
+
+        :return: the candidate keys and, when they are empty, the pin to blame.
+        """
         candidate = set(self.mech_tools)
         cause: Optional[str] = None
 
         if self._tool_metadata:
             suitable = {
-                tool
-                for tool in candidate
-                if is_prediction_tool(self._tool_metadata.get(tool))
+                key
+                for key in candidate
+                if is_prediction_tool(self._tool_metadata.get(split_tool_key(key)[1]))
             }
             if suitable:
                 if suitable != candidate:
                     rejected: Dict[str, list] = {}
                     no_manifest: list = []
-                    for tool in sorted(candidate - suitable):
+                    for tool in sorted(tool_names(candidate - suitable)):
                         meta = self._tool_metadata.get(tool)
                         if meta is None:
                             no_manifest.append(tool)
@@ -95,18 +108,17 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         # mutate the main policy object — only an ephemeral deepcopy is
         # restricted in ``_select_tool`` — so accuracy keeps accumulating across
         # all tools between rounds.
-        self.shared_state.available_prediction_tools = frozenset(candidate)
+        self.shared_state.available_prediction_tools = frozenset(tool_names(candidate))
 
         selected_mechs = self.shared_state.chatui_config.selected_mechs
         if selected_mechs and not self.benchmarking_mode.enabled:
             selected_lower = {m.lower() for m in selected_mechs}
-            tools_from_pinned_mechs = {
-                tool
-                for mech in self.synchronized_data.mechs_info
-                if mech.address.lower() in selected_lower
-                for tool in mech.relevant_tools
+            mechs_by_key = self._mechs_by_key()
+            candidate = {
+                key
+                for key in candidate
+                if selected_lower.intersection(mechs_by_key.get(key, ()))
             }
-            candidate &= tools_from_pinned_mechs
             if not candidate:
                 cause = "selected_mechs"
 
@@ -123,7 +135,8 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             # policy/accuracy_store is never altered. Genuine mech-pin conflicts
             # that empty ``candidate`` upstream keep their ``selected_mechs``
             # cause (handled separately; see issue #991).
-            effective = candidate & set(allowed_tools)
+            allowed = set(allowed_tools)
+            effective = {key for key in candidate if split_tool_key(key)[1] in allowed}
             if effective:
                 candidate = effective
             else:
@@ -136,8 +149,35 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
 
         return candidate, cause
 
+    def _preferred_mechs(self, selected_key: str) -> List[str]:
+        """Get the mechs behind the selected key, narrowed to the ChatUI mech pin when it covers any."""
+        mechs = self._mechs_by_key().get(selected_key, [])
+        selected_mechs = self.shared_state.chatui_config.selected_mechs
+        if selected_mechs and not self.benchmarking_mode.enabled:
+            pinned = {m.lower() for m in selected_mechs}
+            mechs = [mech for mech in mechs if mech in pinned] or mechs
+        return mechs
+
+    def _serving_identities(self, tool: str) -> Dict[str, str]:
+        """Map the mechs whose delivery of `tool` is credited (discovered ones and the static mech) to identities."""
+        if self.benchmarking_mode.enabled:
+            return {}
+        identities = (
+            self._mech_identities(tool)
+            if self.synchronized_data.is_marketplace_v2
+            else {}
+        )
+        static = self.v1_mech_address.lower()
+        if static and static != ZERO_ADDRESS:
+            identities.setdefault(static, self._identity(static))
+        return identities
+
     def _select_tool(self) -> Generator[None, None, Optional[str]]:
-        """Pick a tool via e-greedy policy on the candidate set."""
+        """Pick an (identity, tool) pair via e-greedy policy on the candidate set.
+
+        :yield: None
+        :return: the policy key of the selected pair, or `None` to skip the round.
+        """
         success = yield from self._setup_policy_and_tools()
         if not success:
             # No tools available this round (transient mech-info outage, V2 cold
@@ -167,7 +207,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 )
                 return None
             selected_tool = self.policy.select_tool(randomness)
-        elif candidate_tools != self.mech_tools:
+        elif candidate_tools != set(self.policy.accuracy_store):
             restricted_policy = copy.deepcopy(self.policy)
             restricted_policy.accuracy_store = {
                 t: v
@@ -179,15 +219,28 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         else:
             selected_tool = self.policy.select_tool(randomness)
 
-        self.context.logger.info(f"Selected the mech tool {selected_tool!r}.")
+        if selected_tool is not None:
+            self.context.logger.info(
+                f"Selected the mech tool {describe_tool_key(selected_tool)!r}."
+            )
         return selected_tool
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             mech_tools = policy = utilized_tools = None
-            selected_tool = yield from self._select_tool()
-            if selected_tool is not None:
+            preferred_mechs = mech_identities = None
+            selected_key = yield from self._select_tool()
+            selected_tool = (
+                None if selected_key is None else split_tool_key(selected_key)[1]
+            )
+            if selected_key is not None:
+                mechs = self._preferred_mechs(selected_key)
+                preferred_mechs = json.dumps(mechs) if mechs else None
+                identities = self._serving_identities(str(selected_tool))
+                mech_identities = (
+                    json.dumps(identities, sort_keys=True) if identities else None
+                )
                 # the period will increment when the benchmarking finishes
                 benchmarking_running = self.synchronized_data.period_count == 0
                 if (
@@ -195,7 +248,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                     and benchmarking_running
                     and not self.shared_state.last_benchmarking_has_run
                 ):
-                    self.policy.tool_used(selected_tool)
+                    self.policy.tool_used(selected_key)
                 mech_tools = json.dumps(list(self.mech_tools))
                 policy = self.policy.serialize()
                 utilized_tools = json.dumps(self.utilized_tools, sort_keys=True)
@@ -207,6 +260,9 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 policy,
                 utilized_tools,
                 selected_tool,
+                preferred_mechs,
+                selected_key,
+                mech_identities,
             )
 
         yield from self.finish_behaviour(payload)

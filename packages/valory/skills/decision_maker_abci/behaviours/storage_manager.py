@@ -29,6 +29,12 @@ from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 from packages.valory.contracts.agent_registry.contract import AgentRegistryContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
+from packages.valory.skills.chatui_abci.tool_keys import (
+    VALORY_LABEL,
+    split_tool_key,
+    tool_key,
+    tool_names,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     CID_PREFIX,
     DecisionMakerBaseBehaviour,
@@ -49,6 +55,8 @@ UTILIZED_TOOLS_STORE = "utilized_tools.json"
 GET = "GET"
 OK_CODE = 200
 NO_METADATA_HASH = "0" * 64
+# The global accuracy files express accuracy in percent.
+GLOBAL_ACCURACY_SCALE = 100
 
 
 class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
@@ -69,7 +77,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     @property
     def mech_tools(self) -> Set[str]:
-        """Get the mech agent's tools."""
+        """Get the policy keys of the available (identity, tool) pairs, see `tool_key`."""
         if not self._mech_tools:
             raise ValueError("The mech's tools have not been set.")
         return self._mech_tools
@@ -123,6 +131,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def mech_tools_api(self) -> AgentToolsSpecs:
         """Get the mech agent api specs."""
         return self.context.agent_tools
+
+    @property
+    def v1_mech_address(self) -> str:
+        """Get the address of the single mech the V1 flows request from."""
+        if self.params.use_mech_marketplace:
+            return self.params.mech_marketplace_config.priority_mech_address or ""
+        return self.params.mech_contract_address
 
     def setup(self) -> None:
         """Set the behaviour up."""
@@ -220,6 +235,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         self.context.logger.info(f"Retrieved the mech agent's tools: {res}.")
         res = {str(tool).lower() for tool in res}
+        identity = self._identity(self.v1_mech_address)
 
         if len(res) == 0:
             self.context.logger.error("The mech agent's manifest is empty!")
@@ -246,9 +262,34 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                     "False so the retry loop handles the misconfiguration."
                 )
                 return False
-        self.mech_tools = res
+        self.mech_tools = {tool_key(identity, tool) for tool in res}
         self.mech_tools_api.reset_retries()
         return True
+
+    def _identity(self, address: str) -> str:
+        """Get the identity a mech's results are recorded under, see `tool_keys`."""
+        address = address.lower()
+        return VALORY_LABEL if address in self.params.valid_mechs else address
+
+    def _mech_identities(self, tool: Optional[str] = None) -> Dict[str, str]:
+        """Map the discovered mechs (only those serving `tool`, if given) to identities."""
+        return {
+            mech.address.lower(): self._identity(mech.address)
+            for mech in self.synchronized_data.mechs_info
+            if tool is None or tool in mech.relevant_tools
+        }
+
+    def _mechs_by_key(self) -> Dict[str, List[str]]:
+        """Map each key of the discovered mechs to their lowercase addresses."""
+        mechs: Dict[str, List[str]] = {}
+        identities = self._mech_identities()
+        for mech in self.synchronized_data.mechs_info:
+            address = mech.address.lower()
+            for tool in mech.relevant_tools:
+                mechs.setdefault(tool_key(identities[address], tool), []).append(
+                    address
+                )
+        return mechs
 
     def _get_tools(
         self,
@@ -259,7 +300,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return
 
         if self.synchronized_data.is_marketplace_v2:
-            self.mech_tools = self.synchronized_data.mech_tools
+            self.mech_tools = set(self._mechs_by_key())
             return
 
         for step in (
@@ -430,12 +471,61 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         return True
 
+    @staticmethod
+    def _rekey_legacy(store: Dict[str, Any]) -> List[str]:
+        """Move a store's bare tool keys under `VALORY_LABEL`, returning them; existing entries win."""
+        moved = []
+        for key in list(store):
+            if split_tool_key(key)[0] is None:
+                store.setdefault(tool_key(VALORY_LABEL, key), store.pop(key))
+                moved.append(key)
+        return moved
+
+    def _migrate_legacy_keys(self) -> None:
+        """Move records keyed by tool name alone under `VALORY_LABEL`, which served them.
+
+        Percent accuracy (above 1) becomes a fraction. Idempotent; skipped in
+        benchmarking, where keys are bare by design.
+        """
+        if self.benchmarking_mode.enabled:
+            return
+
+        policy = self.policy
+        moved = self._rekey_legacy(policy.accuracy_store)
+        self._rekey_legacy(policy.consecutive_failures)
+        legacy_refs = {
+            ref: tool_key(VALORY_LABEL, key)
+            for ref, key in self.utilized_tools.items()
+            if split_tool_key(key)[0] is None
+        }
+        self.utilized_tools.update(legacy_refs)
+        if not moved:
+            return
+        for key in moved:
+            record = policy.accuracy_store[tool_key(VALORY_LABEL, key)]
+            if record.accuracy > 1:
+                record.accuracy /= GLOBAL_ACCURACY_SCALE
+        policy.update_weighted_accuracy()
+        self.context.logger.info(
+            f"Moved the accuracy records of {sorted(moved)} under {VALORY_LABEL!r}."
+        )
+
     def _prune_accuracy_store_to_current_tools(self) -> None:
-        """Drop accuracy_store entries that are no longer in self.mech_tools."""
+        """Drop the records of tools no longer offered that have no requests or pending bets."""
         accuracy_store = self.policy.accuracy_store
-        for tool in accuracy_store.copy():
-            if tool not in self.mech_tools:
-                accuracy_store.pop(tool, None)
+        dropped = [
+            key
+            for key, record in accuracy_store.items()
+            if key not in self.mech_tools
+            and record.requests == 0
+            and record.pending == 0
+        ]
+        for key in dropped:
+            del accuracy_store[key]
+        if dropped:
+            self.context.logger.info(
+                f"Dropped the records of tools no longer offered: {sorted(dropped)}."
+            )
 
     def _global_info_date_to_unix(self, tool_transaction_date: str) -> Optional[int]:
         """Convert the global information date to unix."""
@@ -458,14 +548,22 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         max_transaction_date: int,
         tool_to_global_info: Dict[str, Dict[str, str]],
     ) -> int:
-        """Parse a row of the global information."""
-        tool = row[self.acc_info_fields.tool]
-        if tool not in self.mech_tools:
+        """Parse a row of the global information.
+
+        The global information was measured on Valory's mechs.
+
+        :param row: the row to parse.
+        :param max_transaction_date: the latest transaction date so far.
+        :param tool_to_global_info: the rows kept so far, by policy key.
+        :return: the latest transaction date, including this row.
+        """
+        key = tool_key(VALORY_LABEL, row[self.acc_info_fields.tool])
+        if key not in self.mech_tools:
             # skip irrelevant tools
             return max_transaction_date
 
         # store the global information
-        tool_to_global_info[tool] = row
+        tool_to_global_info[key] = row
 
         # find the latest transaction date
         tool_transaction_date = row[self.acc_info_fields.max]
@@ -515,7 +613,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                 # naturally, no global information is available for pending.
                 # set it using the local policy if this information exists
                 accuracy_store.get(tool, AccuracyInfo()).pending,
-                float(row[self.acc_info_fields.accuracy]),
+                float(row[self.acc_info_fields.accuracy]) / GLOBAL_ACCURACY_SCALE,
             )
             self.policy.updated_ts = int(datetime.now().timestamp())
 
@@ -530,7 +628,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         The current method should only be called at the first period.
 
         :param global_update_timestamp: the timestamp of the latest global information update
-        :param tool_to_global_info: the global information of the tools
+        :param tool_to_global_info: the global information of the tools, by policy key
         """
         if self._should_use_global_info(global_update_timestamp):
             self._overwrite_local_info(tool_to_global_info)
@@ -539,6 +637,16 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in self.mech_tools:
             self.policy.accuracy_store.setdefault(tool, AccuracyInfo())
 
+    def _warn_if_valory_records_unused(self) -> None:
+        """Warn when Valory records exist but no offered tool is Valory's, so they go unused."""
+        offered = {split_tool_key(key)[0] for key in self.mech_tools}
+        stored = {split_tool_key(key)[0] for key in self.policy.accuracy_store}
+        if VALORY_LABEL in stored and VALORY_LABEL not in offered:
+            self.context.logger.warning(
+                f"No offered mech is in `valid_mechs`, so the {VALORY_LABEL!r} accuracy "
+                "records and the global seed are not used."
+            )
+
     def _update_policy_tools(self) -> None:
         """Update the policy's tools and their accuracy with the latest information available if `with_global_info`."""
         self.context.logger.info("Updating information of the policy...")
@@ -546,6 +654,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         global_info = self._parse_global_info()
         self._update_accuracy_store(*global_info)
         self.policy.update_weighted_accuracy()
+        self._warn_if_valory_records_unused()
 
     def _set_policy(self) -> Generator:
         """Set the E Greedy Policy."""
@@ -557,6 +666,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
                 "Reading policy information from synchronized data"
             )
             self._policy = self.synchronized_data.policy
+        self._migrate_legacy_keys()
 
         yield from self.wait_for_condition_with_sleep(
             self._fetch_accuracy_info, sleep_time_override=self.params.sleep_time
@@ -635,14 +745,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if not self._tool_metadata:
             return
 
+        names = tool_names(self.mech_tools)
         suitable = {
-            tool
-            for tool in self.mech_tools
-            if is_prediction_tool(self._tool_metadata.get(tool))
+            tool for tool in names if is_prediction_tool(self._tool_metadata.get(tool))
         }
         if not suitable:
             self.context.logger.warning(
-                f"Tool-suitability classifier marked all {len(self.mech_tools)} "
+                f"Tool-suitability classifier marked all {len(names)} "
                 "tool(s) as unsuitable during setup; the ChatUI will fall back "
                 "to the raw mech_tools set."
             )

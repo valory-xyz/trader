@@ -285,6 +285,20 @@ class TestAllowedTools:
         assert params[ALLOWED_TOOLS_FIELD] == ["prediction-online"]
         handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
 
+    def test_validation_fallback_strips_the_mech_part_of_policy_keys(self) -> None:
+        """The raw synced set holds (identity, tool) keys; pins are validated by tool name."""
+        mech = "0x" + "a" * 40
+        handler = _make_handler(
+            available_tools={f"{mech}::prediction-online", f"{mech}::resolve-market"},
+            prediction_tools=None,
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["resolve-market"]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == ["resolve-market"]
+        assert handler._available_tools() == {"prediction-online", "resolve-market"}
+
     def test_validation_falls_back_to_mech_tools_when_unpublished(self) -> None:
         """With no filtered set published, validation uses available_mech_tools.
 

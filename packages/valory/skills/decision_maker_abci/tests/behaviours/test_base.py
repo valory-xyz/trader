@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, TypeVar, Union
 from unittest import mock
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from aea.configurations.base import PackageConfiguration
@@ -641,6 +641,29 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_policy = MagicMock()
         behaviour._policy = mock_policy
         assert behaviour.policy == mock_policy
+
+    @pytest.mark.parametrize("key", ["valory::tool1", None])
+    def test_creditable_tool_key_warns_only_on_a_skipped_credit(
+        self, key: Optional[str]
+    ) -> None:
+        """The key passes through; a missing one is warned about with the deliverer."""
+        behaviour = self.behaviour
+        synced = MagicMock(
+            mech_tool_key=key, delivering_mech="0xdeliverer", mech_tool="tool1"
+        )
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(behaviour.context.logger, "warning") as mock_warn,
+        ):
+            mock_sd.return_value = synced
+            assert behaviour.creditable_tool_key == key
+        if key is None:
+            mock_warn.assert_called_once()
+            assert "0xdeliverer" in mock_warn.call_args[0][0]
+        else:
+            mock_warn.assert_not_called()
 
     def _set_period_count(self, behaviour: Any, value: int) -> None:
         """Set the period count via the `db.reset_index` attribute it actually reads."""

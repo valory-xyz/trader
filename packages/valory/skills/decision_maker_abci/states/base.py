@@ -32,6 +32,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.chatui_abci.rounds import (
     SynchronizedData as ChatuiSyncedData,
 )
+from packages.valory.skills.chatui_abci.tool_keys import tool_key
 from packages.valory.skills.decision_maker_abci.payloads import MultisigTxPayload
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 from packages.valory.skills.market_manager_abci.rounds import (
@@ -141,6 +142,50 @@ class SynchronizedData(
         return str(self.db.get_strict("mech_tool"))
 
     @property
+    def selected_tool_key(self) -> Optional[str]:
+        """Get the policy key the tool selection picked, `None` before any pick."""
+        key = self.db.get("selected_tool_key", None)
+        return str(key) if key else None
+
+    @property
+    def delivering_mech(self) -> Optional[str]:
+        """Get the lowercase address of the mech that delivered the response.
+
+        :return: the address, or `None` when no response names a mech.
+        """
+        for response in self.mech_responses:
+            if response.mech_address:
+                return response.mech_address.lower()
+        return None
+
+    @property
+    def mech_identities(self) -> Dict[str, str]:
+        """Get the identity of each mech that may deliver the selected tool."""
+        raw = self.db.get("mech_identities", None)
+        return json.loads(raw) if raw else {}
+
+    @property
+    def mech_tool_key(self) -> Optional[str]:
+        """Get the key to credit the outcome to: the deliverer's identity, `None` if not eligible.
+
+        Without a recorded deliverer or `mech_identities`, the selected key
+        stands, and without a selected key the bare tool name.
+
+        :return: the key, or `None`.
+        """
+        selected = self.selected_tool_key
+        if selected is None:
+            return self.mech_tool
+        delivering = self.delivering_mech
+        identities = self.mech_identities
+        if delivering is None or not identities:
+            return selected
+        identity = identities.get(delivering)
+        if identity is None:
+            return None
+        return tool_key(identity, self.mech_tool)
+
+    @property
     def utilized_tools(self) -> Dict[str, str]:
         """Get a mapping of the utilized tools' indexes for each transaction."""
         tools = str(self.db.get_strict("utilized_tools"))
@@ -206,14 +251,14 @@ class SynchronizedData(
 
     @property
     def weighted_accuracy(self) -> float:
-        """Get the weighted accuracy of the selected tool."""
-        tool_name = self.mech_tool
+        """Get the weighted accuracy of the selected tool, as served by its mech."""
+        key = self.mech_tool_key
         store_tools = set(self.policy.weighted_accuracy.keys())
-        if tool_name not in store_tools:
+        if key is None or key not in store_tools:
             raise ValueError(
-                f"The tool {tool_name} was selected but it is not available in the policy!"
+                f"The tool {key} was selected but it is not available in the policy!"
             )
-        return self.policy.weighted_accuracy[tool_name]
+        return self.policy.weighted_accuracy[key]
 
     @property
     def is_profitable(self) -> bool:

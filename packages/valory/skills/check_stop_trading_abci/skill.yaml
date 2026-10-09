@@ -31,8 +31,8 @@ protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
-- valory/chatui_abci:0.1.0:bafybeiesymeat2zdn5v5i7jhigsfybxneuvqne4h5pjhfotty54ijr5574
-- valory/mech_interact_abci:0.1.0:bafybeib76vouxqxbx77dn2yd2u7u7czdn2xnfi674qn32yfxoat4vmwiwu
+- valory/chatui_abci:0.1.0:bafybeife4xbieauk7x65orlgd3einpaqiisnwj32u6gvfflbvhhbytazsa
+- valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 behaviours:
   main:

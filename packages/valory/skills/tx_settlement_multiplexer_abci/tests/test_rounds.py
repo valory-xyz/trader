@@ -197,7 +197,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
             mock_synced.utilized_tools = {"existing_hash": "existing_tool"}
             mock_synced.final_tx_hash = "0xabc123"
-            mock_synced.mech_tool = "prediction-online"
+            mock_synced.mech_tool_key = "prediction-online"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -215,6 +215,26 @@ class TestPostTxSettlementRoundEndBlock:
         round_.synchronized_data.update.assert_called_once_with(  # type: ignore[attr-defined]
             utilized_tools=expected_tools  # type: ignore[attr-defined]
         )
+
+    def test_bet_by_an_ineligible_deliverer_is_not_recorded(self) -> None:
+        """No credit key means the bet is not tracked for an accuracy update."""
+        round_ = self._create_round()
+
+        with patch(
+            "packages.valory.skills.tx_settlement_multiplexer_abci.rounds.SynchronizedData"
+        ) as MockSyncData:
+            mock_synced = MagicMock()
+            mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
+            mock_synced.utilized_tools = {}
+            mock_synced.final_tx_hash = "0xabc123"
+            mock_synced.mech_tool_key = None
+            MockSyncData.return_value = mock_synced
+
+            result = round_.end_block()
+
+        assert result is not None
+        assert result[1] == Event.BET_PLACEMENT_DONE
+        round_.synchronized_data.update.assert_not_called()  # type: ignore[attr-defined]
 
     def test_bet_placement_done_with_none_tx_hash(self) -> None:
         """Test end_block with BetPlacementRound submitter and None tx hash logs warning and returns early."""
@@ -251,7 +271,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = SellOutcomeTokensRound.auto_round_id()
             mock_synced.utilized_tools = {}
             mock_synced.final_tx_hash = "0xdef456"
-            mock_synced.mech_tool = "prediction-offline"
+            mock_synced.mech_tool_key = "prediction-offline"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -471,7 +491,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced = MagicMock()
             mock_synced.tx_submitter = MechRequestRound.auto_round_id()
             mock_synced.policy = mock_policy
-            mock_synced.mech_tool = "prediction-online"
+            mock_synced.mech_tool_key = "prediction-online"
             MockSyncData.return_value = mock_synced
 
             round_.end_block()
@@ -492,7 +512,7 @@ class TestPostTxSettlementRoundEndBlock:
             mock_synced.tx_submitter = BetPlacementRound.auto_round_id()
             mock_synced.utilized_tools = existing_tools.copy()
             mock_synced.final_tx_hash = "0xnew"
-            mock_synced.mech_tool = "new-tool"
+            mock_synced.mech_tool_key = "new-tool"
             MockSyncData.return_value = mock_synced
 
             result = round_.end_block()
@@ -536,7 +556,7 @@ class TestPostTxSettlementRoundEndBlock:
             # Provide attributes needed for MECH_REQUESTING_DONE path  # type: ignore[attr-defined]
             mock_synced.policy = MagicMock()
             mock_synced.policy.serialize.return_value = "serialized"
-            mock_synced.mech_tool = "test-tool"
+            mock_synced.mech_tool_key = "test-tool"
             # Provide attributes needed for BET_PLACEMENT_DONE / SELL_OUTCOME_TOKENS_DONE path
             mock_synced.utilized_tools = {}
             mock_synced.final_tx_hash = "0xhash"
