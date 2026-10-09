@@ -19,9 +19,17 @@
 
 """Tests for SamplingBehaviour."""
 
+import json
 import time
+from pathlib import Path
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AGENT_PERFORMANCE_SUMMARY_FILE,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SamplingBehaviour,
     UNIX_DAY,
@@ -52,6 +60,25 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     behaviour.__dict__["_context"] = context
 
     return behaviour
+
+
+def _goal_block(period_start: int, progress: int, target: int = 8) -> Dict[str, Any]:
+    """Return a valid activity goal block."""
+    return {
+        "unit": "trades",
+        "target": target,
+        "progress": progress,
+        "is_met": progress >= target,
+        "period_start": period_start,
+        "updated_at": period_start + 100,
+        "last_met_at": None,
+    }
+
+
+def _write_goal_block(store_path: Path, block: Optional[Dict[str, Any]]) -> None:
+    """Write a performance summary holding ``block`` as its activity goal."""
+    summary = {} if block is None else {"activity_goal": block}
+    (store_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(json.dumps(summary))
 
 
 def _make_mock_bet(  # type: ignore[no-untyped-def]
@@ -144,17 +171,64 @@ class TestSamplingBehaviourSetup:
 class TestSamplingBehaviourProperties:
     """Tests for SamplingBehaviour properties."""
 
-    def test_kpi_is_met(self) -> None:
-        """kpi_is_met should follow the regime-aware activity-target signal."""
+    @pytest.mark.parametrize(
+        ("target_met", "block", "expected"),
+        [
+            # staking side met, goal not met yet
+            (True, _goal_block(1000, progress=3), False),
+            # both met
+            (True, _goal_block(1000, progress=8), True),
+            # goal met, but in an earlier epoch
+            (True, _goal_block(500, progress=8), False),
+            # no block persisted yet
+            (True, None, False),
+            # goal met, staking side not met
+            (False, _goal_block(1000, progress=8), False),
+        ],
+    )
+    def test_kpi_is_met(
+        self,
+        tmp_path: Path,
+        target_met: bool,
+        block: Optional[Dict[str, Any]],
+        expected: bool,
+    ) -> None:
+        """kpi_is_met needs the activity target and this epoch's activity goal."""
+        _write_goal_block(tmp_path, block)
         behaviour = _make_behaviour()
-        with patch.object(
-            type(behaviour), "synchronized_data", new_callable=PropertyMock
-        ) as mock_sd:
-            # tracks is_activity_target_met, NOT is_staking_kpi_met
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
             mock_sd.return_value = MagicMock(
-                is_activity_target_met=True, is_staking_kpi_met=False
+                is_activity_target_met=target_met,
+                is_staking_kpi_met=False,
+                previous_checkpoint=1000,
             )
-            assert behaviour.kpi_is_met is True
+            mock_params.return_value = MagicMock(store_path=tmp_path)
+            assert behaviour.kpi_is_met is expected
+
+    def test_activity_goal_met_invalid_block(self, tmp_path: Path) -> None:
+        """A block that contradicts its own counts reads as not met."""
+        block = _goal_block(1000, progress=3)
+        block["is_met"] = True
+        _write_goal_block(tmp_path, block)
+        behaviour = _make_behaviour()
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+        ):
+            mock_sd.return_value = MagicMock(previous_checkpoint=1000)
+            mock_params.return_value = MagicMock(store_path=tmp_path)
+            assert behaviour.activity_goal_met is False
 
     def test_review_bets_for_selling(self) -> None:
         """review_bets_for_selling should return synchronized_data value."""

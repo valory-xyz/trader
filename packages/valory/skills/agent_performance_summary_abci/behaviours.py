@@ -2439,6 +2439,11 @@ class FetchPerformanceSummaryBehaviour(
         agent_performance_summary.achievements = (
             self.shared_state.read_achievements_from_disk()
         )
+        # Written by the stop-trading check and the chat; the rebuild above
+        # knows nothing of it.
+        agent_performance_summary.activity_goal = (
+            self.shared_state.read_activity_goal_from_disk()
+        )
 
         # Preserve ``offchain_deposits`` via a raw-JSON re-read that
         # bypasses ``AgentPerformanceSummary.__post_init__`` on sibling

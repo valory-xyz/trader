@@ -316,6 +316,14 @@ class SynchronizedData(
         return bool(self.db.get("is_activity_target_met", False))
 
     @property
+    def previous_checkpoint(self) -> Optional[int]:
+        """Get the staking checkpoint timestamp last read by the staking round."""
+        previous_checkpoint = self.db.get("previous_checkpoint", None)
+        if previous_checkpoint is None:
+            return None
+        return int(previous_checkpoint)
+
+    @property
     def activity_target(self) -> int:
         """Get the per-epoch activity target."""
         activity_target = self.db.get("activity_target", 0)

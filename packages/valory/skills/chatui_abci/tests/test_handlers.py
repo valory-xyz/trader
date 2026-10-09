@@ -21,12 +21,20 @@
 
 import json
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    update_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AGENT_PERFORMANCE_SUMMARY_FILE,
+    read_activity_goal,
+)
 from packages.valory.skills.chatui_abci.handlers import (
     ALLOWED_TOOLS_FIELD,
     AVAILABLE_TRADING_STRATEGIES,
@@ -519,6 +527,219 @@ class TestBehavior:
 
 
 # ---------------------------------------------------------------------------
+# Activity goal
+# ---------------------------------------------------------------------------
+
+GOAL_PERIOD_START = 1_791_331_200
+GOAL_NOW = GOAL_PERIOD_START + 3_600
+
+
+class TestActivityGoal:
+    """Tests for setting the activity goal through the chat."""
+
+    @staticmethod
+    def _handler(
+        store_path: Path, current_goal: Optional[int] = None, progress: int = 3
+    ) -> _TestableHttpHandler:
+        """Return a handler over ``store_path`` holding a published block."""
+        handler = _make_handler(current_config=ChatuiConfig(activity_goal=current_goal))
+        handler.context.params.store_path = store_path
+        handler.context.params.default_activity_goal = 8
+        handler.shared_state.synced_timestamp = GOAL_NOW
+        update_activity_goal(
+            store_path,
+            8 if current_goal is None else current_goal,
+            progress,
+            GOAL_PERIOD_START,
+            GOAL_PERIOD_START + 60,
+            MagicMock(),
+        )
+        return handler
+
+    @staticmethod
+    def _info_lines(handler: _TestableHttpHandler) -> list:
+        """Return the INFO messages logged about the goal."""
+        return [
+            call.args[0]
+            for call in handler.context.logger.info.call_args_list
+            if "ctivity goal" in call.args[0]
+        ]
+
+    @pytest.mark.parametrize("goal", [0, 20, 500])
+    def test_valid_goal_is_persisted_and_published(
+        self, tmp_path: Path, goal: int
+    ) -> None:
+        """A valid goal, however large, is stored and shown in the block at once."""
+        handler = self._handler(tmp_path)
+
+        params, issues = handler._process_updated_agent_config({"activity_goal": goal})
+
+        assert issues == []
+        assert params == {"activity_goal": goal}
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
+            "activity_goal", goal
+        )
+        assert handler.shared_state.chatui_config.activity_goal == goal
+        block = read_activity_goal(tmp_path)
+        assert block is not None
+        assert block.target == goal
+        assert block.progress == 3
+        assert block.period_start == GOAL_PERIOD_START
+        assert block.is_met is (3 >= goal)
+        assert block.updated_at == GOAL_NOW
+        assert self._info_lines(handler) == [
+            f"Activity goal changed from None to {goal} (None is the default, 8)."
+        ]
+
+    @pytest.mark.parametrize("goal", [True, False, 20.0, 2.5, -1, "20", [20]])
+    def test_invalid_goal_declines_the_whole_reply(
+        self, tmp_path: Path, goal: Any
+    ) -> None:
+        """An invalid goal adds an issue and nothing in the reply is written."""
+        handler = self._handler(tmp_path, current_goal=5)
+        block_before = (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text()
+
+        params, issues = handler._process_updated_agent_config(
+            {
+                "activity_goal": goal,
+                "trading_strategy": TradingStrategy.FIXED_BET.value,
+                "fixed_bet_size": 0.05,
+                "behavior": "A steady strategy.",
+            }
+        )
+
+        assert params == {}
+        assert len(issues) == 1
+        assert "Activity goal" in issues[0]
+        handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        handler._store_chatui_param_to_json.assert_not_called()  # type: ignore[attr-defined]
+        handler.shared_state.update_agent_behavior.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.chatui_config.activity_goal == 5
+        assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text() == block_before
+        lines = self._info_lines(handler)
+        assert len(lines) == 1
+        assert lines[0].startswith("Declined activity goal change")
+
+    def test_removal_reverts_to_default(self, tmp_path: Path) -> None:
+        """Removing the goal stores null and publishes the default target."""
+        handler = self._handler(tmp_path, current_goal=20)
+
+        params, issues = handler._process_updated_agent_config(
+            {
+                "activity_goal": 30,
+                "removed_config_fields": [FieldsThatCanBeRemoved.ACTIVITY_GOAL.value],
+            }
+        )
+
+        assert issues == []
+        assert params == {"activity_goal": None}
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
+            "activity_goal", None
+        )
+        assert handler.shared_state.chatui_config.activity_goal is None
+        block = read_activity_goal(tmp_path)
+        assert block is not None
+        assert block.target == 8
+        assert self._info_lines(handler) == [
+            "Activity goal changed from 20 to None (None is the default, 8)."
+        ]
+
+    def test_publish_failure_keeps_the_reply_applied(self, tmp_path: Path) -> None:
+        """A failed block write is logged; the reply's writes and the goal stand."""
+        handler = self._handler(tmp_path, current_goal=5)
+
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.activity_goal.write_performance_summary_key",
+            side_effect=OSError("disk full"),
+        ):
+            params, issues = handler._process_updated_agent_config(
+                {"activity_goal": 20, "behavior": "A steady strategy."}
+            )
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
+    def test_store_failure_is_reported_not_raised(self, tmp_path: Path) -> None:
+        """A failed store write reports an issue instead of an unreadable reply."""
+        handler = self._handler(tmp_path, current_goal=5)
+        handler._store_chatui_param_to_json.side_effect = OSError("disk full")  # type: ignore[attr-defined]
+
+        _, issues = handler._process_updated_agent_config(
+            {"activity_goal": 20, "behavior": "A steady strategy."}
+        )
+
+        assert len(issues) == 1
+        assert "could not be saved" in issues[0]
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
+    @pytest.mark.parametrize(
+        "block_content",
+        [
+            b"\xff\xfe",
+            json.dumps(
+                {
+                    "activity_goal": {
+                        "unit": "trades",
+                        "target": 8,
+                        "progress": "3",
+                        "is_met": False,
+                        "period_start": GOAL_PERIOD_START,
+                        "updated_at": GOAL_NOW,
+                        "last_met_at": None,
+                    }
+                }
+            ).encode(),
+        ],
+        ids=["not_utf8", "wrongly_typed_block"],
+    )
+    def test_unusable_published_block_does_not_fail_the_reply(
+        self, tmp_path: Path, block_content: bytes
+    ) -> None:
+        """An unreadable summary leaves the goal stored and is rebuilt later."""
+        handler = self._handler(tmp_path, current_goal=5)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(block_content)
+
+        params, issues = handler._process_updated_agent_config({"activity_goal": 20})
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        assert read_activity_goal(tmp_path) is None
+
+    def test_goal_stored_before_any_evaluation(self, tmp_path: Path) -> None:
+        """Without a published block the goal is still stored; no block is invented."""
+        handler = _make_handler()
+        handler.context.params.store_path = tmp_path
+        handler.context.params.default_activity_goal = 8
+        handler.shared_state.synced_timestamp = GOAL_NOW
+
+        _, issues = handler._process_updated_agent_config({"activity_goal": 4})
+
+        assert issues == []
+        assert handler.shared_state.chatui_config.activity_goal == 4
+        assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+
+    def test_absent_goal_is_noop(self, tmp_path: Path) -> None:
+        """A reply that does not mention the goal leaves it alone."""
+        handler = self._handler(tmp_path, current_goal=5)
+
+        params, _ = handler._process_updated_agent_config({"behavior": "x"})
+
+        assert "activity_goal" not in params
+        assert handler.shared_state.chatui_config.activity_goal == 5
+
+
+# ---------------------------------------------------------------------------
 # Return value / combined
 # ---------------------------------------------------------------------------
 
@@ -981,6 +1202,54 @@ class TestHandleChatuiPrompt:
         prompt_str = str(prompt_arg)
         assert "kelly_criterion_no_conf" in prompt_str
         assert "prediction-online" in prompt_str
+
+    @pytest.mark.parametrize(
+        "current_goal, published_progress, expected",
+        [
+            (
+                None,
+                3,
+                [
+                    "- Activity goal: 8 trades per staking epoch (the default)",
+                    "Trades placed so far this epoch: 3.",
+                    "Default: 8.",
+                ],
+            ),
+            (
+                20,
+                None,
+                [
+                    "- Activity goal: 20 trades per staking epoch (set by the user)",
+                    "Trades placed so far this epoch: not counted yet.",
+                    "Default: 8.",
+                ],
+            ),
+        ],
+        ids=["default_with_progress", "user_goal_not_counted_yet"],
+    )
+    def test_prompt_includes_activity_goal(
+        self,
+        current_goal: Optional[int],
+        published_progress: Optional[int],
+        expected: list,
+    ) -> None:
+        """The prompt tells the model the current goal, the default and progress."""
+        handler = self._make_prompt_handler(
+            current_config=ChatuiConfig(activity_goal=current_goal)
+        )
+        handler.context.params.default_activity_goal = 8
+        published = None
+        if published_progress is not None:
+            published = MagicMock(progress=published_progress)
+        handler.shared_state.read_activity_goal_from_disk.return_value = published
+
+        handler._handle_chatui_prompt(
+            self._make_http_msg({"prompt": "what is my goal?"}), MagicMock()
+        )
+
+        prompt = handler._send_chatui_llm_request.call_args.kwargs["prompt"]  # type: ignore[attr-defined]
+        for text in expected:
+            assert text in prompt
 
 
 class TestSendChatuiLlmRequest:
