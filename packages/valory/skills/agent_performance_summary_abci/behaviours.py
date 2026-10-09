@@ -2573,7 +2573,9 @@ class FetchPerformanceSummaryBehaviour(
         try:
             data = json.loads(response.body.decode())
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            self.context.logger.warning(f"Leaderboard {window} JSON parse failed: {exc}")
+            self.context.logger.warning(
+                f"Leaderboard {window} JSON parse failed: {exc}"
+            )
             return None
 
         agents = data.get("agents") if isinstance(data, dict) else None

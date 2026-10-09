@@ -744,9 +744,7 @@ class HttpHandler(BaseHttpHandler):
             )
             summary = self.shared_state.read_existing_performance_summary()
             entry = (
-                summary.leaderboard.windows.get(window)
-                if summary.leaderboard
-                else None
+                summary.leaderboard.windows.get(window) if summary.leaderboard else None
             )
             now = int(datetime.now(timezone.utc).timestamp())
             is_fresh = (
