@@ -69,9 +69,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
                 if suitable != candidate:
                     rejected: Dict[str, list] = {}
                     no_manifest: list = []
-                    for tool in sorted(
-                        {split_tool_key(key)[1] for key in candidate - suitable}
-                    ):
+                    for tool in sorted(tool_names(candidate - suitable)):
                         meta = self._tool_metadata.get(tool)
                         if meta is None:
                             no_manifest.append(tool)
@@ -152,13 +150,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         return candidate, cause
 
     def _preferred_mechs(self, selected_key: str) -> List[str]:
-        """Get the mechs the request should go to for the selected key.
-
-        :param selected_key: the selected policy key.
-        :return: the discovered mechs behind the key, narrowed to the ChatUI's
-            mech pin when the pin covers any of them; empty without mech
-            information (V1 and benchmarking).
-        """
+        """Get the mechs behind the selected key, narrowed to the ChatUI mech pin when it covers any."""
         mechs = self._mechs_by_key().get(selected_key, [])
         selected_mechs = self.shared_state.chatui_config.selected_mechs
         if selected_mechs and not self.benchmarking_mode.enabled:
@@ -167,15 +159,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         return mechs
 
     def _serving_identities(self, tool: str) -> Dict[str, str]:
-        """Map each mech that may deliver the selected tool to its identity.
-
-        An outcome is credited only to a mech in this map (see
-        `SynchronizedData.mech_tool_key`).
-
-        :param tool: the selected tool name.
-        :return: lowercase mech address to identity: the discovered mechs serving
-            the tool, plus the configured static mech; empty in benchmarking.
-        """
+        """Map the mechs whose delivery of `tool` is credited (discovered ones and the static mech) to identities."""
         if self.benchmarking_mode.enabled:
             return {}
         identities = (
@@ -183,7 +167,7 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             if self.synchronized_data.is_marketplace_v2
             else {}
         )
-        static = (self.v1_mech_address or "").lower()
+        static = self.v1_mech_address.lower()
         if static and static != ZERO_ADDRESS:
             identities.setdefault(static, self._identity(static))
         return identities

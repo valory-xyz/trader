@@ -12,16 +12,16 @@ fingerprint:
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih4hqutxbtqml3dqbs3qivms5atletbpsqsiigzgzmoashwx6c3g4
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
-  behaviours/base.py: bafybeifcqqbp2kpi57osxbp2xhx52ntudhyfsnaav7l2uqvv7ave75qcja
-  behaviours/bet_placement.py: bafybeiabdlyuxn2q6vmdrbxrcgtveykif7yoeiqpjviinkecu4j7cstmki
-  behaviours/blacklisting.py: bafybeibblluddbamotjqkjkqlj65g34bdu25umw3ia752455rotqdnnq6m
+  behaviours/base.py: bafybeiex3dhkfvhdwfy4kddpya6pkzkwyll2rbu43f5p3p4fq5t6fmyljq
+  behaviours/bet_placement.py: bafybeifp26kvhjyaufv5pjspx2ngz7oz7ksiwzqvsaukieqd7uwolgzrii
+  behaviours/blacklisting.py: bafybeich664p5m6kr7rubwgopoahbdxfkymwvtbbmcx7sgaknkoluuvlga
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/decision_receive.py: bafybeicb5z26wzsalhmnozcgia444jznddh3psvkjsgqhdsyezsdksfvfm
   behaviours/decision_request.py: bafybeicqygaiieqnjgawlrm7qo65sgncpuujw2zolmgvjjupnchtoua35q
   behaviours/handle_failed_tx.py: bafybeifqpndbjz27gsduznsrsnft3iqcw6nyekrxirglgpszzqvpheh65m
   behaviours/omen_withdraw.py: bafybeibu5dypwmcyitkrpqctkkomlxsvuqkzqvfi6yout5ja2kihu4deie
   behaviours/omen_withdrawal_store.py: bafybeifn2hclvfvoqmpexize4iam4ue4vq7pozxahwf44tagsrukp2atly
-  behaviours/polymarket_bet_placement.py: bafybeigszsvkb5fmiq3pz77hber32xyzp2oealqhbym33m3gfzm2yizrfa
+  behaviours/polymarket_bet_placement.py: bafybeibfhlcl4fjb7qapqywqqicpsxxeqfiz3tx5cuw7wlpkvhneldlb6y
   behaviours/polymarket_deposit_wallet.py: bafybeieap45udpzrvcu7tjf6kneqgjh5iyfhoallt5jturifwtdqqhjdfy
   behaviours/polymarket_post_set_approval.py: bafybeiglxfjk3n66mzz2u2szsgjfotgt7vn2rhrkgktbp7s5nfgpqcfnnq
   behaviours/polymarket_reedem.py: bafybeifxni64ytcwgxblb3kgrl5mvnw6a3zedyxsv6symhqmi43fevcuv4
@@ -36,12 +36,12 @@ fingerprint:
   behaviours/post_omen_withdraw.py: bafybeibv4i3w6opoiftlxp6jsydf6yy3464bxtg3s2j7scrnpcegbmgdwm
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
-  behaviours/reedem.py: bafybeiauuhbyay24w27k5xamc6js5i3zwvxu5dtrqiqg2djqsat2y5i6aq
+  behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaxn7lofhbwjwbm5x6i47k2s5u4f3o3xcs4zek3agwgatwwknu5iu
   behaviours/sampling.py: bafybeiekvb3vg23mompqe4ivvtqdsba324b4gcxvlhsqjcqau2ar6dszhi
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeib33i47ohq5dllwptu4qkps2nl5hcyockn4ykhyykz5jlvgj3o6hm
-  behaviours/tool_selection.py: bafybeieyg4cexjruzdxljwp63ibmk7q6vq3rqbgyqxnxdzag4otdwuohgi
+  behaviours/storage_manager.py: bafybeiasad6zhsskgfwrogqtkttuu6t5wibo6aozhmyrr46vvbvphi6sqy
+  behaviours/tool_selection.py: bafybeiahzpdf6ql3rmqsxm3zmyjbxgvvm4qhgceng4x4w7uukkm6ju4pgi
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeicqku5zjvyyvg3qz3x3yxrkq7ilsnpj5rorw5ehw5ecddmg24o7fa
   handlers.py: bafybeiclcz4uz7xnmhipvdwpekmqvgliuprgwcyuzg2sredaaxaugdarpq
@@ -54,7 +54,7 @@ fingerprint:
   rounds.py: bafybeiaiwrjikuxyyxm2khgwzuermwlhgsj3a4gktqibczaae62xrxxr7i
   rounds_info.py: bafybeiairbdugqmp4lyh4hbh5ajbz3ohdix6kve5nlchifi2ma4txfnzhm
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
-  states/base.py: bafybeih7ltse2rtf5ccv2vszw2jdnoygxlzitwytor56qkq4bvl4ao6zdy
+  states/base.py: bafybeibprge6b3hfuv3dguvjb5ap7447pnxwspjds4hr24d353g3cbo5tm
   states/bet_placement.py: bafybeigxqet2qc7ocnkglhdylx63z5puiolwcl2g4vfksfdf6qoxveej4a
   states/blacklisting.py: bafybeic4y6m5uyf25qzsdbjcwrfjil3tj77lr7wxjdhwtps7p2hzxw53fm
   states/check_benchmarking.py: bafybeifpv7cv4wf3m4emrdkrcrcmd72m4vg4ei3vl6lty2bpym3ownbsge
@@ -87,7 +87,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
-  tests/behaviours/test_base.py: bafybeicvt7ezypfiiopdybhunhcgxmetdahlpujrkgjvbckelnuucydady
+  tests/behaviours/test_base.py: bafybeidgegf7xaxyvzab5ehgkngedtebusclhb7t43vx4genpl2dgqiema
   tests/behaviours/test_bet_placement.py: bafybeiajpmr5atpu4ymcjhplag6ibger7pnepnfmxy77ardllnv5meg3cy
   tests/behaviours/test_blacklisting.py: bafybeicapisarintor6wyvwu75sgeqbcgyfclnczuzgv2gyl7vfrsxalpm
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
@@ -113,7 +113,7 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeicogm6qti4pzjhhumfivvfy4qut5ob6o5gsrcdvryllgapz4n672u
   tests/behaviours/test_sampling.py: bafybeiffjditwljfnx7sgch7zkvf5krnsvjioq3sgbjq6z3jvdgptaprki
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeibli2znyrqo7wn2evurer4ozud6ycvq4yhzazuh6nmivmulzkjp2i
+  tests/behaviours/test_storage_manager.py: bafybeigg6cbzp4oe7j65hteppok542ihkopgepaqm66ujgpn44c2ldfoem
   tests/behaviours/test_tool_selection.py: bafybeieunzjkwmw6hwvifbhymfo5cji2x2lve5a7yuv7k3ekkh4vkrerp4
   tests/conftest.py: bafybeicr4ldri2z6easpewnwzxeh2rbxgt7mbgrahrmoilo75o2m6lzc2m
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
@@ -182,7 +182,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
-- valory/chatui_abci:0.1.0:bafybeidj5jkcq5orm4gmywhw3hm2yuxw4glgwbdmp5l64ddksgsopgfcr4
+- valory/chatui_abci:0.1.0:bafybeife4xbieauk7x65orlgd3einpaqiisnwj32u6gvfflbvhhbytazsa
 behaviours:
   main:
     args: {}

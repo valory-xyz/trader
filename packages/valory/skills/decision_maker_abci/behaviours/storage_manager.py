@@ -267,25 +267,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         return True
 
     def _identity(self, address: str) -> str:
-        """Get the identity a mech's results are recorded under.
-
-        Every mech in `valid_mechs` is Valory's and shares `VALORY_LABEL`, so
-        mechs added to the agent by any other route, such as a user's
-        approval, must be kept out of `valid_mechs`. Any other mech is
-        recorded under its own address.
-
-        :param address: the mech's address.
-        :return: `VALORY_LABEL` or the lowercase address.
-        """
+        """Get the identity a mech's results are recorded under, see `tool_keys`."""
         address = address.lower()
         return VALORY_LABEL if address in self.params.valid_mechs else address
 
     def _mech_identities(self, tool: Optional[str] = None) -> Dict[str, str]:
-        """Map the discovered mechs, optionally only those serving a tool, to identities.
-
-        :param tool: the tool name to filter by, or `None` for every mech.
-        :return: lowercase mech address to identity, in `mechs_info` order.
-        """
+        """Map the discovered mechs (only those serving `tool`, if given) to identities."""
         return {
             mech.address.lower(): self._identity(mech.address)
             for mech in self.synchronized_data.mechs_info
@@ -293,11 +280,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         }
 
     def _mechs_by_key(self) -> Dict[str, List[str]]:
-        """Map each key of the discovered mechs to the mechs behind it.
-
-        :return: lowercase mech addresses per key, in `mechs_info` order; empty
-            without mech information (V1 and benchmarking).
-        """
+        """Map each key of the discovered mechs to their lowercase addresses."""
         mechs: Dict[str, List[str]] = {}
         identities = self._mech_identities()
         for mech in self.synchronized_data.mechs_info:
@@ -490,13 +473,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     @staticmethod
     def _rekey_legacy(store: Dict[str, Any]) -> List[str]:
-        """Move a store's entries keyed by tool name alone under `VALORY_LABEL`.
-
-        An entry already present under the new key wins.
-
-        :param store: the store to re-key in place.
-        :return: the keys that were moved.
-        """
+        """Move a store's bare tool keys under `VALORY_LABEL`, returning them; existing entries win."""
         moved = []
         for key in list(store):
             if split_tool_key(key)[0] is None:
@@ -505,11 +482,10 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         return moved
 
     def _migrate_legacy_keys(self) -> None:
-        """Move the records keyed by tool name alone under `VALORY_LABEL`.
+        """Move records keyed by tool name alone under `VALORY_LABEL`, which served them.
 
-        All traffic before records carried an identity went to Valory's mechs.
-        Accuracy seeded in percent (above 1) is converted to a fraction.
-        Idempotent; skipped in benchmarking, where keys are bare by design.
+        Percent accuracy (above 1) becomes a fraction. Idempotent; skipped in
+        benchmarking, where keys are bare by design.
         """
         if self.benchmarking_mode.enabled:
             return
@@ -535,12 +511,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         )
 
     def _prune_accuracy_store_to_current_tools(self) -> None:
-        """Drop the records of tools no longer offered, unless they have history.
-
-        A record with requests or pending bets is kept, so a tool that returns,
-        and the credit of bets still pending, are not lost. Selection only picks
-        among the currently offered tools.
-        """
+        """Drop the records of tools no longer offered that have no requests or pending bets."""
         accuracy_store = self.policy.accuracy_store
         dropped = [
             key
@@ -666,6 +637,16 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         for tool in self.mech_tools:
             self.policy.accuracy_store.setdefault(tool, AccuracyInfo())
 
+    def _warn_if_valory_records_unused(self) -> None:
+        """Warn when Valory records exist but no offered tool is Valory's, so they go unused."""
+        offered = {split_tool_key(key)[0] for key in self.mech_tools}
+        stored = {split_tool_key(key)[0] for key in self.policy.accuracy_store}
+        if VALORY_LABEL in stored and VALORY_LABEL not in offered:
+            self.context.logger.warning(
+                f"No offered mech is in `valid_mechs`, so the {VALORY_LABEL!r} accuracy "
+                "records and the global seed are not used."
+            )
+
     def _update_policy_tools(self) -> None:
         """Update the policy's tools and their accuracy with the latest information available if `with_global_info`."""
         self.context.logger.info("Updating information of the policy...")
@@ -673,6 +654,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         global_info = self._parse_global_info()
         self._update_accuracy_store(*global_info)
         self.policy.update_weighted_accuracy()
+        self._warn_if_valory_records_unused()
 
     def _set_policy(self) -> Generator:
         """Set the E Greedy Policy."""

@@ -1418,6 +1418,7 @@ class TestUpdatePolicyTools:
     def test_update_policy_tools(self) -> None:
         """Should call all sub-methods to update policy."""
         behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
         policy = _make_policy()
         behaviour._policy = policy
 
@@ -2033,3 +2034,30 @@ def test_migrated_records_survive_the_first_period_prune() -> None:
         _valory("tool1"),
         _valory("retired"),
     }
+
+
+class TestWarnIfValoryRecordsUnused:
+    """Tests for _warn_if_valory_records_unused."""
+
+    @pytest.mark.parametrize(
+        "offered, stored, warns",
+        [
+            ({tool_key(MECH_C, "tool1")}, {_valory("tool1")}, True),
+            ({_valory("tool1")}, {_valory("tool1")}, False),
+            ({tool_key(MECH_C, "tool1")}, {tool_key(MECH_C, "tool1")}, False),
+            ({"tool1"}, {"tool1"}, False),
+        ],
+    )
+    def test_warns_only_when_valory_history_cannot_be_used(
+        self, offered: set, stored: set, warns: bool
+    ) -> None:
+        """Valory records with no offered Valory key would sit unused: say so."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = offered
+        behaviour._policy = _make_policy(
+            {key: AccuracyInfo(requests=3) for key in stored}
+        )
+
+        behaviour._warn_if_valory_records_unused()
+
+        assert behaviour.context.logger.warning.called is warns

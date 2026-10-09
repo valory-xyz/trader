@@ -130,8 +130,8 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             self.policy.update_accuracy_store(tool, winning)
         except KeyError:
             self.context.logger.warning(
-                f"No accuracy record for {tool=}; keeping its utilized-tools "
-                "entry so the outcome is credited once the record is back."
+                f"No accuracy record for {tool=}; the policy is not updated and "
+                "the bet's utilized-tools entry is kept."
             )
             return False
         return True

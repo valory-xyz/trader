@@ -166,15 +166,12 @@ class SynchronizedData(
 
     @property
     def mech_tool_key(self) -> Optional[str]:
-        """Get the key the current request's outcome is credited to.
+        """Get the key to credit the outcome to: the deliverer's identity, `None` if not eligible.
 
-        The outcome goes to the identity of the mech that delivered, which may
-        differ from the one asked. A deliverer outside `mech_identities` is not
-        eligible and gets no credit (`None`). Without a recorded deliverer or
-        identities, the selected key stands; a bare tool name is returned when
-        no key was selected, as written by an earlier version.
+        Without a recorded deliverer or `mech_identities`, the selected key
+        stands, and without a selected key the bare tool name.
 
-        :return: the key, or `None` when the outcome is not to be credited.
+        :return: the key, or `None`.
         """
         selected = self.selected_tool_key
         if selected is None:

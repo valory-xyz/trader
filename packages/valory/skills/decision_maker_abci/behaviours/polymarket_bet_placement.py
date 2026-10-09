@@ -208,7 +208,7 @@ class PolymarketBetPlacementBehaviour(
         policy_str = None
         if event == Event.BET_PLACEMENT_DONE:
             condition_id = self.get_active_sampled_bet().condition_id
-            mech_tool_key = self.creditable_tool_key
+            mech_tool_key = self.synchronized_data.mech_tool_key
             if condition_id is None:
                 self.context.logger.warning(
                     "No condition_id found on the sampled bet; "

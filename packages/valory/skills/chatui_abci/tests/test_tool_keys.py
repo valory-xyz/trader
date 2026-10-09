@@ -40,12 +40,10 @@ MECH = "0x" + "ab" * 20
         (MECH, "prediction-online", f"{MECH}::prediction-online"),
         (MECH.upper(), "prediction-online", f"{MECH}::prediction-online"),
         (VALORY_LABEL, "prediction-online", "valory::prediction-online"),
-        (None, "prediction-online", "prediction-online"),
-        ("", "prediction-online", "prediction-online"),
     ],
 )
-def test_tool_key(identity: Optional[str], tool: str, expected: str) -> None:
-    """The key joins the lowercase identity and the tool; none yields the bare tool."""
+def test_tool_key(identity: str, tool: str, expected: str) -> None:
+    """The key joins the lowercase identity and the tool."""
     assert tool_key(identity, tool) == expected
 
 
@@ -70,8 +68,8 @@ def test_split_tool_key(key: str, expected: Tuple[Optional[str], str]) -> None:
     assert split_tool_key(key) == expected
 
 
-@pytest.mark.parametrize("identity", [MECH, VALORY_LABEL, None])
-def test_tool_key_round_trips(identity: Optional[str]) -> None:
+@pytest.mark.parametrize("identity", [MECH, VALORY_LABEL])
+def test_tool_key_round_trips(identity: str) -> None:
     """Splitting a built key gives back its parts."""
     assert split_tool_key(tool_key(identity, "a::b")) == (identity, "a::b")
 

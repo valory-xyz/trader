@@ -43,24 +43,13 @@ def _is_address(value: str) -> bool:
     return True
 
 
-def tool_key(identity: Optional[str], tool: str) -> str:
-    """Build the key of a tool served under the given identity.
-
-    :param identity: ``VALORY_LABEL`` or a mech address; ``None`` for no mech.
-    :param tool: the tool's name.
-    :return: the key.
-    """
-    if not identity:
-        return tool
+def tool_key(identity: str, tool: str) -> str:
+    """Build the key of a tool served under the given identity."""
     return f"{identity.lower()}{MECH_TOOL_SEPARATOR}{tool}"
 
 
 def split_tool_key(key: str) -> Tuple[Optional[str], str]:
-    """Split a key into its identity and tool name.
-
-    :param key: a key as built by :func:`tool_key`.
-    :return: the lowercase identity, or ``None`` for a bare tool name, and the tool.
-    """
+    """Split a key into its lowercase identity (``None`` for a bare name) and tool."""
     identity, sep, tool = key.partition(MECH_TOOL_SEPARATOR)
     if sep and (identity.lower() == VALORY_LABEL or _is_address(identity)):
         return identity.lower(), tool

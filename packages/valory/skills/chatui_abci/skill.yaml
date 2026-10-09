@@ -23,8 +23,8 @@ fingerprint:
   tests/test_payloads.py: bafybeiggrgq7zujlhjpqiefqkwqjiyngs7gcguwiet4n7fkidgjpa5rjni
   tests/test_prompts.py: bafybeidcc22taysehvglfv5be46lti4iqvkhzor5ysafemltqntskmrlca
   tests/test_rounds.py: bafybeiaroaogg7w3owb6crx3p4b7j4trxclcat5se46akqjjmlcu7juu7a
-  tests/test_tool_keys.py: bafybeid3ux2icc2bkclfkhemlmsjzsoea55qhhudtioq5vjwuctslvtwfq
-  tool_keys.py: bafybeigarwsc54sk5gvauvtj3xd7mp6h3rocf2whdsjmudk7kamdaotq4m
+  tests/test_tool_keys.py: bafybeidjqveioyj6mmkx5rx2h3tbk3itodcflsa4lc722gg3zy7wigyl7i
+  tool_keys.py: bafybeiaidr6yy435bomimdnqsdbbd4hfi5dz7tnpnqifgsdp4nadpxwqiq
 fingerprint_ignore_patterns: []
 connections:
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
