@@ -40,6 +40,8 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     AgentPerformanceSummaryParams,
     GnosisStakingSubgraph,
+    LeaderboardData,
+    LeaderboardWindowRank,
     OffchainDepositState,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
@@ -484,7 +486,54 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
     "mech_analytics_url": "",
     "use_mech_analytics": False,
+    "olas_predict_leaderboard_url": "https://predict.olas.network/api/leaderboard/agents",
 }
+
+
+class TestLeaderboardData:
+    """Tests for the persisted leaderboard section."""
+
+    def test_windows_convert_from_dicts(self) -> None:
+        """Nested window dicts become LeaderboardWindowRank instances."""
+        raw: Dict[str, Any] = {
+            "windows": {"7d": {"ranked": True, "fetched_at": 5, "rank_by_roi": 3}},
+            "last_attempt_at": 6,
+        }
+        data = LeaderboardData(**raw)
+        assert data.windows["7d"] == LeaderboardWindowRank(
+            ranked=True, fetched_at=5, rank_by_roi=3
+        )
+        assert data.last_attempt_at == 6
+
+    def test_defaults(self) -> None:
+        """An empty section has no windows and no attempt yet."""
+        data = LeaderboardData()
+        assert data.windows == {}
+        assert data.last_attempt_at is None
+
+    def test_summary_round_trips_with_and_without_leaderboard(self) -> None:
+        """The section survives asdict/JSON, and older files without it still load."""
+        summary = AgentPerformanceSummary(
+            timestamp=1,
+            leaderboard=LeaderboardData(
+                windows={
+                    "1y": LeaderboardWindowRank(
+                        ranked=False,
+                        fetched_at=2,
+                        not_ranked_reason="not_ranked_yet",
+                        total_ranked=10,
+                        leaderboard_url="https://example/leaderboard",
+                    )
+                },
+                last_attempt_at=3,
+            ),
+        )
+        loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
+        assert loaded == summary
+
+        old_file = asdict(AgentPerformanceSummary(timestamp=1))
+        del old_file["leaderboard"]
+        assert AgentPerformanceSummary(**old_file).leaderboard is None
 
 
 class TestAgentPerformanceSummaryParams:
@@ -509,6 +558,23 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_running_on_polymarket is False
         assert params.mech_analytics_url == ""
         assert params.use_mech_analytics is False
+        assert (
+            params.olas_predict_leaderboard_url
+            == "https://predict.olas.network/api/leaderboard/agents"
+        )
+
+    def test_unset_leaderboard_url_normalises_to_empty(self, tmp_path: Path) -> None:
+        """A ``null`` leaderboard URL override arrives as ``None`` and disables the fetch.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=MagicMock(),
+                store_path=str(tmp_path),
+                **{**DEFAULT_APS_KWARGS, "olas_predict_leaderboard_url": None},
+            )
+        assert params.olas_predict_leaderboard_url == ""
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -542,6 +608,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
@@ -682,6 +749,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         assert params.is_running_on_polymarket is True
 
@@ -1130,6 +1198,85 @@ class TestSharedState:
             data = json.load(f)
         assert data["agent_behavior"] == "active"
         assert data["timestamp"] == 1700000100
+
+    def _make_leaderboard_state(self, tmp_path: Path) -> SharedState:
+        """A shared state storing its summary under ``tmp_path``.
+
+        :param tmp_path: the store path.
+        :return: the shared state.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        return state
+
+    def test_update_leaderboard_creates_summary_if_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """The writer creates the file when none exists yet.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.update_leaderboard(LeaderboardData(last_attempt_at=7))
+
+        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "r") as f:
+            data = json.load(f)
+        assert data["leaderboard"] == {"windows": {}, "last_attempt_at": 7}
+
+    def test_update_leaderboard_preserves_other_fields(self, tmp_path: Path) -> None:
+        """The writer replaces only the leaderboard section and keeps the timestamp.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_behavior="active",
+            agent_details=AgentDetails(id="agent-x"),
+            leaderboard=LeaderboardData(last_attempt_at=1),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        window = LeaderboardWindowRank(ranked=True, fetched_at=9, rank_by_roi=2)
+        state.update_leaderboard(
+            LeaderboardData(windows={"7d": window}, last_attempt_at=9)
+        )
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["leaderboard"]["last_attempt_at"] == 9
+        assert data["leaderboard"]["windows"]["7d"]["rank_by_roi"] == 2
+        assert data["timestamp"] == 1700000000
+        assert data["agent_behavior"] == "active"
+        assert data["agent_details"]["id"] == "agent-x"
+
+    def test_update_leaderboard_keeps_siblings_of_a_corrupt_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A corrupt sibling field cannot make the writer wipe the rest of the file.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        raw = {
+            "offchain_deposits": {"total_deposited_wei": 5, "last_scanned_block": 9},
+            "prediction_history": {"not_a_field": 1},
+        }
+        with open(file_path, "w") as f:
+            json.dump(raw, f)
+
+        state.update_leaderboard(LeaderboardData(last_attempt_at=3))
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["offchain_deposits"] == raw["offchain_deposits"]
+        assert data["prediction_history"] == raw["prediction_history"]
+        assert data["leaderboard"]["last_attempt_at"] == 3
 
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path

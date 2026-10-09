@@ -250,6 +250,7 @@ class HttpHandler(BaseHttpHandler):
         position_details_url_regex = (
             rf"{hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
+        agent_leaderboard_url_regex = rf"{hostname_regex}\/api\/v1\/agent\/leaderboard"
 
         static_files_regex = (
             rf"{hostname_regex}\/(.*)"  # New regex for serving static files
@@ -281,6 +282,7 @@ class HttpHandler(BaseHttpHandler):
                     position_details_url_regex,
                     self._handle_get_position_details,
                 ),
+                (agent_leaderboard_url_regex, self._handle_get_leaderboard),
                 (
                     static_files_regex,  # Always keep this route last as it is a catch-all for static files
                     self._handle_get_static_file,

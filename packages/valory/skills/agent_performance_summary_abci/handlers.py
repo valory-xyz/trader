@@ -66,6 +66,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     PredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    LEADERBOARD_WINDOWS,
     ProfitDataPoint,
     SharedState,
 )
@@ -94,6 +95,14 @@ VALID_PREDICTION_STATUSES = [
     PREDICTION_STATUS_INVALID,
 ]
 SECONDS_PER_DAY = 86400
+DEFAULT_LEADERBOARD_WINDOW = "7d"
+# A stored rank older than this is reported as unavailable rather than served
+LEADERBOARD_MAX_RANK_AGE_SECONDS = 24 * 3600
+# Bare page for "See full leaderboard" when no ready-made deep link is held
+LEADERBOARD_PAGE_URL = "https://predict.olas.network/leaderboard"
+LEADERBOARD_STATUS_RANKED = "ranked"
+LEADERBOARD_STATUS_NOT_RANKED = "not_ranked"
+LEADERBOARD_STATUS_UNAVAILABLE = "unavailable"
 
 
 class HttpMethod(Enum):
@@ -189,6 +198,9 @@ class HttpHandler(BaseHttpHandler):
         position_details_url_regex = (
             rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
+        agent_leaderboard_url_regex = (
+            rf"{self.hostname_regex}\/api\/v1\/agent\/leaderboard"
+        )
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -216,6 +228,10 @@ class HttpHandler(BaseHttpHandler):
                 (
                     position_details_url_regex,
                     self._handle_get_position_details,
+                ),
+                (
+                    agent_leaderboard_url_regex,
+                    self._handle_get_leaderboard,
                 ),
             ],
         }
@@ -685,6 +701,100 @@ class HttpHandler(BaseHttpHandler):
                 http_msg,
                 http_dialogue,
                 {"error": "Failed to fetch profit over time data"},
+            )
+
+    def _handle_get_leaderboard(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Handle GET /api/v1/agent/leaderboard request.
+
+        Serves this agent's rank by ROI and by PnL for one window, as last
+        fetched from olas-predict. A missing or stale rank is reported as
+        ``unavailable`` with a 200, never as an error.
+
+        :param http_msg: the incoming HTTP message
+        :param http_dialogue: the HTTP dialogue
+        """
+        try:
+            url_parts = http_msg.url.split("?")
+            window = DEFAULT_LEADERBOARD_WINDOW
+            if len(url_parts) > 1:
+                params = dict(
+                    param.split("=", 1)
+                    for param in url_parts[1].split("&")
+                    if "=" in param
+                )
+                window = params.get("window", DEFAULT_LEADERBOARD_WINDOW)
+
+            if window not in LEADERBOARD_WINDOWS:
+                self._send_bad_request_response(
+                    http_msg,
+                    http_dialogue,
+                    {
+                        "error": f"Invalid window parameter: {window}. Must be one of: {', '.join(LEADERBOARD_WINDOWS)}"
+                    },
+                )
+                return
+
+            safe_address = self.synchronized_data.safe_contract_address.lower()
+            agent_type = (
+                "polystrat"
+                if self.context.params.is_running_on_polymarket
+                else "omenstrat"
+            )
+            summary = self.shared_state.read_existing_performance_summary()
+            entry = (
+                summary.leaderboard.windows.get(window) if summary.leaderboard else None
+            )
+            now = int(datetime.now(timezone.utc).timestamp())
+            is_fresh = (
+                entry is not None
+                and now - entry.fetched_at <= LEADERBOARD_MAX_RANK_AGE_SECONDS
+            )
+
+            response: Dict[str, Any] = {
+                "agent_id": safe_address,
+                "agent_type": agent_type,
+                "window": window,
+                "status": LEADERBOARD_STATUS_UNAVAILABLE,
+                "rank_by_roi": None,
+                "rank_by_pnl": None,
+                "total_ranked": None,
+                "not_ranked_reason": None,
+                "leaderboard_url": LEADERBOARD_PAGE_URL,
+                "last_updated": None,
+            }
+            if (
+                entry is not None
+                and is_fresh
+                and self.context.params.olas_predict_leaderboard_url
+            ):
+                response.update(
+                    {
+                        "status": (
+                            LEADERBOARD_STATUS_RANKED
+                            if entry.ranked
+                            else LEADERBOARD_STATUS_NOT_RANKED
+                        ),
+                        "rank_by_roi": entry.rank_by_roi,
+                        "rank_by_pnl": entry.rank_by_pnl,
+                        "total_ranked": entry.total_ranked,
+                        "not_ranked_reason": entry.not_ranked_reason,
+                        "leaderboard_url": entry.leaderboard_url
+                        or LEADERBOARD_PAGE_URL,
+                        "last_updated": self._format_last_updated(entry.fetched_at),
+                    }
+                )
+
+            self.context.logger.info(
+                f"Sending leaderboard rank for window {window}: {response['status']}"
+            )
+            self._send_ok_response(http_msg, http_dialogue, response)
+
+        except Exception as e:
+            self.context.logger.error(f"Error in leaderboard endpoint: {str(e)}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": "Failed to fetch leaderboard rank"}
             )
 
     def _filter_profit_data_by_window(self, data_points: list, window: str) -> list:

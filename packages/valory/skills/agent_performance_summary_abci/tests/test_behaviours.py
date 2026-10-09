@@ -33,6 +33,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
     FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
+    LEADERBOARD_REFRESH_INTERVAL,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
     MIN_TRADES_FOR_ROI_DISPLAY,
@@ -70,6 +71,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    LEADERBOARD_WINDOWS,
+    LeaderboardData,
+    LeaderboardWindowRank,
     OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
@@ -8000,3 +8004,289 @@ class TestIncrementalAttributionInvariants:
         # series with ``daily_mech_requests=0`` on today, which then
         # froze permanently once the day rolled over.
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Tests for the leaderboard rank fetch
+
+
+LEADERBOARD_URL = "https://predict.example/api/leaderboard/agents"
+NOW = 1700000000
+
+
+def _leaderboard_response(
+    status_code: int = 200, body: Any = None, raw: Optional[bytes] = None
+) -> MagicMock:
+    """Build a mock HTTP response for the olas-predict endpoint."""
+    response = MagicMock()
+    response.status_code = status_code
+    response.body = raw if raw is not None else json.dumps(body).encode()
+    return response
+
+
+def _ranked_body(window: str, address: str = SAFE_ADDRESS_LOWER, rank: int = 7) -> dict:
+    """An olas-predict answer ranking the agent."""
+    return {
+        "agentType": "omenstrat",
+        "window": window,
+        "totalRanked": 242,
+        "agents": [
+            {
+                "address": address,
+                "name": "kobu-rimtek42",
+                "ranked": True,
+                "notRankedReason": None,
+                "rankByRoi": rank,
+                "rankByPnl": rank + 1,
+                "metrics": {"roi": 0.1},
+                "leaderboardUrl": f"https://predict.example/leaderboard?window={window}",
+            }
+        ],
+    }
+
+
+class TestUpdateLeaderboard:
+    """Tests for FetchPerformanceSummaryBehaviour._update_leaderboard."""
+
+    def _run(
+        self,
+        responses: Any,
+        existing: Optional[LeaderboardData] = None,
+        is_polymarket: bool = False,
+        url: str = LEADERBOARD_URL,
+    ) -> Tuple[MagicMock, List[str]]:
+        """Run the step with ``responses(url) -> response``; return state and URLs."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context(
+            is_polymarket=is_polymarket, synced_timestamp=NOW
+        )
+        params.olas_predict_leaderboard_url = url
+        state.read_existing_performance_summary.return_value = AgentPerformanceSummary(
+            leaderboard=existing
+        )
+        urls: List[str] = []
+
+        def get_http_response(method: str, url: str) -> Generator:
+            """Record the URL and answer it."""
+            urls.append(url)
+            return responses(url)
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "get_http_response", side_effect=get_http_response),
+        ):
+            for _ in b._update_leaderboard():
+                pass  # pragma: no cover
+        return state, urls
+
+    @staticmethod
+    def _saved(state: MagicMock) -> LeaderboardData:
+        """The leaderboard section the step wrote."""
+        state.update_leaderboard.assert_called_once()
+        return state.update_leaderboard.call_args[0][0]
+
+    @staticmethod
+    def _window_of(url: str) -> str:
+        """The ``window`` query parameter of a request URL."""
+        return url.split("window=")[1].split("&")[0]
+
+    def test_refresh_interval_matches_hourly_snapshot(self) -> None:
+        """The throttle is one hour, like olas-predict's snapshot refresh."""
+        assert LEADERBOARD_REFRESH_INTERVAL == 3600
+
+    def test_not_due_makes_no_call(self) -> None:
+        """Within the interval since the last attempt, nothing is fetched."""
+        existing = LeaderboardData(
+            last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL + 1
+        )
+        state, urls = self._run(lambda url: None, existing=existing)
+        assert urls == []
+        state.update_leaderboard.assert_not_called()
+
+    def test_disabled_url_makes_no_call(self) -> None:
+        """An unset URL disables the step."""
+        state, urls = self._run(lambda url: None, url="")
+        assert urls == []
+        state.update_leaderboard.assert_not_called()
+
+    def test_due_fetches_every_window_for_omenstrat(self) -> None:
+        """When due, one call per window with the agent type and lowercased Safe."""
+        existing = LeaderboardData(last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL)
+        state, urls = self._run(
+            lambda url: _leaderboard_response(body=_ranked_body(self._window_of(url))),
+            existing=existing,
+        )
+        assert [self._window_of(url) for url in urls] == list(LEADERBOARD_WINDOWS)
+        for url in urls:
+            assert url.startswith(f"{LEADERBOARD_URL}?agentType=omenstrat&")
+            assert f"addresses={SAFE_ADDRESS_LOWER}" in url
+        saved = self._saved(state)
+        assert saved.last_attempt_at == NOW
+        assert saved.windows["30d"] == LeaderboardWindowRank(
+            ranked=True,
+            fetched_at=NOW,
+            not_ranked_reason=None,
+            rank_by_roi=7,
+            rank_by_pnl=8,
+            total_ranked=242,
+            leaderboard_url="https://predict.example/leaderboard?window=30d",
+        )
+
+    def test_polystrat_agent_type(self) -> None:
+        """A Polymarket agent asks for the polystrat ranking."""
+        _, urls = self._run(
+            lambda url: _leaderboard_response(body=_ranked_body(self._window_of(url))),
+            is_polymarket=True,
+        )
+        assert all("agentType=polystrat" in url for url in urls)
+
+    def test_not_ranked_reasons_pass_through(self) -> None:
+        """A not-ranked answer keeps the upstream reason and drops the ranks."""
+        reasons = {
+            "7d": "not_enough_trades_in_window",
+            "30d": "not_ranked_yet",
+        }
+
+        def respond(url: str) -> MagicMock:
+            window = self._window_of(url)
+            body = _ranked_body(window)
+            body["agents"][0].update(
+                {
+                    "ranked": False,
+                    "notRankedReason": reasons.get(window, "not_ranked_yet"),
+                    "rankByRoi": None,
+                    "rankByPnl": None,
+                }
+            )
+            return _leaderboard_response(body=body)
+
+        saved = self._saved(self._run(respond)[0])
+        assert saved.windows["7d"].ranked is False
+        assert saved.windows["7d"].not_ranked_reason == "not_enough_trades_in_window"
+        assert saved.windows["30d"].not_ranked_reason == "not_ranked_yet"
+        assert saved.windows["7d"].rank_by_roi is None
+        assert saved.windows["7d"].total_ranked == 242
+
+    def test_failures_keep_the_previous_entry(self) -> None:
+        """Errors, bad bodies and other agents' entries keep each window's last answer."""
+        previous = {
+            window: LeaderboardWindowRank(ranked=True, fetched_at=1, rank_by_roi=1)
+            for window in LEADERBOARD_WINDOWS
+        }
+        failures = [
+            _leaderboard_response(status_code=503, body={"error": "x"}),
+            _leaderboard_response(status_code=400, body={"error": "x"}),
+            _leaderboard_response(status_code=600, raw=b""),
+            _leaderboard_response(raw=b"not json"),
+            _leaderboard_response(raw=b"\xff\xfe"),
+            _leaderboard_response(body={"agents": []}),
+            _leaderboard_response(body=["unexpected"]),
+            _leaderboard_response(body=_ranked_body("7d", address="0xsomeoneelse")),
+            # A boolean is not a rank, even though bool is an int in Python
+            _leaderboard_response(
+                body={
+                    **_ranked_body("7d"),
+                    "agents": [{**_ranked_body("7d")["agents"][0], "rankByRoi": True}],
+                }
+            ),
+            _leaderboard_response(
+                body={
+                    **_ranked_body("7d"),
+                    "agents": [{**_ranked_body("7d")["agents"][0], "rankByPnl": None}],
+                }
+            ),
+        ]
+        for failure in failures:
+            existing = LeaderboardData(windows=dict(previous), last_attempt_at=0)
+            state, _ = self._run(lambda url, f=failure: f, existing=existing)
+            saved = self._saved(state)
+            assert saved.windows == previous
+            assert saved.last_attempt_at == NOW
+
+    def test_one_window_can_fail_while_others_succeed(self) -> None:
+        """Windows are independent."""
+
+        def respond(url: str) -> MagicMock:
+            window = self._window_of(url)
+            if window == "90d":
+                return _leaderboard_response(status_code=503, body={})
+            return _leaderboard_response(body=_ranked_body(window))
+
+        saved = self._saved(self._run(respond)[0])
+        assert set(saved.windows) == {"7d", "30d", "1y"}
+
+    def test_transport_error_in_one_window_keeps_the_others(self) -> None:
+        """An exception while fetching one window does not drop the rest."""
+
+        def respond(url: str) -> MagicMock:
+            window = self._window_of(url)
+            if window == "30d":
+                raise TimeoutError("no response")
+            return _leaderboard_response(body=_ranked_body(window))
+
+        saved = self._saved(self._run(respond)[0])
+        assert set(saved.windows) == {"7d", "90d", "1y"}
+        assert saved.last_attempt_at == NOW
+
+    def test_never_raises(self) -> None:
+        """An unexpected error is logged, not raised."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
+        params.olas_predict_leaderboard_url = LEADERBOARD_URL
+        state.read_existing_performance_summary.side_effect = OSError("disk")
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+        ):
+            for _ in b._update_leaderboard():
+                pass  # pragma: no cover
+        ctx.logger.warning.assert_called_once()
+        state.update_leaderboard.assert_not_called()
+
+
+class TestAsyncActLeaderboard:
+    """The leaderboard step runs on its own schedule inside async_act."""
+
+    def _run_act(self, should_update: bool, enabled: bool = True) -> MagicMock:
+        """Run async_act with the leaderboard step patched; return its mock."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context()
+        params.is_agent_performance_summary_enabled = enabled
+
+        def failing_fetch(*a: Any, **k: Any) -> Generator:
+            b._agent_performance_summary = None
+            return
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_should_update", return_value=should_update),
+            patch.object(
+                b, "_fetch_agent_performance_summary", side_effect=failing_fetch
+            ),
+            patch.object(b, "_update_leaderboard", side_effect=_noop_gen) as step,
+            patch.object(b, "finish_behaviour", side_effect=_noop_gen) as finish,
+        ):
+            for _ in b.async_act():
+                pass  # pragma: no cover
+        step.finish = finish  # type: ignore[attr-defined]
+        return step
+
+    def test_runs_when_summary_is_not_due(self) -> None:
+        """The step runs even when the performance summary is skipped."""
+        step = self._run_act(should_update=False)
+        step.assert_called_once()
+        assert step.finish.call_args[0][0].vote is False
+
+    def test_runs_after_summary_update(self) -> None:
+        """The step runs after a summary refresh and leaves the vote alone."""
+        step = self._run_act(should_update=True)
+        step.assert_called_once()
+        assert step.finish.call_args[0][0].vote is False
+
+    def test_skipped_when_summary_disabled(self) -> None:
+        """A disabled performance summary skips the leaderboard too."""
+        self._run_act(should_update=True, enabled=False).assert_not_called()

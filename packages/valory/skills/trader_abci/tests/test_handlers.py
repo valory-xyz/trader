@@ -166,6 +166,14 @@ class TestHttpHandler:
         # static-files (catch-all) -- at least 10 routes.
         assert len(get_head_routes) >= 10
 
+    def test_leaderboard_route_resolves_before_static_catch_all(self) -> None:
+        """The leaderboard API is not swallowed by the static-file catch-all."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/agent/leaderboard?window=30d",
+            HttpMethod.GET.value,
+        )
+        assert handler == self.handler._handle_get_leaderboard
+
     def test_setup_agent_profile_path_gnosis(self) -> None:
         """Test agent_profile_path is set to omenstrat for gnosis."""
         handler = _make_handler(is_polymarket=False)
