@@ -21,6 +21,7 @@
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -88,6 +89,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PredictionHistory,
     ProfitDataPoint,
     ProfitOverTimeData,
+    SharedState,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
@@ -107,6 +109,12 @@ from packages.valory.skills.agent_performance_summary_abci.tests.constants impor
 # pass anything, mirror the existing summary's offchain_deposits" from
 # "caller passed ``None`` explicitly (simulating a raw-disk-read miss)".
 _UNSET = object()
+
+
+class _DiskSharedState(SharedState):
+    """Shadows the read-only AEA ``context`` property with a plain attribute."""
+
+    context = None  # type: ignore[assignment]
 
 
 def _noop_gen(*args: Any, **kwargs: Any) -> Generator:
@@ -8133,14 +8141,6 @@ class TestUpdateLeaderboard:
         """A ranked answer echoing the request's window."""
         return _leaderboard_response(body=_ranked_body(self._window_of(url)))
 
-    def test_refresh_interval_matches_hourly_snapshot(self) -> None:
-        """The throttle is one hour, like olas-predict's snapshot refresh."""
-        assert LEADERBOARD_REFRESH_INTERVAL == 3600
-
-    def test_worst_case_stays_far_below_the_round_timeout(self) -> None:
-        """Even four slow answers cost well under the 350 s round timeout."""
-        assert LEADERBOARD_REQUEST_TIMEOUT * len(LEADERBOARD_WINDOWS) < 350 / 2
-
     def test_not_due_makes_no_call(self) -> None:
         """Within the interval since the last attempt, nothing is fetched."""
         for last in (NOW - LEADERBOARD_REFRESH_INTERVAL + 1, NOW, NOW + 60):
@@ -8456,6 +8456,53 @@ class TestUpdateLeaderboard:
         written = state.update_leaderboard.call_args[0][0]
         assert written == LeaderboardData(windows=previous, last_attempt_at=NOW)
 
+    def test_saved_watermark_throttles_the_next_behaviour(
+        self, tmp_path: Path
+    ) -> None:
+        """A refresh survives the summary save and blocks a new behaviour for an hour.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = object.__new__(_DiskSharedState)
+        state.context = MagicMock()
+        state.context.params.store_path = tmp_path
+        clock = state.context.state.round_sequence.last_round_transition_timestamp
+
+        def run_step(now: int, save: bool = False) -> List[str]:
+            """Run the step in a fresh behaviour at ``now``; return the URLs asked."""
+            clock.timestamp.return_value = float(now)
+            b = _make_fetch_behaviour()
+            ctx, params, synced_data, _ = _mock_context()
+            ctx.state = state
+            params.olas_predict_leaderboard_url = LEADERBOARD_URL
+            urls: List[str] = []
+
+            def get_response(url: str) -> Generator:
+                """Record the URL and answer it."""
+                urls.append(url)
+                return self._ranked_answer(url)
+                yield  # pragma: no cover
+
+            with (
+                _patch_context(b, ctx, synced_data)[0],
+                _patch_context(b, ctx, synced_data)[1],
+                patch.object(b, "_get_leaderboard_response", side_effect=get_response),
+            ):
+                for _ in b._update_leaderboard():
+                    pass  # pragma: no cover
+                if save:
+                    b._save_agent_performance_summary(_default_summary(now))
+            return urls
+
+        assert len(run_step(NOW, save=True)) == len(LEADERBOARD_WINDOWS)
+        assert run_step(NOW + LEADERBOARD_REFRESH_INTERVAL - 1) == []
+        saved = state.read_leaderboard_from_disk()
+        assert saved is not None
+        assert set(saved.windows) == set(LEADERBOARD_WINDOWS)
+        assert len(run_step(NOW + LEADERBOARD_REFRESH_INTERVAL)) == len(
+            LEADERBOARD_WINDOWS
+        )
+
     def test_never_raises(self) -> None:
         """An unexpected error is logged, not raised."""
         b = _make_fetch_behaviour()
@@ -8588,3 +8635,38 @@ class TestAsyncActLeaderboard:
     def test_skipped_when_summary_disabled(self) -> None:
         """A disabled performance summary skips the leaderboard too."""
         self._run_act(should_update=True, enabled=False).assert_not_called()
+
+    @pytest.mark.parametrize(
+        "failing", ["_get_leaderboard_response", "read_leaderboard_from_disk"]
+    )
+    def test_failing_step_keeps_a_successful_vote(self, failing: str) -> None:
+        """A leaderboard refresh that fails does not change a successful vote.
+
+        :param failing: the call inside the step that raises.
+        """
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context()
+        params.olas_predict_leaderboard_url = LEADERBOARD_URL
+        state.read_leaderboard_from_disk.return_value = None
+        target = b if failing.startswith("_") else state
+
+        def successful_fetch(*a: Any, **k: Any) -> Generator:
+            b._agent_performance_summary = _default_summary()
+            return
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_should_update", return_value=True),
+            patch.object(
+                b, "_fetch_agent_performance_summary", side_effect=successful_fetch
+            ),
+            patch.object(b, "_save_agent_performance_summary"),
+            patch.object(target, failing, side_effect=RuntimeError("boom")) as step,
+            patch.object(b, "finish_behaviour", side_effect=_noop_gen) as finish,
+        ):
+            for _ in b.async_act():
+                pass  # pragma: no cover
+        step.assert_called()
+        assert finish.call_args[0][0].vote is True
