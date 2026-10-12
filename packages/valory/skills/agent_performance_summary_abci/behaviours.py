@@ -142,11 +142,7 @@ SECONDS_PER_DAY = 86400
 MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
-# olas-predict rebuilds its leaderboard snapshot hourly; asking more often re-reads it
 LEADERBOARD_REFRESH_INTERVAL = 3600
-# Per-request timeout for olas-predict. A timeout also abandons the remaining
-# windows, so a hanging upstream costs at most one timeout; four slow answers
-# cost at most four, far below the round timeout.
 LEADERBOARD_REQUEST_TIMEOUT = 10.0
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.5
@@ -181,9 +177,7 @@ def _optional_int(value: Any) -> Optional[int]:
 
 
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
-    """Return an ISO 8601 timestamp as UNIX seconds, or ``None`` if unparseable.
-
-    A timestamp without a timezone is read as UTC.
+    """Return an ISO 8601 timestamp (UTC if naive) as UNIX seconds, or ``None``.
 
     :param value: a value from a decoded JSON response, e.g. ``2026-01-01T00:00:00.000Z``
     :return: the UNIX timestamp in seconds, or ``None``
@@ -2487,10 +2481,6 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
-        # The leaderboard section is written by ``_update_leaderboard`` on its
-        # own throttle; the rebuilt summary does not carry it. Re-read it
-        # leniently, like the achievements below, so a corrupt sibling that
-        # degraded ``existing_data`` cannot wipe the cached ranks.
         agent_performance_summary.leaderboard = (
             self.shared_state.read_leaderboard_from_disk()
         )
@@ -2601,8 +2591,6 @@ class FetchPerformanceSummaryBehaviour(
         :yield: None
         :raises TimeoutException: if no response arrives in time
         """
-        # Async GET, as in ``_get_total_mech_requests``: a sync request would
-        # block the FSM round while the socket waits.
         http_message, http_dialogue = self._build_http_request_message(
             method="GET", url=url
         )
@@ -2611,10 +2599,6 @@ class FetchPerformanceSummaryBehaviour(
                 http_message, http_dialogue, timeout=LEADERBOARD_REQUEST_TIMEOUT
             )
         except TimeoutException:
-            # Left registered, the callback would hand the late reply to the
-            # next request this behaviour waits on (e.g. the payload's
-            # Tendermint call); removed, the handler would raise on an unknown
-            # nonce. Swap in one that drops it.
             nonce = self._get_request_nonce_from_dialogue(http_dialogue)
             cast(Requests, self.context.requests).request_id_to_callback[
                 nonce
@@ -2675,7 +2659,6 @@ class FetchPerformanceSummaryBehaviour(
             _reject("is not an object")
             return None
         if data.get("window") != window or data.get("agentType") != agent_type:
-            # e.g. a misrouted or cached answer for another request
             _reject(
                 f"is for {data.get('agentType')!r}/{data.get('window')!r}, "
                 f"not {agent_type}/{window}"
@@ -2754,10 +2737,7 @@ class FetchPerformanceSummaryBehaviour(
 
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:
-        """Return whether the leaderboard should be refreshed.
-
-        A missing watermark, or one in the future (clock jump, hand-edited
-        file), counts as due so it can never block refreshes for good.
+        """Return whether a refresh is due; a future watermark counts as due.
 
         :param last_attempt_at: the persisted throttle watermark
         :param now: the current timestamp
@@ -2770,11 +2750,7 @@ class FetchPerformanceSummaryBehaviour(
         )
 
     def _update_leaderboard(self) -> Generator:
-        """Refresh this agent's leaderboard ranks, at most once per interval.
-
-        Each window succeeds or fails on its own; a failed window keeps its
-        previous answer. Never raises, so a leaderboard outage cannot affect
-        the performance summary or the round.
+        """Refresh the leaderboard ranks at most once per interval; never raises.
 
         :yield: None
         """
@@ -2813,7 +2789,6 @@ class FetchPerformanceSummaryBehaviour(
                     )
                     break
                 except Exception as e:  # pylint: disable=broad-except
-                    # e.g. a transport error: keep the other windows going
                     self.context.logger.warning(
                         f"Leaderboard {window} fetch failed: {e}; "
                         "keeping the previous rank"

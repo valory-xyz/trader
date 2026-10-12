@@ -98,7 +98,6 @@ VALID_PREDICTION_STATUSES = [
 ]
 SECONDS_PER_DAY = 86400
 DEFAULT_LEADERBOARD_WINDOW = "7d"
-# A stored rank older than this is reported as unavailable rather than served
 LEADERBOARD_MAX_RANK_AGE_SECONDS = 24 * 3600
 # Bare page for "See full leaderboard" when no ready-made deep link is held
 LEADERBOARD_PAGE_URL = "https://predict.olas.network/leaderboard"
@@ -200,7 +199,6 @@ class HttpHandler(BaseHttpHandler):
         position_details_url_regex = (
             rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
-        # Anchored: ``re.match`` would otherwise also route ``leaderboardXYZ``
         agent_leaderboard_url_regex = (
             rf"{self.hostname_regex}\/api\/v1\/agent\/leaderboard(?:\?.*)?$"
         )
@@ -711,10 +709,6 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Handle GET /api/v1/agent/leaderboard request.
 
-        Serves this agent's rank by ROI and by PnL for one window, as last
-        fetched from olas-predict. A missing or stale rank is reported as
-        ``unavailable`` with a 200, never as an error.
-
         :param http_msg: the incoming HTTP message
         :param http_dialogue: the HTTP dialogue
         """
@@ -749,9 +743,7 @@ class HttpHandler(BaseHttpHandler):
             leaderboard = self.shared_state.read_leaderboard_from_disk()
             entry = leaderboard.windows.get(window) if leaderboard else None
             now = int(datetime.now(timezone.utc).timestamp())
-            # Judged by olas-predict's snapshot time when known: a stalled
-            # upstream snapshot must not look fresh just because it was
-            # re-fetched. A time in the future is not trusted.
+            # By snapshot time, so a re-fetched stale snapshot is not fresh
             is_fresh = (
                 entry is not None
                 and entry.as_of <= now + LEADERBOARD_CLOCK_SKEW_SECONDS

@@ -570,7 +570,6 @@ class TestLeaderboardData:
             {"windows": {"7d": {"ranked": "yes", "fetched_at": 1}}},
             {"windows": {"7d": {"ranked": True, "fetched_at": "1"}}},
             {"windows": {"7d": {"ranked": False, "fetched_at": True}}},
-            # Ranked without both ranks is unusable
             {"windows": {"7d": {"ranked": True, "fetched_at": 1, "rank_by_roi": 2}}},
             {"windows": {"lifetime": {"ranked": False, "fetched_at": 1}}},
             {"windows": {}, "last_attempt_at": "1700000000"},
@@ -987,7 +986,6 @@ class TestGetStorePath:
             params.get_store_path(kwargs)
 
 
-# Persisted ``leaderboard`` values the summary read must tolerate
 MALFORMED_LEADERBOARD_SECTIONS: List[Any] = [
     {"windows": []},
     None,

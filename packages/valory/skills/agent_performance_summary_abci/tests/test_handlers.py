@@ -2683,7 +2683,6 @@ class TestHandleGetLeaderboard:
         self._assert_unavailable(
             self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
         )
-        # Small skew is tolerated
         entry.updated_at = self._now() + 60
         body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
         assert body["status"] == "ranked"

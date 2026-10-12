@@ -45,17 +45,12 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
-# Leaderboard windows, spelled as olas-predict's ``GET /api/leaderboard/agents`` expects
+# Windows as olas-predict's leaderboard API spells them
 LEADERBOARD_WINDOWS = ("7d", "30d", "90d", "1y")
-# ``notRankedReason`` values olas-predict documents. Any other reason on a
-# not-ranked answer is stored as the generic ``not_ranked_yet``: the fact that
-# the agent is not ranked is still current, only the explanation is unknown.
 LEADERBOARD_NOT_RANKED_REASONS = frozenset(
     ("not_ranked_yet", "not_enough_trades_in_window", "not_eligible")
 )
 LEADERBOARD_DEFAULT_NOT_RANKED_REASON = "not_ranked_yet"
-# Tolerated clock skew with olas-predict: a timestamp further in the future
-# than this is treated as invalid
 LEADERBOARD_CLOCK_SKEW_SECONDS = 300
 # Path of olas-predict's leaderboard page; deep links must stay under it
 LEADERBOARD_PAGE_PATH = "/leaderboard"
@@ -301,13 +296,13 @@ class LeaderboardWindowRank:
     """The last successful olas-predict leaderboard answer for one window."""
 
     ranked: bool
-    fetched_at: int  # UNIX timestamp (seconds) of the successful answer
+    fetched_at: int
     not_ranked_reason: Optional[str] = None
     rank_by_roi: Optional[int] = None
     rank_by_pnl: Optional[int] = None
     total_ranked: Optional[int] = None
     leaderboard_url: Optional[str] = None
-    # UNIX timestamp (seconds) of olas-predict's snapshot (its ``updatedAt``)
+    # olas-predict's ``updatedAt``
     updated_at: Optional[int] = None
 
     @property
@@ -321,9 +316,6 @@ class LeaderboardWindowRank:
     @classmethod
     def from_dict(cls, raw: Any) -> Optional["LeaderboardWindowRank"]:
         """Build an entry from persisted JSON, or ``None`` if it is unusable.
-
-        Unknown keys are ignored and ill-typed optional fields are dropped, so a
-        hand-edited, older or newer file never raises.
 
         :param raw: the persisted entry.
         :return: the entry, or ``None``.
@@ -366,11 +358,7 @@ class LeaderboardData:
     last_attempt_at: Optional[int] = None
 
     def __post_init__(self) -> None:
-        """Convert dicts to dataclass instances, dropping anything unusable.
-
-        The section is a cache of olas-predict answers, so a malformed value is
-        dropped (and refetched) rather than allowed to fail the summary read.
-        """
+        """Convert dicts to dataclass instances, dropping anything unusable."""
         raw_windows: Any = self.windows
         windows: Dict[str, LeaderboardWindowRank] = {}
         if isinstance(raw_windows, dict):
@@ -404,11 +392,7 @@ class LeaderboardData:
 
 
 def is_allowed_leaderboard_url(url: Any, api_url: str) -> bool:
-    """Return whether ``url`` is a safe deep link into olas-predict's leaderboard.
-
-    Only an ``https`` URL on the configured olas-predict host (taken from the
-    API URL) under the leaderboard page is allowed, so a bad upstream answer can
-    never make the UI open ``javascript:`` or a foreign site.
+    """Return whether ``url`` is an https link under the API host's leaderboard page.
 
     :param url: the candidate link.
     :param api_url: the configured ``olas_predict_leaderboard_url``.
@@ -490,7 +474,7 @@ class AgentPerformanceSummary:
         if isinstance(self.leaderboard, dict):
             self.leaderboard = LeaderboardData.from_dict(self.leaderboard)
         elif not isinstance(self.leaderboard, LeaderboardData):
-            # e.g. ``null`` or a string: a refetchable cache, so drop it
+            # A refetchable cache, so a malformed value is dropped, not raised
             self.leaderboard = None
 
         if isinstance(self.activity_goal, dict):
@@ -645,8 +629,7 @@ class AgentPerformanceSummaryParams(BaseParams):
                 "use_mech_analytics is true but mech_analytics_url is empty; "
                 "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
             )
-        # Full URL of olas-predict's per-address leaderboard endpoint. ``None``
-        # (a ``null`` override) disables the Agent Profile rank fetch.
+        # ``None`` (a ``null`` override) disables the leaderboard fetch
         self.olas_predict_leaderboard_url: str = (
             self._ensure("olas_predict_leaderboard_url", kwargs, Optional[str]) or ""
         )
@@ -804,14 +787,9 @@ class SharedState(BaseSharedState):
             return None
 
     def read_leaderboard_from_disk(self) -> Optional[LeaderboardData]:
-        """Return the persisted ``leaderboard`` section with lenient parsing.
+        """Return the persisted ``leaderboard`` section, ignoring sibling fields.
 
-        Sibling-agnostic like ``read_achievements_from_disk``: a corrupt
-        sibling field must neither drop the cached ranks on save nor reset the
-        refresh throttle.
-
-        :return: the persisted ``LeaderboardData``, or ``None`` if the file is
-            missing, unreadable or has no usable ``leaderboard`` section.
+        :return: the section, or ``None`` if missing or unreadable.
         """
         file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
@@ -913,13 +891,7 @@ class SharedState(BaseSharedState):
         self.overwrite_performance_summary(existing)
 
     def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
-        """Update only the ``leaderboard`` section of the summary.
-
-        Writes the raw section, like ``write_offchain_deposits_to_disk``: this
-        runs hourly, so going through ``read_existing_performance_summary``
-        would let a corrupt sibling field wipe irreversible state on disk.
-        Leaves ``timestamp`` alone: it tracks the performance-summary refresh,
-        which has its own schedule.
+        """Write only the ``leaderboard`` section, leaving sibling fields untouched.
 
         :param leaderboard: the leaderboard section to persist.
         """

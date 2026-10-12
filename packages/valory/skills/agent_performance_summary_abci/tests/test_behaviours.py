@@ -8078,7 +8078,6 @@ def test_parse_iso_timestamp() -> None:
     """ISO timestamps parse to UNIX seconds; anything else is ``None``."""
     assert _parse_iso_timestamp(UPDATED_AT_ISO) == UPDATED_AT
     assert _parse_iso_timestamp("2023-11-14T22:00:00+00:00") == UPDATED_AT
-    # No timezone is read as UTC
     assert _parse_iso_timestamp("2023-11-14T22:00:00") == UPDATED_AT
     for bad in (None, 1700000000, "", "yesterday", "2023-13-01T00:00:00Z"):
         assert _parse_iso_timestamp(bad) is None
@@ -8121,8 +8120,6 @@ class TestUpdateLeaderboard:
     @staticmethod
     def _saved(state: MagicMock) -> LeaderboardData:
         """The leaderboard section the step wrote last.
-
-        The first write only moves the throttle watermark, before any fetch.
 
         :param state: the mocked shared state.
         :return: the last written section.
@@ -8286,10 +8283,8 @@ class TestUpdateLeaderboard:
             _leaderboard_response(body={**ranked, "agents": []}),
             _leaderboard_response(body=["unexpected"]),
             _leaderboard_response(body=_ranked_body("7d", address="0xsomeoneelse")),
-            # A boolean is not a rank, even though bool is an int in Python
             _leaderboard_response(body=_with_agent(ranked, rankByRoi=True)),
             _leaderboard_response(body=_with_agent(ranked, rankByPnl=None)),
-            # Ranks must lie within 1..totalRanked
             _leaderboard_response(body=_with_agent(ranked, rankByRoi=0)),
             _leaderboard_response(body=_with_agent(ranked, rankByPnl=-3)),
             _leaderboard_response(body=_with_agent(ranked, rankByRoi=243)),
@@ -8297,10 +8292,8 @@ class TestUpdateLeaderboard:
             _leaderboard_response(body={**ranked, "totalRanked": None}),
             _leaderboard_response(body={**ranked, "totalRanked": "242"}),
             _leaderboard_response(body={**ranked, "totalRanked": -1}),
-            # ``ranked`` must be a real boolean
             _leaderboard_response(body=_with_agent(ranked, ranked="true")),
             _leaderboard_response(body=_with_agent(ranked, ranked=None)),
-            # The answer must be for the request's window and agent type
             _leaderboard_response(body=_ranked_body("30d")),
             _leaderboard_response(body={**ranked, "window": None}),
             _leaderboard_response(body=_ranked_body("7d", agent_type="polystrat")),
@@ -8362,7 +8355,6 @@ class TestUpdateLeaderboard:
         """``updatedAt`` is kept; unparseable or future values fall back to ``None``."""
         cases = {
             UPDATED_AT_ISO: UPDATED_AT,
-            # Within the tolerated clock skew
             "2023-11-14T22:18:00Z": NOW + 280,
             "2023-11-14T22:30:00Z": None,
             "garbage": None,
@@ -8449,7 +8441,6 @@ class TestUpdateLeaderboard:
         ):
             gen = b._update_leaderboard()
             next(gen)
-            # e.g. the round times out and the behaviour is stopped
             gen.close()
 
         state.update_leaderboard.assert_called_once()
