@@ -2637,8 +2637,6 @@ class FetchPerformanceSummaryBehaviour(
         # Always preserve agent_behavior from existing data
         agent_performance_summary.agent_behavior = existing_data.agent_behavior
 
-        agent_performance_summary.leaderboard = self.shared_state.get_leaderboard()
-
         # Achievements are written by ``UpdateAchievementsBehaviour``; losing
         # them here would reset the backlog-guard watermark. Re-read them
         # leniently, like ``offchain_deposits`` below, so a corrupt sibling
