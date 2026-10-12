@@ -1580,6 +1580,24 @@ class TestSharedState:
         assert state.get_leaderboard() == leaderboard
         state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
+    def test_update_leaderboard_logs_a_failed_write(self, tmp_path: Path) -> None:
+        """A failed write is logged as one, and the rank is still served from memory.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=2)
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models.write_json_atomically",
+            side_effect=OSError("disk full"),
+        ):
+            state.update_leaderboard_window("7d", entry)
+
+        assert state.get_leaderboard() == LeaderboardData(windows={"7d": entry})
+        warning = state.context.logger.warning  # type: ignore[attr-defined]
+        warning.assert_called_once()
+        assert "Could not write the leaderboard section" in warning.call_args[0][0]
+
     def test_get_leaderboard_reads_the_file_once(self, tmp_path: Path) -> None:
         """The section is parsed lazily once, then served from memory.
 

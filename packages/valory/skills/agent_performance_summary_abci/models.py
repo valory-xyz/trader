@@ -993,12 +993,7 @@ class SharedState(BaseSharedState):
         return self._leaderboard_cache
 
     def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
-        """Store the ``leaderboard`` section, leaving sibling fields untouched.
-
-        The in-memory copy is always updated. The file is not written when it
-        exists but is not a JSON object: replacing it would wipe every other
-        section (``offchain_deposits``, ``achievements``, ...); the next full
-        summary save rewrites it, including this section.
+        """Store the section in memory and in the file, leaving sibling fields untouched.
 
         :param leaderboard: the leaderboard section to persist.
         """
@@ -1019,13 +1014,20 @@ class SharedState(BaseSharedState):
                     if isinstance(raw, Exception)
                     else f"a JSON {type(raw).__name__}"
                 )
+                # Replacing it would wipe every other section
                 self.context.logger.warning(
                     f"{file_path} is not a readable JSON object ({problem}); "
                     "not writing the leaderboard section to it"
                 )
                 return
             raw["leaderboard"] = asdict(leaderboard)
-            write_json_atomically(file_path, raw)
+            try:
+                write_json_atomically(file_path, raw)
+            except OSError as e:
+                self.context.logger.warning(
+                    f"Could not write the leaderboard section to {file_path}: {e}; "
+                    "serving it from memory until the next summary save"
+                )
 
     def update_leaderboard_window(
         self, window: LeaderboardWindow, entry: LeaderboardWindowRank
