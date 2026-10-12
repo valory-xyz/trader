@@ -21,6 +21,7 @@
 
 import bisect
 import json
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 
@@ -145,11 +146,13 @@ Check it out\U0001f447
 MIN_TRADES_FOR_ROI_DISPLAY = 10
 MORE_TRADES_NEEDED_TEXT = "More trades needed"
 
-# M5 diagnostic: fixed tolerance for the series-vs-snapshot residual.
-# Small integer gaps between the two subgraph snapshots are expected
-# (a mech landing on an open market between the two reads); anything
-# larger is a genuine drift worth surfacing.
+# M5: fixed tolerance for the series-vs-snapshot residual. Small integer
+# gaps are expected (a mech landing between the two reads); anything
+# larger is a genuine drift that triggers a rebuild.
 _M5_RESIDUAL_TOLERANCE = 5
+# Lets an agent whose fetched requests and ``total`` genuinely disagree
+# rebuild at most once a day instead of every round.
+_M5_REBUILD_MIN_INTERVAL = SECONDS_PER_DAY
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -167,6 +170,9 @@ class FetchPerformanceSummaryBehaviour(
         self._partial_roi: Optional[float] = None
         self._total_mech_requests: Optional[int] = None
         self._open_market_requests: Optional[int] = None
+        # ``(title, timestamp)`` of each request counted in
+        # ``_open_market_requests``; ``None`` until that count is computed.
+        self._open_market_request_keys: Optional[List[Tuple[str, int]]] = None
         self._mech_request_lookup: Optional[dict] = None
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
@@ -434,6 +440,7 @@ class FetchPerformanceSummaryBehaviour(
 
             if not mech_sender:
                 self._open_market_requests = 0
+                self._open_market_request_keys = []
                 return 0
 
             last_four_days_requests = mech_sender.get("requests", [])
@@ -452,6 +459,7 @@ class FetchPerformanceSummaryBehaviour(
 
             if not open_markets:
                 self._open_market_requests = 0
+                self._open_market_request_keys = []
                 return 0
 
             # Get titles of open markets
@@ -461,14 +469,14 @@ class FetchPerformanceSummaryBehaviour(
                 if q.get("question")
             }
 
-        # Count requests for still-open markets
-        open_market_requests = sum(
-            (r.get("parsedRequest", {}) or {}).get("questionTitle")
-            in open_market_titles
-            for r in last_four_days_requests
-        )
-
-        self._open_market_requests = open_market_requests
+        # Keep the requests for still-open markets, not just their count, so
+        # the profit series holds back exactly the requests counted here.
+        self._open_market_request_keys = [
+            key
+            for key in map(self._mech_request_key, last_four_days_requests)
+            if key[0] and key[0] in open_market_titles
+        ]
+        self._open_market_requests = len(self._open_market_request_keys)
         self.context.logger.info(f"{self._open_market_requests=}")
         return self._open_market_requests
 
@@ -1631,6 +1639,51 @@ class FetchPerformanceSummaryBehaviour(
 
         return fees_by_day, placed_count, unplaced_count
 
+    @staticmethod
+    def _mech_request_key(request: dict) -> Tuple[str, int]:
+        """Return a mech request's ``(question title, block timestamp)``.
+
+        :param request: a subgraph-shaped mech request
+        :return: the title (``""`` when the request has none) and timestamp
+        """
+        title = (request.get("parsedRequest") or {}).get("questionTitle") or ""
+        return title, int(request.get("blockTimestamp") or 0)
+
+    def _hold_back_open_requests(
+        self, candidates: List[Tuple[str, int]]
+    ) -> Tuple[Dict[str, List[int]], List[Tuple[str, int]]]:
+        """Split uncharged requests into those to charge and those the KPI counts as open.
+
+        Matching is by count, so duplicate ``(title, timestamp)`` pairs are
+        each held back only as often as the KPI counted them.
+
+        :param candidates: ``(title, timestamp)`` of every uncharged request
+        :return: tuple of (title -> sorted timestamps to charge, held-back requests)
+        """
+        open_left = Counter(self._open_market_request_keys or [])
+        chargeable: Dict[str, List[int]] = {}
+        held_back: List[Tuple[str, int]] = []
+        for key in candidates:
+            if open_left[key] > 0:
+                open_left[key] -= 1
+                held_back.append(key)
+            else:
+                chargeable.setdefault(key[0], []).append(key[1])
+        for timestamps in chargeable.values():
+            timestamps.sort()
+        return chargeable, held_back
+
+    @staticmethod
+    def _as_pending_mech_requests(
+        held_back: List[Tuple[str, int]],
+    ) -> List[Dict[str, Any]]:
+        """Serialise held-back requests for ``ProfitOverTimeData.pending_mech_requests``.
+
+        :param held_back: ``(title, timestamp)`` of each held-back request
+        :return: the persisted ``{"title", "timestamp"}`` entries
+        """
+        return [{"title": title, "timestamp": ts} for title, ts in held_back]
+
     def _apply_mech_fees(
         self, fees_by_day: Dict[int, int], date_timestamp: int
     ) -> Tuple[float, int]:
@@ -1674,12 +1727,13 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.info("No mech requests found for agent")
             return {}
 
-        # Build lookup map: question_title -> sorted timestamps
+        # Build lookup map: question_title -> sorted timestamps. Untitled
+        # requests key under ``""``, which no bet matches, so they are
+        # charged as unplaced: the KPI's ``total`` counts them too.
         lookup: Dict[str, List[int]] = {}
         for request in all_mech_requests:
-            title = (request.get("parsedRequest", {}) or {}).get("questionTitle", "")
-            ts = int(request.get("blockTimestamp", 0))
-            if title and ts:
+            title, ts = self._mech_request_key(request)
+            if ts:
                 lookup.setdefault(title, []).append(ts)
 
         for title in lookup:
@@ -1700,12 +1754,25 @@ class FetchPerformanceSummaryBehaviour(
         :return: ProfitOverTimeData or None
         :yield: None
         """
+        # Without this round's open set the series cannot hold back what
+        # the KPI excludes, so keep the stored series rather than diverge.
+        settled_reference = self._settled_mech_requests_count
+        if settled_reference is None:
+            self.context.logger.warning(
+                "Settled mech request count unknown this round; "
+                "keeping the stored profit over time data"
+            )
+            return None
+
         agent_safe_address = self.synchronized_data.safe_contract_address.lower()
         current_timestamp = self.shared_state.synced_timestamp
 
         # Check if we have existing profit data
         existing_summary = self.shared_state.read_existing_performance_summary()
         existing_profit_data = existing_summary.profit_over_time
+        last_residual_rebuild_ts = (
+            existing_profit_data.last_residual_rebuild_ts if existing_profit_data else 0
+        )
 
         # Determine if this is initial backfill or incremental update
         # Rebuild if missing data, or when new fields (settled mech count / unplaced mech fees) are absent
@@ -1714,7 +1781,7 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.info("Performing initial profit over time backfill...")
             return (
                 yield from self._perform_initial_backfill(
-                    agent_safe_address, current_timestamp
+                    agent_safe_address, current_timestamp, last_residual_rebuild_ts
                 )
             )
         elif (
@@ -1732,7 +1799,7 @@ class FetchPerformanceSummaryBehaviour(
             )
             return (
                 yield from self._perform_initial_backfill(
-                    agent_safe_address, current_timestamp
+                    agent_safe_address, current_timestamp, last_residual_rebuild_ts
                 )
             )
         elif not getattr(existing_profit_data, "includes_unplaced_mech_fees", False):
@@ -1742,7 +1809,7 @@ class FetchPerformanceSummaryBehaviour(
             )
             return (
                 yield from self._perform_initial_backfill(
-                    agent_safe_address, current_timestamp
+                    agent_safe_address, current_timestamp, last_residual_rebuild_ts
                 )
             )
         elif (
@@ -1759,43 +1826,41 @@ class FetchPerformanceSummaryBehaviour(
             )
             return (
                 yield from self._perform_initial_backfill(
-                    agent_safe_address, current_timestamp
+                    agent_safe_address, current_timestamp, last_residual_rebuild_ts
                 )
             )
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
-            # M5: Log the residual between the series counter and the
-            # snapshot counter (``total - open``). By construction the
-            # two differ by roughly ``open_market_requests`` — every
-            # mech attached to a still-open market is in the series
-            # sum but excluded from the KPI's snapshot — so a raw
-            # ``series != snapshot`` warning fires on every tick for
-            # every healthy agent holding open markets and drowns the
-            # rare genuine anomalies. Warn only on the *unexplained*
-            # portion, and with a small fixed tolerance so an agent
-            # holding a large open book cannot hide a large drift.
-            settled_reference = self._settled_mech_requests_count
+            # M5: the series holds back exactly the requests the KPI counts
+            # as open, so its settled count should equal the KPI's
+            # ``total - open``. A residual beyond tolerance means requests
+            # the incremental path cannot see, e.g. ones indexed after the
+            # watermark moved past them; only a rebuild recovers those.
             stored_settled = existing_profit_data.settled_mech_requests_count
-            # ``self._open_market_requests`` stays ``None`` when
-            # ``_calculate_settled_mech_requests`` short-circuits at
-            # ``total_mech_requests == 0`` (a legitimately-idle agent,
-            # but also an agent whose ``_fetch_mech_sender`` errored and
-            # got coerced to 0). Treating it as ``0`` for the
-            # diagnostic keeps the log firing on the worst-case drift
-            # rather than silently skipping the check exactly when it
-            # matters most.
-            open_requests = self._open_market_requests or 0
-            if settled_reference is not None and stored_settled:
-                residual = stored_settled - settled_reference - open_requests
-                # Small residuals happen: e.g. a mech landing on an
-                # open market between the two subgraph snapshots.
-                # A handful is expected, not a proportion of the open
-                # book, so the tolerance is fixed rather than scaling.
+            if stored_settled:
+                residual = stored_settled - settled_reference
                 if abs(residual) > _M5_RESIDUAL_TOLERANCE:
-                    self.context.logger.warning(
+                    residual_log = (
                         f"Settled mech count residual (series={stored_settled}, "
-                        f"snapshot={settled_reference}, open={open_requests}, "
-                        f"residual={residual}); diagnostic only, no rebuild."
+                        f"snapshot={settled_reference}, residual={residual})"
+                    )
+                    if (
+                        current_timestamp - last_residual_rebuild_ts
+                        >= _M5_REBUILD_MIN_INTERVAL
+                    ):
+                        self.context.logger.warning(
+                            f"{residual_log}; rebuilding profit over time data."
+                        )
+                        return (
+                            yield from self._perform_initial_backfill(
+                                agent_safe_address,
+                                current_timestamp,
+                                last_residual_rebuild_ts=current_timestamp,
+                            )
+                        )
+                    self.context.logger.warning(
+                        f"{residual_log}; already rebuilt within the last day, "
+                        "updating incrementally."
                     )
             self.context.logger.info(
                 "Checking for incremental profit over time updates..."
@@ -1807,7 +1872,10 @@ class FetchPerformanceSummaryBehaviour(
             )
 
     def _perform_initial_backfill(
-        self, agent_safe_address: str, current_timestamp: int
+        self,
+        agent_safe_address: str,
+        current_timestamp: int,
+        last_residual_rebuild_ts: int = 0,
     ) -> Generator[None, None, Optional[ProfitOverTimeData]]:
         """Perform initial backfill of all profit data."""
         # Fetch ALL daily profit statistics from creation to now
@@ -1830,6 +1898,7 @@ class FetchPerformanceSummaryBehaviour(
                 settled_mech_requests_count=0,
                 includes_unplaced_mech_fees=True,
                 schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+                last_residual_rebuild_ts=last_residual_rebuild_ts,
             )
 
         self.context.logger.info(
@@ -1840,14 +1909,21 @@ class FetchPerformanceSummaryBehaviour(
         # Fail-closed (H6): every bet must have a mech request. Non-empty trading
         # stats with an empty mech lookup = unavailable subgraph data — suppress the
         # series (return None preserves stored data) rather than emit zero mech fees.
-        mech_request_lookup = yield from self._build_mech_request_lookup(
+        all_mech_request_lookup = yield from self._build_mech_request_lookup(
             agent_safe_address
         )
-        if not mech_request_lookup:
+        if not all_mech_request_lookup:
             self.context.logger.warning(
                 "No mech requests found — preserving existing profit data"
             )
             return None
+        mech_request_lookup, held_back = self._hold_back_open_requests(
+            [
+                (title, ts)
+                for title, timestamps in all_mech_request_lookup.items()
+                for ts in timestamps
+            ]
+        )
 
         # Timestamp-based mech-to-bet attribution
         fees_by_day, placed_count, unplaced_count = self._match_mech_requests_to_days(
@@ -1891,8 +1967,8 @@ class FetchPerformanceSummaryBehaviour(
                 ProfitDataPoint(
                     date=date_str,
                     timestamp=date_timestamp,
-                    daily_profit_raw=round(daily_profit_raw, 3),
-                    daily_profit=round(daily_profit_net, 3),
+                    daily_profit_raw=daily_profit_raw,
+                    daily_profit=daily_profit_net,
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
                 )
@@ -1912,7 +1988,7 @@ class FetchPerformanceSummaryBehaviour(
                     date=date_str,
                     timestamp=mech_day_ts,
                     daily_profit_raw=0.0,
-                    daily_profit=round(-mech_fees, 3),
+                    daily_profit=-mech_fees,
                     cumulative_profit=0.0,  # recomputed below
                     daily_mech_requests=count,
                 )
@@ -1932,9 +2008,9 @@ class FetchPerformanceSummaryBehaviour(
         )
         self._unplaced_mech_requests_count = unplaced_count
 
-        # Watermark: max mech request timestamp across all processed requests
+        # Watermark: max timestamp across all fetched requests, held-back included
         last_mech_timestamp = max(
-            (ts for ts_list in mech_request_lookup.values() for ts in ts_list),
+            (ts for ts_list in all_mech_request_lookup.values() for ts in ts_list),
             default=0,
         )
 
@@ -1948,6 +2024,8 @@ class FetchPerformanceSummaryBehaviour(
             includes_unplaced_mech_fees=True,
             last_mech_timestamp=last_mech_timestamp,
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+            pending_mech_requests=self._as_pending_mech_requests(held_back),
+            last_residual_rebuild_ts=last_residual_rebuild_ts,
         )
 
     def _perform_incremental_update(
@@ -1987,25 +2065,18 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.error("Failed to fetch new daily profit statistics")
             return existing_data
 
-        if not new_daily_stats:
-            self.context.logger.info("No new daily profit statistics found")
-            return existing_data
-
         self.context.logger.info(
             f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics"
         )
 
-        # Keep stats on/after the last stored timestamp; same-day is allowed so we can detect changes
+        # Keep stats on/after the last stored timestamp; same-day is allowed so
+        # we can detect changes. An empty result still falls through: mech
+        # requests made without trading are charged as mech-only days.
         filtered_daily_stats = [
             stat
             for stat in new_daily_stats
             if "date" in stat and int(stat["date"]) >= last_data_timestamp
         ]
-        if not filtered_daily_stats:
-            self.context.logger.info(
-                "No newer days or changes to the last stored day; skipping incremental append."
-            )
-            return existing_data
 
         # Decide if we really should replace last point: only if incoming stats contain that same day
         last_point_day = (
@@ -2019,61 +2090,24 @@ class FetchPerformanceSummaryBehaviour(
         elif replace_last and (last_point_day not in incoming_days):
             replace_last = False
 
-        # Build lookup ONLY for questions present in the new stats
-        new_question_titles: Set[str] = set()
-        for stat in filtered_daily_stats:
-            for participant in stat.get("profitParticipants") or []:
-                title = self._extract_title(participant)
-                if title:
-                    new_question_titles.add(title)
-
-        mech_request_lookup: Dict[str, List[int]] = {}
-        primary_fetch_failed = False
-        if new_question_titles:
-            self.context.logger.info(
-                f"Building mech request lookup for {len(new_question_titles)} questions in new daily stats"
-            )
-            new_mech_requests = yield from self._fetch_mech_requests_by_titles(
-                agent_safe_address,
-                list(new_question_titles),
-                block_timestamp_gt=existing_data.last_mech_timestamp,
-            )
-            if new_mech_requests is None:
-                # Fetch actually errored. ``[]`` is a legitimate "nothing new
-                # since watermark" result and must not be conflated with a
-                # transport / schema failure — the fail-closed guard below
-                # only trips on the latter.
-                primary_fetch_failed = True
-            else:
-                for request in new_mech_requests:
-                    parsed = request.get("parsedRequest", {}) or {}
-                    title = parsed.get("questionTitle", "")
-                    ts = int(request.get("blockTimestamp", 0))
-                    if title and ts:
-                        mech_request_lookup.setdefault(title, []).append(ts)
-                for title in mech_request_lookup:
-                    mech_request_lookup[title].sort()
-        total_requests_in_lookup = sum(len(v) for v in mech_request_lookup.values())
-        self.context.logger.info(
-            f"Incremental mech lookup size={len(mech_request_lookup)}, "
-            f"total_requests_in_lookup={total_requests_in_lookup}, "
-            f"primary_fetch_failed={primary_fetch_failed}"
+        # Every request past the watermark, traded or not, as the KPI's
+        # ``total`` counts them all.
+        new_mech_requests = yield from self._fetch_all_mech_requests(
+            agent_safe_address,
+            block_timestamp_gt=existing_data.last_mech_timestamp,
         )
 
         # H6 retry: only fire on a genuine primary failure (``None``).
-        # ``[]`` cannot be distinguished from a healthy-but-lagging
-        # indexer, and re-querying with a wider window would only
-        # reintroduce the double-attribution pattern this file is
-        # trying to eliminate. The lookback still helps when the primary
-        # transport / schema actually errored.
+        # ``[]`` is a legitimate "nothing new since watermark" result and
+        # must not be conflated with a transport / schema failure;
+        # re-querying with a wider window would only reintroduce the
+        # double-attribution pattern this file is trying to eliminate.
         #
-        # Follow-up: a day that finalises with zero attributions because
-        # its bets' mechs were still indexing at write time is *not*
-        # revisited on subsequent ticks, since ``start_ts`` is pinned
-        # to the last stored day. The proper fix is to revisit a
-        # bounded window of recent days rather than only ``today``, and
-        # is out of scope for this PR.
-        if new_question_titles and primary_fetch_failed:
+        # Follow-up: a request indexed after the watermark has moved past
+        # it is never fetched here. The residual-triggered rebuild in
+        # ``_build_profit_over_time_data`` is the backstop for that gap.
+        if new_mech_requests is None:
+            new_mech_requests = []
             if existing_data.last_mech_timestamp > 0:
                 lookback_ts = max(
                     existing_data.last_mech_timestamp - MECH_LOOKBACK_SECONDS, 0
@@ -2083,29 +2117,50 @@ class FetchPerformanceSummaryBehaviour(
                     f"lookback window (watermark {existing_data.last_mech_timestamp} "
                     f"→ {lookback_ts})"
                 )
-                fallback_requests = yield from self._fetch_mech_requests_by_titles(
+                fallback_requests = yield from self._fetch_all_mech_requests(
                     agent_safe_address,
-                    list(new_question_titles),
                     block_timestamp_gt=lookback_ts,
                 )
                 # Only entries strictly past the watermark are truly new;
                 # anything at or below it was already attributed in a
                 # previous tick.
-                for request in fallback_requests or []:
-                    parsed = request.get("parsedRequest", {}) or {}
-                    title = parsed.get("questionTitle", "")
-                    ts = int(request.get("blockTimestamp", 0))
-                    if title and ts > existing_data.last_mech_timestamp:
-                        mech_request_lookup.setdefault(title, []).append(ts)
-                for title in mech_request_lookup:
-                    mech_request_lookup[title].sort()
+                new_mech_requests = [
+                    request
+                    for request in fallback_requests or []
+                    if self._mech_request_key(request)[1]
+                    > existing_data.last_mech_timestamp
+                ]
 
-            if not mech_request_lookup:
+            if not new_mech_requests:
                 self.context.logger.warning(
                     "Mech fetch failed and lookback did not recover — "
                     "preserving existing profit data"
                 )
                 return None
+
+        fetched_keys = [
+            key for key in map(self._mech_request_key, new_mech_requests) if key[1]
+        ]
+        previously_pending = [
+            (request["title"], int(request["timestamp"]))
+            for request in existing_data.pending_mech_requests
+        ]
+        mech_request_lookup, held_back = self._hold_back_open_requests(
+            previously_pending + fetched_keys
+        )
+        self.context.logger.info(
+            f"Incremental mech requests: fetched={len(fetched_keys)}, "
+            f"previously_pending={len(previously_pending)}, "
+            f"held_back={len(held_back)}, "
+            f"to_charge={sum(len(v) for v in mech_request_lookup.values())}"
+        )
+
+        if not filtered_daily_stats and not fetched_keys and not mech_request_lookup:
+            self.context.logger.info(
+                "No new daily profit statistics or mech requests; "
+                "skipping incremental update."
+            )
+            return existing_data
 
         # Timestamp-based mech-to-bet attribution for new stats
         fees_by_day, placed_delta, unplaced_delta = self._match_mech_requests_to_days(
@@ -2170,8 +2225,8 @@ class FetchPerformanceSummaryBehaviour(
                 ProfitDataPoint(
                     date=date_str,
                     timestamp=date_timestamp,
-                    daily_profit_raw=round(daily_profit_raw, 3),
-                    daily_profit=round(daily_profit_net, 3),
+                    daily_profit_raw=daily_profit_raw,
+                    daily_profit=daily_profit_net,
                     cumulative_profit=round(cumulative_profit, 3),
                     daily_mech_requests=daily_mech_count,
                 )
@@ -2201,12 +2256,12 @@ class FetchPerformanceSummaryBehaviour(
                 raw = existing_dp.daily_profit_raw
                 if raw is None:
                     raw = existing_dp.daily_profit + old_fees
-                    existing_dp.daily_profit_raw = round(raw, 3)
+                    existing_dp.daily_profit_raw = raw
                 existing_dp.daily_mech_requests = old_count + count
                 merged_fees = existing_dp.daily_mech_requests * (
                     DEFAULT_MECH_FEE / WEI_IN_ETH
                 )
-                existing_dp.daily_profit = round(raw - merged_fees, 3)
+                existing_dp.daily_profit = raw - merged_fees
                 continue
             mech_fees = count * (DEFAULT_MECH_FEE / WEI_IN_ETH)
             new_data_points.append(
@@ -2214,7 +2269,7 @@ class FetchPerformanceSummaryBehaviour(
                     date=date_str,
                     timestamp=mech_day_ts,
                     daily_profit_raw=0.0,
-                    daily_profit=round(-mech_fees, 3),
+                    daily_profit=-mech_fees,
                     cumulative_profit=0.0,  # recomputed below
                     daily_mech_requests=count,
                 )
@@ -2273,6 +2328,12 @@ class FetchPerformanceSummaryBehaviour(
             f"days={len(new_data_points)}"
         )
 
+        # Watermark: max timestamp across all fetched requests, held-back included
+        last_mech_timestamp = max(
+            [existing_data.last_mech_timestamp] + [ts for _, ts in fetched_keys]
+        )
+        pending_mech_requests = self._as_pending_mech_requests(held_back)
+
         # If we only reprocessed the last day and nothing changed (profits AND mech counts), skip writing.
         if (
             new_mech_sum == 0
@@ -2291,18 +2352,13 @@ class FetchPerformanceSummaryBehaviour(
                 and new_last.daily_profit == prev_last_point.daily_profit
                 and new_last.daily_mech_requests == prev_last_point.daily_mech_requests
                 and settled_mech_requests_count == prev_settled_total
+                and pending_mech_requests == existing_data.pending_mech_requests
+                and last_mech_timestamp == existing_data.last_mech_timestamp
             ):
                 self.context.logger.info(
                     "Last day unchanged (profit/mech/settled); skipping update."
                 )
                 return existing_data
-
-        # Update watermark
-        new_max_ts = max(
-            (ts for ts_list in mech_request_lookup.values() for ts in ts_list),
-            default=0,
-        )
-        last_mech_timestamp = max(existing_data.last_mech_timestamp, new_max_ts)
 
         return ProfitOverTimeData(
             last_updated=current_timestamp,
@@ -2314,6 +2370,8 @@ class FetchPerformanceSummaryBehaviour(
             includes_unplaced_mech_fees=True,
             last_mech_timestamp=last_mech_timestamp,
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+            pending_mech_requests=pending_mech_requests,
+            last_residual_rebuild_ts=existing_data.last_residual_rebuild_ts,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:

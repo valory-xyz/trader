@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from typing import Any, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
@@ -130,6 +132,7 @@ def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
     b._partial_roi = None
     b._total_mech_requests = None
     b._open_market_requests = None
+    b._open_market_request_keys = None
     b._mech_request_lookup = None
     b._update_interval = UPDATE_INTERVAL
     b._last_update_timestamp = 0
@@ -231,13 +234,13 @@ class TestModuleConstants:
         """DEFAULT_MECH_FEE is 0.01 ETH in wei."""
         assert DEFAULT_MECH_FEE == 1e16
 
-    def test_profit_over_time_schema_version_ge_2(self) -> None:
-        """Schema-version floor is at least 2 (rebuild-on-load contract).
+    def test_profit_over_time_schema_version_ge_3(self) -> None:
+        """Schema-version floor is at least 3 (rebuild-on-load contract).
 
-        A revert of the bump would leave every already-broken
-        profit_over_time file unrepaired.
+        A revert of the bump would leave every series that skipped
+        untraded mech requests unrepaired.
         """
-        assert PROFIT_OVER_TIME_SCHEMA_VERSION >= 2
+        assert PROFIT_OVER_TIME_SCHEMA_VERSION >= 3
 
     def test_question_data_separator(self) -> None:
         """QUESTION_DATA_SEPARATOR is the unit separator character."""
@@ -1988,6 +1991,7 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+        assert b._open_market_request_keys == []
 
     def test_omen_no_open_markets(self) -> None:
         """Returns 0 when no open markets on Omen."""
@@ -2005,6 +2009,7 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+        assert b._open_market_request_keys == []
 
     def test_omen_with_open_markets(self) -> None:
         """Counts requests matching open market titles on Omen."""
@@ -2012,9 +2017,9 @@ class TestGetOpenMarketRequests:
         ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
         mech_sender = {
             "requests": [
-                {"parsedRequest": {"questionTitle": "Q1"}},
-                {"parsedRequest": {"questionTitle": "Q2"}},
-                {"parsedRequest": {"questionTitle": "Q3"}},
+                {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "10"},
+                {"parsedRequest": {"questionTitle": "Q2"}, "blockTimestamp": "20"},
+                {"parsedRequest": {"questionTitle": "Q3"}, "blockTimestamp": "30"},
             ]
         }
         open_markets = [{"question": f"Q1{QUESTION_DATA_SEPARATOR}extra"}]
@@ -2031,6 +2036,8 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 1
+        # The counted requests themselves are kept for the profit series.
+        assert b._open_market_request_keys == [("Q1", 10)]
 
     def test_polymarket_with_open_positions(self) -> None:
         """Counts requests matching open position titles on Polymarket."""
@@ -3726,8 +3733,10 @@ class TestBuildMechRequestLookup:
             ),
         ):
             result = self._run_gen(b._build_mech_request_lookup("0xaddr"))  # type: ignore[arg-type]
-        assert result == {"Q1": [100, 300], "Q2": [200]}
-        assert b._mech_request_lookup == {"Q1": [100, 300], "Q2": [200]}
+        # Untitled requests are kept under "" so they are charged as unplaced.
+        expected = {"Q1": [100, 300], "Q2": [200], "": [400, 500]}
+        assert result == expected
+        assert b._mech_request_lookup == expected
 
 
 # ---------------------------------------------------------------------------
@@ -4107,23 +4116,28 @@ class TestBuildProfitOverTimeData:
         mock_backfill.assert_not_called()
         assert result is incr_result
 
-    def test_m5_residual_warning_fires_beyond_tolerance(self) -> None:
-        """M5 residual warning fires when the drift exceeds the fixed tolerance.
+    def _route_with_residual(
+        self,
+        stored_settled: int,
+        snapshot_settled: Optional[int],
+        last_residual_rebuild_ts: int = 0,
+        open_requests: int = 0,
+    ) -> Tuple[Any, MagicMock, MagicMock, MagicMock]:
+        """Route an up-to-date stored series against a KPI snapshot.
 
-        Reference is ``total - open``. The residual is stored − reference
-        − open, so the open-book size cancels out. A stored count of 30
-        vs reference 3 against 1 open market gives residual 26, well
-        above the tolerance, and the warning should log.
+        :param stored_settled: the stored series' settled count
+        :param snapshot_settled: the KPI's ``total - open`` this round
+        :param last_residual_rebuild_ts: when the series was last rebuilt for a residual
+        :param open_requests: the KPI's open count this round
+        :return: (result, backfill mock, incremental mock, logger)
         """
         b = _make_fetch_behaviour(
-            _settled_mech_requests_count=3,
-            _open_market_requests=1,
+            _settled_mech_requests_count=snapshot_settled,
+            _open_market_requests=open_requests,
         )
-        ctx, _, synced_data, state = _mock_context()
-        logger = MagicMock()
-        ctx.logger = logger
+        ctx, _, synced_data, state = _mock_context(synced_timestamp=1700000000)
         summary = _default_summary()
-        existing_profit = ProfitOverTimeData(
+        summary.profit_over_time = ProfitOverTimeData(
             last_updated=1700000000,
             total_days=1,
             data_points=[
@@ -4132,86 +4146,91 @@ class TestBuildProfitOverTimeData:
                     timestamp=1700000000,
                     daily_profit=1.0,
                     cumulative_profit=1.0,
-                    daily_mech_requests=30,
-                    daily_profit_raw=1.0 + 30 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
+                    daily_mech_requests=stored_settled,
                 )
             ],
-            settled_mech_requests_count=30,
+            settled_mech_requests_count=stored_settled,
             includes_unplaced_mech_fees=True,
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+            last_residual_rebuild_ts=last_residual_rebuild_ts,
         )
-        summary.profit_over_time = existing_profit
         summary.agent_performance = MagicMock()
         summary.agent_performance.metrics = MagicMock()
-        summary.agent_performance.metrics.settled_mech_request_count = 3
-        state.read_existing_performance_summary.return_value = summary
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(
-                b,
-                "_perform_incremental_update",
-                side_effect=_return_gen(existing_profit),
-            ),
-        ):
-            self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
-        warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
-        assert any("Settled mech count residual" in w for w in warnings), warnings
-
-    def test_m5_open_requests_none_does_not_skip_diagnostic(self) -> None:
-        """A ``None`` ``_open_market_requests`` must not silence M5.
-
-        ``_calculate_settled_mech_requests`` short-circuits and leaves
-        ``_open_market_requests=None`` whenever ``_get_total_mech_requests``
-        returned zero. That state is also reachable from a transport
-        hiccup that coerces the total to zero, and in that state a
-        drifted stored series is precisely what M5 should surface.
-        """
-        b = _make_fetch_behaviour(
-            _settled_mech_requests_count=0,
-            _open_market_requests=None,
-        )
-        ctx, _, synced_data, state = _mock_context()
-        logger = MagicMock()
-        ctx.logger = logger
-        summary = _default_summary()
-        existing_profit = ProfitOverTimeData(
-            last_updated=1700000000,
-            total_days=1,
-            data_points=[
-                ProfitDataPoint(
-                    date="2023-11-14",
-                    timestamp=1700000000,
-                    daily_profit=1.0,
-                    cumulative_profit=1.0,
-                    daily_mech_requests=100,
-                    daily_profit_raw=1.0 + 100 * (DEFAULT_MECH_FEE / WEI_IN_ETH),
-                )
-            ],
-            settled_mech_requests_count=100,
-            includes_unplaced_mech_fees=True,
-            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
-        )
-        summary.profit_over_time = existing_profit
-        summary.agent_performance = MagicMock()
-        summary.agent_performance.metrics = MagicMock()
-        # Non-zero so the "missing settled count" backfill branch does
-        # not fire; the routing must reach the incremental leg where
-        # the M5 diagnostic lives.
         summary.agent_performance.metrics.settled_mech_request_count = 1
         state.read_existing_performance_summary.return_value = summary
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(
-                b,
-                "_perform_incremental_update",
-                side_effect=_return_gen(existing_profit),
-            ),
+                b, "_perform_initial_backfill", side_effect=_return_gen("backfill")
+            ) as mock_backfill,
+            patch.object(
+                b, "_perform_incremental_update", side_effect=_return_gen("incremental")
+            ) as mock_incr,
         ):
-            self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+            result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
+        return result, mock_backfill, mock_incr, ctx.logger
+
+    def test_residual_beyond_tolerance_triggers_rebuild(self) -> None:
+        """A residual beyond tolerance rebuilds and stamps the rebuild time."""
+        result, mock_backfill, mock_incr, logger = self._route_with_residual(
+            stored_settled=30, snapshot_settled=3
+        )
+        assert result == "backfill"
+        mock_incr.assert_not_called()
+        assert mock_backfill.call_args.kwargs == {
+            "last_residual_rebuild_ts": 1700000000
+        }
         warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
         assert any("Settled mech count residual" in w for w in warnings), warnings
+
+    def test_residual_rebuild_rate_limited_to_once_a_day(self) -> None:
+        """Within a day of the last residual rebuild, update incrementally and log."""
+        result, mock_backfill, _, logger = self._route_with_residual(
+            stored_settled=30,
+            snapshot_settled=3,
+            last_residual_rebuild_ts=1700000000 - SECONDS_PER_DAY + 1,
+        )
+        assert result == "incremental"
+        mock_backfill.assert_not_called()
+        warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
+        assert any("already rebuilt within the last day" in w for w in warnings)
+
+    def test_residual_rebuild_allowed_again_after_a_day(self) -> None:
+        """A full day after the last residual rebuild, the next one may run."""
+        result, _, _, _ = self._route_with_residual(
+            stored_settled=30,
+            snapshot_settled=3,
+            last_residual_rebuild_ts=1700000000 - SECONDS_PER_DAY,
+        )
+        assert result == "backfill"
+
+    def test_residual_within_tolerance_does_not_rebuild(self) -> None:
+        """A residual at the tolerance takes the incremental path silently."""
+        result, mock_backfill, _, logger = self._route_with_residual(
+            stored_settled=15, snapshot_settled=10
+        )
+        assert result == "incremental"
+        mock_backfill.assert_not_called()
+        logger.warning.assert_not_called()
+
+    def test_residual_does_not_subtract_open_requests(self) -> None:
+        """The series holds back open requests, so a matching count is no drift."""
+        result, mock_backfill, _, logger = self._route_with_residual(
+            stored_settled=30, snapshot_settled=30, open_requests=20
+        )
+        assert result == "incremental"
+        mock_backfill.assert_not_called()
+        logger.warning.assert_not_called()
+
+    def test_unknown_settled_count_keeps_stored_series(self) -> None:
+        """Without this round's KPI open set the series is neither rebuilt nor updated."""
+        result, mock_backfill, mock_incr, _ = self._route_with_residual(
+            stored_settled=30, snapshot_settled=None
+        )
+        assert result is None
+        mock_backfill.assert_not_called()
+        mock_incr.assert_not_called()
 
     def test_missing_settled_mech_request_count_triggers_backfill(self) -> None:
         """Routes to backfill when settled_mech_request_count field is missing."""
@@ -4643,6 +4662,7 @@ class TestPerformIncrementalUpdate:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
         ):
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", 1700001000, existing)  # type: ignore[arg-type]
@@ -4678,7 +4698,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4719,7 +4739,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4751,6 +4771,7 @@ class TestPerformIncrementalUpdate:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
         ):
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", ts + 100, existing)  # type: ignore[arg-type]
@@ -4805,7 +4826,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4862,7 +4883,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_fetch_side_effect,
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4898,7 +4919,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(None),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4936,7 +4957,7 @@ class TestPerformIncrementalUpdate:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 fetch_mock,
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -4990,7 +5011,7 @@ class TestPerformIncrementalUpdate:
                 "_fetch_daily_profit_statistics",
                 side_effect=_return_gen(new_stats),
             ),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=_fetch_side),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_fetch_side),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
             result = self._run_gen(
@@ -5035,7 +5056,7 @@ class TestPerformIncrementalUpdate:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
-            patch.object(b, "_fetch_mech_requests_by_titles", fetch_mock),
+            patch.object(b, "_fetch_all_mech_requests", fetch_mock),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
             result = self._run_gen(
@@ -5046,7 +5067,7 @@ class TestPerformIncrementalUpdate:
         assert fetch_mock.call_count == 1
 
     def test_empty_mech_lookup_no_new_titles_proceeds(self) -> None:
-        """Proceeds normally when no new bet titles exist (no mech data needed)."""
+        """Proceeds normally when the stats name no markets and no requests are new."""
         ts = 1700000000
         b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
         current_ts = ts + 100  # same day
@@ -5068,6 +5089,7 @@ class TestPerformIncrementalUpdate:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
             result = self._run_gen(
@@ -6333,15 +6355,6 @@ class TestPolymarketIncrementalTitleExtraction:
                 "blockTimestamp": str(new_ts - 100),
             }
         ]
-        fetch_mech_called = False
-        original_fetch = _return_gen(mech_requests)
-
-        def track_fetch_mech(*args: Any, **kwargs: Any) -> Generator:
-            """Track whether _fetch_mech_requests_by_titles was called."""
-            nonlocal fetch_mech_called
-            fetch_mech_called = True
-            return original_fetch(*args, **kwargs)
-
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -6349,19 +6362,16 @@ class TestPolymarketIncrementalTitleExtraction:
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
             patch.object(
-                b,
-                "_fetch_mech_requests_by_titles",
-                side_effect=track_fetch_mech,
+                b, "_fetch_all_mech_requests", side_effect=_return_gen(mech_requests)
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
-        # If titles were correctly extracted, mech lookup should have been populated
-        assert (
-            fetch_mech_called
-        ), "Polymarket titles not extracted — _fetch_mech_requests_by_titles was never called"
+        # Matched to the bet through ``metadata.title``: placed, not unplaced.
+        assert result.placed_mech_requests_count == 3
+        assert result.unplaced_mech_requests_count == 0
         assert result is not None
         assert result.total_days == 2
 
@@ -6427,6 +6437,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
         ):
             result = self._run_gen(
@@ -6437,7 +6448,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
         assert result.total_days == 2
 
     def test_with_question_titles_and_mech_lookup(self) -> None:
-        """Covers lines 1453-1472: builds lookup from question titles in stats."""
+        """Requests fetched past the watermark are matched to the new stats' bets."""
         ts = 1700000000
         new_ts = ts + SECONDS_PER_DAY
         b = _make_fetch_behaviour(_total_mech_requests=10, _open_market_requests=1)
@@ -6471,7 +6482,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -6512,7 +6523,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(5)),
@@ -6561,6 +6572,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(3)),
         ):
             result = self._run_gen(
@@ -6612,6 +6624,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
@@ -6621,7 +6634,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
         assert result is existing
 
     def test_empty_question_title_in_participants(self) -> None:
-        """Covers branch 1456->1453: empty title skipped in question title collection."""
+        """Participants with an empty title are skipped without failing the update."""
         ts = 1700000000
         new_ts = ts + SECONDS_PER_DAY
         b = _make_fetch_behaviour(_total_mech_requests=0, _open_market_requests=0)
@@ -6645,12 +6658,13 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", new_ts + 100, existing)  # type: ignore[arg-type]
             )
-        # Should still produce result (no question titles => no mech lookup)
+        # Should still produce result (empty titles match no bet)
         assert result is not None
 
     def test_mech_lookup_primary_fetch_failure_returns_none(self) -> None:
@@ -6681,9 +6695,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
-            patch.object(
-                b, "_fetch_mech_requests_by_titles", side_effect=_return_gen(None)
-            ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen(None)),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
@@ -6735,6 +6747,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
@@ -6764,6 +6777,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(None)),
         ):
             result = self._run_gen(
@@ -6807,6 +6821,7 @@ class TestPerformIncrementalUpdateCoverageBranches:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
@@ -6888,7 +6903,7 @@ class TestIncrementalUpdateEdgeCases:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
@@ -6943,6 +6958,7 @@ class TestIncrementalUpdateEdgeCases:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen([])),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(0)),
         ):
             result = self._run_gen(
@@ -7374,7 +7390,7 @@ class TestIncrementalAttributionInvariants:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(new_mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -7433,7 +7449,7 @@ class TestIncrementalAttributionInvariants:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(new_mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -7508,7 +7524,7 @@ class TestIncrementalAttributionInvariants:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(new_stats)
             ),
-            patch.object(b, "_fetch_mech_requests_by_titles", side_effect=fetch_stub),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=fetch_stub),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
         ):
             result = self._run_gen(
@@ -7644,7 +7660,7 @@ class TestIncrementalAttributionInvariants:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(new_mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -7741,7 +7757,7 @@ class TestIncrementalAttributionInvariants:
                 ),
                 patch.object(
                     b,
-                    "_fetch_mech_requests_by_titles",
+                    "_fetch_all_mech_requests",
                     side_effect=_return_gen(mechs),
                 ),
                 patch.object(
@@ -7839,7 +7855,7 @@ class TestIncrementalAttributionInvariants:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(new_mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -7926,7 +7942,7 @@ class TestIncrementalAttributionInvariants:
             ),
             patch.object(
                 b,
-                "_fetch_mech_requests_by_titles",
+                "_fetch_all_mech_requests",
                 side_effect=_return_gen(new_mech_requests),
             ),
             patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(10)),
@@ -7945,17 +7961,14 @@ class TestIncrementalAttributionInvariants:
         """A subgraph transport failure is fail-closed end-to-end.
 
         Drives the update through the real
-        ``_fetch_mech_requests_by_titles`` so a transport failure at
+        ``_fetch_all_mech_requests`` so a transport failure at
         the subgraph layer is treated as a failure by the incremental
         path, not as "nothing new".
 
         Sibling ``test_lookback_recovers_mech_data_after_primary_fetch_fails``
-        patches ``_fetch_mech_requests_by_titles`` directly and injects
-        ``None``. That contract is only honored by the flag-on branch;
-        the shipped flag-off subgraph branch used to coerce ``None`` to
-        ``[]``, which made ``primary_fetch_failed`` unreachable in
-        production. This test patches ``_fetch_from_subgraph`` (the
-        real boundary below the wrapper) so the contract is exercised
+        patches ``_fetch_all_mech_requests`` directly and injects
+        ``None``. This test patches ``_fetch_from_subgraph`` (the real
+        boundary below the wrapper) so the contract is exercised
         end-to-end.
         """
         day_ts = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
@@ -7967,10 +7980,8 @@ class TestIncrementalAttributionInvariants:
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=False, synced_timestamp=current_ts
         )
-        # Same-day stats with a bet whose title is new, so the update
-        # would query mech data (this is what triggers the fetch under
-        # test). No mech-analytics flag → the flag-off subgraph branch
-        # of ``_fetch_mech_requests_by_titles`` runs.
+        # No mech-analytics flag -> the flag-off subgraph branch of
+        # ``_fetch_all_mech_requests`` runs.
         ctx.params.use_mech_analytics = False
         new_stats = [
             {
@@ -8000,3 +8011,281 @@ class TestIncrementalAttributionInvariants:
         # series with ``daily_mech_requests=0`` on today, which then
         # froze permanently once the day rolled over.
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# KPI / series agreement: every settled request charged once, open ones held
+# ---------------------------------------------------------------------------
+
+_FEE = DEFAULT_MECH_FEE / WEI_IN_ETH
+_DAY0 = (1700000000 // SECONDS_PER_DAY) * SECONDS_PER_DAY
+
+
+def _mech_request(title: Optional[str], ts: int) -> dict:
+    """Build a subgraph-shaped mech request."""
+    parsed = None if title is None else {"questionTitle": title}
+    return {"parsedRequest": parsed, "blockTimestamp": str(ts)}
+
+
+def _stat(day_ts: int, bets: List[Tuple[str, int]], is_polymarket: bool) -> dict:
+    """Build a zero-profit daily stat whose participants bet at the given times."""
+    participants = []
+    for title, bet_ts in bets:
+        participant: dict = {"bets": [{"timestamp": str(bet_ts)}]}
+        if is_polymarket:
+            participant["metadata"] = {"title": title}
+        else:
+            participant["question"] = f"{title}{QUESTION_DATA_SEPARATOR}data"
+        participants.append(participant)
+    return {"date": str(day_ts), "dailyProfit": "0", "profitParticipants": participants}
+
+
+class TestKpiSeriesAgreement:
+    """The series charges exactly the requests the KPI counts as settled."""
+
+    def _run_gen(self, gen: Generator[Any, Any, Any]) -> Any:
+        """Drive generator."""
+        try:
+            next(gen)
+        except StopIteration as e:
+            return e.value
+        raise AssertionError("Generator did not stop")  # pragma: no cover
+
+    def _backfill(
+        self,
+        stats: List[dict],
+        fetched: List[dict],
+        open_keys: List[Tuple[str, int]],
+        is_polymarket: bool = False,
+        now: int = _DAY0 + 1000,
+    ) -> ProfitOverTimeData:
+        """Run a backfill over the given stats and fetched requests."""
+        b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=is_polymarket, synced_timestamp=now
+        )
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
+            ),
+            patch.object(
+                b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)
+            ),
+        ):
+            return self._run_gen(b._perform_initial_backfill("0xaddr", now))
+
+    def _tick(
+        self,
+        existing: ProfitOverTimeData,
+        stats: List[dict],
+        fetched: List[dict],
+        open_keys: List[Tuple[str, int]],
+        now: int,
+        is_polymarket: bool = False,
+    ) -> ProfitOverTimeData:
+        """Run one incremental update on top of ``existing``."""
+        b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
+        ctx, _, synced_data, _ = _mock_context(
+            is_polymarket=is_polymarket, synced_timestamp=now
+        )
+        fetch_mock = MagicMock(side_effect=_return_gen(fetched))
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
+            ),
+            patch.object(b, "_fetch_all_mech_requests", fetch_mock),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", now, existing)
+            )
+        assert fetch_mock.call_args.kwargs == {
+            "block_timestamp_gt": existing.last_mech_timestamp
+        }
+        return result
+
+    def _existing(self, last_mech_timestamp: int) -> ProfitOverTimeData:
+        """A one-day series with 1.0 profit and nothing charged yet."""
+        return ProfitOverTimeData(
+            last_updated=_DAY0 + 100,
+            total_days=1,
+            data_points=[
+                ProfitDataPoint(
+                    date="2023-11-14",
+                    timestamp=_DAY0,
+                    daily_profit=1.0,
+                    cumulative_profit=1.0,
+                    daily_mech_requests=0,
+                    daily_profit_raw=1.0,
+                )
+            ],
+            includes_unplaced_mech_fees=True,
+            last_mech_timestamp=last_mech_timestamp,
+            schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
+        )
+
+    @pytest.mark.parametrize("is_polymarket", [False, True])
+    def test_untraded_requests_are_charged_incrementally(
+        self, is_polymarket: bool
+    ) -> None:
+        """Requests on markets the agent did not trade are charged as unplaced."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [
+            _mech_request("Traded", day1 + 100),
+            _mech_request("Untraded A", day1 + 150),
+            _mech_request("Untraded B", day1 + 160),
+        ]
+        stats = [_stat(day1, [("Traded", day1 + 200)], is_polymarket)]
+
+        result = self._tick(existing, stats, fetched, [], day1 + 500, is_polymarket)
+
+        assert result.placed_mech_requests_count == 1
+        assert result.unplaced_mech_requests_count == 2
+        assert result.settled_mech_requests_count == 3
+        assert result.data_points[-1].cumulative_profit == round(1.0 - 3 * _FEE, 3)
+        assert result.last_mech_timestamp == day1 + 160
+
+    @pytest.mark.parametrize("is_polymarket", [False, True])
+    def test_open_requests_held_back_then_charged_once(
+        self, is_polymarket: bool
+    ) -> None:
+        """Backfill holds back the KPI's open requests; a later tick charges them once."""
+        fetched = [
+            _mech_request("Traded", _DAY0 + 100),
+            _mech_request("Open", _DAY0 + 150),
+            _mech_request("Open", _DAY0 + 150),
+            _mech_request("Other", _DAY0 + 160),
+        ]
+        open_keys = [("Open", _DAY0 + 150), ("Open", _DAY0 + 150)]
+        stats = [_stat(_DAY0, [("Traded", _DAY0 + 200)], is_polymarket)]
+
+        backfilled = self._backfill(stats, fetched, open_keys, is_polymarket)
+
+        # KPI: total 4 - open 2 = settled 2
+        assert backfilled.settled_mech_requests_count == 2
+        assert (
+            backfilled.pending_mech_requests
+            == [{"title": "Open", "timestamp": _DAY0 + 150}] * 2
+        )
+        assert backfilled.last_mech_timestamp == _DAY0 + 160
+        assert backfilled.data_points[-1].cumulative_profit == round(-2 * _FEE, 3)
+
+        # The markets close: nothing new is fetched, both requests are released.
+        day1 = _DAY0 + SECONDS_PER_DAY
+        released = self._tick(backfilled, [], [], [], day1 + 100, is_polymarket)
+
+        assert released.settled_mech_requests_count == 4
+        assert released.pending_mech_requests == []
+        assert released.data_points[-1].cumulative_profit == round(-4 * _FEE, 3)
+
+        # Nothing new and nothing pending: the stored series is left as is.
+        again = self._tick(released, [], [], [], day1 + 200, is_polymarket)
+
+        assert again is released
+
+    def test_requests_counted_open_are_not_charged_incrementally(self) -> None:
+        """A newly fetched request on an open market is persisted as pending."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        fetched = [_mech_request("Open", day1 + 100), _mech_request("Other", day1 + 50)]
+
+        result = self._tick(existing, [], fetched, [("Open", day1 + 100)], day1 + 500)
+
+        assert result.settled_mech_requests_count == 1
+        assert result.pending_mech_requests == [
+            {"title": "Open", "timestamp": day1 + 100}
+        ]
+        assert result.last_mech_timestamp == day1 + 100
+
+    def test_untitled_requests_are_charged(self) -> None:
+        """Requests without a question title are charged on their own day."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        backfilled = self._backfill(
+            [_stat(_DAY0, [], False)],
+            [_mech_request(None, _DAY0 + 100), _mech_request("Q", _DAY0 + 200)],
+            [],
+        )
+        assert backfilled.settled_mech_requests_count == 2
+
+        result = self._tick(
+            backfilled, [], [_mech_request(None, day1 + 100)], [], day1 + 500
+        )
+
+        assert result.settled_mech_requests_count == 3
+        assert result.data_points[-1].timestamp == day1
+        assert result.data_points[-1].daily_mech_requests == 1
+
+    def test_mech_only_tick_without_new_stats_appends_a_point(self) -> None:
+        """No new daily stats still charges new requests, on their own day."""
+        day2 = _DAY0 + 2 * SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+
+        result = self._tick(
+            existing, [], [_mech_request("Untraded", day2 + 100)], [], day2 + 500
+        )
+
+        assert [dp.timestamp for dp in result.data_points] == [_DAY0, day2]
+        assert result.data_points[-1].daily_profit == -_FEE
+        assert result.data_points[-1].cumulative_profit == round(1.0 - _FEE, 3)
+        assert result.last_mech_timestamp == day2 + 100
+
+    def test_new_pending_request_forces_a_write(self) -> None:
+        """An unchanged same-day refresh still persists a newly held-back request."""
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        stats = [{"date": str(_DAY0), "dailyProfit": str(WEI_IN_ETH)}]
+
+        result = self._tick(
+            existing,
+            stats,
+            [_mech_request("Open", _DAY0 + 300)],
+            [("Open", _DAY0 + 300)],
+            _DAY0 + 500,
+        )
+
+        assert result is not existing
+        assert result.pending_mech_requests == [
+            {"title": "Open", "timestamp": _DAY0 + 300}
+        ]
+        assert result.settled_mech_requests_count == 0
+
+    def test_series_tracks_kpi_over_many_ticks(self) -> None:
+        """Over mixed ticks the series' settled count stays ``generated - open``."""
+        series = self._backfill(
+            [_stat(_DAY0, [], False)], [_mech_request("Seed", _DAY0 + 1)], []
+        )
+        generated = 1
+        open_requests: List[Tuple[str, int]] = []
+        for k in range(1, 8):
+            day = _DAY0 + k * SECONDS_PER_DAY
+            fetched = [
+                _mech_request(f"Traded {k}", day + 100),
+                _mech_request(f"Untraded {k}", day + 200),
+                _mech_request(f"Open {k}", day + 300),
+            ]
+            generated += 3
+            # Each tick's open market stays open for one more tick.
+            open_requests = [(f"Open {k}", day + 300)] + open_requests[:1]
+            stats = [_stat(day, [(f"Traded {k}", day + 400)], False)]
+
+            series = self._tick(series, stats, fetched, open_requests, day + 500)
+
+            settled = generated - len(open_requests)
+            assert series.settled_mech_requests_count == settled
+            assert series.data_points[-1].cumulative_profit == round(-settled * _FEE, 3)
+
+    def test_daily_profit_is_stored_unrounded(self) -> None:
+        """Sub-0.001 daily profits add up instead of rounding away per day."""
+        stats = [
+            {"date": str(_DAY0 + i * SECONDS_PER_DAY), "dailyProfit": str(4 * 10**14)}
+            for i in range(10)
+        ]
+
+        result = self._backfill(stats, [_mech_request("Q", _DAY0 + 100)], [])
+
+        assert result.data_points[1].daily_profit == 4 * 10**14 / WEI_IN_ETH
+        assert result.data_points[1].daily_profit_raw == 4 * 10**14 / WEI_IN_ETH
+        assert result.data_points[-1].cumulative_profit == round(10 * 0.0004 - _FEE, 3)
