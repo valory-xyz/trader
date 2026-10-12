@@ -202,29 +202,30 @@ class PolymarketBetPlacementBehaviour(
             if signed_order_json:
                 updated_cache[cache_key] = signed_order_json
 
-        # On success, record conditionId → mech_tool so the redeem behaviour can
-        # later update the e-greedy policy's accuracy store for this position.
+        # On success, record conditionId → (identity, tool) key so the redeem behaviour
+        # can later update the e-greedy policy's accuracy store for this position.
         utilized_tools_json = None
         policy_str = None
         if event == Event.BET_PLACEMENT_DONE:
             condition_id = self.get_active_sampled_bet().condition_id
-            if condition_id is not None:
-                self.utilized_tools[condition_id] = self.synchronized_data.mech_tool
-                utilized_tools_json = json.dumps(self.utilized_tools, sort_keys=True)
-                self.context.logger.info(
-                    f"Recorded mech tool {self.synchronized_data.mech_tool!r} "
-                    f"for condition_id {condition_id!r} in utilized_tools."
-                )
-            else:
+            mech_tool_key = self.synchronized_data.mech_tool_key
+            if condition_id is None:
                 self.context.logger.warning(
                     "No condition_id found on the sampled bet; "
                     "utilized_tools will not be updated for this placement."
                 )
+            elif mech_tool_key is not None:
+                self.utilized_tools[condition_id] = mech_tool_key
+                utilized_tools_json = json.dumps(self.utilized_tools, sort_keys=True)
+                self.context.logger.info(
+                    f"Recorded mech tool {mech_tool_key!r} "
+                    f"for condition_id {condition_id!r} in utilized_tools."
+                )
 
             # Increment pending for the tool that was used
-            if self.synchronized_data.is_policy_set:
+            if self.synchronized_data.is_policy_set and mech_tool_key is not None:
                 self._policy = self.synchronized_data.policy
-                self.policy.tool_used(self.synchronized_data.mech_tool)
+                self.policy.tool_used(mech_tool_key)
                 policy_str = self.policy.serialize()
                 self._store_policy()
 

@@ -287,6 +287,7 @@ class TestBlacklistingAsyncAct:
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
+                sd.mech_tool_key = "tool1"
                 mock_sd.return_value = sd
 
                 behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
@@ -359,6 +360,7 @@ class TestBlacklistingAsyncAct:
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = HandleFailedTxRound.auto_round_id()
                 sd.mech_tool = "tool1"
+                sd.mech_tool_key = "tool1"
                 mock_sd.return_value = sd
 
                 behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
@@ -426,6 +428,7 @@ class TestBlacklistingAsyncAct:
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
+                sd.mech_tool_key = "tool1"
                 mock_sd.return_value = sd
 
                 behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]

@@ -24,6 +24,7 @@ from time import time
 
 import pytest
 
+from packages.valory.skills.chatui_abci.tool_keys import tool_key
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     ConsecutiveFailures,
@@ -32,6 +33,9 @@ from packages.valory.skills.decision_maker_abci.policy import (
     EGreedyPolicyDecoder,
     argmax,
 )
+from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
+
+MECH = "0x" + "ab" * 20
 
 
 @pytest.fixture
@@ -619,3 +623,119 @@ def test_update_accuracy_store_pending_floor_at_zero() -> None:
     policy.update_accuracy_store("tool1", winning=True)
     assert policy.accuracy_store["tool1"].pending >= 0
     assert policy.accuracy_store["tool1"].requests == 6
+
+
+def test_same_tool_on_two_mechs_has_two_records() -> None:
+    """Mechs serving the same tool never share accuracy or quarantine state."""
+    other = "0x" + "cd" * 20
+    key_a, key_b = tool_key(MECH, "tool"), tool_key(other, "tool")
+    policy = EGreedyPolicy(
+        eps=0.0,
+        consecutive_failures_threshold=0,
+        quarantine_duration=100000,
+        accuracy_store={
+            key_a: AccuracyInfo(requests=10, accuracy=0.9),
+            key_b: AccuracyInfo(requests=10, accuracy=0.9),
+        },
+    )
+    policy.update_accuracy_store(key_a, winning=False)
+    policy.tool_responded(key_b, timestamp=int(time()), failed=True)
+
+    assert policy.accuracy_store[key_a].requests == 11
+    assert policy.accuracy_store[key_b].requests == 10
+    assert policy.is_quarantined(key_b) is True
+    assert policy.is_quarantined(key_a) is False
+    assert policy.select_tool() == key_a
+
+
+def test_tool_used_starts_a_record_for_an_unknown_key() -> None:
+    """A delivery by a mech other than the requested one gets its own record."""
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={tool_key(MECH, "tool"): AccuracyInfo(requests=1)},
+    )
+    new_key = tool_key("0x" + "cd" * 20, "tool")
+    policy.tool_used(new_key)
+    assert policy.accuracy_store[new_key] == AccuracyInfo(requests=0, pending=1)
+    assert new_key in policy.weighted_accuracy
+
+
+def test_update_accuracy_store_rejects_an_unknown_key() -> None:
+    """Outcomes are only credited to pairs that have a record."""
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={tool_key(MECH, "tool"): AccuracyInfo(requests=1)},
+    )
+    with pytest.raises(KeyError):
+        policy.update_accuracy_store("tool", winning=True)
+
+
+def test_stats_report_names_the_mech_of_each_key() -> None:
+    """The report renders keys as ``tool @ mech``."""
+    key = tool_key(MECH, "tool")
+    policy = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={key: AccuracyInfo(requests=3, accuracy=0.5)},
+    )
+    report = policy.stats_report()
+    assert f"tool @ {MECH} tool:" in report
+    assert f"Best non-quarantined tool so far is 'tool @ {MECH}'." in report
+
+
+def _percent_era_weight(
+    accuracy_percent: float, requests: int, n_requests: int
+) -> float:
+    """The weight a percent-scale record got before accuracy became a fraction."""
+    return scale_value(
+        accuracy_percent + (requests / n_requests) * 0.1, (-0.5, 80.5), (0, 1)
+    )
+
+
+def test_fraction_weights_equal_the_percent_era_weights() -> None:
+    """Converting a seeded record to a fraction leaves its weight unchanged."""
+    policy = EGreedyPolicy(
+        eps=0.0,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={
+            "a": AccuracyInfo(requests=300, accuracy=0.66),
+            "b": AccuracyInfo(requests=700, accuracy=0.57),
+        },
+    )
+    assert policy.weighted_accuracy["a"] == pytest.approx(
+        _percent_era_weight(66.0, 300, 1000)
+    )
+    assert policy.weighted_accuracy["b"] == pytest.approx(
+        _percent_era_weight(57.0, 700, 1000)
+    )
+
+
+@pytest.mark.parametrize(
+    "high_volume_accuracy, expected_best",
+    [
+        # one accuracy point is not outweighed by a hundredfold traffic gap
+        (0.65, "low_volume"),
+        # at equal accuracy the busier tool wins
+        (0.66, "high_volume"),
+    ],
+)
+def test_accuracy_dominates_volume_in_the_ranking(
+    high_volume_accuracy: float, expected_best: str
+) -> None:
+    """Volume only separates tools of near-equal accuracy."""
+    policy = EGreedyPolicy(
+        eps=0.0,
+        consecutive_failures_threshold=2,
+        quarantine_duration=10,
+        accuracy_store={
+            "low_volume": AccuracyInfo(requests=100, accuracy=0.66),
+            "high_volume": AccuracyInfo(requests=10000, accuracy=high_volume_accuracy),
+        },
+    )
+    assert policy.best_tool == expected_best

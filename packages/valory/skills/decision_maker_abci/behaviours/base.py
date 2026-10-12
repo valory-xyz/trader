@@ -268,6 +268,18 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         )
 
     @property
+    def creditable_tool_key(self) -> Optional[str]:
+        """Get `SynchronizedData.mech_tool_key`, warning when the deliverer is not eligible."""
+        key = self.synchronized_data.mech_tool_key
+        if key is None:
+            self.context.logger.warning(
+                f"Not recording the outcome: it was delivered by "
+                f"{self.synchronized_data.delivering_mech}, which was not eligible "
+                f"to serve {self.synchronized_data.mech_tool!r}."
+            )
+        return key
+
+    @property
     def policy(self) -> EGreedyPolicy:
         """Get the policy."""
         if self._policy is None:

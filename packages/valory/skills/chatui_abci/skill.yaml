@@ -10,19 +10,21 @@ fingerprint:
   behaviours.py: bafybeidu4jsysd6mh25cnkxmwunrsis77nqjcz2x4o72gor77fun7h4m4a
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeiams6tsxpfdm7hz6yktiea2jwgq5dbsb5seshjsmm24nxw3g4i42a
+  handlers.py: bafybeihtl52zybn2zsabgc4pmluzvpzd7q53w34u7larrnojtzaerie44u
   models.py: bafybeicrndfghpx6ssup5qfj3jasfjff7lghbgt3h2r55luf44xoylp7uu
   payloads.py: bafybeib7q5bppbxctnfonjmats2guu76r4dfc5hghnl3dfdp7vzmapk5ji
   prompts.py: bafybeig6wi4phgm237ohdldpxb2axstfv5j7hyr7zfurjkiaviddovxirq
-  rounds.py: bafybeihdszzdalhobudhd6kvyimlspgceaiico5eepqr75ogmpidhicoli
+  rounds.py: bafybeicebmih2fsmmzbwqov5jkbc7uy42bhd5yjd37crqh5ycolbaisdy4
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeidqhd3xqqhoych2x3zzz4scs732cdudxx5mefn4dxjml4qagkxsyy
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeicvkqa4bzotg3jahjkqnc6f55ggudz6t2pkvxcotzk277saibmvcu
+  tests/test_handlers.py: bafybeibwccjqwnbvovrfyqqy7tyrcxki7wxigx6i7yolxlpxb6mjqx6k5m
   tests/test_models.py: bafybeifzciag2t3fbkbgc2h6yppllpcyegtchgr2cqyi7o7qgabb44f6zm
   tests/test_payloads.py: bafybeiggrgq7zujlhjpqiefqkwqjiyngs7gcguwiet4n7fkidgjpa5rjni
   tests/test_prompts.py: bafybeidcc22taysehvglfv5be46lti4iqvkhzor5ysafemltqntskmrlca
-  tests/test_rounds.py: bafybeicqeykv7okuq3wytlb3h7evqc7smsms7e5yqvidbreirriqopznja
+  tests/test_rounds.py: bafybeiaroaogg7w3owb6crx3p4b7j4trxclcat5se46akqjjmlcu7juu7a
+  tests/test_tool_keys.py: bafybeidjqveioyj6mmkx5rx2h3tbk3itodcflsa4lc722gg3zy7wigyl7i
+  tool_keys.py: bafybeiaidr6yy435bomimdnqsdbbd4hfi5dz7tnpnqifgsdp4nadpxwqiq
 fingerprint_ignore_patterns: []
 connections:
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku

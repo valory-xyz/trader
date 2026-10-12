@@ -46,6 +46,15 @@ class TestSynchronizedData:
         )
         assert data.available_mech_tools == set(tools)
 
+    def test_available_mech_tools_keeps_the_policy_keys(self) -> None:
+        """The property returns the decision maker's keys untouched."""
+        mech_a = "0x" + "a" * 40
+        keys = [f"{mech_a}::prediction-online", "legacy-tool"]
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"available_mech_tools": [json.dumps(keys)]})
+        )
+        assert data.available_mech_tools == set(keys)
+
     def test_available_mech_tools_empty(self) -> None:
         """Test available_mech_tools returns an empty set when no tools."""
         data = SynchronizedData(

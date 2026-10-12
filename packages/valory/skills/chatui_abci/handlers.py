@@ -87,6 +87,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     build_chatui_llm_response_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
+from packages.valory.skills.chatui_abci.tool_keys import tool_names
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -386,7 +387,7 @@ class HttpHandler(BaseHttpHandler):
             # ``frozenset`` renders as "frozenset({...})". The copy keeps the
             # rendering consistent with the ``available_mech_tools`` fallback.
             return set(prediction_tools)
-        return self.synchronized_data.available_mech_tools
+        return tool_names(self.synchronized_data.available_mech_tools)
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

@@ -119,27 +119,32 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
             f"Chose block number {self.earliest_block_number!r} as closest to timestamp {timestamp!r}"
         )
 
-    def _try_update_policy(self, tool: str, winning: bool) -> None:
-        """Try to update the policy."""
+    def _try_update_policy(self, tool: str, winning: bool) -> bool:
+        """Try to update the policy for the given key.
+
+        :param tool: the key the outcome is credited to.
+        :param winning: whether the bet won.
+        :return: whether the policy has a record for the key and was updated.
+        """
         try:
             self.policy.update_accuracy_store(tool, winning)
         except KeyError:
             self.context.logger.warning(
-                f"The stored utilized tools seem to be outdated as no {tool=} was found. "
-                "The policy will not be updated. "
-                "No action is required as this will be automatically resolved."
+                f"No accuracy record for {tool=}; the policy is not updated and "
+                "the bet's utilized-tools entry is kept."
             )
+            return False
+        return True
 
     def _update_policy(self, update: Trade) -> None:
         """Update the policy."""
-        # the mapping might not contain a tool for a bet placement because it might have happened on a previous run
+        # the mapping might not contain a key for a bet placement because it might have happened on a previous run
         tool = self.utilized_tools.get(update.transactionHash, None)
         if tool is None:
             return
 
-        # we try to avoid an ever-increasing dictionary of utilized tools by removing a tool when not needed anymore
-        del self.utilized_tools[update.transactionHash]
-        self._try_update_policy(tool, update.is_winning)
+        if self._try_update_policy(tool, update.is_winning):
+            del self.utilized_tools[update.transactionHash]
 
     def update_redeem_info(self, chunk: list) -> Generator:
         """Update the redeeming information using the given chunk."""
@@ -883,6 +888,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if self.synchronized_data.is_policy_set:
             self._policy = self.synchronized_data.policy
             self.mech_tools = self.synchronized_data.available_mech_tools
+            self._migrate_legacy_keys()
             # The base setup is skipped here, so publish the suitable set for the
             # ChatUI explicitly. Covers db-replay restarts where `is_policy_set`
             # is already true at boot but `available_prediction_tools` (in-memory)
@@ -916,9 +922,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _benchmarking_act(self) -> RedeemPayload:
         """The act of the agent while running in benchmarking mode."""
-        tool = self.synchronized_data.mech_tool
-        winning = self.mock_data.is_winning
-        self._try_update_policy(tool, winning)
+        tool = self.synchronized_data.mech_tool_key
+        if tool is not None:
+            self._try_update_policy(tool, self.mock_data.is_winning)
         return self._build_payload()
 
     def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:
