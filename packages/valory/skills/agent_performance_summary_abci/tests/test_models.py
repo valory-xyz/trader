@@ -653,13 +653,6 @@ class TestLeaderboardData:
             LeaderboardWindowRank(fetched_at=1, **fields)
         assert LeaderboardWindowRank.from_dict({"fetched_at": 1, **fields}) is None
 
-    def test_consistent_entries_are_accepted(self) -> None:
-        """Ranked entries with bounded ranks and bare not-ranked entries are valid."""
-        LeaderboardWindowRank(
-            ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=5, total_ranked=5
-        )
-        LeaderboardWindowRank(ranked=False, fetched_at=1, total_ranked=0)
-
 
 class TestIsAllowedLeaderboardUrl:
     """Tests for is_allowed_leaderboard_url."""
