@@ -68,8 +68,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
 from packages.valory.skills.agent_performance_summary_abci.models import (
     LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_WINDOWS,
+    LeaderboardWindow,
     ProfitDataPoint,
     SharedState,
+    get_leaderboard_agent_type,
     is_allowed_leaderboard_url,
 )
 
@@ -97,13 +99,18 @@ VALID_PREDICTION_STATUSES = [
     PREDICTION_STATUS_INVALID,
 ]
 SECONDS_PER_DAY = 86400
-DEFAULT_LEADERBOARD_WINDOW = "7d"
+DEFAULT_LEADERBOARD_WINDOW: LeaderboardWindow = "7d"
 LEADERBOARD_MAX_RANK_AGE_SECONDS = 24 * 3600
 # Bare page for "See full leaderboard" when no ready-made deep link is held
 LEADERBOARD_PAGE_URL = "https://predict.olas.network/leaderboard"
-LEADERBOARD_STATUS_RANKED = "ranked"
-LEADERBOARD_STATUS_NOT_RANKED = "not_ranked"
-LEADERBOARD_STATUS_UNAVAILABLE = "unavailable"
+
+
+class LeaderboardStatus(Enum):
+    """Status of the agent's rank in a leaderboard window."""
+
+    RANKED = "ranked"
+    NOT_RANKED = "not_ranked"
+    UNAVAILABLE = "unavailable"
 
 
 class HttpMethod(Enum):
@@ -713,7 +720,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_dialogue: the HTTP dialogue
         """
         try:
-            query = http_msg.url.split("?", 1)[1] if "?" in http_msg.url else ""
+            query = urlparse(http_msg.url).query
             windows = parse_qs(query, keep_blank_values=True).get("window", [])
             if len(windows) > 1:
                 self._send_bad_request_response(
@@ -735,13 +742,15 @@ class HttpHandler(BaseHttpHandler):
                 return
 
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            agent_type = (
-                "polystrat"
-                if self.context.params.is_running_on_polymarket
-                else "omenstrat"
+            agent_type = get_leaderboard_agent_type(
+                self.context.params.is_running_on_polymarket
             )
             leaderboard = self.shared_state.read_leaderboard_from_disk()
-            entry = leaderboard.windows.get(window) if leaderboard else None
+            entry = (
+                leaderboard.windows.get(cast(LeaderboardWindow, window))
+                if leaderboard
+                else None
+            )
             now = int(datetime.now(timezone.utc).timestamp())
             # By snapshot time, so a re-fetched stale snapshot is not fresh
             is_fresh = (
@@ -754,7 +763,7 @@ class HttpHandler(BaseHttpHandler):
                 "agent_id": safe_address,
                 "agent_type": agent_type,
                 "window": window,
-                "status": LEADERBOARD_STATUS_UNAVAILABLE,
+                "status": LeaderboardStatus.UNAVAILABLE.value,
                 "rank_by_roi": None,
                 "rank_by_pnl": None,
                 "total_ranked": None,
@@ -767,10 +776,10 @@ class HttpHandler(BaseHttpHandler):
                 response.update(
                     {
                         "status": (
-                            LEADERBOARD_STATUS_RANKED
+                            LeaderboardStatus.RANKED
                             if entry.ranked
-                            else LEADERBOARD_STATUS_NOT_RANKED
-                        ),
+                            else LeaderboardStatus.NOT_RANKED
+                        ).value,
                         "rank_by_roi": entry.rank_by_roi,
                         "rank_by_pnl": entry.rank_by_pnl,
                         "total_ranked": entry.total_ranked,

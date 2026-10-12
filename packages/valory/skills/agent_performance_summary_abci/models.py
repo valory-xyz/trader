@@ -27,7 +27,18 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import (
+    Any,
+    Dict,
+    FrozenSet,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    cast,
+    get_args,
+)
 from urllib.parse import urlsplit
 
 from packages.valory.protocols.http import HttpMessage
@@ -45,12 +56,17 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
-# Windows as olas-predict's leaderboard API spells them
-LEADERBOARD_WINDOWS = ("7d", "30d", "90d", "1y")
-LEADERBOARD_NOT_RANKED_REASONS = frozenset(
-    ("not_ranked_yet", "not_enough_trades_in_window", "not_eligible")
+# Spelled as olas-predict's leaderboard API expects them
+LeaderboardWindow = Literal["7d", "30d", "90d", "1y"]
+LeaderboardAgentType = Literal["omenstrat", "polystrat"]
+NotRankedReason = Literal[
+    "not_ranked_yet", "not_enough_trades_in_window", "not_eligible"
+]
+LEADERBOARD_WINDOWS: Tuple[LeaderboardWindow, ...] = get_args(LeaderboardWindow)
+LEADERBOARD_NOT_RANKED_REASONS: FrozenSet[NotRankedReason] = frozenset(
+    get_args(NotRankedReason)
 )
-LEADERBOARD_DEFAULT_NOT_RANKED_REASON = "not_ranked_yet"
+LEADERBOARD_DEFAULT_NOT_RANKED_REASON: NotRankedReason = "not_ranked_yet"
 LEADERBOARD_CLOCK_SKEW_SECONDS = 300
 # Path of olas-predict's leaderboard page; deep links must stay under it
 LEADERBOARD_PAGE_PATH = "/leaderboard"
@@ -297,7 +313,7 @@ class LeaderboardWindowRank:
 
     ranked: bool
     fetched_at: int
-    not_ranked_reason: Optional[str] = None
+    not_ranked_reason: Optional[NotRankedReason] = None
     rank_by_roi: Optional[int] = None
     rank_by_pnl: Optional[int] = None
     total_ranked: Optional[int] = None
@@ -346,19 +362,16 @@ class LeaderboardWindowRank:
             value = raw.get(key)
             return value if is_plain_int(value) else None
 
-        def _str(key: str) -> Optional[str]:
-            value = raw.get(key)
-            return value if isinstance(value, str) else None
-
+        reason, url = raw.get("not_ranked_reason"), raw.get("leaderboard_url")
         try:
             return cls(
                 ranked=ranked,
                 fetched_at=cast(int, fetched_at),
-                not_ranked_reason=_str("not_ranked_reason"),
+                not_ranked_reason=reason if is_not_ranked_reason(reason) else None,
                 rank_by_roi=_int("rank_by_roi"),
                 rank_by_pnl=_int("rank_by_pnl"),
                 total_ranked=_int("total_ranked"),
-                leaderboard_url=_str("leaderboard_url"),
+                leaderboard_url=url if isinstance(url, str) else None,
                 updated_at=_int("updated_at"),
             )
         except ValueError:
@@ -369,14 +382,16 @@ class LeaderboardWindowRank:
 class LeaderboardData:
     """This agent's leaderboard rank per window, fetched from olas-predict."""
 
-    windows: Dict[str, LeaderboardWindowRank] = field(default_factory=dict)
+    windows: Dict[LeaderboardWindow, LeaderboardWindowRank] = field(
+        default_factory=dict
+    )
     # Throttle watermark: when a refresh was last attempted, successful or not
     last_attempt_at: Optional[int] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances, dropping anything unusable."""
         raw_windows: Any = self.windows
-        windows: Dict[str, LeaderboardWindowRank] = {}
+        windows: Dict[LeaderboardWindow, LeaderboardWindowRank] = {}
         if isinstance(raw_windows, dict):
             for window, raw_entry in raw_windows.items():
                 if window not in LEADERBOARD_WINDOWS:
@@ -387,7 +402,7 @@ class LeaderboardData:
                     else LeaderboardWindowRank.from_dict(raw_entry)
                 )
                 if entry is not None:
-                    windows[window] = entry
+                    windows[cast(LeaderboardWindow, window)] = entry
         self.windows = windows
         if not is_plain_int(self.last_attempt_at):
             self.last_attempt_at = None
@@ -402,9 +417,29 @@ class LeaderboardData:
         if not isinstance(raw, dict):
             return None
         return cls(
-            windows=cast(Dict[str, LeaderboardWindowRank], raw.get("windows")),
+            windows=cast(
+                Dict[LeaderboardWindow, LeaderboardWindowRank], raw.get("windows")
+            ),
             last_attempt_at=raw.get("last_attempt_at"),
         )
+
+
+def is_not_ranked_reason(value: Any) -> bool:
+    """Return whether ``value`` is a ``notRankedReason`` olas-predict documents.
+
+    :param value: the candidate reason.
+    :return: whether it is known.
+    """
+    return isinstance(value, str) and value in LEADERBOARD_NOT_RANKED_REASONS
+
+
+def get_leaderboard_agent_type(is_running_on_polymarket: bool) -> LeaderboardAgentType:
+    """Return the agent type olas-predict ranks this agent under.
+
+    :param is_running_on_polymarket: whether the agent trades on Polymarket.
+    :return: the agent type.
+    """
+    return "polystrat" if is_running_on_polymarket else "omenstrat"
 
 
 def is_allowed_leaderboard_url(url: Any, api_url: str) -> bool:

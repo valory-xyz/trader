@@ -8233,7 +8233,7 @@ class TestUpdateLeaderboard:
 
     def test_unknown_or_missing_reason_becomes_not_ranked_yet(self) -> None:
         """A reason outside the allowlist is stored as the generic one."""
-        for reason in ("<script>", "new_reason", None, 3):
+        for reason in ("<script>", "new_reason", None, 3, ["not_eligible"]):
 
             def respond(url: str, r: Any = reason) -> MagicMock:
                 body = _with_agent(
@@ -8447,9 +8447,7 @@ class TestUpdateLeaderboard:
         written = state.update_leaderboard.call_args[0][0]
         assert written == LeaderboardData(windows=previous, last_attempt_at=NOW)
 
-    def test_saved_watermark_throttles_the_next_behaviour(
-        self, tmp_path: Path
-    ) -> None:
+    def test_saved_watermark_throttles_the_next_behaviour(self, tmp_path: Path) -> None:
         """A refresh survives the summary save and blocks a new behaviour for an hour.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.

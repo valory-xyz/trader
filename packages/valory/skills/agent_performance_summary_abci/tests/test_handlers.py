@@ -2492,9 +2492,7 @@ class TestHandleGetLeaderboard:
             leaderboard_url="https://predict.olas.network/leaderboard?pin=0xabc123",
         )
 
-    def test_serves_ranks_despite_a_corrupt_sibling_field(
-        self, tmp_path: Path
-    ) -> None:
+    def test_serves_ranks_despite_a_corrupt_sibling_field(self, tmp_path: Path) -> None:
         """Fresh ranks on disk are served even if another summary field is invalid.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.

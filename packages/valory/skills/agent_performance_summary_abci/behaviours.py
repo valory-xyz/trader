@@ -77,10 +77,12 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_DEFAULT_NOT_RANKED_REASON,
-    LEADERBOARD_NOT_RANKED_REASONS,
     LEADERBOARD_WINDOWS,
+    LeaderboardAgentType,
     LeaderboardData,
+    LeaderboardWindow,
     LeaderboardWindowRank,
+    NotRankedReason,
     OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
@@ -89,7 +91,9 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     ProfitDataPoint,
     ProfitOverTimeData,
     SharedState,
+    get_leaderboard_agent_type,
     is_allowed_leaderboard_url,
+    is_not_ranked_reason,
 )
 from packages.valory.skills.agent_performance_summary_abci.payloads import (
     FetchPerformanceDataPayload,
@@ -2610,7 +2614,11 @@ class FetchPerformanceSummaryBehaviour(
         return f"{base}{separator}{query}"
 
     def _fetch_leaderboard_window(  # pylint: disable=too-many-return-statements
-        self, agent_type: str, window: str, safe_address: str, now: int
+        self,
+        agent_type: LeaderboardAgentType,
+        window: LeaderboardWindow,
+        safe_address: str,
+        now: int,
     ) -> Generator[None, None, Optional[LeaderboardWindowRank]]:
         """Fetch this agent's rank in one window from olas-predict.
 
@@ -2670,11 +2678,11 @@ class FetchPerformanceSummaryBehaviour(
             return None
 
         rank_by_roi, rank_by_pnl = agent.get("rankByRoi"), agent.get("rankByPnl")
-        reason: Optional[str] = None
+        reason: Optional[NotRankedReason] = None
         if not ranked:
             rank_by_roi = rank_by_pnl = None
             reason = agent.get("notRankedReason")
-            if reason not in LEADERBOARD_NOT_RANKED_REASONS:
+            if not is_not_ranked_reason(reason):
                 self.context.logger.warning(
                     f"Leaderboard {window} gave an unknown notRankedReason "
                     f"{reason!r}; storing {LEADERBOARD_DEFAULT_NOT_RANKED_REASON}"
@@ -2752,8 +2760,8 @@ class FetchPerformanceSummaryBehaviour(
             )
 
             safe_address = self.synchronized_data.safe_contract_address.lower()
-            agent_type = (
-                "polystrat" if self.params.is_running_on_polymarket else "omenstrat"
+            agent_type = get_leaderboard_agent_type(
+                self.params.is_running_on_polymarket
             )
             for window in LEADERBOARD_WINDOWS:
                 try:
@@ -2771,7 +2779,8 @@ class FetchPerformanceSummaryBehaviour(
                 except Exception as e:  # pylint: disable=broad-except
                     self.context.logger.warning(
                         f"Leaderboard {window} fetch failed: {e}; "
-                        "keeping the previous rank"
+                        "keeping the previous rank",
+                        exc_info=True,
                     )
                     continue
                 if entry is not None:
@@ -2780,7 +2789,9 @@ class FetchPerformanceSummaryBehaviour(
                 LeaderboardData(windows=windows, last_attempt_at=now)
             )
         except Exception as e:  # pylint: disable=broad-except
-            self.context.logger.warning(f"Leaderboard refresh failed: {e}")
+            self.context.logger.warning(
+                f"Leaderboard refresh failed: {e}", exc_info=True
+            )
 
     def async_act(self) -> Generator:
         """Do the action."""
