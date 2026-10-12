@@ -507,13 +507,14 @@ class TestLeaderboardData:
                     "fetched_at": 5,
                     "rank_by_roi": 3,
                     "rank_by_pnl": 4,
+                    "total_ranked": 10,
                 }
             },
             "last_attempt_at": 6,
         }
         data = LeaderboardData(**raw)
         assert data.windows["7d"] == LeaderboardWindowRank(
-            ranked=True, fetched_at=5, rank_by_roi=3, rank_by_pnl=4
+            ranked=True, fetched_at=5, rank_by_roi=3, rank_by_pnl=4, total_ranked=10
         )
         assert data.last_attempt_at == 6
 
@@ -604,13 +605,13 @@ class TestLeaderboardData:
                         "fetched_at": 9,
                         "rank_by_roi": 3,
                         "rank_by_pnl": 4,
-                        "total_ranked": "lots",
+                        "total_ranked": 10,
                         "leaderboard_url": 5,
                         "not_ranked_reason": ["x"],
                         "updated_at": "today",
                         "from_the_future": True,
                     },
-                    "30d": {"ranked": False, "fetched_at": 9},
+                    "30d": {"ranked": False, "fetched_at": 9, "total_ranked": "lots"},
                 },
                 "last_attempt_at": 9,
                 "also_unknown": 1,
@@ -619,12 +620,45 @@ class TestLeaderboardData:
         assert data == LeaderboardData(
             windows={
                 "7d": LeaderboardWindowRank(
-                    ranked=True, fetched_at=9, rank_by_roi=3, rank_by_pnl=4
+                    ranked=True,
+                    fetched_at=9,
+                    rank_by_roi=3,
+                    rank_by_pnl=4,
+                    total_ranked=10,
                 ),
                 "30d": LeaderboardWindowRank(ranked=False, fetched_at=9),
             },
             last_attempt_at=9,
         )
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"ranked": True, "rank_by_roi": 1, "rank_by_pnl": 1},
+            {"ranked": True, "rank_by_roi": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": 0, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": 6, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": True, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": "1", "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": False, "rank_by_roi": 1, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": False, "total_ranked": -1},
+        ],
+    )
+    def test_inconsistent_entry_is_rejected(self, fields: Dict[str, Any]) -> None:
+        """Ranks must match ``ranked`` and lie within ``1..total_ranked``.
+
+        :param fields: the entry's fields besides ``fetched_at``.
+        """
+        with pytest.raises(ValueError):
+            LeaderboardWindowRank(fetched_at=1, **fields)
+        assert LeaderboardWindowRank.from_dict({"fetched_at": 1, **fields}) is None
+
+    def test_consistent_entries_are_accepted(self) -> None:
+        """Ranked entries with bounded ranks and bare not-ranked entries are valid."""
+        LeaderboardWindowRank(
+            ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=5, total_ranked=5
+        )
+        LeaderboardWindowRank(ranked=False, fetched_at=1, total_ranked=0)
 
 
 class TestIsAllowedLeaderboardUrl:
@@ -1396,7 +1430,9 @@ class TestSharedState:
         with open(file_path, "w") as f:
             json.dump(asdict(initial), f)
 
-        window = LeaderboardWindowRank(ranked=True, fetched_at=9, rank_by_roi=2)
+        window = LeaderboardWindowRank(
+            ranked=True, fetched_at=9, rank_by_roi=2, rank_by_pnl=3, total_ranked=5
+        )
         state.update_leaderboard(
             LeaderboardData(windows={"7d": window}, last_attempt_at=9)
         )

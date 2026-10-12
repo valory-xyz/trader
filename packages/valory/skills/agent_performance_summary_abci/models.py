@@ -305,6 +305,22 @@ class LeaderboardWindowRank:
     # olas-predict's ``updatedAt``
     updated_at: Optional[int] = None
 
+    def __post_init__(self) -> None:
+        """Reject ranks that contradict ``ranked`` or lie outside ``total_ranked``."""
+        total = self.total_ranked
+        ranks = (self.rank_by_roi, self.rank_by_pnl)
+        if total is not None and not (is_plain_int(total) and total >= 0):
+            valid = False
+        elif self.ranked:
+            valid = total is not None and all(
+                rank is not None and is_plain_int(rank) and 1 <= rank <= total
+                for rank in ranks
+            )
+        else:
+            valid = ranks == (None, None)
+        if not valid:
+            raise ValueError(f"invalid LeaderboardWindowRank: {self!r}")
+
     @property
     def as_of(self) -> int:
         """Return when the answer's data was computed, or else fetched.
@@ -334,19 +350,19 @@ class LeaderboardWindowRank:
             value = raw.get(key)
             return value if isinstance(value, str) else None
 
-        rank_by_roi, rank_by_pnl = _int("rank_by_roi"), _int("rank_by_pnl")
-        if ranked and (rank_by_roi is None or rank_by_pnl is None):
+        try:
+            return cls(
+                ranked=ranked,
+                fetched_at=cast(int, fetched_at),
+                not_ranked_reason=_str("not_ranked_reason"),
+                rank_by_roi=_int("rank_by_roi"),
+                rank_by_pnl=_int("rank_by_pnl"),
+                total_ranked=_int("total_ranked"),
+                leaderboard_url=_str("leaderboard_url"),
+                updated_at=_int("updated_at"),
+            )
+        except ValueError:
             return None
-        return cls(
-            ranked=ranked,
-            fetched_at=cast(int, fetched_at),
-            not_ranked_reason=_str("not_ranked_reason"),
-            rank_by_roi=rank_by_roi,
-            rank_by_pnl=rank_by_pnl,
-            total_ranked=_int("total_ranked"),
-            leaderboard_url=_str("leaderboard_url"),
-            updated_at=_int("updated_at"),
-        )
 
 
 @dataclass

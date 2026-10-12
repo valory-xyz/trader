@@ -8269,7 +8269,7 @@ class TestUpdateLeaderboard:
         """Errors, bad bodies and other agents' entries keep each window's last answer."""
         previous = {
             window: LeaderboardWindowRank(
-                ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=1
+                ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=1, total_ranked=1
             )
             for window in LEADERBOARD_WINDOWS
         }

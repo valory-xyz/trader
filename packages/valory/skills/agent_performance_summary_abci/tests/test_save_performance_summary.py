@@ -404,7 +404,7 @@ class TestSaveAgentPerformanceSummary:
         """The leaderboard section, written on its own throttle, survives a save."""
         existing = _good_existing_summary()
         existing.leaderboard = LeaderboardData(
-            windows={"7d": LeaderboardWindowRank(ranked=True, fetched_at=1)},
+            windows={"7d": LeaderboardWindowRank(ranked=False, fetched_at=1)},
             last_attempt_at=1,
         )
         behaviour = _make_behaviour(existing)

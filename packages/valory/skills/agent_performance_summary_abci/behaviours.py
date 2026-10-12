@@ -167,15 +167,6 @@ MORE_TRADES_NEEDED_TEXT = "More trades needed"
 _M5_RESIDUAL_TOLERANCE = 5
 
 
-def _optional_int(value: Any) -> Optional[int]:
-    """Return ``value`` if it is an integer (not a bool), else ``None``.
-
-    :param value: a value from a decoded JSON response
-    :return: the integer, or ``None``
-    """
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
-
-
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
     """Return an ISO 8601 timestamp (UTC if naive) as UNIX seconds, or ``None``.
 
@@ -2678,24 +2669,9 @@ class FetchPerformanceSummaryBehaviour(
             _reject("has no ranked flag")
             return None
 
-        total_ranked = _optional_int(data.get("totalRanked"))
-        if (data.get("totalRanked") is not None and total_ranked is None) or (
-            total_ranked is not None and total_ranked < 0
-        ):
-            _reject("has an invalid totalRanked")
-            return None
-
-        rank_by_roi = _optional_int(agent.get("rankByRoi"))
-        rank_by_pnl = _optional_int(agent.get("rankByPnl"))
+        rank_by_roi, rank_by_pnl = agent.get("rankByRoi"), agent.get("rankByPnl")
         reason: Optional[str] = None
-        if ranked:
-            if total_ranked is None or not all(
-                rank is not None and 1 <= rank <= total_ranked
-                for rank in (rank_by_roi, rank_by_pnl)
-            ):
-                _reject("marks the agent ranked without valid ranks")
-                return None
-        else:
+        if not ranked:
             rank_by_roi = rank_by_pnl = None
             reason = agent.get("notRankedReason")
             if reason not in LEADERBOARD_NOT_RANKED_REASONS:
@@ -2724,16 +2700,20 @@ class FetchPerformanceSummaryBehaviour(
             )
             updated_at = None
 
-        return LeaderboardWindowRank(
-            ranked=ranked,
-            fetched_at=now,
-            not_ranked_reason=reason,
-            rank_by_roi=rank_by_roi,
-            rank_by_pnl=rank_by_pnl,
-            total_ranked=total_ranked,
-            leaderboard_url=url_value,
-            updated_at=updated_at,
-        )
+        try:
+            return LeaderboardWindowRank(
+                ranked=ranked,
+                fetched_at=now,
+                not_ranked_reason=reason,
+                rank_by_roi=rank_by_roi,
+                rank_by_pnl=rank_by_pnl,
+                total_ranked=data.get("totalRanked"),
+                leaderboard_url=url_value,
+                updated_at=updated_at,
+            )
+        except ValueError:
+            _reject("has invalid ranks or totalRanked")
+            return None
 
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:

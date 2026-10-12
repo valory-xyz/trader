@@ -2529,7 +2529,11 @@ class TestHandleGetLeaderboard:
         """Every leaderboard window is served from its own entry."""
         windows = {
             window: LeaderboardWindowRank(
-                ranked=True, fetched_at=self._now(), rank_by_roi=i, rank_by_pnl=i
+                ranked=True,
+                fetched_at=self._now(),
+                rank_by_roi=i,
+                rank_by_pnl=i,
+                total_ranked=len(LEADERBOARD_WINDOWS),
             )
             for i, window in enumerate(LEADERBOARD_WINDOWS, start=1)
         }
