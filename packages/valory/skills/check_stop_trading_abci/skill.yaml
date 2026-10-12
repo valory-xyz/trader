@@ -32,7 +32,7 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
 - valory/chatui_abci:0.1.0:bafybeiedk3bfyik5go7htcewg4lawkfl5qxtholi2riovgktctfa3xw7mi
-- valory/mech_interact_abci:0.1.0:bafybeicw6oq2jdlavq7obryamumzibict5enkssd4tigmtqswouryluaiy
+- valory/mech_interact_abci:0.1.0:bafybeidk2udpc55d2kb63kvuhw3sbagdr4i3ahoxgibmfrbx5dx2va37ky
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 behaviours:
   main:
