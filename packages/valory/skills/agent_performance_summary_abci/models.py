@@ -20,13 +20,12 @@
 
 """This module contains the models for the skill."""
 
-import atexit
 import builtins
 import json
 import os
 import tempfile
 import threading
-from concurrent.futures import Future, ThreadPoolExecutor
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +77,7 @@ LEADERBOARD_NOT_RANKED_REASONS: FrozenSet[NotRankedReason] = frozenset(
 )
 LEADERBOARD_DEFAULT_NOT_RANKED_REASON: NotRankedReason = "not_ranked_yet"
 LEADERBOARD_CLOCK_SKEW_SECONDS = 300
+LEADERBOARD_REFRESH_INTERVAL = 3600
 # Path of olas-predict's leaderboard page; deep links must stay under it
 LEADERBOARD_PAGE_PATH = "/leaderboard"
 
@@ -733,9 +733,9 @@ class SharedState(BaseSharedState):
     # The leaderboard section, loaded from disk once and kept in sync on writes
     _leaderboard_cache: Optional[LeaderboardData] = None
     _leaderboard_cache_loaded: bool = False
-    # Runs the leaderboard refresh off the FSM; created on first use
-    _leaderboard_executor: Optional[ThreadPoolExecutor] = None
-    _leaderboard_future: Optional[Future] = None
+    # The latest leaderboard refresh, run off the FSM
+    _leaderboard_thread: Optional[threading.Thread] = None
+    _leaderboard_thread_started_at: float = 0.0
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -1037,6 +1037,10 @@ class SharedState(BaseSharedState):
         """
         with SUMMARY_FILE_LOCK:
             current = self.get_leaderboard() or LeaderboardData()
+            previous = current.windows.get(window)
+            # A hung refresh that answers late must not replace a newer rank
+            if previous is not None and previous.fetched_at > entry.fetched_at:
+                return
             windows = dict(current.windows)
             windows[window] = entry
             self.update_leaderboard(
@@ -1046,39 +1050,28 @@ class SharedState(BaseSharedState):
             )
 
     def is_leaderboard_refresh_running(self) -> bool:
-        """Return whether a submitted leaderboard refresh has not finished yet.
+        """Return whether a refresh started within the last interval is still running.
 
-        :return: whether a refresh is running or queued.
+        :return: whether a refresh is running.
         """
-        future = self._leaderboard_future
-        return future is not None and not future.done()
+        thread = self._leaderboard_thread
+        return (
+            thread is not None
+            and thread.is_alive()
+            # Still running after a whole interval means hung: let the next start
+            and time.monotonic() - self._leaderboard_thread_started_at
+            < LEADERBOARD_REFRESH_INTERVAL
+        )
 
-    def submit_leaderboard_refresh(self, job: Callable[[], None]) -> bool:
-        """Run ``job`` on the leaderboard worker thread unless one is running.
+    def start_leaderboard_refresh(self, job: Callable[[], None]) -> None:
+        """Run ``job`` on a daemon thread, so a hung refresh never blocks shutdown.
 
         :param job: the refresh; it must not touch the FSM state.
-        :return: whether the job was submitted.
         """
-        if self.is_leaderboard_refresh_running():
-            return False
-        if self._leaderboard_executor is None:
-            self._leaderboard_executor = ThreadPoolExecutor(
-                max_workers=1, thread_name_prefix="leaderboard"
-            )
-            atexit.register(self.shutdown_leaderboard_executor)
-        self._leaderboard_future = self._leaderboard_executor.submit(job)
-        return True
-
-    def shutdown_leaderboard_executor(self) -> None:
-        """Shut the leaderboard worker down without waiting for a running job."""
-        executor, self._leaderboard_executor = self._leaderboard_executor, None
-        if executor is not None:
-            executor.shutdown(wait=False, cancel_futures=True)
-
-    def teardown(self) -> None:
-        """Tear down the state."""
-        super().teardown()
-        self.shutdown_leaderboard_executor()
+        thread = threading.Thread(target=job, name="leaderboard", daemon=True)
+        self._leaderboard_thread = thread
+        self._leaderboard_thread_started_at = time.monotonic()
+        thread.start()
 
 
 class Subgraph(ApiSpecs):

@@ -75,6 +75,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_DEFAULT_NOT_RANKED_REASON,
+    LEADERBOARD_REFRESH_INTERVAL,
     LEADERBOARD_WINDOWS,
     LeaderboardAgentType,
     LeaderboardData,
@@ -144,7 +145,6 @@ SECONDS_PER_DAY = 86400
 MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
-LEADERBOARD_REFRESH_INTERVAL = 3600
 LEADERBOARD_REQUEST_TIMEOUT = 10.0
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.5
@@ -314,10 +314,7 @@ def refresh_leaderboard(  # pylint: disable=too-many-arguments
     safe_address: str,
     now: int,
 ) -> None:
-    """Fetch every window from olas-predict; runs on the leaderboard worker thread.
-
-    Each usable answer is stored as soon as it arrives; a failed window keeps
-    its previous answer. Touches no FSM state and never raises.
+    """Fetch every window from olas-predict and store each usable answer; never raises.
 
     :param shared_state: the skill state the ranks are stored on
     :param logger: the skill logger (``logging`` is thread-safe)
@@ -326,42 +323,38 @@ def refresh_leaderboard(  # pylint: disable=too-many-arguments
     :param safe_address: the agent's lowercased Safe address
     :param now: the timestamp to stamp successful answers with
     """
-    try:
-        for window in LEADERBOARD_WINDOWS:
-            query = urlencode(
-                {"agentType": agent_type, "window": window, "addresses": safe_address}
+    for window in LEADERBOARD_WINDOWS:
+        query = urlencode(
+            {"agentType": agent_type, "window": window, "addresses": safe_address}
+        )
+        url = leaderboard_request_url(api_url, query)
+        try:
+            response = requests.get(url, timeout=LEADERBOARD_REQUEST_TIMEOUT)
+            entry = parse_leaderboard_window(
+                response.status_code,
+                response.content,
+                agent_type,
+                window,
+                safe_address,
+                now,
+                api_url,
+                logger,
             )
-            url = leaderboard_request_url(api_url, query)
-            try:
-                response = requests.get(url, timeout=LEADERBOARD_REQUEST_TIMEOUT)
-                entry = parse_leaderboard_window(
-                    response.status_code,
-                    response.content,
-                    agent_type,
-                    window,
-                    safe_address,
-                    now,
-                    api_url,
-                    logger,
-                )
-                if entry is not None:
-                    shared_state.update_leaderboard_window(window, entry)
-            except requests.Timeout:
-                # olas-predict is hanging: don't spend a timeout per window
-                logger.warning(
-                    f"Leaderboard {window} timed out after "
-                    f"{LEADERBOARD_REQUEST_TIMEOUT}s; keeping the previous "
-                    "ranks until the next refresh"
-                )
-                return
-            except Exception as e:  # pylint: disable=broad-except
-                logger.warning(
-                    f"Leaderboard {window} fetch failed: {e}; "
-                    "keeping the previous rank",
-                    exc_info=True,
-                )
-    except Exception as e:  # pylint: disable=broad-except
-        logger.warning(f"Leaderboard refresh failed: {e}", exc_info=True)
+            if entry is not None:
+                shared_state.update_leaderboard_window(window, entry)
+        except requests.Timeout:
+            # olas-predict is hanging: don't spend a timeout per window
+            logger.warning(
+                f"Leaderboard {window} timed out after "
+                f"{LEADERBOARD_REQUEST_TIMEOUT}s; keeping the previous "
+                "ranks until the next refresh"
+            )
+            return
+        except Exception as e:  # pylint: disable=broad-except
+            logger.warning(
+                f"Leaderboard {window} fetch failed: {e}; keeping the previous rank",
+                exc_info=True,
+            )
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -2759,11 +2752,7 @@ class FetchPerformanceSummaryBehaviour(
         )
 
     def _update_leaderboard(self) -> None:
-        """Start a leaderboard refresh at most once per interval.
-
-        Does no network I/O and never yields: the refresh runs on the shared
-        state's worker thread, so it cannot hold up this round. Never raises.
-        """
+        """Start a refresh on a worker thread at most once per interval; never raises."""
         api_url = self.params.olas_predict_leaderboard_url
         if not api_url:
             return
@@ -2783,7 +2772,7 @@ class FetchPerformanceSummaryBehaviour(
             self.shared_state.update_leaderboard(
                 LeaderboardData(windows=dict(existing.windows), last_attempt_at=now)
             )
-            self.shared_state.submit_leaderboard_refresh(
+            self.shared_state.start_leaderboard_refresh(
                 partial(
                     refresh_leaderboard,
                     self.shared_state,

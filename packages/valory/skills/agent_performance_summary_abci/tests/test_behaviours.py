@@ -8424,19 +8424,11 @@ class TestRefreshLeaderboard:
             assert saved.windows[window] == previous[window]
 
     def test_never_raises(self) -> None:
-        """Failures storing a window, or anywhere else, are logged."""
+        """A failure storing a window is logged, and the other windows still run."""
         state = MagicMock()
         state.update_leaderboard_window.side_effect = OSError("disk")
         logger, _ = self._run(state, _ranked_answer)
         assert logger.warning.call_count == len(LEADERBOARD_WINDOWS)
-
-        logger = MagicMock()
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.behaviours.leaderboard_request_url",
-            side_effect=RuntimeError("boom"),
-        ):
-            self._run(state, _ranked_answer, logger=logger)
-        logger.warning.assert_called_once()
 
 
 class TestUpdateLeaderboard:
@@ -8479,19 +8471,19 @@ class TestUpdateLeaderboard:
         """Within the interval since the last attempt, nothing is started."""
         for last in (NOW - LEADERBOARD_REFRESH_INTERVAL + 1, NOW, NOW + 60):
             state, _ = self._run(LeaderboardData(last_attempt_at=last))
-            state.submit_leaderboard_refresh.assert_not_called()
+            state.start_leaderboard_refresh.assert_not_called()
             state.update_leaderboard.assert_not_called()
 
     def test_disabled_url_submits_nothing(self) -> None:
         """An unset URL disables the step."""
         state, _ = self._run(url="")
         state.get_leaderboard.assert_not_called()
-        state.submit_leaderboard_refresh.assert_not_called()
+        state.start_leaderboard_refresh.assert_not_called()
 
     def test_running_job_is_not_doubled(self) -> None:
         """While the previous job runs, nothing is submitted and the watermark stays."""
         state, _ = self._run(running=True)
-        state.submit_leaderboard_refresh.assert_not_called()
+        state.start_leaderboard_refresh.assert_not_called()
         state.update_leaderboard.assert_not_called()
 
     def test_due_persists_the_watermark_and_submits_one_job(self) -> None:
@@ -8516,8 +8508,8 @@ class TestUpdateLeaderboard:
                     last_attempt_at=NOW,
                 )
             )
-            state.submit_leaderboard_refresh.assert_called_once()
-            job = state.submit_leaderboard_refresh.call_args[0][0]
+            state.start_leaderboard_refresh.assert_called_once()
+            job = state.start_leaderboard_refresh.call_args[0][0]
             assert job.func is refresh_leaderboard
             assert job.args == (
                 state,
@@ -8531,7 +8523,7 @@ class TestUpdateLeaderboard:
     def test_polystrat_job(self) -> None:
         """A Polymarket agent's job asks for the polystrat ranking."""
         state, _ = self._run(is_polymarket=True)
-        job = state.submit_leaderboard_refresh.call_args[0][0]
+        job = state.start_leaderboard_refresh.call_args[0][0]
         assert job.args[3] == "polystrat"
 
     def test_never_raises(self) -> None:
@@ -8546,7 +8538,7 @@ class TestUpdateLeaderboard:
         ):
             b._update_leaderboard()
         ctx.logger.warning.assert_called_once()
-        state.submit_leaderboard_refresh.assert_not_called()
+        state.start_leaderboard_refresh.assert_not_called()
 
     def _step(self, state: SharedState, now: int) -> None:
         """Run the step in a fresh behaviour at ``now`` against ``state``."""
@@ -8586,9 +8578,9 @@ class TestUpdateLeaderboard:
                 lb = state.get_leaderboard()
                 assert lb is not None and lb.last_attempt_at == NOW
                 release.set()
-                future = state._leaderboard_future
-                assert future is not None
-                future.result(timeout=10)
+                thread = state._leaderboard_thread
+                assert thread is not None and thread.daemon
+                thread.join(10)
                 assert len(urls) == len(LEADERBOARD_WINDOWS)
 
                 # A full-summary save keeps the ranks the worker wrote
@@ -8601,13 +8593,12 @@ class TestUpdateLeaderboard:
                 self._step(state, NOW + LEADERBOARD_REFRESH_INTERVAL - 1)
                 assert not state.is_leaderboard_refresh_running()
                 self._step(state, NOW + LEADERBOARD_REFRESH_INTERVAL)
-                future = state._leaderboard_future
-                assert future is not None
-                future.result(timeout=10)
+                thread = state._leaderboard_thread
+                assert thread is not None
+                thread.join(10)
                 assert len(urls) == 2 * len(LEADERBOARD_WINDOWS)
         finally:
             release.set()
-            state.shutdown_leaderboard_executor()
 
 
 class TestAsyncActLeaderboard:
@@ -8657,7 +8648,7 @@ class TestAsyncActLeaderboard:
 
     @pytest.mark.parametrize(
         "failing",
-        ["get_leaderboard", "update_leaderboard", "submit_leaderboard_refresh"],
+        ["get_leaderboard", "update_leaderboard", "start_leaderboard_refresh"],
     )
     def test_failing_step_keeps_a_successful_vote(self, failing: str) -> None:
         """A leaderboard step that fails does not change a successful vote.

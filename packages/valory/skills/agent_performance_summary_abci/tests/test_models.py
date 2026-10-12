@@ -34,9 +34,6 @@ from packages.valory.skills.abstract_round_abci.models import (
     ApiSpecs,
     BaseParams,
 )
-from packages.valory.skills.abstract_round_abci.models import (
-    SharedState as BaseSharedState,
-)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
@@ -48,6 +45,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     AgentPerformanceSummaryParams,
     GnosisStakingSubgraph,
+    LEADERBOARD_REFRESH_INTERVAL,
     LeaderboardData,
     LeaderboardWindowRank,
     OffchainDepositState,
@@ -1642,6 +1640,28 @@ class TestSharedState:
             windows={"7d": entry}, last_attempt_at=1
         )
 
+    def test_late_window_does_not_replace_a_newer_one(self, tmp_path: Path) -> None:
+        """An answer fetched before the stored one is dropped; a newer one replaces it.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        stored = LeaderboardWindowRank(ranked=False, fetched_at=20)
+        state.update_leaderboard_window("7d", stored)
+
+        state.update_leaderboard_window(
+            "7d", LeaderboardWindowRank(ranked=False, fetched_at=10)
+        )
+        assert state.read_leaderboard_from_disk() == LeaderboardData(
+            windows={"7d": stored}
+        )
+
+        newer = LeaderboardWindowRank(ranked=False, fetched_at=30)
+        state.update_leaderboard_window("7d", newer)
+        assert state.read_leaderboard_from_disk() == LeaderboardData(
+            windows={"7d": newer}
+        )
+
     def test_overwrite_reads_the_section_on_first_use(self, tmp_path: Path) -> None:
         """Before any leaderboard write, the section on disk is carried over.
 
@@ -1681,8 +1701,8 @@ class TestSharedState:
         assert not thread.is_alive()
         assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
 
-    def test_leaderboard_refresh_runs_one_job_at_a_time(self) -> None:
-        """A second job is refused while the first runs; shutdown does not wait."""
+    def test_leaderboard_refresh_runs_on_a_daemon_thread(self) -> None:
+        """The job runs on a daemon thread and is reported running until it ends."""
         state = self._make_state()
         release, done = threading.Event(), threading.Event()
 
@@ -1690,34 +1710,38 @@ class TestSharedState:
             release.wait(5)
             done.set()
 
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.models.atexit.register"
-        ) as register:
-            try:
-                assert not state.is_leaderboard_refresh_running()
-                assert state.submit_leaderboard_refresh(job)
-                assert state.is_leaderboard_refresh_running()
-                assert not state.submit_leaderboard_refresh(MagicMock())
-                register.assert_called_once_with(state.shutdown_leaderboard_executor)
-
-                state.shutdown_leaderboard_executor()
-                assert state._leaderboard_executor is None
-                assert not done.is_set()
-            finally:
-                release.set()
+        assert not state.is_leaderboard_refresh_running()
+        try:
+            state.start_leaderboard_refresh(job)
+            thread = state._leaderboard_thread
+            assert thread is not None and thread.daemon
+            assert state.is_leaderboard_refresh_running()
+        finally:
+            release.set()
         assert done.wait(5)
-        state.shutdown_leaderboard_executor()
+        thread.join(5)
+        assert not state.is_leaderboard_refresh_running()
 
-    def test_teardown_shuts_the_executor_down(self) -> None:
-        """Tearing the state down stops the leaderboard worker."""
+    def test_hung_leaderboard_refresh_stops_counting_after_an_interval(self) -> None:
+        """A job still running a whole interval after it started no longer blocks."""
         state = self._make_state()
-        executor = MagicMock()
-        state._leaderboard_executor = executor
-        with patch.object(BaseSharedState, "teardown") as base_teardown:
-            state.teardown()
-        base_teardown.assert_called_once()
-        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
-        assert state._leaderboard_executor is None
+        release = threading.Event()
+        monotonic = "packages.valory.skills.agent_performance_summary_abci.models.time.monotonic"
+
+        def job() -> None:
+            release.wait(5)
+
+        try:
+            with patch(monotonic, return_value=1000.0):
+                state.start_leaderboard_refresh(job)
+            with patch(
+                monotonic, return_value=1000.0 + LEADERBOARD_REFRESH_INTERVAL - 1
+            ):
+                assert state.is_leaderboard_refresh_running()
+            with patch(monotonic, return_value=1000.0 + LEADERBOARD_REFRESH_INTERVAL):
+                assert not state.is_leaderboard_refresh_running()
+        finally:
+            release.set()
 
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path
