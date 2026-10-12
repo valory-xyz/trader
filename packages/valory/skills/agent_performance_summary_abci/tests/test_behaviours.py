@@ -24,8 +24,13 @@ from datetime import datetime, timezone
 from typing import Any, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.abstract_round_abci.behaviour_utils import (
+    TimeoutException,
+)
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
@@ -34,6 +39,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LEADERBOARD_REFRESH_INTERVAL,
+    LEADERBOARD_REQUEST_TIMEOUT,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
     MIN_TRADES_FOR_ROI_DISPLAY,
@@ -58,6 +64,8 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
+    _drop_late_response,
+    _parse_iso_timestamp,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
@@ -8012,6 +8020,8 @@ class TestIncrementalAttributionInvariants:
 
 LEADERBOARD_URL = "https://predict.example/api/leaderboard/agents"
 NOW = 1700000000
+UPDATED_AT_ISO = "2023-11-14T22:00:00.000Z"
+UPDATED_AT = 1700000000 - 13 * 60 - 20  # UPDATED_AT_ISO as UNIX seconds
 
 
 def _leaderboard_response(
@@ -8024,12 +8034,18 @@ def _leaderboard_response(
     return response
 
 
-def _ranked_body(window: str, address: str = SAFE_ADDRESS_LOWER, rank: int = 7) -> dict:
+def _ranked_body(
+    window: str,
+    address: str = SAFE_ADDRESS_LOWER,
+    rank: int = 7,
+    agent_type: str = "omenstrat",
+) -> dict:
     """An olas-predict answer ranking the agent."""
     return {
-        "agentType": "omenstrat",
+        "agentType": agent_type,
         "window": window,
         "totalRanked": 242,
+        "updatedAt": UPDATED_AT_ISO,
         "agents": [
             {
                 "address": address,
@@ -8043,6 +8059,21 @@ def _ranked_body(window: str, address: str = SAFE_ADDRESS_LOWER, rank: int = 7) 
             }
         ],
     }
+
+
+def _with_agent(body: dict, **fields: Any) -> dict:
+    """``body`` with its agent entry updated by ``fields``."""
+    return {**body, "agents": [{**body["agents"][0], **fields}]}
+
+
+def test_parse_iso_timestamp() -> None:
+    """ISO timestamps parse to UNIX seconds; anything else is ``None``."""
+    assert _parse_iso_timestamp(UPDATED_AT_ISO) == UPDATED_AT
+    assert _parse_iso_timestamp("2023-11-14T22:00:00+00:00") == UPDATED_AT
+    # No timezone is read as UTC
+    assert _parse_iso_timestamp("2023-11-14T22:00:00") == UPDATED_AT
+    for bad in (None, 1700000000, "", "yesterday", "2023-13-01T00:00:00Z"):
+        assert _parse_iso_timestamp(bad) is None
 
 
 class TestUpdateLeaderboard:
@@ -8061,12 +8092,10 @@ class TestUpdateLeaderboard:
             is_polymarket=is_polymarket, synced_timestamp=NOW
         )
         params.olas_predict_leaderboard_url = url
-        state.read_existing_performance_summary.return_value = AgentPerformanceSummary(
-            leaderboard=existing
-        )
+        state.read_leaderboard_from_disk.return_value = existing
         urls: List[str] = []
 
-        def get_http_response(method: str, url: str) -> Generator:
+        def get_response(url: str) -> Generator:
             """Record the URL and answer it."""
             urls.append(url)
             return responses(url)
@@ -8075,7 +8104,7 @@ class TestUpdateLeaderboard:
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "get_http_response", side_effect=get_http_response),
+            patch.object(b, "_get_leaderboard_response", side_effect=get_response),
         ):
             for _ in b._update_leaderboard():
                 pass  # pragma: no cover
@@ -8083,27 +8112,53 @@ class TestUpdateLeaderboard:
 
     @staticmethod
     def _saved(state: MagicMock) -> LeaderboardData:
-        """The leaderboard section the step wrote."""
-        state.update_leaderboard.assert_called_once()
-        return state.update_leaderboard.call_args[0][0]
+        """The leaderboard section the step wrote last.
+
+        The first write only moves the throttle watermark, before any fetch.
+
+        :param state: the mocked shared state.
+        :return: the last written section.
+        """
+        calls = state.update_leaderboard.call_args_list
+        assert len(calls) == 2
+        assert calls[0][0][0].last_attempt_at == NOW
+        return calls[-1][0][0]
 
     @staticmethod
     def _window_of(url: str) -> str:
         """The ``window`` query parameter of a request URL."""
         return url.split("window=")[1].split("&")[0]
 
+    def _ranked_answer(self, url: str) -> MagicMock:
+        """A ranked answer echoing the request's window."""
+        return _leaderboard_response(body=_ranked_body(self._window_of(url)))
+
     def test_refresh_interval_matches_hourly_snapshot(self) -> None:
         """The throttle is one hour, like olas-predict's snapshot refresh."""
         assert LEADERBOARD_REFRESH_INTERVAL == 3600
 
+    def test_worst_case_stays_far_below_the_round_timeout(self) -> None:
+        """Even four slow answers cost well under the 350 s round timeout."""
+        assert LEADERBOARD_REQUEST_TIMEOUT * len(LEADERBOARD_WINDOWS) < 350 / 2
+
     def test_not_due_makes_no_call(self) -> None:
         """Within the interval since the last attempt, nothing is fetched."""
-        existing = LeaderboardData(
-            last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL + 1
-        )
-        state, urls = self._run(lambda url: None, existing=existing)
-        assert urls == []
-        state.update_leaderboard.assert_not_called()
+        for last in (NOW - LEADERBOARD_REFRESH_INTERVAL + 1, NOW, NOW + 60):
+            existing = LeaderboardData(last_attempt_at=last)
+            state, urls = self._run(lambda url: None, existing=existing)
+            assert urls == []
+            state.update_leaderboard.assert_not_called()
+
+    def test_future_or_invalid_watermark_is_due(self) -> None:
+        """A watermark in the future or of the wrong type cannot block refreshes."""
+        for existing in (
+            LeaderboardData(last_attempt_at=NOW + 10 * LEADERBOARD_REFRESH_INTERVAL),
+            LeaderboardData.from_dict({"last_attempt_at": str(NOW)}),
+            LeaderboardData.from_dict({"last_attempt_at": True}),
+        ):
+            state, urls = self._run(self._ranked_answer, existing=existing)
+            assert len(urls) == len(LEADERBOARD_WINDOWS)
+            assert self._saved(state).last_attempt_at == NOW
 
     def test_disabled_url_makes_no_call(self) -> None:
         """An unset URL disables the step."""
@@ -8114,10 +8169,7 @@ class TestUpdateLeaderboard:
     def test_due_fetches_every_window_for_omenstrat(self) -> None:
         """When due, one call per window with the agent type and lowercased Safe."""
         existing = LeaderboardData(last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL)
-        state, urls = self._run(
-            lambda url: _leaderboard_response(body=_ranked_body(self._window_of(url))),
-            existing=existing,
-        )
+        state, urls = self._run(self._ranked_answer, existing=existing)
         assert [self._window_of(url) for url in urls] == list(LEADERBOARD_WINDOWS)
         for url in urls:
             assert url.startswith(f"{LEADERBOARD_URL}?agentType=omenstrat&")
@@ -8132,33 +8184,45 @@ class TestUpdateLeaderboard:
             rank_by_pnl=8,
             total_ranked=242,
             leaderboard_url="https://predict.example/leaderboard?window=30d",
+            updated_at=UPDATED_AT,
         )
+
+    def test_configured_url_with_query_appends_parameters(self) -> None:
+        """A configured URL that already has a query string gets ``&``, not a second ``?``."""
+        for configured, prefix in (
+            (f"{LEADERBOARD_URL}?key=abc", f"{LEADERBOARD_URL}?key=abc&agentType="),
+            (f"{LEADERBOARD_URL}?", f"{LEADERBOARD_URL}?agentType="),
+        ):
+            _, urls = self._run(self._ranked_answer, url=configured)
+            assert urls and all(url.startswith(prefix) for url in urls)
 
     def test_polystrat_agent_type(self) -> None:
         """A Polymarket agent asks for the polystrat ranking."""
-        _, urls = self._run(
-            lambda url: _leaderboard_response(body=_ranked_body(self._window_of(url))),
+        state, urls = self._run(
+            lambda url: _leaderboard_response(
+                body=_ranked_body(self._window_of(url), agent_type="polystrat")
+            ),
             is_polymarket=True,
         )
         assert all("agentType=polystrat" in url for url in urls)
+        assert set(self._saved(state).windows) == set(LEADERBOARD_WINDOWS)
 
     def test_not_ranked_reasons_pass_through(self) -> None:
-        """A not-ranked answer keeps the upstream reason and drops the ranks."""
+        """A not-ranked answer keeps a known upstream reason and drops the ranks."""
         reasons = {
             "7d": "not_enough_trades_in_window",
             "30d": "not_ranked_yet",
+            "90d": "not_eligible",
         }
 
         def respond(url: str) -> MagicMock:
             window = self._window_of(url)
-            body = _ranked_body(window)
-            body["agents"][0].update(
-                {
-                    "ranked": False,
-                    "notRankedReason": reasons.get(window, "not_ranked_yet"),
-                    "rankByRoi": None,
-                    "rankByPnl": None,
-                }
+            body = _with_agent(
+                _ranked_body(window),
+                ranked=False,
+                notRankedReason=reasons.get(window, "not_ranked_yet"),
+                rankByRoi=None,
+                rankByPnl=None,
             )
             return _leaderboard_response(body=body)
 
@@ -8166,44 +8230,154 @@ class TestUpdateLeaderboard:
         assert saved.windows["7d"].ranked is False
         assert saved.windows["7d"].not_ranked_reason == "not_enough_trades_in_window"
         assert saved.windows["30d"].not_ranked_reason == "not_ranked_yet"
+        assert saved.windows["90d"].not_ranked_reason == "not_eligible"
         assert saved.windows["7d"].rank_by_roi is None
         assert saved.windows["7d"].total_ranked == 242
+
+    def test_unknown_or_missing_reason_becomes_not_ranked_yet(self) -> None:
+        """A reason outside the allowlist is stored as the generic one."""
+        for reason in ("<script>", "new_reason", None, 3):
+
+            def respond(url: str, r: Any = reason) -> MagicMock:
+                body = _with_agent(
+                    _ranked_body(self._window_of(url)),
+                    ranked=False,
+                    notRankedReason=r,
+                    rankByRoi=None,
+                    rankByPnl=None,
+                )
+                return _leaderboard_response(body=body)
+
+            saved = self._saved(self._run(respond)[0])
+            assert {entry.not_ranked_reason for entry in saved.windows.values()} == {
+                "not_ranked_yet"
+            }
+
+    def test_not_ranked_answer_ignores_stray_ranks(self) -> None:
+        """Ranks sent alongside ``ranked: false`` are not stored."""
+        saved = self._saved(
+            self._run(
+                lambda url: _leaderboard_response(
+                    body=_with_agent(
+                        _ranked_body(self._window_of(url)),
+                        ranked=False,
+                        notRankedReason="not_ranked_yet",
+                    )
+                )
+            )[0]
+        )
+        assert all(entry.rank_by_roi is None for entry in saved.windows.values())
 
     def test_failures_keep_the_previous_entry(self) -> None:
         """Errors, bad bodies and other agents' entries keep each window's last answer."""
         previous = {
-            window: LeaderboardWindowRank(ranked=True, fetched_at=1, rank_by_roi=1)
+            window: LeaderboardWindowRank(
+                ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=1
+            )
             for window in LEADERBOARD_WINDOWS
         }
+        ranked = _ranked_body("7d")
         failures = [
             _leaderboard_response(status_code=503, body={"error": "x"}),
             _leaderboard_response(status_code=400, body={"error": "x"}),
             _leaderboard_response(status_code=600, raw=b""),
             _leaderboard_response(raw=b"not json"),
             _leaderboard_response(raw=b"\xff\xfe"),
-            _leaderboard_response(body={"agents": []}),
+            _leaderboard_response(body={**ranked, "agents": []}),
             _leaderboard_response(body=["unexpected"]),
             _leaderboard_response(body=_ranked_body("7d", address="0xsomeoneelse")),
             # A boolean is not a rank, even though bool is an int in Python
-            _leaderboard_response(
-                body={
-                    **_ranked_body("7d"),
-                    "agents": [{**_ranked_body("7d")["agents"][0], "rankByRoi": True}],
-                }
-            ),
-            _leaderboard_response(
-                body={
-                    **_ranked_body("7d"),
-                    "agents": [{**_ranked_body("7d")["agents"][0], "rankByPnl": None}],
-                }
-            ),
+            _leaderboard_response(body=_with_agent(ranked, rankByRoi=True)),
+            _leaderboard_response(body=_with_agent(ranked, rankByPnl=None)),
+            # Ranks must lie within 1..totalRanked
+            _leaderboard_response(body=_with_agent(ranked, rankByRoi=0)),
+            _leaderboard_response(body=_with_agent(ranked, rankByPnl=-3)),
+            _leaderboard_response(body=_with_agent(ranked, rankByRoi=243)),
+            _leaderboard_response(body=_with_agent(ranked, rankByRoi="7")),
+            _leaderboard_response(body={**ranked, "totalRanked": None}),
+            _leaderboard_response(body={**ranked, "totalRanked": "242"}),
+            _leaderboard_response(body={**ranked, "totalRanked": -1}),
+            # ``ranked`` must be a real boolean
+            _leaderboard_response(body=_with_agent(ranked, ranked="true")),
+            _leaderboard_response(body=_with_agent(ranked, ranked=None)),
+            # The answer must be for the request's window and agent type
+            _leaderboard_response(body=_ranked_body("30d")),
+            _leaderboard_response(body={**ranked, "window": None}),
+            _leaderboard_response(body=_ranked_body("7d", agent_type="polystrat")),
         ]
         for failure in failures:
             existing = LeaderboardData(windows=dict(previous), last_attempt_at=0)
             state, _ = self._run(lambda url, f=failure: f, existing=existing)
             saved = self._saved(state)
-            assert saved.windows == previous
+            assert saved.windows["7d"] == previous["7d"], failure.body
             assert saved.last_attempt_at == NOW
+
+    def test_unsafe_leaderboard_url_is_dropped(self) -> None:
+        """Only an https link on the olas-predict leaderboard page is stored."""
+        for bad in (
+            "javascript:alert(1)",
+            "http://predict.example/leaderboard",
+            "https://evil.example/leaderboard",
+            "https://predict.example.evil.example/leaderboard",
+            "https://predict.example@evil.example/leaderboard",
+            "https://predict.example:8443/leaderboard",
+            "https://predict.example/api/leaderboard",
+            "https://predict.example/leaderboards",
+            "//predict.example/leaderboard",
+            "https://predict.example/leaderboard\\@evil.example",
+            "https://predict.example/leaderboard\n",
+            42,
+            None,
+        ):
+            saved = self._saved(
+                self._run(
+                    lambda url, u=bad: _leaderboard_response(
+                        body=_with_agent(
+                            _ranked_body(self._window_of(url)), leaderboardUrl=u
+                        )
+                    )
+                )[0]
+            )
+            assert saved.windows["7d"].leaderboard_url is None, bad
+            assert saved.windows["7d"].rank_by_roi == 7
+
+    def test_safe_deep_links_are_kept(self) -> None:
+        """Links under the leaderboard page, with any query, are kept."""
+        for good in (
+            "https://predict.example/leaderboard",
+            "https://PREDICT.example/leaderboard/omenstrat?pin=0xabc#row",
+        ):
+            saved = self._saved(
+                self._run(
+                    lambda url, u=good: _leaderboard_response(
+                        body=_with_agent(
+                            _ranked_body(self._window_of(url)), leaderboardUrl=u
+                        )
+                    )
+                )[0]
+            )
+            assert saved.windows["7d"].leaderboard_url == good
+
+    def test_updated_at_is_stored_unless_invalid(self) -> None:
+        """``updatedAt`` is kept; unparseable or future values fall back to ``None``."""
+        cases = {
+            UPDATED_AT_ISO: UPDATED_AT,
+            # Within the tolerated clock skew
+            "2023-11-14T22:18:00Z": NOW + 280,
+            "2023-11-14T22:30:00Z": None,
+            "garbage": None,
+            None: None,
+        }
+        for raw, expected in cases.items():
+            saved = self._saved(
+                self._run(
+                    lambda url, r=raw: _leaderboard_response(
+                        body={**_ranked_body(self._window_of(url)), "updatedAt": r}
+                    )
+                )[0]
+            )
+            assert saved.windows["7d"].updated_at == expected, raw
+            assert saved.windows["7d"].fetched_at == NOW
 
     def test_one_window_can_fail_while_others_succeed(self) -> None:
         """Windows are independent."""
@@ -8223,19 +8397,71 @@ class TestUpdateLeaderboard:
         def respond(url: str) -> MagicMock:
             window = self._window_of(url)
             if window == "30d":
-                raise TimeoutError("no response")
+                raise ConnectionError("reset")
             return _leaderboard_response(body=_ranked_body(window))
 
         saved = self._saved(self._run(respond)[0])
         assert set(saved.windows) == {"7d", "90d", "1y"}
         assert saved.last_attempt_at == NOW
 
+    def test_timeout_abandons_the_remaining_windows(self) -> None:
+        """A window that never answers stops the refresh; earlier answers are kept."""
+        previous = {
+            window: LeaderboardWindowRank(ranked=False, fetched_at=1)
+            for window in LEADERBOARD_WINDOWS
+        }
+
+        def respond(url: str) -> MagicMock:
+            window = self._window_of(url)
+            if window == "30d":
+                raise TimeoutException()
+            return _leaderboard_response(body=_ranked_body(window))
+
+        state, urls = self._run(
+            respond, existing=LeaderboardData(windows=dict(previous))
+        )
+        assert [self._window_of(url) for url in urls] == ["7d", "30d"]
+        saved = self._saved(state)
+        assert saved.windows["7d"].ranked is True
+        for window in ("30d", "90d", "1y"):
+            assert saved.windows[window] == previous[window]
+        assert saved.last_attempt_at == NOW
+
+    def test_watermark_is_persisted_before_fetching(self) -> None:
+        """A run cut short mid-fetch has already moved the throttle watermark."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
+        params.olas_predict_leaderboard_url = LEADERBOARD_URL
+        previous = {"7d": LeaderboardWindowRank(ranked=False, fetched_at=1)}
+        state.read_leaderboard_from_disk.return_value = LeaderboardData(
+            windows=dict(previous), last_attempt_at=0
+        )
+
+        def hanging(url: str) -> Generator:
+            """Never answer."""
+            while True:
+                yield
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_get_leaderboard_response", side_effect=hanging),
+        ):
+            gen = b._update_leaderboard()
+            next(gen)
+            # e.g. the round times out and the behaviour is stopped
+            gen.close()
+
+        state.update_leaderboard.assert_called_once()
+        written = state.update_leaderboard.call_args[0][0]
+        assert written == LeaderboardData(windows=previous, last_attempt_at=NOW)
+
     def test_never_raises(self) -> None:
         """An unexpected error is logged, not raised."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
         params.olas_predict_leaderboard_url = LEADERBOARD_URL
-        state.read_existing_performance_summary.side_effect = OSError("disk")
+        state.read_leaderboard_from_disk.side_effect = OSError("disk")
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
@@ -8244,6 +8470,78 @@ class TestUpdateLeaderboard:
                 pass  # pragma: no cover
         ctx.logger.warning.assert_called_once()
         state.update_leaderboard.assert_not_called()
+
+
+class TestGetLeaderboardResponse:
+    """Tests for FetchPerformanceSummaryBehaviour._get_leaderboard_response."""
+
+    def _setup(
+        self,
+    ) -> Tuple[Any, MagicMock, MagicMock, Tuple[MagicMock, MagicMock]]:
+        """A behaviour with a mocked request builder; return it and its mocks."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context()
+        ctx.requests.request_id_to_callback = {}
+        dialogue = MagicMock()
+        dialogue.dialogue_label.dialogue_reference = ("nonce-1", "")
+        message = MagicMock()
+        return b, ctx, synced_data, (message, dialogue)
+
+    def test_passes_the_timeout(self) -> None:
+        """The GET is sent with the leaderboard timeout and its reply returned."""
+        b, ctx, synced_data, built = self._setup()
+        reply = _leaderboard_response(body={})
+        seen: dict = {}
+
+        def do_request(
+            message: Any, dialogue: Any, timeout: Any = None
+        ) -> Generator[None, None, Any]:
+            seen.update(message=message, dialogue=dialogue, timeout=timeout)
+            return reply
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_build_http_request_message", return_value=built) as build,
+            patch.object(b, "_do_request", side_effect=do_request),
+        ):
+            gen = b._get_leaderboard_response("https://x/api")
+            try:
+                next(gen)
+                raise AssertionError(
+                    "expected the generator to finish"
+                )  # pragma: no cover
+            except StopIteration as stop:
+                assert stop.value is reply
+        build.assert_called_once_with(method="GET", url="https://x/api")
+        assert seen == {
+            "message": built[0],
+            "dialogue": built[1],
+            "timeout": LEADERBOARD_REQUEST_TIMEOUT,
+        }
+
+    def test_timeout_drops_the_late_reply(self) -> None:
+        """On timeout the request's callback is replaced so a late reply is dropped."""
+        b, ctx, synced_data, built = self._setup()
+
+        def do_request(message: Any, dialogue: Any, timeout: Any = None) -> Generator:
+            ctx.requests.request_id_to_callback["nonce-1"] = "original"
+            raise TimeoutException()
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_build_http_request_message", return_value=built),
+            patch.object(b, "_do_request", side_effect=do_request),
+        ):
+            with pytest.raises(TimeoutException):
+                for _ in b._get_leaderboard_response("https://x/api"):
+                    pass  # pragma: no cover
+        callback = ctx.requests.request_id_to_callback["nonce-1"]
+        assert callback is _drop_late_response
+        assert callback(MagicMock(), MagicMock()) is None
 
 
 class TestAsyncActLeaderboard:

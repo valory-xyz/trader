@@ -66,6 +66,7 @@ def _make_behaviour(
     shared_state.read_activity_goal_from_disk.return_value = (
         existing_summary.activity_goal
     )
+    shared_state.read_leaderboard_from_disk.return_value = existing_summary.leaderboard
     shared_state.overwrite_performance_summary = MagicMock()
 
     behaviour.shared_state = shared_state
@@ -421,6 +422,29 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.leaderboard is existing.leaderboard
+
+    def test_save_preserves_leaderboard_on_degraded_read(self) -> None:
+        """A degraded summary read must not wipe the cached ranks or the watermark."""
+        behaviour = _make_behaviour(AgentPerformanceSummary())
+        on_disk = LeaderboardData(
+            windows={"7d": LeaderboardWindowRank(ranked=False, fetched_at=1)},
+            last_attempt_at=1,
+        )
+        behaviour.shared_state.read_leaderboard_from_disk.return_value = on_disk
+
+        new_summary = AgentPerformanceSummary(
+            timestamp=1700001000,
+            metrics=_good_metrics(),
+            agent_details=_good_agent_details(),
+            agent_performance=_good_agent_performance(),
+            prediction_history=_good_prediction_history(),
+            profit_over_time=_good_profit_over_time(),
+        )
+
+        behaviour._save_agent_performance_summary(new_summary)
+
+        saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
+        assert saved.leaderboard is on_disk
 
     def test_save_preserves_achievements_on_degraded_read(self) -> None:
         """A degraded summary read must not wipe the persisted watermark."""
