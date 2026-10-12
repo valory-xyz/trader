@@ -32,7 +32,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
@@ -118,6 +118,8 @@ class MechReport:  # pylint: disable=too-many-instance-attributes
     tools: List[str] = field(default_factory=list)
     payment_method: Optional[str] = None
     payment_ceiling: Optional[str] = None
+    # the rate the user accepted when approving, rendered like payment_ceiling
+    accepted_ceiling: Optional[str] = None
     received_requests: Optional[int] = None
     self_delivered: Optional[int] = None
     delivered_by_others: Optional[int] = None
@@ -129,19 +131,45 @@ class MechReport:  # pylint: disable=too-many-instance-attributes
     service_id: Optional[int] = None
     creator: Optional[str] = None
     metadata_hash: Optional[str] = None
+    # the raw price, in the payment asset's smallest unit, and its payment
+    # type id (lowercase, no 0x); what an approval records
+    max_delivery_rate: Optional[int] = None
+    payment_type_id: Optional[str] = None
+    accepted_rate: Optional[int] = None
 
     @property
     def approvable(self) -> bool:
         """Whether the user may approve this mech."""
         return self.refusal is None and not self.is_valory
 
+    @property
+    def price_raised(self) -> bool:
+        """Whether an approved mech now charges more than the user accepted.
+
+        mech-interact stops using such a mech until it is approved again.
+        """
+        return (
+            self.accepted_rate is not None
+            and self.max_delivery_rate is not None
+            and self.max_delivery_rate > self.accepted_rate
+        )
+
     def to_prompt(self) -> Dict[str, Any]:
         """Render the facts the chat may show, dropping build-only fields."""
         facts = asdict(self)
-        for key in ("fetched_at", "service_id", "creator", "metadata_hash"):
+        for key in (
+            "fetched_at",
+            "service_id",
+            "creator",
+            "metadata_hash",
+            "max_delivery_rate",
+            "payment_type_id",
+            "accepted_rate",
+        ):
             facts.pop(key)
         facts["refusal"] = self.refusal.value if self.refusal else None
         facts["approvable"] = self.approvable
+        facts["price_raised"] = self.price_raised
         return facts
 
 
@@ -246,6 +274,28 @@ def payment_line(
         return asset, None
     amount = Decimal(rate) / (Decimal(10) ** decimals)
     return asset, f"{amount.normalize():f} {asset}"
+
+
+def payment_type_id(payment_type: Any) -> Optional[str]:
+    """Normalise a payment type id to lowercase hex without the 0x prefix."""
+    type_id = str(payment_type or "").lower().removeprefix("0x")
+    return type_id or None
+
+
+def cap_for(type_id: Optional[str], caps: Mapping[Any, int]) -> Optional[int]:
+    """The agent's cap for a payment type, in the asset's smallest unit.
+
+    :param type_id: the payment type id, lowercase hex without 0x.
+    :param caps: mech-interact's `delivery_rate_caps`, keyed by its payment
+        type enum, whose values are the selectors with the 0x prefix.
+    :return: the cap, or `None` when the asset has no cap.
+    """
+    if type_id is None:
+        return None
+    for payment_type, cap in caps.items():
+        if payment_type_id(getattr(payment_type, "value", payment_type)) == type_id:
+            return cap
+    return None
 
 
 def age_days(created_at: datetime, now: datetime) -> int:

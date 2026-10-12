@@ -73,7 +73,11 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpMethod,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
-from packages.valory.skills.chatui_abci.mech_report import Refusal
+from packages.valory.skills.chatui_abci.mech_report import (
+    Refusal,
+    cap_for,
+    payment_line,
+)
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
     SharedState,
@@ -620,15 +624,19 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
     ) -> Tuple[Optional[str], List[str]]:
         """Apply the LLM's mech action under the handler's own checks.
 
-        The LLM proposes; the handler decides. Only an address the chat has
-        shown, unrefused, can be put up for approval, and it is written only
-        after the user confirms it.
+        The LLM proposes and reads the user's intent; the handler decides.
+        Only an address the chat has shown, unrefused and within the agent's
+        price cap can be put up for approval; the price the user accepts is
+        rendered here from the report, and written only after the LLM reads
+        the user's confirmation of that pending approval. A turn that neither
+        asks for nor confirms an approval drops any pending one.
 
         :param action: the `mech_action` object from the LLM reply.
         :param message: the LLM's message.
         :return: a reply to show instead of the LLM's, if any, and notes to append.
         """
         if not isinstance(action, dict):
+            self.shared_state.pending_mech_approval = None
             return None, []
         notes: List[str] = []
         removed = action.get(REMOVE_APPROVED_MECHS_FIELD)
@@ -640,41 +648,71 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             refused = self._request_approval(address)
             if refused is not None:
                 return refused, notes
-            if address not in message.lower():
-                notes.append(f"To confirm, reply yes to approve {address}.")
+            notes.append(self._consent_line(address))
         elif action.get(CONFIRM_APPROVAL_FIELD) is True:
             notes.append(self._confirm_approval())
+        else:
+            self.shared_state.pending_mech_approval = None
         return None, notes
 
+    def _consent_line(self, address: str) -> str:
+        """The price the user accepts by approving, from the report, not the LLM."""
+        report = self.shared_state.mech_reports[address]
+        return (
+            f"Approving accepts up to {report.payment_ceiling} per request for "
+            f"{address}. If its operator raises it, your agent stops using this "
+            "mech until you approve the new price. Reply to confirm."
+        )
+
     def _request_approval(self, address: str) -> Optional[str]:
-        """Put a shown, approvable mech up for confirmation, or say why not."""
+        """Put a shown, approvable, affordable mech up for confirmation, or say why not."""
         report = self.shared_state.mech_reports.get(address)
         if report is None:
             return f"I can only approve a mech I have shown you. Ask me about {address} first."
         if report.is_valory:
             return f"{address} is a Valory mech the agent already uses, so it needs no approval."
-        if address in self.shared_state.approved_mechs:
+        if address in self.shared_state.approved_mechs and not report.price_raised:
             return f"{address} is already approved."
         if report.refusal is not None:
             return f"I can't approve {address}: {REFUSAL_REASONS[report.refusal]}"
+        if report.max_delivery_rate is None or report.payment_ceiling is None:
+            return f"I can't read what {address} charges, so I can't approve it."
+        cap = cap_for(report.payment_type_id, self.context.params.delivery_rate_caps)
+        if cap is None or report.max_delivery_rate > cap:
+            _, allowed = payment_line(report.payment_type_id, cap, report.chain_id)
+            return (
+                f"I can't approve {address}: it charges {report.payment_ceiling} per "
+                f"request, above the {allowed} this agent allows."
+                if allowed
+                else f"I can't approve {address}: this agent allows no mech paid "
+                f"with {report.payment_method}."
+            )
         self.shared_state.pending_mech_approval = address
         return None
 
     def _confirm_approval(self) -> str:
-        """Approve the mech waiting for confirmation, if it is still approvable."""
+        """Approve the mech waiting for confirmation at the price it was shown with."""
         address = self.shared_state.pending_mech_approval
         self.shared_state.pending_mech_approval = None
         if address is None:
             return "There is no approval waiting for your confirmation."
         report = self.shared_state.mech_reports.get(address)
-        if report is None or not report.approvable:
+        if report is None or not report.approvable or report.max_delivery_rate is None:
             return f"I can't approve {address} any more; ask me about it again."
-        self.shared_state.set_approved_mechs(
-            [*self.shared_state.approved_mechs, address]
-        )
+        again = address in self.shared_state.approved_mechs
+        self.shared_state.approve_mech(address, report.max_delivery_rate)
+        report.is_approved = True
+        report.accepted_rate = report.max_delivery_rate
+        report.accepted_ceiling = report.payment_ceiling
+        if again:
+            return (
+                f"Approved {address} again at up to {report.payment_ceiling} per "
+                "request. Your agent uses it again from the next cycle."
+            )
         return (
-            f"Approved {address}. It starts with no track record on your side and "
-            "earns work through normal scoring, from the next cycle."
+            f"Approved {address} at up to {report.payment_ceiling} per request. It "
+            "starts with no track record on your side and earns work through "
+            "normal scoring, from the next cycle."
         )
 
     def _remove_approved_mechs(self, addresses: List[str]) -> List[str]:
@@ -689,8 +727,12 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
         )
         if not removed:
             return notes
-        self.shared_state.set_approved_mechs(
-            [address for address in approved if address not in removed]
+        self.shared_state.set_approved_mech_rates(
+            {
+                address: rate
+                for address, rate in self.shared_state.approved_mech_rates.items()
+                if address not in removed
+            }
         )
         if self.shared_state.pending_mech_approval in removed:
             self.shared_state.pending_mech_approval = None

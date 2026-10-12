@@ -55,6 +55,7 @@ from packages.valory.skills.chatui_abci.mech_report import (
     fetch_proof,
     https_url,
     payment_line,
+    payment_type_id,
     read_benchmarks,
     read_operator,
     read_tools,
@@ -211,6 +212,7 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             fetched_at=int(time.time()),
             is_valory=address in self.context.params.valid_mechs,
             is_approved=address in self.shared_state.approved_mechs,
+            accepted_rate=self.shared_state.approved_mech_rates.get(address),
         )
 
         def on_record(reply: Message) -> None:
@@ -240,9 +242,15 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
         report.received_requests = _as_int(mech.get("receivedRequests"))
         report.self_delivered = _as_int(mech.get("selfDeliveredFromReceived"))
         report.delivered_by_others = _as_int(mech.get("deliveredByOthersFromReceived"))
+        report.payment_type_id = payment_type_id(mech.get("paymentType"))
+        report.max_delivery_rate = _as_int(mech.get("maxDeliveryRate"))
         report.payment_method, report.payment_ceiling = payment_line(
             mech.get("paymentType"), mech.get("maxDeliveryRate"), report.chain_id
         )
+        if report.accepted_rate is not None:
+            _, report.accepted_ceiling = payment_line(
+                mech.get("paymentType"), report.accepted_rate, report.chain_id
+            )
         raw_service = mech.get("service")
         service: Dict[str, Any] = raw_service if isinstance(raw_service, dict) else {}
         report.service_id = _as_int(service.get("id"))

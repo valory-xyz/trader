@@ -191,19 +191,19 @@ class TestChatuiLoadRoundEndBlock:
         assert json.loads(raw) == ["0xabc", "0xdef"]
 
     def test_publishes_approved_mechs_when_positive_threshold_reached(self) -> None:
-        """The approved list reaches the key mech-interact discovers from."""
+        """The accepted rates reach the key mech-interact bounds approved mechs by."""
         payload = ChatuiPayload(
-            sender="agent-1", vote=True, approved_mechs=json.dumps(["0xabc"])
+            sender="agent-1", vote=True, approved_mechs=json.dumps({"0xabc": 10000})
         )
         new_sync, _ = cast(Tuple[Any, Any], self._build_round(payload).end_block())
-        assert json.loads(new_sync.db.get("approved_mechs", None)) == ["0xabc"]
+        assert json.loads(new_sync.db.get("approved_mechs", None)) == {"0xabc": 10000}
         assert json.loads(new_sync.db.get("selected_mechs", None)) == []
 
-    def test_publishes_empty_approved_list_when_payload_unset(self) -> None:
-        """Without approvals an explicit empty list is written, so removals take effect."""
+    def test_publishes_empty_approvals_when_payload_unset(self) -> None:
+        """Without approvals an explicit empty object is written, so removals take effect."""
         payload = ChatuiPayload(sender="agent-1", vote=True)
         new_sync, _ = cast(Tuple[Any, Any], self._build_round(payload).end_block())
-        assert json.loads(new_sync.db.get("approved_mechs", None)) == []
+        assert json.loads(new_sync.db.get("approved_mechs", None)) == {}
 
     def test_publishes_empty_pin_when_payload_unset(self) -> None:
         """A None selected_mechs payload must publish an explicit empty list.

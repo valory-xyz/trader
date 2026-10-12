@@ -71,7 +71,7 @@ def test_chatui_payload_carries_selected_mechs() -> None:
 
 
 def test_chatui_payload_carries_approved_mechs() -> None:
-    """The approved list rides along and round-trips through (de)serialization."""
-    payload = ChatuiPayload(sender="sender", vote=True, approved_mechs='["0xabc"]')
-    assert payload.approved_mechs == '["0xabc"]'
+    """The approved rates ride along and round-trip through (de)serialization."""
+    payload = ChatuiPayload(sender="sender", vote=True, approved_mechs='{"0xabc": 1}')
+    assert payload.approved_mechs == '{"0xabc": 1}'
     assert ChatuiPayload.from_json(payload.json) == payload

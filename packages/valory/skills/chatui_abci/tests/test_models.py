@@ -1015,51 +1015,83 @@ class TestSetupBootAutoClear:
 
 
 class TestApprovedMechsFile:
-    """The approved list lives in its own file, apart from the chat config."""
+    """The approved mechs and their accepted rates live in their own file, apart from the chat config."""
 
     @staticmethod
     def _state(tmp_path: Path) -> _TestableSharedState:
         state = _make_shared_state({})
-        state._approved_mechs = None  # type: ignore[attr-defined]
+        state._approved_mech_rates = None  # type: ignore[attr-defined]
         state.context.params.store_path = tmp_path  # type: ignore[attr-defined]
         return state
 
     def test_missing_file_means_none_approved(self, tmp_path: Path) -> None:
         """A fresh agent has approved nothing."""
-        assert self._state(tmp_path).approved_mechs == []
+        state = self._state(tmp_path)
+        assert state.approved_mechs == []
+        assert state.approved_mech_rates == {}
 
-    def test_written_list_reads_back_lowercase_and_deduplicated(
-        self, tmp_path: Path
-    ) -> None:
-        """The setter persists to approved_mechs.json, never to the chat config file."""
+    def test_approving_persists_the_address_and_rate(self, tmp_path: Path) -> None:
+        """approve_mech writes approved_mechs.json, never the chat config file."""
         state = self._state(tmp_path)
         mech = "0x" + "ab" * 20
-        state.set_approved_mechs([mech.upper().replace("0X", "0x"), mech])
-        assert json.loads((tmp_path / APPROVED_MECHS_STORE).read_text()) == [mech]
+        state.approve_mech(mech.upper().replace("0X", "0x"), 10000)
+        assert json.loads((tmp_path / APPROVED_MECHS_STORE).read_text()) == {
+            mech: 10000
+        }
         assert not (tmp_path / CHATUI_PARAM_STORE).exists()
+        assert self._state(tmp_path).approved_mech_rates == {mech: 10000}
         assert self._state(tmp_path).approved_mechs == [mech]
+
+    def test_approving_again_replaces_the_accepted_rate(self, tmp_path: Path) -> None:
+        """A re-approval after a price raise records the new price."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.approve_mech(mech, 10000)
+        state.approve_mech(mech, 12000)
+        assert self._state(tmp_path).approved_mech_rates == {mech: 12000}
+
+    def test_set_approved_mech_rates_replaces_the_whole_record(
+        self, tmp_path: Path
+    ) -> None:
+        """Removal rewrites the file with what is left."""
+        state = self._state(tmp_path)
+        kept, gone = "0x" + "ab" * 20, "0x" + "cd" * 20
+        state.set_approved_mech_rates({kept: 1, gone: 2})
+        state.set_approved_mech_rates({kept: 1})
+        assert self._state(tmp_path).approved_mech_rates == {kept: 1}
 
     @pytest.mark.parametrize(
         "content",
-        ["not json", json.dumps({"0xabc": True}), b"\xff\xfe"],
+        ["not json", json.dumps(["0x" + "ab" * 20]), json.dumps(3), b"\xff\xfe"],
     )
-    def test_unreadable_file_means_none_approved(
+    def test_unreadable_or_list_file_means_none_approved(
         self, tmp_path: Path, content: Any
     ) -> None:
-        """A corrupt file is logged and read as empty rather than raising."""
+        """A corrupt file, or the pre-consent list shape, is logged and read as empty."""
         path = tmp_path / APPROVED_MECHS_STORE
         if isinstance(content, bytes):
             path.write_bytes(content)
         else:
             path.write_text(content)
         state = self._state(tmp_path)
-        assert state.approved_mechs == []
+        assert state.approved_mech_rates == {}
         state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
 
-    def test_entries_that_are_not_addresses_are_dropped(self, tmp_path: Path) -> None:
-        """Only 20-byte hex addresses survive a hand-edited file."""
-        mech = "0x" + "cd" * 20
+    def test_entries_without_an_address_and_a_rate_are_dropped(
+        self, tmp_path: Path
+    ) -> None:
+        """Only 20-byte hex addresses with a non-negative integer rate survive a hand-edited file."""
+        mech, other = "0x" + "cd" * 20, "0x" + "ef" * 20
         (tmp_path / APPROVED_MECHS_STORE).write_text(
-            json.dumps([mech, "0x123", 7, "bob.eth", mech.upper().replace("0X", "0x")])
+            json.dumps(
+                {
+                    mech.upper().replace("0X", "0x"): 5,
+                    "0x123": 1,
+                    "bob.eth": 1,
+                    other: "5",
+                    "0x" + "aa" * 20: -1,
+                    "0x" + "bb" * 20: True,
+                }
+            )
         )
-        assert self._state(tmp_path).approved_mechs == [mech]
+        assert self._state(tmp_path).approved_mech_rates == {mech: 5}

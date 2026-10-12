@@ -19,7 +19,7 @@
 
 """Tests for chatui_abci behaviours."""
 
-from typing import Any, Generator, List
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -82,7 +82,7 @@ class TestAsyncAct:
         mock_shared_state = MagicMock(spec=SharedState)
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_shared_state.chatui_config = mock_chatui_config
-        mock_shared_state.approved_mechs = []
+        mock_shared_state.approved_mech_rates = {}
 
         mock_set_done = MagicMock()
 
@@ -133,7 +133,7 @@ class TestAsyncAct:
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_chatui_config.selected_mechs = ["0xABC", "0xDEF"]
         mock_shared_state.chatui_config = mock_chatui_config
-        mock_shared_state.approved_mechs = []
+        mock_shared_state.approved_mech_rates = {}
 
         captured: dict = {}
 
@@ -182,7 +182,7 @@ class TestAsyncAct:
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_chatui_config.selected_mechs = None
         mock_shared_state.chatui_config = mock_chatui_config
-        mock_shared_state.approved_mechs = []
+        mock_shared_state.approved_mech_rates = {}
 
         captured: dict = {}
 
@@ -261,12 +261,12 @@ class TestAsyncAct:
                 next(gen)
 
 
-def _payload_for(approved: List[str]) -> Any:
+def _payload_for(approved: Dict[str, int]) -> Any:
     """Run async_act with the given approved mechs and return the payload sent."""
     behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
     mock_shared_state = MagicMock(spec=SharedState)
     mock_shared_state.chatui_config = MagicMock(spec=ChatuiConfig, selected_mechs=None)
-    mock_shared_state.approved_mechs = approved
+    mock_shared_state.approved_mech_rates = approved
     captured: dict = {}
 
     def _capture_payload(payload: Any) -> Generator:
@@ -301,8 +301,10 @@ def _payload_for(approved: List[str]) -> Any:
 
 @pytest.mark.parametrize(
     "approved, expected",
-    [(["0xabc", "0xdef"], '["0xabc", "0xdef"]'), ([], "[]")],
+    [({"0xdef": 2, "0xabc": 1}, '{"0xabc": 1, "0xdef": 2}'), ({}, "{}")],
 )
-def test_async_act_sends_the_approved_mechs(approved: List[str], expected: str) -> None:
-    """The approved list rides in the payload every period, empty as an explicit list."""
+def test_async_act_sends_the_approved_mechs_with_their_rates(
+    approved: Dict[str, int], expected: str
+) -> None:
+    """The accepted rates ride in the payload every period, sorted, empty as an explicit object."""
     assert _payload_for(approved).approved_mechs == expected

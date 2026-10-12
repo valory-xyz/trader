@@ -101,7 +101,9 @@ AGENT = {"data": {"service": {"id": "975", "erc8004Agent": {"id": str(AGENT_ID)}
 class _Fetcher(MechReportRequests):
     """The mixin on a fake context that records requests and answers them in order."""
 
-    def __init__(self, valid: Iterable[str] = (), approved: Iterable[str] = ()) -> None:
+    def __init__(
+        self, valid: Iterable[str] = (), approved: Optional[Dict[str, int]] = None
+    ) -> None:
         self.context = MagicMock()
         self.context.params.mech_chain_id = "gnosis"
         self.context.params.valid_mechs = frozenset(valid)
@@ -110,7 +112,9 @@ class _Fetcher(MechReportRequests):
         self.context.mechs_subgraph.url = "https://marketplace"
         self.context.requests.request_id_to_callback = {}
         self.shared_state = SimpleNamespace(
-            mech_reports={}, approved_mechs=list(approved)
+            mech_reports={},
+            approved_mechs=list(approved or {}),
+            approved_mech_rates=dict(approved or {}),
         )
         self.sent: List[Dict[str, Any]] = []
         self._nonces: List[str] = []
@@ -174,6 +178,8 @@ def test_full_report_is_built_from_four_reads_and_a_proof() -> None:
     assert report.same_creator_mechs == 2
     assert report.tools == ["prediction-online", "prediction-offline"]
     assert (report.payment_method, report.payment_ceiling) == ("xDAI", "0.01 xDAI")
+    assert (report.max_delivery_rate, report.payment_type_id) == (10**16, NATIVE[2:])
+    assert (report.accepted_rate, report.accepted_ceiling) == (None, None)
     assert (
         report.received_requests,
         report.self_delivered,
@@ -319,3 +325,16 @@ def test_the_store_keeps_only_the_most_recent_reports() -> None:
 def test_addresses_in(text: str, expected: List[str]) -> None:
     """Addresses are found case-insensitively, deduplicated and capped."""
     assert addresses_in(text) == expected
+
+
+def test_an_approved_mech_carries_the_accepted_price() -> None:
+    """The report shows what the user accepted next to what the mech charges now."""
+    fetcher = _Fetcher(approved={MECH: 10**15})
+    with patch(PROOF_TARGET, return_value=MATCHING_PROOF):
+        _run(fetcher, [MECH])
+        for body in (_record(), SAME_CREATOR, MANIFEST, AGENT):
+            fetcher.answer(body)
+    report = fetcher.shared_state.mech_reports[MECH]
+    assert report.is_approved is True
+    assert (report.accepted_rate, report.accepted_ceiling) == (10**15, "0.001 xDAI")
+    assert report.price_raised is True

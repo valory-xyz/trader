@@ -102,7 +102,7 @@ class SharedState(BaseSharedState):
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
         self._chatui_config: Optional[ChatuiConfig] = None
-        self._approved_mechs: Optional[List[str]] = None
+        self._approved_mech_rates: Optional[Dict[str, int]] = None
         # Reports the chat has shown, by lowercase address, and the address
         # waiting for the user's yes. In memory only: they serve one
         # conversation and are rebuilt on demand.
@@ -145,25 +145,41 @@ class SharedState(BaseSharedState):
         return self._chatui_config
 
     @property
-    def approved_mechs(self) -> List[str]:
-        """Get the lowercase addresses of the mechs the user approved."""
-        if self._approved_mechs is None:
-            self._approved_mechs = self._read_approved_mechs()
-        return list(self._approved_mechs)
+    def approved_mech_rates(self) -> Dict[str, int]:
+        """Get the approved mechs with the per-request rate the user accepted for each.
 
-    def set_approved_mechs(self, mechs: List[str]) -> None:
-        """Persist the approved mechs, lowercased and deduplicated in order."""
-        approved = list(dict.fromkeys(str(mech).lower() for mech in mechs))
+        Keys are lowercase addresses; rates are in the mech's payment asset's
+        smallest unit. mech-interact bounds what an approved mech may charge by
+        this rate, so it is the price the user was shown when approving.
+        """
+        if self._approved_mech_rates is None:
+            self._approved_mech_rates = self._read_approved_mech_rates()
+        return dict(self._approved_mech_rates)
+
+    @property
+    def approved_mechs(self) -> List[str]:
+        """Get the lowercase addresses of the mechs the user approved, in approval order."""
+        return list(self.approved_mech_rates)
+
+    def set_approved_mech_rates(self, rates: Dict[str, int]) -> None:
+        """Persist the approved mechs and their accepted rates, addresses lowercased."""
+        approved = {str(mech).lower(): int(rate) for mech, rate in rates.items()}
         write_json_atomically(
             self.context.params.store_path / APPROVED_MECHS_STORE, approved
         )
-        self._approved_mechs = approved
+        self._approved_mech_rates = approved
 
-    def _read_approved_mechs(self) -> List[str]:
+    def approve_mech(self, address: str, rate: int) -> None:
+        """Approve a mech at a rate, replacing any rate accepted for it before."""
+        rates = self.approved_mech_rates
+        rates[str(address).lower()] = int(rate)
+        self.set_approved_mech_rates(rates)
+
+    def _read_approved_mech_rates(self) -> Dict[str, int]:
         """Read the approved mechs; a missing or unreadable file means none."""
         path: Path = self.context.params.store_path / APPROVED_MECHS_STORE
         if not path.exists():
-            return []
+            return {}
         try:
             with open(path, FILE_READ_MODE) as store_file:
                 raw = json.loads(store_file.read())
@@ -171,16 +187,21 @@ class SharedState(BaseSharedState):
             self.context.logger.error(
                 f"Approved mechs file {path!r} is unreadable: {e}."
             )
-            return []
-        if not isinstance(raw, list):
-            self.context.logger.error(f"Approved mechs file {path!r} is not a list.")
-            return []
-        approved = [
-            str(mech).lower()
-            for mech in raw
-            if isinstance(mech, str) and ADDRESS_PATTERN.fullmatch(mech.lower())
-        ]
-        return list(dict.fromkeys(approved))
+            return {}
+        if not isinstance(raw, dict):
+            self.context.logger.error(
+                f"Approved mechs file {path!r} is not an object of address to rate."
+            )
+            return {}
+        approved: Dict[str, int] = {}
+        for mech, rate in raw.items():
+            address = str(mech).lower()
+            if not ADDRESS_PATTERN.fullmatch(address):
+                continue
+            if isinstance(rate, bool) or not isinstance(rate, int) or rate < 0:
+                continue
+            approved[address] = rate
+        return approved
 
     def _get_current_json_store(self) -> Dict[str, Any]:
         """Get the current store."""

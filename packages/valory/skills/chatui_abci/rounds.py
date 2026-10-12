@@ -37,6 +37,7 @@ from packages.valory.skills.abstract_round_abci.base import (
 from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
 
 SERIALIZED_EMPTY_PIN = "[]"
+SERIALIZED_EMPTY_APPROVALS = "{}"
 SELECTED_MECHS_DB_KEY = "selected_mechs"
 APPROVED_MECHS_DB_KEY = "approved_mechs"
 
@@ -130,7 +131,7 @@ class ChatuiLoadRound(VotingRound):
                 **{
                     self.collection_key: self.serialized_collection,
                     SELECTED_MECHS_DB_KEY: raw_pin or SERIALIZED_EMPTY_PIN,
-                    APPROVED_MECHS_DB_KEY: raw_approved or SERIALIZED_EMPTY_PIN,
+                    APPROVED_MECHS_DB_KEY: raw_approved or SERIALIZED_EMPTY_APPROVALS,
                 },
             )
             return synchronized_data, self.done_event

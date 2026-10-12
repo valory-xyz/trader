@@ -21,6 +21,7 @@
 
 import json
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
@@ -34,11 +35,13 @@ from packages.valory.skills.chatui_abci.mech_report import (
     ProofStatus,
     Refusal,
     age_days,
+    cap_for,
     clean_text,
     fetch_proof,
     hostname,
     https_url,
     payment_line,
+    payment_type_id,
     proof_matches,
     proof_url,
     read_benchmarks,
@@ -344,4 +347,78 @@ def test_report_is_approvable_only_when_unrefused_and_third_party(
     facts = report.to_prompt()
     assert facts["approvable"] is approvable
     assert facts["refusal"] == (refusal.value if refusal else None)
-    assert {"fetched_at", "service_id", "creator", "metadata_hash"}.isdisjoint(facts)
+    assert {
+        "fetched_at",
+        "service_id",
+        "creator",
+        "metadata_hash",
+        "max_delivery_rate",
+        "payment_type_id",
+        "accepted_rate",
+    }.isdisjoint(facts)
+    assert facts["price_raised"] is False
+
+
+@pytest.mark.parametrize(
+    "accepted, live, raised",
+    [
+        (None, 10**16, False),
+        (10**16, 10**16, False),
+        (10**16, 10**16 + 1, True),
+        (10**16, None, False),
+    ],
+)
+def test_price_raised_only_when_the_live_rate_is_above_the_accepted_one(
+    accepted: Optional[int], live: Optional[int], raised: bool
+) -> None:
+    """An approved mech that now charges more than the user accepted is flagged; a cut is not."""
+    report = MechReport(
+        address="0x" + "b" * 40,
+        chain_id=GNOSIS,
+        fetched_at=1,
+        accepted_rate=accepted,
+        max_delivery_rate=live,
+    )
+    assert report.price_raised is raised
+    assert report.to_prompt()["price_raised"] is raised
+
+
+class _Caps(str, Enum):
+    """Stand-in for mech-interact's PaymentType: values are the selectors with 0x."""
+
+    NATIVE = NATIVE
+    USDC = USDC
+
+
+@pytest.mark.parametrize(
+    "type_id, expected",
+    [
+        (payment_type_id(NATIVE), 10**16),
+        (payment_type_id(NATIVE.upper().replace("0X", "0x")), 10**16),
+        (payment_type_id(USDC), 10000),
+        (payment_type_id(OLAS), None),
+        (None, None),
+    ],
+)
+def test_cap_for_matches_the_payment_type_by_selector(
+    type_id: Optional[str], expected: Optional[int]
+) -> None:
+    """The agent's cap is found by selector; an asset without a cap has none."""
+    caps = {_Caps.NATIVE: 10**16, _Caps.USDC: 10000}
+    assert cap_for(type_id, caps) == expected
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (NATIVE, payment_type_id(NATIVE)),
+        ("0X" + NATIVE[2:].upper(), NATIVE[2:]),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_payment_type_id_is_lowercase_without_prefix(
+    raw: Any, expected: Optional[str]
+) -> None:
+    """Selectors compare equal whatever case or prefix the source used."""
+    assert payment_type_id(raw) == expected
