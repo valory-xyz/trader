@@ -4327,6 +4327,7 @@ class TestBuildProfitOverTimeData:
             settled_mech_requests_count=5,
             includes_unplaced_mech_fees=True,
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION - 1,
+            last_residual_rebuild_ts=1699990000,
         )
         summary.profit_over_time = existing_profit
         summary.agent_performance = MagicMock()
@@ -4341,10 +4342,12 @@ class TestBuildProfitOverTimeData:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(
                 b, "_perform_initial_backfill", side_effect=_return_gen(backfill_result)
-            ),
+            ) as mock_backfill,
         ):
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         assert result is backfill_result
+        # A version rebuild must not reset the residual-rebuild rate limit.
+        assert mock_backfill.call_args.args[2] == 1699990000
 
     def test_incremental_update_path(self) -> None:
         """Routes to incremental update when all conditions met."""

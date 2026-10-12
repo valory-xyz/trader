@@ -2328,7 +2328,6 @@ class FetchPerformanceSummaryBehaviour(
             f"days={len(new_data_points)}"
         )
 
-        # Watermark: max timestamp across all fetched requests, held-back included
         last_mech_timestamp = max(
             [existing_data.last_mech_timestamp] + [ts for _, ts in fetched_keys]
         )
