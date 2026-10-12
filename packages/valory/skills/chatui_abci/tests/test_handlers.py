@@ -22,7 +22,7 @@
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -51,6 +51,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
 )
+from packages.valory.skills.chatui_abci.mech_report import MechReport, Refusal
 from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
     TradingStrategyUI,
@@ -103,12 +104,20 @@ def _make_handler(
     current_config: Optional[ChatuiConfig] = None,
     available_mechs: Optional[set] = None,
     prediction_tools: Optional[set] = None,
+    approved_mechs: Optional[list] = None,
+    valid_mechs: Optional[set] = None,
 ) -> _TestableHttpHandler:
-    """Return a _TestableHttpHandler wired with minimal mocks."""
+    """Return a _TestableHttpHandler wired with minimal mocks.
+
+    `valid_mechs` defaults to the discovered `available_mechs`.
+    """
     handler = object.__new__(_TestableHttpHandler)
 
     context = MagicMock()
     context.params.is_running_on_polymarket = False  # wxDAI / 18 decimals
+    context.params.valid_mechs = frozenset(
+        available_mechs or set() if valid_mechs is None else valid_mechs
+    )
     context.params.strategies_kwargs = {
         "absolute_min_bet_size": ABS_MIN,
         "absolute_max_bet_size": ABS_MAX,
@@ -117,6 +126,7 @@ def _make_handler(
 
     shared_state = MagicMock()
     shared_state.chatui_config = current_config or ChatuiConfig()
+    shared_state.approved_mechs = list(approved_mechs or [])
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )
@@ -2824,3 +2834,241 @@ class TestAnEmptyMechPreDepositIsExplained:
 
         handler._handle_chatui_llm_error.assert_called_once()
         handler._send_http_response.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Approving third-party mechs
+# ---------------------------------------------------------------------------
+
+THIRD_PARTY = "0x" + "b0" * 20
+VALORY_PINNABLE = "0x" + "a0" * 20
+
+
+def _report(address: str = THIRD_PARTY, **fields: Any) -> MechReport:
+    """A report the chat has shown."""
+    return MechReport(address=address, chain_id=100, fetched_at=1, **fields)
+
+
+def _approval_handler(
+    reports: Optional[List[MechReport]] = None,
+    approved: Optional[List[str]] = None,
+    pending: Optional[str] = None,
+    pin: Optional[List[str]] = None,
+) -> _TestableHttpHandler:
+    """A handler whose shared state holds shown reports and an approved list."""
+    handler = _make_handler(
+        current_config=ChatuiConfig(selected_mechs=pin), approved_mechs=approved
+    )
+    state = handler.shared_state
+    state.mech_reports = {report.address: report for report in reports or []}
+    state.pending_mech_approval = pending
+
+    def _set(mechs: List[str]) -> None:
+        state.approved_mechs = list(mechs)
+
+    state.set_approved_mechs = MagicMock(side_effect=_set)
+    return handler
+
+
+class TestRequestApproval:
+    """approve_mech only puts a shown, approvable mech up for confirmation."""
+
+    def test_shown_mech_waits_for_confirmation_without_being_written(self) -> None:
+        """The address is held as pending; nothing is approved yet."""
+        handler = _approval_handler([_report()])
+        override, notes = handler._apply_mech_action(
+            {"approve_mech": THIRD_PARTY.upper().replace("0X", "0x")}, "Approve it?"
+        )
+        assert override is None
+        assert handler.shared_state.pending_mech_approval == THIRD_PARTY
+        handler.shared_state.set_approved_mechs.assert_not_called()
+        assert notes == [f"To confirm, reply yes to approve {THIRD_PARTY}."]
+
+    def test_no_extra_note_when_the_reply_already_names_the_address(self) -> None:
+        """The LLM's own confirmation question is kept when it carries the address."""
+        handler = _approval_handler([_report()])
+        _, notes = handler._apply_mech_action(
+            {"approve_mech": THIRD_PARTY}, f"Approve {THIRD_PARTY} on Gnosis?"
+        )
+        assert notes == []
+
+    @pytest.mark.parametrize(
+        "reports, approved, expected",
+        [
+            ([], [], "I can only approve a mech I have shown you"),
+            ([_report(is_valory=True)], [], "is a Valory mech"),
+            ([_report()], [THIRD_PARTY], "is already approved"),
+            ([_report(refusal=Refusal.NEVER_DELIVERED)], [], "never delivered"),
+            (
+                [_report(refusal=Refusal.MANIFEST_UNREADABLE)],
+                [],
+                "can't read its description",
+            ),
+        ],
+    )
+    def test_unshown_valory_approved_or_refused_mechs_are_turned_down(
+        self, reports: List[MechReport], approved: List[str], expected: str
+    ) -> None:
+        """The LLM's message is replaced and nothing is held or written."""
+        handler = _approval_handler(reports, approved)
+        override, _ = handler._apply_mech_action(
+            {"approve_mech": THIRD_PARTY}, "Confirm approval?"
+        )
+        assert override is not None and expected in override
+        assert handler.shared_state.pending_mech_approval is None
+        handler.shared_state.set_approved_mechs.assert_not_called()
+
+
+class TestConfirmApproval:
+    """confirm_approval writes only the pending, still approvable mech."""
+
+    def test_confirmation_approves_the_pending_mech(self) -> None:
+        """The approved file gets the address and the pending slot clears."""
+        handler = _approval_handler(
+            [_report()], approved=["0x" + "c0" * 20], pending=THIRD_PARTY
+        )
+        _, notes = handler._apply_mech_action({"confirm_approval": True}, "Done.")
+        handler.shared_state.set_approved_mechs.assert_called_once_with(
+            ["0x" + "c0" * 20, THIRD_PARTY]
+        )
+        assert handler.shared_state.pending_mech_approval is None
+        assert notes and notes[0].startswith(f"Approved {THIRD_PARTY}.")
+
+    @pytest.mark.parametrize(
+        "reports, pending, expected",
+        [
+            ([_report()], None, "There is no approval waiting"),
+            ([], THIRD_PARTY, "can't approve"),
+            ([_report(refusal=Refusal.NEVER_DELIVERED)], THIRD_PARTY, "can't approve"),
+        ],
+    )
+    def test_nothing_is_written_without_a_valid_pending_mech(
+        self, reports: List[MechReport], pending: Optional[str], expected: str
+    ) -> None:
+        """A yes with nothing pending, or for a mech no longer approvable, writes nothing."""
+        handler = _approval_handler(reports, pending=pending)
+        _, notes = handler._apply_mech_action({"confirm_approval": True}, "")
+        handler.shared_state.set_approved_mechs.assert_not_called()
+        assert expected in notes[0]
+
+    def test_a_new_approval_request_takes_precedence_over_a_confirmation(self) -> None:
+        """Asking to approve another mech never confirms the pending one."""
+        other = "0x" + "e0" * 20
+        handler = _approval_handler([_report(), _report(other)], pending=THIRD_PARTY)
+        handler._apply_mech_action(
+            {"approve_mech": other, "confirm_approval": True}, ""
+        )
+        handler.shared_state.set_approved_mechs.assert_not_called()
+        assert handler.shared_state.pending_mech_approval == other
+
+
+class TestRemoveApprovedMechs:
+    """Removing an approved mech also unpins it."""
+
+    def test_removing_a_pinned_mech_unpins_it_and_falls_back(self) -> None:
+        """With no other pin left, selection goes back to normal."""
+        handler = _approval_handler(approved=[THIRD_PARTY], pin=[THIRD_PARTY])
+        _, notes = handler._apply_mech_action(
+            {"remove_approved_mechs": [THIRD_PARTY.upper().replace("0X", "0x")]}, ""
+        )
+        handler.shared_state.set_approved_mechs.assert_called_once_with([])
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
+        assert any("back to normal" in note for note in notes)
+
+    def test_other_pins_stay(self) -> None:
+        """Only the removed mech leaves the pin."""
+        handler = _approval_handler(
+            approved=[THIRD_PARTY], pin=[VALORY_PINNABLE, THIRD_PARTY]
+        )
+        _, notes = handler._apply_mech_action(
+            {"remove_approved_mechs": [THIRD_PARTY]}, ""
+        )
+        handler._store_selected_mechs.assert_called_once_with([VALORY_PINNABLE])  # type: ignore[attr-defined]
+        assert any("other pins stay" in note for note in notes)
+
+    def test_removing_an_unpinned_mech_leaves_the_pin_alone(self) -> None:
+        """No pin change when the removed mech was not pinned; pending is cleared."""
+        handler = _approval_handler(approved=[THIRD_PARTY], pending=THIRD_PARTY)
+        handler._apply_mech_action({"remove_approved_mechs": [THIRD_PARTY]}, "")
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.pending_mech_approval is None
+
+    def test_removing_an_unknown_mech_says_so(self) -> None:
+        """Nothing is written for an address that was never approved."""
+        handler = _approval_handler(approved=[])
+        _, notes = handler._apply_mech_action(
+            {"remove_approved_mechs": [THIRD_PARTY]}, ""
+        )
+        handler.shared_state.set_approved_mechs.assert_not_called()
+        assert notes == [f"Not approved, so nothing to remove: {THIRD_PARTY}."]
+
+
+@pytest.mark.parametrize("action", [None, "approve", ["x"]])
+def test_a_missing_or_malformed_action_changes_nothing(action: Any) -> None:
+    """Only a mech_action object is acted on."""
+    handler = _approval_handler([_report()])
+    assert handler._apply_mech_action(action, "hi") == (None, [])
+    assert handler.shared_state.pending_mech_approval is None
+
+
+class TestPinnableMechs:
+    """Pins accept discovered Valory mechs and approved mechs."""
+
+    def test_approved_mechs_are_pinnable_before_discovery(self) -> None:
+        """An approval counts at once, before mech-interact lists the mech."""
+        handler = _make_handler(
+            available_mechs={VALORY_PINNABLE}, approved_mechs=[THIRD_PARTY]
+        )
+        assert handler._get_available_valid_mechs() == {VALORY_PINNABLE, THIRD_PARTY}
+        params, issues = handler._process_updated_agent_config(
+            {"selected_mechs": [THIRD_PARTY]}
+        )
+        assert issues == []
+        assert params[SELECTED_MECHS_FIELD] == [THIRD_PARTY]
+
+    def test_a_just_removed_mech_is_not_pinnable(self) -> None:
+        """Still discovered this period but no longer approved: rejected."""
+        handler = _make_handler(
+            available_mechs={VALORY_PINNABLE, THIRD_PARTY},
+            valid_mechs={VALORY_PINNABLE},
+            approved_mechs=[],
+        )
+        assert handler._get_available_valid_mechs() == {VALORY_PINNABLE}
+
+
+def test_the_prompt_waits_for_reports_on_named_addresses() -> None:
+    """Addresses in the user's message are reported on before the LLM is asked."""
+    handler = _make_handler()
+    handler._with_mech_reports = MagicMock()  # type: ignore[method-assign]
+    handler._send_chatui_prompt = MagicMock()  # type: ignore[method-assign]
+    http_msg = MagicMock()
+    http_msg.body = json.dumps({"prompt": f"what is {THIRD_PARTY}?"}).encode()
+
+    handler._handle_chatui_prompt(http_msg, MagicMock())
+
+    addresses, then = handler._with_mech_reports.call_args[0]
+    assert addresses == [THIRD_PARTY]
+    handler._send_chatui_prompt.assert_not_called()  # type: ignore[attr-defined]
+    then()
+    handler._send_chatui_prompt.assert_called_once()  # type: ignore[attr-defined]
+
+
+def test_the_prompt_carries_reports_approvals_and_the_pending_mech() -> None:
+    """The LLM sees the shown reports, the approved list and what awaits a yes."""
+    handler = _make_handler(approved_mechs=[VALORY_PINNABLE])
+    handler.shared_state.mech_reports = {
+        THIRD_PARTY: _report(operator_name="Bob Labs", domain="bobmech.com")
+    }
+    handler.shared_state.pending_mech_approval = THIRD_PARTY
+    handler.shared_state.read_activity_goal_from_disk.return_value = None
+    handler.context.params.default_activity_goal = 10
+    handler.shared_state.chatui_config.activity_goal = None
+    handler._send_chatui_llm_request = MagicMock()  # type: ignore[method-assign]
+
+    handler._send_chatui_prompt("hi", AVAILABLE_TOOLS, MagicMock(), MagicMock())
+
+    prompt = handler._send_chatui_llm_request.call_args[1]["prompt"]  # type: ignore[attr-defined]
+    assert '"operator_name": "Bob Labs"' in prompt
+    assert f"Mechs the user approved for this agent: {VALORY_PINNABLE}" in prompt
+    assert f"Approval waiting for the user's confirmation: {THIRD_PARTY}" in prompt
+    assert "Never suggest, list or recommend a mech the user did not name." in prompt

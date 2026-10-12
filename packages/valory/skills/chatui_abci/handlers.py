@@ -24,7 +24,7 @@ import json
 import math
 from functools import partial
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -73,6 +73,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpMethod,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
+from packages.valory.skills.chatui_abci.mech_report import Refusal
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
     SharedState,
@@ -85,6 +86,10 @@ from packages.valory.skills.chatui_abci.prompts import (
     FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
+)
+from packages.valory.skills.chatui_abci.report_requests import (
+    MechReportRequests,
+    addresses_in,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
@@ -113,11 +118,21 @@ PROMPT_FIELD = "prompt"
 RESPONSE_FIELD = "response"
 MESSAGE_FIELD = "message"
 UPDATED_CONFIG_FIELD = "updated_agent_config"
+MECH_ACTION_FIELD = "mech_action"
 UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
 SELECTED_MECHS_FIELD = "selected_mechs"
+APPROVE_MECH_FIELD = "approve_mech"
+CONFIRM_APPROVAL_FIELD = "confirm_approval"
+REMOVE_APPROVED_MECHS_FIELD = "remove_approved_mechs"
+REFUSAL_REASONS = {
+    Refusal.RECORD_UNAVAILABLE: "its record cannot be read right now. Try again later.",
+    Refusal.NOT_INDEXED: "no such mech is found on this chain.",
+    Refusal.MANIFEST_UNREADABLE: "I can't read its description. Try again later.",
+    Refusal.NEVER_DELIVERED: "it has never delivered an on-chain request.",
+}
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -137,7 +152,7 @@ AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingS
 _UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 
 
-class HttpHandler(BaseHttpHandler):
+class HttpHandler(BaseHttpHandler, MechReportRequests):
     """This implements the trader handler."""
 
     def setup(self) -> None:
@@ -257,6 +272,31 @@ class HttpHandler(BaseHttpHandler):
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
+        self._with_mech_reports(
+            addresses_in(user_prompt),
+            partial(
+                self._send_chatui_prompt,
+                user_prompt,
+                available_tools,
+                http_msg,
+                http_dialogue,
+            ),
+        )
+
+    def _send_chatui_prompt(
+        self,
+        user_prompt: str,
+        available_tools: Any,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Fill the prompt, once any mech reports it needs are ready, and ask the LLM.
+
+        :param user_prompt: the user's message.
+        :param available_tools: the tools the user may pin.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
@@ -321,6 +361,14 @@ class HttpHandler(BaseHttpHandler):
             activity_goal_progress=(
                 "not counted yet" if published_goal is None else published_goal.progress
             ),
+            mech_reports=json.dumps(
+                [
+                    report.to_prompt()
+                    for report in self.shared_state.mech_reports.values()
+                ]
+            ),
+            approved_mechs=", ".join(self.shared_state.approved_mechs) or "none",
+            pending_approval=self.shared_state.pending_mech_approval or "none",
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -355,13 +403,19 @@ class HttpHandler(BaseHttpHandler):
         )
 
     def _get_available_valid_mechs(self) -> Set[str]:
-        """Return the set of mech addresses currently visible to mech-interact.
+        """Return the mechs the user may pin: discovered Valory mechs and approved mechs.
 
-        ``available_valid_mechs`` is fully defensive: it falls back to an
-        empty set on a missing or malformed ``mechs_info`` key. Callers
-        are responsible for handling the empty case.
+        Approved mechs count at once, before mech-interact discovers them next
+        period; a discovered mech that is neither allowlisted nor approved any
+        more (just removed) does not.
         """
-        return self.synchronized_data.available_valid_mechs
+        valid_mechs = self.context.params.valid_mechs
+        discovered = {
+            mech
+            for mech in self.synchronized_data.available_valid_mechs
+            if mech in valid_mechs
+        }
+        return discovered | set(self.shared_state.approved_mechs)
 
     def _available_tools(self) -> Set[str]:
         """Resolve the user-selectable mech tool set.
@@ -482,6 +536,10 @@ class HttpHandler(BaseHttpHandler):
             return
 
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
+        override, mech_notes = self._apply_mech_action(
+            llm_response_json.get(MECH_ACTION_FIELD), llm_message
+        )
+        llm_message = self._with_notes(override or llm_message, mech_notes)
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
 
         if not updated_agent_config:
@@ -531,7 +589,11 @@ class HttpHandler(BaseHttpHandler):
 
         response_body = {
             TRADING_TYPE_FIELD: selected_ui_strategy,
-            LLM_MESSAGE_FIELD: "\n".join(issues) if issues else llm_message,
+            LLM_MESSAGE_FIELD: (
+                self._with_notes("\n".join(issues), mech_notes)
+                if issues
+                else llm_message
+            ),
         }
         if selected_trading_strategy != previous_trading_strategy:
             # In case of update, reflect the previous value in the response. Needed for frontend
@@ -542,6 +604,113 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             response_body,
         )
+
+    def teardown(self) -> None:
+        """Stop the domain-proof worker on top of the base teardown."""
+        self._shutdown_proof_executor()
+        super().teardown()
+
+    @staticmethod
+    def _with_notes(message: str, notes: List[str]) -> str:
+        """Append the handler's own notes to a reply."""
+        return "<br>".join([message, *notes]) if notes else message
+
+    def _apply_mech_action(
+        self, action: Any, message: str
+    ) -> Tuple[Optional[str], List[str]]:
+        """Apply the LLM's mech action under the handler's own checks.
+
+        The LLM proposes; the handler decides. Only an address the chat has
+        shown, unrefused, can be put up for approval, and it is written only
+        after the user confirms it.
+
+        :param action: the `mech_action` object from the LLM reply.
+        :param message: the LLM's message.
+        :return: a reply to show instead of the LLM's, if any, and notes to append.
+        """
+        if not isinstance(action, dict):
+            return None, []
+        notes: List[str] = []
+        removed = action.get(REMOVE_APPROVED_MECHS_FIELD)
+        if isinstance(removed, list) and removed:
+            notes.extend(self._remove_approved_mechs([str(m).lower() for m in removed]))
+        approve = action.get(APPROVE_MECH_FIELD)
+        if isinstance(approve, str) and approve.strip():
+            address = approve.strip().lower()
+            refused = self._request_approval(address)
+            if refused is not None:
+                return refused, notes
+            if address not in message.lower():
+                notes.append(f"To confirm, reply yes to approve {address}.")
+        elif action.get(CONFIRM_APPROVAL_FIELD) is True:
+            notes.append(self._confirm_approval())
+        return None, notes
+
+    def _request_approval(self, address: str) -> Optional[str]:
+        """Put a shown, approvable mech up for confirmation, or say why not."""
+        report = self.shared_state.mech_reports.get(address)
+        if report is None:
+            return f"I can only approve a mech I have shown you. Ask me about {address} first."
+        if report.is_valory:
+            return f"{address} is a Valory mech the agent already uses, so it needs no approval."
+        if address in self.shared_state.approved_mechs:
+            return f"{address} is already approved."
+        if report.refusal is not None:
+            return f"I can't approve {address}: {REFUSAL_REASONS[report.refusal]}"
+        self.shared_state.pending_mech_approval = address
+        return None
+
+    def _confirm_approval(self) -> str:
+        """Approve the mech waiting for confirmation, if it is still approvable."""
+        address = self.shared_state.pending_mech_approval
+        self.shared_state.pending_mech_approval = None
+        if address is None:
+            return "There is no approval waiting for your confirmation."
+        report = self.shared_state.mech_reports.get(address)
+        if report is None or not report.approvable:
+            return f"I can't approve {address} any more; ask me about it again."
+        self.shared_state.set_approved_mechs(
+            [*self.shared_state.approved_mechs, address]
+        )
+        return (
+            f"Approved {address}. It starts with no track record on your side and "
+            "earns work through normal scoring, from the next cycle."
+        )
+
+    def _remove_approved_mechs(self, addresses: List[str]) -> List[str]:
+        """Remove approved mechs, unpinning any that were pinned."""
+        approved = self.shared_state.approved_mechs
+        removed = [address for address in addresses if address in approved]
+        unknown = [address for address in addresses if address not in approved]
+        notes = (
+            [f"Not approved, so nothing to remove: {', '.join(unknown)}."]
+            if unknown
+            else []
+        )
+        if not removed:
+            return notes
+        self.shared_state.set_approved_mechs(
+            [address for address in approved if address not in removed]
+        )
+        if self.shared_state.pending_mech_approval in removed:
+            self.shared_state.pending_mech_approval = None
+        notes.append(
+            f"Removed {', '.join(removed)}. No new requests go to it from the next cycle."
+        )
+        pin = self.shared_state.chatui_config.selected_mechs or []
+        unpinned = [mech for mech in pin if mech.lower() in removed]
+        if unpinned:
+            remaining = [mech for mech in pin if mech.lower() not in removed]
+            self._store_selected_mechs(remaining or None)
+            notes.append(
+                f"It was pinned, so {', '.join(unpinned)} is unpinned"
+                + (
+                    "; your other pins stay."
+                    if remaining
+                    else " and mech selection is back to normal."
+                )
+            )
+        return notes
 
     def _process_updated_agent_config(self, updated_agent_config: dict) -> tuple:
         """

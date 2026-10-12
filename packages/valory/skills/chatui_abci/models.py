@@ -22,6 +22,7 @@
 
 import enum
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Optional, Type
@@ -42,6 +43,10 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.chatui_abci.rounds import ChatuiAbciApp
 
 CHATUI_PARAM_STORE = "chatui_param_store.json"
+# Kept apart from the chat config, whose loader resets on unknown keys, so an
+# older version reading the config never sees it.
+APPROVED_MECHS_STORE = "approved_mechs.json"
+ADDRESS_PATTERN = re.compile(r"0x[0-9a-f]{40}")
 ACTIVITY_GOAL_FIELD = "activity_goal"
 
 FILE_READ_MODE = "r"
@@ -97,6 +102,12 @@ class SharedState(BaseSharedState):
         super().__init__(*args, skill_context=skill_context, **kwargs)
 
         self._chatui_config: Optional[ChatuiConfig] = None
+        self._approved_mechs: Optional[List[str]] = None
+        # Reports the chat has shown, by lowercase address, and the address
+        # waiting for the user's yes. In memory only: they serve one
+        # conversation and are rebuilt on demand.
+        self.mech_reports: Dict[str, Any] = {}
+        self.pending_mech_approval: Optional[str] = None
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
@@ -132,6 +143,44 @@ class SharedState(BaseSharedState):
         if self._chatui_config is None:
             raise ValueError("The chat UI config has not been set!")
         return self._chatui_config
+
+    @property
+    def approved_mechs(self) -> List[str]:
+        """Get the lowercase addresses of the mechs the user approved."""
+        if self._approved_mechs is None:
+            self._approved_mechs = self._read_approved_mechs()
+        return list(self._approved_mechs)
+
+    def set_approved_mechs(self, mechs: List[str]) -> None:
+        """Persist the approved mechs, lowercased and deduplicated in order."""
+        approved = list(dict.fromkeys(str(mech).lower() for mech in mechs))
+        write_json_atomically(
+            self.context.params.store_path / APPROVED_MECHS_STORE, approved
+        )
+        self._approved_mechs = approved
+
+    def _read_approved_mechs(self) -> List[str]:
+        """Read the approved mechs; a missing or unreadable file means none."""
+        path: Path = self.context.params.store_path / APPROVED_MECHS_STORE
+        if not path.exists():
+            return []
+        try:
+            with open(path, FILE_READ_MODE) as store_file:
+                raw = json.loads(store_file.read())
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            self.context.logger.error(
+                f"Approved mechs file {path!r} is unreadable: {e}."
+            )
+            return []
+        if not isinstance(raw, list):
+            self.context.logger.error(f"Approved mechs file {path!r} is not a list.")
+            return []
+        approved = [
+            str(mech).lower()
+            for mech in raw
+            if isinstance(mech, str) and ADDRESS_PATTERN.fullmatch(mech.lower())
+        ]
+        return list(dict.fromkeys(approved))
 
     def _get_current_json_store(self) -> Dict[str, Any]:
         """Get the current store."""
@@ -245,4 +294,7 @@ class ChatuiParams(BaseParams):
         """Initialize the parameters' object."""
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.genai_api_key = self._ensure("genai_api_key", kwargs, str)
+        self.service_registry_subgraph_url: str = self._ensure(
+            "service_registry_subgraph_url", kwargs, str
+        )
         super().__init__(*args, **kwargs)

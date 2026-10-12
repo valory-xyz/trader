@@ -20,6 +20,7 @@
 """Tests for the rounds module of the chatui_abci skill."""
 
 import json
+from typing import Any, Tuple, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -188,6 +189,21 @@ class TestChatuiLoadRoundEndBlock:
         raw = new_sync.db.get("selected_mechs", None)
         assert raw is not None
         assert json.loads(raw) == ["0xabc", "0xdef"]
+
+    def test_publishes_approved_mechs_when_positive_threshold_reached(self) -> None:
+        """The approved list reaches the key mech-interact discovers from."""
+        payload = ChatuiPayload(
+            sender="agent-1", vote=True, approved_mechs=json.dumps(["0xabc"])
+        )
+        new_sync, _ = cast(Tuple[Any, Any], self._build_round(payload).end_block())
+        assert json.loads(new_sync.db.get("approved_mechs", None)) == ["0xabc"]
+        assert json.loads(new_sync.db.get("selected_mechs", None)) == []
+
+    def test_publishes_empty_approved_list_when_payload_unset(self) -> None:
+        """Without approvals an explicit empty list is written, so removals take effect."""
+        payload = ChatuiPayload(sender="agent-1", vote=True)
+        new_sync, _ = cast(Tuple[Any, Any], self._build_round(payload).end_block())
+        assert json.loads(new_sync.db.get("approved_mechs", None)) == []
 
     def test_publishes_empty_pin_when_payload_unset(self) -> None:
         """A None selected_mechs payload must publish an explicit empty list.

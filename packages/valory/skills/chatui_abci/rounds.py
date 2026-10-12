@@ -38,6 +38,7 @@ from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
 
 SERIALIZED_EMPTY_PIN = "[]"
 SELECTED_MECHS_DB_KEY = "selected_mechs"
+APPROVED_MECHS_DB_KEY = "approved_mechs"
 
 
 class SynchronizedData(BaseSynchronizedData):
@@ -121,13 +122,15 @@ class ChatuiLoadRound(VotingRound):
             # uniquely determined. On a future multi-agent migration
             # this must switch to a consensus rule (e.g. most_common)
             # to stay deterministic across peers.
-            raw_pin = positive_payloads[0].selected_mechs if positive_payloads else None
-            selected_mechs = raw_pin if raw_pin is not None else SERIALIZED_EMPTY_PIN
+            payload = positive_payloads[0] if positive_payloads else None
+            raw_pin = payload.selected_mechs if payload else None
+            raw_approved = payload.approved_mechs if payload else None
             synchronized_data = self.synchronized_data.update(
                 synchronized_data_class=self.synchronized_data_class,
                 **{
                     self.collection_key: self.serialized_collection,
-                    SELECTED_MECHS_DB_KEY: selected_mechs,
+                    SELECTED_MECHS_DB_KEY: raw_pin or SERIALIZED_EMPTY_PIN,
+                    APPROVED_MECHS_DB_KEY: raw_approved or SERIALIZED_EMPTY_PIN,
                 },
             )
             return synchronized_data, self.done_event

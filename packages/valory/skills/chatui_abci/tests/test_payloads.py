@@ -27,7 +27,11 @@ def test_chatui_payload() -> None:
     payload = ChatuiPayload(sender="sender", vote=True)
     assert payload.vote is True
     assert payload.selected_mechs is None
-    assert payload.data == {"vote": True, "selected_mechs": None}
+    assert payload.data == {
+        "vote": True,
+        "selected_mechs": None,
+        "approved_mechs": None,
+    }
     assert ChatuiPayload.from_json(payload.json) == payload
 
 
@@ -36,7 +40,11 @@ def test_chatui_payload_false_vote() -> None:
     payload = ChatuiPayload(sender="sender", vote=False)
     assert payload.vote is False
     assert payload.selected_mechs is None
-    assert payload.data == {"vote": False, "selected_mechs": None}
+    assert payload.data == {
+        "vote": False,
+        "selected_mechs": None,
+        "approved_mechs": None,
+    }
     assert ChatuiPayload.from_json(payload.json) == payload
 
 
@@ -54,5 +62,16 @@ def test_chatui_payload_carries_selected_mechs() -> None:
         selected_mechs='["0xabc","0xdef"]',
     )
     assert payload.selected_mechs == '["0xabc","0xdef"]'
-    assert payload.data == {"vote": True, "selected_mechs": '["0xabc","0xdef"]'}
+    assert payload.data == {
+        "vote": True,
+        "selected_mechs": '["0xabc","0xdef"]',
+        "approved_mechs": None,
+    }
+    assert ChatuiPayload.from_json(payload.json) == payload
+
+
+def test_chatui_payload_carries_approved_mechs() -> None:
+    """The approved list rides along and round-trips through (de)serialization."""
+    payload = ChatuiPayload(sender="sender", vote=True, approved_mechs='["0xabc"]')
+    assert payload.approved_mechs == '["0xabc"]'
     assert ChatuiPayload.from_json(payload.json) == payload

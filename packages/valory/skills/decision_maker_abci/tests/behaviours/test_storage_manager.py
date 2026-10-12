@@ -1446,6 +1446,7 @@ class TestSetPolicy:
     def test_set_policy_first_period(self) -> None:
         """Should set initial policy on first period."""
         behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
         policy = _make_policy()
 
         def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
@@ -1482,6 +1483,7 @@ class TestSetPolicy:
     def test_set_policy_subsequent_period(self) -> None:
         """Should read policy from synchronized_data on subsequent periods."""
         behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
         existing_policy = _make_policy()
 
         def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
@@ -1515,6 +1517,7 @@ class TestSetPolicy:
     def test_set_policy_not_set_in_synced_data(self) -> None:
         """Should create initial policy when is_policy_set is False."""
         behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
         policy = _make_policy()
 
         def fake_wait(step, sleep_time_override=None) -> None:  # type: ignore[no-untyped-def, misc]
@@ -2061,3 +2064,39 @@ class TestWarnIfValoryRecordsUnused:
         behaviour._warn_if_valory_records_unused()
 
         assert behaviour.context.logger.warning.called is warns
+
+
+class TestAddOfferedTools:
+    """Tests for _add_offered_tools."""
+
+    def test_new_keys_get_empty_records_and_existing_ones_are_kept(self) -> None:
+        """A newly approved mech's tools become selectable without a restart."""
+        behaviour = _make_behaviour()
+        approved = tool_key(MECH_C, "tool1")
+        behaviour._mech_tools = {_valory("tool1"), approved}
+        policy = _make_policy(
+            {_valory("tool1"): AccuracyInfo(requests=4, accuracy=0.5)}
+        )
+        behaviour._policy = policy
+
+        behaviour._add_offered_tools()
+
+        assert policy.accuracy_store == {
+            _valory("tool1"): AccuracyInfo(requests=4, accuracy=0.5),
+            approved: AccuracyInfo(),
+        }
+        assert approved in policy.weighted_accuracy
+        behaviour.context.logger.info.assert_called_once()
+
+    def test_nothing_new_changes_nothing(self) -> None:
+        """When every offered key has a record, the store and the log stay quiet."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {_valory("tool1")}
+        policy = _make_policy({_valory("tool1"): AccuracyInfo(requests=4)})
+        behaviour._policy = policy
+        before = policy.serialize()
+
+        behaviour._add_offered_tools()
+
+        assert policy.serialize() == before
+        behaviour.context.logger.info.assert_not_called()

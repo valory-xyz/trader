@@ -62,10 +62,14 @@ class ChatuiLoadBehaviour(BaseBehaviour):
                 if pinned
                 else SERIALIZED_EMPTY_PIN
             )
+            approved = self.shared_state.approved_mechs
             payload = ChatuiPayload(
                 sender=self.context.agent_address,
                 vote=True,
                 selected_mechs=selected_mechs_payload,
+                approved_mechs=(
+                    json.dumps(approved) if approved else SERIALIZED_EMPTY_PIN
+                ),
             )
             self.context.logger.info(f"Loaded chat UI parameters: {chatui_config}")
 

@@ -674,6 +674,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         if self.is_first_period:
             self._update_policy_tools()
+        self._add_offered_tools()
+
+    def _add_offered_tools(self) -> None:
+        """Start an empty record for each offered key without one, so it is selectable."""
+        accuracy_store = self.policy.accuracy_store
+        added = sorted(key for key in self.mech_tools if key not in accuracy_store)
+        if not added:
+            return
+        for key in added:
+            accuracy_store[key] = AccuracyInfo()
+        self.policy.update_weighted_accuracy()
+        self.context.logger.info(f"Started records for newly offered tools: {added}.")
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""

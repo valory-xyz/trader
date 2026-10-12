@@ -31,6 +31,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.chatui_abci.models import (
+    APPROVED_MECHS_STORE,
     CHATUI_PARAM_STORE,
     ChatuiConfig,
     ChatuiParams,
@@ -605,9 +606,11 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
+                service_registry_subgraph_url="https://registry.example",
             )
         assert params.service_endpoint == "https://example.com"
         assert params.genai_api_key == "dummy"
+        assert params.service_registry_subgraph_url == "https://registry.example"
 
     def test_init_calls_super(self) -> None:
         """Test that ChatuiParams init must call BaseParams.__init__."""
@@ -617,6 +620,7 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
+                service_registry_subgraph_url="https://registry.example",
             )
         mock_super.assert_called_once()
 
@@ -1008,3 +1012,54 @@ class TestSetupBootAutoClear:
             for call_args in state.context.logger.info.call_args_list  # type: ignore[attr-defined]
         ]
         assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)
+
+
+class TestApprovedMechsFile:
+    """The approved list lives in its own file, apart from the chat config."""
+
+    @staticmethod
+    def _state(tmp_path: Path) -> _TestableSharedState:
+        state = _make_shared_state({})
+        state._approved_mechs = None  # type: ignore[attr-defined]
+        state.context.params.store_path = tmp_path  # type: ignore[attr-defined]
+        return state
+
+    def test_missing_file_means_none_approved(self, tmp_path: Path) -> None:
+        """A fresh agent has approved nothing."""
+        assert self._state(tmp_path).approved_mechs == []
+
+    def test_written_list_reads_back_lowercase_and_deduplicated(
+        self, tmp_path: Path
+    ) -> None:
+        """The setter persists to approved_mechs.json, never to the chat config file."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.set_approved_mechs([mech.upper().replace("0X", "0x"), mech])
+        assert json.loads((tmp_path / APPROVED_MECHS_STORE).read_text()) == [mech]
+        assert not (tmp_path / CHATUI_PARAM_STORE).exists()
+        assert self._state(tmp_path).approved_mechs == [mech]
+
+    @pytest.mark.parametrize(
+        "content",
+        ["not json", json.dumps({"0xabc": True}), b"\xff\xfe"],
+    )
+    def test_unreadable_file_means_none_approved(
+        self, tmp_path: Path, content: Any
+    ) -> None:
+        """A corrupt file is logged and read as empty rather than raising."""
+        path = tmp_path / APPROVED_MECHS_STORE
+        if isinstance(content, bytes):
+            path.write_bytes(content)
+        else:
+            path.write_text(content)
+        state = self._state(tmp_path)
+        assert state.approved_mechs == []
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_entries_that_are_not_addresses_are_dropped(self, tmp_path: Path) -> None:
+        """Only 20-byte hex addresses survive a hand-edited file."""
+        mech = "0x" + "cd" * 20
+        (tmp_path / APPROVED_MECHS_STORE).write_text(
+            json.dumps([mech, "0x123", 7, "bob.eth", mech.upper().replace("0X", "0x")])
+        )
+        assert self._state(tmp_path).approved_mechs == [mech]

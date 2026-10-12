@@ -19,7 +19,7 @@
 
 """Tests for chatui_abci behaviours."""
 
-from typing import Any, Generator
+from typing import Any, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -82,6 +82,7 @@ class TestAsyncAct:
         mock_shared_state = MagicMock(spec=SharedState)
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_shared_state.chatui_config = mock_chatui_config
+        mock_shared_state.approved_mechs = []
 
         mock_set_done = MagicMock()
 
@@ -132,6 +133,7 @@ class TestAsyncAct:
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_chatui_config.selected_mechs = ["0xABC", "0xDEF"]
         mock_shared_state.chatui_config = mock_chatui_config
+        mock_shared_state.approved_mechs = []
 
         captured: dict = {}
 
@@ -180,6 +182,7 @@ class TestAsyncAct:
         mock_chatui_config = MagicMock(spec=ChatuiConfig)
         mock_chatui_config.selected_mechs = None
         mock_shared_state.chatui_config = mock_chatui_config
+        mock_shared_state.approved_mechs = []
 
         captured: dict = {}
 
@@ -256,3 +259,50 @@ class TestAsyncAct:
                 ValueError, match="The chat UI config has not been set!"
             ):
                 next(gen)
+
+
+def _payload_for(approved: List[str]) -> Any:
+    """Run async_act with the given approved mechs and return the payload sent."""
+    behaviour = object.__new__(ChatuiLoadBehaviour)  # type: ignore[type-abstract]
+    mock_shared_state = MagicMock(spec=SharedState)
+    mock_shared_state.chatui_config = MagicMock(spec=ChatuiConfig, selected_mechs=None)
+    mock_shared_state.approved_mechs = approved
+    captured: dict = {}
+
+    def _capture_payload(payload: Any) -> Generator:
+        captured["payload"] = payload
+        if False:
+            yield  # pragma: no cover
+
+    with (
+        patch.object(
+            type(behaviour),
+            "context",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+        ),
+        patch.object(
+            type(behaviour), "behaviour_id", new_callable=PropertyMock, return_value="b"
+        ),
+        patch.object(
+            type(behaviour),
+            "shared_state",
+            new_callable=PropertyMock,
+            return_value=mock_shared_state,
+        ),
+        patch.object(behaviour, "send_a2a_transaction", _capture_payload),
+        patch.object(behaviour, "wait_until_round_end", _noop_gen),
+        patch.object(behaviour, "set_done", MagicMock()),
+    ):
+        with pytest.raises(StopIteration):
+            next(behaviour.async_act())
+    return captured["payload"]
+
+
+@pytest.mark.parametrize(
+    "approved, expected",
+    [(["0xabc", "0xdef"], '["0xabc", "0xdef"]'), ([], "[]")],
+)
+def test_async_act_sends_the_approved_mechs(approved: List[str], expected: str) -> None:
+    """The approved list rides in the payload every period, empty as an explicit list."""
+    assert _payload_for(approved).approved_mechs == expected
