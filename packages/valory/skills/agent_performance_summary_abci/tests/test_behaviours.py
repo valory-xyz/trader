@@ -8120,6 +8120,7 @@ def _disk_state(tmp_path: Path) -> SharedState:
     """A real shared state storing its summary under ``tmp_path``."""
     context = MagicMock()
     context.params.store_path = tmp_path
+    context.params.olas_predict_leaderboard_url = LEADERBOARD_URL
     state = object.__new__(_DiskSharedState)
     state.context = context  # type: ignore[assignment]
     return state

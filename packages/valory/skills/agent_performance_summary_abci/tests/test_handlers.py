@@ -2499,6 +2499,9 @@ class TestHandleGetLeaderboard:
         """
         context = MagicMock()
         context.params.store_path = tmp_path
+        context.params.olas_predict_leaderboard_url = (
+            self.handler.context.params.olas_predict_leaderboard_url  # type: ignore[attr-defined]
+        )
         state = object.__new__(_TestableSharedState)
         state.context = context  # type: ignore[assignment]
         (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
@@ -2523,6 +2526,9 @@ class TestHandleGetLeaderboard:
         """
         context = MagicMock()
         context.params.store_path = tmp_path
+        context.params.olas_predict_leaderboard_url = (
+            self.handler.context.params.olas_predict_leaderboard_url  # type: ignore[attr-defined]
+        )
         state = object.__new__(_TestableSharedState)
         state.context = context  # type: ignore[assignment]
         (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(

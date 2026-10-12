@@ -1498,6 +1498,46 @@ class TestSharedState:
             last_attempt_at=3,
         )
 
+    @pytest.mark.parametrize(
+        "api_url, stored, loaded",
+        [
+            (
+                TestIsAllowedLeaderboardUrl.API,
+                "https://predict.olas.network/leaderboard?pin=0xabc",
+                "https://predict.olas.network/leaderboard?pin=0xabc",
+            ),
+            (
+                TestIsAllowedLeaderboardUrl.API,
+                "https://staging.predict.olas.network/leaderboard",
+                None,
+            ),
+            (TestIsAllowedLeaderboardUrl.API, "javascript:alert(1)", None),
+            ("", "https://predict.olas.network/leaderboard", None),
+        ],
+    )
+    def test_read_leaderboard_from_disk_rechecks_the_link(
+        self, tmp_path: Path, api_url: str, stored: str, loaded: Optional[str]
+    ) -> None:
+        """A persisted link is dropped unless the current URL setting allows it.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param api_url: the current ``olas_predict_leaderboard_url``.
+        :param stored: the link in the file.
+        :param loaded: the link expected after loading.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.params.olas_predict_leaderboard_url = api_url
+        entry = {"ranked": False, "fetched_at": 2, "leaderboard_url": stored}
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"windows": {"7d": entry, "30d": entry}}})
+        )
+        leaderboard = state.read_leaderboard_from_disk()
+        assert leaderboard is not None
+        assert [e.leaderboard_url for e in leaderboard.windows.values()] == [
+            loaded,
+            loaded,
+        ]
+
     def test_update_leaderboard_keeps_siblings_of_a_corrupt_file(
         self, tmp_path: Path
     ) -> None:

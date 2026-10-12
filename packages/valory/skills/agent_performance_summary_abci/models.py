@@ -871,7 +871,17 @@ class SharedState(BaseSharedState):
             return None
 
         sub = raw.get("leaderboard") if isinstance(raw, dict) else None
-        return LeaderboardData.from_dict(sub)
+        leaderboard = LeaderboardData.from_dict(sub)
+        if leaderboard is None:
+            return None
+        # The file may predate a change of URL, or have been edited by hand
+        api_url = self.params.olas_predict_leaderboard_url
+        for entry in leaderboard.windows.values():
+            if entry.leaderboard_url is not None and not is_allowed_leaderboard_url(
+                entry.leaderboard_url, api_url
+            ):
+                entry.leaderboard_url = None
+        return leaderboard
 
     def read_activity_goal_from_disk(self) -> Optional[ActivityGoal]:
         """Return the persisted ``activity_goal`` block with lenient parsing.

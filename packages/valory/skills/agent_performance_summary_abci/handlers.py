@@ -783,7 +783,7 @@ class HttpHandler(BaseHttpHandler):
                         "rank_by_pnl": entry.rank_by_pnl,
                         "total_ranked": entry.total_ranked,
                         "not_ranked_reason": entry.not_ranked_reason,
-                        # Checked against the allow-list when fetched
+                        # Checked against the allow-list when fetched and when loaded
                         "leaderboard_url": entry.leaderboard_url
                         or LEADERBOARD_PAGE_URL,
                         "last_updated": self._format_last_updated(entry.as_of),
