@@ -24,7 +24,7 @@ import platform
 import stat
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -987,6 +987,15 @@ class TestGetStorePath:
             params.get_store_path(kwargs)
 
 
+# Persisted ``leaderboard`` values the summary read must tolerate
+MALFORMED_LEADERBOARD_SECTIONS: List[Any] = [
+    {"windows": []},
+    None,
+    "x",
+    {"windows": {"7d": {"bad": 1}}},
+]
+
+
 class _TestableSharedState(SharedState):
     """Subclass that overrides the read-only context property for testing.
 
@@ -1402,10 +1411,7 @@ class TestSharedState:
         assert data["agent_behavior"] == "active"
         assert data["agent_details"]["id"] == "agent-x"
 
-    @pytest.mark.parametrize(
-        "section",
-        [{"windows": []}, None, "x", {"windows": {"7d": {"bad": 1}}}],
-    )
+    @pytest.mark.parametrize("section", MALFORMED_LEADERBOARD_SECTIONS)
     def test_malformed_leaderboard_does_not_break_the_summary_read(
         self, tmp_path: Path, section: Any
     ) -> None:
