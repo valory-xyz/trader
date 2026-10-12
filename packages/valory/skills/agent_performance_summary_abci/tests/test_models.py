@@ -60,6 +60,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState,
     Subgraph,
     TradesSubgraph,
+    is_allowed_leaderboard_url,
     read_activity_goal,
     write_json_atomically,
     write_performance_summary_key,
@@ -500,12 +501,19 @@ class TestLeaderboardData:
     def test_windows_convert_from_dicts(self) -> None:
         """Nested window dicts become LeaderboardWindowRank instances."""
         raw: Dict[str, Any] = {
-            "windows": {"7d": {"ranked": True, "fetched_at": 5, "rank_by_roi": 3}},
+            "windows": {
+                "7d": {
+                    "ranked": True,
+                    "fetched_at": 5,
+                    "rank_by_roi": 3,
+                    "rank_by_pnl": 4,
+                }
+            },
             "last_attempt_at": 6,
         }
         data = LeaderboardData(**raw)
         assert data.windows["7d"] == LeaderboardWindowRank(
-            ranked=True, fetched_at=5, rank_by_roi=3
+            ranked=True, fetched_at=5, rank_by_roi=3, rank_by_pnl=4
         )
         assert data.last_attempt_at == 6
 
@@ -538,6 +546,142 @@ class TestLeaderboardData:
         old_file = asdict(AgentPerformanceSummary(timestamp=1))
         del old_file["leaderboard"]
         assert AgentPerformanceSummary(**old_file).leaderboard is None
+
+    def test_older_entry_without_updated_at_loads(self) -> None:
+        """An entry persisted before ``updated_at`` existed falls back to ``fetched_at``."""
+        data = LeaderboardData.from_dict(
+            {"windows": {"7d": {"ranked": False, "fetched_at": 5}}}
+        )
+        assert data is not None
+        assert data.windows["7d"].updated_at is None
+        assert data.windows["7d"].as_of == 5
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=5, updated_at=3)
+        assert entry.as_of == 3
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            {"windows": []},
+            {"windows": None},
+            {"windows": "7d"},
+            {"windows": {"7d": None}},
+            {"windows": {"7d": "ranked"}},
+            {"windows": {"7d": {}}},
+            {"windows": {"7d": {"ranked": "yes", "fetched_at": 1}}},
+            {"windows": {"7d": {"ranked": True, "fetched_at": "1"}}},
+            {"windows": {"7d": {"ranked": False, "fetched_at": True}}},
+            # Ranked without both ranks is unusable
+            {"windows": {"7d": {"ranked": True, "fetched_at": 1, "rank_by_roi": 2}}},
+            {"windows": {"lifetime": {"ranked": False, "fetched_at": 1}}},
+            {"windows": {}, "last_attempt_at": "1700000000"},
+            {"windows": {}, "last_attempt_at": 1.5},
+            {},
+        ],
+    )
+    def test_malformed_section_degrades_to_empty(self, section: Any) -> None:
+        """A malformed section drops what is unusable instead of raising.
+
+        :param section: the persisted ``leaderboard`` value.
+        """
+        summary = AgentPerformanceSummary(**{"timestamp": 1, "leaderboard": section})
+        assert summary.leaderboard == LeaderboardData()
+        assert summary.timestamp == 1
+
+    @pytest.mark.parametrize("section", [None, "x", 3, ["windows"]])
+    def test_non_object_section_is_dropped(self, section: Any) -> None:
+        """A section that is not an object is treated as absent.
+
+        :param section: the persisted ``leaderboard`` value.
+        """
+        assert AgentPerformanceSummary(leaderboard=section).leaderboard is None
+
+    def test_extra_keys_are_ignored_and_bad_fields_dropped(self) -> None:
+        """Unknown keys are ignored; ill-typed optional fields become ``None``."""
+        data = LeaderboardData.from_dict(
+            {
+                "windows": {
+                    "7d": {
+                        "ranked": True,
+                        "fetched_at": 9,
+                        "rank_by_roi": 3,
+                        "rank_by_pnl": 4,
+                        "total_ranked": "lots",
+                        "leaderboard_url": 5,
+                        "not_ranked_reason": ["x"],
+                        "updated_at": "today",
+                        "from_the_future": True,
+                    },
+                    "30d": {"ranked": False, "fetched_at": 9},
+                },
+                "last_attempt_at": 9,
+                "also_unknown": 1,
+            }
+        )
+        assert data == LeaderboardData(
+            windows={
+                "7d": LeaderboardWindowRank(
+                    ranked=True, fetched_at=9, rank_by_roi=3, rank_by_pnl=4
+                ),
+                "30d": LeaderboardWindowRank(ranked=False, fetched_at=9),
+            },
+            last_attempt_at=9,
+        )
+
+
+class TestIsAllowedLeaderboardUrl:
+    """Tests for is_allowed_leaderboard_url."""
+
+    API = "https://predict.olas.network/api/leaderboard/agents"
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://predict.olas.network/leaderboard",
+            "https://predict.olas.network/leaderboard?window=7d&pin=0xabc",
+            "https://Predict.Olas.Network/leaderboard/polystrat#me",
+        ],
+    )
+    def test_allowed(self, url: str) -> None:
+        """Links under the configured host's leaderboard page are allowed.
+
+        :param url: the candidate link.
+        """
+        assert is_allowed_leaderboard_url(url, self.API)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            None,
+            7,
+            "",
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "http://predict.olas.network/leaderboard",
+            "https://evil.example/leaderboard",
+            "https://predict.olas.network.evil.example/leaderboard",
+            "https://user:pw@predict.olas.network/leaderboard",
+            "https://predict.olas.network:444/leaderboard",
+            "https://predict.olas.network:bad/leaderboard",
+            "https://predict.olas.network/",
+            "https://predict.olas.network/leaderboardx",
+            "https://predict.olas.network/api/leaderboard/agents",
+            "https://predict.olas.network/leaderboard\\evil",
+            " https://predict.olas.network/leaderboard",
+            "https://predict.olas.network/leaderboard\t",
+        ],
+    )
+    def test_rejected(self, url: Any) -> None:
+        """Anything else is rejected.
+
+        :param url: the candidate link.
+        """
+        assert not is_allowed_leaderboard_url(url, self.API)
+
+    def test_needs_an_https_api_url(self) -> None:
+        """Without a usable configured URL nothing is allowed."""
+        url = "https://predict.olas.network/leaderboard"
+        assert not is_allowed_leaderboard_url(url, "")
+        assert not is_allowed_leaderboard_url(url, "http://predict.olas.network/api")
 
 
 class TestAgentPerformanceSummaryParams:
@@ -1257,6 +1401,76 @@ class TestSharedState:
         assert data["timestamp"] == 1700000000
         assert data["agent_behavior"] == "active"
         assert data["agent_details"]["id"] == "agent-x"
+
+    @pytest.mark.parametrize(
+        "section",
+        [{"windows": []}, None, "x", {"windows": {"7d": {"bad": 1}}}],
+    )
+    def test_malformed_leaderboard_does_not_break_the_summary_read(
+        self, tmp_path: Path, section: Any
+    ) -> None:
+        """A malformed leaderboard section never raises or degrades the siblings.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param section: the persisted ``leaderboard`` value.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "w") as f:
+            json.dump({"timestamp": 5, "leaderboard": section}, f)
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.timestamp == 5
+        assert summary.leaderboard in (None, LeaderboardData())
+
+    def test_read_degrades_on_attribute_error(self, tmp_path: Path) -> None:
+        """An ``AttributeError`` from a nested section degrades to a fresh summary.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "w") as f:
+            json.dump({"timestamp": 5}, f)
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models.AgentPerformanceSummary",
+            side_effect=[AttributeError("boom"), AgentPerformanceSummary()],
+        ):
+            summary = state.read_existing_performance_summary()
+        assert summary == AgentPerformanceSummary()
+
+    def test_read_leaderboard_from_disk(self, tmp_path: Path) -> None:
+        """The raw reader ignores corrupt siblings and malformed values.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text("not json")
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(json.dumps(["not", "an", "object"]))
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(json.dumps({"leaderboard": "x"}))
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(
+            json.dumps(
+                {
+                    "prediction_history": {"not_a_field": 1},
+                    "leaderboard": {
+                        "windows": {"7d": {"ranked": False, "fetched_at": 2}},
+                        "last_attempt_at": 3,
+                    },
+                }
+            )
+        )
+        assert state.read_leaderboard_from_disk() == LeaderboardData(
+            windows={"7d": LeaderboardWindowRank(ranked=False, fetched_at=2)},
+            last_attempt_at=3,
+        )
 
     def test_update_leaderboard_keeps_siblings_of_a_corrupt_file(
         self, tmp_path: Path

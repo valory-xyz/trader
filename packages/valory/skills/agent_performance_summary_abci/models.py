@@ -28,6 +28,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, cast
+from urllib.parse import urlsplit
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
@@ -46,6 +47,18 @@ AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
 
 # Leaderboard windows, spelled as olas-predict's ``GET /api/leaderboard/agents`` expects
 LEADERBOARD_WINDOWS = ("7d", "30d", "90d", "1y")
+# ``notRankedReason`` values olas-predict documents. Any other reason on a
+# not-ranked answer is stored as the generic ``not_ranked_yet``: the fact that
+# the agent is not ranked is still current, only the explanation is unknown.
+LEADERBOARD_NOT_RANKED_REASONS = frozenset(
+    ("not_ranked_yet", "not_enough_trades_in_window", "not_eligible")
+)
+LEADERBOARD_DEFAULT_NOT_RANKED_REASON = "not_ranked_yet"
+# Tolerated clock skew with olas-predict: a timestamp further in the future
+# than this is treated as invalid
+LEADERBOARD_CLOCK_SKEW_SECONDS = 300
+# Path of olas-predict's leaderboard page; deep links must stay under it
+LEADERBOARD_PAGE_PATH = "/leaderboard"
 
 # Bump when on-disk profit_over_time must be rebuilt against the current
 # subgraph endpoint/schema. Files with a lower version are rebuilt once on
@@ -294,6 +307,54 @@ class LeaderboardWindowRank:
     rank_by_pnl: Optional[int] = None
     total_ranked: Optional[int] = None
     leaderboard_url: Optional[str] = None
+    # UNIX timestamp (seconds) of olas-predict's snapshot (its ``updatedAt``)
+    updated_at: Optional[int] = None
+
+    @property
+    def as_of(self) -> int:
+        """Return when the answer's data was computed, or else fetched.
+
+        :return: a UNIX timestamp in seconds.
+        """
+        return self.updated_at if self.updated_at is not None else self.fetched_at
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> Optional["LeaderboardWindowRank"]:
+        """Build an entry from persisted JSON, or ``None`` if it is unusable.
+
+        Unknown keys are ignored and ill-typed optional fields are dropped, so a
+        hand-edited, older or newer file never raises.
+
+        :param raw: the persisted entry.
+        :return: the entry, or ``None``.
+        """
+        if not isinstance(raw, dict):
+            return None
+        ranked, fetched_at = raw.get("ranked"), raw.get("fetched_at")
+        if not isinstance(ranked, bool) or not is_plain_int(fetched_at):
+            return None
+
+        def _int(key: str) -> Optional[int]:
+            value = raw.get(key)
+            return value if is_plain_int(value) else None
+
+        def _str(key: str) -> Optional[str]:
+            value = raw.get(key)
+            return value if isinstance(value, str) else None
+
+        rank_by_roi, rank_by_pnl = _int("rank_by_roi"), _int("rank_by_pnl")
+        if ranked and (rank_by_roi is None or rank_by_pnl is None):
+            return None
+        return cls(
+            ranked=ranked,
+            fetched_at=cast(int, fetched_at),
+            not_ranked_reason=_str("not_ranked_reason"),
+            rank_by_roi=rank_by_roi,
+            rank_by_pnl=rank_by_pnl,
+            total_ranked=_int("total_ranked"),
+            leaderboard_url=_str("leaderboard_url"),
+            updated_at=_int("updated_at"),
+        )
 
 
 @dataclass
@@ -305,13 +366,76 @@ class LeaderboardData:
     last_attempt_at: Optional[int] = None
 
     def __post_init__(self) -> None:
-        """Convert dicts to dataclass instances."""
-        self.windows = {
-            window: (
-                LeaderboardWindowRank(**entry) if isinstance(entry, dict) else entry
-            )
-            for window, entry in self.windows.items()
-        }
+        """Convert dicts to dataclass instances, dropping anything unusable.
+
+        The section is a cache of olas-predict answers, so a malformed value is
+        dropped (and refetched) rather than allowed to fail the summary read.
+        """
+        raw_windows: Any = self.windows
+        windows: Dict[str, LeaderboardWindowRank] = {}
+        if isinstance(raw_windows, dict):
+            for window, raw_entry in raw_windows.items():
+                if window not in LEADERBOARD_WINDOWS:
+                    continue
+                entry = (
+                    raw_entry
+                    if isinstance(raw_entry, LeaderboardWindowRank)
+                    else LeaderboardWindowRank.from_dict(raw_entry)
+                )
+                if entry is not None:
+                    windows[window] = entry
+        self.windows = windows
+        if not is_plain_int(self.last_attempt_at):
+            self.last_attempt_at = None
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> Optional["LeaderboardData"]:
+        """Build the section from persisted JSON, or ``None`` if it is not an object.
+
+        :param raw: the persisted section.
+        :return: the section, or ``None``.
+        """
+        if not isinstance(raw, dict):
+            return None
+        return cls(
+            windows=cast(Dict[str, LeaderboardWindowRank], raw.get("windows")),
+            last_attempt_at=raw.get("last_attempt_at"),
+        )
+
+
+def is_allowed_leaderboard_url(url: Any, api_url: str) -> bool:
+    """Return whether ``url`` is a safe deep link into olas-predict's leaderboard.
+
+    Only an ``https`` URL on the configured olas-predict host (taken from the
+    API URL) under the leaderboard page is allowed, so a bad upstream answer can
+    never make the UI open ``javascript:`` or a foreign site.
+
+    :param url: the candidate link.
+    :param api_url: the configured ``olas_predict_leaderboard_url``.
+    :return: whether the link may be served.
+    """
+    if not isinstance(url, str) or not api_url:
+        return False
+    if any(ch.isspace() or ord(ch) < 0x20 or ch == "\\" for ch in url):
+        return False
+    try:
+        candidate, allowed = urlsplit(url), urlsplit(api_url)
+        candidate_port, allowed_port = candidate.port, allowed.port
+    except ValueError:
+        return False
+    return (
+        candidate.scheme == "https"
+        and allowed.scheme == "https"
+        and candidate.username is None
+        and candidate.password is None
+        and candidate.hostname is not None
+        and candidate.hostname == allowed.hostname
+        and candidate_port == allowed_port
+        and (
+            candidate.path == LEADERBOARD_PAGE_PATH
+            or candidate.path.startswith(f"{LEADERBOARD_PAGE_PATH}/")
+        )
+    )
 
 
 @dataclass
@@ -364,7 +488,10 @@ class AgentPerformanceSummary:
             self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
 
         if isinstance(self.leaderboard, dict):
-            self.leaderboard = LeaderboardData(**self.leaderboard)
+            self.leaderboard = LeaderboardData.from_dict(self.leaderboard)
+        elif not isinstance(self.leaderboard, LeaderboardData):
+            # e.g. ``null`` or a string: a refetchable cache, so drop it
+            self.leaderboard = None
 
         if isinstance(self.activity_goal, dict):
             # Rebuilt from the ledger on every evaluation, so a bad block is
@@ -588,7 +715,7 @@ class SharedState(BaseSharedState):
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
-        except (TypeError, ValueError) as e:
+        except (AttributeError, TypeError, ValueError) as e:
             # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
             # rejected a persisted value. Previously no field could raise
             # from the reader; now that we persist typed state, one bad
@@ -675,6 +802,27 @@ class SharedState(BaseSharedState):
                 "leaving them unpreserved on this save."
             )
             return None
+
+    def read_leaderboard_from_disk(self) -> Optional[LeaderboardData]:
+        """Return the persisted ``leaderboard`` section with lenient parsing.
+
+        Sibling-agnostic like ``read_achievements_from_disk``: a corrupt
+        sibling field must neither drop the cached ranks on save nor reset the
+        refresh throttle.
+
+        :return: the persisted ``LeaderboardData``, or ``None`` if the file is
+            missing, unreadable or has no usable ``leaderboard`` section.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+        except (OSError, ValueError):
+            return None
+
+        sub = raw.get("leaderboard") if isinstance(raw, dict) else None
+        return LeaderboardData.from_dict(sub)
 
     def read_activity_goal_from_disk(self) -> Optional[ActivityGoal]:
         """Return the persisted ``activity_goal`` block with lenient parsing.
