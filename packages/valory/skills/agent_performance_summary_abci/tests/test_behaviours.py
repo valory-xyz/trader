@@ -19,19 +19,20 @@
 
 """Tests for agent_performance_summary_abci behaviours."""
 
+import inspect
 import json
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from requests import ConnectionError as RequestsConnectionError
+from requests import Timeout as RequestsTimeout
 
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
-from packages.valory.skills.abstract_round_abci.behaviour_utils import (
-    TimeoutException,
-)
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
@@ -65,8 +66,10 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
-    _drop_late_response,
     _parse_iso_timestamp,
+    leaderboard_request_url,
+    parse_leaderboard_window,
+    refresh_leaderboard,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
@@ -8039,7 +8042,7 @@ def _leaderboard_response(
     """Build a mock HTTP response for the olas-predict endpoint."""
     response = MagicMock()
     response.status_code = status_code
-    response.body = raw if raw is not None else json.dumps(body).encode()
+    response.content = raw if raw is not None else json.dumps(body).encode()
     return response
 
 
@@ -8084,97 +8087,52 @@ def test_parse_iso_timestamp() -> None:
         assert _parse_iso_timestamp(bad) is None
 
 
-class TestUpdateLeaderboard:
-    """Tests for FetchPerformanceSummaryBehaviour._update_leaderboard."""
+def _parse(
+    response: MagicMock,
+    window: LeaderboardWindow = "7d",
+    agent_type: Any = "omenstrat",
+    logger: Optional[MagicMock] = None,
+) -> Optional[LeaderboardWindowRank]:
+    """Run the pure parser on a mocked olas-predict answer."""
+    return parse_leaderboard_window(
+        response.status_code,
+        response.content,
+        agent_type,
+        window,
+        SAFE_ADDRESS_LOWER,
+        NOW,
+        LEADERBOARD_URL,
+        logger or MagicMock(),
+    )
 
-    def _run(
-        self,
-        responses: Any,
-        existing: Optional[LeaderboardData] = None,
-        is_polymarket: bool = False,
-        url: str = LEADERBOARD_URL,
-    ) -> Tuple[MagicMock, List[str]]:
-        """Run the step with ``responses(url) -> response``; return state and URLs."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, state = _mock_context(
-            is_polymarket=is_polymarket, synced_timestamp=NOW
-        )
-        params.olas_predict_leaderboard_url = url
-        state.read_leaderboard_from_disk.return_value = existing
-        urls: List[str] = []
 
-        def get_response(url: str) -> Generator:
-            """Record the URL and answer it."""
-            urls.append(url)
-            return responses(url)
-            yield  # pragma: no cover
+def _window_of(url: str) -> str:
+    """The ``window`` query parameter of a request URL."""
+    return url.split("window=")[1].split("&")[0]
 
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_get_leaderboard_response", side_effect=get_response),
-        ):
-            for _ in b._update_leaderboard():
-                pass  # pragma: no cover
-        return state, urls
 
-    @staticmethod
-    def _saved(state: MagicMock) -> LeaderboardData:
-        """The leaderboard section the step wrote last.
+def _ranked_answer(url: str, *_: Any, **__: Any) -> MagicMock:
+    """A ranked answer echoing the request's window."""
+    return _leaderboard_response(body=_ranked_body(_window_of(url)))
 
-        :param state: the mocked shared state.
-        :return: the last written section.
-        """
-        calls = state.update_leaderboard.call_args_list
-        assert len(calls) == 2
-        assert calls[0][0][0].last_attempt_at == NOW
-        return calls[-1][0][0]
 
-    @staticmethod
-    def _window_of(url: str) -> str:
-        """The ``window`` query parameter of a request URL."""
-        return url.split("window=")[1].split("&")[0]
+def _disk_state(tmp_path: Path) -> SharedState:
+    """A real shared state storing its summary under ``tmp_path``."""
+    context = MagicMock()
+    context.params.store_path = tmp_path
+    state = object.__new__(_DiskSharedState)
+    state.context = context  # type: ignore[assignment]
+    return state
 
-    def _ranked_answer(self, url: str) -> MagicMock:
-        """A ranked answer echoing the request's window."""
-        return _leaderboard_response(body=_ranked_body(self._window_of(url)))
 
-    def test_not_due_makes_no_call(self) -> None:
-        """Within the interval since the last attempt, nothing is fetched."""
-        for last in (NOW - LEADERBOARD_REFRESH_INTERVAL + 1, NOW, NOW + 60):
-            existing = LeaderboardData(last_attempt_at=last)
-            state, urls = self._run(lambda url: None, existing=existing)
-            assert urls == []
-            state.update_leaderboard.assert_not_called()
+class TestParseLeaderboardWindow:
+    """Tests for the pure ``parse_leaderboard_window`` validation."""
 
-    def test_future_or_invalid_watermark_is_due(self) -> None:
-        """A watermark in the future or of the wrong type cannot block refreshes."""
-        for existing in (
-            LeaderboardData(last_attempt_at=NOW + 10 * LEADERBOARD_REFRESH_INTERVAL),
-            LeaderboardData.from_dict({"last_attempt_at": str(NOW)}),
-            LeaderboardData.from_dict({"last_attempt_at": True}),
-        ):
-            state, urls = self._run(self._ranked_answer, existing=existing)
-            assert len(urls) == len(LEADERBOARD_WINDOWS)
-            assert self._saved(state).last_attempt_at == NOW
-
-    def test_disabled_url_makes_no_call(self) -> None:
-        """An unset URL disables the step."""
-        state, urls = self._run(lambda url: None, url="")
-        assert urls == []
-        state.update_leaderboard.assert_not_called()
-
-    def test_due_fetches_every_window_for_omenstrat(self) -> None:
-        """When due, one call per window with the agent type and lowercased Safe."""
-        existing = LeaderboardData(last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL)
-        state, urls = self._run(self._ranked_answer, existing=existing)
-        assert [self._window_of(url) for url in urls] == list(LEADERBOARD_WINDOWS)
-        for url in urls:
-            assert url.startswith(f"{LEADERBOARD_URL}?agentType=omenstrat&")
-            assert f"addresses={SAFE_ADDRESS_LOWER}" in url
-        saved = self._saved(state)
-        assert saved.last_attempt_at == NOW
-        assert saved.windows["30d"] == LeaderboardWindowRank(
+    def test_ranked_answer(self) -> None:
+        """A ranked answer becomes a stamped entry."""
+        assert _parse(
+            _leaderboard_response(body=_ranked_body("30d")), window="30d"
+        ) == LeaderboardWindowRank(
             ranked=True,
             fetched_at=NOW,
             not_ranked_reason=None,
@@ -8185,95 +8143,52 @@ class TestUpdateLeaderboard:
             updated_at=UPDATED_AT,
         )
 
-    def test_configured_url_with_query_appends_parameters(self) -> None:
-        """A configured URL that already has a query string gets ``&``, not a second ``?``."""
-        for configured, prefix in (
-            (f"{LEADERBOARD_URL}?key=abc", f"{LEADERBOARD_URL}?key=abc&agentType="),
-            (f"{LEADERBOARD_URL}?", f"{LEADERBOARD_URL}?agentType="),
-        ):
-            _, urls = self._run(self._ranked_answer, url=configured)
-            assert urls and all(url.startswith(prefix) for url in urls)
-
-    def test_polystrat_agent_type(self) -> None:
-        """A Polymarket agent asks for the polystrat ranking."""
-        state, urls = self._run(
-            lambda url: _leaderboard_response(
-                body=_ranked_body(self._window_of(url), agent_type="polystrat")
-            ),
-            is_polymarket=True,
-        )
-        assert all("agentType=polystrat" in url for url in urls)
-        assert set(self._saved(state).windows) == set(LEADERBOARD_WINDOWS)
+    def test_polystrat_answer(self) -> None:
+        """A polystrat answer is accepted for a polystrat agent."""
+        body = _ranked_body("7d", agent_type="polystrat")
+        entry = _parse(_leaderboard_response(body=body), agent_type="polystrat")
+        assert entry is not None and entry.rank_by_roi == 7
 
     def test_not_ranked_reasons_pass_through(self) -> None:
         """A not-ranked answer keeps a known upstream reason and drops the ranks."""
-        reasons = {
-            "7d": "not_enough_trades_in_window",
-            "30d": "not_ranked_yet",
-            "90d": "not_eligible",
-        }
-
-        def respond(url: str) -> MagicMock:
-            window = self._window_of(url)
+        for reason in ("not_enough_trades_in_window", "not_ranked_yet", "not_eligible"):
             body = _with_agent(
-                _ranked_body(window),
+                _ranked_body("7d"),
                 ranked=False,
-                notRankedReason=reasons.get(window, "not_ranked_yet"),
+                notRankedReason=reason,
                 rankByRoi=None,
                 rankByPnl=None,
             )
-            return _leaderboard_response(body=body)
-
-        saved = self._saved(self._run(respond)[0])
-        assert saved.windows["7d"].ranked is False
-        assert saved.windows["7d"].not_ranked_reason == "not_enough_trades_in_window"
-        assert saved.windows["30d"].not_ranked_reason == "not_ranked_yet"
-        assert saved.windows["90d"].not_ranked_reason == "not_eligible"
-        assert saved.windows["7d"].rank_by_roi is None
-        assert saved.windows["7d"].total_ranked == 242
+            entry = _parse(_leaderboard_response(body=body))
+            assert entry is not None
+            assert entry.ranked is False
+            assert entry.not_ranked_reason == reason
+            assert entry.rank_by_roi is None
+            assert entry.total_ranked == 242
 
     def test_unknown_or_missing_reason_becomes_not_ranked_yet(self) -> None:
         """A reason outside the allowlist is stored as the generic one."""
         for reason in ("<script>", "new_reason", None, 3, ["not_eligible"]):
-
-            def respond(url: str, r: Any = reason) -> MagicMock:
-                body = _with_agent(
-                    _ranked_body(self._window_of(url)),
-                    ranked=False,
-                    notRankedReason=r,
-                    rankByRoi=None,
-                    rankByPnl=None,
-                )
-                return _leaderboard_response(body=body)
-
-            saved = self._saved(self._run(respond)[0])
-            assert {entry.not_ranked_reason for entry in saved.windows.values()} == {
-                "not_ranked_yet"
-            }
+            body = _with_agent(
+                _ranked_body("7d"),
+                ranked=False,
+                notRankedReason=reason,
+                rankByRoi=None,
+                rankByPnl=None,
+            )
+            entry = _parse(_leaderboard_response(body=body))
+            assert entry is not None and entry.not_ranked_reason == "not_ranked_yet"
 
     def test_not_ranked_answer_ignores_stray_ranks(self) -> None:
         """Ranks sent alongside ``ranked: false`` are not stored."""
-        saved = self._saved(
-            self._run(
-                lambda url: _leaderboard_response(
-                    body=_with_agent(
-                        _ranked_body(self._window_of(url)),
-                        ranked=False,
-                        notRankedReason="not_ranked_yet",
-                    )
-                )
-            )[0]
+        body = _with_agent(
+            _ranked_body("7d"), ranked=False, notRankedReason="not_ranked_yet"
         )
-        assert all(entry.rank_by_roi is None for entry in saved.windows.values())
+        entry = _parse(_leaderboard_response(body=body))
+        assert entry is not None and entry.rank_by_roi is None
 
-    def test_failures_keep_the_previous_entry(self) -> None:
-        """Errors, bad bodies and other agents' entries keep each window's last answer."""
-        previous = {
-            window: LeaderboardWindowRank(
-                ranked=True, fetched_at=1, rank_by_roi=1, rank_by_pnl=1, total_ranked=1
-            )
-            for window in LEADERBOARD_WINDOWS
-        }
+    def test_unusable_answers_are_rejected(self) -> None:
+        """Errors, bad bodies and other agents' entries are rejected."""
         ranked = _ranked_body("7d")
         failures = [
             _leaderboard_response(status_code=503, body={"error": "x"}),
@@ -8300,11 +8215,9 @@ class TestUpdateLeaderboard:
             _leaderboard_response(body=_ranked_body("7d", agent_type="polystrat")),
         ]
         for failure in failures:
-            existing = LeaderboardData(windows=dict(previous), last_attempt_at=0)
-            state, _ = self._run(lambda url, f=failure: f, existing=existing)
-            saved = self._saved(state)
-            assert saved.windows["7d"] == previous["7d"], failure.body
-            assert saved.last_attempt_at == NOW
+            logger = MagicMock()
+            assert _parse(failure, logger=logger) is None, failure.content
+            logger.warning.assert_called_once()
 
     def test_unsafe_leaderboard_url_is_dropped(self) -> None:
         """Only an https link on the olas-predict leaderboard page is stored."""
@@ -8323,17 +8236,11 @@ class TestUpdateLeaderboard:
             42,
             None,
         ):
-            saved = self._saved(
-                self._run(
-                    lambda url, u=bad: _leaderboard_response(
-                        body=_with_agent(
-                            _ranked_body(self._window_of(url)), leaderboardUrl=u
-                        )
-                    )
-                )[0]
-            )
-            assert saved.windows["7d"].leaderboard_url is None, bad
-            assert saved.windows["7d"].rank_by_roi == 7
+            body = _with_agent(_ranked_body("7d"), leaderboardUrl=bad)
+            entry = _parse(_leaderboard_response(body=body))
+            assert entry is not None
+            assert entry.leaderboard_url is None, bad
+            assert entry.rank_by_roi == 7
 
     def test_safe_deep_links_are_kept(self) -> None:
         """Links under the leaderboard page, with any query, are kept."""
@@ -8341,16 +8248,9 @@ class TestUpdateLeaderboard:
             "https://predict.example/leaderboard",
             "https://PREDICT.example/leaderboard/omenstrat?pin=0xabc#row",
         ):
-            saved = self._saved(
-                self._run(
-                    lambda url, u=good: _leaderboard_response(
-                        body=_with_agent(
-                            _ranked_body(self._window_of(url)), leaderboardUrl=u
-                        )
-                    )
-                )[0]
-            )
-            assert saved.windows["7d"].leaderboard_url == good
+            body = _with_agent(_ranked_body("7d"), leaderboardUrl=good)
+            entry = _parse(_leaderboard_response(body=body))
+            assert entry is not None and entry.leaderboard_url == good
 
     def test_updated_at_is_stored_unless_invalid(self) -> None:
         """``updatedAt`` is kept; unparseable or future values fall back to ``None``."""
@@ -8362,226 +8262,351 @@ class TestUpdateLeaderboard:
             None: None,
         }
         for raw, expected in cases.items():
-            saved = self._saved(
-                self._run(
-                    lambda url, r=raw: _leaderboard_response(
-                        body={**_ranked_body(self._window_of(url)), "updatedAt": r}
-                    )
-                )[0]
+            body = {**_ranked_body("7d"), "updatedAt": raw}
+            entry = _parse(_leaderboard_response(body=body))
+            assert entry is not None
+            assert entry.updated_at == expected, raw
+            assert entry.fetched_at == NOW
+
+
+class TestLeaderboardRequestUrl:
+    """Tests for ``leaderboard_request_url``."""
+
+    def test_appends_the_query(self) -> None:
+        """The query is appended with ``?``, ``&`` or nothing as needed."""
+        assert leaderboard_request_url("https://x/api", "a=1") == "https://x/api?a=1"
+        assert (
+            leaderboard_request_url("https://x/api?k=v", "a=1")
+            == "https://x/api?k=v&a=1"
+        )
+        assert leaderboard_request_url("https://x/api?", "a=1") == "https://x/api?a=1"
+        assert (
+            leaderboard_request_url("https://x/api?k=v&", "a=1")
+            == "https://x/api?k=v&a=1"
+        )
+
+
+class TestRefreshLeaderboard:
+    """Tests for the ``refresh_leaderboard`` job run on the worker thread."""
+
+    GET = (
+        "packages.valory.skills.agent_performance_summary_abci.behaviours.requests.get"
+    )
+
+    def _run(
+        self,
+        state: Any,
+        respond: Any,
+        agent_type: Any = "omenstrat",
+        logger: Optional[MagicMock] = None,
+    ) -> Tuple[MagicMock, List[str]]:
+        """Run the job with ``requests.get`` answered by ``respond``."""
+        logger = logger or MagicMock()
+        urls: List[str] = []
+
+        def get(url: str, timeout: Any = None) -> Any:
+            assert timeout == LEADERBOARD_REQUEST_TIMEOUT
+            urls.append(url)
+            return respond(url)
+
+        with patch(self.GET, side_effect=get):
+            refresh_leaderboard(
+                state, logger, LEADERBOARD_URL, agent_type, SAFE_ADDRESS_LOWER, NOW
             )
-            assert saved.windows["7d"].updated_at == expected, raw
-            assert saved.windows["7d"].fetched_at == NOW
+        return logger, urls
 
-    def test_one_window_can_fail_while_others_succeed(self) -> None:
-        """Windows are independent."""
+    def test_fetches_and_stores_every_window(self, tmp_path: Path) -> None:
+        """One call per window; every answer lands in the file with the watermark kept.
 
-        def respond(url: str) -> MagicMock:
-            window = self._window_of(url)
-            if window == "90d":
-                return _leaderboard_response(status_code=503, body={})
-            return _leaderboard_response(body=_ranked_body(window))
-
-        saved = self._saved(self._run(respond)[0])
-        assert set(saved.windows) == {"7d", "30d", "1y"}
-
-    def test_transport_error_in_one_window_keeps_the_others(self) -> None:
-        """An exception while fetching one window does not drop the rest."""
-
-        def respond(url: str) -> MagicMock:
-            window = self._window_of(url)
-            if window == "30d":
-                raise ConnectionError("reset")
-            return _leaderboard_response(body=_ranked_body(window))
-
-        saved = self._saved(self._run(respond)[0])
-        assert set(saved.windows) == {"7d", "90d", "1y"}
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = _disk_state(tmp_path)
+        state.update_leaderboard(LeaderboardData(last_attempt_at=NOW))
+        _, urls = self._run(state, _ranked_answer)
+        assert [_window_of(url) for url in urls] == list(LEADERBOARD_WINDOWS)
+        for url in urls:
+            assert url.startswith(f"{LEADERBOARD_URL}?agentType=omenstrat&")
+            assert f"addresses={SAFE_ADDRESS_LOWER}" in url
+        saved = state.read_leaderboard_from_disk()
+        assert saved is not None
+        assert set(saved.windows) == set(LEADERBOARD_WINDOWS)
         assert saved.last_attempt_at == NOW
+        assert saved.windows["30d"].rank_by_roi == 7
+        assert state.get_leaderboard() == saved
 
-    def test_timeout_abandons_the_remaining_windows(self) -> None:
-        """A window that never answers stops the refresh; earlier answers are kept."""
+    def test_polystrat_agent_type(self) -> None:
+        """A Polymarket agent asks for the polystrat ranking."""
+        state = MagicMock()
+        _, urls = self._run(
+            state,
+            lambda url: _leaderboard_response(
+                body=_ranked_body(_window_of(url), agent_type="polystrat")
+            ),
+            agent_type="polystrat",
+        )
+        assert all("agentType=polystrat" in url for url in urls)
+        assert state.update_leaderboard_window.call_count == len(LEADERBOARD_WINDOWS)
+
+    def test_each_window_is_saved_as_it_arrives(self, tmp_path: Path) -> None:
+        """Window 1 is on disk before window 2 is asked, and survives its failure.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = _disk_state(tmp_path)
+
+        def respond(url: str) -> MagicMock:
+            if _window_of(url) == "30d":
+                saved = state.read_leaderboard_from_disk()
+                assert saved is not None and set(saved.windows) == {"7d"}
+                raise RuntimeError("worker stopped")
+            return _ranked_answer(url)
+
+        self._run(state, respond)
+        saved = state.read_leaderboard_from_disk()
+        assert saved is not None
+        assert saved.windows["7d"].rank_by_roi == 7
+        assert "30d" not in saved.windows
+
+    def test_failures_keep_the_previous_entry(self, tmp_path: Path) -> None:
+        """A failed or rejected window keeps its last answer; the others update.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = _disk_state(tmp_path)
         previous = {
             window: LeaderboardWindowRank(ranked=False, fetched_at=1)
             for window in LEADERBOARD_WINDOWS
         }
+        state.update_leaderboard(LeaderboardData(windows=dict(previous)))
 
         def respond(url: str) -> MagicMock:
-            window = self._window_of(url)
+            window = _window_of(url)
             if window == "30d":
-                raise TimeoutException()
-            return _leaderboard_response(body=_ranked_body(window))
+                raise RequestsConnectionError("reset")
+            if window == "90d":
+                return _leaderboard_response(status_code=503, body={})
+            return _ranked_answer(url)
 
-        state, urls = self._run(
-            respond, existing=LeaderboardData(windows=dict(previous))
-        )
-        assert [self._window_of(url) for url in urls] == ["7d", "30d"]
-        saved = self._saved(state)
+        logger, urls = self._run(state, respond)
+        assert len(urls) == len(LEADERBOARD_WINDOWS)
+        saved = state.read_leaderboard_from_disk()
+        assert saved is not None
+        assert saved.windows["30d"] == previous["30d"]
+        assert saved.windows["90d"] == previous["90d"]
         assert saved.windows["7d"].ranked is True
-        for window in ("30d", "90d", "1y"):
-            assert saved.windows[window] == previous[window]
-        assert saved.last_attempt_at == NOW
+        assert saved.windows["1y"].ranked is True
+        assert logger.warning.call_count == 2
 
-    def test_watermark_is_persisted_before_fetching(self) -> None:
-        """A run cut short mid-fetch has already moved the throttle watermark."""
-        b = _make_fetch_behaviour()
-        ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
-        params.olas_predict_leaderboard_url = LEADERBOARD_URL
-        previous: Dict[LeaderboardWindow, LeaderboardWindowRank] = {
-            "7d": LeaderboardWindowRank(ranked=False, fetched_at=1)
-        }
-        state.read_leaderboard_from_disk.return_value = LeaderboardData(
-            windows=dict(previous), last_attempt_at=0
-        )
-
-        def hanging(url: str) -> Generator:
-            """Never answer."""
-            while True:
-                yield
-
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_get_leaderboard_response", side_effect=hanging),
-        ):
-            gen = b._update_leaderboard()
-            next(gen)
-            gen.close()
-
-        state.update_leaderboard.assert_called_once()
-        written = state.update_leaderboard.call_args[0][0]
-        assert written == LeaderboardData(windows=previous, last_attempt_at=NOW)
-
-    def test_saved_watermark_throttles_the_next_behaviour(self, tmp_path: Path) -> None:
-        """A refresh survives the summary save and blocks a new behaviour for an hour.
+    def test_timeout_abandons_the_remaining_windows(self, tmp_path: Path) -> None:
+        """A window that times out stops the refresh; earlier answers are kept.
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
-        context = MagicMock()
-        context.params.store_path = tmp_path
-        clock = context.state.round_sequence.last_round_transition_timestamp
-        state = object.__new__(_DiskSharedState)
-        state.context = context  # type: ignore[assignment]
+        state = _disk_state(tmp_path)
+        previous = {
+            window: LeaderboardWindowRank(ranked=False, fetched_at=1)
+            for window in LEADERBOARD_WINDOWS
+        }
+        state.update_leaderboard(LeaderboardData(windows=dict(previous)))
 
-        def run_step(now: int, save: bool = False) -> List[str]:
-            """Run the step in a fresh behaviour at ``now``; return the URLs asked."""
-            clock.timestamp.return_value = float(now)
-            b = _make_fetch_behaviour()
-            ctx, params, synced_data, _ = _mock_context()
-            ctx.state = state
-            params.olas_predict_leaderboard_url = LEADERBOARD_URL
-            urls: List[str] = []
+        def respond(url: str) -> MagicMock:
+            if _window_of(url) == "30d":
+                raise RequestsTimeout()
+            return _ranked_answer(url)
 
-            def get_response(url: str) -> Generator[None, None, MagicMock]:
-                """Record the URL and answer it."""
-                urls.append(url)
-                return self._ranked_answer(url)
-                yield  # pragma: no cover
-
-            with (
-                _patch_context(b, ctx, synced_data)[0],
-                _patch_context(b, ctx, synced_data)[1],
-                patch.object(b, "_get_leaderboard_response", side_effect=get_response),
-            ):
-                for _ in b._update_leaderboard():
-                    pass  # pragma: no cover
-                if save:
-                    b._save_agent_performance_summary(_default_summary(now))
-            return urls
-
-        assert len(run_step(NOW, save=True)) == len(LEADERBOARD_WINDOWS)
-        assert run_step(NOW + LEADERBOARD_REFRESH_INTERVAL - 1) == []
+        _, urls = self._run(state, respond)
+        assert [_window_of(url) for url in urls] == ["7d", "30d"]
         saved = state.read_leaderboard_from_disk()
         assert saved is not None
-        assert set(saved.windows) == set(LEADERBOARD_WINDOWS)
-        assert len(run_step(NOW + LEADERBOARD_REFRESH_INTERVAL)) == len(
-            LEADERBOARD_WINDOWS
+        assert saved.windows["7d"].ranked is True
+        for window in ("30d", "90d", "1y"):
+            assert saved.windows[window] == previous[window]
+
+    def test_never_raises(self) -> None:
+        """Failures storing a window, or anywhere else, are logged."""
+        state = MagicMock()
+        state.update_leaderboard_window.side_effect = OSError("disk")
+        logger, _ = self._run(state, _ranked_answer)
+        assert logger.warning.call_count == len(LEADERBOARD_WINDOWS)
+
+        logger = MagicMock()
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.behaviours.leaderboard_request_url",
+            side_effect=RuntimeError("boom"),
+        ):
+            self._run(state, _ranked_answer, logger=logger)
+        logger.warning.assert_called_once()
+
+
+class TestUpdateLeaderboard:
+    """Tests for FetchPerformanceSummaryBehaviour._update_leaderboard."""
+
+    GET = TestRefreshLeaderboard.GET
+
+    def _run(
+        self,
+        existing: Optional[LeaderboardData] = None,
+        is_polymarket: bool = False,
+        url: str = LEADERBOARD_URL,
+        running: bool = False,
+    ) -> Tuple[MagicMock, MagicMock]:
+        """Run the step on a mocked state; return the state and the context."""
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, state = _mock_context(
+            is_polymarket=is_polymarket, synced_timestamp=NOW
         )
+        params.olas_predict_leaderboard_url = url
+        state.get_leaderboard.return_value = existing
+        state.is_leaderboard_refresh_running.return_value = running
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch(self.GET, side_effect=AssertionError("network I/O")) as get,
+        ):
+            b._update_leaderboard()
+        get.assert_not_called()
+        state.read_leaderboard_from_disk.assert_not_called()
+        return state, ctx
+
+    def test_is_not_a_generator(self) -> None:
+        """The step cannot yield, so it cannot hold up the round."""
+        assert not inspect.isgeneratorfunction(
+            FetchPerformanceSummaryBehaviour._update_leaderboard
+        )
+
+    def test_not_due_submits_nothing(self) -> None:
+        """Within the interval since the last attempt, nothing is started."""
+        for last in (NOW - LEADERBOARD_REFRESH_INTERVAL + 1, NOW, NOW + 60):
+            state, _ = self._run(LeaderboardData(last_attempt_at=last))
+            state.submit_leaderboard_refresh.assert_not_called()
+            state.update_leaderboard.assert_not_called()
+
+    def test_disabled_url_submits_nothing(self) -> None:
+        """An unset URL disables the step."""
+        state, _ = self._run(url="")
+        state.get_leaderboard.assert_not_called()
+        state.submit_leaderboard_refresh.assert_not_called()
+
+    def test_running_job_is_not_doubled(self) -> None:
+        """While the previous job runs, nothing is submitted and the watermark stays."""
+        state, _ = self._run(running=True)
+        state.submit_leaderboard_refresh.assert_not_called()
+        state.update_leaderboard.assert_not_called()
+
+    def test_due_persists_the_watermark_and_submits_one_job(self) -> None:
+        """When due, the watermark is saved and one job is submitted for the agent."""
+        previous: Dict[LeaderboardWindow, LeaderboardWindowRank] = {
+            "7d": LeaderboardWindowRank(ranked=False, fetched_at=1)
+        }
+        for existing in (
+            None,
+            LeaderboardData(
+                windows=dict(previous),
+                last_attempt_at=NOW - LEADERBOARD_REFRESH_INTERVAL,
+            ),
+            LeaderboardData(last_attempt_at=NOW + 10 * LEADERBOARD_REFRESH_INTERVAL),
+            LeaderboardData.from_dict({"last_attempt_at": str(NOW)}),
+            LeaderboardData.from_dict({"last_attempt_at": True}),
+        ):
+            state, ctx = self._run(existing)
+            state.update_leaderboard.assert_called_once_with(
+                LeaderboardData(
+                    windows=dict(existing.windows) if existing else {},
+                    last_attempt_at=NOW,
+                )
+            )
+            state.submit_leaderboard_refresh.assert_called_once()
+            job = state.submit_leaderboard_refresh.call_args[0][0]
+            assert job.func is refresh_leaderboard
+            assert job.args == (
+                state,
+                ctx.logger,
+                LEADERBOARD_URL,
+                "omenstrat",
+                SAFE_ADDRESS_LOWER,
+                NOW,
+            )
+
+    def test_polystrat_job(self) -> None:
+        """A Polymarket agent's job asks for the polystrat ranking."""
+        state, _ = self._run(is_polymarket=True)
+        job = state.submit_leaderboard_refresh.call_args[0][0]
+        assert job.args[3] == "polystrat"
 
     def test_never_raises(self) -> None:
         """An unexpected error is logged, not raised."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
         params.olas_predict_leaderboard_url = LEADERBOARD_URL
-        state.read_leaderboard_from_disk.side_effect = OSError("disk")
+        state.get_leaderboard.side_effect = OSError("disk")
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
         ):
-            for _ in b._update_leaderboard():
-                pass  # pragma: no cover
+            b._update_leaderboard()
         ctx.logger.warning.assert_called_once()
-        state.update_leaderboard.assert_not_called()
+        state.submit_leaderboard_refresh.assert_not_called()
 
-
-class TestGetLeaderboardResponse:
-    """Tests for FetchPerformanceSummaryBehaviour._get_leaderboard_response."""
-
-    def _setup(
-        self,
-    ) -> Tuple[Any, MagicMock, MagicMock, Tuple[MagicMock, MagicMock]]:
-        """A behaviour with a mocked request builder; return it and its mocks."""
+    def _step(self, state: SharedState, now: int) -> None:
+        """Run the step in a fresh behaviour at ``now`` against ``state``."""
+        clock = state.context.state.round_sequence.last_round_transition_timestamp
+        clock.timestamp.return_value = float(now)
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
-        ctx.requests.request_id_to_callback = {}
-        dialogue = MagicMock()
-        dialogue.dialogue_label.dialogue_reference = ("nonce-1", "")
-        message = MagicMock()
-        return b, ctx, synced_data, (message, dialogue)
-
-    def test_passes_the_timeout(self) -> None:
-        """The GET is sent with the leaderboard timeout and its reply returned."""
-        b, ctx, synced_data, built = self._setup()
-        reply = _leaderboard_response(body={})
-        seen: dict = {}
-
-        def do_request(
-            message: Any, dialogue: Any, timeout: Any = None
-        ) -> Generator[None, None, Any]:
-            seen.update(message=message, dialogue=dialogue, timeout=timeout)
-            return reply
-            yield  # pragma: no cover
-
+        ctx, params, synced_data, _ = _mock_context()
+        ctx.state = state
+        params.olas_predict_leaderboard_url = LEADERBOARD_URL
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_build_http_request_message", return_value=built) as build,
-            patch.object(b, "_do_request", side_effect=do_request),
         ):
-            gen = b._get_leaderboard_response("https://x/api")
-            try:
-                next(gen)
-                raise AssertionError(
-                    "expected the generator to finish"
-                )  # pragma: no cover
-            except StopIteration as stop:
-                assert stop.value is reply
-        build.assert_called_once_with(method="GET", url="https://x/api")
-        assert seen == {
-            "message": built[0],
-            "dialogue": built[1],
-            "timeout": LEADERBOARD_REQUEST_TIMEOUT,
-        }
+            b._update_leaderboard()
+            b._save_agent_performance_summary(_default_summary(now))
 
-    def test_timeout_drops_the_late_reply(self) -> None:
-        """On timeout the request's callback is replaced so a late reply is dropped."""
-        b, ctx, synced_data, built = self._setup()
+    def test_worker_job_survives_saves_and_throttles(self, tmp_path: Path) -> None:
+        """On the real worker: one job at a time, saves keep its ranks, an hour's throttle.
 
-        def do_request(message: Any, dialogue: Any, timeout: Any = None) -> Generator:
-            ctx.requests.request_id_to_callback["nonce-1"] = "original"
-            raise TimeoutException()
-            yield  # pragma: no cover
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = _disk_state(tmp_path)
+        release = threading.Event()
+        urls: List[str] = []
 
-        with (
-            _patch_context(b, ctx, synced_data)[0],
-            _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_build_http_request_message", return_value=built),
-            patch.object(b, "_do_request", side_effect=do_request),
-        ):
-            with pytest.raises(TimeoutException):
-                for _ in b._get_leaderboard_response("https://x/api"):
-                    pass  # pragma: no cover
-        callback = ctx.requests.request_id_to_callback["nonce-1"]
-        assert callback is _drop_late_response
-        assert callback(MagicMock(), MagicMock()) is None
+        def get(url: str, timeout: Any = None) -> MagicMock:
+            urls.append(url)
+            assert release.wait(10)
+            return _ranked_answer(url)
+
+        try:
+            with patch(self.GET, side_effect=get):
+                self._step(state, NOW)
+                assert state.is_leaderboard_refresh_running()
+                # Due again, but the first job still runs: nothing new starts
+                self._step(state, NOW + LEADERBOARD_REFRESH_INTERVAL)
+                lb = state.get_leaderboard()
+                assert lb is not None and lb.last_attempt_at == NOW
+                release.set()
+                future = state._leaderboard_future
+                assert future is not None
+                future.result(timeout=10)
+                assert len(urls) == len(LEADERBOARD_WINDOWS)
+
+                # A full-summary save keeps the ranks the worker wrote
+                self._step(state, NOW + 1)
+                saved = state.read_leaderboard_from_disk()
+                assert saved is not None
+                assert set(saved.windows) == set(LEADERBOARD_WINDOWS)
+                assert saved.last_attempt_at == NOW
+
+                self._step(state, NOW + LEADERBOARD_REFRESH_INTERVAL - 1)
+                assert not state.is_leaderboard_refresh_running()
+                self._step(state, NOW + LEADERBOARD_REFRESH_INTERVAL)
+                future = state._leaderboard_future
+                assert future is not None
+                future.result(timeout=10)
+                assert len(urls) == 2 * len(LEADERBOARD_WINDOWS)
+        finally:
+            release.set()
+            state.shutdown_leaderboard_executor()
 
 
 class TestAsyncActLeaderboard:
@@ -8605,7 +8630,7 @@ class TestAsyncActLeaderboard:
             patch.object(
                 b, "_fetch_agent_performance_summary", side_effect=failing_fetch
             ),
-            patch.object(b, "_update_leaderboard", side_effect=_noop_gen) as step,
+            patch.object(b, "_update_leaderboard", return_value=None) as step,
             patch.object(b, "finish_behaviour", side_effect=_noop_gen) as finish,
         ):
             for _ in b.async_act():
@@ -8630,18 +8655,19 @@ class TestAsyncActLeaderboard:
         self._run_act(should_update=True, enabled=False).assert_not_called()
 
     @pytest.mark.parametrize(
-        "failing", ["_get_leaderboard_response", "read_leaderboard_from_disk"]
+        "failing",
+        ["get_leaderboard", "update_leaderboard", "submit_leaderboard_refresh"],
     )
     def test_failing_step_keeps_a_successful_vote(self, failing: str) -> None:
-        """A leaderboard refresh that fails does not change a successful vote.
+        """A leaderboard step that fails does not change a successful vote.
 
         :param failing: the call inside the step that raises.
         """
         b = _make_fetch_behaviour()
         ctx, params, synced_data, state = _mock_context()
         params.olas_predict_leaderboard_url = LEADERBOARD_URL
-        state.read_leaderboard_from_disk.return_value = None
-        target = b if failing.startswith("_") else state
+        state.get_leaderboard.return_value = None
+        state.is_leaderboard_refresh_running.return_value = False
 
         def successful_fetch(*a: Any, **k: Any) -> Generator:
             b._agent_performance_summary = _default_summary()
@@ -8656,7 +8682,7 @@ class TestAsyncActLeaderboard:
                 b, "_fetch_agent_performance_summary", side_effect=successful_fetch
             ),
             patch.object(b, "_save_agent_performance_summary"),
-            patch.object(target, failing, side_effect=RuntimeError("boom")) as step,
+            patch.object(state, failing, side_effect=RuntimeError("boom")) as step,
             patch.object(b, "finish_behaviour", side_effect=_noop_gen) as finish,
         ):
             for _ in b.async_act():

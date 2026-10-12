@@ -34,6 +34,9 @@ from packages.valory.skills.abstract_round_abci.models import (
     ApiSpecs,
     BaseParams,
 )
+from packages.valory.skills.abstract_round_abci.models import (
+    SharedState as BaseSharedState,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
@@ -1557,6 +1560,48 @@ class TestSharedState:
             assert state.get_leaderboard() == LeaderboardData(last_attempt_at=5)
         reader.assert_called_once()
 
+    def test_update_leaderboard_window_keeps_the_rest(self, tmp_path: Path) -> None:
+        """One window's write keeps the other windows and the watermark.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        old = LeaderboardWindowRank(ranked=False, fetched_at=1)
+        state.update_leaderboard(
+            LeaderboardData(windows={"7d": old, "30d": old}, last_attempt_at=9)
+        )
+        new = LeaderboardWindowRank(ranked=False, fetched_at=2)
+
+        state.update_leaderboard_window("30d", new)
+
+        expected = LeaderboardData(windows={"7d": old, "30d": new}, last_attempt_at=9)
+        assert state.get_leaderboard() == expected
+        assert state.read_leaderboard_from_disk() == expected
+
+    def test_overwrite_keeps_a_leaderboard_written_after_the_read(
+        self, tmp_path: Path
+    ) -> None:
+        """A full-summary write cannot roll back ranks the worker stored meanwhile.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.update_leaderboard(LeaderboardData(last_attempt_at=1))
+        summary = state.read_existing_performance_summary()
+        assert summary.leaderboard == LeaderboardData(last_attempt_at=1)
+
+        # The worker thread stores a window between the read and the write
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=2)
+        state.update_leaderboard_window("7d", entry)
+        summary.agent_behavior = "active"
+        state.overwrite_performance_summary(summary)
+
+        on_disk = state.read_existing_performance_summary()
+        assert on_disk.agent_behavior == "active"
+        assert on_disk.leaderboard == LeaderboardData(
+            windows={"7d": entry}, last_attempt_at=1
+        )
+
     def test_overwrite_reads_the_section_on_first_use(self, tmp_path: Path) -> None:
         """Before any leaderboard write, the section on disk is carried over.
 
@@ -1595,6 +1640,44 @@ class TestSharedState:
         thread.join(5)
         assert not thread.is_alive()
         assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+
+    def test_leaderboard_refresh_runs_one_job_at_a_time(self) -> None:
+        """A second job is refused while the first runs; shutdown does not wait."""
+        state = self._make_state()
+        release, done = threading.Event(), threading.Event()
+
+        def job() -> None:
+            release.wait(5)
+            done.set()
+
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models.atexit.register"
+        ) as register:
+            try:
+                assert not state.is_leaderboard_refresh_running()
+                assert state.submit_leaderboard_refresh(job)
+                assert state.is_leaderboard_refresh_running()
+                assert not state.submit_leaderboard_refresh(MagicMock())
+                register.assert_called_once_with(state.shutdown_leaderboard_executor)
+
+                state.shutdown_leaderboard_executor()
+                assert state._leaderboard_executor is None
+                assert not done.is_set()
+            finally:
+                release.set()
+        assert done.wait(5)
+        state.shutdown_leaderboard_executor()
+
+    def test_teardown_shuts_the_executor_down(self) -> None:
+        """Tearing the state down stops the leaderboard worker."""
+        state = self._make_state()
+        executor = MagicMock()
+        state._leaderboard_executor = executor
+        with patch.object(BaseSharedState, "teardown") as base_teardown:
+            state.teardown()
+        base_teardown.assert_called_once()
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+        assert state._leaderboard_executor is None
 
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path

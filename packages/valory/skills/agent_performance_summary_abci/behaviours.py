@@ -22,8 +22,11 @@
 import bisect
 import json
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
 from urllib.parse import urlencode
+
+import requests
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
@@ -31,17 +34,12 @@ from packages.valory.contracts.mech_prepaid_reader.contract import (
     MechPrepaidReaderContract,
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
-from packages.valory.protocols.http import HttpMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.abstract_round_abci.behaviour_utils import (
-    TimeoutException,
-)
 from packages.valory.skills.abstract_round_abci.behaviours import (
     AbstractRoundBehaviour,
     BaseBehaviour,
 )
-from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
@@ -188,12 +186,182 @@ def _parse_iso_timestamp(value: Any) -> Optional[int]:
     return int(parsed.timestamp())
 
 
-def _drop_late_response(_message: Any, _current_behaviour: Any) -> None:
-    """Swallow the reply to a request that has already timed out.
+def leaderboard_request_url(base: str, query: str) -> str:
+    """Append ``query`` to the configured leaderboard URL.
 
-    :param _message: the late reply
-    :param _current_behaviour: the behaviour active when it arrived
+    :param base: the configured ``olas_predict_leaderboard_url``
+    :param query: the encoded query string
+    :return: the request URL
     """
+    if base.endswith(("?", "&")):
+        return f"{base}{query}"
+    separator = "&" if "?" in base else "?"
+    return f"{base}{separator}{query}"
+
+
+def parse_leaderboard_window(  # pylint: disable=too-many-return-statements,too-many-arguments
+    status_code: int,
+    body: bytes,
+    agent_type: LeaderboardAgentType,
+    window: LeaderboardWindow,
+    safe_address: str,
+    now: int,
+    api_url: str,
+    logger: Any,
+) -> Optional[LeaderboardWindowRank]:
+    """Validate olas-predict's answer for one window.
+
+    :param status_code: the HTTP status code
+    :param body: the raw response body
+    :param agent_type: ``omenstrat`` or ``polystrat``
+    :param window: one of ``LEADERBOARD_WINDOWS``
+    :param safe_address: the agent's lowercased Safe address
+    :param now: the timestamp to stamp a successful answer with
+    :param api_url: the configured ``olas_predict_leaderboard_url``
+    :param logger: where to report a rejected answer
+    :return: the window's rank, or ``None`` when the answer is unusable
+    """
+    if status_code != 200:
+        logger.warning(
+            f"Leaderboard {window} responded {status_code}; keeping the previous rank"
+        )
+        return None
+
+    try:
+        data = json.loads(body.decode())
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        logger.warning(f"Leaderboard {window} JSON parse failed: {exc}")
+        return None
+
+    def _reject(reason: str) -> None:
+        logger.warning(
+            f"Leaderboard {window} answer {reason}; keeping the previous rank"
+        )
+
+    if not isinstance(data, dict):
+        _reject("is not an object")
+        return None
+    if data.get("window") != window or data.get("agentType") != agent_type:
+        _reject(
+            f"is for {data.get('agentType')!r}/{data.get('window')!r}, "
+            f"not {agent_type}/{window}"
+        )
+        return None
+
+    agents = data.get("agents")
+    agent = agents[0] if isinstance(agents, list) and agents else None
+    if not isinstance(agent, dict) or (
+        str(agent.get("address", "")).lower() != safe_address
+    ):
+        _reject("has no entry for this agent")
+        return None
+
+    ranked = agent.get("ranked")
+    if not isinstance(ranked, bool):
+        _reject("has no ranked flag")
+        return None
+
+    rank_by_roi, rank_by_pnl = agent.get("rankByRoi"), agent.get("rankByPnl")
+    reason: Optional[NotRankedReason] = None
+    if not ranked:
+        rank_by_roi = rank_by_pnl = None
+        reason = agent.get("notRankedReason")
+        if not is_not_ranked_reason(reason):
+            logger.warning(
+                f"Leaderboard {window} gave an unknown notRankedReason "
+                f"{reason!r}; storing {LEADERBOARD_DEFAULT_NOT_RANKED_REASON}"
+            )
+            reason = LEADERBOARD_DEFAULT_NOT_RANKED_REASON
+
+    url_value = agent.get("leaderboardUrl")
+    if not is_allowed_leaderboard_url(url_value, api_url):
+        if url_value is not None:
+            logger.warning(
+                f"Leaderboard {window} link {url_value!r} is not on the "
+                "olas-predict leaderboard page; serving the bare page"
+            )
+        url_value = None
+
+    updated_at = _parse_iso_timestamp(data.get("updatedAt"))
+    if updated_at is not None and updated_at > now + LEADERBOARD_CLOCK_SKEW_SECONDS:
+        logger.warning(
+            f"Leaderboard {window} updatedAt is in the future; "
+            "judging freshness by the fetch time"
+        )
+        updated_at = None
+
+    try:
+        return LeaderboardWindowRank(
+            ranked=ranked,
+            fetched_at=now,
+            not_ranked_reason=reason,
+            rank_by_roi=rank_by_roi,
+            rank_by_pnl=rank_by_pnl,
+            total_ranked=data.get("totalRanked"),
+            leaderboard_url=url_value,
+            updated_at=updated_at,
+        )
+    except ValueError:
+        _reject("has invalid ranks or totalRanked")
+        return None
+
+
+def refresh_leaderboard(  # pylint: disable=too-many-arguments
+    shared_state: SharedState,
+    logger: Any,
+    api_url: str,
+    agent_type: LeaderboardAgentType,
+    safe_address: str,
+    now: int,
+) -> None:
+    """Fetch every window from olas-predict; runs on the leaderboard worker thread.
+
+    Each usable answer is stored as soon as it arrives; a failed window keeps
+    its previous answer. Touches no FSM state and never raises.
+
+    :param shared_state: the skill state the ranks are stored on
+    :param logger: the skill logger (``logging`` is thread-safe)
+    :param api_url: the configured ``olas_predict_leaderboard_url``
+    :param agent_type: ``omenstrat`` or ``polystrat``
+    :param safe_address: the agent's lowercased Safe address
+    :param now: the timestamp to stamp successful answers with
+    """
+    try:
+        for window in LEADERBOARD_WINDOWS:
+            query = urlencode(
+                {"agentType": agent_type, "window": window, "addresses": safe_address}
+            )
+            url = leaderboard_request_url(api_url, query)
+            try:
+                response = requests.get(url, timeout=LEADERBOARD_REQUEST_TIMEOUT)
+                entry = parse_leaderboard_window(
+                    response.status_code,
+                    response.content,
+                    agent_type,
+                    window,
+                    safe_address,
+                    now,
+                    api_url,
+                    logger,
+                )
+                if entry is not None:
+                    shared_state.update_leaderboard_window(window, entry)
+            except requests.Timeout:
+                # olas-predict is hanging: don't spend a timeout per window
+                logger.warning(
+                    f"Leaderboard {window} timed out after "
+                    f"{LEADERBOARD_REQUEST_TIMEOUT}s; keeping the previous "
+                    "ranks until the next refresh"
+                )
+                return
+            except Exception as e:  # pylint: disable=broad-except
+                logger.warning(
+                    f"Leaderboard {window} fetch failed: {e}; "
+                    "keeping the previous rank",
+                    exc_info=True,
+                )
+    except Exception as e:  # pylint: disable=broad-except
+        logger.warning(f"Leaderboard refresh failed: {e}", exc_info=True)
 
 
 class FetchPerformanceSummaryBehaviour(
@@ -2576,151 +2744,6 @@ class FetchPerformanceSummaryBehaviour(
 
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
 
-    def _get_leaderboard_response(self, url: str) -> Generator[None, None, HttpMessage]:
-        """GET ``url`` with ``LEADERBOARD_REQUEST_TIMEOUT``.
-
-        :param url: the request URL
-        :return: the response
-        :yield: None
-        :raises TimeoutException: if no response arrives in time
-        """
-        http_message, http_dialogue = self._build_http_request_message(
-            method="GET", url=url
-        )
-        try:
-            response = yield from self._do_request(
-                http_message, http_dialogue, timeout=LEADERBOARD_REQUEST_TIMEOUT
-            )
-        except TimeoutException:
-            nonce = self._get_request_nonce_from_dialogue(http_dialogue)
-            cast(Requests, self.context.requests).request_id_to_callback[
-                nonce
-            ] = _drop_late_response
-            raise
-        return cast(HttpMessage, response)
-
-    def _leaderboard_request_url(self, query: str) -> str:
-        """Append ``query`` to the configured leaderboard URL.
-
-        :param query: the encoded query string
-        :return: the request URL
-        """
-        base = self.params.olas_predict_leaderboard_url
-        if base.endswith(("?", "&")):
-            return f"{base}{query}"
-        separator = "&" if "?" in base else "?"
-        return f"{base}{separator}{query}"
-
-    def _fetch_leaderboard_window(  # pylint: disable=too-many-return-statements
-        self,
-        agent_type: LeaderboardAgentType,
-        window: LeaderboardWindow,
-        safe_address: str,
-        now: int,
-    ) -> Generator[None, None, Optional[LeaderboardWindowRank]]:
-        """Fetch this agent's rank in one window from olas-predict.
-
-        :param agent_type: ``omenstrat`` or ``polystrat``
-        :param window: one of ``LEADERBOARD_WINDOWS``
-        :param safe_address: the agent's lowercased Safe address
-        :param now: the timestamp to stamp a successful answer with
-        :return: the window's rank, or ``None`` when the answer is unusable
-        :yield: None
-        """
-        query = urlencode(
-            {"agentType": agent_type, "window": window, "addresses": safe_address}
-        )
-        url = self._leaderboard_request_url(query)
-        response = yield from self._get_leaderboard_response(url)
-        if response.status_code != 200:
-            self.context.logger.warning(
-                f"Leaderboard {window} responded {response.status_code}; "
-                "keeping the previous rank"
-            )
-            return None
-
-        try:
-            data = json.loads(response.body.decode())
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            self.context.logger.warning(
-                f"Leaderboard {window} JSON parse failed: {exc}"
-            )
-            return None
-
-        def _reject(reason: str) -> None:
-            self.context.logger.warning(
-                f"Leaderboard {window} answer {reason}; keeping the previous rank"
-            )
-
-        if not isinstance(data, dict):
-            _reject("is not an object")
-            return None
-        if data.get("window") != window or data.get("agentType") != agent_type:
-            _reject(
-                f"is for {data.get('agentType')!r}/{data.get('window')!r}, "
-                f"not {agent_type}/{window}"
-            )
-            return None
-
-        agents = data.get("agents")
-        agent = agents[0] if isinstance(agents, list) and agents else None
-        if not isinstance(agent, dict) or (
-            str(agent.get("address", "")).lower() != safe_address
-        ):
-            _reject("has no entry for this agent")
-            return None
-
-        ranked = agent.get("ranked")
-        if not isinstance(ranked, bool):
-            _reject("has no ranked flag")
-            return None
-
-        rank_by_roi, rank_by_pnl = agent.get("rankByRoi"), agent.get("rankByPnl")
-        reason: Optional[NotRankedReason] = None
-        if not ranked:
-            rank_by_roi = rank_by_pnl = None
-            reason = agent.get("notRankedReason")
-            if not is_not_ranked_reason(reason):
-                self.context.logger.warning(
-                    f"Leaderboard {window} gave an unknown notRankedReason "
-                    f"{reason!r}; storing {LEADERBOARD_DEFAULT_NOT_RANKED_REASON}"
-                )
-                reason = LEADERBOARD_DEFAULT_NOT_RANKED_REASON
-
-        url_value = agent.get("leaderboardUrl")
-        if not is_allowed_leaderboard_url(
-            url_value, self.params.olas_predict_leaderboard_url
-        ):
-            if url_value is not None:
-                self.context.logger.warning(
-                    f"Leaderboard {window} link {url_value!r} is not on the "
-                    "olas-predict leaderboard page; serving the bare page"
-                )
-            url_value = None
-
-        updated_at = _parse_iso_timestamp(data.get("updatedAt"))
-        if updated_at is not None and updated_at > now + LEADERBOARD_CLOCK_SKEW_SECONDS:
-            self.context.logger.warning(
-                f"Leaderboard {window} updatedAt is in the future; "
-                "judging freshness by the fetch time"
-            )
-            updated_at = None
-
-        try:
-            return LeaderboardWindowRank(
-                ranked=ranked,
-                fetched_at=now,
-                not_ranked_reason=reason,
-                rank_by_roi=rank_by_roi,
-                rank_by_pnl=rank_by_pnl,
-                total_ranked=data.get("totalRanked"),
-                leaderboard_url=url_value,
-                updated_at=updated_at,
-            )
-        except ValueError:
-            _reject("has invalid ranks or totalRanked")
-            return None
-
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:
         """Return whether a refresh is due; a future watermark counts as due.
@@ -2735,60 +2758,45 @@ class FetchPerformanceSummaryBehaviour(
             or now - last_attempt_at >= LEADERBOARD_REFRESH_INTERVAL
         )
 
-    def _update_leaderboard(self) -> Generator:
-        """Refresh the leaderboard ranks at most once per interval; never raises.
+    def _update_leaderboard(self) -> None:
+        """Start a leaderboard refresh at most once per interval.
 
-        :yield: None
+        Does no network I/O and never yields: the refresh runs on the shared
+        state's worker thread, so it cannot hold up this round. Never raises.
         """
-        if not self.params.olas_predict_leaderboard_url:
+        api_url = self.params.olas_predict_leaderboard_url
+        if not api_url:
             return
         try:
-            existing = (
-                self.shared_state.read_leaderboard_from_disk() or LeaderboardData()
-            )
+            existing = self.shared_state.get_leaderboard() or LeaderboardData()
             now = self.shared_state.synced_timestamp
             if not self._is_leaderboard_refresh_due(existing.last_attempt_at, now):
                 return
+            if self.shared_state.is_leaderboard_refresh_running():
+                self.context.logger.info(
+                    "The previous leaderboard refresh is still running; skipping"
+                )
+                return
 
-            # Persist the watermark first: a run cut short (round timeout,
-            # restart) must not make every following period retry.
-            windows = dict(existing.windows)
+            # Persist the watermark first: a refresh cut short (restart) must
+            # not make every following period retry.
             self.shared_state.update_leaderboard(
-                LeaderboardData(windows=dict(windows), last_attempt_at=now)
+                LeaderboardData(windows=dict(existing.windows), last_attempt_at=now)
             )
-
-            safe_address = self.synchronized_data.safe_contract_address.lower()
-            agent_type = get_leaderboard_agent_type(
-                self.params.is_running_on_polymarket
-            )
-            for window in LEADERBOARD_WINDOWS:
-                try:
-                    entry = yield from self._fetch_leaderboard_window(
-                        agent_type, window, safe_address, now
-                    )
-                except TimeoutException:
-                    # olas-predict is hanging: don't spend a timeout per window
-                    self.context.logger.warning(
-                        f"Leaderboard {window} timed out after "
-                        f"{LEADERBOARD_REQUEST_TIMEOUT}s; keeping the previous "
-                        "ranks until the next refresh"
-                    )
-                    break
-                except Exception as e:  # pylint: disable=broad-except
-                    self.context.logger.warning(
-                        f"Leaderboard {window} fetch failed: {e}; "
-                        "keeping the previous rank",
-                        exc_info=True,
-                    )
-                    continue
-                if entry is not None:
-                    windows[window] = entry
-            self.shared_state.update_leaderboard(
-                LeaderboardData(windows=windows, last_attempt_at=now)
+            self.shared_state.submit_leaderboard_refresh(
+                partial(
+                    refresh_leaderboard,
+                    self.shared_state,
+                    self.context.logger,
+                    api_url,
+                    get_leaderboard_agent_type(self.params.is_running_on_polymarket),
+                    self.synchronized_data.safe_contract_address.lower(),
+                    now,
+                )
             )
         except Exception as e:  # pylint: disable=broad-except
             self.context.logger.warning(
-                f"Leaderboard refresh failed: {e}", exc_info=True
+                f"Could not start the leaderboard refresh: {e}", exc_info=True
             )
 
     def async_act(self) -> Generator:
@@ -2806,7 +2814,7 @@ class FetchPerformanceSummaryBehaviour(
 
         if not self._should_update():
             self.context.logger.info("Skipping update - too soon")
-            yield from self._update_leaderboard()
+            self._update_leaderboard()
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
                 vote=False,
@@ -2832,7 +2840,7 @@ class FetchPerformanceSummaryBehaviour(
                 success = False
                 self.context.logger.error("Agent performance summary is None")
 
-            yield from self._update_leaderboard()
+            self._update_leaderboard()
 
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,

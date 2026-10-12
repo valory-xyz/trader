@@ -20,16 +20,19 @@
 
 """This module contains the models for the skill."""
 
+import atexit
 import builtins
 import json
 import os
 import tempfile
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Dict,
     FrozenSet,
     List,
@@ -730,6 +733,9 @@ class SharedState(BaseSharedState):
     # The leaderboard section, loaded from disk once and kept in sync on writes
     _leaderboard_cache: Optional[LeaderboardData] = None
     _leaderboard_cache_loaded: bool = False
+    # Runs the leaderboard refresh off the FSM; created on first use
+    _leaderboard_executor: Optional[ThreadPoolExecutor] = None
+    _leaderboard_future: Optional[Future] = None
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -1010,6 +1016,59 @@ class SharedState(BaseSharedState):
                 return
             raw["leaderboard"] = asdict(leaderboard)
             write_json_atomically(file_path, raw)
+
+    def update_leaderboard_window(
+        self, window: LeaderboardWindow, entry: LeaderboardWindowRank
+    ) -> None:
+        """Store one window's rank, keeping the other windows and the watermark.
+
+        :param window: the window the rank is for.
+        :param entry: the rank.
+        """
+        with SUMMARY_FILE_LOCK:
+            current = self.get_leaderboard() or LeaderboardData()
+            windows = dict(current.windows)
+            windows[window] = entry
+            self.update_leaderboard(
+                LeaderboardData(
+                    windows=windows, last_attempt_at=current.last_attempt_at
+                )
+            )
+
+    def is_leaderboard_refresh_running(self) -> bool:
+        """Return whether a submitted leaderboard refresh has not finished yet.
+
+        :return: whether a refresh is running or queued.
+        """
+        future = self._leaderboard_future
+        return future is not None and not future.done()
+
+    def submit_leaderboard_refresh(self, job: Callable[[], None]) -> bool:
+        """Run ``job`` on the leaderboard worker thread unless one is running.
+
+        :param job: the refresh; it must not touch the FSM state.
+        :return: whether the job was submitted.
+        """
+        if self.is_leaderboard_refresh_running():
+            return False
+        if self._leaderboard_executor is None:
+            self._leaderboard_executor = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="leaderboard"
+            )
+            atexit.register(self.shutdown_leaderboard_executor)
+        self._leaderboard_future = self._leaderboard_executor.submit(job)
+        return True
+
+    def shutdown_leaderboard_executor(self) -> None:
+        """Shut the leaderboard worker down without waiting for a running job."""
+        executor, self._leaderboard_executor = self._leaderboard_executor, None
+        if executor is not None:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+    def teardown(self) -> None:
+        """Tear down the state."""
+        super().teardown()
+        self.shutdown_leaderboard_executor()
 
 
 class Subgraph(ApiSpecs):
