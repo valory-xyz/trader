@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.handlers import (
     ABCIRoundHandler as BaseABCIRoundHandler,
@@ -2518,6 +2520,47 @@ class TestHandleGetLeaderboard:
                 _make_http_msg(url=self.URL), self.http_dialogue
             )
         assert mock_ok.call_args[0][2]["status"] == "ranked"
+
+    @pytest.mark.parametrize(
+        "stored, served",
+        [
+            (
+                "https://predict.olas.network/leaderboard?pin=0xabc123",
+                "https://predict.olas.network/leaderboard?pin=0xabc123",
+            ),
+            ("https://staging.predict.olas.network/leaderboard", LEADERBOARD_PAGE_URL),
+            ("javascript:alert(1)", LEADERBOARD_PAGE_URL),
+        ],
+    )
+    def test_persisted_link_is_rechecked(
+        self, tmp_path: Path, stored: str, served: str
+    ) -> None:
+        """A link saved on disk is served only if the current URL setting allows it.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param stored: the link in the file.
+        :param served: the link expected in the response.
+        """
+        context = MagicMock()
+        context.params.store_path = tmp_path
+        context.params.olas_predict_leaderboard_url = (
+            self.handler.context.params.olas_predict_leaderboard_url  # type: ignore[attr-defined]
+        )
+        state = object.__new__(_TestableSharedState)
+        state.context = context  # type: ignore[assignment]
+        entry = asdict(self._ranked())
+        entry["leaderboard_url"] = stored
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"windows": {"7d": entry}}})
+        )
+        self.handler.shared_state = state  # type: ignore[assignment]
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=self.URL), self.http_dialogue
+            )
+        body = mock_ok.call_args[0][2]
+        assert body["status"] == "ranked"
+        assert body["leaderboard_url"] == served
 
     def test_file_is_parsed_once(self, tmp_path: Path) -> None:
         """Requests are served from the cached section, not by re-parsing the file.
