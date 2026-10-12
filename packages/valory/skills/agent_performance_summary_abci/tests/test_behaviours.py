@@ -22,7 +22,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -82,6 +82,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     LEADERBOARD_WINDOWS,
     LeaderboardData,
+    LeaderboardWindow,
     LeaderboardWindowRank,
     OffchainDepositState,
     PROFIT_OVER_TIME_SCHEMA_VERSION,
@@ -8424,7 +8425,9 @@ class TestUpdateLeaderboard:
         b = _make_fetch_behaviour()
         ctx, params, synced_data, state = _mock_context(synced_timestamp=NOW)
         params.olas_predict_leaderboard_url = LEADERBOARD_URL
-        previous = {"7d": LeaderboardWindowRank(ranked=False, fetched_at=1)}
+        previous: Dict[LeaderboardWindow, LeaderboardWindowRank] = {
+            "7d": LeaderboardWindowRank(ranked=False, fetched_at=1)
+        }
         state.read_leaderboard_from_disk.return_value = LeaderboardData(
             windows=dict(previous), last_attempt_at=0
         )
@@ -8452,10 +8455,11 @@ class TestUpdateLeaderboard:
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
+        context = MagicMock()
+        context.params.store_path = tmp_path
+        clock = context.state.round_sequence.last_round_transition_timestamp
         state = object.__new__(_DiskSharedState)
-        state.context = MagicMock()
-        state.context.params.store_path = tmp_path
-        clock = state.context.state.round_sequence.last_round_transition_timestamp
+        state.context = context  # type: ignore[assignment]
 
         def run_step(now: int, save: bool = False) -> List[str]:
             """Run the step in a fresh behaviour at ``now``; return the URLs asked."""
@@ -8466,7 +8470,7 @@ class TestUpdateLeaderboard:
             params.olas_predict_leaderboard_url = LEADERBOARD_URL
             urls: List[str] = []
 
-            def get_response(url: str) -> Generator:
+            def get_response(url: str) -> Generator[None, None, MagicMock]:
                 """Record the URL and answer it."""
                 urls.append(url)
                 return self._ranked_answer(url)

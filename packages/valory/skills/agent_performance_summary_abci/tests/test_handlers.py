@@ -2497,9 +2497,10 @@ class TestHandleGetLeaderboard:
 
         :param tmp_path: pytest-supplied tmp directory used as the store path.
         """
+        context = MagicMock()
+        context.params.store_path = tmp_path
         state = object.__new__(_TestableSharedState)
-        state.context = MagicMock()
-        state.context.params.store_path = tmp_path
+        state.context = context  # type: ignore[assignment]
         (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
             json.dumps(
                 {
