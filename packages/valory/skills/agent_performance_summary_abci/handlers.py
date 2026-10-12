@@ -746,10 +746,8 @@ class HttpHandler(BaseHttpHandler):
                 if self.context.params.is_running_on_polymarket
                 else "omenstrat"
             )
-            summary = self.shared_state.read_existing_performance_summary()
-            entry = (
-                summary.leaderboard.windows.get(window) if summary.leaderboard else None
-            )
+            leaderboard = self.shared_state.read_leaderboard_from_disk()
+            entry = leaderboard.windows.get(window) if leaderboard else None
             now = int(datetime.now(timezone.utc).timestamp())
             # Judged by olas-predict's snapshot time when known: a stalled
             # upstream snapshot must not look fresh just because it was

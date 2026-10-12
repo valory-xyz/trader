@@ -21,7 +21,9 @@
 
 import json
 import re
+from dataclasses import asdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
@@ -65,6 +67,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     TendermintHandler,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    AGENT_PERFORMANCE_SUMMARY_FILE,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceSummary,
@@ -77,6 +80,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PredictionHistory,
     ProfitDataPoint,
     ProfitOverTimeData,
+    SharedState,
 )
 
 # ---------------------------------------------------------------------------
@@ -90,6 +94,12 @@ class _TestableHttpHandler(HttpHandler):
     context = None  # type: ignore[assignment]
     shared_state = None  # type: ignore[assignment]
     synchronized_data = None  # type: ignore[assignment]
+
+
+class _TestableSharedState(SharedState):
+    """Shadows the read-only AEA ``context`` property with a plain attribute."""
+
+    context = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
@@ -2457,8 +2467,8 @@ class TestHandleGetLeaderboard:
         self, query: str = "", leaderboard: Optional[LeaderboardData] = None
     ) -> dict:
         """Call the handler and return the 200 body."""
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            AgentPerformanceSummary(leaderboard=leaderboard)
+        self.handler.shared_state.read_leaderboard_from_disk.return_value = (  # type: ignore[attr-defined]
+            leaderboard
         )
         with patch.object(self.handler, "_send_ok_response") as mock_ok:
             self.handler._handle_get_leaderboard(
@@ -2481,6 +2491,31 @@ class TestHandleGetLeaderboard:
             total_ranked=242,
             leaderboard_url="https://predict.olas.network/leaderboard?pin=0xabc123",
         )
+
+    def test_serves_ranks_despite_a_corrupt_sibling_field(
+        self, tmp_path: Path
+    ) -> None:
+        """Fresh ranks on disk are served even if another summary field is invalid.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = object.__new__(_TestableSharedState)
+        state.context = MagicMock()
+        state.context.params.store_path = tmp_path
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps(
+                {
+                    "prediction_history": {"not_a_field": 1},
+                    "leaderboard": {"windows": {"7d": asdict(self._ranked())}},
+                }
+            )
+        )
+        self.handler.shared_state = state  # type: ignore[assignment]
+        with patch.object(self.handler, "_send_ok_response") as mock_ok:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=self.URL), self.http_dialogue
+            )
+        assert mock_ok.call_args[0][2]["status"] == "ranked"
 
     def test_missing_window_defaults_to_7d(self) -> None:
         """No ``window`` serves the 7d entry."""
@@ -2681,7 +2716,7 @@ class TestHandleGetLeaderboard:
 
     def test_exception_is_500(self) -> None:
         """An unexpected error answers 500."""
-        self.handler.shared_state.read_existing_performance_summary.side_effect = (  # type: ignore[attr-defined]
+        self.handler.shared_state.read_leaderboard_from_disk.side_effect = (  # type: ignore[attr-defined]
             RuntimeError("boom")
         )
         with patch.object(
