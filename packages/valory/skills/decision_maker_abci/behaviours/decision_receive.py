@@ -733,11 +733,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 self.context.logger.info("Increasing Mech call count by 1")
                 self.shared_state.benchmarking_mech_calls += 1
 
-            if prediction_response is not None:
+            tool = self.creditable_tool_key if prediction_response is not None else None
+            if tool is not None:
                 self.policy.tool_responded(
-                    self.synchronized_data.mech_tool,
-                    self.synced_timestamp,
-                    self.is_invalid_response,
+                    tool, self.synced_timestamp, self.is_invalid_response
                 )
                 policy = self.policy.serialize()
 

@@ -163,6 +163,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         if self.synchronized_data.is_policy_set:
             self._policy = self.synchronized_data.policy
             self.mech_tools = self.synchronized_data.available_mech_tools
+            self._migrate_legacy_keys()
             # The base setup is skipped here, so publish the suitable set for the
             # ChatUI explicitly. Covers db-replay restarts where `is_policy_set`
             # is already true at boot but `available_prediction_tools` (in-memory)

@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.chatui_abci.tool_keys import VALORY_LABEL, tool_key
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     AVAILABLE_TOOLS_STORE,
     NO_METADATA_HASH,
@@ -37,8 +38,35 @@ from packages.valory.skills.decision_maker_abci.behaviours.storage_manager impor
 )
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
+    ConsecutiveFailures,
     EGreedyPolicy,
 )
+from packages.valory.skills.mech_interact_abci.states.base import MechInfo, Service
+
+V1_MECH = "0x" + "1" * 40
+MECH_A = "0x" + "a" * 40
+MECH_B = "0x" + "b" * 40
+MECH_C = "0x" + "c" * 40
+
+
+def _mech_info(address: str, relevant_tools: set) -> MechInfo:
+    """A discovered mech as mech-interact records it."""
+    return MechInfo(
+        id="1",
+        address=address,
+        service=Service(metadata=[{"metadata": "0x" + "ab" * 32}], deliveries=[]),
+        karma=1,
+        received_requests=1,
+        self_delivered=1,
+        max_delivery_rate=1,
+        relevant_tools=relevant_tools,
+    )
+
+
+def _valory(tool: str) -> str:
+    """The key of a tool served by Valory's mechs."""
+    return tool_key(VALORY_LABEL, tool)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -432,7 +460,9 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        mech_marketplace_v1_suitable_tools=frozenset()
+                        mech_marketplace_v1_suitable_tools=frozenset(),
+                        use_mech_marketplace=False,
+                        mech_contract_address=V1_MECH,
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
@@ -449,7 +479,10 @@ class TestGetMechTools:
                         result = e.value
 
         assert result is True
-        assert behaviour._mech_tools == {"tool1", "tool2"}
+        assert behaviour._mech_tools == {
+            tool_key(V1_MECH, "tool1"),
+            tool_key(V1_MECH, "tool2"),
+        }
 
     def test_get_mech_tools_intersects_with_v1_suitable_tools(self) -> None:
         """V1 path intersects on-chain tools with the V1 operator allowlist."""
@@ -475,7 +508,11 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        mech_marketplace_v1_suitable_tools=frozenset({"tool1", "tool3"})
+                        mech_marketplace_v1_suitable_tools=frozenset(
+                            {"tool1", "tool3"}
+                        ),
+                        use_mech_marketplace=False,
+                        mech_contract_address=V1_MECH,
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
@@ -493,7 +530,10 @@ class TestGetMechTools:
 
         assert result is True
         # tool2 dropped: not in the operator allowlist
-        assert behaviour._mech_tools == {"tool1", "tool3"}
+        assert behaviour._mech_tools == {
+            tool_key(V1_MECH, "tool1"),
+            tool_key(V1_MECH, "tool3"),
+        }
 
     def test_get_mech_tools_skips_v1_allowlist_on_v2(self) -> None:
         """The V1 allowlist guard suppresses intersection on V2 paths.
@@ -525,7 +565,11 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        mech_marketplace_v1_suitable_tools=frozenset({"tool1", "tool3"})
+                        mech_marketplace_v1_suitable_tools=frozenset(
+                            {"tool1", "tool3"}
+                        ),
+                        use_mech_marketplace=False,
+                        mech_contract_address=V1_MECH,
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(mock_response)
@@ -543,7 +587,11 @@ class TestGetMechTools:
 
         assert result is True
         # V2 path: tool2 NOT dropped despite being absent from the allowlist.
-        assert behaviour._mech_tools == {"tool1", "tool2", "tool3"}
+        assert behaviour._mech_tools == {
+            tool_key(V1_MECH, "tool1"),
+            tool_key(V1_MECH, "tool2"),
+            tool_key(V1_MECH, "tool3"),
+        }
 
     def test_get_mech_tools_retries_exceeded(self) -> None:
         """Should return True with error log when retries exceeded."""
@@ -682,7 +730,9 @@ class TestGetMechTools:
                     type(behaviour), "params", new_callable=PropertyMock
                 ) as mock_params:
                     mock_params.return_value = MagicMock(
-                        mech_marketplace_v1_suitable_tools=frozenset()
+                        mech_marketplace_v1_suitable_tools=frozenset(),
+                        use_mech_marketplace=False,
+                        mech_contract_address=V1_MECH,
                     )
                     behaviour.get_http_response = MagicMock(  # type: ignore[method-assign]
                         return_value=_return_gen(MagicMock())
@@ -699,7 +749,10 @@ class TestGetMechTools:
                         result = e.value
 
         assert result is True
-        assert behaviour._mech_tools == {"prediction-offline", "superforcaster"}
+        assert behaviour._mech_tools == {
+            tool_key(V1_MECH, "prediction-offline"),
+            tool_key(V1_MECH, "superforcaster"),
+        }
 
 
 # Tests for get_tools
@@ -732,31 +785,51 @@ class TestGetTools:
         behaviour._get_tools_from_benchmark_file.assert_called_once()
 
     def test_get_tools_marketplace_v2(self) -> None:
-        """Should use synchronized_data.mech_tools for marketplace v2."""
+        """Marketplace v2 keys every (identity, tool) pair of the discovered mechs."""
         behaviour = _make_behaviour()
         bm = MagicMock()
         bm.enabled = False
 
-        with patch.object(
-            type(behaviour),
-            "benchmarking_mode",
-            new_callable=PropertyMock,
-            return_value=bm,
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ),
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
                 type(behaviour), "synchronized_data", new_callable=PropertyMock
-            ) as mock_sd:
-                mock_sd.return_value = MagicMock(
-                    is_marketplace_v2=True, mech_tools={"tool_a", "tool_b"}
-                )
-                gen = behaviour._get_tools()
-                try:
-                    while True:
-                        next(gen)
-                except StopIteration:
-                    pass
+            ) as mock_sd,
+        ):
+            mock_params.return_value = MagicMock(
+                valid_mechs=frozenset({MECH_A, MECH_B})
+            )
+            mock_sd.return_value = MagicMock(
+                is_marketplace_v2=True,
+                mechs_info=[
+                    _mech_info(MECH_A, {"tool_a", "tool_b"}),
+                    _mech_info(MECH_B.upper().replace("0X", "0x"), {"tool_b"}),
+                    _mech_info(MECH_C, {"tool_b"}),
+                ],
+                selected_mechs=[MECH_C],
+            )
+            gen = behaviour._get_tools()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
 
-        assert behaviour._mech_tools == {"tool_a", "tool_b"}
+        # Valory's mechs share one key per tool; the ChatUI pin does not shrink
+        # the universe.
+        assert behaviour._mech_tools == {
+            _valory("tool_a"),
+            _valory("tool_b"),
+            tool_key(MECH_C, "tool_b"),
+        }
 
     def test_get_tools_standard_path(self) -> None:
         """Should call the three-step flow for standard tools retrieval."""
@@ -968,22 +1041,35 @@ class TestFetchAccuracyInfo:
 class TestPruneAccuracyStoreToCurrentTools:
     """Tests for _prune_accuracy_store_to_current_tools."""
 
-    def test_removes_tools_not_in_mech_tools(self) -> None:
-        """Should remove tools from accuracy_store that are not in mech_tools."""
+    def test_drops_only_unoffered_records_without_history(self) -> None:
+        """Unoffered records with requests or pending bets survive; empty ones go."""
         behaviour = _make_behaviour()
         behaviour._mech_tools = {"tool1"}
         policy = _make_policy(
             {
-                "tool1": AccuracyInfo(requests=5),
-                "tool2": AccuracyInfo(requests=3),
+                "tool1": AccuracyInfo(),
+                "earned": AccuracyInfo(requests=3, accuracy=0.5),
+                "pending": AccuracyInfo(pending=1),
+                "empty": AccuracyInfo(),
             }
         )
         behaviour._policy = policy
 
         behaviour._prune_accuracy_store_to_current_tools()
 
-        assert "tool1" in policy.accuracy_store
-        assert "tool2" not in policy.accuracy_store
+        assert set(policy.accuracy_store) == {"tool1", "earned", "pending"}
+        behaviour.context.logger.info.assert_called_once()
+        assert "['empty']" in behaviour.context.logger.info.call_args[0][0]
+
+    def test_logs_nothing_when_nothing_is_dropped(self) -> None:
+        """A store that only holds offered tools stays quiet."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._policy = _make_policy({"tool1": AccuracyInfo()})
+
+        behaviour._prune_accuracy_store_to_current_tools()
+
+        behaviour.context.logger.info.assert_not_called()
 
 
 # Tests for global_info_date_to_unix
@@ -1026,10 +1112,52 @@ class TestGlobalInfoDateToUnix:
 class TestParseGlobalInfoRow:
     """Tests for _parse_global_info_row."""
 
+    def test_row_lands_under_valory(self) -> None:
+        """The global file was measured on Valory's mechs."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {_valory("tool1"), tool_key(MECH_C, "tool1")}
+
+        mock_fields = MagicMock()
+        mock_fields.tool = "tool_col"
+        mock_fields.max = "max_date_col"
+        row = {"tool_col": "tool1", "max_date_col": "2024-06-01 00:00:00"}
+        tool_to_global_info = {}  # type: ignore[var-annotated]
+
+        with patch.object(
+            type(behaviour), "acc_info_fields", new_callable=PropertyMock
+        ) as mock_aif:
+            mock_aif.return_value = mock_fields
+            with patch.object(
+                behaviour, "_global_info_date_to_unix", return_value=1717200000
+            ):
+                result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
+
+        assert result == 1717200000
+        assert tool_to_global_info == {_valory("tool1"): row}
+
+    def test_row_is_skipped_when_only_other_identities_serve_the_tool(self) -> None:
+        """A non-Valory mech serving the same tool never inherits the global record."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {tool_key(MECH_C, "tool1")}
+
+        mock_fields = MagicMock()
+        mock_fields.tool = "tool_col"
+        row = {"tool_col": "tool1", "max_date_col": "2024-06-01 00:00:00"}
+        tool_to_global_info = {}  # type: ignore[var-annotated]
+
+        with patch.object(
+            type(behaviour), "acc_info_fields", new_callable=PropertyMock
+        ) as mock_aif:
+            mock_aif.return_value = mock_fields
+            result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
+
+        assert result == 100
+        assert tool_to_global_info == {}
+
     def test_irrelevant_tool_is_skipped(self) -> None:
         """Should return the same max_transaction_date for irrelevant tools."""
         behaviour = _make_behaviour()
-        behaviour._mech_tools = {"tool1"}
+        behaviour._mech_tools = {_valory("tool1")}
 
         mock_fields = MagicMock()
         mock_fields.tool = "tool_col"
@@ -1047,7 +1175,7 @@ class TestParseGlobalInfoRow:
     def test_relevant_tool_updates_max_date(self) -> None:
         """Should update max_transaction_date for relevant tools."""
         behaviour = _make_behaviour()
-        behaviour._mech_tools = {"tool1"}
+        behaviour._mech_tools = {_valory("tool1")}
 
         mock_fields = MagicMock()
         mock_fields.tool = "tool_col"
@@ -1068,12 +1196,12 @@ class TestParseGlobalInfoRow:
                 result = behaviour._parse_global_info_row(row, 100, tool_to_global_info)
 
         assert result == 1717200000
-        assert "tool1" in tool_to_global_info
+        assert _valory("tool1") in tool_to_global_info
 
     def test_relevant_tool_with_lower_date(self) -> None:
         """Should keep current max_transaction_date when row date is lower."""
         behaviour = _make_behaviour()
-        behaviour._mech_tools = {"tool1"}
+        behaviour._mech_tools = {_valory("tool1")}
 
         mock_fields = MagicMock()
         mock_fields.tool = "tool_col"
@@ -1098,7 +1226,7 @@ class TestParseGlobalInfoRow:
     def test_relevant_tool_with_none_date(self) -> None:
         """Should keep current max when date parsing returns None."""
         behaviour = _make_behaviour()
-        behaviour._mech_tools = {"tool1"}
+        behaviour._mech_tools = {_valory("tool1")}
 
         mock_fields = MagicMock()
         mock_fields.tool = "tool_col"
@@ -1210,7 +1338,7 @@ class TestOverwriteLocalInfo:
         mock_fields.accuracy = "acc_col"
 
         tool_to_global_info = {
-            "tool1": {"req_col": "10", "acc_col": "0.9"},
+            "tool1": {"req_col": "10", "acc_col": "90.0"},
         }
 
         with patch.object(
@@ -1220,7 +1348,27 @@ class TestOverwriteLocalInfo:
             behaviour._overwrite_local_info(tool_to_global_info)
 
         assert policy.accuracy_store["tool1"].requests == 10
-        assert policy.accuracy_store["tool1"].accuracy == 0.9
+        # The global file is in percent; the store keeps a fraction.
+        assert policy.accuracy_store["tool1"].accuracy == pytest.approx(0.9)
+
+    def test_seeded_and_locally_updated_records_share_one_scale(self) -> None:
+        """After seeding, a local win moves the record by one request's worth."""
+        behaviour = _make_behaviour()
+        policy = _make_policy({})
+        behaviour._policy = policy
+        mock_fields = MagicMock(requests="req_col", accuracy="acc_col")
+
+        with patch.object(
+            type(behaviour), "acc_info_fields", new_callable=PropertyMock
+        ) as mock_aif:
+            mock_aif.return_value = mock_fields
+            behaviour._overwrite_local_info(
+                {"tool1": {"req_col": "3", "acc_col": "50.0"}}
+            )
+        policy.update_accuracy_store("tool1", winning=True)
+
+        # (0.5 * 3 + 1) / 4: a percent seed would have stayed near 37.5 instead.
+        assert policy.accuracy_store["tool1"].accuracy == pytest.approx(0.625)
 
 
 # Tests for update_accuracy_store
@@ -1270,6 +1418,7 @@ class TestUpdatePolicyTools:
     def test_update_policy_tools(self) -> None:
         """Should call all sub-methods to update policy."""
         behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
         policy = _make_policy()
         behaviour._policy = policy
 
@@ -1653,3 +1802,262 @@ class TestStoreMethods:
         behaviour._store_policy.assert_called_once()
         behaviour._store_available_mech_tools.assert_called_once()
         behaviour._store_utilized_tools.assert_called_once()
+
+
+# Tests for the (identity, tool) key universe and the legacy migration
+# ---------------------------------------------------------------------------
+
+
+def _with_identity_context(behaviour, mechs: list, valid_mechs: set):  # type: ignore[no-untyped-def]
+    """Patch the behaviour's params and synchronized data, returning the patchers."""
+    patchers = [
+        patch.object(type(behaviour), "params", new_callable=PropertyMock),
+        patch.object(type(behaviour), "synchronized_data", new_callable=PropertyMock),
+    ]
+    mock_params, mock_sd = (patcher.start() for patcher in patchers)
+    mock_params.return_value = MagicMock(valid_mechs=frozenset(valid_mechs))
+    mock_sd.return_value = MagicMock(mechs_info=mechs)
+    return patchers
+
+
+class TestToolKeyUniverse:
+    """Tests for _identity, _mech_identities and _mechs_by_key."""
+
+    @pytest.mark.parametrize(
+        "address, valid_mechs, expected",
+        [
+            (MECH_A, {MECH_A}, VALORY_LABEL),
+            (MECH_A.upper().replace("0X", "0x"), {MECH_A}, VALORY_LABEL),
+            (MECH_C, {MECH_A}, MECH_C),
+            (MECH_A, set(), MECH_A),
+        ],
+    )
+    def test_identity(self, address: str, valid_mechs: set, expected: str) -> None:
+        """Only mechs in valid_mechs share the Valory label; an empty list labels none."""
+        behaviour = _make_behaviour()
+        patchers = _with_identity_context(behaviour, [], valid_mechs)
+        try:
+            assert behaviour._identity(address) == expected
+        finally:
+            for patcher in patchers:
+                patcher.stop()
+
+    def test_mechs_by_key_lists_every_mech_behind_a_pooled_key(self) -> None:
+        """A pooled key maps to all of its mechs; an address key to its own mech."""
+        behaviour = _make_behaviour()
+        patchers = _with_identity_context(
+            behaviour,
+            [
+                _mech_info(MECH_A, {"tool1", "tool2"}),
+                _mech_info(MECH_B.upper().replace("0X", "0x"), {"tool1"}),
+                _mech_info(MECH_C, {"tool1"}),
+            ],
+            {MECH_A, MECH_B},
+        )
+        try:
+            mechs = behaviour._mechs_by_key()
+            serving = behaviour._mech_identities("tool2")
+        finally:
+            for patcher in patchers:
+                patcher.stop()
+        assert mechs == {
+            _valory("tool1"): [MECH_A, MECH_B],
+            _valory("tool2"): [MECH_A],
+            tool_key(MECH_C, "tool1"): [MECH_C],
+        }
+        assert serving == {MECH_A: VALORY_LABEL}
+
+    def test_mechs_by_key_without_mechs_is_empty(self) -> None:
+        """No discovered mechs means no keys, so the setup reports no tools."""
+        behaviour = _make_behaviour()
+        patchers = _with_identity_context(behaviour, [], {MECH_A})
+        try:
+            assert behaviour._mechs_by_key() == {}
+        finally:
+            for patcher in patchers:
+                patcher.stop()
+
+    @pytest.mark.parametrize(
+        "use_mech_marketplace, expected",
+        [(False, "0xlegacy"), (True, "0xpriority")],
+    )
+    def test_v1_mech_address_follows_the_marketplace_flag(
+        self, use_mech_marketplace: bool, expected: str
+    ) -> None:
+        """V1 requests go to the legacy mech, or the static priority mech on the legacy marketplace."""
+        behaviour = _make_behaviour()
+        params = MagicMock(
+            use_mech_marketplace=use_mech_marketplace,
+            mech_contract_address="0xlegacy",
+        )
+        params.mech_marketplace_config.priority_mech_address = "0xpriority"
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = params
+            assert behaviour.v1_mech_address == expected
+
+
+def _make_migrating_behaviour(benchmarking: bool = False):  # type: ignore[no-untyped-def]
+    """A behaviour ready to run the legacy migration."""
+    behaviour = _make_behaviour()
+    behaviour.context.benchmarking_mode.enabled = benchmarking
+    return behaviour
+
+
+class TestMigrateLegacyKeys:
+    """Tests for _migrate_legacy_keys."""
+
+    def test_moves_every_tool_keyed_record_under_valory(self) -> None:
+        """Accuracy, failures and utilized tools keyed by tool name are all kept."""
+        behaviour = _make_migrating_behaviour()
+        policy = _make_policy(
+            {
+                "tool1": AccuracyInfo(requests=7, pending=2, accuracy=0.6),
+                "tool2": AccuracyInfo(requests=3, accuracy=0.0),
+            }
+        )
+        policy.consecutive_failures = {
+            "tool1": ConsecutiveFailures(n_failures=1, timestamp=5)
+        }
+        behaviour._policy = policy
+        behaviour._utilized_tools = {"0xtx": "tool1", "cond": "tool2"}
+
+        behaviour._migrate_legacy_keys()
+
+        assert policy.accuracy_store == {
+            _valory("tool1"): AccuracyInfo(requests=7, pending=2, accuracy=0.6),
+            _valory("tool2"): AccuracyInfo(requests=3, accuracy=0.0),
+        }
+        assert policy.consecutive_failures == {
+            _valory("tool1"): ConsecutiveFailures(n_failures=1, timestamp=5)
+        }
+        assert behaviour._utilized_tools == {
+            "0xtx": _valory("tool1"),
+            "cond": _valory("tool2"),
+        }
+        assert set(policy.weighted_accuracy) == {_valory("tool1"), _valory("tool2")}
+
+    @pytest.mark.parametrize(
+        "stored, expected",
+        [(66.0, 0.66), (1.5, 0.015), (1.0, 1.0), (0.66, 0.66), (0.0, 0.0)],
+    )
+    def test_percent_accuracy_is_converted_to_a_fraction(
+        self, stored: float, expected: float
+    ) -> None:
+        """Seeded percent rows are brought to the fraction scale; fractions are kept."""
+        behaviour = _make_migrating_behaviour()
+        behaviour._policy = _make_policy(
+            {"tool1": AccuracyInfo(requests=9, accuracy=stored)}
+        )
+
+        behaviour._migrate_legacy_keys()
+
+        migrated = behaviour.policy.accuracy_store[_valory("tool1")]
+        assert migrated.accuracy == pytest.approx(expected)
+        assert migrated.requests == 9
+
+    def test_identity_keyed_records_are_left_alone(self) -> None:
+        """Running the migration on an already migrated store changes nothing."""
+        behaviour = _make_migrating_behaviour()
+        policy = _make_policy(
+            {
+                _valory("tool1"): AccuracyInfo(requests=7, accuracy=0.6),
+                tool_key(MECH_C, "tool1"): AccuracyInfo(requests=2, accuracy=1.0),
+            }
+        )
+        behaviour._policy = policy
+        behaviour._utilized_tools = {"0xtx": tool_key(MECH_C, "tool1")}
+        before = policy.serialize()
+
+        behaviour._migrate_legacy_keys()
+
+        assert policy.serialize() == before
+        assert behaviour._utilized_tools == {"0xtx": tool_key(MECH_C, "tool1")}
+        behaviour.context.logger.info.assert_not_called()
+
+    def test_existing_valory_records_win_over_legacy_ones(self) -> None:
+        """Records and failure counts already under the new key are not overwritten."""
+        behaviour = _make_migrating_behaviour()
+        policy = _make_policy(
+            {
+                _valory("tool1"): AccuracyInfo(requests=2, accuracy=1.0),
+                "tool1": AccuracyInfo(requests=9, accuracy=50.0),
+            }
+        )
+        policy.consecutive_failures = {
+            _valory("tool1"): ConsecutiveFailures(n_failures=0, timestamp=9),
+            "tool1": ConsecutiveFailures(n_failures=4, timestamp=1),
+        }
+        behaviour._policy = policy
+
+        behaviour._migrate_legacy_keys()
+
+        assert policy.accuracy_store == {
+            _valory("tool1"): AccuracyInfo(requests=2, accuracy=1.0)
+        }
+        assert policy.consecutive_failures == {
+            _valory("tool1"): ConsecutiveFailures(n_failures=0, timestamp=9)
+        }
+
+    def test_no_op_in_benchmarking_mode(self) -> None:
+        """Benchmarking keys are bare tool names by design, not legacy rows."""
+        behaviour = _make_migrating_behaviour(benchmarking=True)
+        behaviour._policy = _make_policy(
+            {"tool1": AccuracyInfo(requests=7, accuracy=60.0)}
+        )
+        behaviour._utilized_tools = {"0xtx": "tool1"}
+
+        behaviour._migrate_legacy_keys()
+
+        assert behaviour.policy.accuracy_store == {
+            "tool1": AccuracyInfo(requests=7, accuracy=60.0)
+        }
+        assert behaviour._utilized_tools == {"0xtx": "tool1"}
+
+
+def test_migrated_records_survive_the_first_period_prune() -> None:
+    """Migrate then prune, as on the first period: the history is kept."""
+    behaviour = _make_migrating_behaviour()
+    behaviour._mech_tools = {_valory("tool1")}
+    behaviour._policy = _make_policy(
+        {
+            "tool1": AccuracyInfo(requests=7, accuracy=60.0),
+            "retired": AccuracyInfo(requests=4, pending=1, accuracy=0.5),
+        }
+    )
+
+    behaviour._migrate_legacy_keys()
+    behaviour._prune_accuracy_store_to_current_tools()
+
+    assert set(behaviour.policy.accuracy_store) == {
+        _valory("tool1"),
+        _valory("retired"),
+    }
+
+
+class TestWarnIfValoryRecordsUnused:
+    """Tests for _warn_if_valory_records_unused."""
+
+    @pytest.mark.parametrize(
+        "offered, stored, warns",
+        [
+            ({tool_key(MECH_C, "tool1")}, {_valory("tool1")}, True),
+            ({_valory("tool1")}, {_valory("tool1")}, False),
+            ({tool_key(MECH_C, "tool1")}, {tool_key(MECH_C, "tool1")}, False),
+            ({"tool1"}, {"tool1"}, False),
+        ],
+    )
+    def test_warns_only_when_valory_history_cannot_be_used(
+        self, offered: set, stored: set, warns: bool
+    ) -> None:
+        """Valory records with no offered Valory key would sit unused: say so."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = offered
+        behaviour._policy = _make_policy(
+            {key: AccuracyInfo(requests=3) for key in stored}
+        )
+
+        behaviour._warn_if_valory_records_unused()
+
+        assert behaviour.context.logger.warning.called is warns

@@ -48,7 +48,7 @@ class SynchronizedData(BaseSynchronizedData):
 
     @property
     def available_mech_tools(self) -> Set[str]:
-        """Get all the available mech tools."""
+        """Get all the available mech tools, as policy keys (see ``tool_keys``)."""
         tools = self.db.get_strict("available_mech_tools")
         return set(json.loads(tools))
 

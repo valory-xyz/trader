@@ -178,9 +178,11 @@ class PostTxSettlementRound(CollectSameUntilThresholdRound):
                 )
                 return synced_data, event
 
-            utilized_tools[synced_data.final_tx_hash] = synced_data.mech_tool
-            tools_update = json.dumps(utilized_tools, sort_keys=True)
-            self.synchronized_data.update(utilized_tools=tools_update)
+            tool = synced_data.mech_tool_key
+            if tool is not None:
+                utilized_tools[synced_data.final_tx_hash] = tool
+                tools_update = json.dumps(utilized_tools, sort_keys=True)
+                self.synchronized_data.update(utilized_tools=tools_update)
 
         return synced_data, event
 

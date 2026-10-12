@@ -20,6 +20,7 @@
 """This package contains the tests for Decision Maker"""
 
 import json
+from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,6 +28,7 @@ import pytest
 from packages.valory.skills.abstract_round_abci.base import (
     CollectSameUntilThresholdRound,
 )
+from packages.valory.skills.chatui_abci.tool_keys import VALORY_LABEL, tool_key
 from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
@@ -211,9 +213,114 @@ def test_weighted_accuracy(sync_data: SynchronizedData, mocked_db: MagicMock) ->
     mocked_db.get_strict = lambda name: (
         policy_mock if name == policy_db_name else selected_mech_tool
     )
+    mocked_db.get = lambda name, default=None: default
     policy = EGreedyPolicy.deserialize(policy_mock)
     assert selected_mech_tool in policy.weighted_accuracy
     assert sync_data.weighted_accuracy == policy.weighted_accuracy[selected_mech_tool]
+
+
+ASKED_MECH = "0x" + "a" * 40
+POOLED_MECH = "0x" + "b" * 40
+THIRD_PARTY_MECH = "0x" + "c" * 40
+INELIGIBLE_MECH = "0x" + "d" * 40
+SELECTED = tool_key(VALORY_LABEL, "tool1")
+IDENTITIES = {
+    ASKED_MECH: VALORY_LABEL,
+    POOLED_MECH: VALORY_LABEL,
+    THIRD_PARTY_MECH: THIRD_PARTY_MECH,
+}
+
+
+def _wire_db(
+    mocked_db: MagicMock,
+    selected_key: Optional[str],
+    delivering: Optional[str],
+    identities: Optional[Dict[str, str]] = None,
+    policy: Optional[str] = None,
+) -> None:
+    """Back the synchronized data with the given selection and delivery."""
+    strict: Dict[str, Any] = {"mech_tool": "tool1"}
+    if policy is not None:
+        strict["policy"] = policy
+    loose = {
+        "selected_tool_key": selected_key,
+        "mech_responses": json.dumps([{"nonce": "n", "mech_address": delivering}]),
+        "mech_identities": json.dumps(identities) if identities else None,
+    }
+    mocked_db.get_strict = lambda name: strict[name]
+    mocked_db.get = lambda name, default=None: loose.get(name, default)
+
+
+@pytest.mark.parametrize(
+    "selected_key, delivering, identities, expected",
+    [
+        (SELECTED, None, IDENTITIES, SELECTED),
+        (SELECTED, ASKED_MECH, IDENTITIES, SELECTED),
+        (SELECTED, POOLED_MECH, IDENTITIES, SELECTED),
+        (SELECTED, THIRD_PARTY_MECH, IDENTITIES, tool_key(THIRD_PARTY_MECH, "tool1")),
+        (SELECTED, INELIGIBLE_MECH, IDENTITIES, None),
+        (SELECTED, INELIGIBLE_MECH, None, SELECTED),
+        (None, THIRD_PARTY_MECH, IDENTITIES, "tool1"),
+    ],
+)
+def test_mech_tool_key_credits_the_delivering_mechs_identity(
+    sync_data: SynchronizedData,
+    mocked_db: MagicMock,
+    selected_key: Optional[str],
+    delivering: Optional[str],
+    identities: Optional[Dict[str, str]],
+    expected: Optional[str],
+) -> None:
+    """Credit follows the deliverer's identity; an unlisted deliverer gets none."""
+    _wire_db(mocked_db, selected_key, delivering, identities)
+    assert sync_data.mech_tool_key == expected
+
+
+def test_weighted_accuracy_is_the_delivering_identitys(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """The weighted accuracy read is the record the outcome will be credited to."""
+    third_party = tool_key(THIRD_PARTY_MECH, "tool1")
+    policy_mock = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=1,
+        quarantine_duration=0,
+        accuracy_store={
+            SELECTED: AccuracyInfo(requests=4, accuracy=1.0),
+            third_party: AccuracyInfo(requests=4, accuracy=0.25),
+        },
+    ).serialize()
+    _wire_db(mocked_db, SELECTED, THIRD_PARTY_MECH, IDENTITIES, policy_mock)
+    policy = EGreedyPolicy.deserialize(policy_mock)
+    assert sync_data.weighted_accuracy == policy.weighted_accuracy[third_party]
+    assert sync_data.weighted_accuracy != policy.weighted_accuracy[SELECTED]
+
+
+def test_weighted_accuracy_raises_for_an_ineligible_deliverer(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """There is no record to read when the outcome is not credited."""
+    policy_mock = EGreedyPolicy(
+        eps=0.1,
+        consecutive_failures_threshold=1,
+        quarantine_duration=0,
+        accuracy_store={SELECTED: AccuracyInfo(requests=4, accuracy=1.0)},
+    ).serialize()
+    _wire_db(mocked_db, SELECTED, INELIGIBLE_MECH, IDENTITIES, policy_mock)
+    with pytest.raises(ValueError, match="not available in the policy"):
+        sync_data.weighted_accuracy
+
+
+def test_delivering_mech_is_none_without_an_attributed_response(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """Responses that name no mech leave the deliverer unknown."""
+    mocked_db.get = lambda name, default=None: (
+        json.dumps([{"nonce": "n"}]) if name == "mech_responses" else default
+    )
+    assert sync_data.delivering_mech is None
+    assert sync_data.selected_tool_key is None
+    assert sync_data.mech_identities == {}
 
 
 def test_mech_responses(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
@@ -327,6 +434,7 @@ def test_weighted_accuracy_tool_not_in_store(
     mocked_db.get_strict = lambda name: (
         policy_mock if name == "policy" else selected_mech_tool
     )
+    mocked_db.get = lambda name, default=None: default
     with pytest.raises(ValueError, match="not available in the policy"):
         sync_data.weighted_accuracy
 

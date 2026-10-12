@@ -230,6 +230,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -304,6 +305,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -371,6 +373,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                             deposit_wallet_address=None,
                         )
@@ -502,6 +505,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -951,6 +955,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=True,
                             policy=mock_policy,
                         )
@@ -1035,6 +1040,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -1125,6 +1131,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders=cached_orders,
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
