@@ -20,6 +20,7 @@
 """Tests for agent_performance_summary_abci/handlers.py."""
 
 import json
+import re
 from datetime import datetime, timezone
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
@@ -67,6 +68,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceSummary,
+    LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_WINDOWS,
     LeaderboardData,
     LeaderboardWindowRank,
@@ -2501,6 +2503,44 @@ class TestHandleGetLeaderboard:
             assert body["window"] == window
             assert body["rank_by_roi"] == i
 
+    def test_repeated_window_is_400(self) -> None:
+        """A repeated ``window`` is a bad request, not the last value silently."""
+        with patch.object(self.handler, "_send_bad_request_response") as mock_bad:
+            self.handler._handle_get_leaderboard(
+                _make_http_msg(url=f"{self.URL}?window=7d&window=1y"),
+                self.http_dialogue,
+            )
+        assert mock_bad.call_args[0][2] == {
+            "error": "The window parameter must be given at most once"
+        }
+
+    def test_other_parameters_are_ignored(self) -> None:
+        """Unrelated or valueless parameters do not affect the window."""
+        body = self._respond(
+            "?foo=1&bar&window=30d",
+            LeaderboardData(windows={"30d": self._ranked()}),
+        )
+        assert body["window"] == "30d"
+        assert body["status"] == "ranked"
+
+    def test_route_is_anchored(self) -> None:
+        """Only the exact path, with or without a query, routes here."""
+        handler = _make_handler()
+        with patch.object(BaseHttpHandler, "setup"):
+            handler.setup()
+        regex = next(
+            regex
+            for regex, method in handler.routes[
+                (HttpMethod.GET.value, HttpMethod.HEAD.value)
+            ]
+            if method == handler._handle_get_leaderboard
+        )
+        base = "http://localhost:8716/api/v1/agent/leaderboard"
+        assert re.match(regex, base)
+        assert re.match(regex, f"{base}?window=7d")
+        assert not re.match(regex, f"{base}XYZ")
+        assert not re.match(regex, f"{base}/extra")
+
     def test_invalid_window_is_400(self) -> None:
         """An unknown window is a bad request."""
         with patch.object(self.handler, "_send_bad_request_response") as mock_bad:
@@ -2581,6 +2621,49 @@ class TestHandleGetLeaderboard:
         self._assert_unavailable(
             self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
         )
+
+    def test_freshness_follows_upstream_updated_at(self) -> None:
+        """A recent fetch of a day-old snapshot is stale; the snapshot time is served."""
+        entry = self._ranked(age=60)
+        entry.updated_at = entry.fetched_at - LEADERBOARD_MAX_RANK_AGE_SECONDS - 60
+        self._assert_unavailable(
+            self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        )
+
+        entry.updated_at = entry.fetched_at - 3600
+        body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        assert body["status"] == "ranked"
+        assert body["last_updated"] == datetime.fromtimestamp(
+            entry.updated_at, tz=timezone.utc
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def test_future_timestamp_is_unavailable(self) -> None:
+        """A snapshot or fetch time beyond the clock skew is not trusted."""
+        entry = self._ranked(age=-(LEADERBOARD_CLOCK_SKEW_SECONDS + 600))
+        self._assert_unavailable(
+            self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        )
+        entry = self._ranked()
+        entry.updated_at = self._now() + LEADERBOARD_CLOCK_SKEW_SECONDS + 600
+        self._assert_unavailable(
+            self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        )
+        # Small skew is tolerated
+        entry.updated_at = self._now() + 60
+        body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+        assert body["status"] == "ranked"
+
+    def test_unsafe_stored_url_falls_back_to_page(self) -> None:
+        """A stored link that is not on the leaderboard page is never served."""
+        for bad in (
+            "javascript:alert(1)",
+            "https://evil.example/leaderboard",
+            "http://predict.olas.network/leaderboard",
+        ):
+            entry = self._ranked()
+            entry.leaderboard_url = bad
+            body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
+            assert body["leaderboard_url"] == LEADERBOARD_PAGE_URL
 
     def test_unset_url_is_unavailable(self) -> None:
         """With the leaderboard disabled, a stored entry is not served."""

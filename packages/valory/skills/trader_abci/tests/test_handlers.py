@@ -174,6 +174,14 @@ class TestHttpHandler:
         )
         assert handler == self.handler._handle_get_leaderboard
 
+    def test_leaderboard_route_is_anchored(self) -> None:
+        """A path merely starting with ``leaderboard`` does not reach the endpoint."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/agent/leaderboardXYZ",
+            HttpMethod.GET.value,
+        )
+        assert handler == self.handler._handle_get_static_file
+
     def test_setup_agent_profile_path_gnosis(self) -> None:
         """Test agent_profile_path is set to omenstrat for gnosis."""
         handler = _make_handler(is_polymarket=False)

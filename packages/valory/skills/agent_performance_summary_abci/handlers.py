@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Union, cast
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
@@ -66,9 +66,11 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.predict
     PredictionsFetcher,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_WINDOWS,
     ProfitDataPoint,
     SharedState,
+    is_allowed_leaderboard_url,
 )
 
 # Constants
@@ -198,8 +200,9 @@ class HttpHandler(BaseHttpHandler):
         position_details_url_regex = (
             rf"{self.hostname_regex}\/api\/v1\/agent\/position-details\/([^\/]+)"
         )
+        # Anchored: ``re.match`` would otherwise also route ``leaderboardXYZ``
         agent_leaderboard_url_regex = (
-            rf"{self.hostname_regex}\/api\/v1\/agent\/leaderboard"
+            rf"{self.hostname_regex}\/api\/v1\/agent\/leaderboard(?:\?.*)?$"
         )
 
         self.routes = {
@@ -716,15 +719,16 @@ class HttpHandler(BaseHttpHandler):
         :param http_dialogue: the HTTP dialogue
         """
         try:
-            url_parts = http_msg.url.split("?")
-            window = DEFAULT_LEADERBOARD_WINDOW
-            if len(url_parts) > 1:
-                params = dict(
-                    param.split("=", 1)
-                    for param in url_parts[1].split("&")
-                    if "=" in param
+            query = http_msg.url.split("?", 1)[1] if "?" in http_msg.url else ""
+            windows = parse_qs(query, keep_blank_values=True).get("window", [])
+            if len(windows) > 1:
+                self._send_bad_request_response(
+                    http_msg,
+                    http_dialogue,
+                    {"error": "The window parameter must be given at most once"},
                 )
-                window = params.get("window", DEFAULT_LEADERBOARD_WINDOW)
+                return
+            window = windows[0] if windows else DEFAULT_LEADERBOARD_WINDOW
 
             if window not in LEADERBOARD_WINDOWS:
                 self._send_bad_request_response(
@@ -747,9 +751,13 @@ class HttpHandler(BaseHttpHandler):
                 summary.leaderboard.windows.get(window) if summary.leaderboard else None
             )
             now = int(datetime.now(timezone.utc).timestamp())
+            # Judged by olas-predict's snapshot time when known: a stalled
+            # upstream snapshot must not look fresh just because it was
+            # re-fetched. A time in the future is not trusted.
             is_fresh = (
                 entry is not None
-                and now - entry.fetched_at <= LEADERBOARD_MAX_RANK_AGE_SECONDS
+                and entry.as_of <= now + LEADERBOARD_CLOCK_SKEW_SECONDS
+                and now - entry.as_of <= LEADERBOARD_MAX_RANK_AGE_SECONDS
             )
 
             response: Dict[str, Any] = {
@@ -764,11 +772,8 @@ class HttpHandler(BaseHttpHandler):
                 "leaderboard_url": LEADERBOARD_PAGE_URL,
                 "last_updated": None,
             }
-            if (
-                entry is not None
-                and is_fresh
-                and self.context.params.olas_predict_leaderboard_url
-            ):
+            api_url = self.context.params.olas_predict_leaderboard_url
+            if entry is not None and is_fresh and api_url:
                 response.update(
                     {
                         "status": (
@@ -780,9 +785,14 @@ class HttpHandler(BaseHttpHandler):
                         "rank_by_pnl": entry.rank_by_pnl,
                         "total_ranked": entry.total_ranked,
                         "not_ranked_reason": entry.not_ranked_reason,
-                        "leaderboard_url": entry.leaderboard_url
-                        or LEADERBOARD_PAGE_URL,
-                        "last_updated": self._format_last_updated(entry.fetched_at),
+                        "leaderboard_url": (
+                            entry.leaderboard_url
+                            if is_allowed_leaderboard_url(
+                                entry.leaderboard_url, api_url
+                            )
+                            else LEADERBOARD_PAGE_URL
+                        ),
+                        "last_updated": self._format_last_updated(entry.as_of),
                     }
                 )
 
