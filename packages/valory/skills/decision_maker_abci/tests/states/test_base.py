@@ -427,6 +427,21 @@ def test_is_activity_target_met(
     assert sync_data.is_activity_target_met is True
 
 
+def test_previous_checkpoint(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
+    """Test the previous_checkpoint property."""
+    mocked_db.get.return_value = 1700000000
+    assert sync_data.previous_checkpoint == 1700000000
+    mocked_db.get.assert_called_with("previous_checkpoint", None)
+
+
+def test_previous_checkpoint_none(
+    sync_data: SynchronizedData, mocked_db: MagicMock
+) -> None:
+    """previous_checkpoint is None before the staking round has run."""
+    mocked_db.get.return_value = None
+    assert sync_data.previous_checkpoint is None
+
+
 def test_activity_target(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the activity_target property."""
     mocked_db.get.return_value = 8

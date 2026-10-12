@@ -966,7 +966,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                         SellOutcomeTokensRound.auto_round_id(),
                     )
                 ):
-                    self.update_bet_transaction_information()
+                    # PostBetUpdate counts placements to the goal; sells never count.
+                    self.update_bet_transaction_information(record_ledger=False)
 
                 payload = yield from self._normal_act()
                 if payload is None:

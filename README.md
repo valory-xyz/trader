@@ -130,6 +130,9 @@ export POLYMARKET_BUILDER_PROGRAM_ENABLED=false
 
 # Polystrat-specific Mech accuracy hash
 export TOOLS_ACCURACY_HASH=QmdNF1cidJASsVKSnbvSSmZLLaYfBPixBzpT4Pw3ZvmYTu
+
+# Polystrat's default per-epoch activity goal (trades placed)
+export DEFAULT_ACTIVITY_GOAL=1
 ```
 
 The full set of Polystrat overrides lives in [`polymarket_trader/service.yaml`](./packages/valory/services/polymarket_trader/service.yaml) — diff it against [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) if you suspect drift.
@@ -149,6 +152,7 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 | `STRATEGIES_KWARGS` | Dict of strategy parameters (`min_edge`, `default_max_bet_size`, `absolute_min/max_bet_size`, `fee_per_trade`, `n_bets`, `min_oracle_prob`, `floor_balance`, `grid_points`). Replaces the old `BET_AMOUNT_PER_THRESHOLD_*` / `BET_THRESHOLD` env vars. |
 | `FILE_HASH_TO_STRATEGIES` | Maps the IPFS hash of a `customs/` package to the strategy names it provides. Defaulted; only override if you ship a new strategy. |
 | `CREATOR_PER_SUBGRAPH` | Dict mapping market-spec subgraph name to creator addresses to track (Omen-only by default). |
+| `DEFAULT_ACTIVITY_GOAL` | Trades the agent places per staking epoch before standing by, unless the user sets their own goal in the chat. Standby also needs the staking target met. `8` for Omenstrat, `1` for Polystrat; `aea-config.yaml` defaults to `8`. |
 | `PROMPT_TEMPLATE` | Single-line prompt for the prediction Mech, with `@{question}`, `@{yes}`, `@{no}` placeholders. |
 
 `POLYGON_LEDGER_CHAIN_ID` / `GNOSIS_LEDGER_CHAIN_ID` exist too but default to the right values (137 / 100), so you don't normally need to set them.
