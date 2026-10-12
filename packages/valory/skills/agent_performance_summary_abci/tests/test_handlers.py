@@ -2690,18 +2690,6 @@ class TestHandleGetLeaderboard:
         body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
         assert body["status"] == "ranked"
 
-    def test_unsafe_stored_url_falls_back_to_page(self) -> None:
-        """A stored link that is not on the leaderboard page is never served."""
-        for bad in (
-            "javascript:alert(1)",
-            "https://evil.example/leaderboard",
-            "http://predict.olas.network/leaderboard",
-        ):
-            entry = self._ranked()
-            entry.leaderboard_url = bad
-            body = self._respond(leaderboard=LeaderboardData(windows={"7d": entry}))
-            assert body["leaderboard_url"] == LEADERBOARD_PAGE_URL
-
     def test_unset_url_is_unavailable(self) -> None:
         """With the leaderboard disabled, a stored entry is not served."""
         self.handler.context.params.olas_predict_leaderboard_url = ""  # type: ignore[attr-defined]

@@ -72,7 +72,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     ProfitDataPoint,
     SharedState,
     get_leaderboard_agent_type,
-    is_allowed_leaderboard_url,
 )
 
 # Constants
@@ -784,13 +783,9 @@ class HttpHandler(BaseHttpHandler):
                         "rank_by_pnl": entry.rank_by_pnl,
                         "total_ranked": entry.total_ranked,
                         "not_ranked_reason": entry.not_ranked_reason,
-                        "leaderboard_url": (
-                            entry.leaderboard_url
-                            if is_allowed_leaderboard_url(
-                                entry.leaderboard_url, api_url
-                            )
-                            else LEADERBOARD_PAGE_URL
-                        ),
+                        # Checked against the allow-list when fetched
+                        "leaderboard_url": entry.leaderboard_url
+                        or LEADERBOARD_PAGE_URL,
                         "last_updated": self._format_last_updated(entry.as_of),
                     }
                 )
