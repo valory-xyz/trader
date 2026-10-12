@@ -715,7 +715,7 @@ class SharedState(BaseSharedState):
                 f"Could not read existing agent performance summary: {e}"
             )
             return AgentPerformanceSummary()
-        except (AttributeError, TypeError, ValueError) as e:
+        except (TypeError, ValueError) as e:
             # A nested ``__post_init__`` (e.g. ``OffchainDepositState``)
             # rejected a persisted value. Previously no field could raise
             # from the reader; now that we persist typed state, one bad

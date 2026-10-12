@@ -1429,21 +1429,6 @@ class TestSharedState:
         assert summary.timestamp == 5
         assert summary.leaderboard in (None, LeaderboardData())
 
-    def test_read_degrades_on_attribute_error(self, tmp_path: Path) -> None:
-        """An ``AttributeError`` from a nested section degrades to a fresh summary.
-
-        :param tmp_path: pytest-supplied tmp directory used as the store path.
-        """
-        state = self._make_leaderboard_state(tmp_path)
-        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "w") as f:
-            json.dump({"timestamp": 5}, f)
-        with patch(
-            "packages.valory.skills.agent_performance_summary_abci.models.AgentPerformanceSummary",
-            side_effect=[AttributeError("boom"), AgentPerformanceSummary()],
-        ):
-            summary = state.read_existing_performance_summary()
-        assert summary == AgentPerformanceSummary()
-
     def test_read_leaderboard_from_disk(self, tmp_path: Path) -> None:
         """The raw reader ignores corrupt siblings and malformed values.
 
