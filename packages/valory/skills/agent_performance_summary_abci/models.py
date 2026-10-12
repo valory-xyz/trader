@@ -24,6 +24,7 @@ import builtins
 import json
 import os
 import tempfile
+import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,12 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
+
+# Serialises every read-modify-write of the summary file: the leaderboard
+# refresh writes it from a worker thread. Module-level so that writers that
+# only know the store path (e.g. ``activity_goal``) share it; reentrant so a
+# writer can call another under it.
+SUMMARY_FILE_LOCK = threading.RLock()
 
 # Spelled as olas-predict's leaderboard API expects them
 LeaderboardWindow = Literal["7d", "30d", "90d", "1y"]
@@ -620,16 +627,17 @@ def write_performance_summary_key(store_path: Path, key: str, value: Any) -> Non
     """
     file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
-    try:
-        with open(file_path, "r") as f:
-            raw = json.load(f)
-        if not isinstance(raw, dict):
+    with SUMMARY_FILE_LOCK:
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raw = {}
+        except (FileNotFoundError, ValueError):
             raw = {}
-    except (FileNotFoundError, ValueError):
-        raw = {}
 
-    raw[key] = value
-    write_json_atomically(file_path, raw)
+        raw[key] = value
+        write_json_atomically(file_path, raw)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
@@ -716,6 +724,12 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
+
+    # Class-level defaults rather than ``__init__`` so a state built without
+    # it (e.g. ``object.__new__`` in tests) still works; assignments shadow them.
+    # The leaderboard section, loaded from disk once and kept in sync on writes
+    _leaderboard_cache: Optional[LeaderboardData] = None
+    _leaderboard_cache_loaded: bool = False
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -900,12 +914,21 @@ class SharedState(BaseSharedState):
         (``offchain_deposits.total_deposited_wei``) that cannot be
         re-derived from the subgraph.
 
+        The ``leaderboard`` section is owned by the leaderboard refresh, which
+        may have written it from its worker thread since the caller read the
+        summary: the current section is re-applied under the file lock, so a
+        full-summary write never rolls it back.
+
         :param summary: fully-populated summary to overwrite the persisted
             copy with.
         """
-        write_json_atomically(
-            self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE, asdict(summary)
-        )
+        data = asdict(summary)
+        with SUMMARY_FILE_LOCK:
+            leaderboard = self.get_leaderboard()
+            data["leaderboard"] = None if leaderboard is None else asdict(leaderboard)
+            write_json_atomically(
+                self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE, data
+            )
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""
@@ -941,14 +964,52 @@ class SharedState(BaseSharedState):
         existing.timestamp = self.synced_timestamp
         self.overwrite_performance_summary(existing)
 
+    def get_leaderboard(self) -> Optional[LeaderboardData]:
+        """Return the ``leaderboard`` section, reading the file only the first time.
+
+        :return: the section, or ``None`` if there is none.
+        """
+        if not self._leaderboard_cache_loaded:
+            with SUMMARY_FILE_LOCK:
+                if not self._leaderboard_cache_loaded:
+                    self._leaderboard_cache = self.read_leaderboard_from_disk()
+                    self._leaderboard_cache_loaded = True
+        return self._leaderboard_cache
+
     def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
-        """Write only the ``leaderboard`` section, leaving sibling fields untouched.
+        """Store the ``leaderboard`` section, leaving sibling fields untouched.
+
+        The in-memory copy is always updated. The file is not written when it
+        exists but is not a JSON object: replacing it would wipe every other
+        section (``offchain_deposits``, ``achievements``, ...); the next full
+        summary save rewrites it, including this section.
 
         :param leaderboard: the leaderboard section to persist.
         """
-        write_performance_summary_key(
-            self.params.store_path, "leaderboard", asdict(leaderboard)
-        )
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with SUMMARY_FILE_LOCK:
+            self._leaderboard_cache = leaderboard
+            self._leaderboard_cache_loaded = True
+            try:
+                with open(file_path, "r") as f:
+                    raw: Any = json.load(f)
+            except FileNotFoundError:
+                raw = {}
+            except (OSError, ValueError) as e:
+                raw = e
+            if not isinstance(raw, dict):
+                problem = (
+                    raw
+                    if isinstance(raw, Exception)
+                    else f"a JSON {type(raw).__name__}"
+                )
+                self.context.logger.warning(
+                    f"{file_path} is not a readable JSON object ({problem}); "
+                    "not writing the leaderboard section to it"
+                )
+                return
+            raw["leaderboard"] = asdict(leaderboard)
+            write_json_atomically(file_path, raw)
 
 
 class Subgraph(ApiSpecs):

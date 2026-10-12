@@ -66,7 +66,7 @@ def _make_behaviour(
     shared_state.read_activity_goal_from_disk.return_value = (
         existing_summary.activity_goal
     )
-    shared_state.read_leaderboard_from_disk.return_value = existing_summary.leaderboard
+    shared_state.get_leaderboard.return_value = existing_summary.leaderboard
     shared_state.overwrite_performance_summary = MagicMock()
 
     behaviour.shared_state = shared_state
@@ -430,7 +430,7 @@ class TestSaveAgentPerformanceSummary:
             windows={"7d": LeaderboardWindowRank(ranked=False, fetched_at=1)},
             last_attempt_at=1,
         )
-        behaviour.shared_state.read_leaderboard_from_disk.return_value = on_disk
+        behaviour.shared_state.get_leaderboard.return_value = on_disk
 
         new_summary = AgentPerformanceSummary(
             timestamp=1700001000,

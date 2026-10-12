@@ -2467,7 +2467,7 @@ class TestHandleGetLeaderboard:
         self, query: str = "", leaderboard: Optional[LeaderboardData] = None
     ) -> dict:
         """Call the handler and return the 200 body."""
-        self.handler.shared_state.read_leaderboard_from_disk.return_value = (  # type: ignore[attr-defined]
+        self.handler.shared_state.get_leaderboard.return_value = (  # type: ignore[attr-defined]
             leaderboard
         )
         with patch.object(self.handler, "_send_ok_response") as mock_ok:
@@ -2515,6 +2515,34 @@ class TestHandleGetLeaderboard:
                 _make_http_msg(url=self.URL), self.http_dialogue
             )
         assert mock_ok.call_args[0][2]["status"] == "ranked"
+
+    def test_file_is_parsed_once(self, tmp_path: Path) -> None:
+        """Requests are served from the cached section, not by re-parsing the file.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        context = MagicMock()
+        context.params.store_path = tmp_path
+        state = object.__new__(_TestableSharedState)
+        state.context = context  # type: ignore[assignment]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"windows": {"7d": asdict(self._ranked())}}})
+        )
+        self.handler.shared_state = state  # type: ignore[assignment]
+        with (
+            patch.object(
+                state,
+                "read_leaderboard_from_disk",
+                wraps=state.read_leaderboard_from_disk,
+            ) as reader,
+            patch.object(self.handler, "_send_ok_response") as mock_ok,
+        ):
+            for _ in range(2):
+                self.handler._handle_get_leaderboard(
+                    _make_http_msg(url=self.URL), self.http_dialogue
+                )
+                assert mock_ok.call_args[0][2]["status"] == "ranked"
+        reader.assert_called_once()
 
     def test_missing_window_defaults_to_7d(self) -> None:
         """No ``window`` serves the 7d entry."""
@@ -2706,7 +2734,7 @@ class TestHandleGetLeaderboard:
 
     def test_exception_is_500(self) -> None:
         """An unexpected error answers 500."""
-        self.handler.shared_state.read_leaderboard_from_disk.side_effect = (  # type: ignore[attr-defined]
+        self.handler.shared_state.get_leaderboard.side_effect = (  # type: ignore[attr-defined]
             RuntimeError("boom")
         )
         with patch.object(

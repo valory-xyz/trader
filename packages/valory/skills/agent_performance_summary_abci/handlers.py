@@ -744,7 +744,7 @@ class HttpHandler(BaseHttpHandler):
             agent_type = get_leaderboard_agent_type(
                 self.context.params.is_running_on_polymarket
             )
-            leaderboard = self.shared_state.read_leaderboard_from_disk()
+            leaderboard = self.shared_state.get_leaderboard()
             entry = (
                 leaderboard.windows.get(cast(LeaderboardWindow, window))
                 if leaderboard

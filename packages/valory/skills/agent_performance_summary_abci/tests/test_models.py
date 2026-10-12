@@ -22,6 +22,7 @@
 import json
 import platform
 import stat
+import threading
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -29,7 +30,10 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+    BaseParams,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
@@ -57,6 +61,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PredictionHistory,
     ProfitDataPoint,
     ProfitOverTimeData,
+    SUMMARY_FILE_LOCK,
     SharedState,
     Subgraph,
     TradesSubgraph,
@@ -1513,6 +1518,83 @@ class TestSharedState:
         assert data["offchain_deposits"] == raw["offchain_deposits"]
         assert data["prediction_history"] == raw["prediction_history"]
         assert data["leaderboard"]["last_attempt_at"] == 3
+
+    @pytest.mark.parametrize("content", ["not json", "[1, 2]", '"x"'])
+    def test_update_leaderboard_skips_a_corrupt_file(
+        self, tmp_path: Path, content: str
+    ) -> None:
+        """A file that is not a JSON object is left alone; the cache still updates.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param content: the unparseable or non-object file content.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        file_path.write_text(content)
+        leaderboard = LeaderboardData(last_attempt_at=3)
+
+        state.update_leaderboard(leaderboard)
+
+        assert file_path.read_text() == content
+        assert state.get_leaderboard() == leaderboard
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_get_leaderboard_reads_the_file_once(self, tmp_path: Path) -> None:
+        """The section is parsed lazily once, then served from memory.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"last_attempt_at": 4}})
+        )
+        with patch.object(
+            state, "read_leaderboard_from_disk", wraps=state.read_leaderboard_from_disk
+        ) as reader:
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=4)
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=4)
+            state.update_leaderboard(LeaderboardData(last_attempt_at=5))
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=5)
+        reader.assert_called_once()
+
+    def test_overwrite_reads_the_section_on_first_use(self, tmp_path: Path) -> None:
+        """Before any leaderboard write, the section on disk is carried over.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"last_attempt_at": 4}})
+        )
+        state.overwrite_performance_summary(AgentPerformanceSummary(timestamp=1))
+        assert state.read_leaderboard_from_disk() == LeaderboardData(last_attempt_at=4)
+
+    @pytest.mark.parametrize("writer", ["overwrite", "key", "leaderboard"])
+    def test_summary_writers_wait_for_the_lock(
+        self, tmp_path: Path, writer: str
+    ) -> None:
+        """Every summary writer serialises on the shared file lock.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param writer: the writer under test.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        write = {
+            "overwrite": lambda: state.overwrite_performance_summary(
+                AgentPerformanceSummary(timestamp=1)
+            ),
+            "key": lambda: write_performance_summary_key(tmp_path, "k", 1),
+            "leaderboard": lambda: state.update_leaderboard(LeaderboardData()),
+        }[writer]
+        thread = threading.Thread(target=write)
+        with SUMMARY_FILE_LOCK:
+            thread.start()
+            thread.join(0.2)
+            assert thread.is_alive()
+            assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+        thread.join(5)
+        assert not thread.is_alive()
+        assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
 
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path
