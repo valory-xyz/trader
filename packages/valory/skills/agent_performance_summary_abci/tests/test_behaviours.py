@@ -67,6 +67,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     WEI_IN_ETH,
     WXDAI_ADDRESS,
     _parse_iso_timestamp,
+    get_within_deadline,
     leaderboard_request_url,
     parse_leaderboard_window,
     refresh_leaderboard,
@@ -8043,6 +8044,11 @@ def _leaderboard_response(
     response = MagicMock()
     response.status_code = status_code
     response.content = raw if raw is not None else json.dumps(body).encode()
+    response.__enter__.return_value = response
+    response.iter_content.side_effect = lambda chunk_size: (
+        response.content[i : i + chunk_size]
+        for i in range(0, len(response.content), chunk_size)
+    )
     return response
 
 
@@ -8287,6 +8293,35 @@ class TestLeaderboardRequestUrl:
         )
 
 
+class TestGetWithinDeadline:
+    """Tests for get_within_deadline."""
+
+    GET = (
+        "packages.valory.skills.agent_performance_summary_abci.behaviours.requests.get"
+    )
+    MONOTONIC = "packages.valory.skills.agent_performance_summary_abci.behaviours.time.monotonic"
+
+    def test_returns_the_status_and_the_whole_body(self) -> None:
+        """The body is read in full, with a streamed request."""
+        response = _leaderboard_response(status_code=404, raw=b'{"a": 1}')
+        with patch(self.GET, return_value=response) as get:
+            assert get_within_deadline("https://x", 10.0) == (404, b'{"a": 1}')
+        get.assert_called_once_with("https://x", timeout=10.0, stream=True)
+        response.iter_content.assert_called_once_with(chunk_size=1)
+        response.__exit__.assert_called_once()
+
+    def test_a_dripping_answer_times_out_at_the_deadline(self) -> None:
+        """Each byte arrives in time, but the whole answer does not."""
+        response = _leaderboard_response(raw=b"abcd")
+        with (
+            patch(self.GET, return_value=response),
+            patch(self.MONOTONIC, side_effect=[0.0, 4.0, 8.0, 10.5]),
+            pytest.raises(RequestsTimeout),
+        ):
+            get_within_deadline("https://x", 10.0)
+        response.__exit__.assert_called_once()
+
+
 class TestRefreshLeaderboard:
     """Tests for the ``refresh_leaderboard`` job run on the worker thread."""
 
@@ -8305,8 +8340,8 @@ class TestRefreshLeaderboard:
         logger = logger or MagicMock()
         urls: List[str] = []
 
-        def get(url: str, timeout: Any = None) -> Any:
-            assert timeout == LEADERBOARD_REQUEST_TIMEOUT
+        def get(url: str, timeout: Any = None, stream: bool = False) -> Any:
+            assert timeout == LEADERBOARD_REQUEST_TIMEOUT and stream
             urls.append(url)
             return respond(url)
 
@@ -8424,10 +8459,18 @@ class TestRefreshLeaderboard:
             assert saved.windows[window] == previous[window]
 
     def test_never_raises(self) -> None:
-        """A failure storing a window is logged, and the other windows still run."""
+        """Failures storing a window, or building its URL, are logged."""
         state = MagicMock()
         state.update_leaderboard_window.side_effect = OSError("disk")
         logger, _ = self._run(state, _ranked_answer)
+        assert logger.warning.call_count == len(LEADERBOARD_WINDOWS)
+
+        logger = MagicMock()
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.behaviours.leaderboard_request_url",
+            side_effect=RuntimeError("boom"),
+        ):
+            self._run(state, _ranked_answer, logger=logger)
         assert logger.warning.call_count == len(LEADERBOARD_WINDOWS)
 
 
@@ -8564,7 +8607,7 @@ class TestUpdateLeaderboard:
         release = threading.Event()
         urls: List[str] = []
 
-        def get(url: str, timeout: Any = None) -> MagicMock:
+        def get(url: str, timeout: Any = None, stream: bool = False) -> MagicMock:
             urls.append(url)
             assert release.wait(10)
             return _ranked_answer(url)

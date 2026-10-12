@@ -21,6 +21,7 @@
 
 import bisect
 import json
+import time
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type, cast
@@ -75,7 +76,6 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummary,
     LEADERBOARD_CLOCK_SKEW_SECONDS,
     LEADERBOARD_DEFAULT_NOT_RANKED_REASON,
-    LEADERBOARD_REFRESH_INTERVAL,
     LEADERBOARD_WINDOWS,
     LeaderboardAgentType,
     LeaderboardData,
@@ -145,6 +145,7 @@ SECONDS_PER_DAY = 86400
 MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
+LEADERBOARD_REFRESH_INTERVAL = 3600
 LEADERBOARD_REQUEST_TIMEOUT = 10.0
 TX_HISTORY_DEPTH = 25  # match healthcheck slice length
 POLYMARKET_ACHIEVEMENT_ROI_THRESHOLD = 1.5
@@ -306,6 +307,26 @@ def parse_leaderboard_window(  # pylint: disable=too-many-return-statements,too-
         return None
 
 
+def get_within_deadline(url: str, timeout: float) -> Tuple[int, bytes]:
+    """GET ``url``, giving up once the whole request has taken ``timeout``.
+
+    :param url: the request URL
+    :param timeout: the limit for the whole request, in seconds
+    :return: the status code and the body
+    :raises Timeout: if the body is not complete within ``timeout``
+    """
+    deadline = time.monotonic() + timeout
+    with requests.get(url, timeout=timeout, stream=True) as response:
+        body = bytearray()
+        # ``timeout`` above bounds each read, so read a byte at a time: a server
+        # dripping bytes cannot then hold the worker past the deadline
+        for chunk in response.iter_content(chunk_size=1):
+            if time.monotonic() > deadline:
+                raise requests.Timeout(f"no complete answer within {timeout}s")
+            body += chunk
+        return response.status_code, bytes(body)
+
+
 def refresh_leaderboard(  # pylint: disable=too-many-arguments
     shared_state: SharedState,
     logger: Any,
@@ -324,15 +345,16 @@ def refresh_leaderboard(  # pylint: disable=too-many-arguments
     :param now: the timestamp to stamp successful answers with
     """
     for window in LEADERBOARD_WINDOWS:
-        query = urlencode(
-            {"agentType": agent_type, "window": window, "addresses": safe_address}
-        )
-        url = leaderboard_request_url(api_url, query)
         try:
-            response = requests.get(url, timeout=LEADERBOARD_REQUEST_TIMEOUT)
+            query = urlencode(
+                {"agentType": agent_type, "window": window, "addresses": safe_address}
+            )
+            status_code, body = get_within_deadline(
+                leaderboard_request_url(api_url, query), LEADERBOARD_REQUEST_TIMEOUT
+            )
             entry = parse_leaderboard_window(
-                response.status_code,
-                response.content,
+                status_code,
+                body,
                 agent_type,
                 window,
                 safe_address,

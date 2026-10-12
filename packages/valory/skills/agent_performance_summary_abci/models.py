@@ -25,7 +25,6 @@ import json
 import os
 import tempfile
 import threading
-import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,7 +76,6 @@ LEADERBOARD_NOT_RANKED_REASONS: FrozenSet[NotRankedReason] = frozenset(
 )
 LEADERBOARD_DEFAULT_NOT_RANKED_REASON: NotRankedReason = "not_ranked_yet"
 LEADERBOARD_CLOCK_SKEW_SECONDS = 300
-LEADERBOARD_REFRESH_INTERVAL = 3600
 # Path of olas-predict's leaderboard page; deep links must stay under it
 LEADERBOARD_PAGE_PATH = "/leaderboard"
 
@@ -735,7 +733,6 @@ class SharedState(BaseSharedState):
     _leaderboard_cache_loaded: bool = False
     # The latest leaderboard refresh, run off the FSM
     _leaderboard_thread: Optional[threading.Thread] = None
-    _leaderboard_thread_started_at: float = 0.0
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -1039,10 +1036,6 @@ class SharedState(BaseSharedState):
         """
         with SUMMARY_FILE_LOCK:
             current = self.get_leaderboard() or LeaderboardData()
-            previous = current.windows.get(window)
-            # A hung refresh that answers late must not replace a newer rank
-            if previous is not None and previous.fetched_at > entry.fetched_at:
-                return
             windows = dict(current.windows)
             windows[window] = entry
             self.update_leaderboard(
@@ -1052,18 +1045,12 @@ class SharedState(BaseSharedState):
             )
 
     def is_leaderboard_refresh_running(self) -> bool:
-        """Return whether a refresh started within the last interval is still running.
+        """Return whether the last leaderboard refresh has not finished yet.
 
         :return: whether a refresh is running.
         """
         thread = self._leaderboard_thread
-        return (
-            thread is not None
-            and thread.is_alive()
-            # Still running after a whole interval means hung: let the next start
-            and time.monotonic() - self._leaderboard_thread_started_at
-            < LEADERBOARD_REFRESH_INTERVAL
-        )
+        return thread is not None and thread.is_alive()
 
     def start_leaderboard_refresh(self, job: Callable[[], None]) -> None:
         """Run ``job`` on a daemon thread, so a hung refresh never blocks shutdown.
@@ -1072,7 +1059,6 @@ class SharedState(BaseSharedState):
         """
         thread = threading.Thread(target=job, name="leaderboard", daemon=True)
         self._leaderboard_thread = thread
-        self._leaderboard_thread_started_at = time.monotonic()
         thread.start()
 
 
