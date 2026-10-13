@@ -164,13 +164,12 @@ Check it out\U0001f447
 MIN_TRADES_FOR_ROI_DISPLAY = 10
 MORE_TRADES_NEEDED_TEXT = "More trades needed"
 
-# M5: fixed tolerance for the series-vs-snapshot residual. Small integer
-# gaps are expected (a mech landing between the two reads); anything
-# larger is a genuine drift that triggers a rebuild.
-_M5_RESIDUAL_TOLERANCE = 5
+# Small gaps between the series and the KPI's settled count are expected (a
+# mech landing between the two reads); anything larger triggers a rebuild.
+_RESIDUAL_TOLERANCE = 5
 # Lets an agent whose fetched requests and ``total`` genuinely disagree
 # rebuild at most once a day instead of every round.
-_M5_REBUILD_MIN_INTERVAL = SECONDS_PER_DAY
+_RESIDUAL_REBUILD_MIN_INTERVAL = SECONDS_PER_DAY
 
 
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
@@ -458,14 +457,14 @@ class FetchPerformanceSummaryBehaviour(
 
     def _fetch_polymarket_open_position_titles(
         self,
-    ) -> Generator[None, None, Set[str]]:
+    ) -> Generator[None, None, Optional[Set[str]]]:
         """Fetch open position titles from Polymarket.
 
         Returns a set of position titles (market questions) for positions
         that are currently open (not redeemed). These are used to identify
         which mech requests should be counted as 'open' (not settled).
 
-        :return: Set of position titles
+        :return: Set of position titles, or ``None`` when the fetch failed
         :yield: None
         """
         try:
@@ -477,11 +476,11 @@ class FetchPerformanceSummaryBehaviour(
 
             positions = yield from self.send_polymarket_connection_request(payload)
 
-            if not positions or not isinstance(positions, list):
+            if not isinstance(positions, list):
                 self.context.logger.warning(
                     f"No positions returned from Polymarket connection: {positions}"
                 )
-                return set()
+                return None
 
             # Extract titles from positions
             titles = {
@@ -498,7 +497,7 @@ class FetchPerformanceSummaryBehaviour(
 
         except Exception as e:
             self.context.logger.error(f"Error fetching Polymarket positions: {e}")
-            return set()
+            return None
 
     @property
     def shared_state(self) -> SharedState:
@@ -616,9 +615,8 @@ class FetchPerformanceSummaryBehaviour(
         """Get number of mech requests for open markets (cached).
 
         :param agent_safe_address: The agent's safe address
-        :return: Number of open market requests, or ``None`` when the
-            flag-on scored-rows fetch failed and no cached value is
-            available. Callers MUST distinguish ``None`` (unknown) from
+        :return: Number of open market requests, or ``None`` when any of
+            its fetches failed and no cached value is available. Callers MUST distinguish ``None`` (unknown) from
             ``0`` (no open-market requests) — treating unknown as 0 in
             ``_calculate_settled_mech_requests`` would compute
             ``settled = total - 0 = total``, counting every open request
@@ -665,24 +663,41 @@ class FetchPerformanceSummaryBehaviour(
                 timestamp_gt=self.market_open_timestamp,
             )
 
-            if not mech_sender:
-                self._open_market_requests = 0
-                self._open_market_request_keys = []
-                return 0
+            if mech_sender is None:
+                self.context.logger.warning(
+                    "Mech sender fetch failed; skipping open_market_requests "
+                    "for this round"
+                )
+                return None
 
             last_four_days_requests = mech_sender.get("requests", [])
 
-        # Platform-specific: get open markets
+        # Platform-specific: get open markets. A failed fetch returns ``None``
+        # rather than "nothing open": treating it as empty would release every
+        # pending request from the profit series.
         if self.params.is_running_on_polymarket:
             # For Polymarket: get open positions from connection
             open_market_titles = (
                 yield from self._fetch_polymarket_open_position_titles()
             )
+            if open_market_titles is None:
+                self.context.logger.warning(
+                    "Polymarket open positions fetch failed; skipping "
+                    "open_market_requests for this round"
+                )
+                return None
         else:
             # For Omen: get open markets from subgraph
             open_markets = yield from self._fetch_open_markets(
                 timestamp_gt=self.market_open_timestamp,
             )
+
+            if open_markets is None:
+                self.context.logger.warning(
+                    "Open markets fetch failed; skipping open_market_requests "
+                    "for this round"
+                )
+                return None
 
             if not open_markets:
                 self._open_market_requests = 0
@@ -2058,45 +2073,71 @@ class FetchPerformanceSummaryBehaviour(
             )
         else:
             # INCREMENTAL UPDATE - Check if we need to add new days
-            # M5: the series holds back exactly the requests the KPI counts
-            # as open, so its settled count should equal the KPI's
-            # ``total - open``. A residual beyond tolerance means requests
-            # the incremental path cannot see, e.g. ones indexed after the
-            # watermark moved past them; only a rebuild recovers those.
-            stored_settled = existing_profit_data.settled_mech_requests_count
-            if stored_settled:
-                residual = stored_settled - settled_reference
-                if abs(residual) > _M5_RESIDUAL_TOLERANCE:
-                    residual_log = (
-                        f"Settled mech count residual (series={stored_settled}, "
-                        f"snapshot={settled_reference}, residual={residual})"
-                    )
-                    if (
-                        current_timestamp - last_residual_rebuild_ts
-                        >= _M5_REBUILD_MIN_INTERVAL
-                    ):
-                        self.context.logger.warning(
-                            f"{residual_log}; rebuilding profit over time data."
-                        )
-                        return (
-                            yield from self._perform_initial_backfill(
-                                agent_safe_address,
-                                current_timestamp,
-                                last_residual_rebuild_ts=current_timestamp,
-                            )
-                        )
-                    self.context.logger.warning(
-                        f"{residual_log}; already rebuilt within the last day, "
-                        "updating incrementally."
-                    )
             self.context.logger.info(
                 "Checking for incremental profit over time updates..."
             )
+            updated = yield from self._perform_incremental_update(
+                agent_safe_address, current_timestamp, existing_profit_data
+            )
+            if updated is None:
+                return None
             return (
-                yield from self._perform_incremental_update(
-                    agent_safe_address, current_timestamp, existing_profit_data
+                yield from self._rebuild_on_residual(
+                    updated, settled_reference, agent_safe_address, current_timestamp
                 )
             )
+
+    def _rebuild_on_residual(
+        self,
+        updated: ProfitOverTimeData,
+        settled_reference: int,
+        agent_safe_address: str,
+        current_timestamp: int,
+    ) -> Generator[None, None, ProfitOverTimeData]:
+        """Rebuild the series when its settled count drifts from the KPI's.
+
+        :param updated: the series after this round's incremental update
+        :param settled_reference: the KPI's settled count this round
+        :param agent_safe_address: the agent's safe address
+        :param current_timestamp: the current timestamp
+        :return: the rebuilt series, or ``updated`` when no rebuild ran
+        :yield: None
+        """
+        # Drift beyond tolerance means requests the watermark skipped; rebuild.
+        residual = updated.settled_mech_requests_count - settled_reference
+        if abs(residual) <= _RESIDUAL_TOLERANCE:
+            return updated
+
+        residual_log = (
+            f"Settled mech count residual (series={updated.settled_mech_requests_count}, "
+            f"snapshot={settled_reference}, residual={residual})"
+        )
+        if (
+            current_timestamp - updated.last_residual_rebuild_ts
+            < _RESIDUAL_REBUILD_MIN_INTERVAL
+        ):
+            self.context.logger.warning(
+                f"{residual_log}; already rebuilt within the last day, "
+                "keeping the incremental update."
+            )
+            return updated
+
+        self.context.logger.warning(
+            f"{residual_log}; rebuilding profit over time data."
+        )
+        rebuilt = yield from self._perform_initial_backfill(
+            agent_safe_address,
+            current_timestamp,
+            last_residual_rebuild_ts=current_timestamp,
+        )
+        if rebuilt is None:
+            self.context.logger.error(
+                "Residual-triggered profit over time rebuild failed; keeping the "
+                "incremental update and retrying in a day."
+            )
+            updated.last_residual_rebuild_ts = current_timestamp
+            return updated
+        return rebuilt
 
     def _perform_initial_backfill(
         self,
@@ -2290,7 +2331,7 @@ class FetchPerformanceSummaryBehaviour(
 
         if new_daily_stats is None:
             self.context.logger.error("Failed to fetch new daily profit statistics")
-            return existing_data
+            return None
 
         self.context.logger.info(
             f"Incremental update: Found {len(new_daily_stats)} new daily profit statistics"
@@ -2324,15 +2365,8 @@ class FetchPerformanceSummaryBehaviour(
             block_timestamp_gt=existing_data.last_mech_timestamp,
         )
 
-        # H6 retry: only fire on a genuine primary failure (``None``).
-        # ``[]`` is a legitimate "nothing new since watermark" result and
-        # must not be conflated with a transport / schema failure;
-        # re-querying with a wider window would only reintroduce the
-        # double-attribution pattern this file is trying to eliminate.
-        #
-        # Follow-up: a request indexed after the watermark has moved past
-        # it is never fetched here. The residual-triggered rebuild in
-        # ``_build_profit_over_time_data`` is the backstop for that gap.
+        # H6 retry: only on a genuine failure (``None``); ``[]`` means nothing
+        # new past the watermark.
         if new_mech_requests is None:
             new_mech_requests = []
             if existing_data.last_mech_timestamp > 0:

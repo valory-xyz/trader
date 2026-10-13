@@ -1856,8 +1856,25 @@ class TestFetchPolymarketOpenPositionTitles:
                 result = e.value
         assert result == {"Market A", "Market B"}
 
+    def test_empty_positions(self) -> None:
+        """Returns an empty set when the connection reports no positions."""
+        b = _make_fetch_behaviour()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            patch.object(
+                b, "send_polymarket_connection_request", side_effect=_return_gen([])
+            ),
+        ):
+            gen = b._fetch_polymarket_open_position_titles()
+            try:
+                next(gen)
+            except StopIteration as e:
+                result = e.value
+        assert result == set()
+
     def test_none_positions(self) -> None:
-        """Returns empty set when positions is None."""
+        """Returns ``None`` when positions is None."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
         with (
@@ -1871,10 +1888,10 @@ class TestFetchPolymarketOpenPositionTitles:
                 next(gen)
             except StopIteration as e:
                 result = e.value
-        assert result == set()
+        assert result is None
 
     def test_non_list_positions(self) -> None:
-        """Returns empty set when positions is not a list."""
+        """Returns ``None`` when positions is not a list (e.g. an error payload)."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
         with (
@@ -1882,7 +1899,7 @@ class TestFetchPolymarketOpenPositionTitles:
             patch.object(
                 b,
                 "send_polymarket_connection_request",
-                side_effect=_return_gen("not_list"),
+                side_effect=_return_gen({"error": "boom"}),
             ),
         ):
             gen = b._fetch_polymarket_open_position_titles()
@@ -1890,10 +1907,10 @@ class TestFetchPolymarketOpenPositionTitles:
                 next(gen)
             except StopIteration as e:
                 result = e.value
-        assert result == set()
+        assert result is None
 
-    def test_exception_returns_empty_set(self) -> None:
-        """Returns empty set on exception."""
+    def test_exception_returns_none(self) -> None:
+        """Returns ``None`` on exception."""
         b = _make_fetch_behaviour()
         ctx, _, synced_data, _ = _mock_context(is_polymarket=True)  # type: ignore[no-untyped-def]
 
@@ -1912,7 +1929,7 @@ class TestFetchPolymarketOpenPositionTitles:
                 next(gen)
             except StopIteration as e:
                 result = e.value
-        assert result == set()
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -1988,6 +2005,9 @@ class TestGetTotalMechRequests:
 # Tests for _get_open_market_requests - generator method
 
 
+_REQ_Q1 = {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "10"}
+
+
 class TestGetOpenMarketRequests:
     """Tests for _get_open_market_requests."""
 
@@ -2000,21 +2020,74 @@ class TestGetOpenMarketRequests:
         except StopIteration as e:
             assert e.value == 5
 
-    def test_none_mech_sender_returns_zero(self) -> None:
-        """Returns 0 when mech sender is None."""
+    def _open_requests_with(
+        self,
+        is_polymarket: bool,
+        mech_sender: Optional[dict],
+        open_markets: Optional[list] = None,
+        open_titles: Optional[set] = None,
+    ) -> Optional[int]:
+        """Run ``_get_open_market_requests`` against the given fetch results."""
         b = _make_fetch_behaviour()
-        ctx, _, synced_data, _ = _mock_context()
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=is_polymarket)
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
-            patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(None)),
+            patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
+            patch.object(
+                b,
+                "_fetch_polymarket_open_position_titles",
+                side_effect=_return_gen(open_titles),
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
                 next(gen)
             except StopIteration as e:
-                assert e.value == 0
-        assert b._open_market_request_keys == []
+                result = e.value
+        # A failure leaves nothing cached, so the next round fetches again.
+        if result is None:
+            assert b._open_market_requests is None
+            assert b._open_market_request_keys is None
+        return result
+
+    @pytest.mark.parametrize(
+        "is_polymarket, mech_sender, open_markets, open_titles",
+        [
+            (False, None, [], set()),
+            (False, {"requests": [_REQ_Q1]}, None, set()),
+            (True, None, [], set()),
+            (True, {"requests": [_REQ_Q1]}, [], None),
+        ],
+        ids=[
+            "omen-mech-sender",
+            "omen-open-markets",
+            "polymarket-mech-sender",
+            "polymarket-open-positions",
+        ],
+    )
+    def test_fetch_failure_returns_none(
+        self,
+        is_polymarket: bool,
+        mech_sender: Optional[dict],
+        open_markets: Optional[list],
+        open_titles: Optional[set],
+    ) -> None:
+        """A failed fetch is unknown, not "nothing open"."""
+        result = self._open_requests_with(
+            is_polymarket, mech_sender, open_markets, open_titles
+        )
+        assert result is None
+
+    def test_polymarket_no_open_positions_returns_zero(self) -> None:
+        """No open Polymarket positions means no open requests."""
+        result = self._open_requests_with(
+            True, {"requests": [_REQ_Q1]}, open_titles=set()
+        )
+        assert result == 0
 
     def test_omen_no_open_markets(self) -> None:
         """Returns 0 when no open markets on Omen."""
@@ -2025,7 +2098,7 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(None)),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen([])),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -4086,12 +4159,11 @@ class TestBuildProfitOverTimeData:
         assert result is backfill_result
 
     def test_settled_undercount_does_not_trigger_backfill(self) -> None:
-        """Under-count (stored < reference) should go to incremental, not backfill.
+        """An under-count the incremental update closes does not rebuild.
 
-        M5: series-attributed count and snapshot total-open are different models.
-        Under-count is normal (new requests settled since last run). Only log a warning.
+        Requests settled since the last run leave the stored count behind the
+        KPI's until this round's update charges them, which is normal activity.
         """
-        # stored=5, reference=10 → under-count → should NOT rebuild
         b = _make_fetch_behaviour(_settled_mech_requests_count=10)
         ctx, _, synced_data, state = _mock_context()
         summary = _default_summary()
@@ -4116,7 +4188,10 @@ class TestBuildProfitOverTimeData:
         summary.agent_performance.metrics.settled_mech_request_count = 5
         state.read_existing_performance_summary.return_value = summary
         incr_result = ProfitOverTimeData(
-            last_updated=1700001000, total_days=1, data_points=[]
+            last_updated=1700001000,
+            total_days=1,
+            data_points=[],
+            settled_mech_requests_count=10,
         )
         backfill_sentinel = ProfitOverTimeData(
             last_updated=1700000000, total_days=0, data_points=[]
@@ -4141,17 +4216,22 @@ class TestBuildProfitOverTimeData:
 
     def _route_with_residual(
         self,
-        stored_settled: int,
+        series_settled: Optional[int],
         snapshot_settled: Optional[int],
         last_residual_rebuild_ts: int = 0,
         open_requests: int = 0,
+        stored_settled: int = 0,
+        backfill_result: Any = "backfill",
     ) -> Tuple[Any, MagicMock, MagicMock, MagicMock]:
         """Route an up-to-date stored series against a KPI snapshot.
 
-        :param stored_settled: the stored series' settled count
+        :param series_settled: the series' settled count after this round's
+            incremental update, or ``None`` when that update fails
         :param snapshot_settled: the KPI's ``total - open`` this round
         :param last_residual_rebuild_ts: when the series was last rebuilt for a residual
         :param open_requests: the KPI's open count this round
+        :param stored_settled: the stored series' settled count before the update
+        :param backfill_result: what the residual-triggered backfill returns
         :return: (result, backfill mock, incremental mock, logger)
         """
         b = _make_fetch_behaviour(
@@ -4181,40 +4261,68 @@ class TestBuildProfitOverTimeData:
         summary.agent_performance.metrics = MagicMock()
         summary.agent_performance.metrics.settled_mech_request_count = 1
         state.read_existing_performance_summary.return_value = summary
+        updated = (
+            None
+            if series_settled is None
+            else ProfitOverTimeData(
+                last_updated=1700000000,
+                total_days=1,
+                settled_mech_requests_count=series_settled,
+                last_residual_rebuild_ts=last_residual_rebuild_ts,
+            )
+        )
         with (
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(
-                b, "_perform_initial_backfill", side_effect=_return_gen("backfill")
+                b,
+                "_perform_initial_backfill",
+                side_effect=_return_gen(backfill_result),
             ) as mock_backfill,
             patch.object(
-                b, "_perform_incremental_update", side_effect=_return_gen("incremental")
+                b, "_perform_incremental_update", side_effect=_return_gen(updated)
             ) as mock_incr,
         ):
             result = self._run_gen(b._build_profit_over_time_data())  # type: ignore[arg-type]
         return result, mock_backfill, mock_incr, ctx.logger
 
-    def test_residual_beyond_tolerance_triggers_rebuild(self) -> None:
-        """A residual beyond tolerance rebuilds and stamps the rebuild time."""
+    @pytest.mark.parametrize(
+        "series_settled, snapshot_settled",
+        [(30, 3), (3, 30), (16, 10), (4, 10), (0, 10)],
+        ids=["above", "below", "above-by-6", "below-by-6", "empty-series"],
+    )
+    def test_residual_beyond_tolerance_triggers_rebuild(
+        self, series_settled: int, snapshot_settled: int
+    ) -> None:
+        """A residual beyond tolerance either way rebuilds and stamps the rebuild time."""
         result, mock_backfill, mock_incr, logger = self._route_with_residual(
-            stored_settled=30, snapshot_settled=3
+            series_settled=series_settled, snapshot_settled=snapshot_settled
         )
         assert result == "backfill"
-        mock_incr.assert_not_called()
+        mock_incr.assert_called_once()
         assert mock_backfill.call_args.kwargs == {
             "last_residual_rebuild_ts": 1700000000
         }
         warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
         assert any("Settled mech count residual" in w for w in warnings), warnings
 
-    def test_residual_rebuild_rate_limited_to_once_a_day(self) -> None:
-        """Within a day of the last residual rebuild, update incrementally and log."""
+    def test_residual_is_checked_after_the_incremental_update(self) -> None:
+        """Requests settled since the last round do not count as drift once charged."""
         result, mock_backfill, _, logger = self._route_with_residual(
-            stored_settled=30,
+            series_settled=30, snapshot_settled=30, stored_settled=3
+        )
+        assert result.settled_mech_requests_count == 30
+        mock_backfill.assert_not_called()
+        logger.warning.assert_not_called()
+
+    def test_residual_rebuild_rate_limited_to_once_a_day(self) -> None:
+        """Within a day of the last residual rebuild, keep the incremental update and log."""
+        result, mock_backfill, _, logger = self._route_with_residual(
+            series_settled=30,
             snapshot_settled=3,
             last_residual_rebuild_ts=1700000000 - SECONDS_PER_DAY + 1,
         )
-        assert result == "incremental"
+        assert result.settled_mech_requests_count == 30
         mock_backfill.assert_not_called()
         warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
         assert any("already rebuilt within the last day" in w for w in warnings)
@@ -4222,34 +4330,55 @@ class TestBuildProfitOverTimeData:
     def test_residual_rebuild_allowed_again_after_a_day(self) -> None:
         """A full day after the last residual rebuild, the next one may run."""
         result, _, _, _ = self._route_with_residual(
-            stored_settled=30,
+            series_settled=30,
             snapshot_settled=3,
             last_residual_rebuild_ts=1700000000 - SECONDS_PER_DAY,
         )
         assert result == "backfill"
 
-    def test_residual_within_tolerance_does_not_rebuild(self) -> None:
-        """A residual at the tolerance takes the incremental path silently."""
+    def test_failed_residual_rebuild_backs_off_for_a_day(self) -> None:
+        """A failed rebuild keeps the incremental update and stamps the attempt."""
         result, mock_backfill, _, logger = self._route_with_residual(
-            stored_settled=15, snapshot_settled=10
+            series_settled=30, snapshot_settled=3, backfill_result=None
         )
-        assert result == "incremental"
-        mock_backfill.assert_not_called()
-        logger.warning.assert_not_called()
+        mock_backfill.assert_called_once()
+        assert result.settled_mech_requests_count == 30
+        assert result.last_residual_rebuild_ts == 1700000000
+        errors = [str(c.args[0]) for c in logger.error.call_args_list]
+        assert any("rebuild failed" in e for e in errors), errors
+
+    def test_residual_within_tolerance_does_not_rebuild(self) -> None:
+        """A residual at the tolerance keeps the incremental update silently."""
+        for series_settled in (15, 5):
+            result, mock_backfill, _, logger = self._route_with_residual(
+                series_settled=series_settled, snapshot_settled=10
+            )
+            assert result.settled_mech_requests_count == series_settled
+            mock_backfill.assert_not_called()
+            logger.warning.assert_not_called()
 
     def test_residual_does_not_subtract_open_requests(self) -> None:
         """The series holds back open requests, so a matching count is no drift."""
         result, mock_backfill, _, logger = self._route_with_residual(
-            stored_settled=30, snapshot_settled=30, open_requests=20
+            series_settled=30, snapshot_settled=30, open_requests=20
         )
-        assert result == "incremental"
+        assert result.settled_mech_requests_count == 30
         mock_backfill.assert_not_called()
         logger.warning.assert_not_called()
+
+    def test_failed_incremental_update_skips_residual_check(self) -> None:
+        """Without an updated series there is nothing to compare, so nothing rebuilds."""
+        result, mock_backfill, mock_incr, _ = self._route_with_residual(
+            series_settled=None, snapshot_settled=30
+        )
+        assert result is None
+        mock_incr.assert_called_once()
+        mock_backfill.assert_not_called()
 
     def test_unknown_settled_count_keeps_stored_series(self) -> None:
         """Without this round's KPI open set the series is neither rebuilt nor updated."""
         result, mock_backfill, mock_incr, _ = self._route_with_residual(
-            stored_settled=30, snapshot_settled=None
+            series_settled=30, snapshot_settled=None
         )
         assert result is None
         mock_backfill.assert_not_called()
@@ -4661,7 +4790,7 @@ class TestPerformIncrementalUpdate:
         )
 
     def test_none_new_stats(self) -> None:
-        """Returns existing data when new stats fetch fails."""
+        """Returns ``None`` when the new stats fetch fails, keeping the stored series."""
         b = _make_fetch_behaviour(_total_mech_requests=5, _open_market_requests=1)
         ctx, _, synced_data, _ = _mock_context()
         existing = self._existing_data()
@@ -4675,7 +4804,7 @@ class TestPerformIncrementalUpdate:
             result = self._run_gen(
                 b._perform_incremental_update("0xaddr", 1700001000, existing)  # type: ignore[arg-type]
             )
-        assert result is existing
+        assert result is None
 
     def test_empty_new_stats(self) -> None:
         """Returns existing data when no new stats."""
@@ -8084,6 +8213,7 @@ class TestKpiSeriesAgreement:
         open_keys: List[Tuple[str, int]],
         is_polymarket: bool = False,
         now: int = _DAY0 + 1000,
+        last_residual_rebuild_ts: int = 0,
     ) -> ProfitOverTimeData:
         """Run a backfill over the given stats and fetched requests."""
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
@@ -8100,7 +8230,9 @@ class TestKpiSeriesAgreement:
                 b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)
             ),
         ):
-            return self._run_gen(b._perform_initial_backfill("0xaddr", now))
+            return self._run_gen(
+                b._perform_initial_backfill("0xaddr", now, last_residual_rebuild_ts)
+            )
 
     def _tick(
         self,
@@ -8212,6 +8344,108 @@ class TestKpiSeriesAgreement:
         again = self._tick(released, [], [], [], day1 + 200, is_polymarket)
 
         assert again is released
+
+    def test_failed_open_set_fetch_keeps_pending_requests(self) -> None:
+        """A round whose open-markets fetch fails leaves the stored series untouched."""
+        fetched = [
+            _mech_request("Traded", _DAY0 + 100),
+            _mech_request("Open", _DAY0 + 150),
+            _mech_request("Open", _DAY0 + 160),
+        ]
+        open_keys = [("Open", _DAY0 + 150), ("Open", _DAY0 + 160)]
+        stats = [_stat(_DAY0, [("Traded", _DAY0 + 200)], False)]
+        stored = self._backfill(stats, fetched, open_keys)
+        assert len(stored.pending_mech_requests) == 2
+
+        now = _DAY0 + SECONDS_PER_DAY + 100
+        b = _make_fetch_behaviour(_total_mech_requests=3)
+        ctx, _, synced_data, state = _mock_context(synced_timestamp=now)
+        summary = _default_summary()
+        summary.profit_over_time = stored
+        state.read_existing_performance_summary.return_value = summary
+        incremental = MagicMock(side_effect=_return_gen(None))
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_mech_sender",
+                side_effect=_return_gen({"requests": fetched}),
+            ),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(None)),
+            patch.object(b, "_perform_incremental_update", incremental),
+        ):
+            b._settled_mech_requests_count = self._run_gen(
+                b._calculate_settled_mech_requests("0xaddr")
+            )
+            result = self._run_gen(b._build_profit_over_time_data())
+
+        assert b._settled_mech_requests_count is None
+        assert result is None
+        incremental.assert_not_called()
+        assert len(stored.pending_mech_requests) == 2
+
+    @pytest.mark.parametrize("has_stats", [True, False])
+    def test_backfill_stores_last_residual_rebuild_ts(self, has_stats: bool) -> None:
+        """The backfill persists the rebuild time it is given."""
+        stats = [_stat(_DAY0, [], False)] if has_stats else []
+
+        result = self._backfill(
+            stats, [_mech_request("Q", _DAY0 + 1)], [], last_residual_rebuild_ts=1234
+        )
+
+        assert result.last_residual_rebuild_ts == 1234
+
+    def test_incremental_update_keeps_last_residual_rebuild_ts(self) -> None:
+        """An incremental update carries the stored rebuild time forward."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        existing.last_residual_rebuild_ts = 1234
+
+        result = self._tick(
+            existing, [], [_mech_request("Q", day1 + 100)], [], day1 + 500
+        )
+
+        assert result is not existing
+        assert result.last_residual_rebuild_ts == 1234
+
+    def test_residual_rebuild_stamps_the_rebuilt_series(self) -> None:
+        """A residual-triggered rebuild persists its time, so the next round does not rebuild."""
+        day1 = _DAY0 + SECONDS_PER_DAY
+        now = day1 + 500
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        # Requests at or below the watermark the incremental fetch never sees.
+        all_requests = [_mech_request(f"Late {i}", _DAY0 + 5) for i in range(10)]
+        b = _make_fetch_behaviour(_settled_mech_requests_count=10)
+        ctx, _, synced_data, state = _mock_context(synced_timestamp=now)
+        summary = _default_summary()
+        summary.profit_over_time = existing
+        summary.agent_performance = None
+        state.read_existing_performance_summary.return_value = summary
+
+        def _fetch_requests(
+            *_: Any, block_timestamp_gt: int = 0
+        ) -> Generator[None, None, List[dict]]:
+            """Serve only requests past the given watermark."""
+            return [
+                r for r in all_requests if int(r["blockTimestamp"]) > block_timestamp_gt
+            ]
+            yield  # pragma: no cover
+
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b,
+                "_fetch_daily_profit_statistics",
+                side_effect=_return_gen([_stat(_DAY0, [], False)]),
+            ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_fetch_requests),
+        ):
+            result = self._run_gen(b._build_profit_over_time_data())
+
+        assert result.settled_mech_requests_count == 10
+        assert result.last_residual_rebuild_ts == now
 
     def test_requests_counted_open_are_not_charged_incrementally(self) -> None:
         """A newly fetched request on an open market is persisted as pending."""
