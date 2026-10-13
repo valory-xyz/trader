@@ -19,10 +19,13 @@
 
 """Tests for trader_abci models."""
 
+import inspect
+import re
 from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.connections.x402.clients.mech import slot_registry
+from packages.valory.skills.chatui_abci.models import ChatuiParams
 from packages.valory.skills.decision_maker_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -46,10 +49,11 @@ class TestTraderParams:
     """Tests for the TraderParams model."""
 
     def test_init_sets_attributes(self) -> None:
-        """TraderParams.__init__ sets all 7 custom attributes from kwargs."""
+        """TraderParams.__init__ sets its own attributes from kwargs."""
         kwargs: Dict[str, Any] = {
             "mech_interact_round_timeout_seconds": 300,
             "genai_api_key": "test-key",
+            "marketplace_api_url": "https://marketplace.example/api/erc8004",
             "x402_payment_requirements": {"threshold": 100},
             "lifi_quote_to_amount_url": "https://example.com/lifi",
             "gnosis_ledger_rpc": "https://gnosis-rpc.example.com",
@@ -64,11 +68,30 @@ class TestTraderParams:
 
         assert params.mech_interact_round_timeout_seconds == 300
         assert params.genai_api_key == "test-key"
+        assert params.marketplace_api_url == "https://marketplace.example/api/erc8004"
         assert params.x402_payment_requirements == {"threshold": 100}
         assert params.lifi_quote_to_amount_url == "https://example.com/lifi"
         assert params.gnosis_ledger_rpc == "https://gnosis-rpc.example.com"
         assert params.polygon_ledger_rpc == "https://polygon-rpc.example.com"
         assert params.use_x402 is True
+
+
+def test_trader_params_set_every_chat_param() -> None:
+    """The chat handler reads `context.params`, which is `TraderParams` in the agent.
+
+    `TraderParams` does not inherit `ChatuiParams`, so each chat param has to be
+    read by `TraderParams` or one of its parents, or the chat fails at runtime.
+    """
+    ensured = re.compile(r'_ensure\(\s*"([a-z_]+)"')
+    chat_params = set(ensured.findall(inspect.getsource(ChatuiParams.__init__)))
+    trader_params = {
+        key
+        for cls in TraderParams.__mro__
+        if inspect.isfunction(vars(cls).get("__init__"))
+        for key in ensured.findall(inspect.getsource(vars(cls)["__init__"]))
+    }
+    assert chat_params, "no chat params found"
+    assert chat_params <= trader_params, chat_params - trader_params
 
 
 class TestSharedState:
