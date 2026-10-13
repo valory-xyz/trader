@@ -22,6 +22,7 @@
 import inspect
 import json
 import threading
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
@@ -8712,6 +8713,161 @@ class TestKpiSeriesAgreement:
             settled = generated - len(open_requests)
             assert series.settled_mech_requests_count == settled
             assert series.data_points[-1].cumulative_profit == round(-settled * _FEE, 3)
+
+    def _kpi_and_series_round(
+        self,
+        branch: str,
+        requests: List[Tuple[Optional[str], int]],
+        open_titles: List[str],
+        stats: List[dict],
+        now: int,
+        existing: Optional[ProfitOverTimeData],
+    ) -> Tuple[int, ProfitOverTimeData]:
+        """Run one round: the real open-set fetch feeds the KPI, then the series.
+
+        :param branch: ``"omen"``, ``"omen-mech-analytics"`` or ``"polymarket"``
+        :param requests: ``(title, timestamp)`` of every request made so far
+        :param open_titles: titles of the markets still open this round
+        :param stats: daily profit statistics served to the series
+        :param now: this round's timestamp
+        :param existing: the stored series, or ``None`` to backfill
+        :return: the KPI's settled count and the series built this round
+        """
+        is_polymarket = branch == "polymarket"
+        b = _make_fetch_behaviour()
+        ctx, params, synced_data, _ = _mock_context(
+            is_polymarket=is_polymarket, synced_timestamp=now
+        )
+        subgraph_requests = [_mech_request(title, ts) for title, ts in requests]
+
+        def _past(watermark: int) -> List[dict]:
+            """Subgraph-shaped requests strictly past ``watermark``."""
+            return [r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark]
+
+        def _fetch_all(
+            *_: Any, block_timestamp_gt: int = 0
+        ) -> Generator[None, None, List[dict]]:
+            """Serve the subgraph's request list past the watermark."""
+            return _past(block_timestamp_gt)
+            yield  # pragma: no cover
+
+        def _scored_rows(
+            *_: Any, since: Optional[datetime] = None, **__: Any
+        ) -> Generator[None, None, List[dict]]:
+            """Serve mech-analytics rows from ``since`` on, inclusive."""
+            floor = int(since.timestamp()) if since else 0
+            return [
+                {
+                    "question_title": title,
+                    "requested_at": datetime.fromtimestamp(
+                        ts, tz=timezone.utc
+                    ).isoformat(),
+                }
+                for title, ts in requests
+                if ts >= floor
+            ]
+            yield  # pragma: no cover
+
+        sources: List[Any] = [
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
+            )
+        ]
+        if branch == "omen-mech-analytics":
+            params.use_mech_analytics = True
+            params.mech_analytics_url = "https://mech-analytics.test"
+            sources += [
+                patch.object(
+                    b,
+                    "_get_total_mech_requests",
+                    side_effect=_return_gen(len(requests)),
+                ),
+                patch.object(
+                    b, "_page_mech_analytics_scored_rows", side_effect=_scored_rows
+                ),
+            ]
+        else:
+            params.use_mech_analytics = False
+            sender = {
+                "totalMarketplaceRequests": len(requests),
+                "requests": subgraph_requests,
+            }
+            sources += [
+                patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(sender)),
+                patch.object(b, "_fetch_all_mech_requests", side_effect=_fetch_all),
+            ]
+        if is_polymarket:
+            positions = [{"title": title} for title in open_titles]
+            sources.append(
+                patch.object(
+                    b,
+                    "send_polymarket_connection_request",
+                    side_effect=_return_gen(positions),
+                )
+            )
+        else:
+            markets = [
+                {"question": f"{title}{QUESTION_DATA_SEPARATOR}data"}
+                for title in open_titles
+            ]
+            sources.append(
+                patch.object(b, "_fetch_open_markets", side_effect=_return_gen(markets))
+            )
+
+        with ExitStack() as stack:
+            for patcher in (*_patch_context(b, ctx, synced_data), *sources):
+                stack.enter_context(patcher)
+            kpi_settled = self._run_gen(b._calculate_settled_mech_requests("0xaddr"))
+            b._settled_mech_requests_count = kpi_settled
+            if existing is None:
+                series = self._run_gen(b._perform_initial_backfill("0xaddr", now))
+            else:
+                series = self._run_gen(
+                    b._perform_incremental_update("0xaddr", now, existing)
+                )
+        return kpi_settled, series
+
+    @pytest.mark.parametrize(
+        "branch", ["omen", "omen-mech-analytics", "polymarket"]
+    )
+    def test_series_matches_kpi_end_to_end(self, branch: str) -> None:
+        """The open set the KPI fetches is exactly what the series holds back."""
+        is_polymarket = branch == "polymarket"
+        day1 = _DAY0 + SECONDS_PER_DAY
+        requests: List[Tuple[Optional[str], int]] = [
+            ("Traded", _DAY0 + 100),
+            ("Open", _DAY0 + 150),
+            ("Open", _DAY0 + 150),
+            ("Untraded", _DAY0 + 160),
+            (None, _DAY0 + 170),
+        ]
+
+        kpi, series = self._kpi_and_series_round(
+            branch,
+            requests,
+            ["Open"],
+            [_stat(_DAY0, [("Traded", _DAY0 + 200)], is_polymarket)],
+            _DAY0 + 1000,
+            None,
+        )
+
+        assert kpi == 3
+        assert series.settled_mech_requests_count == kpi
+        assert len(series.pending_mech_requests) == 2
+
+        # "Open" closes, a new market opens, and two more requests arrive.
+        requests += [("New open", day1 + 100), ("Untraded 2", day1 + 150)]
+
+        kpi, series = self._kpi_and_series_round(
+            branch, requests, ["New open"], [], day1 + 1000, series
+        )
+
+        assert kpi == 6
+        assert series.settled_mech_requests_count == kpi
+        assert series.pending_mech_requests == [
+            {"title": "New open", "timestamp": day1 + 100}
+        ]
+        assert series.data_points[-1].cumulative_profit == round(-kpi * _FEE, 3)
 
     def test_daily_profit_is_stored_unrounded(self) -> None:
         """Sub-0.001 daily profits add up instead of rounding away per day."""
