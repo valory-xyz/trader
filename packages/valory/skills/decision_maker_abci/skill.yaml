@@ -181,8 +181,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihopwdkl4hwmdg6smor2kudl6u3pptobcgdu5r3i64lxa6gqroyrq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
-- valory/chatui_abci:0.1.0:bafybeigckozetobe5t76h7ukrft3lnxtkzkbc3chkaqspqlc2wke7byfey
+- valory/agent_performance_summary_abci:0.1.0:bafybeidnugli54s4cj73nevki4tfj7a2tzovkub4gwwcgxzm6ar7bxc5sq
+- valory/chatui_abci:0.1.0:bafybeien6rlvk6yqig3nkar4v3fzgzck74myeip4dbd2qg6cy75m6ykify
 behaviours:
   main:
     args: {}
@@ -428,6 +428,7 @@ models:
       is_running_on_polymarket: false
       balance_tracker_address: '0x0000000000000000000000000000000000000000'
       mech_analytics_url: ''
+      olas_predict_leaderboard_url: https://predict.olas.network/api/leaderboard/agents
       use_mech_analytics: false
       slippages_for_swap: {}
       is_outcome_side_threshold_filter_enabled: false

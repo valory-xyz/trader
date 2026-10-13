@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid6b5vyicrwq3o6i6lmznvzgvgbk4wbfqv4tcmit6tjjf2smtydaq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibia5frukr4sjaqiapnkmszhfybtid7duhtoex52xnzo3ogfjrm6a
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeiec4l4aorfew7cba2oepmawdc333o7vzknnkaukfkybm4rly3tyru
-- valory/trader_abci:0.1.0:bafybeiamrpo2xhsdyososssl6ej37ai2a4kyopdnpik7oao4djgzlzukt4
+- valory/decision_maker_abci:0.1.0:bafybeidx5edtmpqdqnhjdtpyvgclxvl6qlep4kq5lqunqnk4kn265txizq
+- valory/trader_abci:0.1.0:bafybeielxtksxuxafq4zr42kphqtnmb5qox5o5wayu7in5lznlwypsluna
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeidmuv25bniwde2nryxtssddelfqyqhvjclsvj2fwlbmyluy4hlwri
+- valory/check_stop_trading_abci:0.1.0:bafybeicgmcxxgc365fxytxtem3vnrebrklr57lr36bfzspbjibjnigm4bq
 - valory/mech_interact_abci:0.1.0:bafybeihopwdkl4hwmdg6smor2kudl6u3pptobcgdu5r3i64lxa6gqroyrq
-- valory/chatui_abci:0.1.0:bafybeigckozetobe5t76h7ukrft3lnxtkzkbc3chkaqspqlc2wke7byfey
-- valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
+- valory/chatui_abci:0.1.0:bafybeien6rlvk6yqig3nkar4v3fzgzck74myeip4dbd2qg6cy75m6ykify
+- valory/agent_performance_summary_abci:0.1.0:bafybeidnugli54s4cj73nevki4tfj7a2tzovkub4gwwcgxzm6ar7bxc5sq
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -291,6 +291,7 @@ models:
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
+      olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
