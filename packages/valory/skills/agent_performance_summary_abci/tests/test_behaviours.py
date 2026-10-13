@@ -4253,7 +4253,7 @@ class TestBuildProfitOverTimeData:
         last_residual_rebuild_ts: int = 0,
         open_requests: int = 0,
         stored_settled: int = 0,
-        backfill_result: Any = "backfill",
+        backfill_result: Any = "converged",
     ) -> Tuple[Any, MagicMock, MagicMock, MagicMock]:
         """Route an up-to-date stored series against a KPI snapshot.
 
@@ -4263,9 +4263,16 @@ class TestBuildProfitOverTimeData:
         :param last_residual_rebuild_ts: when the series was last rebuilt for a residual
         :param open_requests: the KPI's open count this round
         :param stored_settled: the stored series' settled count before the update
-        :param backfill_result: what the residual-triggered backfill returns
+        :param backfill_result: what the residual-triggered backfill returns;
+            ``"converged"`` for a series matching the snapshot
         :return: (result, backfill mock, incremental mock, logger)
         """
+        if backfill_result == "converged":
+            backfill_result = ProfitOverTimeData(
+                last_updated=1700000000,
+                total_days=1,
+                settled_mech_requests_count=snapshot_settled or 0,
+            )
         b = _make_fetch_behaviour(
             _settled_mech_requests_count=snapshot_settled,
             _open_market_requests=open_requests,
@@ -4330,7 +4337,7 @@ class TestBuildProfitOverTimeData:
         result, mock_backfill, mock_incr, logger = self._route_with_residual(
             series_settled=series_settled, snapshot_settled=snapshot_settled
         )
-        assert result == "backfill"
+        assert result.settled_mech_requests_count == snapshot_settled
         mock_incr.assert_called_once()
         assert mock_backfill.call_args.kwargs == {
             "last_residual_rebuild_ts": 1700000000
@@ -4357,7 +4364,7 @@ class TestBuildProfitOverTimeData:
         assert result.settled_mech_requests_count == 30
         mock_backfill.assert_not_called()
         warnings = [str(c.args[0]) for c in logger.warning.call_args_list]
-        assert any("already rebuilt within the last day" in w for w in warnings)
+        assert any("already rebuilt within the last 1 day(s)" in w for w in warnings)
 
     def test_residual_rebuild_allowed_again_after_a_day(self) -> None:
         """A full day after the last residual rebuild, the next one may run."""
@@ -4366,7 +4373,7 @@ class TestBuildProfitOverTimeData:
             snapshot_settled=3,
             last_residual_rebuild_ts=1700000000 - SECONDS_PER_DAY,
         )
-        assert result == "backfill"
+        assert result.settled_mech_requests_count == 3
 
     def test_failed_residual_rebuild_backs_off_for_a_day(self) -> None:
         """A failed rebuild keeps the incremental update and stamps the attempt."""
@@ -8454,10 +8461,11 @@ class TestKpiSeriesAgreement:
         assert result.last_residual_rebuild_ts == 1234
 
     def test_incremental_update_keeps_last_residual_rebuild_ts(self) -> None:
-        """An incremental update carries the stored rebuild time forward."""
+        """An incremental update carries the stored rebuild time and back-off forward."""
         day1 = _DAY0 + SECONDS_PER_DAY
         existing = self._existing(last_mech_timestamp=_DAY0 + 10)
         existing.last_residual_rebuild_ts = 1234
+        existing.residual_rebuild_backoff_days = 7
 
         result = self._tick(
             existing, [], [_mech_request("Q", day1 + 100)], [], day1 + 500
@@ -8465,6 +8473,7 @@ class TestKpiSeriesAgreement:
 
         assert result is not existing
         assert result.last_residual_rebuild_ts == 1234
+        assert result.residual_rebuild_backoff_days == 7
 
     def test_residual_rebuild_stamps_the_rebuilt_series(self) -> None:
         """A residual-triggered rebuild persists its time, so the next round does not rebuild."""
@@ -8505,11 +8514,15 @@ class TestKpiSeriesAgreement:
         assert result.last_residual_rebuild_ts == now
 
     def _build_on_quiet_round(
-        self, existing: ProfitOverTimeData, now: int, backfill_stats: Optional[list]
+        self,
+        existing: ProfitOverTimeData,
+        now: int,
+        backfill_stats: Optional[list],
+        kpi_settled: int = 10,
     ) -> Tuple[ProfitOverTimeData, MagicMock]:
-        """Build with nothing new past the watermark, against a KPI of 10 settled."""
+        """Build with nothing new past the watermark, over 10 fetchable requests."""
         late_requests = [_mech_request(f"Late {i}", _DAY0 + 5) for i in range(10)]
-        b = _make_fetch_behaviour(_settled_mech_requests_count=10)
+        b = _make_fetch_behaviour(_settled_mech_requests_count=kpi_settled)
         ctx, _, synced_data, state = _mock_context(synced_timestamp=now)
         summary = _default_summary()
         summary.profit_over_time = existing
@@ -8567,6 +8580,48 @@ class TestKpiSeriesAgreement:
         assert second.settled_mech_requests_count == 0
         assert second.last_residual_rebuild_ts == now
         assert all(call.args[1] for call in stats_mock.call_args_list)
+
+    def test_persistent_residual_backs_off(self) -> None:
+        """A rebuild that leaves the drift in place waits 7, then 30 days before the next."""
+        rebuilt_stats = [_stat(_DAY0, [], False)]
+        now = _DAY0 + SECONDS_PER_DAY + 500
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+
+        # The KPI counts 30 settled requests, the source only ever serves 10.
+        first, _ = self._build_on_quiet_round(existing, now, rebuilt_stats, 30)
+        assert first.settled_mech_requests_count == 10
+        assert first.last_residual_rebuild_ts == now
+        assert first.residual_rebuild_backoff_days == 7
+
+        later = now + 2 * SECONDS_PER_DAY
+        waiting, stats_mock = self._build_on_quiet_round(
+            first, later, rebuilt_stats, 30
+        )
+        assert all(call.args[1] for call in stats_mock.call_args_list)
+        assert waiting.last_residual_rebuild_ts == now
+        assert waiting.residual_rebuild_backoff_days == 7
+
+        later = now + 8 * SECONDS_PER_DAY
+        second, _ = self._build_on_quiet_round(waiting, later, rebuilt_stats, 30)
+        assert second.last_residual_rebuild_ts == later
+        assert second.residual_rebuild_backoff_days == 30
+
+        later += 31 * SECONDS_PER_DAY
+        third, _ = self._build_on_quiet_round(second, later, rebuilt_stats, 30)
+        assert third.last_residual_rebuild_ts == later
+        assert third.residual_rebuild_backoff_days == 30
+
+    def test_converged_rebuild_resets_backoff(self) -> None:
+        """A rebuild that closes the drift returns the back-off to one day."""
+        now = _DAY0 + 40 * SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        existing.residual_rebuild_backoff_days = 30
+
+        result, _ = self._build_on_quiet_round(existing, now, [_stat(_DAY0, [], False)])
+
+        assert result.settled_mech_requests_count == 10
+        assert result.last_residual_rebuild_ts == now
+        assert result.residual_rebuild_backoff_days == 1
 
     def test_requests_counted_open_are_not_charged_incrementally(self) -> None:
         """A newly fetched request on an open market is persisted as pending."""

@@ -324,6 +324,7 @@ class TestProfitOverTimeData:
         assert pot.includes_unplaced_mech_fees is False
         assert pot.pending_mech_requests == []
         assert pot.last_residual_rebuild_ts == 0
+        assert pot.residual_rebuild_backoff_days == 1
 
     def test_pending_and_rebuild_fields_round_trip(self) -> None:
         """The held-back requests and rebuild time survive a JSON round trip."""

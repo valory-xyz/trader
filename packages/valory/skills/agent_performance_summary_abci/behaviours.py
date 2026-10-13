@@ -167,9 +167,10 @@ MORE_TRADES_NEEDED_TEXT = "More trades needed"
 # Small gaps between the series and the KPI's settled count are expected (a
 # mech landing between the two reads); anything larger triggers a rebuild.
 _RESIDUAL_TOLERANCE = 5
-# Lets an agent whose fetched requests and ``total`` genuinely disagree
-# rebuild at most once a day instead of every round.
-_RESIDUAL_REBUILD_MIN_INTERVAL = SECONDS_PER_DAY
+# Days to wait before the next residual rebuild. Each rebuild that leaves
+# the drift in place moves one step up, so an agent whose fetched requests
+# and ``total`` genuinely disagree stops re-paginating its history daily.
+_RESIDUAL_REBUILD_BACKOFF_DAYS = (1, 7, 30)
 
 
 def _parse_iso_timestamp(value: Any) -> Optional[int]:
@@ -2119,13 +2120,14 @@ class FetchPerformanceSummaryBehaviour(
             f"Settled mech count residual (series={updated.settled_mech_requests_count}, "
             f"snapshot={settled_reference}, residual={residual})"
         )
+        backoff_days = updated.residual_rebuild_backoff_days
         if (
             current_timestamp - updated.last_residual_rebuild_ts
-            < _RESIDUAL_REBUILD_MIN_INTERVAL
+            < backoff_days * SECONDS_PER_DAY
         ):
             self.context.logger.warning(
-                f"{residual_log}; already rebuilt within the last day, "
-                "keeping the incremental update."
+                f"{residual_log}; already rebuilt within the last {backoff_days} "
+                "day(s), keeping the incremental update."
             )
             return updated
 
@@ -2140,10 +2142,26 @@ class FetchPerformanceSummaryBehaviour(
         if rebuilt is None:
             self.context.logger.error(
                 "Residual-triggered profit over time rebuild failed; keeping the "
-                "incremental update and retrying in a day."
+                f"incremental update and retrying in {backoff_days} day(s)."
             )
             updated.last_residual_rebuild_ts = current_timestamp
             return updated
+
+        rebuilt_residual = rebuilt.settled_mech_requests_count - settled_reference
+        if abs(rebuilt_residual) > _RESIDUAL_TOLERANCE:
+            # A fresh rebuild cannot close the gap: the request list and the
+            # KPI's ``total`` disagree at the source, so retrying soon is waste.
+            rebuilt.residual_rebuild_backoff_days = next(
+                (days for days in _RESIDUAL_REBUILD_BACKOFF_DAYS if days > backoff_days),
+                _RESIDUAL_REBUILD_BACKOFF_DAYS[-1],
+            )
+            self.context.logger.error(
+                "Residual persists after a full rebuild (series="
+                f"{rebuilt.settled_mech_requests_count}, snapshot={settled_reference}, "
+                f"residual={rebuilt_residual}): the fetched mech requests and the "
+                "KPI's total disagree at the source. Next rebuild in "
+                f"{rebuilt.residual_rebuild_backoff_days} day(s)."
+            )
         return rebuilt
 
     def _perform_initial_backfill(
@@ -2639,6 +2657,7 @@ class FetchPerformanceSummaryBehaviour(
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
             pending_mech_requests=pending_mech_requests,
             last_residual_rebuild_ts=existing_data.last_residual_rebuild_ts,
+            residual_rebuild_backoff_days=existing_data.residual_rebuild_backoff_days,
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:

@@ -190,6 +190,7 @@ class ProfitOverTimeData:
     # them as open; each entry is ``{"title": str, "timestamp": int}``.
     pending_mech_requests: List[Dict[str, Any]] = field(default_factory=list)
     last_residual_rebuild_ts: int = 0  # Unix timestamp, 0 if never
+    residual_rebuild_backoff_days: int = 1  # Wait before the next residual rebuild
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
