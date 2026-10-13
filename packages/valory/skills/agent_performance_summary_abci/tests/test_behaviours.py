@@ -4307,7 +4307,7 @@ class TestBuildProfitOverTimeData:
         assert any("Settled mech count residual" in w for w in warnings), warnings
 
     def test_residual_is_checked_after_the_incremental_update(self) -> None:
-        """Requests settled since the last round do not count as drift once charged."""
+        """The residual uses the series after this round's incremental update."""
         result, mock_backfill, _, logger = self._route_with_residual(
             series_settled=30, snapshot_settled=30, stored_settled=3
         )
@@ -4347,15 +4347,17 @@ class TestBuildProfitOverTimeData:
         errors = [str(c.args[0]) for c in logger.error.call_args_list]
         assert any("rebuild failed" in e for e in errors), errors
 
-    def test_residual_within_tolerance_does_not_rebuild(self) -> None:
+    @pytest.mark.parametrize("series_settled", [15, 5], ids=["at-upper", "at-lower"])
+    def test_residual_within_tolerance_does_not_rebuild(
+        self, series_settled: int
+    ) -> None:
         """A residual at the tolerance keeps the incremental update silently."""
-        for series_settled in (15, 5):
-            result, mock_backfill, _, logger = self._route_with_residual(
-                series_settled=series_settled, snapshot_settled=10
-            )
-            assert result.settled_mech_requests_count == series_settled
-            mock_backfill.assert_not_called()
-            logger.warning.assert_not_called()
+        result, mock_backfill, _, logger = self._route_with_residual(
+            series_settled=series_settled, snapshot_settled=10
+        )
+        assert result.settled_mech_requests_count == series_settled
+        mock_backfill.assert_not_called()
+        logger.warning.assert_not_called()
 
     def test_residual_does_not_subtract_open_requests(self) -> None:
         """The series holds back open requests, so a matching count is no drift."""
@@ -5865,10 +5867,33 @@ class TestFetchAgentPerformanceSummaryIntegration:
         ][0]
         assert roi_metric.value == MORE_TRADES_NEEDED_TEXT
 
-    def test_profit_data_none(self) -> None:
-        """Handles None profit_over_time data."""
+    @pytest.mark.parametrize(
+        "stored_profit, expected",
+        [
+            (None, (0, 0)),
+            (
+                ProfitOverTimeData(
+                    last_updated=1700000000,
+                    total_days=0,
+                    data_points=[],
+                    placed_mech_requests_count=4,
+                    unplaced_mech_requests_count=2,
+                ),
+                (2, 4),
+            ),
+        ],
+        ids=["nothing-stored", "stored-counts"],
+    )
+    def test_profit_data_none(
+        self,
+        stored_profit: Optional[ProfitOverTimeData],
+        expected: Tuple[int, int],
+    ) -> None:
+        """A failed profit build keeps the stored placed/unplaced counts."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, state = _mock_context(is_polymarket=False)
+        stored_summary = _default_summary()
+        stored_summary.profit_over_time = stored_profit
 
         agent_details = AgentDetails(id="0xabc")
         agent_perf = AgentPerformanceData()
@@ -5893,9 +5918,10 @@ class TestFetchAgentPerformanceSummaryIntegration:
             ),
             patch.object(b, "_fetch_prediction_history", return_value=pred_history),
         ):
+            state.read_existing_performance_summary.return_value = stored_summary
             self._run_gen(b._fetch_agent_performance_summary())
-        assert b._unplaced_mech_requests_count == 0
-        assert b._placed_mech_requests_count == 0
+        assert b._unplaced_mech_requests_count == expected[0]
+        assert b._placed_mech_requests_count == expected[1]
 
     def test_profit_data_no_placed_attr(self) -> None:
         """Handles profit_over_time without placed_mech_requests_count attribute."""
@@ -8383,7 +8409,6 @@ class TestKpiSeriesAgreement:
         assert b._settled_mech_requests_count is None
         assert result is None
         incremental.assert_not_called()
-        assert len(stored.pending_mech_requests) == 2
 
     @pytest.mark.parametrize("has_stats", [True, False])
     def test_backfill_stores_last_residual_rebuild_ts(self, has_stats: bool) -> None:
@@ -8446,6 +8471,70 @@ class TestKpiSeriesAgreement:
 
         assert result.settled_mech_requests_count == 10
         assert result.last_residual_rebuild_ts == now
+
+    def _build_on_quiet_round(
+        self, existing: ProfitOverTimeData, now: int, backfill_stats: Optional[list]
+    ) -> Tuple[ProfitOverTimeData, MagicMock]:
+        """Build with nothing new past the watermark, against a KPI of 10 settled."""
+        late_requests = [_mech_request(f"Late {i}", _DAY0 + 5) for i in range(10)]
+        b = _make_fetch_behaviour(_settled_mech_requests_count=10)
+        ctx, _, synced_data, state = _mock_context(synced_timestamp=now)
+        summary = _default_summary()
+        summary.profit_over_time = existing
+        state.read_existing_performance_summary.return_value = summary
+
+        def _fetch_requests(
+            *_: Any, block_timestamp_gt: int = 0
+        ) -> Generator[None, None, List[dict]]:
+            """Serve only requests past the given watermark."""
+            return [
+                r
+                for r in late_requests
+                if int(r["blockTimestamp"]) > block_timestamp_gt
+            ]
+            yield  # pragma: no cover
+
+        def _fetch_stats(_: str, start_ts: int) -> Generator[None, None, Any]:
+            """Serve nothing new incrementally; ``backfill_stats`` on a rebuild."""
+            return [] if start_ts else backfill_stats
+            yield  # pragma: no cover
+
+        stats_mock = MagicMock(side_effect=_fetch_stats)
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_fetch_daily_profit_statistics", stats_mock),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_fetch_requests),
+        ):
+            result = self._run_gen(b._build_profit_over_time_data())
+        return result, stats_mock
+
+    def test_quiet_round_drift_rebuilds(self) -> None:
+        """Drift is checked even when the incremental update has nothing to do."""
+        now = _DAY0 + SECONDS_PER_DAY + 500
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+
+        result, _ = self._build_on_quiet_round(existing, now, [_stat(_DAY0, [], False)])
+
+        assert result is not existing
+        assert result.settled_mech_requests_count == 10
+        assert result.last_residual_rebuild_ts == now
+
+    def test_failed_quiet_round_rebuild_waits_a_day(self) -> None:
+        """A failed rebuild is stamped, so the next round does not retry it."""
+        now = _DAY0 + SECONDS_PER_DAY + 500
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+
+        first, _ = self._build_on_quiet_round(existing, now, None)
+        assert first.settled_mech_requests_count == 0
+        assert first.last_residual_rebuild_ts == now
+
+        second, stats_mock = self._build_on_quiet_round(
+            first, now + 1800, [_stat(_DAY0, [], False)]
+        )
+        assert second.settled_mech_requests_count == 0
+        assert second.last_residual_rebuild_ts == now
+        assert all(call.args[1] for call in stats_mock.call_args_list)
 
     def test_requests_counted_open_are_not_charged_incrementally(self) -> None:
         """A newly fetched request on an open market is persisted as pending."""

@@ -673,9 +673,8 @@ class FetchPerformanceSummaryBehaviour(
 
             last_four_days_requests = mech_sender.get("requests", [])
 
-        # Platform-specific: get open markets. A failed fetch returns ``None``
-        # rather than "nothing open": treating it as empty would release every
-        # pending request from the profit series.
+        # A failed fetch must not read as "nothing open": that would release
+        # every pending request from the profit series.
         if self.params.is_running_on_polymarket:
             # For Polymarket: get open positions from connection
             open_market_titles = (
@@ -2101,7 +2100,8 @@ class FetchPerformanceSummaryBehaviour(
         :param settled_reference: the KPI's settled count this round
         :param agent_safe_address: the agent's safe address
         :param current_timestamp: the current timestamp
-        :return: the rebuilt series, or ``updated`` when no rebuild ran
+        :return: the rebuilt series, or ``updated`` when the rebuild was skipped
+            or failed
         :yield: None
         """
         # Drift beyond tolerance means requests the watermark skipped; rebuild.
@@ -2674,13 +2674,16 @@ class FetchPerformanceSummaryBehaviour(
 
         current_timestamp = self.shared_state.synced_timestamp
         profit_over_time = yield from self._build_profit_over_time_data()
+        counts_source = (
+            profit_over_time
+            or self.shared_state.read_existing_performance_summary().profit_over_time
+        )
         self._unplaced_mech_requests_count = (
-            profit_over_time.unplaced_mech_requests_count if profit_over_time else 0
+            counts_source.unplaced_mech_requests_count if counts_source else 0
         )
         self._placed_mech_requests_count = (
-            profit_over_time.placed_mech_requests_count
-            if profit_over_time
-            and hasattr(profit_over_time, "placed_mech_requests_count")
+            counts_source.placed_mech_requests_count
+            if counts_source and hasattr(counts_source, "placed_mech_requests_count")
             else 0
         )
 
