@@ -24,7 +24,7 @@
 import enum
 import pickle  # nosec
 import typing
-from typing import List, Literal
+from typing import List
 
 from pydantic import BaseModel
 
@@ -90,19 +90,6 @@ User prompt: "{user_prompt}"
 """
 
 
-MECH_INTENT_PROMPT = """A user was offered to approve a mech, an AI service their trading agent may pay, and is now replying.
-
-Offer waiting for their answer: approve the mech at {address} at up to {price} per request.
-
-Decide what the user's reply does:
-- "confirm": it accepts the offer, however it is phrased.
-- "remove": it asks to remove or stop using this mech.
-- "other": anything else, including questions, a different request, or a reply you cannot read as either of the above.
-
-User reply: "{user_prompt}"
-"""
-
-
 class TradingStrategy(enum.Enum):
     """TradingStrategy"""
 
@@ -140,17 +127,6 @@ class ChatUILLMResponse(BaseModel):
     message: str
 
 
-class MechIntent(BaseModel):
-    """What the user's message does about the approval waiting for them."""
-
-    intent: Literal["confirm", "remove", "other"]
-
-
 def build_chatui_llm_response_schema() -> dict:
     """Build a schema for the ChatUILLMResponse."""
     return {"class": pickle.dumps(ChatUILLMResponse).hex(), "is_list": False}
-
-
-def build_mech_intent_schema() -> dict:
-    """Build a schema for the MechIntent."""
-    return {"class": pickle.dumps(MechIntent).hex(), "is_list": False}

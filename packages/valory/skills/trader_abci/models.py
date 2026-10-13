@@ -190,7 +190,6 @@ class TraderParams(
             "mech_interact_round_timeout_seconds", kwargs, type_=int
         )
         self.genai_api_key: str = self._ensure("genai_api_key", kwargs, str)
-        self.marketplace_api_url: str = self._ensure("marketplace_api_url", kwargs, str)
         self.x402_payment_requirements: Dict[str, Any] = self._ensure(
             "x402_payment_requirements", kwargs, dict
         )

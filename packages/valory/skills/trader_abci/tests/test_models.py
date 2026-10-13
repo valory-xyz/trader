@@ -21,8 +21,11 @@
 
 import inspect
 import re
+from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
+
+import yaml
 
 from packages.valory.connections.x402.clients.mech import slot_registry
 from packages.valory.skills.chatui_abci.models import ChatuiParams
@@ -35,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.rounds import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+from packages.valory.skills.mech_interact_abci.models import MechParams
 from packages.valory.skills.mech_interact_abci.nonce_allocator import (
     MECH_SLOT_REGISTRY,
 )
@@ -53,7 +57,6 @@ class TestTraderParams:
         kwargs: Dict[str, Any] = {
             "mech_interact_round_timeout_seconds": 300,
             "genai_api_key": "test-key",
-            "marketplace_api_url": "https://marketplace.example/api/erc8004",
             "x402_payment_requirements": {"threshold": 100},
             "lifi_quote_to_amount_url": "https://example.com/lifi",
             "gnosis_ledger_rpc": "https://gnosis-rpc.example.com",
@@ -68,7 +71,6 @@ class TestTraderParams:
 
         assert params.mech_interact_round_timeout_seconds == 300
         assert params.genai_api_key == "test-key"
-        assert params.marketplace_api_url == "https://marketplace.example/api/erc8004"
         assert params.x402_payment_requirements == {"threshold": 100}
         assert params.lifi_quote_to_amount_url == "https://example.com/lifi"
         assert params.gnosis_ledger_rpc == "https://gnosis-rpc.example.com"
@@ -92,6 +94,28 @@ def test_trader_params_set_every_chat_param() -> None:
     }
     assert chat_params, "no chat params found"
     assert chat_params <= trader_params, chat_params - trader_params
+
+
+def test_the_chat_can_read_mechs_through_the_composed_context() -> None:
+    """`read_mech` and `read_live_rate` read the params and these models from the chat's context.
+
+    In the agent that context is the trader skill's, so its params must be
+    `MechParams` (for `mech_chain_id` and `marketplace_api_url`) and it must
+    declare every model the reader uses.
+    """
+    assert issubclass(TraderParams, MechParams)
+    config = yaml.safe_load(
+        (Path(__file__).parents[1] / "skill.yaml").read_text(encoding="utf-8")
+    )
+    models = config["models"]
+    assert {
+        "mechs_subgraph",
+        "http_dialogues",
+        "contract_api_dialogues",
+        "requests",
+    } <= set(models)
+    assert models["params"]["class_name"] == "TraderParams"
+    assert "marketplace_api_url" in models["params"]["args"]
 
 
 class TestSharedState:

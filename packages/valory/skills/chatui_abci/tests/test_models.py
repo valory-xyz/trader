@@ -26,7 +26,6 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-from aea.exceptions import AEAEnforceError
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -37,7 +36,8 @@ from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
     ChatuiConfig,
     ChatuiParams,
-    PendingApproval,
+    MAX_MECH_OFFERS,
+    Offer,
     SharedState,
     WITHDRAWAL_STATES,
     WITHDRAWAL_STATE_ARMED,
@@ -609,11 +609,9 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
-                marketplace_api_url="https://marketplace.example/api",
             )
         assert params.service_endpoint == "https://example.com"
         assert params.genai_api_key == "dummy"
-        assert params.marketplace_api_url == "https://marketplace.example/api"
 
     def test_init_calls_super(self) -> None:
         """Test that ChatuiParams init must call BaseParams.__init__."""
@@ -623,21 +621,22 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
-                marketplace_api_url="https://marketplace.example/api",
             )
         mock_super.assert_called_once()
 
-    def test_the_marketplace_api_url_is_required(self) -> None:
-        """The card cannot be read without it."""
-        with (
-            patch.object(BaseParams, "__init__", return_value=None),
-            pytest.raises(AEAEnforceError),
-        ):
-            ChatuiParams(
-                skill_context=MagicMock(),
-                service_endpoint="https://example.com",
-                genai_api_key="dummy",
-            )
+    def test_the_marketplace_api_url_is_left_to_mech_interact(self) -> None:
+        """`MechParams` reads it, so the chat params neither require nor consume it."""
+        kwargs = {
+            "service_endpoint": "https://example.com",
+            "genai_api_key": "dummy",
+            "marketplace_api_url": "https://marketplace.example/api",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
+            params = ChatuiParams(skill_context=MagicMock(), **kwargs)
+        assert not hasattr(params, "marketplace_api_url")
+        assert mock_super.call_args.kwargs["marketplace_api_url"] == (
+            "https://marketplace.example/api"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1029,24 +1028,69 @@ class TestSetupBootAutoClear:
         assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)
 
 
-class TestPendingApproval:
-    """The offer held for a yes is the address, the price shown and its asset."""
+def _offer(address: str, rate: int = 10000) -> Offer:
+    """An offer shown for the address."""
+    return Offer(address, rate, "0x6406", "0.01 USDC")
 
-    def test_is_a_frozen_value(self) -> None:
-        """Two offers with the same facts are the same offer; neither can be edited."""
+
+def _offer_state() -> _TestableSharedState:
+    """A fresh shared state, without the parent's set-up."""
+    with patch.object(BaseSharedState, "__init__", return_value=None):
+        return _TestableSharedState(skill_context=MagicMock())
+
+
+class TestMechOffers:
+    """The last offer shown per mech, in memory, bounded."""
+
+    def test_an_offer_is_a_frozen_value(self) -> None:
+        """Two offers with the same terms are the same offer; neither can be edited."""
         mech = "0x" + "ab" * 20
-        offer = PendingApproval(mech, 10000, "6406")
-        assert offer == PendingApproval(mech, 10000, "6406")
-        assert offer != PendingApproval(mech, 10001, "6406")
+        assert _offer(mech) == _offer(mech)
+        assert _offer(mech) != _offer(mech, 10001)
         with pytest.raises(FrozenInstanceError):
-            offer.rate = 1  # type: ignore[misc]
+            _offer(mech).rate = 1  # type: ignore[misc]
 
-    def test_shared_state_starts_with_no_offer_and_no_reports(self) -> None:
-        """A fresh state holds nothing from an earlier conversation."""
-        with patch.object(BaseSharedState, "__init__", return_value=None):
-            state = _TestableSharedState(skill_context=MagicMock())
-        assert state.pending_mech_approval is None
-        assert state.mech_reports == {}
+    def test_a_fresh_state_holds_no_offer(self) -> None:
+        """Nothing is carried over from an earlier run."""
+        assert _offer_state().mech_offers == {}
+
+    def test_a_newer_offer_replaces_the_one_for_its_address(self) -> None:
+        """Only the last terms shown for a mech can be accepted."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech, 1))
+        state.record_mech_offer(_offer(mech, 2))
+        assert state.mech_offers == {mech: _offer(mech, 2)}
+
+    def test_the_oldest_offer_is_dropped_past_the_bound(self) -> None:
+        """Re-recording an address makes it the newest, so it outlives older ones."""
+        state = _offer_state()
+        mechs = [f"0x{index:040x}" for index in range(MAX_MECH_OFFERS + 1)]
+        for mech in mechs[:MAX_MECH_OFFERS]:
+            state.record_mech_offer(_offer(mech))
+        state.record_mech_offer(_offer(mechs[0]))
+        state.record_mech_offer(_offer(mechs[MAX_MECH_OFFERS]))
+        assert len(state.mech_offers) == MAX_MECH_OFFERS
+        assert mechs[1] not in state.mech_offers
+        assert mechs[0] in state.mech_offers
+        assert list(state.mech_offers)[-1] == mechs[MAX_MECH_OFFERS]
+
+    @pytest.mark.parametrize("newer, kept", [(None, False), (2, True)])
+    def test_dropping_an_offer_spares_a_newer_one(self, newer: Any, kept: bool) -> None:
+        """An accept settled late must not drop terms shown after it started."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech, 1))
+        if newer is not None:
+            state.record_mech_offer(_offer(mech, newer))
+        state.drop_mech_offer(_offer(mech, 1))
+        assert (mech in state.mech_offers) is kept
+
+    def test_dropping_an_unknown_offer_does_nothing(self) -> None:
+        """No offer, nothing to drop, and no error."""
+        state = _offer_state()
+        state.drop_mech_offer(_offer("0x" + "ab" * 20))
+        assert state.mech_offers == {}
 
 
 class TestApprovedMechsFile:

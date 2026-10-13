@@ -70,14 +70,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigkuuew3l5s5iosnajizjifqhdchyg44lyj5mf5bzitkh2wtmq2ke
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifqck4dpomipkqzygy2ffx4qd6i2inuapp2p5gtivjb42yyqvnjqe
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeiakhmic6l6ekobgd47wrknojnejxfsama7t64z5y7tgyvuj2vr5uu
-- valory/trader_abci:0.1.0:bafybeibbotq7fjtgupdmgoyujbcd37nxdvuqfflyf6a2xowvb5v42fx6fe
+- valory/decision_maker_abci:0.1.0:bafybeihp6elezhjafxovfmd2ud7jkdqhjwo372wgspnyvm4lo3yl47tnye
+- valory/trader_abci:0.1.0:bafybeihub47mfsjrbjdx3wnuzy5pbahhhyywcpulaxrd24trfcyktbizre
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeihw7kdgf3s4jndnrvu6rbd3e2c55pk54qz4rk2ouo4e2mkwntosgy
-- valory/mech_interact_abci:0.1.0:bafybeidk2udpc55d2kb63kvuhw3sbagdr4i3ahoxgibmfrbx5dx2va37ky
-- valory/chatui_abci:0.1.0:bafybeigjsb7hfza24tqalq63wtewricghx6loahor23ytwwxwjqk7lzkxu
+- valory/check_stop_trading_abci:0.1.0:bafybeifwrccwf2aynuzubgm6hpjpvztearc2h5mubx7io47yphjamz5zie
+- valory/mech_interact_abci:0.1.0:bafybeifhllajxqdhhloxcdbqmbzagwrais477yauvukdeq5j3ipb7wv3ki
+- valory/chatui_abci:0.1.0:bafybeia33vxkx5cevtf4tkxix6j6gbnnigwalujw5kr5l5p2krytvg7ym4
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
@@ -276,7 +276,6 @@ models:
       coingecko_olas_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       coingecko_pol_in_usd_price_url: ${str:https://api.coingecko.com/api/v3/simple/token_price/polygon-pos?contract_addresses=0x0000000000000000000000000000000000001010&vs_currencies=usd}
       genai_api_key: ${GENAI_API_KEY:str:""}
-      marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
       x402_payment_requirements: ${dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${str:https://rpc.gnosischain.com/}
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
@@ -313,6 +312,7 @@ models:
       exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
       deliveries_lookback_days: ${int:30}
       delivery_rate_caps: ${dict:{"native":10000000000000000,"token_usdc":10000}}
+      marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
   benchmarking_mode:
     args:
       enabled: ${bool:false}

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeig5zqgs5fr4h6twhks3g3crf3sfqzg5n4vkasj5log36prfez7tau
+agent: valory/trader:0.1.0:bafybeiggwpczamepzu4rvveuhmumgqr3ard5b5qpp2sp2vklsybvcekrse
 number_of_agents: 1
 deployment:
   agent:
@@ -156,7 +156,6 @@ models:
       enable_multi_bets_fallback: ${ENABLE_MULTI_BETS_FALLBACK:bool:false}
       coingecko_olas_in_usd_price_url: ${COINGECKO_OLAS_IN_USD_PRICE_URL:str:https://api.coingecko.com/api/v3/simple/token_price/xdai?contract_addresses=0xcE11e14225575945b8E6Dc0D4F2dD4C570f79d9f&vs_currencies=usd}
       genai_api_key: ${GENAI_API_KEY:str:""}
-      marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
       x402_payment_requirements: ${X402_PAYMENT_REQUIREMENTS:dict:{"threshold":200000,"top_up":250000}}
       gnosis_ledger_rpc: ${GNOSIS_LEDGER_RPC:str:https://rpc.gnosischain.com/}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
@@ -180,6 +179,7 @@ models:
       exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
       delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"native":10000000000000000}}
+      marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}
   benchmark_tool:
     args:
       log_dir: ${LOG_DIR:str:/benchmarks}

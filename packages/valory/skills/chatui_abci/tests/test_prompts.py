@@ -21,19 +21,13 @@
 
 import pickle  # nosec
 
-import pytest
-from pydantic import ValidationError
-
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     ChatUILLMResponse,
     FieldsThatCanBeRemoved,
-    MECH_INTENT_PROMPT,
-    MechIntent,
     TradingStrategy,
     UpdatedAgentConfig,
     build_chatui_llm_response_schema,
-    build_mech_intent_schema,
 )
 
 
@@ -183,37 +177,3 @@ class TestChatuiPrompt:
             in CHATUI_PROMPT
         )
         assert "mech_action" not in ChatUILLMResponse.model_fields
-
-
-class TestMechIntent:
-    """The one model call on a pending turn reads only the user's intent."""
-
-    def test_the_prompt_carries_the_offer_and_the_reply_only(self) -> None:
-        """Address, price and the user's words are the only placeholders."""
-        for field in ("{address}", "{price}", "{user_prompt}"):
-            assert field in MECH_INTENT_PROMPT
-        for intent in ("confirm", "remove", "other"):
-            assert f'"{intent}"' in MECH_INTENT_PROMPT
-
-    @pytest.mark.parametrize("intent", ["confirm", "remove", "other"])
-    def test_the_schema_accepts_each_intent(self, intent: str) -> None:
-        """Every intent the handler acts on is a legal value."""
-        assert MechIntent(intent=intent).intent == intent
-
-    @pytest.mark.parametrize("intent", ["approve", "yes", "", None, True])
-    def test_the_schema_rejects_anything_else(self, intent: object) -> None:
-        """The model cannot invent an intent."""
-        with pytest.raises(ValidationError):
-            MechIntent(intent=intent)  # type: ignore[arg-type]
-
-    def test_the_schema_is_an_enum_of_the_three_intents(self) -> None:
-        """What the model connection converts to a Gemini schema."""
-        schema = build_mech_intent_schema()
-        assert schema["is_list"] is False
-        restored = pickle.loads(bytes.fromhex(schema["class"]))  # nosec
-        assert restored is MechIntent
-        assert restored.model_json_schema()["properties"]["intent"]["enum"] == [
-            "confirm",
-            "remove",
-            "other",
-        ]

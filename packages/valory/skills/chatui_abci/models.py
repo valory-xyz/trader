@@ -48,6 +48,7 @@ CHATUI_PARAM_STORE = "chatui_param_store.json"
 APPROVED_MECHS_STORE = "approved_mechs.json"
 ADDRESS_PATTERN = re.compile(r"0x[0-9a-f]{40}")
 ACTIVITY_GOAL_FIELD = "activity_goal"
+MAX_MECH_OFFERS = 20
 
 FILE_READ_MODE = "r"
 
@@ -93,12 +94,13 @@ class ChatuiConfig:
 
 
 @dataclass(frozen=True)
-class PendingApproval:
-    """The offer the user was shown: the mech, the price accepted by confirming, and its asset."""
+class Offer:
+    """The terms a report showed for a mech, which a typed accept must repeat."""
 
     address: str
     rate: int
-    payment_type_id: str
+    payment_type: str
+    price_text: str
 
 
 class SharedState(BaseSharedState):
@@ -112,9 +114,8 @@ class SharedState(BaseSharedState):
 
         self._chatui_config: Optional[ChatuiConfig] = None
         self._approved_mech_rates: Optional[Dict[str, int]] = None
-        # In memory only: shown reports by lowercase address, and the offer awaiting a yes.
-        self.mech_reports: Dict[str, Any] = {}
-        self.pending_mech_approval: Optional[PendingApproval] = None
+        # In memory only: the last offer shown per lowercase address, oldest first.
+        self.mech_offers: Dict[str, Offer] = {}
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
@@ -176,6 +177,18 @@ class SharedState(BaseSharedState):
         rates = self.approved_mech_rates
         rates[str(address).lower()] = int(rate)
         self.set_approved_mech_rates(rates)
+
+    def record_mech_offer(self, offer: Offer) -> None:
+        """Keep the offer as the newest for its address, holding at most `MAX_MECH_OFFERS`."""
+        self.mech_offers.pop(offer.address, None)
+        self.mech_offers[offer.address] = offer
+        while len(self.mech_offers) > MAX_MECH_OFFERS:
+            del self.mech_offers[next(iter(self.mech_offers))]
+
+    def drop_mech_offer(self, offer: Offer) -> None:
+        """Forget the offer, unless a newer one has replaced it."""
+        if self.mech_offers.get(offer.address) == offer:
+            del self.mech_offers[offer.address]
 
     def _read_approved_mech_rates(self) -> Dict[str, int]:
         """Read the approved mechs; a missing or unreadable file means none."""
@@ -317,5 +330,4 @@ class ChatuiParams(BaseParams):
         """Initialize the parameters' object."""
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.genai_api_key = self._ensure("genai_api_key", kwargs, str)
-        self.marketplace_api_url: str = self._ensure("marketplace_api_url", kwargs, str)
         super().__init__(*args, **kwargs)

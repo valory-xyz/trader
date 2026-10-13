@@ -17,170 +17,240 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Render a mech report and its consent card; no model writes any of this text."""
+"""Render a mech report from its published facts and decide what it offers; no model writes this text."""
 
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from html import escape
-from typing import List, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
-from packages.valory.skills.chatui_abci.mech_report import (
-    MechReport,
-    Refusal,
-    VALORY_TERMS,
-    payment_line,
+from packages.valory.skills.chatui_abci.models import Offer
+from packages.valory.skills.mech_interact_abci.mech_reader import (
+    MechFacts,
+    RecordStatus,
 )
 
 LINE_BREAK = "<br>"
 CHAIN_NAMES = {100: "Gnosis", 137: "Polygon", 8453: "Base", 10: "Optimism"}
+NATIVE_ASSETS = {100: "xDAI", 137: "POL", 8453: "ETH", 10: "ETH"}
+# payment type id (lowercase, no 0x) -> (asset label or None for native, decimals)
+TOKEN_PAYMENTS = {
+    "ba699a34be8fe0e7725e93dcbce1701b0211a8ca61330aaeb8a05bf2ec7abed1": (None, 18),
+    "3679d66ef546e66ce9057c4a052f317b135bc8e8c509638f7966edfd4fcf45e9": ("OLAS", 18),
+    "6406bb5f31a732f898e1ce9fdd988a80a808d36ab5d9a4a4805a8be8d197d5e3": ("USDC", 6),
+}
+NEVERMINED_PAYMENTS = frozenset(
+    {
+        "803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316",
+        "0d6fd99afa9c4c580fab5e341922c2a5c4b61d880da60506193d7bf88944dd14",
+    }
+)
+VALORY_TERMS = (
+    "By submitting a request to this Mech, you agree to be bound by Valory AG's "
+    "Mech Terms (v1.0), available at https://www.valory.xyz/terms/mechs."
+)
+ANALYTICS_MECH_URL = (
+    "https://mech-analytics-api.autonolas.tech/v1/metrics/mech/{chain_id}/{address}"
+)
 OLAS_DISCLAIMER = "Olas does not check third-party mechs or their claims."
 VERIFIED_MEANS = (
     "Verified means the same party controls the domain and the mech, nothing more."
 )
-REFUSAL_SENTENCES = {
-    Refusal.NEVER_DELIVERED: (
-        "It has never delivered an on-chain request, so it cannot be approved."
-    ),
-    Refusal.NOT_INDEXED: "No such mech is found on this chain.",
-    Refusal.RECORD_UNAVAILABLE: "Its record cannot be read right now; try again later.",
-    Refusal.MANIFEST_UNREADABLE: (
-        "I can't read this mech's description, so I can't approve it. Try again later."
-    ),
-}
-PRICE_UNREADABLE = (
-    "I can't read what this mech charges right now, so it cannot be approved. "
-    "Try again later."
+RECORD_UNAVAILABLE = "Its record cannot be read right now; try again later."
+NOT_INDEXED = "No such mech is found on this chain."
+CARD_UNREAD = (
+    "I can't read this mech's description, so I can't approve it. Try again later."
 )
-ASK_ALONE = "To approve one of these, ask about it on its own."
-# Refusals under which no card was read, so there is no operator or claim to report.
-_NO_CARD = frozenset(
-    {Refusal.RECORD_UNAVAILABLE, Refusal.NOT_INDEXED, Refusal.MANIFEST_UNREADABLE}
+NEVER_DELIVERED = (
+    "It has never delivered an on-chain request, so it cannot be approved."
 )
+PRICE_UNREADABLE = "I can't read what this mech charges, so it cannot be approved."
 
 
-def render_consent(report: MechReport) -> str:
-    """The exact terms the user accepts by confirming."""
-    return (
-        f"Approving accepts up to {report.payment_ceiling} per request for "
-        f"{report.address}. If its operator raises the price, your agent stops "
-        "using this mech until you approve the new price. It starts with no track "
-        "record on your side and earns work through normal scoring. Reply to confirm."
-    )
+@dataclass(frozen=True)
+class Standing:
+    """What this agent holds about the mech: Valory or not, its cap, the accepted rate, the pin."""
+
+    valory: bool
+    cap: Optional[int]
+    accepted_rate: Optional[int]
+    pinnable: bool
+    pinned: bool
 
 
-def offers_consent(report: MechReport, cap: Optional[int]) -> bool:
-    """Whether the mech can be approved now, so a report shown alone ends with a consent card."""
-    return _ending(report, cap, offer=True)[1]
+def payment_line(
+    payment_type: Any, max_delivery_rate: Any, chain_id: Optional[int]
+) -> Tuple[str, Optional[str]]:
+    """Name the payment asset and, where the asset is known, the per-request ceiling.
 
-
-def render_report(report: MechReport, cap: Optional[int], offer: bool = True) -> str:
-    """One short message about the mech, operator text escaped, ending in a verdict.
-
-    :param report: the report to render.
-    :param cap: the agent's cap for the mech's payment asset, or `None` when it has none.
-    :param offer: whether an approvable mech gets its consent card; `False` when several
-        mechs share one reply, so a yes could not name one.
-    :return: the message, lines joined with ``<br>``.
+    :param payment_type: the mech's payment type id from the subgraph.
+    :param max_delivery_rate: the mech's maximum delivery rate, in the asset's smallest unit.
+    :param chain_id: the chain the mech is on.
+    :return: the payment method and the ceiling text, or `None` when no figure can be named.
     """
+    type_id = str(payment_type or "").lower().removeprefix("0x")
+    if type_id in NEVERMINED_PAYMENTS:
+        return "a Nevermined subscription", None
+    if type_id not in TOKEN_PAYMENTS:
+        return "an unrecognised payment method", None
+    asset, decimals = TOKEN_PAYMENTS[type_id]
+    asset = asset or NATIVE_ASSETS.get(chain_id or 0)
+    if asset is None:
+        return "the chain's native token", None
+    try:
+        rate = int(max_delivery_rate)
+    except (TypeError, ValueError):
+        return asset, None
+    amount = Decimal(rate) / (Decimal(10) ** decimals)
+    return asset, f"{amount.normalize():f} {asset}"
+
+
+def payment_type_id(payment_type: Any) -> Optional[str]:
+    """Normalise a payment type id to lowercase hex without the 0x prefix."""
+    type_id = str(payment_type or "").lower().removeprefix("0x")
+    return type_id or None
+
+
+def cap_for(type_id: Optional[str], caps: Mapping[Any, int]) -> Optional[int]:
+    """The agent's cap for a payment type, in the asset's smallest unit.
+
+    :param type_id: the payment type id, lowercase hex without 0x.
+    :param caps: mech-interact's `delivery_rate_caps`, keyed by its payment
+        type enum, whose values are the selectors with the 0x prefix.
+    :return: the cap, or `None` when the asset has no cap.
+    """
+    if type_id is None:
+        return None
+    for payment_type, cap in caps.items():
+        if payment_type_id(getattr(payment_type, "value", payment_type)) == type_id:
+            return cap
+    return None
+
+
+def accept_line(price_text: str, address: str) -> str:
+    """The exact phrase that accepts the offer."""
+    return f"To approve, reply exactly: I accept {price_text} per request for {address}"
+
+
+def render_report(
+    facts: MechFacts, standing: Standing, now: datetime
+) -> Tuple[str, Optional[Offer]]:
+    """The report, operator text escaped and lines joined with `<br>`, and the offer it ends with, if any."""
+    method, price_text = payment_line(
+        facts.payment_type, facts.max_delivery_rate, facts.chain_id
+    )
+    third_party_card = facts.card_read and not standing.valory
+    chain = CHAIN_NAMES.get(facts.chain_id or 0) or (
+        "an unknown chain" if facts.chain_id is None else f"chain {facts.chain_id}"
+    )
     lines = [
-        f"{escape(report.name) if report.name else 'Unnamed mech'}, "
-        f"{report.address}, on {_chain_name(report.chain_id)}."
+        f"{escape(facts.name) if facts.name else 'Unnamed mech'}, "
+        f"{facts.address}, on {chain}."
     ]
-    third_party_card = not report.is_valory and report.refusal not in _NO_CARD
     if third_party_card:
-        lines.append(_operator_line(report))
-    if report.created_at is not None:
-        lines.append(_created_line(report))
-    if report.tools:
-        lines.append(f"Tools: {', '.join(escape(tool) for tool in report.tools)}.")
-    if report.payment_method is not None:
-        ceiling = (
-            f", up to {report.payment_ceiling} per request"
-            if report.payment_ceiling is not None
-            else ""
+        lines.append(_operator_line(facts))
+    if facts.created_at is not None:
+        days = max((now - facts.created_at).days, 0)
+        lines.append(f"Created {facts.created_at.date().isoformat()}, {days} days ago.")
+    if facts.tools:
+        lines.append(f"Tools: {', '.join(escape(tool) for tool in facts.tools)}.")
+    if facts.record is RecordStatus.FOUND:
+        ceiling = f", up to {price_text} per request" if price_text else ""
+        lines.append(f"Paid with {method}{ceiling}.")
+        lines.append(
+            f"{facts.received_requests or 0} requests received, "
+            f"{facts.self_delivered or 0} delivered by it, "
+            f"{facts.delivered_by_others or 0} delivered by other mechs after it "
+            "missed the deadline; off-chain requests are counted once settled."
         )
-        lines.append(f"Paid with {report.payment_method}{ceiling}.")
-    if report.received_requests is not None:
-        lines.append(_record_line(report))
     if third_party_card:
         lines.append(OLAS_DISCLAIMER)
-    lines.append(_ending(report, cap, offer)[0])
-    return LINE_BREAK.join(lines)
+    ending, offers = _ending(facts, standing, method, price_text)
+    lines.extend(ending)
+    offer = None
+    if offers and price_text is not None and facts.max_delivery_rate is not None:
+        offer = Offer(
+            facts.address, facts.max_delivery_rate, str(facts.payment_type), price_text
+        )
+    return LINE_BREAK.join(lines), offer
 
 
-def _chain_name(chain_id: int) -> str:
-    """Name the chain, or give its id."""
-    return CHAIN_NAMES.get(chain_id, f"chain {chain_id}")
-
-
-def _operator_line(report: MechReport) -> str:
+def _operator_line(facts: MechFacts) -> str:
     """Who runs the mech, with the verification verdict."""
-    if not report.domain_verified:
+    if not facts.operator_verified:
         return "Its operator is not verified."
-    parts: List[str] = []
-    if report.operator_name:
-        parts.append(escape(report.operator_name))
-    if report.domain:
-        parts.append(escape(report.domain))
+    parts = [
+        escape(part)
+        for part in (facts.operator_name, facts.operator_domain)
+        if part is not None
+    ]
     who = ", ".join(parts) or "its operator"
     return f"Run by {who}, verified. {VERIFIED_MEANS}"
 
 
-def _created_line(report: MechReport) -> str:
-    """When the mech was created, and how many other mechs its creator made."""
-    age = f", {report.age_days} days ago" if report.age_days is not None else ""
-    same = (
-        f", created by the same address as {report.same_creator_mechs} other mechs"
-        if report.same_creator_mechs is not None
-        else ""
-    )
-    return f"Created {report.created_at}{age}{same}."
+def _pin_hint(address: str, standing: Standing) -> List[str]:
+    """How to pin or unpin the mech, only when the agent may pin it."""
+    if not standing.pinnable:
+        return []
+    if standing.pinned:
+        return [f"To stop pinning it, reply: unpin {address}"]
+    return [f"To use only this mech, reply: pin {address}"]
 
 
-def _record_line(report: MechReport) -> str:
-    """The mech's delivery record."""
-    return (
-        f"{report.received_requests} requests received, "
-        f"{report.self_delivered or 0} delivered by it, "
-        f"{report.delivered_by_others or 0} delivered by other mechs after it "
-        "missed the deadline; off-chain requests are counted once settled."
-    )
-
-
-def _ending(report: MechReport, cap: Optional[int], offer: bool) -> Tuple[str, bool]:
-    """The verdict, and whether the mech can be approved now."""
-    if report.is_valory:
-        return (
+def _ending(  # pylint: disable=too-many-return-statements
+    facts: MechFacts, standing: Standing, method: str, price_text: Optional[str]
+) -> Tuple[List[str], bool]:
+    """The closing lines from the first verdict that applies, and whether they make an offer."""
+    address = facts.address
+    remove_hint = f"To stop using it, reply: remove {address}"
+    if standing.valory:
+        analytics = ANALYTICS_MECH_URL.format(chain_id=facts.chain_id, address=address)
+        return [
             "This is a Valory mech the agent already uses; its accuracy is at "
-            f"{report.analytics_url}. {VALORY_TERMS}",
-            False,
-        )
-    if report.refusal is not None:
-        return REFUSAL_SENTENCES[report.refusal], False
-    _, allowed = payment_line(report.payment_type_id, cap, report.chain_id)
-    if cap is None or allowed is None:
-        return (
-            f"This agent allows no mech paid with {report.payment_method}, "
-            "so it cannot be approved.",
-            False,
-        )
-    if report.max_delivery_rate is None or report.payment_ceiling is None:
-        return PRICE_UNREADABLE, False
-    if report.max_delivery_rate > cap:
-        return (
-            f"It charges {report.payment_ceiling} per request, above the "
-            f"{allowed} this agent allows, so it cannot be approved.",
-            False,
-        )
-    if report.is_approved and not report.price_raised:
-        return (
-            f"Approved at up to {report.accepted_ceiling} per request. "
-            "Say remove to remove it.",
-            False,
-        )
-    if report.is_approved:
-        raised = (
-            f"Approved at up to {report.accepted_ceiling}; it now charges up to "
-            f"{report.payment_ceiling}, so your agent has stopped using it until "
-            "you approve the new price."
-        )
-        return (f"{raised} {render_consent(report)}" if offer else raised), True
-    return (render_consent(report) if offer else "It can be approved."), True
+            f"{analytics}. {VALORY_TERMS}",
+            *_pin_hint(address, standing),
+        ], False
+    if facts.record is RecordStatus.UNAVAILABLE:
+        return [RECORD_UNAVAILABLE], False
+    if facts.record is RecordStatus.NOT_INDEXED:
+        return [NOT_INDEXED], False
+    if not facts.card_read:
+        return [CARD_UNREAD], False
+    if not facts.self_delivered:
+        return [NEVER_DELIVERED], False
+    _, cap_text = payment_line(facts.payment_type, standing.cap, facts.chain_id)
+    if standing.cap is None or cap_text is None:
+        return [
+            f"This agent allows no mech paid with {method}, so it cannot be approved."
+        ], False
+    rate = facts.max_delivery_rate
+    if rate is None or price_text is None:
+        return [PRICE_UNREADABLE], False
+    if rate > standing.cap:
+        return [
+            f"It charges {price_text} per request, above the {cap_text} this agent "
+            "allows, so it cannot be approved."
+        ], False
+    accepted = standing.accepted_rate
+    if accepted is not None:
+        _, accepted_text = payment_line(facts.payment_type, accepted, facts.chain_id)
+        if rate <= accepted:
+            return [
+                f"Approved at up to {accepted_text} per request.",
+                remove_hint,
+                *_pin_hint(address, standing),
+            ], False
+        return [
+            f"Approved at up to {accepted_text}; it now charges up to {price_text}, "
+            "so your agent has stopped using it until you accept the new price.",
+            accept_line(price_text, address),
+            remove_hint,
+        ], True
+    return [
+        f"Approving accepts up to {price_text} per request. If its operator raises "
+        "the price, your agent stops using this mech until you accept the new "
+        "price. It starts with no track record on your side and earns work "
+        "through normal scoring.",
+        accept_line(price_text, address),
+    ], True

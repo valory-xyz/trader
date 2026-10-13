@@ -22,6 +22,7 @@
 import copy
 import json
 import math
+from datetime import datetime, timezone
 from functools import partial
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set, cast
@@ -73,20 +74,23 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpMethod,
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
-from packages.valory.skills.chatui_abci.mech_report import (
-    MechReport,
-    cap_for,
-    payment_line,
+from packages.valory.skills.chatui_abci.mech_commands import (
+    Command,
+    Verb,
+    addresses_in,
+    normalise,
+    parse_command,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
-    ASK_ALONE,
-    LINE_BREAK,
-    offers_consent,
+    Standing,
+    cap_for,
+    payment_line,
+    payment_type_id,
     render_report,
 )
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
-    PendingApproval,
+    Offer,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -95,17 +99,17 @@ from packages.valory.skills.chatui_abci.models import (
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
-    MECH_INTENT_PROMPT,
     TradingStrategy,
     build_chatui_llm_response_schema,
-    build_mech_intent_schema,
-)
-from packages.valory.skills.chatui_abci.report_requests import (
-    MechReportRequests,
-    addresses_in,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
+from packages.valory.skills.mech_interact_abci.mech_reader import (
+    MechFacts,
+    chain_id_of,
+    read_live_rate,
+    read_mech,
+)
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -136,9 +140,6 @@ LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
 SELECTED_MECHS_FIELD = "selected_mechs"
-MECH_INTENT_FIELD = "intent"
-MECH_INTENT_CONFIRM = "confirm"
-MECH_INTENT_REMOVE = "remove"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -147,6 +148,8 @@ MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
 MECH_PRE_DEPOSIT_EOA_SHORT = "mech_pre_deposit_eoa_short"
 TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
+
+ASK_ONE_AT_A_TIME = "Ask about one mech at a time."
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -158,7 +161,7 @@ AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingS
 _UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 
 
-class HttpHandler(BaseHttpHandler, MechReportRequests):
+class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
 
     def setup(self) -> None:
@@ -275,66 +278,26 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             )
             return
 
+        command = parse_command(user_prompt)
+        if command is not None:
+            self._run_mech_command(command, http_msg, http_dialogue)
+            return
         addresses = addresses_in(user_prompt)
+        if len(addresses) > 1:
+            self._send_mech_reply(http_msg, http_dialogue, ASK_ONE_AT_A_TIME)
+            return
         if addresses:
-            self._with_mech_reports(
-                addresses,
-                partial(self._send_mech_reports, addresses, http_msg, http_dialogue),
+            read_mech(
+                self.context,
+                addresses[0],
+                partial(self._send_mech_report, http_msg, http_dialogue),
             )
             return
 
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
-        if self.shared_state.pending_mech_approval is not None:
-            self._send_mech_intent_request(
-                user_prompt, available_tools, http_msg, http_dialogue
-            )
-            return
         self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
-
-    def _send_mech_reports(
-        self, addresses: List[str], http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> None:
-        """Answer a message naming mechs with their reports, rendered here; no model is asked.
-
-        A consent card, and the offer it holds, go out only when one mech is named.
-
-        :param addresses: the lowercase addresses named, whose reports are fetched.
-        :param http_msg: the HttpMessage instance
-        :param http_dialogue: the HttpDialogue instance
-        """
-        alone = len(addresses) == 1
-        texts: List[str] = []
-        approvable: List[MechReport] = []
-        for address in addresses:
-            report = self.shared_state.mech_reports.get(address)
-            if report is None:
-                texts.append(
-                    f"{address}: its record cannot be read right now; try again later."
-                )
-                continue
-            cap = cap_for(
-                report.payment_type_id, self.context.params.delivery_rate_caps
-            )
-            texts.append(render_report(report, cap, offer=alone))
-            if offers_consent(report, cap):
-                approvable.append(report)
-        self.shared_state.pending_mech_approval = (
-            self._pending_for(approvable[0]) if alone and approvable else None
-        )
-        if not alone and approvable:
-            texts.append(ASK_ALONE)
-        self._send_mech_reply(http_msg, http_dialogue, (LINE_BREAK * 2).join(texts))
-
-    @staticmethod
-    def _pending_for(report: MechReport) -> Optional[PendingApproval]:
-        """The offer the consent card holds for a yes."""
-        if report.max_delivery_rate is None or report.payment_type_id is None:
-            return None
-        return PendingApproval(
-            report.address, report.max_delivery_rate, report.payment_type_id
-        )
 
     def _send_mech_reply(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, text: str
@@ -346,155 +309,121 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             {UPDATED_PARAMS_FIELD: {}, LLM_MESSAGE_FIELD: text},
         )
 
-    def _ceiling_text(self, payment_type_id: str, rate: int) -> str:
-        """Render a rate as the per-request ceiling the user reads."""
-        _, ceiling = payment_line(payment_type_id, rate, self._chain_id or 0)
-        return ceiling if ceiling is not None else str(rate)
-
-    def _send_mech_intent_request(
-        self,
-        user_prompt: str,
-        available_tools: Any,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
+    def _send_mech_report(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
     ) -> None:
-        """Ask the model only what the reply does about the offer waiting; no operator text is sent.
-
-        :param user_prompt: the user's message.
-        :param available_tools: the tools the user may pin, for the config flow if it follows.
-        :param http_msg: the HttpMessage instance
-        :param http_dialogue: the HttpDialogue instance
-        """
-        pending = cast(PendingApproval, self.shared_state.pending_mech_approval)
-        prompt = MECH_INTENT_PROMPT.format(
-            user_prompt=user_prompt,
-            address=pending.address,
-            price=self._ceiling_text(pending.payment_type_id, pending.rate),
+        """Answer with the mech's report; the offer it ends with, or none, replaces the one kept."""
+        address = facts.address
+        standing = Standing(
+            valory=address in self.context.params.valid_mechs,
+            cap=cap_for(
+                payment_type_id(facts.payment_type),
+                self.context.params.delivery_rate_caps,
+            ),
+            accepted_rate=self.shared_state.approved_mech_rates.get(address),
+            pinnable=address in self._get_available_valid_mechs(),
+            pinned=address in self._pinned_mechs(),
         )
-        self._send_llm_request(
-            prompt,
-            build_mech_intent_schema(),
-            self._handle_mech_intent_response,
-            {
-                "user_prompt": user_prompt,
-                "available_tools": available_tools,
-                "http_msg": http_msg,
-                "http_dialogue": http_dialogue,
-            },
-        )
-
-    def _handle_mech_intent_response(
-        self,
-        llm_response_message: SrrMessage,
-        dialogue: Dialogue,  # pylint: disable=unused-argument
-        user_prompt: str,
-        available_tools: Any,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-    ) -> None:
-        """Act on the offer waiting, or drop it and treat the message as a config request.
-
-        :param llm_response_message: the SrrMessage with the model's reading of the reply.
-        :param dialogue: the Dialogue
-        :param user_prompt: the user's message.
-        :param available_tools: the tools the user may pin.
-        :param http_msg: the original HttpMessage
-        :param http_dialogue: the original HttpDialogue
-        """
-        try:
-            genai_response: Any = json.loads(llm_response_message.payload)
-        except _UNPARSEABLE_REPLY:
-            genai_response = None
-        if self._answer_llm_error(genai_response, http_msg, http_dialogue):
-            return
-        pending = self.shared_state.pending_mech_approval
-        self.shared_state.pending_mech_approval = None
-        intent = self._read_intent(genai_response)
-        if pending is None or intent is None:
-            self._send_chatui_prompt(
-                user_prompt, available_tools, http_msg, http_dialogue
-            )
-        elif intent == MECH_INTENT_CONFIRM:
-            self._confirm_pending(pending, http_msg, http_dialogue)
+        text, offer = render_report(facts, standing, datetime.now(timezone.utc))
+        if offer is not None:
+            self.shared_state.record_mech_offer(offer)
         else:
-            self._remove_pending(pending, http_msg, http_dialogue)
+            self.shared_state.mech_offers.pop(address, None)
+        self._send_mech_reply(http_msg, http_dialogue, text)
 
-    @staticmethod
-    def _read_intent(genai_response: Any) -> Optional[str]:
-        """Read a confirm or remove intent from the model's reply; anything else is `None`."""
-        if not isinstance(genai_response, dict):
-            return None
-        try:
-            reply = json.loads(genai_response.get(RESPONSE_FIELD, ""))
-        except _UNPARSEABLE_REPLY:
-            return None
-        intent = reply.get(MECH_INTENT_FIELD) if isinstance(reply, dict) else None
-        return intent if intent in (MECH_INTENT_CONFIRM, MECH_INTENT_REMOVE) else None
-
-    def _confirm_pending(
-        self,
-        pending: PendingApproval,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
+    def _run_mech_command(
+        self, command: Command, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        """Approve the offer at the price shown, once the live price is read and is no higher."""
+        """Carry out a typed mech command and answer with what it did."""
+        if command.verb is Verb.ACCEPT:
+            self._accept_offer(command, http_msg, http_dialogue)
+            return
+        if command.verb is Verb.REMOVE:
+            reply = self._remove_mech(command.address)
+        elif command.verb is Verb.PIN:
+            reply = self._pin_mech(command.address)
+        else:
+            reply = self._unpin_mech(command.address)
+        self._send_mech_reply(http_msg, http_dialogue, reply)
 
-        def on_price(live: Optional[int]) -> None:
-            if live is None:
-                reply = (
-                    f"I can't read what {pending.address} charges right now, so "
-                    "nothing was approved. Try again later."
-                )
-            elif live > pending.rate:
-                report = self.shared_state.mech_reports.get(pending.address)
-                if report is not None:
-                    report.fetched_at = 0
-                reply = (
-                    "The price changed since I showed it: it was "
-                    f"{self._ceiling_text(pending.payment_type_id, pending.rate)}, "
-                    f"it is now {self._ceiling_text(pending.payment_type_id, live)}. "
-                    "Ask me about this mech again if you want to approve the new price."
-                )
-            else:
-                reply = self._approve(pending)
-            self._send_mech_reply(http_msg, http_dialogue, reply)
+    def _price_text(self, offer: Offer, rate: int) -> str:
+        """Render a rate in the offer's asset."""
+        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+        _, text = payment_line(offer.payment_type, rate, chain_id)
+        return text if text is not None else str(rate)
 
-        self._read_max_delivery_rate(pending.address, on_price)
-
-    def _approve(self, pending: PendingApproval) -> str:
-        """Record the approval at the price shown and say so."""
-        again = pending.address in self.shared_state.approved_mechs
-        self.shared_state.approve_mech(pending.address, pending.rate)
-        ceiling = self._ceiling_text(pending.payment_type_id, pending.rate)
-        report = self.shared_state.mech_reports.get(pending.address)
-        if report is not None:
-            report.is_approved = True
-            report.accepted_rate = pending.rate
-            report.accepted_ceiling = ceiling
-        if again:
-            return (
-                f"Approved {pending.address} again at up to {ceiling} per request. "
-                "Your agent uses it again from the next cycle."
+    def _accept_offer(
+        self, command: Command, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Approve at the shown rate once the live rate is read and is no higher."""
+        address = command.address
+        offer = self.shared_state.mech_offers.get(address)
+        if offer is None or normalise(offer.price_text) != command.price_text:
+            self._send_mech_reply(
+                http_msg,
+                http_dialogue,
+                f"There is no offer at that price for {address}. "
+                "Ask about the mech to see its current terms.",
             )
+            return
+
+        def on_rate(live: Optional[int]) -> None:
+            self._send_mech_reply(http_msg, http_dialogue, self._settle(offer, live))
+
+        read_live_rate(self.context, address, on_rate)
+
+    def _settle(self, offer: Offer, live: Optional[int]) -> str:
+        """Record the approval when the live rate is readable and within the offer, and say what happened."""
+        address = offer.address
+        if live is None:
+            return (
+                f"I can't read what {address} charges right now, so nothing was "
+                "approved. Try again later."
+            )
+        self.shared_state.drop_mech_offer(offer)
+        if live > offer.rate:
+            return (
+                f"The listing is out of date: {address} now charges "
+                f"{self._price_text(offer, live)} per request. Ask about this mech "
+                "again to see the new terms."
+            )
+        again = " again" if address in self.shared_state.approved_mech_rates else ""
+        self.shared_state.approve_mech(address, offer.rate)
         return (
-            f"Approved {pending.address} at up to {ceiling} per request. "
+            f"Approved {address}{again} at up to {offer.price_text} per request. "
             "Your agent uses it from the next cycle."
         )
 
-    def _remove_pending(
-        self,
-        pending: PendingApproval,
-        http_msg: HttpMessage,
-        http_dialogue: HttpDialogue,
-    ) -> None:
-        """Remove the offered mech from the approved record and say what changed."""
-        notes = self._remove_approved_mechs([pending.address])
-        report = self.shared_state.mech_reports.get(pending.address)
-        if report is not None:
-            report.is_approved = False
-            report.accepted_rate = None
-            report.accepted_ceiling = None
-        self._send_mech_reply(http_msg, http_dialogue, " ".join(notes))
+    def _remove_mech(self, address: str) -> str:
+        """Remove an approved mech, or say there is nothing to remove."""
+        if address not in self.shared_state.approved_mech_rates:
+            return f"{address} is not approved, so there is nothing to remove."
+        return " ".join(self._remove_approved_mechs([address]))
+
+    def _pinned_mechs(self) -> List[str]:
+        """The pinned mech addresses, lowercase."""
+        pins = self.shared_state.chatui_config.selected_mechs or []
+        return [str(mech).lower() for mech in pins]
+
+    def _pin_mech(self, address: str) -> str:
+        """Pin a mech the agent may use: a discovered Valory mech or an approved one."""
+        if address not in self._get_available_valid_mechs():
+            return "I can only pin a Valory mech the agent uses or a mech you approved."
+        pins = self._pinned_mechs()
+        if address not in pins:
+            self._store_selected_mechs([*pins, address])
+        return f"Pinned {address}. Mech requests now go only to your pinned mechs."
+
+    def _unpin_mech(self, address: str) -> str:
+        """Unpin a mech; an empty pin list means normal mech selection."""
+        pins = self._pinned_mechs()
+        if address not in pins:
+            return f"{address} is not pinned."
+        remaining = [mech for mech in pins if mech != address]
+        self._store_selected_mechs(remaining or None)
+        if remaining:
+            return f"Unpinned {address}."
+        return f"Unpinned {address}. Mech selection is back to normal."
 
     def _send_chatui_prompt(
         self,
@@ -827,9 +756,6 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
                 if address not in removed
             }
         )
-        pending = self.shared_state.pending_mech_approval
-        if pending is not None and pending.address in removed:
-            self.shared_state.pending_mech_approval = None
         notes.append(
             f"Removed {', '.join(removed)}. No new requests go to it from the next cycle."
         )
