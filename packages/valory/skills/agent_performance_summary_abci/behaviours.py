@@ -412,8 +412,10 @@ class FetchPerformanceSummaryBehaviour(
         # Keeping it ``None`` funnels the failure through ``calculate_roi`` →
         # ``final_roi=None`` → metric value = ``NA`` → NA-preservation triggers.
         self._settled_mech_requests_count: Optional[int] = None
-        self._placed_mech_requests_count: int = 0
-        self._unplaced_mech_requests_count: int = 0
+        # ``None`` until a profit series exists to split settled requests into
+        # placed and unplaced.
+        self._placed_mech_requests_count: Optional[int] = None
+        self._unplaced_mech_requests_count: Optional[int] = None
         # Cache for POL to USDC conversion rate
         self._pol_usdc_rate: Optional[float] = None  # Rate: 1 POL = X USDC
         self._pol_usdc_rate_timestamp: float = 0.0
@@ -1449,9 +1451,13 @@ class FetchPerformanceSummaryBehaviour(
             return None
         open_mech_requests = self._open_market_requests or 0
         placed_mech_requests = self._placed_mech_requests_count
-        unplaced_mech_requests = max(
-            total_mech_requests - open_mech_requests - placed_mech_requests,
-            0,
+        # Without a placed count, every settled request would read as unplaced.
+        unplaced_mech_requests = (
+            None
+            if placed_mech_requests is None
+            else max(
+                total_mech_requests - open_mech_requests - placed_mech_requests, 0
+            )
         )
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
@@ -2678,14 +2684,16 @@ class FetchPerformanceSummaryBehaviour(
             profit_over_time
             or self.shared_state.read_existing_performance_summary().profit_over_time
         )
-        self._unplaced_mech_requests_count = (
-            counts_source.unplaced_mech_requests_count if counts_source else 0
-        )
-        self._placed_mech_requests_count = (
-            counts_source.placed_mech_requests_count
-            if counts_source and hasattr(counts_source, "placed_mech_requests_count")
-            else 0
-        )
+        if counts_source is None:
+            self._unplaced_mech_requests_count = None
+            self._placed_mech_requests_count = None
+        else:
+            self._unplaced_mech_requests_count = (
+                counts_source.unplaced_mech_requests_count
+            )
+            self._placed_mech_requests_count = getattr(
+                counts_source, "placed_mech_requests_count", 0
+            )
 
         final_roi, partial_roi = yield from self.calculate_roi()
 

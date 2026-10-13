@@ -381,8 +381,8 @@ class TestFetchPerformanceSummaryBehaviourInit:
         # ``None`` = "unknown this round"; distinguishes fetch failure
         # from a genuine zero. See init comment on the attribute.
         assert b._settled_mech_requests_count is None
-        assert b._placed_mech_requests_count == 0
-        assert b._unplaced_mech_requests_count == 0
+        assert b._placed_mech_requests_count is None
+        assert b._unplaced_mech_requests_count is None
         assert b._pol_usdc_rate is None
         assert b._pol_usdc_rate_timestamp == 0.0
 
@@ -4100,6 +4100,38 @@ class TestCalculatePerformanceMetrics:
         assert result.placed_mech_request_count == 2
         assert result.unplaced_mech_request_count == 3
 
+    def test_unknown_placed_count_reports_no_split(self) -> None:
+        """With no profit series yet, placed and unplaced are unknown, not 0 and all settled."""
+        b = _make_fetch_behaviour(
+            _settled_mech_requests_count=5,
+            _open_market_requests=1,
+            _total_mech_requests=6,
+            _partial_roi=0.0,
+            _placed_mech_requests_count=None,
+            _unplaced_mech_requests_count=None,
+        )
+        ctx, _, synced_data, _ = _mock_context(is_polymarket=False)
+        trader_agent = {
+            "totalTraded": str(WEI_IN_ETH),
+            "totalFees": "0",
+            "totalTradedSettled": str(WEI_IN_ETH),
+            "totalFeesSettled": "0",
+            "totalExpectedPayout": str(WEI_IN_ETH),
+        }
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(b, "_get_total_mech_requests", side_effect=_return_gen(6)),
+            patch.object(b, "_fetch_available_funds", side_effect=_return_gen(10.0)),
+            patch.object(
+                b, "_fetch_ct_held_position_keys", side_effect=_return_gen(set())
+            ),
+        ):
+            result = self._run_gen(b._calculate_performance_metrics(trader_agent))  # type: ignore[arg-type]
+        assert result.placed_mech_request_count is None
+        assert result.unplaced_mech_request_count is None
+        assert result.settled_mech_request_count == 5
+
 
 # ---------------------------------------------------------------------------
 # Tests for _build_profit_over_time_data - routing logic
@@ -5870,7 +5902,7 @@ class TestFetchAgentPerformanceSummaryIntegration:
     @pytest.mark.parametrize(
         "stored_profit, expected",
         [
-            (None, (0, 0)),
+            (None, (None, None)),
             (
                 ProfitOverTimeData(
                     last_updated=1700000000,
@@ -5887,7 +5919,7 @@ class TestFetchAgentPerformanceSummaryIntegration:
     def test_profit_data_none(
         self,
         stored_profit: Optional[ProfitOverTimeData],
-        expected: Tuple[int, int],
+        expected: Tuple[Optional[int], Optional[int]],
     ) -> None:
         """A failed profit build keeps the stored placed/unplaced counts."""
         b = _make_fetch_behaviour()
