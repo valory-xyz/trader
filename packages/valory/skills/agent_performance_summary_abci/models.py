@@ -524,7 +524,13 @@ class AgentPerformanceSummary:
             self.prediction_history = PredictionHistory(**self.prediction_history)
 
         if isinstance(self.profit_over_time, dict):
-            self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
+            # Derived from the subgraph and rebuilt when missing, so a block
+            # this build cannot read (e.g. written by a newer schema) is
+            # dropped rather than degrading the whole summary read.
+            try:
+                self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
+            except (TypeError, ValueError):
+                self.profit_over_time = None
 
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)

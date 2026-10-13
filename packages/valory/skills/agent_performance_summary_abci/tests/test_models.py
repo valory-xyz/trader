@@ -355,6 +355,34 @@ class TestProfitOverTimeData:
         assert pot.last_residual_rebuild_ts == 0
         assert pot.schema_version < 3
 
+    @pytest.mark.parametrize(
+        "profit_over_time",
+        [
+            {"last_updated": 1, "total_days": 0, "field_from_a_newer_build": 1},
+            {"last_updated": 1, "total_days": 1, "data_points": [{"date": "x"}]},
+        ],
+        ids=["unknown_field", "bad_data_point"],
+    )
+    def test_unreadable_series_is_dropped_and_siblings_kept(
+        self, profit_over_time: Dict[str, Any]
+    ) -> None:
+        """A series this build cannot read is dropped without losing the rest of the summary."""
+        summary = AgentPerformanceSummary(
+            **{  # type: ignore[arg-type]
+                "agent_behavior": "observing",
+                "achievements": {"items": {}, "eligible_since": 1790000000},
+                "prediction_history": {"total_predictions": 3},
+                "profit_over_time": profit_over_time,
+            }
+        )
+
+        assert summary.profit_over_time is None
+        assert summary.agent_behavior == "observing"
+        assert summary.achievements is not None
+        assert summary.achievements.eligible_since == 1790000000
+        assert summary.prediction_history is not None
+        assert summary.prediction_history.total_predictions == 3
+
 
 class TestAchievement:
     """Tests for the Achievement dataclass."""
