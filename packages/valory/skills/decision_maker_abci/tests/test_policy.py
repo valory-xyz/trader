@@ -31,6 +31,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
     DataclassEncoder,
     EGreedyPolicy,
     EGreedyPolicyDecoder,
+    PRIOR_ACCURACY,
     argmax,
 )
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
@@ -739,3 +740,92 @@ def test_accuracy_dominates_volume_in_the_ranking(
         },
     )
     assert policy.best_tool == expected_best
+
+
+SEEDED_KEY = tool_key("valory", "superforcaster")
+NEW_KEY = tool_key(MECH, "superforcaster")
+SEEDED_RECORD = AccuracyInfo(accuracy=0.7, pending=0, requests=41614)
+PRIOR_REQUESTS = 10
+
+
+def _seeded_and_new(new_record: AccuracyInfo) -> EGreedyPolicy:
+    """A policy holding a long seeded record and a new third-party record."""
+    return EGreedyPolicy(
+        eps=0.25,
+        consecutive_failures_threshold=2,
+        quarantine_duration=100,
+        accuracy_store={
+            SEEDED_KEY: AccuracyInfo(
+                requests=SEEDED_RECORD.requests,
+                pending=SEEDED_RECORD.pending,
+                accuracy=SEEDED_RECORD.accuracy,
+            ),
+            NEW_KEY: new_record,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "prior, accuracy, requests, expected",
+    [
+        (0, 1.0, 1, 1.0),
+        (0, 0.0, 0, 0.0),
+        (PRIOR_REQUESTS, 1.0, 1, 6 / 11),
+        (PRIOR_REQUESTS, 1.0, 5, 10 / 15),
+        (PRIOR_REQUESTS, 0.75, 20, 20 / 30),
+        (PRIOR_REQUESTS, 0.0, 1, 5 / 11),
+        (PRIOR_REQUESTS, 0.0, 0, PRIOR_ACCURACY),
+        (PRIOR_REQUESTS, 0.7, 41614, (0.7 * 41614 + 5) / 41624),
+    ],
+)
+def test_ranked_accuracy_pulls_short_records_toward_the_prior(
+    monkeypatch: pytest.MonkeyPatch,
+    prior: int,
+    accuracy: float,
+    requests: int,
+    expected: float,
+) -> None:
+    """A record counts `prior` imaginary answers at the prior accuracy; 0 leaves it as is."""
+    monkeypatch.setattr(EGreedyPolicy, "prior_requests", prior)
+    policy = _seeded_and_new(AccuracyInfo(accuracy=accuracy, requests=requests))
+
+    assert policy.ranked_accuracy(policy.accuracy_store[NEW_KEY]) == pytest.approx(
+        expected
+    )
+
+
+@pytest.mark.parametrize("prior, best", [(0, NEW_KEY), (PRIOR_REQUESTS, SEEDED_KEY)])
+def test_one_win_outranks_a_long_record_only_without_a_prior(
+    monkeypatch: pytest.MonkeyPatch, prior: int, best: str
+) -> None:
+    """One resolved win is 100% accuracy; the prior keeps it below a 70% seeded tool."""
+    monkeypatch.setattr(EGreedyPolicy, "prior_requests", prior)
+    policy = _seeded_and_new(AccuracyInfo(accuracy=1.0, requests=1))
+
+    assert policy.best_tool == best
+
+
+@pytest.mark.parametrize("requests, best", [(30, SEEDED_KEY), (50, NEW_KEY)])
+def test_a_better_record_overtakes_once_it_is_long_enough(
+    monkeypatch: pytest.MonkeyPatch, requests: int, best: str
+) -> None:
+    """At 75% a new tool ranks (0.75n + 5) / (n + 10): below 70% at 30 answers, above at 50."""
+    monkeypatch.setattr(EGreedyPolicy, "prior_requests", PRIOR_REQUESTS)
+    policy = _seeded_and_new(AccuracyInfo(accuracy=0.75, requests=requests))
+
+    assert policy.best_tool == best
+
+
+def test_the_prior_is_not_part_of_the_stored_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stored policies and payloads keep their fields, so older stores still load."""
+    monkeypatch.setattr(EGreedyPolicy, "prior_requests", PRIOR_REQUESTS)
+    policy = _seeded_and_new(AccuracyInfo(accuracy=1.0, requests=1))
+
+    stored = json.dumps(policy, cls=DataclassEncoder)
+    restored = EGreedyPolicy.deserialize(stored)
+
+    assert "prior_requests" not in json.loads(stored)
+    assert isinstance(restored, EGreedyPolicy)
+    assert restored.best_tool == SEEDED_KEY

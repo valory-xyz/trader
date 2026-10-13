@@ -22,7 +22,10 @@
 import os
 from pathlib import Path
 
+import pytest
 from hypothesis import settings
+
+from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
 
 # pylint: skip-file
 
@@ -31,3 +34,9 @@ CI = "CI"
 PACKAGE_DIR = Path(__file__).parent.parent
 settings.register_profile(CI, deadline=5000)
 profile_name = ("default", "CI")[bool(os.getenv("CI"))]
+
+
+@pytest.fixture(autouse=True)
+def _rank_by_accuracy_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start every test with no ranking prior and undo any params that set one."""
+    monkeypatch.setattr(EGreedyPolicy, "prior_requests", 0)
