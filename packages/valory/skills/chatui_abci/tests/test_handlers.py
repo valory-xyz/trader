@@ -20,14 +20,18 @@
 """Tests for chatui_abci/handlers.py."""
 
 import json
+import pickle  # nosec
+import time
 from dataclasses import asdict
 from enum import Enum
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
     update_activity_goal,
 )
@@ -53,8 +57,10 @@ from packages.valory.skills.chatui_abci.handlers import (
     UPDATED_PARAMS_FIELD,
 )
 from packages.valory.skills.chatui_abci.mech_report import MechReport, Refusal
+from packages.valory.skills.chatui_abci.mech_templates import ASK_ALONE
 from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
+    PendingApproval,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
     WITHDRAWAL_STATE_COMPLETE,
@@ -64,6 +70,7 @@ from packages.valory.skills.chatui_abci.models import (
 )
 from packages.valory.skills.chatui_abci.prompts import (
     FieldsThatCanBeRemoved,
+    MechIntent,
     TradingStrategy,
 )
 
@@ -153,6 +160,8 @@ def _make_handler(
         rates.setdefault(mech, NATIVE_RATE)
     shared_state.approved_mech_rates = rates
     shared_state.approved_mechs = list(rates)
+    shared_state.mech_reports = {}
+    shared_state.pending_mech_approval = None
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )
@@ -2867,37 +2876,72 @@ class TestAnEmptyMechPreDepositIsExplained:
 # ---------------------------------------------------------------------------
 
 THIRD_PARTY = "0x" + "b0" * 20
+OTHER_MECH = "0x" + "e0" * 20
 VALORY_PINNABLE = "0x" + "a0" * 20
+PRICE_NONCE = "price-nonce"
+STATE = ContractApiMessage.Performative.STATE
+ERROR = ContractApiMessage.Performative.ERROR
+CONSENT_CARD = (
+    f"Approving accepts up to 0.01 xDAI per request for {THIRD_PARTY}. If its "
+    "operator raises the price, your agent stops using this mech until you "
+    "approve the new price. It starts with no track record on your side and "
+    "earns work through normal scoring. Reply to confirm."
+)
 
 
 def _report(address: str = THIRD_PARTY, **fields: Any) -> MechReport:
-    """A report the chat has shown, priced at 0.01 xDAI unless said otherwise."""
-    priced: Dict[str, Any] = dict(
+    """A fresh, approvable report priced at 0.01 xDAI unless said otherwise."""
+    facts: Dict[str, Any] = dict(
         max_delivery_rate=NATIVE_RATE,
         payment_type_id=NATIVE_TYPE_ID,
         payment_method="xDAI",
         payment_ceiling="0.01 xDAI",
+        name="Bob Mech",
+        operator_name="Bob Labs",
+        self_delivered=5,
     )
-    priced.update(fields)
-    return MechReport(address=address, chain_id=100, fetched_at=1, **priced)
+    facts.update(fields)
+    return MechReport(
+        address=address, chain_id=100, fetched_at=int(time.time()), **facts
+    )
+
+
+def _pending(rate: int = NATIVE_RATE) -> PendingApproval:
+    """The offer the chat holds for a yes on the third-party mech."""
+    return PendingApproval(THIRD_PARTY, rate, NATIVE_TYPE_ID)
 
 
 def _approval_handler(
     reports: Optional[List[MechReport]] = None,
     approved: Optional[Dict[str, int]] = None,
-    pending: Optional[str] = None,
+    pending: Optional[PendingApproval] = None,
     pin: Optional[List[str]] = None,
     caps: Optional[Dict[Any, int]] = None,
 ) -> _TestableHttpHandler:
-    """A handler whose shared state holds shown reports and the approved rates."""
+    """A handler with shown reports, the approved record and mocked connections.
+
+    The model connection and the ledger connection are the boundaries: replies
+    are delivered through the callbacks the handler registers, as the AEA does.
+    """
     handler = _make_handler(
         current_config=ChatuiConfig(selected_mechs=pin),
         approved_rates=approved or {},
         delivery_rate_caps=caps,
     )
+    handler.context.params.mech_chain_id = "gnosis"
+    handler.context.params.default_activity_goal = 10
+    handler.context.requests.request_id_to_callback = {}
+    dialogue = MagicMock()
+    dialogue.dialogue_label.dialogue_reference = (PRICE_NONCE, "")
+    handler.context.contract_api_dialogues.create.return_value = (MagicMock(), dialogue)
+    handler.context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
+    handler._send_message = MagicMock()  # type: ignore[method-assign]
+    handler._send_ok_response = MagicMock()
+    handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
     state = handler.shared_state
     state.mech_reports = {report.address: report for report in reports or []}
     state.pending_mech_approval = pending
+    state.read_activity_goal_from_disk.return_value = None
 
     def _set(rates: Dict[str, int]) -> None:
         state.approved_mech_rates = dict(rates)
@@ -2911,238 +2955,344 @@ def _approval_handler(
     return handler
 
 
-CONSENT_LINE = (
-    f"Approving accepts up to 0.01 xDAI per request for {THIRD_PARTY}. If its "
-    "operator raises it, your agent stops using this mech until you approve the "
-    "new price. Reply to confirm."
-)
+def _prompt(handler: _TestableHttpHandler, text: str) -> None:
+    """POST a chat message."""
+    http_msg = MagicMock()
+    http_msg.body = json.dumps({"prompt": text}).encode()
+    handler._handle_chatui_prompt(http_msg, MagicMock())
 
 
-class TestRequestApproval:
-    """approve_mech puts a shown, approvable, affordable mech up for confirmation."""
+def _reply(handler: _TestableHttpHandler) -> str:
+    """The text of the one OK response sent."""
+    handler._send_ok_response.assert_called_once()
+    body = handler._send_ok_response.call_args[0][2]
+    assert body[UPDATED_PARAMS_FIELD] == {}
+    return body[LLM_MESSAGE_FIELD]
 
-    def test_shown_mech_waits_for_confirmation_with_the_price_rendered_by_code(
-        self,
-    ) -> None:
-        """The address is held as pending and the price line comes from the report."""
+
+def _llm_prompt(handler: _TestableHttpHandler, call: int = 0) -> Dict[str, Any]:
+    """The payload of the call-th request sent to the model connection."""
+    payload = handler.context.srr_dialogues.create.call_args_list[call].kwargs[
+        "payload"
+    ]
+    return json.loads(payload)
+
+
+def _answer_llm(handler: _TestableHttpHandler, payload: Any) -> None:
+    """Deliver the model connection's reply to the callback the handler registered."""
+    _, dialogue, callback, kwargs = handler._send_message.call_args[0]  # type: ignore[attr-defined]
+    raw = payload if isinstance(payload, str) else json.dumps(payload)
+    callback(SimpleNamespace(payload=raw), dialogue, **kwargs)
+
+
+def _answer_intent(handler: _TestableHttpHandler, intent: str) -> None:
+    """Deliver the model's reading of the user's reply."""
+    _answer_llm(handler, {"response": json.dumps({"intent": intent})})
+
+
+def _answer_price(
+    handler: _TestableHttpHandler, rate: Any, performative: Any = STATE
+) -> None:
+    """Deliver the ledger connection's reply to the live price read."""
+    callback = handler.context.requests.request_id_to_callback.pop(PRICE_NONCE)
+    body = {"max_delivery_rate": rate} if rate is not None else {}
+    callback(
+        SimpleNamespace(performative=performative, state=SimpleNamespace(body=body)),
+        None,
+    )
+
+
+class TestAnAddressTurn:
+    """A message naming a mech is answered from the report, with no model call."""
+
+    def test_an_approvable_mech_gets_its_card_and_is_held_for_a_yes(self) -> None:
+        """The reply is the rendered report; the offer stores the address and the price shown."""
         handler = _approval_handler([_report()])
-        override, notes = handler._apply_mech_action(
-            {"approve_mech": THIRD_PARTY.upper().replace("0X", "0x")},
-            f"Approve {THIRD_PARTY}?",
-        )
-        assert override is None
-        assert handler.shared_state.pending_mech_approval == THIRD_PARTY
+        _prompt(handler, f"what is {THIRD_PARTY.upper().replace('0X', '0x')}?")
+        reply = _reply(handler)
+        assert reply.startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.<br>")
+        assert reply.endswith(CONSENT_CARD)
+        assert handler.shared_state.pending_mech_approval == _pending()
+        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
         handler.shared_state.approve_mech.assert_not_called()
-        assert notes == [CONSENT_LINE]
 
     @pytest.mark.parametrize(
-        "reports, approved, expected",
+        "report, approved, ending",
         [
-            ([], {}, "I can only approve a mech I have shown you"),
-            ([_report(is_valory=True)], {}, "is a Valory mech"),
-            ([_report()], {THIRD_PARTY: NATIVE_RATE}, "is already approved"),
-            ([_report(refusal=Refusal.NEVER_DELIVERED)], {}, "never delivered"),
+            (_report(is_valory=True, analytics_url="https://a"), {}, "Valory mech"),
+            (_report(refusal=Refusal.NEVER_DELIVERED), {}, "never delivered"),
             (
-                [_report(refusal=Refusal.MANIFEST_UNREADABLE)],
+                _report(refusal=Refusal.MANIFEST_UNREADABLE),
                 {},
-                "can't read its description",
+                "can't read this mech's description",
             ),
-            ([_report(max_delivery_rate=None)], {}, "can't read what"),
+            (_report(max_delivery_rate=None), {}, "can't read what this mech charges"),
             (
-                [
-                    _report(
-                        payment_ceiling=None, payment_method="a Nevermined subscription"
-                    )
-                ],
+                _report(max_delivery_rate=NATIVE_RATE * 2, payment_ceiling="0.02 xDAI"),
                 {},
-                "can't read what",
+                "above the 0.01 xDAI this agent allows",
+            ),
+            (
+                _report(
+                    is_approved=True,
+                    accepted_rate=NATIVE_RATE,
+                    accepted_ceiling="0.01 xDAI",
+                ),
+                {THIRD_PARTY: NATIVE_RATE},
+                "Say remove to remove it.",
             ),
         ],
     )
-    def test_unshown_valory_approved_refused_or_unpriced_mechs_are_turned_down(
-        self, reports: List[MechReport], approved: Dict[str, int], expected: str
+    def test_a_mech_that_cannot_be_approved_now_holds_nothing(
+        self, report: MechReport, approved: Dict[str, int], ending: str
     ) -> None:
-        """The LLM's message is replaced and nothing is held or written."""
-        handler = _approval_handler(reports, approved)
-        override, _ = handler._apply_mech_action(
-            {"approve_mech": THIRD_PARTY}, "Confirm approval?"
-        )
-        assert override is not None and expected in override
+        """Valory, refused, unpriced, over-cap and already-approved mechs get no card."""
+        handler = _approval_handler([report], approved=approved, pending=_pending())
+        _prompt(handler, f"tell me about {THIRD_PARTY}")
+        reply = _reply(handler)
+        assert ending in reply
+        assert "Approving accepts" not in reply
         assert handler.shared_state.pending_mech_approval is None
-        handler.shared_state.approve_mech.assert_not_called()
+        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
 
-    def test_a_mech_above_the_asset_cap_is_refused_with_both_prices(self) -> None:
-        """The agent's cap, not the operator's price, bounds what can be approved."""
+    def test_an_approved_mech_that_raised_its_price_is_offered_again(self) -> None:
+        """The new price is what a yes would accept."""
         handler = _approval_handler(
             [
                 _report(
-                    max_delivery_rate=30000,
-                    payment_type_id=USDC_TYPE_ID,
-                    payment_method="USDC",
-                    payment_ceiling="0.03 USDC",
+                    is_approved=True,
+                    accepted_rate=NATIVE_RATE // 2,
+                    accepted_ceiling="0.005 xDAI",
                 )
-            ]
-        )
-        override, _ = handler._apply_mech_action({"approve_mech": THIRD_PARTY}, "")
-        assert override == (
-            f"I can't approve {THIRD_PARTY}: it charges 0.03 USDC per request, "
-            "above the 0.01 USDC this agent allows."
-        )
-        assert handler.shared_state.pending_mech_approval is None
-
-    def test_a_mech_at_the_cap_is_approvable(self) -> None:
-        """The cap is inclusive."""
-        handler = _approval_handler([_report(max_delivery_rate=NATIVE_RATE)])
-        override, _ = handler._apply_mech_action({"approve_mech": THIRD_PARTY}, "")
-        assert override is None
-        assert handler.shared_state.pending_mech_approval == THIRD_PARTY
-
-    def test_an_asset_without_a_cap_is_refused(self) -> None:
-        """No cap for the asset means no mech paid in it can be approved."""
-        handler = _approval_handler([_report()], caps={_PaymentType.USDC: USDC_RATE})
-        override, _ = handler._apply_mech_action({"approve_mech": THIRD_PARTY}, "")
-        assert override == (
-            f"I can't approve {THIRD_PARTY}: this agent allows no mech paid with xDAI."
-        )
-
-    def test_an_approved_mech_that_raised_its_price_can_be_approved_again(
-        self,
-    ) -> None:
-        """A raise within the cap goes through the same pending step with the new price."""
-        handler = _approval_handler(
-            [_report(max_delivery_rate=NATIVE_RATE, accepted_rate=NATIVE_RATE // 2)],
+            ],
             approved={THIRD_PARTY: NATIVE_RATE // 2},
         )
-        override, notes = handler._apply_mech_action({"approve_mech": THIRD_PARTY}, "")
-        assert override is None
-        assert handler.shared_state.pending_mech_approval == THIRD_PARTY
-        assert notes == [CONSENT_LINE]
+        _prompt(handler, THIRD_PARTY)
+        assert _reply(handler).endswith(CONSENT_CARD)
+        assert handler.shared_state.pending_mech_approval == _pending(NATIVE_RATE)
+
+    def test_two_approvable_mechs_get_reports_but_no_card(self) -> None:
+        """A yes could not name one, so nothing is offered and the user is told how to."""
+        handler = _approval_handler([_report(), _report(OTHER_MECH)])
+        _prompt(handler, f"compare {THIRD_PARTY} with {OTHER_MECH}")
+        reply = _reply(handler)
+        assert "Approving accepts" not in reply
+        assert reply.endswith(f"<br><br>{ASK_ALONE}")
+        assert reply.count("It can be approved.") == 2
+        assert reply.index(THIRD_PARTY) < reply.index(OTHER_MECH)
+        assert handler.shared_state.pending_mech_approval is None
+
+    def test_two_unapprovable_mechs_are_not_told_to_ask_alone(self) -> None:
+        """The closing line appears only when one of them could be approved."""
+        handler = _approval_handler(
+            [
+                _report(refusal=Refusal.NEVER_DELIVERED),
+                _report(OTHER_MECH, max_delivery_rate=None),
+            ]
+        )
+        _prompt(handler, f"{THIRD_PARTY} {OTHER_MECH}")
+        reply = _reply(handler)
+        assert ASK_ALONE not in reply
+        assert handler.shared_state.pending_mech_approval is None
+
+    def test_an_address_turn_waits_for_the_reports(self) -> None:
+        """Nothing is answered until every named mech has a fresh report."""
+        handler = _approval_handler()
+        handler._fetch_mech_record = MagicMock()  # type: ignore[method-assign]
+        _prompt(handler, THIRD_PARTY)
+        handler._send_ok_response.assert_not_called()
+        address, one_done = handler._fetch_mech_record.call_args[0]
+        assert address == THIRD_PARTY
+        handler.shared_state.mech_reports[THIRD_PARTY] = _report()
+        one_done()
+        assert _reply(handler).endswith(CONSENT_CARD)
 
 
-class TestConfirmApproval:
-    """confirm_approval writes only the pending, still approvable mech, at the price shown."""
+class TestAPendingTurn:
+    """With an offer waiting, the model reads only the intent of the reply."""
 
-    def test_confirmation_approves_the_pending_mech_at_its_shown_rate(self) -> None:
-        """The approved file gets the address and the rate from the report; pending clears."""
-        other = "0x" + "c0" * 20
+    def test_the_intent_prompt_carries_the_offer_and_no_operator_text(self) -> None:
+        """One model call, with the pending address and price, under the MechIntent schema."""
+        handler = _approval_handler(
+            [_report(operator_name="Bob Labs")], pending=_pending()
+        )
+        _prompt(handler, "yes please")
+        payload = _llm_prompt(handler)
+        assert "yes please" in payload["prompt"]
+        assert THIRD_PARTY in payload["prompt"]
+        assert "0.01 xDAI" in payload["prompt"]
+        assert "Bob" not in payload["prompt"]
+        assert (
+            pickle.loads(bytes.fromhex(payload["schema"]["class"])) is MechIntent
+        )  # nosec
+        handler._send_ok_response.assert_not_called()
+
+    def test_a_confirmed_offer_is_written_at_the_price_shown(self) -> None:
+        """A live price no higher than the one shown writes the shown rate and updates the report."""
         report = _report()
-        handler = _approval_handler([report], approved={other: 1}, pending=THIRD_PARTY)
-        _, notes = handler._apply_mech_action({"confirm_approval": True}, "Done.")
+        handler = _approval_handler(
+            [report], approved={OTHER_MECH: 1}, pending=_pending()
+        )
+        _prompt(handler, "yes")
+        _answer_intent(handler, "confirm")
+        handler.shared_state.approve_mech.assert_not_called()
+        _answer_price(handler, NATIVE_RATE - 1)
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE
         )
         assert handler.shared_state.approved_mech_rates == {
-            other: 1,
+            OTHER_MECH: 1,
             THIRD_PARTY: NATIVE_RATE,
         }
-        assert handler.shared_state.pending_mech_approval is None
-        assert notes == [
-            f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. It starts with "
-            "no track record on your side and earns work through normal scoring, "
-            "from the next cycle."
-        ]
-        assert report.is_approved and report.accepted_rate == NATIVE_RATE
-        assert report.accepted_ceiling == "0.01 xDAI"
-
-    def test_re_approval_records_the_new_rate(self) -> None:
-        """After a raise, confirming again overwrites the accepted rate."""
-        handler = _approval_handler(
-            [_report(accepted_rate=NATIVE_RATE // 2)],
-            approved={THIRD_PARTY: NATIVE_RATE // 2},
-            pending=THIRD_PARTY,
+        assert _reply(handler) == (
+            f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. "
+            "Your agent uses it from the next cycle."
         )
-        _, notes = handler._apply_mech_action({"confirm_approval": True}, "")
+        assert (report.is_approved, report.accepted_rate, report.accepted_ceiling) == (
+            True,
+            NATIVE_RATE,
+            "0.01 xDAI",
+        )
+        assert handler.shared_state.pending_mech_approval is None
+
+    def test_a_re_approval_says_again(self) -> None:
+        """Confirming a raised price overwrites the accepted rate."""
+        handler = _approval_handler(
+            [_report()], approved={THIRD_PARTY: NATIVE_RATE // 2}, pending=_pending()
+        )
+        _prompt(handler, "ok")
+        _answer_intent(handler, "confirm")
+        _answer_price(handler, NATIVE_RATE)
         assert handler.shared_state.approved_mech_rates == {THIRD_PARTY: NATIVE_RATE}
-        assert notes[0].startswith(f"Approved {THIRD_PARTY} again at up to 0.01 xDAI")
+        assert _reply(handler).startswith(
+            f"Approved {THIRD_PARTY} again at up to 0.01 xDAI"
+        )
+
+    def test_a_higher_live_price_writes_nothing_and_shows_both(self) -> None:
+        """What the user saw is not what the mech charges now, so nothing is recorded."""
+        report = _report()
+        handler = _approval_handler([report], pending=_pending())
+        _prompt(handler, "yes")
+        _answer_intent(handler, "confirm")
+        _answer_price(handler, NATIVE_RATE * 2)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == (
+            "The price changed since I showed it: it was 0.01 xDAI, it is now 0.02 xDAI. "
+            "Ask me about this mech again if you want to approve the new price."
+        )
+        assert report.fetched_at == 0
+        assert handler.shared_state.pending_mech_approval is None
 
     @pytest.mark.parametrize(
-        "reports, pending, expected",
+        "rate, performative", [(None, STATE), (NATIVE_RATE, ERROR), ("soon", STATE)]
+    )
+    def test_an_unreadable_live_price_writes_nothing(
+        self, rate: Any, performative: Any
+    ) -> None:
+        """No price, no approval."""
+        handler = _approval_handler([_report()], pending=_pending())
+        _prompt(handler, "yes")
+        _answer_intent(handler, "confirm")
+        _answer_price(handler, rate, performative)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert "nothing was approved" in _reply(handler)
+
+    def test_remove_drops_the_approval_and_the_pin(self) -> None:
+        """The record, the pin and the cached report all forget the mech."""
+        report = _report(is_approved=True, accepted_rate=1, accepted_ceiling="x")
+        handler = _approval_handler(
+            [report],
+            approved={THIRD_PARTY: 1, OTHER_MECH: 2},
+            pending=_pending(),
+            pin=[VALORY_PINNABLE, THIRD_PARTY],
+        )
+        _prompt(handler, "remove it")
+        _answer_intent(handler, "remove")
+        handler.shared_state.set_approved_mech_rates.assert_called_once_with(
+            {OTHER_MECH: 2}
+        )
+        handler._store_selected_mechs.assert_called_once_with([VALORY_PINNABLE])  # type: ignore[attr-defined]
+        reply = _reply(handler)
+        assert f"Removed {THIRD_PARTY}." in reply and "other pins stay" in reply
+        assert (report.is_approved, report.accepted_rate, report.accepted_ceiling) == (
+            False,
+            None,
+            None,
+        )
+        assert handler.shared_state.pending_mech_approval is None
+
+    def test_remove_of_a_mech_never_approved_says_so(self) -> None:
+        """Nothing is written for an offer that was never confirmed."""
+        handler = _approval_handler([_report()], pending=_pending())
+        _prompt(handler, "no, remove it")
+        _answer_intent(handler, "remove")
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        assert _reply(handler) == f"Not approved, so nothing to remove: {THIRD_PARTY}."
+
+    @pytest.mark.parametrize(
+        "payload",
         [
-            ([_report()], None, "There is no approval waiting"),
-            ([], THIRD_PARTY, "can't approve"),
-            ([_report(refusal=Refusal.NEVER_DELIVERED)], THIRD_PARTY, "can't approve"),
-            ([_report(max_delivery_rate=None)], THIRD_PARTY, "can't approve"),
+            {"response": json.dumps({"intent": "other"})},
+            {"response": json.dumps({"intent": "approve"})},
+            {"response": "not json"},
+            {"response": json.dumps(["confirm"])},
+            "garbage",
         ],
     )
-    def test_nothing_is_written_without_a_valid_pending_mech(
-        self, reports: List[MechReport], pending: Optional[str], expected: str
+    def test_anything_else_drops_the_offer_and_runs_the_config_flow(
+        self, payload: Any
     ) -> None:
-        """A yes with nothing pending, or for a mech no longer approvable, writes nothing."""
-        handler = _approval_handler(reports, pending=pending)
-        _, notes = handler._apply_mech_action({"confirm_approval": True}, "")
-        handler.shared_state.approve_mech.assert_not_called()
-        assert expected in notes[0]
-
-    def test_a_new_approval_request_takes_precedence_over_a_confirmation(self) -> None:
-        """Asking to approve another mech never confirms the pending one."""
-        other = "0x" + "e0" * 20
-        handler = _approval_handler([_report(), _report(other)], pending=THIRD_PARTY)
-        handler._apply_mech_action(
-            {"approve_mech": other, "confirm_approval": True}, ""
-        )
-        handler.shared_state.approve_mech.assert_not_called()
-        assert handler.shared_state.pending_mech_approval == other
-
-    @pytest.mark.parametrize("action", [{}, {"confirm_approval": False}, None, "yes"])
-    def test_a_turn_about_something_else_drops_the_pending_approval(
-        self, action: Any
-    ) -> None:
-        """A later stray confirmation can then approve nothing."""
-        handler = _approval_handler([_report()], pending=THIRD_PARTY)
-        handler._apply_mech_action(action, "Your strategy is Balanced.")
+        """The same message then goes to the config prompt; no approval is written."""
+        handler = _approval_handler([_report()], pending=_pending())
+        _prompt(handler, "make me risky")
+        _answer_llm(handler, payload)
         assert handler.shared_state.pending_mech_approval is None
         handler.shared_state.approve_mech.assert_not_called()
+        assert handler._send_message.call_count == 2  # type: ignore[attr-defined]
+        config_prompt = _llm_prompt(handler, 1)["prompt"]
+        assert 'User prompt: "make me risky"' in config_prompt
+        assert "Trading strategy" in config_prompt
+        handler._send_ok_response.assert_not_called()
+
+    def test_a_model_error_keeps_the_offer(self) -> None:
+        """The user's reply was never read, so they can repeat it."""
+        handler = _approval_handler([_report()], pending=_pending())
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+        _prompt(handler, "yes")
+        _answer_llm(handler, {"error": "boom"})
+        handler._handle_chatui_llm_error.assert_called_once()
+        assert handler.shared_state.pending_mech_approval == _pending()
+        handler.shared_state.approve_mech.assert_not_called()
 
 
-class TestRemoveApprovedMechs:
-    """Removing an approved mech also unpins it."""
+class TestAPlainTurn:
+    """Without an address or an offer, the message is a config request."""
 
-    def test_removing_a_pinned_mech_unpins_it_and_falls_back(self) -> None:
-        """With no other pin left, selection goes back to normal."""
-        handler = _approval_handler(approved={THIRD_PARTY: 1}, pin=[THIRD_PARTY])
-        _, notes = handler._apply_mech_action(
-            {"remove_approved_mechs": [THIRD_PARTY.upper().replace("0X", "0x")]}, ""
-        )
-        handler.shared_state.set_approved_mech_rates.assert_called_once_with({})
-        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
-        assert any("back to normal" in note for note in notes)
-
-    def test_other_pins_and_approvals_stay(self) -> None:
-        """Only the removed mech leaves the pin and the record."""
-        other = "0x" + "e0" * 20
-        handler = _approval_handler(
-            approved={THIRD_PARTY: 1, other: 2}, pin=[VALORY_PINNABLE, THIRD_PARTY]
-        )
-        _, notes = handler._apply_mech_action(
-            {"remove_approved_mechs": [THIRD_PARTY]}, ""
-        )
-        handler.shared_state.set_approved_mech_rates.assert_called_once_with({other: 2})
-        handler._store_selected_mechs.assert_called_once_with([VALORY_PINNABLE])  # type: ignore[attr-defined]
-        assert any("other pins stay" in note for note in notes)
-
-    def test_removing_an_unpinned_mech_leaves_the_pin_alone(self) -> None:
-        """No pin change when the removed mech was not pinned; pending is cleared."""
-        handler = _approval_handler(approved={THIRD_PARTY: 1}, pending=THIRD_PARTY)
-        handler._apply_mech_action({"remove_approved_mechs": [THIRD_PARTY]}, "")
-        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+    def test_the_config_prompt_is_asked_once(self) -> None:
+        """One model call, under the config schema, with no mech section."""
+        handler = _approval_handler([_report(operator_name="Bob Labs")])
+        _prompt(handler, "make me risky")
+        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
+        payload = _llm_prompt(handler)
+        assert 'User prompt: "make me risky"' in payload["prompt"]
+        assert "Bob Labs" not in payload["prompt"]
+        assert "Mechs:" not in payload["prompt"]
         assert handler.shared_state.pending_mech_approval is None
 
-    def test_removing_an_unknown_mech_says_so(self) -> None:
-        """Nothing is written for an address that was never approved."""
-        handler = _approval_handler(approved={})
-        _, notes = handler._apply_mech_action(
-            {"remove_approved_mechs": [THIRD_PARTY]}, ""
+    def test_the_config_flow_does_not_touch_the_record(self) -> None:
+        """A config reply writes no approval whatever it says."""
+        handler = _approval_handler([_report()])
+        _prompt(handler, "approve it")
+        _answer_llm(
+            handler,
+            {
+                "response": json.dumps(
+                    {"message": "ok", "mech_action": {"confirm_approval": True}}
+                )
+            },
         )
-        handler.shared_state.set_approved_mech_rates.assert_not_called()
-        assert notes == [f"Not approved, so nothing to remove: {THIRD_PARTY}."]
-
-
-@pytest.mark.parametrize("action", [None, "approve", ["x"]])
-def test_a_missing_or_malformed_action_changes_nothing(action: Any) -> None:
-    """Only a mech_action object is acted on."""
-    handler = _approval_handler([_report()])
-    assert handler._apply_mech_action(action, "hi") == (None, [])
-    assert handler.shared_state.pending_mech_approval is None
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "ok"
 
 
 class TestPinnableMechs:
@@ -3168,41 +3318,3 @@ class TestPinnableMechs:
             approved_mechs=[],
         )
         assert handler._get_available_valid_mechs() == {VALORY_PINNABLE}
-
-
-def test_the_prompt_waits_for_reports_on_named_addresses() -> None:
-    """Addresses in the user's message are reported on before the LLM is asked."""
-    handler = _make_handler()
-    handler._with_mech_reports = MagicMock()  # type: ignore[method-assign]
-    handler._send_chatui_prompt = MagicMock()  # type: ignore[method-assign]
-    http_msg = MagicMock()
-    http_msg.body = json.dumps({"prompt": f"what is {THIRD_PARTY}?"}).encode()
-
-    handler._handle_chatui_prompt(http_msg, MagicMock())
-
-    addresses, then = handler._with_mech_reports.call_args[0]
-    assert addresses == [THIRD_PARTY]
-    handler._send_chatui_prompt.assert_not_called()  # type: ignore[attr-defined]
-    then()
-    handler._send_chatui_prompt.assert_called_once()  # type: ignore[attr-defined]
-
-
-def test_the_prompt_carries_reports_approvals_and_the_pending_mech() -> None:
-    """The LLM sees the shown reports, the approved list and what awaits a yes."""
-    handler = _make_handler(approved_mechs=[VALORY_PINNABLE])
-    handler.shared_state.mech_reports = {
-        THIRD_PARTY: _report(operator_name="Bob Labs", domain="bobmech.com")
-    }
-    handler.shared_state.pending_mech_approval = THIRD_PARTY
-    handler.shared_state.read_activity_goal_from_disk.return_value = None
-    handler.context.params.default_activity_goal = 10
-    handler.shared_state.chatui_config.activity_goal = None
-    handler._send_chatui_llm_request = MagicMock()  # type: ignore[method-assign]
-
-    handler._send_chatui_prompt("hi", AVAILABLE_TOOLS, MagicMock(), MagicMock())
-
-    prompt = handler._send_chatui_llm_request.call_args[1]["prompt"]  # type: ignore[attr-defined]
-    assert '"operator_name": "Bob Labs"' in prompt
-    assert f"Mechs the user approved for this agent: {VALORY_PINNABLE}" in prompt
-    assert f"Approval waiting for the user's confirmation: {THIRD_PARTY}" in prompt
-    assert "Never suggest, list or recommend a mech the user did not name." in prompt

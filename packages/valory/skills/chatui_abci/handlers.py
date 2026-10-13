@@ -24,7 +24,7 @@ import json
 import math
 from functools import partial
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -74,12 +74,19 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.mech_report import (
-    Refusal,
+    MechReport,
     cap_for,
     payment_line,
 )
+from packages.valory.skills.chatui_abci.mech_templates import (
+    ASK_ALONE,
+    LINE_BREAK,
+    offers_consent,
+    render_report,
+)
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
+    PendingApproval,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -88,8 +95,10 @@ from packages.valory.skills.chatui_abci.models import (
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     FieldsThatCanBeRemoved,
+    MECH_INTENT_PROMPT,
     TradingStrategy,
     build_chatui_llm_response_schema,
+    build_mech_intent_schema,
 )
 from packages.valory.skills.chatui_abci.report_requests import (
     MechReportRequests,
@@ -122,21 +131,14 @@ PROMPT_FIELD = "prompt"
 RESPONSE_FIELD = "response"
 MESSAGE_FIELD = "message"
 UPDATED_CONFIG_FIELD = "updated_agent_config"
-MECH_ACTION_FIELD = "mech_action"
 UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
 SELECTED_MECHS_FIELD = "selected_mechs"
-APPROVE_MECH_FIELD = "approve_mech"
-CONFIRM_APPROVAL_FIELD = "confirm_approval"
-REMOVE_APPROVED_MECHS_FIELD = "remove_approved_mechs"
-REFUSAL_REASONS = {
-    Refusal.RECORD_UNAVAILABLE: "its record cannot be read right now. Try again later.",
-    Refusal.NOT_INDEXED: "no such mech is found on this chain.",
-    Refusal.MANIFEST_UNREADABLE: "I can't read its description. Try again later.",
-    Refusal.NEVER_DELIVERED: "it has never delivered an on-chain request.",
-}
+MECH_INTENT_FIELD = "intent"
+MECH_INTENT_CONFIRM = "confirm"
+MECH_INTENT_REMOVE = "remove"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
@@ -273,19 +275,226 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             )
             return
 
+        addresses = addresses_in(user_prompt)
+        if addresses:
+            self._with_mech_reports(
+                addresses,
+                partial(self._send_mech_reports, addresses, http_msg, http_dialogue),
+            )
+            return
+
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
-        self._with_mech_reports(
-            addresses_in(user_prompt),
-            partial(
-                self._send_chatui_prompt,
-                user_prompt,
-                available_tools,
-                http_msg,
-                http_dialogue,
-            ),
+        if self.shared_state.pending_mech_approval is not None:
+            self._send_mech_intent_request(
+                user_prompt, available_tools, http_msg, http_dialogue
+            )
+            return
+        self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
+
+    def _send_mech_reports(
+        self, addresses: List[str], http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer a message naming mechs with their reports, rendered here; no model is asked.
+
+        A consent card, and the offer it holds, go out only when one mech is named.
+
+        :param addresses: the lowercase addresses named, whose reports are fetched.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        alone = len(addresses) == 1
+        texts: List[str] = []
+        approvable: List[MechReport] = []
+        for address in addresses:
+            report = self.shared_state.mech_reports.get(address)
+            if report is None:
+                texts.append(
+                    f"{address}: its record cannot be read right now; try again later."
+                )
+                continue
+            cap = cap_for(
+                report.payment_type_id, self.context.params.delivery_rate_caps
+            )
+            texts.append(render_report(report, cap, offer=alone))
+            if offers_consent(report, cap):
+                approvable.append(report)
+        self.shared_state.pending_mech_approval = (
+            self._pending_for(approvable[0]) if alone and approvable else None
         )
+        if not alone and approvable:
+            texts.append(ASK_ALONE)
+        self._send_mech_reply(http_msg, http_dialogue, (LINE_BREAK * 2).join(texts))
+
+    @staticmethod
+    def _pending_for(report: MechReport) -> Optional[PendingApproval]:
+        """The offer the consent card holds for a yes."""
+        if report.max_delivery_rate is None or report.payment_type_id is None:
+            return None
+        return PendingApproval(
+            report.address, report.max_delivery_rate, report.payment_type_id
+        )
+
+    def _send_mech_reply(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, text: str
+    ) -> None:
+        """Answer a mech turn with text written by the handler and no config update."""
+        self._send_ok_response(
+            http_msg,
+            http_dialogue,
+            {UPDATED_PARAMS_FIELD: {}, LLM_MESSAGE_FIELD: text},
+        )
+
+    def _ceiling_text(self, payment_type_id: str, rate: int) -> str:
+        """Render a rate as the per-request ceiling the user reads."""
+        _, ceiling = payment_line(payment_type_id, rate, self._chain_id or 0)
+        return ceiling if ceiling is not None else str(rate)
+
+    def _send_mech_intent_request(
+        self,
+        user_prompt: str,
+        available_tools: Any,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Ask the model only what the reply does about the offer waiting; no operator text is sent.
+
+        :param user_prompt: the user's message.
+        :param available_tools: the tools the user may pin, for the config flow if it follows.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        pending = cast(PendingApproval, self.shared_state.pending_mech_approval)
+        prompt = MECH_INTENT_PROMPT.format(
+            user_prompt=user_prompt,
+            address=pending.address,
+            price=self._ceiling_text(pending.payment_type_id, pending.rate),
+        )
+        self._send_llm_request(
+            prompt,
+            build_mech_intent_schema(),
+            self._handle_mech_intent_response,
+            {
+                "user_prompt": user_prompt,
+                "available_tools": available_tools,
+                "http_msg": http_msg,
+                "http_dialogue": http_dialogue,
+            },
+        )
+
+    def _handle_mech_intent_response(
+        self,
+        llm_response_message: SrrMessage,
+        dialogue: Dialogue,  # pylint: disable=unused-argument
+        user_prompt: str,
+        available_tools: Any,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Act on the offer waiting, or drop it and treat the message as a config request.
+
+        :param llm_response_message: the SrrMessage with the model's reading of the reply.
+        :param dialogue: the Dialogue
+        :param user_prompt: the user's message.
+        :param available_tools: the tools the user may pin.
+        :param http_msg: the original HttpMessage
+        :param http_dialogue: the original HttpDialogue
+        """
+        try:
+            genai_response: Any = json.loads(llm_response_message.payload)
+        except _UNPARSEABLE_REPLY:
+            genai_response = None
+        if self._answer_llm_error(genai_response, http_msg, http_dialogue):
+            return
+        pending = self.shared_state.pending_mech_approval
+        self.shared_state.pending_mech_approval = None
+        intent = self._read_intent(genai_response)
+        if pending is None or intent is None:
+            self._send_chatui_prompt(
+                user_prompt, available_tools, http_msg, http_dialogue
+            )
+        elif intent == MECH_INTENT_CONFIRM:
+            self._confirm_pending(pending, http_msg, http_dialogue)
+        else:
+            self._remove_pending(pending, http_msg, http_dialogue)
+
+    @staticmethod
+    def _read_intent(genai_response: Any) -> Optional[str]:
+        """Read a confirm or remove intent from the model's reply; anything else is `None`."""
+        if not isinstance(genai_response, dict):
+            return None
+        try:
+            reply = json.loads(genai_response.get(RESPONSE_FIELD, ""))
+        except _UNPARSEABLE_REPLY:
+            return None
+        intent = reply.get(MECH_INTENT_FIELD) if isinstance(reply, dict) else None
+        return intent if intent in (MECH_INTENT_CONFIRM, MECH_INTENT_REMOVE) else None
+
+    def _confirm_pending(
+        self,
+        pending: PendingApproval,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Approve the offer at the price shown, once the live price is read and is no higher."""
+
+        def on_price(live: Optional[int]) -> None:
+            if live is None:
+                reply = (
+                    f"I can't read what {pending.address} charges right now, so "
+                    "nothing was approved. Try again later."
+                )
+            elif live > pending.rate:
+                report = self.shared_state.mech_reports.get(pending.address)
+                if report is not None:
+                    report.fetched_at = 0
+                reply = (
+                    "The price changed since I showed it: it was "
+                    f"{self._ceiling_text(pending.payment_type_id, pending.rate)}, "
+                    f"it is now {self._ceiling_text(pending.payment_type_id, live)}. "
+                    "Ask me about this mech again if you want to approve the new price."
+                )
+            else:
+                reply = self._approve(pending)
+            self._send_mech_reply(http_msg, http_dialogue, reply)
+
+        self._read_max_delivery_rate(pending.address, on_price)
+
+    def _approve(self, pending: PendingApproval) -> str:
+        """Record the approval at the price shown and say so."""
+        again = pending.address in self.shared_state.approved_mechs
+        self.shared_state.approve_mech(pending.address, pending.rate)
+        ceiling = self._ceiling_text(pending.payment_type_id, pending.rate)
+        report = self.shared_state.mech_reports.get(pending.address)
+        if report is not None:
+            report.is_approved = True
+            report.accepted_rate = pending.rate
+            report.accepted_ceiling = ceiling
+        if again:
+            return (
+                f"Approved {pending.address} again at up to {ceiling} per request. "
+                "Your agent uses it again from the next cycle."
+            )
+        return (
+            f"Approved {pending.address} at up to {ceiling} per request. "
+            "Your agent uses it from the next cycle."
+        )
+
+    def _remove_pending(
+        self,
+        pending: PendingApproval,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Remove the offered mech from the approved record and say what changed."""
+        notes = self._remove_approved_mechs([pending.address])
+        report = self.shared_state.mech_reports.get(pending.address)
+        if report is not None:
+            report.is_approved = False
+            report.accepted_rate = None
+            report.accepted_ceiling = None
+        self._send_mech_reply(http_msg, http_dialogue, " ".join(notes))
 
     def _send_chatui_prompt(
         self,
@@ -294,7 +503,7 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
     ) -> None:
-        """Fill the prompt, once any mech reports it needs are ready, and ask the LLM.
+        """Fill the config prompt and ask the LLM.
 
         :param user_prompt: the user's message.
         :param available_tools: the tools the user may pin.
@@ -365,14 +574,6 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             activity_goal_progress=(
                 "not counted yet" if published_goal is None else published_goal.progress
             ),
-            mech_reports=json.dumps(
-                [
-                    report.to_prompt()
-                    for report in self.shared_state.mech_reports.values()
-                ]
-            ),
-            approved_mechs=", ".join(self.shared_state.approved_mechs) or "none",
-            pending_approval=self.shared_state.pending_mech_approval or "none",
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -383,11 +584,23 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
     def _send_chatui_llm_request(
         self, prompt: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
-        # Prepare payload data
-        payload_data = {
-            "prompt": prompt,
-            "schema": build_chatui_llm_response_schema(),
-        }
+        """Ask the model for a config update; `_handle_chatui_llm_response` gets the reply."""
+        self._send_llm_request(
+            prompt,
+            build_chatui_llm_response_schema(),
+            self._handle_chatui_llm_response,
+            {"http_msg": http_msg, "http_dialogue": http_dialogue},
+        )
+
+    def _send_llm_request(
+        self,
+        prompt: str,
+        schema: Dict[str, Any],
+        callback: Callable[..., None],
+        callback_kwargs: Dict[str, Any],
+    ) -> None:
+        """Send a prompt to the model connection; `callback` gets the reply with the kwargs."""
+        payload_data = {"prompt": prompt, "schema": schema}
 
         self.context.logger.info(f"Payload data: {payload_data}")
 
@@ -397,22 +610,10 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             performative=SrrMessage.Performative.REQUEST,
             payload=json.dumps(payload_data),
         )
-
-        callback_kwargs = {"http_msg": http_msg, "http_dialogue": http_dialogue}
-        self._send_message(
-            request_srr_message,
-            srr_dialogue,
-            self._handle_chatui_llm_response,
-            callback_kwargs,
-        )
+        self._send_message(request_srr_message, srr_dialogue, callback, callback_kwargs)
 
     def _get_available_valid_mechs(self) -> Set[str]:
-        """Return the mechs the user may pin: discovered Valory mechs and approved mechs.
-
-        Approved mechs count at once, before mech-interact discovers them next
-        period; a discovered mech that is neither allowlisted nor approved any
-        more (just removed) does not.
-        """
+        """Return the mechs the user may pin: discovered Valory mechs and approved mechs."""
         valid_mechs = self.context.params.valid_mechs
         discovered = {
             mech
@@ -518,15 +719,7 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             )
             return
 
-        if "error" in genai_response:
-            if genai_response.get("code") == MECH_DEPOSIT_REQUIRED_CODE:
-                self._handle_mech_deposit_required(
-                    genai_response, http_msg, http_dialogue
-                )
-                return
-            self._handle_chatui_llm_error(
-                genai_response["error"], http_msg, http_dialogue
-            )
+        if self._answer_llm_error(genai_response, http_msg, http_dialogue):
             return
 
         llm_response = genai_response.get(RESPONSE_FIELD, "{}")
@@ -540,10 +733,6 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             return
 
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
-        override, mech_notes = self._apply_mech_action(
-            llm_response_json.get(MECH_ACTION_FIELD), llm_message
-        )
-        llm_message = self._with_notes(override or llm_message, mech_notes)
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
 
         if not updated_agent_config:
@@ -593,11 +782,7 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
 
         response_body = {
             TRADING_TYPE_FIELD: selected_ui_strategy,
-            LLM_MESSAGE_FIELD: (
-                self._with_notes("\n".join(issues), mech_notes)
-                if issues
-                else llm_message
-            ),
+            LLM_MESSAGE_FIELD: "\n".join(issues) if issues else llm_message,
         }
         if selected_trading_strategy != previous_trading_strategy:
             # In case of update, reflect the previous value in the response. Needed for frontend
@@ -609,111 +794,19 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
             response_body,
         )
 
-    def teardown(self) -> None:
-        """Stop the domain-proof worker on top of the base teardown."""
-        self._shutdown_proof_executor()
-        super().teardown()
-
-    @staticmethod
-    def _with_notes(message: str, notes: List[str]) -> str:
-        """Append the handler's own notes to a reply."""
-        return "<br>".join([message, *notes]) if notes else message
-
-    def _apply_mech_action(
-        self, action: Any, message: str
-    ) -> Tuple[Optional[str], List[str]]:
-        """Apply the LLM's mech action under the handler's own checks.
-
-        The LLM proposes and reads the user's intent; the handler decides.
-        Only an address the chat has shown, unrefused and within the agent's
-        price cap can be put up for approval; the price the user accepts is
-        rendered here from the report, and written only after the LLM reads
-        the user's confirmation of that pending approval. A turn that neither
-        asks for nor confirms an approval drops any pending one.
-
-        :param action: the `mech_action` object from the LLM reply.
-        :param message: the LLM's message.
-        :return: a reply to show instead of the LLM's, if any, and notes to append.
-        """
-        if not isinstance(action, dict):
-            self.shared_state.pending_mech_approval = None
-            return None, []
-        notes: List[str] = []
-        removed = action.get(REMOVE_APPROVED_MECHS_FIELD)
-        if isinstance(removed, list) and removed:
-            notes.extend(self._remove_approved_mechs([str(m).lower() for m in removed]))
-        approve = action.get(APPROVE_MECH_FIELD)
-        if isinstance(approve, str) and approve.strip():
-            address = approve.strip().lower()
-            refused = self._request_approval(address)
-            if refused is not None:
-                return refused, notes
-            notes.append(self._consent_line(address))
-        elif action.get(CONFIRM_APPROVAL_FIELD) is True:
-            notes.append(self._confirm_approval())
+    def _answer_llm_error(
+        self, genai_response: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> bool:
+        """Answer the caller when the model connection reported an error; `True` when it did."""
+        if not isinstance(genai_response, dict) or "error" not in genai_response:
+            return False
+        if genai_response.get("code") == MECH_DEPOSIT_REQUIRED_CODE:
+            self._handle_mech_deposit_required(genai_response, http_msg, http_dialogue)
         else:
-            self.shared_state.pending_mech_approval = None
-        return None, notes
-
-    def _consent_line(self, address: str) -> str:
-        """The price the user accepts by approving, from the report, not the LLM."""
-        report = self.shared_state.mech_reports[address]
-        return (
-            f"Approving accepts up to {report.payment_ceiling} per request for "
-            f"{address}. If its operator raises it, your agent stops using this "
-            "mech until you approve the new price. Reply to confirm."
-        )
-
-    def _request_approval(self, address: str) -> Optional[str]:
-        """Put a shown, approvable, affordable mech up for confirmation, or say why not."""
-        report = self.shared_state.mech_reports.get(address)
-        if report is None:
-            return f"I can only approve a mech I have shown you. Ask me about {address} first."
-        if report.is_valory:
-            return f"{address} is a Valory mech the agent already uses, so it needs no approval."
-        if address in self.shared_state.approved_mechs and not report.price_raised:
-            return f"{address} is already approved."
-        if report.refusal is not None:
-            return f"I can't approve {address}: {REFUSAL_REASONS[report.refusal]}"
-        if report.max_delivery_rate is None or report.payment_ceiling is None:
-            return f"I can't read what {address} charges, so I can't approve it."
-        cap = cap_for(report.payment_type_id, self.context.params.delivery_rate_caps)
-        if cap is None or report.max_delivery_rate > cap:
-            _, allowed = payment_line(report.payment_type_id, cap, report.chain_id)
-            return (
-                f"I can't approve {address}: it charges {report.payment_ceiling} per "
-                f"request, above the {allowed} this agent allows."
-                if allowed
-                else f"I can't approve {address}: this agent allows no mech paid "
-                f"with {report.payment_method}."
+            self._handle_chatui_llm_error(
+                genai_response["error"], http_msg, http_dialogue
             )
-        self.shared_state.pending_mech_approval = address
-        return None
-
-    def _confirm_approval(self) -> str:
-        """Approve the mech waiting for confirmation at the price it was shown with."""
-        address = self.shared_state.pending_mech_approval
-        self.shared_state.pending_mech_approval = None
-        if address is None:
-            return "There is no approval waiting for your confirmation."
-        report = self.shared_state.mech_reports.get(address)
-        if report is None or not report.approvable or report.max_delivery_rate is None:
-            return f"I can't approve {address} any more; ask me about it again."
-        again = address in self.shared_state.approved_mechs
-        self.shared_state.approve_mech(address, report.max_delivery_rate)
-        report.is_approved = True
-        report.accepted_rate = report.max_delivery_rate
-        report.accepted_ceiling = report.payment_ceiling
-        if again:
-            return (
-                f"Approved {address} again at up to {report.payment_ceiling} per "
-                "request. Your agent uses it again from the next cycle."
-            )
-        return (
-            f"Approved {address} at up to {report.payment_ceiling} per request. It "
-            "starts with no track record on your side and earns work through "
-            "normal scoring, from the next cycle."
-        )
+        return True
 
     def _remove_approved_mechs(self, addresses: List[str]) -> List[str]:
         """Remove approved mechs, unpinning any that were pinned."""
@@ -734,7 +827,8 @@ class HttpHandler(BaseHttpHandler, MechReportRequests):
                 if address not in removed
             }
         )
-        if self.shared_state.pending_mech_approval in removed:
+        pending = self.shared_state.pending_mech_approval
+        if pending is not None and pending.address in removed:
             self.shared_state.pending_mech_approval = None
         notes.append(
             f"Removed {', '.join(removed)}. No new requests go to it from the next cycle."

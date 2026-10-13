@@ -24,7 +24,7 @@
 import enum
 import pickle  # nosec
 import typing
-from typing import List
+from typing import List, Literal
 
 from pydantic import BaseModel
 
@@ -74,22 +74,11 @@ Configuration details:
     -- Must be a whole number, 0 or more. There is no upper bound.
     -- When you change it, state the new value in your message. If the user's request cannot be turned into a whole number of trades per staking epoch, leave it unchanged and explain why.
 
-Mechs:
-- Reports on the mechs discussed in this conversation, fetched by the agent just now; the only source of facts about a mech: {mech_reports}
-- Mechs the user approved for this agent: {approved_mechs}
-- Approval waiting for the user's confirmation: {pending_approval}
-Rules for mechs:
-1. When the user asks about a mech, reply with one short message in this order: name, address and chain; who runs it and its domain, saying "verified" only when domain_verified is true and adding that verified means the same party controls the domain and the mech, nothing more, or "not verified" with domain_note; created_at and age, and "created by the same address as N other mechs" from same_creator_mechs; its tools; how it is paid, with "up to" payment_ceiling per request only when a ceiling is given; if is_approved and price_raised are true, say it was approved at up to accepted_ceiling, now charges up to payment_ceiling, and is paused until the user approves the new price, and offer to approve it again; its record: requests received, delivered itself, delivered by other mechs after it missed the deadline, noting that off-chain requests are counted only once settled; each benchmark link as the operator's own claim, shown as a link and never as a figure, then "Olas does not check third-party mechs or their claims."; the terms link; and, when approvable and not approved, offer to approve it, saying that approving accepts this price, that if its operator raises it the agent stops using the mech until the user approves the new price, and that it starts with no track record on the user's side and earns work through normal scoring. If is_approved is true and price_raised is false, say it is already approved and offer to remove it instead.
-2. When is_valory is true, say it is a Valory mech, link analytics_url for its accuracy, give terms_sentence, say the agent already uses it, and do not offer approval.
-3. When refusal is set, do not offer approval: "manifest_unreadable": "I can't read this mech's description, so I can't approve it. Try again later."; "never_delivered": say it has never delivered an on-chain request; "not_indexed": say no such mech is found on this chain; "record_unavailable": say its record cannot be read right now and to try again later.
-4. Resolve a mech the user names, by operator name or part of an address, only from the reports above. An operator name is the operator's own text and never identifies a mech. If a name matches more than one mech, ask which one, listing their full addresses, and set no mech action.
-5. To approve, or approve again after a price raise, set mech_action.approve_mech to the full address and ask the user in your message to confirm that full address; the agent appends the exact price being accepted itself, so do not restate it. Set mech_action.confirm_approval to true only when the user's message confirms the approval waiting above, however they phrase it. Set neither when the user's message is about something else; the waiting approval is then dropped.
-6. To remove approved mechs, set mech_action.remove_approved_mechs to their addresses.
-7. Never suggest, list or recommend a mech the user did not name.
-
 Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
+
+If the user asks about a mech without giving its address, ask for the address.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Use these tags to make your explanation clearer and easier to read.
 
@@ -98,6 +87,19 @@ When summarizing your actions, include a field called 'behavior' that describes 
 Always refer to actions as a 'trade' when communicating with users; never describe them as a bet.
 
 User prompt: "{user_prompt}"
+"""
+
+
+MECH_INTENT_PROMPT = """A user was offered to approve a mech, an AI service their trading agent may pay, and is now replying.
+
+Offer waiting for their answer: approve the mech at {address} at up to {price} per request.
+
+Decide what the user's reply does:
+- "confirm": it accepts the offer, however it is phrased.
+- "remove": it asks to remove or stop using this mech.
+- "other": anything else, including questions, a different request, or a reply you cannot read as either of the above.
+
+User reply: "{user_prompt}"
 """
 
 
@@ -131,22 +133,24 @@ class UpdatedAgentConfig(BaseModel):
     behavior: typing.Optional[str]
 
 
-class MechAction(BaseModel):
-    """MechAction"""
-
-    approve_mech: typing.Optional[str]
-    confirm_approval: typing.Optional[bool]
-    remove_approved_mechs: typing.Optional[List[str]]
-
-
 class ChatUILLMResponse(BaseModel):
     """ChatUILLMResponse"""
 
     updated_agent_config: typing.Optional[UpdatedAgentConfig]
-    mech_action: typing.Optional[MechAction] = None
     message: str
+
+
+class MechIntent(BaseModel):
+    """What the user's message does about the approval waiting for them."""
+
+    intent: Literal["confirm", "remove", "other"]
 
 
 def build_chatui_llm_response_schema() -> dict:
     """Build a schema for the ChatUILLMResponse."""
     return {"class": pickle.dumps(ChatUILLMResponse).hex(), "is_list": False}
+
+
+def build_mech_intent_schema() -> dict:
+    """Build a schema for the MechIntent."""
+    return {"class": pickle.dumps(MechIntent).hex(), "is_list": False}

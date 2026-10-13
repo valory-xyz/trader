@@ -20,11 +20,13 @@
 """Tests for packages/valory/skills/chatui_abci/models.py."""
 
 import json
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
+from aea.exceptions import AEAEnforceError
 
 from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -35,6 +37,7 @@ from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
     ChatuiConfig,
     ChatuiParams,
+    PendingApproval,
     SharedState,
     WITHDRAWAL_STATES,
     WITHDRAWAL_STATE_ARMED,
@@ -606,11 +609,11 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
-                service_registry_subgraph_url="https://registry.example",
+                marketplace_api_url="https://marketplace.example/api",
             )
         assert params.service_endpoint == "https://example.com"
         assert params.genai_api_key == "dummy"
-        assert params.service_registry_subgraph_url == "https://registry.example"
+        assert params.marketplace_api_url == "https://marketplace.example/api"
 
     def test_init_calls_super(self) -> None:
         """Test that ChatuiParams init must call BaseParams.__init__."""
@@ -620,9 +623,21 @@ class TestChatuiParamsInit:
                 skill_context=mock_skill_context,
                 service_endpoint="https://example.com",
                 genai_api_key="dummy",
-                service_registry_subgraph_url="https://registry.example",
+                marketplace_api_url="https://marketplace.example/api",
             )
         mock_super.assert_called_once()
+
+    def test_the_marketplace_api_url_is_required(self) -> None:
+        """The card cannot be read without it."""
+        with (
+            patch.object(BaseParams, "__init__", return_value=None),
+            pytest.raises(AEAEnforceError),
+        ):
+            ChatuiParams(
+                skill_context=MagicMock(),
+                service_endpoint="https://example.com",
+                genai_api_key="dummy",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -1012,6 +1027,26 @@ class TestSetupBootAutoClear:
             for call_args in state.context.logger.info.call_args_list  # type: ignore[attr-defined]
         ]
         assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)
+
+
+class TestPendingApproval:
+    """The offer held for a yes is the address, the price shown and its asset."""
+
+    def test_is_a_frozen_value(self) -> None:
+        """Two offers with the same facts are the same offer; neither can be edited."""
+        mech = "0x" + "ab" * 20
+        offer = PendingApproval(mech, 10000, "6406")
+        assert offer == PendingApproval(mech, 10000, "6406")
+        assert offer != PendingApproval(mech, 10001, "6406")
+        with pytest.raises(FrozenInstanceError):
+            offer.rate = 1  # type: ignore[misc]
+
+    def test_shared_state_starts_with_no_offer_and_no_reports(self) -> None:
+        """A fresh state holds nothing from an earlier conversation."""
+        with patch.object(BaseSharedState, "__init__", return_value=None):
+            state = _TestableSharedState(skill_context=MagicMock())
+        assert state.pending_mech_approval is None
+        assert state.mech_reports == {}
 
 
 class TestApprovedMechsFile:

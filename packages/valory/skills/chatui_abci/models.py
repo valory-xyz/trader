@@ -92,6 +92,15 @@ class ChatuiConfig:
     activity_goal: Optional[int] = None
 
 
+@dataclass(frozen=True)
+class PendingApproval:
+    """The offer the user was shown: the mech, the price accepted by confirming, and its asset."""
+
+    address: str
+    rate: int
+    payment_type_id: str
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -103,11 +112,9 @@ class SharedState(BaseSharedState):
 
         self._chatui_config: Optional[ChatuiConfig] = None
         self._approved_mech_rates: Optional[Dict[str, int]] = None
-        # Reports the chat has shown, by lowercase address, and the address
-        # waiting for the user's yes. In memory only: they serve one
-        # conversation and are rebuilt on demand.
+        # In memory only: shown reports by lowercase address, and the offer awaiting a yes.
         self.mech_reports: Dict[str, Any] = {}
-        self.pending_mech_approval: Optional[str] = None
+        self.pending_mech_approval: Optional[PendingApproval] = None
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
@@ -146,23 +153,18 @@ class SharedState(BaseSharedState):
 
     @property
     def approved_mech_rates(self) -> Dict[str, int]:
-        """Get the approved mechs with the per-request rate the user accepted for each.
-
-        Keys are lowercase addresses; rates are in the mech's payment asset's
-        smallest unit. mech-interact bounds what an approved mech may charge by
-        this rate, so it is the price the user was shown when approving.
-        """
+        """Get the accepted per-request rate, in the asset's smallest unit, by lowercase approved address."""
         if self._approved_mech_rates is None:
             self._approved_mech_rates = self._read_approved_mech_rates()
         return dict(self._approved_mech_rates)
 
     @property
     def approved_mechs(self) -> List[str]:
-        """Get the lowercase addresses of the mechs the user approved, in approval order."""
+        """Get the approved mechs' lowercase addresses, in approval order."""
         return list(self.approved_mech_rates)
 
     def set_approved_mech_rates(self, rates: Dict[str, int]) -> None:
-        """Persist the approved mechs and their accepted rates, addresses lowercased."""
+        """Replace the approved record on disk and in memory, addresses lowercased."""
         approved = {str(mech).lower(): int(rate) for mech, rate in rates.items()}
         write_json_atomically(
             self.context.params.store_path / APPROVED_MECHS_STORE, approved
@@ -170,7 +172,7 @@ class SharedState(BaseSharedState):
         self._approved_mech_rates = approved
 
     def approve_mech(self, address: str, rate: int) -> None:
-        """Approve a mech at a rate, replacing any rate accepted for it before."""
+        """Record the mech as approved at this rate, replacing any earlier one."""
         rates = self.approved_mech_rates
         rates[str(address).lower()] = int(rate)
         self.set_approved_mech_rates(rates)
@@ -315,7 +317,5 @@ class ChatuiParams(BaseParams):
         """Initialize the parameters' object."""
         self.service_endpoint = self._ensure("service_endpoint", kwargs, str)
         self.genai_api_key = self._ensure("genai_api_key", kwargs, str)
-        self.service_registry_subgraph_url: str = self._ensure(
-            "service_registry_subgraph_url", kwargs, str
-        )
+        self.marketplace_api_url: str = self._ensure("marketplace_api_url", kwargs, str)
         super().__init__(*args, **kwargs)

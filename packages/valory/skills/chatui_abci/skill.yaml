@@ -10,22 +10,24 @@ fingerprint:
   behaviours.py: bafybeiffmmczzfl6y2gkew53nwmagndw4wgudehi6wsmzbxpfzti6vqmye
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeib5blhcqaof3onoy6xojhxw74ivqz7av7n2ehfyddfmcbzt4htzbm
-  mech_report.py: bafybeih6nkhm47kfwjy4btv37shxhzkjretl4wr6nusma74my4i5jozaku
-  models.py: bafybeia5tdk37on7txmlx2vo7x3i3flq4sgdqon7krkriwy5uwu3zecqnq
+  handlers.py: bafybeihrmhbmeyyx5ffsucrjxcxbotbi3bdoguvmaow4i5jetgz4a7pk6m
+  mech_report.py: bafybeifeqpnzdcaf5k6jimiyqnb535ftdla6m5emuypti5cs2saflc262q
+  mech_templates.py: bafybeibscpu34oedxqs7piogggjxivsxkuz5okdgkvb6zy4iremoufsdke
+  models.py: bafybeiefdcd456vf5rufpxnab74vnjyfpbsvh446dogpadavqspbixk3pe
   payloads.py: bafybeib7gauq5ehcoxsl4jeydjxff56zxnjtzdv2orh4qezzjw6gv5jdzm
-  prompts.py: bafybeidroc33y3oh3uixdsbk6a7siwejbaobv3lqgfmn2lmbsxmbdk2yyy
-  report_requests.py: bafybeiez6vzdnu7tbqiqob24mlnmqjwwqttbgf6c42xj7j7ywkkd3n7pwa
+  prompts.py: bafybeigamnb5wz6h5ndyfnh3gpvlgtgntliuh3mvomvkdsmyx4ln75enwe
+  report_requests.py: bafybeihitfq6hwhbuiv6hcnm64pq5auzud2kepq6hee6evt4ys44viushu
   rounds.py: bafybeidu6roj27bvs54ezyakaxrybjozdswxcw4p52civy4kqyqif3qjnu
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeieormfvkdcrnuufbiokezjzubwephshwtjes3xjwuyeskrb3aclri
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeidq7jh2ov5bkhy2da3ut3r3jj7dfblhvd4bhfb3qnnirg2zzycxw4
-  tests/test_mech_report.py: bafybeigbnwg45zbug42c4jykthgbk65rbqpmkcjr2smp67o2yzdrq3d7zm
-  tests/test_models.py: bafybeiejjfrkmw4bxyy4e6ytjmw6ozzxhagikzvqkdctq2fkfwfaueewsu
+  tests/test_handlers.py: bafybeihh2ijqphvmt2o3zhnlmobiaqevudkj4wa6plymgoveb4f62s3e2i
+  tests/test_mech_report.py: bafybeif5che2l3l4szukkijpyw7rvzls476nhfcmrzixkkc6uebz42qqcq
+  tests/test_mech_templates.py: bafybeib44vci5lutj65p76qfe6zukhbd7cax3upw5jzte2jfhidn63hv5q
+  tests/test_models.py: bafybeif3om2tzte2xqgmvtnf72k5ttr7ral7bleideuz2tcuidtb4n6bke
   tests/test_payloads.py: bafybeicwtw4gbh6erhfzmlnu3ojfajftntrdr3vp3blp5wp6hhgpxecnqu
-  tests/test_prompts.py: bafybeidcc22taysehvglfv5be46lti4iqvkhzor5ysafemltqntskmrlca
-  tests/test_report_requests.py: bafybeignfrduqt5bfcsanvp7qlu2kbywaartpye7xtkfoxs7s7w4hoiyfq
+  tests/test_prompts.py: bafybeifijo7lbcwwz5ivl6ptr47x73c6l56qomxlwyyvn5xe7ccn5xkzfy
+  tests/test_report_requests.py: bafybeid6jn7jm27u4tpvmirhuruvgchcjsonrphttrzlo2ubxw2r33wceu
   tests/test_rounds.py: bafybeiavzu2qwcdhwtqr4ltdyrbtnwyry76ndhti3z3fakzw3zfzjceifu
   tests/test_tool_keys.py: bafybeidjqveioyj6mmkx5rx2h3tbk3itodcflsa4lc722gg3zy7wigyl7i
   tool_keys.py: bafybeiaidr6yy435bomimdnqsdbbd4hfi5dz7tnpnqifgsdp4nadpxwqiq
@@ -33,9 +35,11 @@ fingerprint_ignore_patterns: []
 connections:
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 protocols:
+- valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
-contracts: []
+contracts:
+- valory/mech_mm:0.1.0:bafybeig6gcy2tsh2mpatojiydd7copk3epdkevijyqi2ltmcoyvy6ssc74
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
@@ -84,7 +88,7 @@ models:
   params:
     args:
       service_endpoint: trader.autonolas.tech/
-      service_registry_subgraph_url: https://api.subgraph.autonolas.tech/api/proxy/service-registry-gnosis
+      marketplace_api_url: https://marketplace.olas.network/api/erc8004
     class_name: ChatUIParams
   signing_dialogues:
     args: {}
@@ -101,6 +105,4 @@ models:
 dependencies:
   pydantic:
     version: <3,>=2.11.9
-  requests:
-    version: <2.33.0,>=2.32.5
 is_abstract: true

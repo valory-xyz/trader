@@ -19,36 +19,27 @@
 
 """Tests for the mech report rules."""
 
-import json
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from typing import Any, Dict, Optional
 
 import pytest
-import requests
 
 from packages.valory.skills.chatui_abci.mech_report import (
-    IDENTITY_REGISTRY,
+    MAX_TOOLS,
     MechReport,
-    PROOF_MAX_BYTES,
-    ProofStatus,
     Refusal,
     age_days,
     cap_for,
+    card_names_mech,
     clean_text,
-    fetch_proof,
-    hostname,
+    created_at_utc,
     https_url,
     payment_line,
     payment_type_id,
-    proof_matches,
-    proof_url,
-    read_benchmarks,
-    read_operator,
-    read_tools,
+    read_card,
     refusal_for,
-    verify_domain,
+    url_host,
 )
 
 NATIVE = "0xba699a34be8fe0e7725e93dcbce1701b0211a8ca61330aaeb8a05bf2ec7abed1"
@@ -56,15 +47,21 @@ USDC = "0x6406bb5f31a732f898e1ce9fdd988a80a808d36ab5d9a4a4805a8be8d197d5e3"
 OLAS = "0x3679d66ef546e66ce9057c4a052f317b135bc8e8c509638f7966edfd4fcf45e9"
 NVM = "0x803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316"
 GNOSIS, POLYGON = 100, 137
-AGENT_ID = 2182
+MECH = "0x" + "b0" * 20
+PROVIDER = {"organization": " Bob Labs ", "url": "https://BobMech.com/about"}
 
 
-def _registration(agent_id: Any, chain_id: int = GNOSIS) -> Dict[str, Any]:
-    """A proof registration entry."""
-    return {
-        "agentId": agent_id,
-        "agentRegistry": f"eip155:{chain_id}:{IDENTITY_REGISTRY}",
+def _card(**overrides: Any) -> Dict[str, Any]:
+    """A marketplace agent card naming `MECH`."""
+    card: Dict[str, Any] = {
+        "name": " Bob's mech ",
+        "description": "predictions",
+        "metadata": {"network": "gnosis", "mechAddress": f"eip155:100:{MECH}"},
+        "skills": [{"id": "1", "name": "prediction-online"}, {"name": " p-offline "}],
+        "provider": None,
     }
+    card.update(overrides)
+    return card
 
 
 @pytest.mark.parametrize(
@@ -86,87 +83,123 @@ def test_clean_text(value: Any, expected: Optional[str]) -> None:
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ("bobmech.com", "bobmech.com"),
-        (" bobmech.com ", "bobmech.com"),
-        ("xn--bcher-kva.example.xn--p1ai", "xn--bcher-kva.example.xn--p1ai"),
-        ("BobMech.com", None),
-        ("1.2.3.4", None),
-        ("https://bobmech.com", None),
-        ("bobmech.com:443", None),
-        ("bobmech.com/path", None),
-        ("bobmech.com.", None),
-        ("localhost", None),
-        ("-bob.com", None),
+        ("https://bobmech.com/terms", "https://bobmech.com/terms"),
+        ("http://bobmech.com/terms", None),
+        ("https:///terms", None),
+        ("https://bob mech.com", None),
+        ("https://[bobmech.com/terms", None),
         (None, None),
     ],
 )
-def test_hostname(value: Any, expected: Optional[str]) -> None:
-    """A domain must be a bare lowercase hostname whose last label is not numeric."""
-    assert hostname(value) == expected
+def test_https_url(value: Any, expected: Optional[str]) -> None:
+    """Links must be https with a host and no whitespace; a malformed host is unusable, not an error."""
+    assert https_url(value) == expected
 
 
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ("https://bobmech.com/terms", "https://bobmech.com/terms"),
-        ("http://bobmech.com/terms", None),
-        ("https:///terms", None),
-        ("https://bob mech.com", None),
+        ("https://BobMech.com/about", "bobmech.com"),
+        ("http://bobmech.com", "bobmech.com"),
+        ("bobmech.com", None),
+        ("https://[bobmech.com", None),
+        ("", None),
         (None, None),
     ],
 )
-def test_https_url(value: Any, expected: Optional[str]) -> None:
-    """Links must be https with a host and no whitespace."""
-    assert https_url(value) == expected
+def test_url_host(value: Any, expected: Optional[str]) -> None:
+    """The host is read lowercase from a URL; a malformed one reads as none."""
+    assert url_host(value) == expected
 
 
 @pytest.mark.parametrize(
-    "operator, expected",
+    "metadata, expected",
     [
-        ({"name": "Bob Labs", "domain": "bobmech.com"}, ("Bob Labs", "bobmech.com")),
-        ({"name": "Bob Labs"}, None),
-        ({"name": "", "domain": "bobmech.com"}, None),
-        ({"name": "Bob Labs", "domain": "BobMech.com"}, None),
-        ("Bob Labs", None),
+        ({"mechAddress": f"eip155:100:{MECH}"}, True),
+        ({"mechAddress": f"eip155:100:{MECH.upper().replace('0X', '0x')}"}, True),
+        ({"mechAddress": MECH}, True),
+        ({"mechAddress": "eip155:100:0x" + "c0" * 20}, False),
+        ({"mechAddress": None}, False),
+        ({}, False),
+        ("eip155:100:" + MECH, False),
     ],
 )
-def test_read_operator(operator: Any, expected: Any) -> None:
-    """The operator is reported only with both a usable name and domain."""
-    assert read_operator({"operator": operator}) == expected
+def test_card_names_mech(metadata: Any, expected: bool) -> None:
+    """The card is about the mech only when its address ends the metadata's mechAddress."""
+    assert card_names_mech({"metadata": metadata}, MECH) is expected
 
 
-def test_read_tools_keeps_usable_names() -> None:
-    """Non-text and blank tool entries are dropped."""
-    assert read_tools({"tools": ["prediction-online", "", 3, " p-offline "]}) == [
-        "prediction-online",
-        "p-offline",
-    ]
-    assert read_tools({"tools": "prediction-online"}) == []
+@pytest.mark.parametrize(
+    "card",
+    [
+        "not an object",
+        ["list"],
+        None,
+        _card(metadata={"mechAddress": "eip155:100:0x" + "c0" * 20}),
+        _card(metadata={}),
+    ],
+)
+def test_a_card_that_is_not_an_object_about_the_mech_is_unreadable(card: Any) -> None:
+    """Nothing is read from a card for another mech or from a non-object body."""
+    assert read_card(card, MECH) is None
 
 
-def test_read_benchmarks_keeps_only_the_https_link() -> None:
-    """A claim is its link; figures in the manifest are never read, and other links are dropped."""
-    manifest = {
-        "toolMetadata": {
-            "b-tool": {
-                "benchmark": {
-                    "metric": "accuracy",
-                    "value": 0.71,
-                    "window": "30d",
-                    "url": "https://bobmech.com/b",
-                }
-            },
-            "a-tool": {"benchmark": {"url": "https://bobmech.com/a"}},
-            "c-tool": {"benchmark": {"url": "http://bobmech.com/c"}},
-            "d-tool": {"benchmark": "https://bobmech.com/d"},
-            "e-tool": "not a dict",
-        }
-    }
-    assert read_benchmarks(manifest) == {
-        "a-tool": "https://bobmech.com/a",
-        "b-tool": "https://bobmech.com/b",
-    }
-    assert read_benchmarks({"toolMetadata": []}) == {}
+def test_read_card_cleans_the_name_and_tools() -> None:
+    """Name and tool names are stripped; non-text and blank tool entries are dropped."""
+    facts = read_card(
+        _card(skills=[{"name": "prediction-online"}, {"name": ""}, 3, {"name": 7}]),
+        MECH,
+    )
+    assert facts is not None
+    assert facts.name == "Bob's mech"
+    assert facts.tools == ["prediction-online"]
+
+
+@pytest.mark.parametrize(
+    "name, skills",
+    [(None, "prediction-online"), ("", None), ("bad\x00name", [])],
+)
+def test_read_card_without_a_usable_name_or_skills(name: Any, skills: Any) -> None:
+    """A missing or unusable name reads as none, and skills that are not a list as no tools."""
+    facts = read_card(_card(name=name, skills=skills), MECH)
+    assert facts is not None
+    assert facts.name is None
+    assert facts.tools == []
+
+
+def test_read_card_caps_the_tools() -> None:
+    """At most MAX_TOOLS names are kept, in card order."""
+    facts = read_card(
+        _card(skills=[{"name": f"tool-{index}"} for index in range(MAX_TOOLS + 5)]),
+        MECH,
+    )
+    assert facts is not None
+    assert facts.tools == [f"tool-{index}" for index in range(MAX_TOOLS)]
+
+
+def test_a_provider_verifies_the_operator() -> None:
+    """The marketplace sets provider only when the domain proof held, so it is the verdict."""
+    facts = read_card(_card(provider=PROVIDER), MECH)
+    assert facts is not None
+    assert facts.domain_verified is True
+    assert (facts.operator_name, facts.domain) == ("Bob Labs", "bobmech.com")
+
+
+@pytest.mark.parametrize("provider", [None, "Bob Labs", ["bobmech.com"]])
+def test_no_provider_means_not_verified(provider: Any) -> None:
+    """Without a provider object, no operator is named and the domain is not verified."""
+    facts = read_card(_card(provider=provider), MECH)
+    assert facts is not None
+    assert facts.domain_verified is False
+    assert (facts.operator_name, facts.domain) == (None, None)
+
+
+def test_a_provider_with_unusable_fields_is_still_verified() -> None:
+    """The verdict is the provider's presence; its name and URL are read if usable."""
+    facts = read_card(_card(provider={"organization": "", "url": "not a url"}), MECH)
+    assert facts is not None
+    assert facts.domain_verified is True
+    assert (facts.operator_name, facts.domain) == (None, None)
 
 
 @pytest.mark.parametrize(
@@ -178,6 +211,7 @@ def test_read_benchmarks_keeps_only_the_https_link() -> None:
         (USDC, 50_000, POLYGON, ("USDC", "0.05 USDC")),
         (OLAS, 10**18, GNOSIS, ("OLAS", "1 OLAS")),
         (NATIVE, "not-a-number", GNOSIS, ("xDAI", None)),
+        (NATIVE, None, GNOSIS, ("xDAI", None)),
         (NATIVE, 10**16, 4663, ("the chain's native token", None)),
         (NVM, 10**16, GNOSIS, ("a Nevermined subscription", None)),
         ("0xdeadbeef", 10**16, GNOSIS, ("an unrecognised payment method", None)),
@@ -192,7 +226,7 @@ def test_payment_line(
 
 
 @pytest.mark.parametrize(
-    "record_found, manifest_read, self_delivered, expected",
+    "record_found, card_read, self_delivered, expected",
     [
         (None, True, 5, Refusal.RECORD_UNAVAILABLE),
         (False, True, 5, Refusal.NOT_INDEXED),
@@ -204,121 +238,12 @@ def test_payment_line(
 )
 def test_refusal_for(
     record_found: Optional[bool],
-    manifest_read: bool,
+    card_read: bool,
     self_delivered: int,
     expected: Optional[Refusal],
 ) -> None:
     """The first missing requirement decides the refusal."""
-    assert refusal_for(record_found, manifest_read, self_delivered) is expected
-
-
-@pytest.mark.parametrize(
-    "registrations, expected",
-    [
-        ([_registration(AGENT_ID)], True),
-        ([_registration(str(AGENT_ID))], True),
-        (
-            [
-                {
-                    "agentId": AGENT_ID,
-                    "agentRegistry": f"EIP155:100:{IDENTITY_REGISTRY.upper()}",
-                }
-            ],
-            True,
-        ),
-        ([_registration(AGENT_ID, POLYGON)], False),
-        ([_registration(AGENT_ID + 1)], False),
-        ([_registration(True)], False),
-        ([_registration("1" * 79)], False),
-        ([_registration("21x")], False),
-        ("not a list", False),
-    ],
-)
-def test_proof_matches(registrations: Any, expected: bool) -> None:
-    """The proof must list the agent id under this chain's identity registry."""
-    assert proof_matches({"registrations": registrations}, AGENT_ID, GNOSIS) is expected
-
-
-def _response(status: int, chunks: List[bytes]) -> MagicMock:
-    """A streamed `requests` response."""
-    response = MagicMock(status_code=status)
-    response.iter_content.return_value = iter(chunks)
-    response.__enter__.return_value = response
-    return response
-
-
-@pytest.mark.parametrize(
-    "status, chunks, expected",
-    [
-        (200, [json.dumps({"registrations": []}).encode()], ProofStatus.FOUND),
-        (301, [], ProofStatus.REDIRECTED),
-        (404, [], ProofStatus.NOT_FOUND),
-        (503, [], ProofStatus.UNAVAILABLE),
-        (200, [b"not json"], ProofStatus.NOT_FOUND),
-        (200, [b"[1, 2]"], ProofStatus.NOT_FOUND),
-        (200, [b" " * (PROOF_MAX_BYTES + 1)], ProofStatus.NOT_FOUND),
-    ],
-)
-def test_fetch_proof_statuses(
-    status: int, chunks: List[bytes], expected: ProofStatus
-) -> None:
-    """Redirects, errors, oversize and non-object bodies never count as a proof."""
-    with patch(
-        "packages.valory.skills.chatui_abci.mech_report.requests.get",
-        return_value=_response(status, chunks),
-    ) as mock_get:
-        found, _ = fetch_proof("bobmech.com")
-    assert found is expected
-    mock_get.assert_called_once()
-    assert (
-        mock_get.call_args[0][0]
-        == "https://bobmech.com/.well-known/agent-registration.json"
-    )
-    assert mock_get.call_args[1]["allow_redirects"] is False
-
-
-def test_fetch_proof_network_error_is_unavailable() -> None:
-    """A failed connection means the domain could not be reached."""
-    with patch(
-        "packages.valory.skills.chatui_abci.mech_report.requests.get",
-        side_effect=requests.ConnectionError("down"),
-    ):
-        assert fetch_proof("bobmech.com") == (ProofStatus.UNAVAILABLE, None)
-
-
-def test_proof_url_is_the_exact_host() -> None:
-    """The proof is read from the declared host only."""
-    assert (
-        proof_url("bobmech.com")
-        == "https://bobmech.com/.well-known/agent-registration.json"
-    )
-
-
-@pytest.mark.parametrize(
-    "agent_id, proof, verified",
-    [
-        (
-            AGENT_ID,
-            (ProofStatus.FOUND, {"registrations": [_registration(AGENT_ID)]}),
-            True,
-        ),
-        (
-            None,
-            (ProofStatus.FOUND, {"registrations": [_registration(AGENT_ID)]}),
-            False,
-        ),
-        (AGENT_ID, None, False),
-        (AGENT_ID, (ProofStatus.UNAVAILABLE, None), False),
-        (AGENT_ID, (ProofStatus.REDIRECTED, None), False),
-        (AGENT_ID, (ProofStatus.NOT_FOUND, None), False),
-        (AGENT_ID, (ProofStatus.FOUND, {"registrations": [_registration(1)]}), False),
-    ],
-)
-def test_verify_domain(agent_id: Optional[int], proof: Any, verified: bool) -> None:
-    """Only a matching proof verifies; every failure carries a note."""
-    result, note = verify_domain(agent_id, proof, GNOSIS)
-    assert result is verified
-    assert (note is None) is verified
+    assert refusal_for(record_found, card_read, self_delivered) is expected
 
 
 def test_age_days_is_never_negative() -> None:
@@ -326,6 +251,21 @@ def test_age_days_is_never_negative() -> None:
     created = datetime(2026, 6, 1, tzinfo=timezone.utc)
     assert age_days(created, datetime(2026, 10, 1, tzinfo=timezone.utc)) == 122
     assert age_days(created, datetime(2026, 5, 1, tzinfo=timezone.utc)) == 0
+
+
+@pytest.mark.parametrize(
+    "timestamp, expected",
+    [
+        ("1750000000", datetime(2025, 6, 15, 15, 6, 40, tzinfo=timezone.utc)),
+        (1750000000, datetime(2025, 6, 15, 15, 6, 40, tzinfo=timezone.utc)),
+        ("soon", None),
+        (None, None),
+        (10**20, None),
+    ],
+)
+def test_created_at_utc(timestamp: Any, expected: Optional[datetime]) -> None:
+    """Block timestamps read as UTC; anything unreadable or out of range reads as none."""
+    assert created_at_utc(timestamp) == expected
 
 
 @pytest.mark.parametrize(
@@ -337,26 +277,13 @@ def test_report_is_approvable_only_when_unrefused_and_third_party(
 ) -> None:
     """Valory mechs and refused mechs are never offered for approval."""
     report = MechReport(
-        address="0x" + "b" * 40,
+        address=MECH,
         chain_id=GNOSIS,
         fetched_at=1,
         is_valory=is_valory,
         refusal=refusal,
     )
     assert report.approvable is approvable
-    facts = report.to_prompt()
-    assert facts["approvable"] is approvable
-    assert facts["refusal"] == (refusal.value if refusal else None)
-    assert {
-        "fetched_at",
-        "service_id",
-        "creator",
-        "metadata_hash",
-        "max_delivery_rate",
-        "payment_type_id",
-        "accepted_rate",
-    }.isdisjoint(facts)
-    assert facts["price_raised"] is False
 
 
 @pytest.mark.parametrize(
@@ -365,6 +292,7 @@ def test_report_is_approvable_only_when_unrefused_and_third_party(
         (None, 10**16, False),
         (10**16, 10**16, False),
         (10**16, 10**16 + 1, True),
+        (10**16, 10**16 - 1, False),
         (10**16, None, False),
     ],
 )
@@ -373,14 +301,13 @@ def test_price_raised_only_when_the_live_rate_is_above_the_accepted_one(
 ) -> None:
     """An approved mech that now charges more than the user accepted is flagged; a cut is not."""
     report = MechReport(
-        address="0x" + "b" * 40,
+        address=MECH,
         chain_id=GNOSIS,
         fetched_at=1,
         accepted_rate=accepted,
         max_delivery_rate=live,
     )
     assert report.price_raised is raised
-    assert report.to_prompt()["price_raised"] is raised
 
 
 class _Caps(str, Enum):

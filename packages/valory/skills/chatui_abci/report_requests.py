@@ -19,78 +19,73 @@
 
 """Fetch mech reports from the chat handler, outside consensus.
 
-The subgraph, manifest and registry reads go through the agent's HTTP client
-connection, each answered by a callback, so the handler never blocks on them.
-The domain proof cannot go that way, because the connection follows redirects,
-so it runs on a worker thread and is joined, with a bounded wait, once the
-other reads are done.
+The subgraph and the marketplace agent card are read through the HTTP client
+connection and the live price through the ledger connection, each answered by
+a callback, so the handler never blocks on them.
 """
 
-import concurrent.futures
 import json
 import time
 from datetime import datetime, timezone
 from string import Template
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from aea.protocols.base import Message
 
+from packages.valory.contracts.mech_mm.contract import MechMM
+from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.http.message import HttpMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     HTTP_CLIENT_PUBLIC_ID,
+    LEDGER_API_ADDRESS,
 )
-from packages.valory.skills.abstract_round_abci.dialogues import HttpDialogues
+from packages.valory.skills.abstract_round_abci.dialogues import (
+    ContractApiDialogues,
+    HttpDialogues,
+)
 from packages.valory.skills.abstract_round_abci.models import Requests
 from packages.valory.skills.chatui_abci.mech_report import (
     ADDRESS_PATTERN,
     ANALYTICS_MECH_URL,
     CHAIN_IDS,
     MechReport,
-    PROOF_FETCH_TIMEOUT,
-    ProofStatus,
     RETRYABLE_REFUSALS,
-    VALORY_TERMS,
     age_days,
     created_at_utc,
-    fetch_proof,
-    https_url,
     payment_line,
     payment_type_id,
-    read_benchmarks,
-    read_operator,
-    read_tools,
+    read_card,
     refusal_for,
-    verify_domain,
 )
 
 REPORT_CACHE_SECONDS = 300
-# The IPFS gateway path prefix of a CIDv1 given as hex, as the manifest hash is.
-CID_PREFIX = "f01701220"
-# The subgraph stores the manifest hash with a ``0x`` prefix.
-METADATA_PREFIX_SIZE = 2
 MAX_STORED_REPORTS = 20
 MAX_REPORTS_PER_PROMPT = 3
 HTTP_OK = 200
 JSON_HEADERS = {"Content-Type": "application/json"}
+MAX_DELIVERY_RATE_CALLABLE = "get_max_delivery_rate"
+MAX_DELIVERY_RATE_KEY = "max_delivery_rate"
 
 MECH_RECORD_QUERY = Template(
     '{ meches(where: {address: "$address"}) { address owner receivedRequests '
-    "selfDeliveredFromReceived deliveredByOthersFromReceived maxDeliveryRate "
-    "paymentType service { id metadata { metadata } } } "
+    "selfDeliveredFromReceived deliveredByOthersFromReceived paymentType "
+    "service { id } } "
     'createMeches(where: {mech: "$address"}) { blockTimestamp } }'
 )
 SAME_CREATOR_QUERY = Template(
     '{ meches(first: 1000, where: {owner: "$creator"}) { id } }'
 )
-AGENT_ID_QUERY = Template('{ service(id: "$service_id") { id erc8004Agent { id } } }')
-
-Proof = Tuple[ProofStatus, Optional[Dict[str, Any]]]
 
 
 def addresses_in(text: str) -> List[str]:
     """Get the distinct mech addresses named in the text, lowercase, in order."""
     found = (match.lower() for match in ADDRESS_PATTERN.findall(text))
     return list(dict.fromkeys(found))[:MAX_REPORTS_PER_PROMPT]
+
+
+def agent_card_url(api_url: str, network: str, service_id: int) -> str:
+    """The marketplace agent card of the service on the network."""
+    return f"{api_url.rstrip('/')}/{network}/ai-agents/{service_id}/agent-card.json"
 
 
 def _json_body(message: Message) -> Optional[Any]:
@@ -114,11 +109,22 @@ def _graph_data(message: Message) -> Optional[Dict[str, Any]]:
 
 
 def _as_int(value: Any) -> Optional[int]:
-    """Read a subgraph integer, or `None`."""
+    """Read an integer given as a number or a decimal string, or `None`."""
+    if isinstance(value, bool):
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def _state_int(message: Message, key: str) -> Optional[int]:
+    """Read an integer from a contract `STATE` reply's body, or `None` for any other reply."""
+    reply = cast(ContractApiMessage, message)
+    if reply.performative != ContractApiMessage.Performative.STATE:
+        return None
+    body = reply.state.body or {}
+    return _as_int(body.get(key))
 
 
 class MechReportRequests:  # pylint: disable=too-few-public-methods
@@ -126,27 +132,16 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
 
     context: Any
     shared_state: Any
-    _proof_executor_instance: Optional[concurrent.futures.ThreadPoolExecutor] = None
-
-    @property
-    def _proof_executor(self) -> concurrent.futures.ThreadPoolExecutor:
-        """Get the worker that fetches domain proofs, starting it on first use."""
-        if self._proof_executor_instance is None:
-            self._proof_executor_instance = concurrent.futures.ThreadPoolExecutor(
-                max_workers=2
-            )
-        return self._proof_executor_instance
-
-    def _shutdown_proof_executor(self) -> None:
-        """Stop the proof worker, if it was started."""
-        if self._proof_executor_instance is not None:
-            self._proof_executor_instance.shutdown(wait=False)
-            self._proof_executor_instance = None
 
     @property
     def _chain_id(self) -> Optional[int]:
         """Get the id of the chain the agent's mechs are on."""
-        return CHAIN_IDS.get(str(self.context.params.mech_chain_id).lower())
+        return CHAIN_IDS.get(self._network)
+
+    @property
+    def _network(self) -> str:
+        """Get the lowercase name of the chain the agent's mechs are on."""
+        return str(self.context.params.mech_chain_id).lower()
 
     def _fresh_report(self, address: str) -> Optional[MechReport]:
         """Get the stored report for the address while it is fresh."""
@@ -175,6 +170,15 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
         for address in missing:
             self._fetch_mech_record(address, one_done)
 
+    def _register_callback(
+        self, nonce: str, callback: Callable[[Message], None]
+    ) -> None:
+        """Have the reply to the request with this nonce passed to `callback`."""
+        requests = cast(Requests, self.context.requests)
+        requests.request_id_to_callback[nonce] = lambda reply, _behaviour: callback(
+            reply
+        )
+
     def _send_report_request(
         self,
         url: str,
@@ -196,19 +200,36 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             version="",
             body=json.dumps({"query": query}).encode() if query is not None else b"",
         )
-        nonce = dialogue.dialogue_label.dialogue_reference[0]
-        requests = cast(Requests, self.context.requests)
-        requests.request_id_to_callback[nonce] = lambda reply, _behaviour: callback(
-            reply
+        self._register_callback(dialogue.dialogue_label.dialogue_reference[0], callback)
+        self.context.outbox.put_message(message=message)
+
+    def _read_max_delivery_rate(
+        self, address: str, callback: Callable[[Optional[int]], None]
+    ) -> None:
+        """Read the mech's live `maxDeliveryRate`; `callback` gets it, or `None` when unreadable."""
+        contract_api_dialogues = cast(
+            ContractApiDialogues, self.context.contract_api_dialogues
+        )
+        message, dialogue = contract_api_dialogues.create(
+            counterparty=LEDGER_API_ADDRESS,
+            performative=ContractApiMessage.Performative.GET_STATE,
+            ledger_id=str(self.context.params.mech_chain_id),
+            contract_id=str(MechMM.contract_id),
+            contract_address=address,
+            callable=MAX_DELIVERY_RATE_CALLABLE,
+            kwargs=ContractApiMessage.Kwargs({}),
+        )
+        self._register_callback(
+            dialogue.dialogue_label.dialogue_reference[0],
+            lambda reply: callback(_state_int(reply, MAX_DELIVERY_RATE_KEY)),
         )
         self.context.outbox.put_message(message=message)
 
     def _fetch_mech_record(self, address: str, done: Callable[[], None]) -> None:
-        """Read the mech's subgraph record, then go on to its creator and manifest."""
-        chain_id = self._chain_id or 0
+        """Read the mech's subgraph record, then go on to its creator, card and price."""
         report = MechReport(
             address=address,
-            chain_id=chain_id,
+            chain_id=self._chain_id or 0,
             fetched_at=int(time.time()),
             is_valory=address in self.context.params.valid_mechs,
             is_approved=address in self.shared_state.approved_mechs,
@@ -234,8 +255,9 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             MECH_RECORD_QUERY.substitute(address=address),
         )
 
+    @staticmethod
     def _read_record(
-        self, report: MechReport, mech: Dict[str, Any], created: List[Any]
+        report: MechReport, mech: Dict[str, Any], created: List[Any]
     ) -> None:
         """Copy the subgraph record into the report."""
         report.creator = str(mech.get("owner") or "").lower() or None
@@ -243,26 +265,16 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
         report.self_delivered = _as_int(mech.get("selfDeliveredFromReceived"))
         report.delivered_by_others = _as_int(mech.get("deliveredByOthersFromReceived"))
         report.payment_type_id = payment_type_id(mech.get("paymentType"))
-        report.max_delivery_rate = _as_int(mech.get("maxDeliveryRate"))
-        report.payment_method, report.payment_ceiling = payment_line(
-            mech.get("paymentType"), mech.get("maxDeliveryRate"), report.chain_id
+        report.payment_method, _ = payment_line(
+            report.payment_type_id, None, report.chain_id
         )
         if report.accepted_rate is not None:
             _, report.accepted_ceiling = payment_line(
-                mech.get("paymentType"), report.accepted_rate, report.chain_id
+                report.payment_type_id, report.accepted_rate, report.chain_id
             )
         raw_service = mech.get("service")
         service: Dict[str, Any] = raw_service if isinstance(raw_service, dict) else {}
         report.service_id = _as_int(service.get("id"))
-        metadata = service.get("metadata") or []
-        first = metadata[0] if metadata and isinstance(metadata[0], dict) else {}
-        metadata_hex = first.get("metadata")
-        report.metadata_hash = (
-            metadata_hex[METADATA_PREFIX_SIZE:]
-            if isinstance(metadata_hex, str)
-            and len(metadata_hex) > METADATA_PREFIX_SIZE
-            else None
-        )
         created_at = (
             created_at_utc(created[0].get("blockTimestamp"))
             if created and isinstance(created[0], dict)
@@ -275,12 +287,11 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             report.analytics_url = ANALYTICS_MECH_URL.format(
                 chain_id=report.chain_id, address=report.address
             )
-            report.terms_sentence = VALORY_TERMS
 
     def _fetch_same_creator(self, report: MechReport, done: Callable[[], None]) -> None:
-        """Count the other mechs created by the same address, then read the manifest."""
+        """Count the other mechs created by the same address, then read the card."""
         if report.creator is None:
-            self._fetch_manifest(report, done)
+            self._fetch_card(report, done)
             return
 
         def on_creator(reply: Message) -> None:
@@ -288,7 +299,7 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             meches = data.get("meches") if data else None
             if isinstance(meches, list):
                 report.same_creator_mechs = max(len(meches) - 1, 0)
-            self._fetch_manifest(report, done)
+            self._fetch_card(report, done)
 
         self._send_report_request(
             self.context.mechs_subgraph.url,
@@ -296,84 +307,55 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             SAME_CREATOR_QUERY.substitute(creator=report.creator),
         )
 
-    def _fetch_manifest(self, report: MechReport, done: Callable[[], None]) -> None:
-        """Read the manifest, start the domain proof, then look up the agent id."""
-        if report.metadata_hash is None:
+    def _fetch_card(self, report: MechReport, done: Callable[[], None]) -> None:
+        """Read the marketplace agent card, then the live price."""
+        if report.service_id is None:
             self._finish_report(report, True, False, done)
             return
 
-        def on_manifest(reply: Message) -> None:
-            manifest = _json_body(reply)
-            if not isinstance(manifest, dict):
+        def on_card(reply: Message) -> None:
+            facts = read_card(_json_body(reply), report.address)
+            if facts is None:
                 self._finish_report(report, True, False, done)
                 return
-            report.tools = read_tools(manifest)
-            report.benchmarks = read_benchmarks(manifest)
-            report.terms_url = https_url(manifest.get("termsUrl"))
-            operator = read_operator(manifest)
-            if operator is None or report.is_valory:
-                self._finish_report(report, True, True, done)
-                return
-            report.operator_name, report.domain = operator
-            proof = self._proof_executor.submit(fetch_proof, report.domain)
-            self._fetch_agent_id(report, proof, done)
+            report.name = facts.name
+            report.tools = facts.tools
+            report.operator_name = facts.operator_name
+            report.domain = facts.domain
+            report.domain_verified = facts.domain_verified
+            self._fetch_price(report, done)
 
         self._send_report_request(
-            self.context.params.ipfs_address + CID_PREFIX + report.metadata_hash,
-            on_manifest,
+            agent_card_url(
+                self.context.params.marketplace_api_url,
+                self._network,
+                report.service_id,
+            ),
+            on_card,
         )
 
-    def _fetch_agent_id(
-        self,
-        report: MechReport,
-        proof: "concurrent.futures.Future[Proof]",
-        done: Callable[[], None],
-    ) -> None:
-        """Look up the mech's ERC-8004 agent id, then decide the domain."""
-        if report.service_id is None:
-            self._decide_domain(report, None, proof, done)
-            return
+    def _fetch_price(self, report: MechReport, done: Callable[[], None]) -> None:
+        """Read the live price from the mech contract, then finish the report."""
 
-        def on_agent(reply: Message) -> None:
-            data = _graph_data(reply)
-            service = data.get("service") if data else None
-            agent = service.get("erc8004Agent") if isinstance(service, dict) else None
-            agent_id = _as_int(agent.get("id")) if isinstance(agent, dict) else None
-            self._decide_domain(report, agent_id, proof, done)
+        def on_price(rate: Optional[int]) -> None:
+            report.max_delivery_rate = rate
+            report.payment_method, report.payment_ceiling = payment_line(
+                report.payment_type_id, rate, report.chain_id
+            )
+            self._finish_report(report, True, True, done)
 
-        self._send_report_request(
-            self.context.params.service_registry_subgraph_url,
-            on_agent,
-            AGENT_ID_QUERY.substitute(service_id=report.service_id),
-        )
-
-    def _decide_domain(
-        self,
-        report: MechReport,
-        agent_id: Optional[int],
-        proof: "concurrent.futures.Future[Proof]",
-        done: Callable[[], None],
-    ) -> None:
-        """Join the proof, within its timeout, and record whether the domain is verified."""
-        try:
-            result: Optional[Proof] = proof.result(timeout=PROOF_FETCH_TIMEOUT)
-        except (concurrent.futures.TimeoutError, concurrent.futures.CancelledError):
-            result = None
-        report.domain_verified, report.domain_note = verify_domain(
-            agent_id, result, report.chain_id
-        )
-        self._finish_report(report, True, True, done)
+        self._read_max_delivery_rate(report.address, on_price)
 
     def _finish_report(
         self,
         report: MechReport,
         record_found: Optional[bool],
-        manifest_read: bool,
+        card_read: bool,
         done: Callable[[], None],
     ) -> None:
         """Decide any refusal, store the report, and signal the caller."""
         report.refusal = refusal_for(
-            record_found, manifest_read, report.self_delivered or 0
+            record_found, card_read, report.self_delivered or 0
         )
         if report.refusal in RETRYABLE_REFUSALS:
             # kept for the conversation, but refetched on the next question
