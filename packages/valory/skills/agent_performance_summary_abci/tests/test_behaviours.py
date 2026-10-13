@@ -8742,7 +8742,9 @@ class TestKpiSeriesAgreement:
 
         def _past(watermark: int) -> List[dict]:
             """Subgraph-shaped requests strictly past ``watermark``."""
-            return [r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark]
+            return [
+                r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark
+            ]
 
         def _fetch_all(
             *_: Any, block_timestamp_gt: int = 0
@@ -8827,9 +8829,7 @@ class TestKpiSeriesAgreement:
                 )
         return kpi_settled, series
 
-    @pytest.mark.parametrize(
-        "branch", ["omen", "omen-mech-analytics", "polymarket"]
-    )
+    @pytest.mark.parametrize("branch", ["omen", "omen-mech-analytics", "polymarket"])
     def test_series_matches_kpi_end_to_end(self, branch: str) -> None:
         """The open set the KPI fetches is exactly what the series holds back."""
         is_polymarket = branch == "polymarket"

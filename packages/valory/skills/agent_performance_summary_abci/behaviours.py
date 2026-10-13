@@ -1456,9 +1456,7 @@ class FetchPerformanceSummaryBehaviour(
         unplaced_mech_requests = (
             None
             if placed_mech_requests is None
-            else max(
-                total_mech_requests - open_mech_requests - placed_mech_requests, 0
-            )
+            else max(total_mech_requests - open_mech_requests - placed_mech_requests, 0)
         )
 
         all_mech_costs = total_mech_requests * DEFAULT_MECH_FEE
@@ -2152,7 +2150,11 @@ class FetchPerformanceSummaryBehaviour(
             # A fresh rebuild cannot close the gap: the request list and the
             # KPI's ``total`` disagree at the source, so retrying soon is waste.
             rebuilt.residual_rebuild_backoff_days = next(
-                (days for days in _RESIDUAL_REBUILD_BACKOFF_DAYS if days > backoff_days),
+                (
+                    days
+                    for days in _RESIDUAL_REBUILD_BACKOFF_DAYS
+                    if days > backoff_days
+                ),
                 _RESIDUAL_REBUILD_BACKOFF_DAYS[-1],
             )
             self.context.logger.error(
