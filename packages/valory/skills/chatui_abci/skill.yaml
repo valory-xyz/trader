@@ -10,9 +10,9 @@ fingerprint:
   behaviours.py: bafybeiffmmczzfl6y2gkew53nwmagndw4wgudehi6wsmzbxpfzti6vqmye
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeiblvmnu5skwvh7pns2x7bwdxhfow65p5excwjye5lfiptgedmlxkq
+  handlers.py: bafybeihiqqdpcztrd4srcvawtmrcvykdveyenothkzykutebwhwshlv244
   mech_commands.py: bafybeie4cippodstkmpctcx5rwszj5eq2b43kg56xhyz2uuwebscdcawhm
-  mech_templates.py: bafybeig5wrmzmofc62eegthmymb55cqnyunnczbptwro22gg4odejpgy6q
+  mech_templates.py: bafybeiapbkz5akb7czz7udsg5dolzxtydqhwgcjpktscka3sptsy7jeewi
   models.py: bafybeig3xydr43ewnptxxjg4b4sqrje45zfq5pd4kgkle2m442iati5ooi
   payloads.py: bafybeib7gauq5ehcoxsl4jeydjxff56zxnjtzdv2orh4qezzjw6gv5jdzm
   prompts.py: bafybeictf5gyx737txb465fypnvq4544zhetkkyprhiha64fedma2zn4ym
@@ -20,9 +20,9 @@ fingerprint:
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeieormfvkdcrnuufbiokezjzubwephshwtjes3xjwuyeskrb3aclri
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeie7zwqvpnlmixrhnwesekfwzucgtpm5pmqvuiikm2oolaeuio3u6q
+  tests/test_handlers.py: bafybeibftrm2qxpg5lqigb4jtjtlwzi6y55t2vdhjaxmcrtmburzfahwja
   tests/test_mech_commands.py: bafybeibrhdtxghhhhhm2od7cuovqiird7tuesuwr65i3my5wbbrzemov24
-  tests/test_mech_templates.py: bafybeidzemudp2l4zwbbiddznbbgoaq2yiwc45k7rjvqjspeyugooofvdi
+  tests/test_mech_templates.py: bafybeifkgul3svpk7zweirp4em4unztiy27u63slinzwrm5fxvltg3hf6u
   tests/test_models.py: bafybeie4ctja4taigjubcwuarxvmkegrxl2hdsgnjwuinu6hafgzmk4x24
   tests/test_payloads.py: bafybeicwtw4gbh6erhfzmlnu3ojfajftntrdr3vp3blp5wp6hhgpxecnqu
   tests/test_prompts.py: bafybeifgblywotsrrzwnhzicmqijhqhevcjo4dzv465jfr7s4r6dfwip7a

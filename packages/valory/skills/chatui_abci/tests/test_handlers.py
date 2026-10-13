@@ -3051,7 +3051,7 @@ class TestAnAddressMessage:
         wire.answer_http({"errors": ["down"]}, status=500)
         assert len(wire.sent) == 1
         assert _reply(handler) == (
-            f"Unnamed mech, {THIRD_PARTY}, on Gnosis.<br>"
+            f"{THIRD_PARTY} on Gnosis.<br>"
             "Its record cannot be read right now; try again later."
         )
 
@@ -3246,9 +3246,11 @@ class TestRemove:
             {OTHER_MECH: 2}
         )
         handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
-        reply = _reply(handler)
-        assert reply.startswith(f"Removed {THIRD_PARTY}. ")
-        assert "other pins stay" in reply
+        assert _reply(handler) == (
+            f"Removed {THIRD_PARTY}. No new requests go to it from the next cycle; "
+            "a request already sent to it can still be answered and bet on. "
+            f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}."
+        )
 
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
@@ -3290,7 +3292,8 @@ class TestPin:
         _prompt(handler, f"pin {address.upper().replace('0X', '0x')}")
         handler._store_selected_mechs.assert_called_once_with(stored)  # type: ignore[attr-defined]
         assert _reply(handler) == (
-            f"Pinned {address}. Mech requests now go only to your pinned mechs."
+            f"Pinned {address}. Mech requests now go only to your pinned mechs: "
+            f"{', '.join(stored)}."
         )
 
     @pytest.mark.parametrize(
@@ -3319,14 +3322,19 @@ class TestPin:
         handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
         _prompt(handler, f"pin {VALORY_MECH}")
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
-        assert _reply(handler).startswith(f"Pinned {VALORY_MECH}.")
+        assert _reply(handler) == (
+            f"Pinned {VALORY_MECH}. Mech requests now go only to your pinned mechs: "
+            f"{VALORY_MECH}."
+        )
 
     def test_unpinning_one_of_several_keeps_the_rest(self) -> None:
         """Mech selection stays pinned to the others."""
         handler, _ = _mech_handler(pin=[VALORY_MECH, THIRD_PARTY])
         _prompt(handler, f"unpin {CHECKSUMMED}")
         handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
-        assert _reply(handler) == f"Unpinned {THIRD_PARTY}."
+        assert (
+            _reply(handler) == f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}."
+        )
 
     def test_unpinning_the_last_pin_restores_normal_selection(self) -> None:
         """An empty pin list is stored as none."""

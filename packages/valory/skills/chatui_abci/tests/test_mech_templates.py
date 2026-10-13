@@ -324,6 +324,24 @@ def test_unknown_facts_are_left_out() -> None:
     assert not any(line.startswith(("Created", "Tools")) for line in lines)
 
 
+@pytest.mark.parametrize(
+    "record, ending",
+    [
+        (RecordStatus.NOT_INDEXED, NOT_INDEXED),
+        (RecordStatus.UNAVAILABLE, RECORD_UNAVAILABLE),
+    ],
+)
+def test_an_address_without_a_record_is_not_called_a_mech(
+    record: RecordStatus, ending: str
+) -> None:
+    """With no record there is no mech to name, only the address asked about."""
+    lines, offer = _render(
+        record=record, card=CardStatus.NOT_TRIED, name=None, created_at=None, tools=()
+    )
+    assert lines == [f"{MECH} on Gnosis.", ending]
+    assert offer is None
+
+
 def test_an_unread_record_has_no_payment_or_delivery_line() -> None:
     """Only the subgraph record gives the price and the counters."""
     lines, _ = _render(

@@ -147,10 +147,13 @@ def render_report(
     chain = CHAIN_NAMES.get(facts.chain_id or 0) or (
         "an unknown chain" if facts.chain_id is None else f"chain {facts.chain_id}"
     )
-    lines = [
-        f"{escape(facts.name) if facts.name else 'Unnamed mech'}, "
-        f"{facts.address}, on {chain}."
-    ]
+    if facts.name:
+        title = f"{escape(facts.name)}, {facts.address}, on {chain}."
+    elif facts.record is RecordStatus.FOUND:
+        title = f"Unnamed mech, {facts.address}, on {chain}."
+    else:
+        title = f"{facts.address} on {chain}."
+    lines = [title]
     if third_party_card:
         lines.append(_operator_line(facts))
     if facts.created_at is not None:

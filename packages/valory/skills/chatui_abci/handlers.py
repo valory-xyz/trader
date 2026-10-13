@@ -411,8 +411,12 @@ class HttpHandler(BaseHttpHandler):
             return "I can only pin a Valory mech the agent uses or a mech you approved."
         pins = self._pinned_mechs()
         if address not in pins:
-            self._store_selected_mechs([*pins, address])
-        return f"Pinned {address}. Mech requests now go only to your pinned mechs."
+            pins = [*pins, address]
+            self._store_selected_mechs(pins)
+        return (
+            f"Pinned {address}. Mech requests now go only to your pinned mechs: "
+            f"{', '.join(pins)}."
+        )
 
     def _unpin_mech(self, address: str) -> str:
         """Unpin a mech; an empty pin list means normal mech selection."""
@@ -422,7 +426,7 @@ class HttpHandler(BaseHttpHandler):
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
         if remaining:
-            return f"Unpinned {address}."
+            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}."
         return f"Unpinned {address}. Mech selection is back to normal."
 
     def _send_chatui_prompt(
@@ -757,7 +761,8 @@ class HttpHandler(BaseHttpHandler):
             }
         )
         notes.append(
-            f"Removed {', '.join(removed)}. No new requests go to it from the next cycle."
+            f"Removed {', '.join(removed)}. No new requests go to it from the next "
+            "cycle; a request already sent to it can still be answered and bet on."
         )
         pin = self.shared_state.chatui_config.selected_mechs or []
         unpinned = [mech for mech in pin if mech.lower() in removed]
@@ -767,7 +772,7 @@ class HttpHandler(BaseHttpHandler):
             notes.append(
                 f"It was pinned, so {', '.join(unpinned)} is unpinned"
                 + (
-                    "; your other pins stay."
+                    f"; still pinned: {', '.join(m.lower() for m in remaining)}."
                     if remaining
                     else " and mech selection is back to normal."
                 )
