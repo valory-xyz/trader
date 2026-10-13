@@ -71,9 +71,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_tools: Set[str] = set()
         self._remote_accuracy_information: StringIO = StringIO()
         # Tool-suitability classifier cache, populated per boot by
-        # `_fetch_mech_manifests`; keyed by lowercased tool name.
+        # `_fetch_mech_manifests`; keyed by policy key, so a manifest only
+        # describes the tools of the identities whose mechs publish it.
         self._tool_metadata: Dict[str, Dict[str, Any]] = {}
         self._pending_cid: Optional[str] = None
+        self._pending_identities: Set[str] = set()
 
     @property
     def mech_tools(self) -> Set[str]:
@@ -318,18 +320,24 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.benchmarking_mode.enabled:
             return
 
-        seen_cids: Set[str] = set()
+        identities_by_cid: Dict[str, Set[str]] = {}
         for mech in self.synchronized_data.mechs_info:
             metadata_str = (
                 mech.service.metadata_str if mech.service is not None else None
             )
-            if metadata_str is None or metadata_str in seen_cids:
-                continue
-            seen_cids.add(metadata_str)
+            if metadata_str is not None:
+                identities_by_cid.setdefault(metadata_str, set()).add(
+                    self._identity(mech.address)
+                )
+
+        seen_cids = set(identities_by_cid)
+        for metadata_str, identities in identities_by_cid.items():
             self._pending_cid = metadata_str
+            self._pending_identities = identities
             yield from self.wait_for_condition_with_sleep(self._fetch_one_manifest)
 
         self._pending_cid = None
+        self._pending_identities = set()
 
         if seen_cids and not self._tool_metadata:
             self.context.logger.warning(
@@ -367,7 +375,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         extracted = self._extract_tool_metadata(res_raw)
 
         if extracted:
-            self._tool_metadata.update(extracted)
+            for identity in self._pending_identities:
+                for tool, metadata in extracted.items():
+                    self._tool_metadata[tool_key(identity, tool)] = metadata
             self.mech_tools_api.reset_retries()
             return True
 
@@ -758,9 +768,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return
 
         names = tool_names(self.mech_tools)
-        suitable = {
-            tool for tool in names if is_prediction_tool(self._tool_metadata.get(tool))
-        }
+        suitable = tool_names(
+            key
+            for key in self.mech_tools
+            if is_prediction_tool(self._tool_metadata.get(key))
+        )
         if not suitable:
             self.context.logger.warning(
                 f"Tool-suitability classifier marked all {len(names)} "

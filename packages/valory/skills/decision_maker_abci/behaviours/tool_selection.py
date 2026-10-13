@@ -63,19 +63,21 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
             suitable = {
                 key
                 for key in candidate
-                if is_prediction_tool(self._tool_metadata.get(split_tool_key(key)[1]))
+                if is_prediction_tool(self._tool_metadata.get(key))
             }
             if suitable:
                 if suitable != candidate:
                     rejected: Dict[str, list] = {}
                     no_manifest: list = []
-                    for tool in sorted(tool_names(candidate - suitable)):
-                        meta = self._tool_metadata.get(tool)
+                    for key in sorted(candidate - suitable):
+                        meta = self._tool_metadata.get(key)
                         if meta is None:
-                            no_manifest.append(tool)
+                            no_manifest.append(describe_tool_key(key))
                         else:
                             _, reason = explain_prediction_tool(meta)
-                            rejected.setdefault(reason, []).append(tool)
+                            rejected.setdefault(reason, []).append(
+                                describe_tool_key(key)
+                            )
                     self.context.logger.info(
                         "Tool-suitability classifier narrowed "
                         f"{len(candidate)} -> {len(suitable)} tools; "
