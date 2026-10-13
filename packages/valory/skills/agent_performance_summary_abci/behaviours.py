@@ -478,7 +478,7 @@ class FetchPerformanceSummaryBehaviour(
 
             if not isinstance(positions, list):
                 self.context.logger.warning(
-                    f"No positions returned from Polymarket connection: {positions}"
+                    f"Polymarket positions fetch failed: {positions}"
                 )
                 return None
 
@@ -616,8 +616,9 @@ class FetchPerformanceSummaryBehaviour(
 
         :param agent_safe_address: The agent's safe address
         :return: Number of open market requests, or ``None`` when any of
-            its fetches failed and no cached value is available. Callers MUST distinguish ``None`` (unknown) from
-            ``0`` (no open-market requests) — treating unknown as 0 in
+            its fetches failed and no cached value is available. Callers MUST
+            distinguish ``None`` (unknown) from ``0`` (no open-market
+            requests) — treating unknown as 0 in
             ``_calculate_settled_mech_requests`` would compute
             ``settled = total - 0 = total``, counting every open request
             as settled and over-inflating ``settled_mech_costs`` (the
@@ -2365,8 +2366,8 @@ class FetchPerformanceSummaryBehaviour(
             block_timestamp_gt=existing_data.last_mech_timestamp,
         )
 
-        # H6 retry: only on a genuine failure (``None``); ``[]`` means nothing
-        # new past the watermark.
+        # Retry only on a genuine failure (``None``); ``[]`` means nothing new
+        # past the watermark.
         if new_mech_requests is None:
             new_mech_requests = []
             if existing_data.last_mech_timestamp > 0:
