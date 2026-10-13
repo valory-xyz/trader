@@ -27,6 +27,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from packages.valory.skills.chatui_abci.models import Offer
 from packages.valory.skills.mech_interact_abci.mech_reader import (
+    CardStatus,
     MechFacts,
     RecordStatus,
 )
@@ -59,9 +60,11 @@ VERIFIED_MEANS = (
 )
 RECORD_UNAVAILABLE = "Its record cannot be read right now; try again later."
 NOT_INDEXED = "No such mech is found on this chain."
-CARD_UNREAD = (
-    "I can't read this mech's description, so I can't approve it. Try again later."
+CARD_UNAVAILABLE = (
+    "I can't read this mech's description right now, so I can't approve it. "
+    "Try again later."
 )
+NO_CARD = "This mech publishes no description, so it cannot be approved."
 NEVER_DELIVERED = (
     "It has never delivered an on-chain request, so it cannot be approved."
 )
@@ -215,8 +218,10 @@ def _ending(  # pylint: disable=too-many-return-statements
         return [RECORD_UNAVAILABLE], False
     if facts.record is RecordStatus.NOT_INDEXED:
         return [NOT_INDEXED], False
+    if facts.card is CardStatus.UNAVAILABLE:
+        return [CARD_UNAVAILABLE], False
     if not facts.card_read:
-        return [CARD_UNREAD], False
+        return [NO_CARD], False
     if not facts.self_delivered:
         return [NEVER_DELIVERED], False
     _, cap_text = payment_line(facts.payment_type, standing.cap, facts.chain_id)

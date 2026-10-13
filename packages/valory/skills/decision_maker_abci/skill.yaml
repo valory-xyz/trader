@@ -179,10 +179,10 @@ skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/mech_interact_abci:0.1.0:bafybeifhllajxqdhhloxcdbqmbzagwrais477yauvukdeq5j3ipb7wv3ki
+- valory/mech_interact_abci:0.1.0:bafybeihopwdkl4hwmdg6smor2kudl6u3pptobcgdu5r3i64lxa6gqroyrq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeid3xhncwqui64iihfpawzhisr4umqkrszc7drbtpkrtfoshu5ktei
-- valory/chatui_abci:0.1.0:bafybeia33vxkx5cevtf4tkxix6j6gbnnigwalujw5kr5l5p2krytvg7ym4
+- valory/chatui_abci:0.1.0:bafybeigckozetobe5t76h7ukrft3lnxtkzkbc3chkaqspqlc2wke7byfey
 behaviours:
   main:
     args: {}

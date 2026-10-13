@@ -2906,7 +2906,7 @@ def _card(address: str = THIRD_PARTY) -> Dict[str, Any]:
         "name": "Bob Mech",
         "skills": [{"name": "superforcaster"}],
         "provider": None,
-        "metadata": {"mechAddress": f"eip155:100:{address}"},
+        "metadata": {"serviceId": "3786", "mechAddress": f"eip155:100:{address}"},
     }
 
 

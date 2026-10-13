@@ -27,9 +27,10 @@ from typing import Any, List, Optional, Tuple
 import pytest
 
 from packages.valory.skills.chatui_abci.mech_templates import (
-    CARD_UNREAD,
+    CARD_UNAVAILABLE,
     NEVER_DELIVERED,
     NOT_INDEXED,
+    NO_CARD,
     OLAS_DISCLAIMER,
     PRICE_UNREADABLE,
     RECORD_UNAVAILABLE,
@@ -43,6 +44,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
 )
 from packages.valory.skills.chatui_abci.models import Offer
 from packages.valory.skills.mech_interact_abci.mech_reader import (
+    CardStatus,
     MechFacts,
     RecordStatus,
 )
@@ -60,7 +62,7 @@ FACTS = MechFacts(
     address=MECH,
     chain_id=GNOSIS,
     record=RecordStatus.FOUND,
-    card_read=True,
+    card=CardStatus.READ,
     payment_type=NATIVE,
     max_delivery_rate=NATIVE_RATE,
     service_id=3786,
@@ -142,7 +144,9 @@ def test_a_price_at_the_cap_is_approvable() -> None:
         ),
         (THIRD_PARTY, {"record": RecordStatus.UNAVAILABLE}, [RECORD_UNAVAILABLE]),
         (THIRD_PARTY, {"record": RecordStatus.NOT_INDEXED}, [NOT_INDEXED]),
-        (THIRD_PARTY, {"card_read": False}, [CARD_UNREAD]),
+        (THIRD_PARTY, {"card": CardStatus.UNAVAILABLE}, [CARD_UNAVAILABLE]),
+        (THIRD_PARTY, {"card": CardStatus.NOT_PUBLISHED}, [NO_CARD]),
+        (THIRD_PARTY, {"card": CardStatus.NOT_TRIED}, [NO_CARD]),
         (THIRD_PARTY, {"self_delivered": 0}, [NEVER_DELIVERED]),
         (THIRD_PARTY, {"self_delivered": None}, [NEVER_DELIVERED]),
         (
@@ -232,10 +236,14 @@ def test_an_approved_mech_that_raised_its_price_is_offered_again() -> None:
         ),
         (
             THIRD_PARTY,
-            {"record": RecordStatus.UNAVAILABLE, "card_read": False},
+            {"record": RecordStatus.UNAVAILABLE, "card": CardStatus.UNAVAILABLE},
             RECORD_UNAVAILABLE,
         ),
-        (THIRD_PARTY, {"card_read": False, "self_delivered": 0}, CARD_UNREAD),
+        (
+            THIRD_PARTY,
+            {"card": CardStatus.UNAVAILABLE, "self_delivered": 0},
+            CARD_UNAVAILABLE,
+        ),
         (_standing(cap=None), {"self_delivered": 0}, NEVER_DELIVERED),
         (
             THIRD_PARTY,
@@ -295,7 +303,7 @@ def test_a_verified_operator_without_fields_is_still_named_as_verified() -> None
     "standing, fields",
     [
         (_standing(valory=True), {}),
-        (THIRD_PARTY, {"card_read": False}),
+        (THIRD_PARTY, {"card": CardStatus.UNAVAILABLE}),
     ],
 )
 def test_no_operator_verdict_or_disclaimer_without_a_third_party_card(
@@ -319,7 +327,10 @@ def test_unknown_facts_are_left_out() -> None:
 def test_an_unread_record_has_no_payment_or_delivery_line() -> None:
     """Only the subgraph record gives the price and the counters."""
     lines, _ = _render(
-        record=RecordStatus.NOT_INDEXED, card_read=False, created_at=None, tools=()
+        record=RecordStatus.NOT_INDEXED,
+        card=CardStatus.NOT_TRIED,
+        created_at=None,
+        tools=(),
     )
     assert lines == [f"Bob Mech, {MECH}, on Gnosis.", NOT_INDEXED]
 
