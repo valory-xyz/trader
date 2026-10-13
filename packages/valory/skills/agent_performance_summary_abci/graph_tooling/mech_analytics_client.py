@@ -422,6 +422,7 @@ def rows_as_subgraph_mech_requests(
             {
                 "blockTimestamp": block_timestamp,
                 "parsedRequest": parsed_request,
+                "requestId": row.get("request_id"),
             }
         )
     return adapted

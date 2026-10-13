@@ -158,6 +158,7 @@ def _make_fetch_behaviour(**overrides: Any) -> FetchPerformanceSummaryBehaviour:
     b._open_market_requests = None
     b._open_market_request_keys = None
     b._mech_request_lookup = None
+    b._fetched_mech_requests = []
     b._update_interval = UPDATE_INTERVAL
     b._last_update_timestamp = 0
     b._settled_mech_requests_count = 0
@@ -8760,12 +8761,13 @@ class TestKpiSeriesAgreement:
             floor = int(since.timestamp()) if since else 0
             return [
                 {
+                    "request_id": f"0x{index}",
                     "question_title": title,
                     "requested_at": datetime.fromtimestamp(
                         ts, tz=timezone.utc
                     ).isoformat(),
                 }
-                for title, ts in requests
+                for index, (title, ts) in enumerate(requests)
                 if ts >= floor
             ]
             yield  # pragma: no cover
@@ -8868,6 +8870,87 @@ class TestKpiSeriesAgreement:
             {"title": "New open", "timestamp": day1 + 100}
         ]
         assert series.data_points[-1].cumulative_profit == round(-kpi * _FEE, 3)
+
+    def test_late_scored_request_is_charged_once(self) -> None:
+        """A request mech-analytics serves after the watermark passed it is charged once."""
+        branch = "omen-mech-analytics"
+        day1 = _DAY0 + SECONDS_PER_DAY
+        requests: List[Tuple[Optional[str], int]] = [
+            ("Early", _DAY0 + 100),
+            ("Later", _DAY0 + 200),
+        ]
+        kpi, series = self._kpi_and_series_round(
+            branch, requests, [], [_stat(_DAY0, [], False)], _DAY0 + 1000, None
+        )
+        assert series.settled_mech_requests_count == kpi == 2
+
+        # Scored only now, behind the watermark.
+        requests.append(("Late", _DAY0 + 150))
+        kpi, series = self._kpi_and_series_round(
+            branch, requests, [], [], day1 + 1000, series
+        )
+        assert series.settled_mech_requests_count == kpi == 3
+
+        # Still inside the window, so served again: not charged twice.
+        kpi, series = self._kpi_and_series_round(
+            branch, requests, [], [], day1 + 2000, series
+        )
+        assert series.settled_mech_requests_count == kpi == 3
+
+    def _lookback_tick(
+        self,
+        existing: ProfitOverTimeData,
+        fetched: Optional[List[dict]],
+        now: int,
+    ) -> Tuple[Optional[ProfitOverTimeData], MagicMock]:
+        """Run one incremental update on the mech-analytics path."""
+        b = _make_fetch_behaviour(_open_market_request_keys=[])
+        ctx, params, synced_data, _ = _mock_context(
+            is_polymarket=False, synced_timestamp=now
+        )
+        params.use_mech_analytics = True
+        params.mech_analytics_url = "https://mech-analytics.test"
+        fetch_mock = MagicMock(side_effect=_return_gen(fetched))
+        with (
+            _patch_context(b, ctx, synced_data)[0],
+            _patch_context(b, ctx, synced_data)[1],
+            patch.object(
+                b, "_fetch_daily_profit_statistics", side_effect=_return_gen([])
+            ),
+            patch.object(b, "_fetch_all_mech_requests", fetch_mock),
+        ):
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", now, existing)
+            )
+        return result, fetch_mock
+
+    def test_first_lookback_round_charges_only_past_the_watermark(self) -> None:
+        """Without stored ids, rows at or below the watermark count as charged."""
+        watermark = _DAY0 + 8 * SECONDS_PER_DAY
+        existing = self._existing(last_mech_timestamp=watermark)
+        fetched = [
+            dict(_mech_request("Charged", watermark), requestId="0xa"),
+            dict(_mech_request("New", watermark + 10), requestId="0xb"),
+        ]
+
+        result, fetch_mock = self._lookback_tick(existing, fetched, watermark + 100)
+
+        assert fetch_mock.call_args.kwargs == {
+            "block_timestamp_gt": watermark - 7 * SECONDS_PER_DAY
+        }
+        assert result is not None
+        assert result.settled_mech_requests_count == 1
+        assert result.recent_mech_request_ids == ["0xa", "0xb"]
+
+    def test_failed_lookback_fetch_keeps_stored_series(self) -> None:
+        """The window is refetched next round, so a failure skips the narrower retry."""
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+        existing.recent_mech_request_ids = []
+
+        result, fetch_mock = self._lookback_tick(existing, None, _DAY0 + 100)
+
+        assert result is None
+        assert fetch_mock.call_count == 1
 
     def test_daily_profit_is_stored_unrounded(self) -> None:
         """Sub-0.001 daily profits add up instead of rounding away per day."""

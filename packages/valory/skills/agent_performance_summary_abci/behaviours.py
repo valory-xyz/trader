@@ -144,6 +144,8 @@ PERCENTAGE_FACTOR = 100
 WEI_IN_ETH = 10**18  # 1 ETH = 10^18 wei
 SECONDS_PER_DAY = 86400
 MECH_LOOKBACK_SECONDS = 2 * SECONDS_PER_DAY  # 48h lookback for mech watermark fallback
+# mech-analytics serves a request only once scored, up to ~6 days late.
+MECH_ANALYTICS_LOOKBACK_SECONDS = 7 * SECONDS_PER_DAY
 NA = "N/A"
 UPDATE_INTERVAL = 1800  # 30 mins
 LEADERBOARD_REFRESH_INTERVAL = 3600
@@ -401,6 +403,7 @@ class FetchPerformanceSummaryBehaviour(
         # ``_open_market_requests``; ``None`` until that count is computed.
         self._open_market_request_keys: Optional[List[Tuple[str, int]]] = None
         self._mech_request_lookup: Optional[dict] = None
+        self._fetched_mech_requests: List[dict] = []
         self._update_interval: int = UPDATE_INTERVAL
         self._last_update_timestamp: int = 0
         # ``None`` = "unknown this round" (fetch failure); ``0`` = "genuinely no
@@ -1931,6 +1934,26 @@ class FetchPerformanceSummaryBehaviour(
         """
         return [{"title": title, "timestamp": ts} for title, ts in held_back]
 
+    def _recent_request_ids(
+        self, requests: List[dict], watermark: int
+    ) -> Optional[List[str]]:
+        """Return the ids the next lookback fetch serves again, ``None`` off mech-analytics.
+
+        :param requests: every request the lookback window returned
+        :param watermark: the watermark after this round
+        :return: sorted request ids inside the next window, or ``None``
+        """
+        if not is_flag_enabled(self.params):
+            return None
+        cutoff = watermark - MECH_ANALYTICS_LOOKBACK_SECONDS
+        return sorted(
+            {
+                request["requestId"]
+                for request in requests
+                if self._mech_request_key(request)[1] > cutoff
+            }
+        )
+
     def _apply_mech_fees(
         self, fees_by_day: Dict[int, int], date_timestamp: int
     ) -> Tuple[float, int]:
@@ -1991,6 +2014,7 @@ class FetchPerformanceSummaryBehaviour(
             f"Built mech request lookup with {len(lookup)} unique questions, {total_requests} total requests"
         )
         self._mech_request_lookup = lookup
+        self._fetched_mech_requests = all_mech_requests
         return lookup
 
     def _build_profit_over_time_data(
@@ -2321,6 +2345,9 @@ class FetchPerformanceSummaryBehaviour(
             schema_version=PROFIT_OVER_TIME_SCHEMA_VERSION,
             pending_mech_requests=self._as_pending_mech_requests(held_back),
             last_residual_rebuild_ts=last_residual_rebuild_ts,
+            recent_mech_request_ids=self._recent_request_ids(
+                self._fetched_mech_requests, last_mech_timestamp
+            ),
         )
 
     def _perform_incremental_update(
@@ -2386,17 +2413,36 @@ class FetchPerformanceSummaryBehaviour(
             replace_last = False
 
         # Every request past the watermark, traded or not, as the KPI's
-        # ``total`` counts them all.
+        # ``total`` counts them all. mech-analytics can serve a request after
+        # the watermark passed it, so that path refetches a window and dedupes.
+        lookback = is_flag_enabled(self.params)
+        watermark = existing_data.last_mech_timestamp
         new_mech_requests = yield from self._fetch_all_mech_requests(
             agent_safe_address,
-            block_timestamp_gt=existing_data.last_mech_timestamp,
+            block_timestamp_gt=(
+                max(watermark - MECH_ANALYTICS_LOOKBACK_SECONDS, 0)
+                if lookback
+                else watermark
+            ),
         )
+        window_requests = new_mech_requests or []
+        if lookback and new_mech_requests:
+            seen = existing_data.recent_mech_request_ids
+            new_mech_requests = [
+                request
+                for request in new_mech_requests
+                if (
+                    request["requestId"] not in seen
+                    if seen is not None
+                    else self._mech_request_key(request)[1] > watermark
+                )
+            ]
 
         # Retry only on a genuine failure (``None``); ``[]`` means nothing new
-        # past the watermark.
+        # past the watermark. The lookback path refetches its window next round.
         if new_mech_requests is None:
             new_mech_requests = []
-            if existing_data.last_mech_timestamp > 0:
+            if watermark > 0 and not lookback:
                 lookback_ts = max(
                     existing_data.last_mech_timestamp - MECH_LOOKBACK_SECONDS, 0
                 )
@@ -2660,6 +2706,9 @@ class FetchPerformanceSummaryBehaviour(
             pending_mech_requests=pending_mech_requests,
             last_residual_rebuild_ts=existing_data.last_residual_rebuild_ts,
             residual_rebuild_backoff_days=existing_data.residual_rebuild_backoff_days,
+            recent_mech_request_ids=self._recent_request_ids(
+                window_requests, last_mech_timestamp
+            ),
         )
 
     def _update_profit_over_time_storage(self) -> Generator[None, None, None]:
