@@ -8760,11 +8760,9 @@ class TestKpiSeriesAgreement:
             endpoint: str = "scored-rows",
             **__: Any,
         ) -> Generator[None, None, List[dict]]:
-            """Serve mech-analytics rows from ``since`` on, inclusive.
-
-            An untitled request stands in for an undelivered one, which only
-            ``unscored-rows`` serves.
-            """
+            """Serve mech-analytics rows from ``since`` on, inclusive."""
+            # An untitled request stands in for an undelivered one, which only
+            # ``unscored-rows`` serves.
             floor = int(since.timestamp()) if since else 0
             scored = endpoint == "scored-rows"
             return [
