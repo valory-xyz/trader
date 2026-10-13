@@ -24,10 +24,24 @@ import builtins
 import json
 import os
 import tempfile
+import threading
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    cast,
+    get_args,
+)
+from urllib.parse import urlsplit
 
 from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.base import AbciApp
@@ -43,6 +57,27 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
 )
 
 AGENT_PERFORMANCE_SUMMARY_FILE = "agent_performance.json"
+
+# Serialises every read-modify-write of the summary file: the leaderboard
+# refresh writes it from a worker thread. Module-level so that writers that
+# only know the store path (e.g. ``activity_goal``) share it; reentrant so a
+# writer can call another under it.
+SUMMARY_FILE_LOCK = threading.RLock()
+
+# Spelled as olas-predict's leaderboard API expects them
+LeaderboardWindow = Literal["7d", "30d", "90d", "1y"]
+LeaderboardAgentType = Literal["omenstrat", "polystrat"]
+NotRankedReason = Literal[
+    "not_ranked_yet", "not_enough_trades_in_window", "not_eligible"
+]
+LEADERBOARD_WINDOWS: Tuple[LeaderboardWindow, ...] = get_args(LeaderboardWindow)
+LEADERBOARD_NOT_RANKED_REASONS: FrozenSet[NotRankedReason] = frozenset(
+    get_args(NotRankedReason)
+)
+LEADERBOARD_DEFAULT_NOT_RANKED_REASON: NotRankedReason = "not_ranked_yet"
+LEADERBOARD_CLOCK_SKEW_SECONDS = 300
+# Path of olas-predict's leaderboard page; deep links must stay under it
+LEADERBOARD_PAGE_PATH = "/leaderboard"
 
 # Bump when on-disk profit_over_time must be rebuilt against the current
 # subgraph endpoint/schema. Files with a lower version are rebuilt once on
@@ -281,6 +316,172 @@ class ActivityGoal:
 
 
 @dataclass
+class LeaderboardWindowRank:
+    """The last successful olas-predict leaderboard answer for one window."""
+
+    ranked: bool
+    fetched_at: int
+    not_ranked_reason: Optional[NotRankedReason] = None
+    rank_by_roi: Optional[int] = None
+    rank_by_pnl: Optional[int] = None
+    total_ranked: Optional[int] = None
+    leaderboard_url: Optional[str] = None
+    # olas-predict's ``updatedAt``
+    updated_at: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Reject ranks that contradict ``ranked`` or lie outside ``total_ranked``."""
+        total = self.total_ranked
+        ranks = (self.rank_by_roi, self.rank_by_pnl)
+        if total is not None and not (is_plain_int(total) and total >= 0):
+            valid = False
+        elif self.ranked:
+            valid = total is not None and all(
+                rank is not None and is_plain_int(rank) and 1 <= rank <= total
+                for rank in ranks
+            )
+        else:
+            valid = ranks == (None, None)
+        if not valid:
+            raise ValueError(f"invalid LeaderboardWindowRank: {self!r}")
+
+    @property
+    def as_of(self) -> int:
+        """Return when the answer's data was computed, or else fetched.
+
+        :return: a UNIX timestamp in seconds.
+        """
+        return self.updated_at if self.updated_at is not None else self.fetched_at
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> Optional["LeaderboardWindowRank"]:
+        """Build an entry from persisted JSON, or ``None`` if it is unusable.
+
+        :param raw: the persisted entry.
+        :return: the entry, or ``None``.
+        """
+        if not isinstance(raw, dict):
+            return None
+        ranked, fetched_at = raw.get("ranked"), raw.get("fetched_at")
+        if not isinstance(ranked, bool) or not is_plain_int(fetched_at):
+            return None
+
+        def _int(key: str) -> Optional[int]:
+            value = raw.get(key)
+            return value if is_plain_int(value) else None
+
+        reason, url = raw.get("not_ranked_reason"), raw.get("leaderboard_url")
+        try:
+            return cls(
+                ranked=ranked,
+                fetched_at=cast(int, fetched_at),
+                not_ranked_reason=reason if is_not_ranked_reason(reason) else None,
+                rank_by_roi=_int("rank_by_roi"),
+                rank_by_pnl=_int("rank_by_pnl"),
+                total_ranked=_int("total_ranked"),
+                leaderboard_url=url if isinstance(url, str) else None,
+                updated_at=_int("updated_at"),
+            )
+        except ValueError:
+            return None
+
+
+@dataclass
+class LeaderboardData:
+    """This agent's leaderboard rank per window, fetched from olas-predict."""
+
+    windows: Dict[LeaderboardWindow, LeaderboardWindowRank] = field(
+        default_factory=dict
+    )
+    # Throttle watermark: when a refresh was last attempted, successful or not
+    last_attempt_at: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Convert dicts to dataclass instances, dropping anything unusable."""
+        raw_windows: Any = self.windows
+        windows: Dict[LeaderboardWindow, LeaderboardWindowRank] = {}
+        if isinstance(raw_windows, dict):
+            for window, raw_entry in raw_windows.items():
+                if window not in LEADERBOARD_WINDOWS:
+                    continue
+                entry = (
+                    raw_entry
+                    if isinstance(raw_entry, LeaderboardWindowRank)
+                    else LeaderboardWindowRank.from_dict(raw_entry)
+                )
+                if entry is not None:
+                    windows[cast(LeaderboardWindow, window)] = entry
+        self.windows = windows
+        if not is_plain_int(self.last_attempt_at):
+            self.last_attempt_at = None
+
+    @classmethod
+    def from_dict(cls, raw: Any) -> Optional["LeaderboardData"]:
+        """Build the section from persisted JSON, or ``None`` if it is not an object.
+
+        :param raw: the persisted section.
+        :return: the section, or ``None``.
+        """
+        if not isinstance(raw, dict):
+            return None
+        return cls(
+            windows=cast(
+                Dict[LeaderboardWindow, LeaderboardWindowRank], raw.get("windows")
+            ),
+            last_attempt_at=raw.get("last_attempt_at"),
+        )
+
+
+def is_not_ranked_reason(value: Any) -> bool:
+    """Return whether ``value`` is a ``notRankedReason`` olas-predict documents.
+
+    :param value: the candidate reason.
+    :return: whether it is known.
+    """
+    return isinstance(value, str) and value in LEADERBOARD_NOT_RANKED_REASONS
+
+
+def get_leaderboard_agent_type(is_running_on_polymarket: bool) -> LeaderboardAgentType:
+    """Return the agent type olas-predict ranks this agent under.
+
+    :param is_running_on_polymarket: whether the agent trades on Polymarket.
+    :return: the agent type.
+    """
+    return "polystrat" if is_running_on_polymarket else "omenstrat"
+
+
+def is_allowed_leaderboard_url(url: Any, api_url: str) -> bool:
+    """Return whether ``url`` is an https link under the API host's leaderboard page.
+
+    :param url: the candidate link.
+    :param api_url: the configured ``olas_predict_leaderboard_url``.
+    :return: whether the link may be served.
+    """
+    if not isinstance(url, str) or not api_url:
+        return False
+    if any(ch.isspace() or ord(ch) < 0x20 or ch == "\\" for ch in url):
+        return False
+    try:
+        candidate, allowed = urlsplit(url), urlsplit(api_url)
+        candidate_port, allowed_port = candidate.port, allowed.port
+    except ValueError:
+        return False
+    return (
+        candidate.scheme == "https"
+        and allowed.scheme == "https"
+        and candidate.username is None
+        and candidate.password is None
+        and candidate.hostname is not None
+        and candidate.hostname == allowed.hostname
+        and candidate_port == allowed_port
+        and (
+            candidate.path == LEADERBOARD_PAGE_PATH
+            or candidate.path.startswith(f"{LEADERBOARD_PAGE_PATH}/")
+        )
+    )
+
+
+@dataclass
 class AgentPerformanceSummary:
     """
     Agent performance summary.
@@ -298,6 +499,7 @@ class AgentPerformanceSummary:
     profit_over_time: Optional[ProfitOverTimeData] = None
     achievements: Optional[Achievements] = None
     offchain_deposits: Optional[OffchainDepositState] = None
+    leaderboard: Optional[LeaderboardData] = None
     activity_goal: Optional[ActivityGoal] = None
 
     def __post_init__(self) -> None:
@@ -327,6 +529,12 @@ class AgentPerformanceSummary:
 
         if isinstance(self.offchain_deposits, dict):
             self.offchain_deposits = OffchainDepositState(**self.offchain_deposits)
+
+        if isinstance(self.leaderboard, dict):
+            self.leaderboard = LeaderboardData.from_dict(self.leaderboard)
+        elif not isinstance(self.leaderboard, LeaderboardData):
+            # A refetchable cache, so a malformed value is dropped, not raised
+            self.leaderboard = None
 
         if isinstance(self.activity_goal, dict):
             # Rebuilt from the ledger on every evaluation, so a bad block is
@@ -420,16 +628,17 @@ def write_performance_summary_key(store_path: Path, key: str, value: Any) -> Non
     """
     file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
 
-    try:
-        with open(file_path, "r") as f:
-            raw = json.load(f)
-        if not isinstance(raw, dict):
+    with SUMMARY_FILE_LOCK:
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+            if not isinstance(raw, dict):
+                raw = {}
+        except (FileNotFoundError, ValueError):
             raw = {}
-    except (FileNotFoundError, ValueError):
-        raw = {}
 
-    raw[key] = value
-    write_json_atomically(file_path, raw)
+        raw[key] = value
+        write_json_atomically(file_path, raw)
 
 
 class AgentPerformanceSummaryParams(BaseParams):
@@ -480,6 +689,10 @@ class AgentPerformanceSummaryParams(BaseParams):
                 "use_mech_analytics is true but mech_analytics_url is empty; "
                 "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
             )
+        # ``None`` (a ``null`` override) disables the leaderboard fetch
+        self.olas_predict_leaderboard_url: str = (
+            self._ensure("olas_predict_leaderboard_url", kwargs, Optional[str]) or ""
+        )
         # Handle is_running_on_polymarket which may be shared with MarketManagerParams
         # If already set by a parent class (MarketManagerParams), use that value
         # Otherwise, pop it from kwargs ourselves
@@ -512,6 +725,14 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls: Type[AbciApp] = AgentPerformanceSummaryAbciApp
+
+    # Class-level defaults rather than ``__init__`` so a state built without
+    # it (e.g. ``object.__new__`` in tests) still works; assignments shadow them.
+    # The leaderboard section, loaded from disk once and kept in sync on writes
+    _leaderboard_cache: Optional[LeaderboardData] = None
+    _leaderboard_cache_loaded: bool = False
+    # The latest leaderboard refresh, run off the FSM
+    _leaderboard_thread: Optional[threading.Thread] = None
 
     @property
     def params(self) -> AgentPerformanceSummaryParams:
@@ -633,6 +854,32 @@ class SharedState(BaseSharedState):
             )
             return None
 
+    def read_leaderboard_from_disk(self) -> Optional[LeaderboardData]:
+        """Return the persisted ``leaderboard`` section, ignoring sibling fields.
+
+        :return: the section, or ``None`` if missing or unreadable.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+
+        try:
+            with open(file_path, "r") as f:
+                raw = json.load(f)
+        except (OSError, ValueError):
+            return None
+
+        sub = raw.get("leaderboard") if isinstance(raw, dict) else None
+        leaderboard = LeaderboardData.from_dict(sub)
+        if leaderboard is None:
+            return None
+        # The file may predate a change of URL, or have been edited by hand
+        api_url = self.params.olas_predict_leaderboard_url
+        for entry in leaderboard.windows.values():
+            if entry.leaderboard_url is not None and not is_allowed_leaderboard_url(
+                entry.leaderboard_url, api_url
+            ):
+                entry.leaderboard_url = None
+        return leaderboard
+
     def read_activity_goal_from_disk(self) -> Optional[ActivityGoal]:
         """Return the persisted ``activity_goal`` block with lenient parsing.
 
@@ -680,12 +927,21 @@ class SharedState(BaseSharedState):
         (``offchain_deposits.total_deposited_wei``) that cannot be
         re-derived from the subgraph.
 
+        The ``leaderboard`` section is owned by the leaderboard refresh, which
+        may have written it from its worker thread since the caller read the
+        summary: the current section is re-applied under the file lock, so a
+        full-summary write never rolls it back.
+
         :param summary: fully-populated summary to overwrite the persisted
             copy with.
         """
-        write_json_atomically(
-            self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE, asdict(summary)
-        )
+        data = asdict(summary)
+        with SUMMARY_FILE_LOCK:
+            leaderboard = self.get_leaderboard()
+            data["leaderboard"] = None if leaderboard is None else asdict(leaderboard)
+            write_json_atomically(
+                self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE, data
+            )
 
     def update_agent_behavior(self, behavior: str) -> None:
         """Update the agent behavior in agent performance template file."""
@@ -720,6 +976,90 @@ class SharedState(BaseSharedState):
         existing.agent_performance.metrics.funds_locked_in_markets = value
         existing.timestamp = self.synced_timestamp
         self.overwrite_performance_summary(existing)
+
+    def get_leaderboard(self) -> Optional[LeaderboardData]:
+        """Return the ``leaderboard`` section, reading the file only the first time.
+
+        :return: the section, or ``None`` if there is none.
+        """
+        if not self._leaderboard_cache_loaded:
+            with SUMMARY_FILE_LOCK:
+                if not self._leaderboard_cache_loaded:
+                    self._leaderboard_cache = self.read_leaderboard_from_disk()
+                    self._leaderboard_cache_loaded = True
+        return self._leaderboard_cache
+
+    def update_leaderboard(self, leaderboard: LeaderboardData) -> None:
+        """Store the section in memory and in the file, leaving sibling fields untouched.
+
+        :param leaderboard: the leaderboard section to persist.
+        """
+        file_path = self.params.store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with SUMMARY_FILE_LOCK:
+            self._leaderboard_cache = leaderboard
+            self._leaderboard_cache_loaded = True
+            try:
+                with open(file_path, "r") as f:
+                    raw: Any = json.load(f)
+            except FileNotFoundError:
+                raw = {}
+            except (OSError, ValueError) as e:
+                raw = e
+            if not isinstance(raw, dict):
+                problem = (
+                    raw
+                    if isinstance(raw, Exception)
+                    else f"a JSON {type(raw).__name__}"
+                )
+                # Replacing it would wipe every other section
+                self.context.logger.warning(
+                    f"{file_path} is not a readable JSON object ({problem}); "
+                    "not writing the leaderboard section to it"
+                )
+                return
+            raw["leaderboard"] = asdict(leaderboard)
+            try:
+                write_json_atomically(file_path, raw)
+            except OSError as e:
+                self.context.logger.warning(
+                    f"Could not write the leaderboard section to {file_path}: {e}; "
+                    "serving it from memory until the next summary save"
+                )
+
+    def update_leaderboard_window(
+        self, window: LeaderboardWindow, entry: LeaderboardWindowRank
+    ) -> None:
+        """Store one window's rank, keeping the other windows and the watermark.
+
+        :param window: the window the rank is for.
+        :param entry: the rank.
+        """
+        with SUMMARY_FILE_LOCK:
+            current = self.get_leaderboard() or LeaderboardData()
+            windows = dict(current.windows)
+            windows[window] = entry
+            self.update_leaderboard(
+                LeaderboardData(
+                    windows=windows, last_attempt_at=current.last_attempt_at
+                )
+            )
+
+    def is_leaderboard_refresh_running(self) -> bool:
+        """Return whether the last leaderboard refresh has not finished yet.
+
+        :return: whether a refresh is running.
+        """
+        thread = self._leaderboard_thread
+        return thread is not None and thread.is_alive()
+
+    def start_leaderboard_refresh(self, job: Callable[[], None]) -> None:
+        """Run ``job`` on a daemon thread, so a hung refresh never blocks shutdown.
+
+        :param job: the refresh; it must not touch the FSM state.
+        """
+        thread = threading.Thread(target=job, name="leaderboard", daemon=True)
+        self._leaderboard_thread = thread
+        thread.start()
 
 
 class Subgraph(ApiSpecs):
