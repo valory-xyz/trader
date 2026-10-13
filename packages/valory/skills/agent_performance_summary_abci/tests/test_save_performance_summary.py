@@ -64,6 +64,7 @@ def _make_behaviour(
     shared_state.read_activity_goal_from_disk.return_value = (
         existing_summary.activity_goal
     )
+    shared_state.get_leaderboard.return_value = existing_summary.leaderboard
     shared_state.overwrite_performance_summary = MagicMock()
 
     behaviour.shared_state = shared_state
