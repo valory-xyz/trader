@@ -6,9 +6,6 @@ type: skill
 license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
-  .ruff_cache/.gitignore: bafybeiawd77vrsqztwqqtlxo5uawg2lpearzcm3yza75dn2ax5a26ikkgm
-  .ruff_cache/0.15.15/12269059541237865911: bafybeihoefsdhaqmfs2267k3ulmo4spaqo6nkcqjom4p4g7yp4eomdaowq
-  .ruff_cache/CACHEDIR.TAG: bafybeibehqu5np7pjsbwm7ix3pnta26nipvkvasegaw6bidwxad45cxvci
   __init__.py: bafybeiguns5ahxytqmaqvnp3tevethdbh2ulru2htsp2rmyhwoxflesaga
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
