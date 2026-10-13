@@ -2252,12 +2252,16 @@ class TestProfitOverTimeTimestampFormatting:
             response = mock_ok.call_args[0][2]
             assert response["points"][0]["cumulative_profit"] == 42.5
 
-    def _lifetime_points_at(
-        self, fixed_now: datetime, points: List[ProfitDataPoint]
+    def _points_at(
+        self,
+        fixed_now: datetime,
+        points: List[ProfitDataPoint],
+        window: Optional[str] = None,
     ) -> list:
-        """Serve the lifetime window at ``fixed_now`` and return its points."""
+        """Serve ``window`` (lifetime by default) at ``fixed_now`` and return its points."""
+        query = f"?window={window}" if window else ""
         http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/profit-over-time"
+            url=f"http://localhost:8080/api/v1/agent/profit-over-time{query}"
         )
         profit = ProfitOverTimeData(
             last_updated=points[-1].timestamp if points else 0,
@@ -2297,7 +2301,7 @@ class TestProfitOverTimeTimestampFormatting:
             ),
         ]
 
-        served = self._lifetime_points_at(fixed_now, points)
+        served = self._points_at(fixed_now, points)
 
         assert served == [
             {"timestamp": "2026-10-10T00:00:00Z", "cumulative_profit": 1.0},
@@ -2318,7 +2322,7 @@ class TestProfitOverTimeTimestampFormatting:
             )
         ]
 
-        served = self._lifetime_points_at(fixed_now, points)
+        served = self._points_at(fixed_now, points)
 
         assert served == [
             {"timestamp": "2026-10-08T00:00:00Z", "cumulative_profit": 2.5},
@@ -2330,35 +2334,18 @@ class TestProfitOverTimeTimestampFormatting:
         """The 7d window keeps its one-point-per-day timeline."""
         fixed_now = datetime(2026, 10, 11, 16, 4, 12, tzinfo=timezone.utc)
         earlier = int(datetime(2026, 10, 8, tzinfo=timezone.utc).timestamp())
-        http_msg = _make_http_msg(
-            url="http://localhost:8080/api/v1/agent/profit-over-time?window=7d"
-        )
-        profit = ProfitOverTimeData(
-            last_updated=earlier,
-            total_days=1,
-            data_points=[
-                ProfitDataPoint(
-                    date="2026-10-08",
-                    timestamp=earlier,
-                    daily_profit=2.5,
-                    cumulative_profit=2.5,
-                )
-            ],
-        )
-        self.handler.shared_state.read_existing_performance_summary.return_value = (  # type: ignore[attr-defined]
-            AgentPerformanceSummary(profit_over_time=profit)
-        )
-        with (
-            patch(
-                "packages.valory.skills.agent_performance_summary_abci.handlers.datetime"
-            ) as mock_dt,
-            patch.object(self.handler, "_send_ok_response") as mock_ok,
-        ):
-            mock_dt.now.return_value = fixed_now
-            mock_dt.fromtimestamp = datetime.fromtimestamp
-            self.handler._handle_get_profit_over_time(http_msg, self.http_dialogue)
+        points = [
+            ProfitDataPoint(
+                date="2026-10-08",
+                timestamp=earlier,
+                daily_profit=2.5,
+                cumulative_profit=2.5,
+            )
+        ]
 
-        assert len(mock_ok.call_args[0][2]["points"]) == 7
+        served = self._points_at(fixed_now, points, window="7d")
+
+        assert len(served) == 7
 
 
 # ---------------------------------------------------------------------------
