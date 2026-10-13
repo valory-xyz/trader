@@ -2231,30 +2231,60 @@ class TestPageMechAnalyticsScoredRows:
 class TestFetchAllMechRequestsFlagOn:
     """``_fetch_all_mech_requests`` flag-on branch — uses async pagination + adapter."""
 
-    def test_flag_on_success_returns_subgraph_shaped_rows(self) -> None:
-        """Successful fetch returns rows in the trader's subgraph shape."""
+    def test_flag_on_success_returns_scored_and_unscored_rows(self) -> None:
+        """Scored and unscored rows both come back in the subgraph shape."""
+        urls: List[str] = []
+        responses = [
+            {
+                "rows": [
+                    {
+                        "question_title": "Q1",
+                        "requested_at": "2026-07-10T12:00:00+00:00",
+                        "tool": "t",
+                    }
+                ],
+                "next_cursor": None,
+            },
+            {
+                "rows": [
+                    {"question_title": None, "requested_at": "2026-07-11T00:00:00Z"}
+                ],
+                "next_cursor": None,
+            },
+        ]
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            urls.append(kwargs["url"])
+            yield
+            return _http_response(200, responses[len(urls) - 1])
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
+
+        assert [url.split("?")[0].rsplit("/", 1)[1] for url in urls] == [
+            "scored-rows",
+            "unscored-rows",
+        ]
+        assert result is not None
+        assert [r["parsedRequest"] for r in result] == [
+            {"questionTitle": "Q1", "tool": "t"},
+            None,
+        ]
+
+    def test_flag_on_unscored_failure_returns_none(self) -> None:
+        """A failed unscored fetch is a failure, not a smaller request list."""
         b = _make_behaviour()
         b._context = _mech_analytics_ctx()
         b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
             [
-                _http_response(
-                    200,
-                    {
-                        "rows": [
-                            {
-                                "question_title": "Q1",
-                                "requested_at": "2026-07-10T12:00:00+00:00",
-                                "tool": "t",
-                            }
-                        ],
-                        "next_cursor": None,
-                    },
-                )
+                _http_response(200, {"rows": [], "next_cursor": None}),
+                _http_response(500, {}),
             ]
         )
-        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
-        assert result is not None
-        assert result[0]["parsedRequest"]["questionTitle"] == "Q1"
+        assert _exhaust(b._fetch_all_mech_requests("0xsafe")) is None
 
     def test_flag_on_failure_returns_none(self) -> None:
         """Fetch failure propagates as None (distinct from empty ``[]``)."""

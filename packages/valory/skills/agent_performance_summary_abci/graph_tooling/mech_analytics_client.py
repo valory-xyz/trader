@@ -140,8 +140,9 @@ def build_scored_rows_url(
     since: Optional[datetime] = None,
     until: Optional[datetime] = None,
     cursor: Optional[str] = None,
+    endpoint: str = "scored-rows",
 ) -> str:
-    """Build a fully-qualified ``/v1/data/scored-rows`` URL with query params.
+    """Build a fully-qualified ``/v1/data/<endpoint>`` URL with query params.
 
     Kept as a module-level helper so the synchronous ``fetch_scored_rows``
     and behaviour-side callers that use the framework's async
@@ -155,6 +156,7 @@ def build_scored_rows_url(
     :param since: optional lower bound on ``requested_at`` (inclusive).
     :param until: optional upper bound on ``requested_at`` (exclusive).
     :param cursor: opaque keyset cursor for the next page.
+    :param endpoint: ``scored-rows`` or its complement ``unscored-rows``.
     :return: full URL including the query string.
     """
     params: Dict[str, Any] = {
@@ -169,7 +171,7 @@ def build_scored_rows_url(
     if cursor is not None:
         params["cursor"] = cursor
     query = urlencode(params)
-    return f"{base_url.rstrip('/')}/v1/data/scored-rows?{query}"
+    return f"{base_url.rstrip('/')}/v1/data/{endpoint}?{query}"
 
 
 def build_requester_url(base_url: str, chain_id: int, address: str) -> str:

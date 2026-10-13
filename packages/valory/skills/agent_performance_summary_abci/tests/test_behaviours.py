@@ -8755,10 +8755,18 @@ class TestKpiSeriesAgreement:
             yield  # pragma: no cover
 
         def _scored_rows(
-            *_: Any, since: Optional[datetime] = None, **__: Any
+            *_: Any,
+            since: Optional[datetime] = None,
+            endpoint: str = "scored-rows",
+            **__: Any,
         ) -> Generator[None, None, List[dict]]:
-            """Serve mech-analytics rows from ``since`` on, inclusive."""
+            """Serve mech-analytics rows from ``since`` on, inclusive.
+
+            An untitled request stands in for an undelivered one, which only
+            ``unscored-rows`` serves.
+            """
             floor = int(since.timestamp()) if since else 0
+            scored = endpoint == "scored-rows"
             return [
                 {
                     "request_id": f"0x{index}",
@@ -8768,7 +8776,7 @@ class TestKpiSeriesAgreement:
                     ).isoformat(),
                 }
                 for index, (title, ts) in enumerate(requests)
-                if ts >= floor
+                if ts >= floor and (title is not None) == scored
             ]
             yield  # pragma: no cover
 

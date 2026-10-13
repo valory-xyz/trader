@@ -279,8 +279,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         requester: str,
         since: Optional[datetime] = None,
         until: Optional[datetime] = None,
+        endpoint: str = "scored-rows",
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
-        """Page ``/v1/data/scored-rows`` for one Safe (async HTTP).
+        """Page a ``/v1/data`` row endpoint for one Safe (async HTTP).
 
         Uses the framework's async HTTP protocol so the FSM round
         doesn't block on synchronous I/O — Tendermint heartbeats and
@@ -299,6 +300,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             (inclusive per the endpoint contract).
         :param until: optional upper bound on ``requested_at``
             (exclusive per the endpoint contract).
+        :param endpoint: ``scored-rows`` or its complement ``unscored-rows``.
         :return: list of scored-row dicts on success, ``None`` on any
             failure (including MAX_PAGES exceeded).
         :yield: framework yields for each paginated request.
@@ -314,11 +316,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 since=since,
                 until=until,
                 cursor=cursor,
+                endpoint=endpoint,
             )
             response = yield from self.get_http_response(method="GET", url=url)
             if response.status_code != 200:
                 self.context.logger.error(
-                    f"mech-analytics scored-rows responded {response.status_code} "
+                    f"mech-analytics {endpoint} responded {response.status_code} "
                     f"(page {page_index + 1})"
                 )
                 return None
@@ -326,7 +329,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 payload = json.loads(response.body.decode())
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                 self.context.logger.error(
-                    f"mech-analytics scored-rows JSON parse failed: {exc}"
+                    f"mech-analytics {endpoint} JSON parse failed: {exc}"
                 )
                 return None
             page = parse_scored_rows_page(payload, self.context.logger)
@@ -337,7 +340,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if cursor is None:
                 return all_rows
         self.context.logger.error(
-            f"mech-analytics scored-rows exceeded MAX_PAGES={MAX_PAGES}; "
+            f"mech-analytics {endpoint} exceeded MAX_PAGES={MAX_PAGES}; "
             "endpoint may be returning a cursor cycle"
         )
         return None
@@ -927,12 +930,18 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 since = datetime.fromtimestamp(
                     int(block_timestamp_gt) + 1, tz=timezone.utc
                 )
-            rows = yield from self._page_mech_analytics_scored_rows(
-                requester=agent_safe_address,
-                since=since,
-            )
-            if rows is None:
-                return None
+            # The KPI's total also counts requests that were never
+            # delivered or could not be parsed, which only unscored-rows serves.
+            rows: List[Dict[str, Any]] = []
+            for endpoint in ("scored-rows", "unscored-rows"):
+                page_rows = yield from self._page_mech_analytics_scored_rows(
+                    requester=agent_safe_address,
+                    since=since,
+                    endpoint=endpoint,
+                )
+                if page_rows is None:
+                    return None
+                rows.extend(page_rows)
             return rows_as_subgraph_mech_requests(rows)
 
         all_requests = []
