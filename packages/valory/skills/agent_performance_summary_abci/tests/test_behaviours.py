@@ -8726,6 +8726,30 @@ class TestKpiSeriesAgreement:
         assert result.data_points[1].daily_profit_raw == 4 * 10**14 / WEI_IN_ETH
         assert result.data_points[-1].cumulative_profit == round(10 * 0.0004 - _FEE, 3)
 
+    def test_incremental_daily_profit_is_stored_unrounded(self) -> None:
+        """Sub-0.001 daily profits add up across ticks and a same-day replace."""
+        days = [_DAY0 + i * SECONDS_PER_DAY for i in range(1, 11)]
+        stats = [{"date": str(day), "dailyProfit": str(4 * 10**14)} for day in days]
+        existing = self._existing(last_mech_timestamp=_DAY0 + 10)
+
+        ticked = self._tick(existing, stats, [], [], days[-1] + 500)
+
+        assert ticked.data_points[1].daily_profit == 4 * 10**14 / WEI_IN_ETH
+        assert ticked.data_points[1].daily_profit_raw == 4 * 10**14 / WEI_IN_ETH
+        assert ticked.data_points[-1].cumulative_profit == round(1.0 + 10 * 0.0004, 3)
+
+        # Later the same day, today's profit is refreshed and replaces the point.
+        today = [{"date": str(days[-1]), "dailyProfit": str(6 * 10**14)}]
+
+        replaced = self._tick(ticked, today, [], [], days[-1] + 600)
+
+        assert len(replaced.data_points) == len(ticked.data_points)
+        assert replaced.data_points[-1].daily_profit_raw == 6 * 10**14 / WEI_IN_ETH
+        assert replaced.data_points[-1].daily_profit == 6 * 10**14 / WEI_IN_ETH
+        assert replaced.data_points[-1].cumulative_profit == round(
+            1.0 + 9 * 0.0004 + 0.0006, 3
+        )
+
 
 # ---------------------------------------------------------------------------
 # Tests for the leaderboard rank fetch
