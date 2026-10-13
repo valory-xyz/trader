@@ -100,6 +100,7 @@ class _Fetcher(MechReportRequests):
     ) -> None:
         self.context = MagicMock()
         self.context.params.mech_chain_id = "gnosis"
+        self.context.default_ledger_id = "ethereum"
         self.context.params.valid_mechs = frozenset(valid)
         self.context.params.marketplace_api_url = MARKETPLACE_API
         self.context.mechs_subgraph.url = MARKETPLACE
@@ -173,7 +174,9 @@ def test_full_report_is_built_from_record_creator_card_and_live_price() -> None:
     price_request = fetcher.sent[3]
     assert price_request["counterparty"] == LEDGER_API_ADDRESS
     assert price_request["performative"] == ContractApiMessage.Performative.GET_STATE
-    assert price_request["ledger_id"] == "gnosis"
+    # The ledger connection keys its APIs by ledger type and picks the chain from kwargs.
+    assert price_request["ledger_id"] == "ethereum"
+    assert price_request["kwargs"].body == {"chain_id": "gnosis"}
     assert price_request["contract_id"] == "valory/mech_mm:0.1.0"
     assert price_request["contract_address"] == MECH
     assert price_request["callable"] == "get_max_delivery_rate"
@@ -182,6 +185,7 @@ def test_full_report_is_built_from_record_creator_card_and_live_price() -> None:
 
     report = fetcher.shared_state.mech_reports[MECH]
     assert report.refusal is None and report.approvable
+    assert report.fetched_at > 0
     assert report.name == "Bob's mech"
     assert (report.operator_name, report.domain) == ("Bob Labs", "bobmech.com")
     assert report.domain_verified is True
@@ -310,6 +314,8 @@ def test_an_unreadable_price_leaves_the_rate_unknown(reply: Any) -> None:
     assert report.refusal is None
     assert (report.max_delivery_rate, report.payment_ceiling) == (None, None)
     assert report.payment_method == "xDAI"
+    # a failed read is retried on the next question instead of served from the cache
+    assert report.fetched_at == 0
     done.assert_called_once()
 
 

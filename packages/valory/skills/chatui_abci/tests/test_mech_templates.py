@@ -40,6 +40,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
 MECH = "0x" + "b0" * 20
 NATIVE_TYPE_ID = "ba699a34be8fe0e7725e93dcbce1701b0211a8ca61330aaeb8a05bf2ec7abed1"
 NATIVE_RATE = 10**16  # 0.01 xDAI
+NEVERMINED_NATIVE = "803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316"
 CAP = NATIVE_RATE
 CONSENT = (
     f"Approving accepts up to 0.01 xDAI per request for {MECH}. If its operator "
@@ -251,9 +252,24 @@ def test_an_unreadable_price_cannot_be_approved(fields: dict) -> None:
     """No price, no consent."""
     report = _report(**fields)
     assert _lines(report)[-1] == (
-        "I can't read what this mech charges, so it cannot be approved."
+        "I can't read what this mech charges right now, so it cannot be approved. "
+        "Try again later."
     )
     assert offers_consent(report, CAP) is False
+
+
+def test_a_nevermined_mech_is_refused_for_its_asset_not_its_price() -> None:
+    """Without a cap for the asset the price does not matter, and saying it is unreadable would mislead."""
+    report = _report(
+        payment_type_id=NEVERMINED_NATIVE,
+        payment_method="a Nevermined subscription",
+        payment_ceiling=None,
+    )
+    assert _lines(report, cap=None)[-1] == (
+        "This agent allows no mech paid with a Nevermined subscription, "
+        "so it cannot be approved."
+    )
+    assert offers_consent(report, None) is False
 
 
 def test_a_price_above_the_cap_is_refused_with_both_prices() -> None:

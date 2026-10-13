@@ -213,16 +213,24 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
         message, dialogue = contract_api_dialogues.create(
             counterparty=LEDGER_API_ADDRESS,
             performative=ContractApiMessage.Performative.GET_STATE,
-            ledger_id=str(self.context.params.mech_chain_id),
+            ledger_id=self.context.default_ledger_id,
             contract_id=str(MechMM.contract_id),
             contract_address=address,
             callable=MAX_DELIVERY_RATE_CALLABLE,
-            kwargs=ContractApiMessage.Kwargs({}),
+            kwargs=ContractApiMessage.Kwargs(
+                {"chain_id": str(self.context.params.mech_chain_id)}
+            ),
         )
-        self._register_callback(
-            dialogue.dialogue_label.dialogue_reference[0],
-            lambda reply: callback(_state_int(reply, MAX_DELIVERY_RATE_KEY)),
-        )
+
+        def on_reply(reply: Message) -> None:
+            rate = _state_int(reply, MAX_DELIVERY_RATE_KEY)
+            if rate is None:
+                self.context.logger.warning(
+                    f"Could not read maxDeliveryRate of {address}: {reply}"
+                )
+            callback(rate)
+
+        self._register_callback(dialogue.dialogue_label.dialogue_reference[0], on_reply)
         self.context.outbox.put_message(message=message)
 
     def _fetch_mech_record(self, address: str, done: Callable[[], None]) -> None:
@@ -342,6 +350,9 @@ class MechReportRequests:  # pylint: disable=too-few-public-methods
             report.payment_method, report.payment_ceiling = payment_line(
                 report.payment_type_id, rate, report.chain_id
             )
+            if rate is None:
+                # kept for the conversation, but refetched on the next question
+                report.fetched_at = 0
             self._finish_report(report, True, True, done)
 
         self._read_max_delivery_rate(report.address, on_price)

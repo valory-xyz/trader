@@ -45,7 +45,10 @@ REFUSAL_SENTENCES = {
         "I can't read this mech's description, so I can't approve it. Try again later."
     ),
 }
-PRICE_UNREADABLE = "I can't read what this mech charges, so it cannot be approved."
+PRICE_UNREADABLE = (
+    "I can't read what this mech charges right now, so it cannot be approved. "
+    "Try again later."
+)
 ASK_ALONE = "To approve one of these, ask about it on its own."
 # Refusals under which no card was read, so there is no operator or claim to report.
 _NO_CARD = frozenset(
@@ -152,16 +155,16 @@ def _ending(report: MechReport, cap: Optional[int], offer: bool) -> Tuple[str, b
         )
     if report.refusal is not None:
         return REFUSAL_SENTENCES[report.refusal], False
+    _, allowed = payment_line(report.payment_type_id, cap, report.chain_id)
+    if cap is None or allowed is None:
+        return (
+            f"This agent allows no mech paid with {report.payment_method}, "
+            "so it cannot be approved.",
+            False,
+        )
     if report.max_delivery_rate is None or report.payment_ceiling is None:
         return PRICE_UNREADABLE, False
-    if cap is None or report.max_delivery_rate > cap:
-        _, allowed = payment_line(report.payment_type_id, cap, report.chain_id)
-        if allowed is None:
-            return (
-                f"This agent allows no mech paid with {report.payment_method}, "
-                "so it cannot be approved.",
-                False,
-            )
+    if report.max_delivery_rate > cap:
         return (
             f"It charges {report.payment_ceiling} per request, above the "
             f"{allowed} this agent allows, so it cannot be approved.",
