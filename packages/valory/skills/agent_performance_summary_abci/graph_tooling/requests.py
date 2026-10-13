@@ -923,7 +923,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if block_timestamp_gt > 0:
                 # The subgraph filter below is strictly-greater-than while
                 # mech-analytics' ``since`` is inclusive; ``+1`` keeps the
-                # watermark row from being fetched (and charged) twice.
+                # watermark row from being fetched (and charged) twice. This
+                # assumes rows land in watermark order: one indexed after the
+                # watermark passed its second is skipped until a residual rebuild.
                 since = datetime.fromtimestamp(
                     int(block_timestamp_gt) + 1, tz=timezone.utc
                 )
