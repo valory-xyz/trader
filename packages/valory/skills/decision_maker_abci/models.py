@@ -504,6 +504,15 @@ class DecisionMakerParams(
         )
         self.dust_epsilon_wxdai: int = self._ensure("dust_epsilon_wxdai", kwargs, int)
         self.epsilon: float = self._ensure("policy_epsilon", kwargs, float)
+        self.tool_accuracy_prior_requests: int = self._ensure(
+            "tool_accuracy_prior_requests", kwargs, int
+        )
+        if self.tool_accuracy_prior_requests < 0:
+            raise ValueError(
+                "`tool_accuracy_prior_requests` must not be negative, "
+                f"got {self.tool_accuracy_prior_requests}."
+            )
+        EGreedyPolicy.prior_requests = self.tool_accuracy_prior_requests
         self.agent_registry_address: str = agent_registry_address
         self.tool_punishment_multiplier: int = self._ensure(
             "tool_punishment_multiplier", kwargs, int
