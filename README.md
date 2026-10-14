@@ -129,7 +129,7 @@ export EXCLUDE_NEG_RISK_MARKETS=true
 export POLYMARKET_BUILDER_PROGRAM_ENABLED=false
 
 # Polystrat-specific Mech accuracy hash
-export TOOLS_ACCURACY_HASH=QmaLiU5Pf9MadAA8nhuYRpNXUc1tkq1w8BhAHdGmeEMmA9
+export TOOLS_ACCURACY_HASH=QmdNF1cidJASsVKSnbvSSmZLLaYfBPixBzpT4Pw3ZvmYTu
 
 # Polystrat's default per-epoch activity goal (trades placed)
 export DEFAULT_ACTIVITY_GOAL=1

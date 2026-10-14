@@ -588,23 +588,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _parse_global_info(self) -> Tuple[int, Dict[str, Dict[str, str]]]:
         """Parse the global information of the tools."""
-        fields = self.acc_info_fields
+        sep = self.acc_info_fields.sep
         reader: csv.DictReader = csv.DictReader(
-            self.remote_accuracy_information, delimiter=fields.sep
+            self.remote_accuracy_information, delimiter=sep
         )
 
         max_transaction_date = 0
         tool_to_global_info: Dict[str, Dict[str, str]] = {}
-        columns = reader.fieldnames or []
-        expected = (fields.tool, fields.requests, fields.accuracy, fields.max)
-        missing = [column for column in expected if column not in columns]
-        if missing:
-            self.context.logger.error(
-                f"The tools accuracy file has no {missing} column(s) (it has "
-                f"{columns}); it is not used and the local records are kept."
-            )
-            return max_transaction_date, tool_to_global_info
-
         for row in reader:
             max_transaction_date = self._parse_global_info_row(
                 row, max_transaction_date, tool_to_global_info
@@ -628,20 +618,12 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         accuracy_store = self.policy.accuracy_store
         for tool, row in tool_to_global_info.items():
-            try:
-                requests = int(row[self.acc_info_fields.requests])
-                accuracy = float(row[self.acc_info_fields.accuracy])
-            except (TypeError, ValueError):
-                self.context.logger.warning(
-                    f"Skipping the tools accuracy row of {tool!r}: {row}."
-                )
-                continue
             accuracy_store[tool] = AccuracyInfo(
-                requests,
+                int(row[self.acc_info_fields.requests]),
                 # naturally, no global information is available for pending.
                 # set it using the local policy if this information exists
                 accuracy_store.get(tool, AccuracyInfo()).pending,
-                accuracy / GLOBAL_ACCURACY_SCALE,
+                float(row[self.acc_info_fields.accuracy]) / GLOBAL_ACCURACY_SCALE,
             )
             self.policy.updated_ts = int(datetime.now().timestamp())
 
@@ -658,9 +640,7 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         :param global_update_timestamp: the timestamp of the latest global information update
         :param tool_to_global_info: the global information of the tools, by policy key
         """
-        if tool_to_global_info and self._should_use_global_info(
-            global_update_timestamp
-        ):
+        if self._should_use_global_info(global_update_timestamp):
             self._overwrite_local_info(tool_to_global_info)
 
         # update the accuracy store by adding tools for which we do not have any global information yet
