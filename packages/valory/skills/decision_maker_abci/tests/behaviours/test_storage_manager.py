@@ -23,6 +23,7 @@ import json
 import tempfile
 from io import StringIO
 from pathlib import Path
+from typing import Any, Dict, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -1264,8 +1265,13 @@ class TestParseGlobalInfo:
         csv_data = "tool_col\tsep_col\tmax_date_col\treq_col\tacc_col\ntool1\tval\t2024-01-01\t5\t0.8\n"
         behaviour._remote_accuracy_information = StringIO(csv_data)
 
-        mock_fields = MagicMock()
-        mock_fields.sep = "\t"
+        mock_fields = MagicMock(
+            sep="\t",
+            tool="tool_col",
+            requests="req_col",
+            accuracy="acc_col",
+            max="max_date_col",
+        )
 
         with patch.object(
             type(behaviour), "acc_info_fields", new_callable=PropertyMock
@@ -1280,6 +1286,62 @@ class TestParseGlobalInfo:
 
         assert max_date == 1704067200
         mock_row.assert_called_once()
+
+
+SEED_FIELDS = MagicMock(
+    sep=",",
+    tool="tool",
+    requests="total_requests",
+    accuracy="tool_accuracy",
+    max="max",
+    datetime_format="%Y-%m-%d %H:%M:%S",
+)
+SEED_ROW = "factual_research,69.94,70240,2026-07-15 14:57:30,2026-10-11 01:27:28"
+SEED_KEY = "valory::factual_research"
+
+
+def _parse_seed(header: str) -> Tuple[Any, Tuple[int, Dict[str, Dict[str, str]]]]:
+    """Parse a one-row seed with this header through the real row parser."""
+    behaviour = _make_behaviour()
+    behaviour._mech_tools = {SEED_KEY}
+    behaviour._remote_accuracy_information = StringIO(f"{header}\n{SEED_ROW}\n")
+    with patch.object(
+        type(behaviour), "acc_info_fields", new_callable=PropertyMock
+    ) as mock_aif:
+        mock_aif.return_value = SEED_FIELDS
+        return behaviour, behaviour._parse_global_info()
+
+
+class TestSeedColumns:
+    """A seed whose columns differ from `acc_info_fields` is skipped, not fatal."""
+
+    def test_a_seed_with_the_configured_columns_is_read(self) -> None:
+        """Every configured column present: the row is kept and its date counts."""
+        _, (max_date, info) = _parse_seed("tool,tool_accuracy,total_requests,min,max")
+
+        assert set(info) == {SEED_KEY}
+        assert info[SEED_KEY]["total_requests"] == "70240"
+        assert max_date > 0
+
+    @pytest.mark.parametrize(
+        "header, missing",
+        [
+            ("tool,tool_accuracy,nr_responses,min,max", "total_requests"),
+            ("tool,accuracy,total_requests,min,max", "tool_accuracy"),
+            ("name,tool_accuracy,total_requests,min,max", "tool"),
+            ("tool,tool_accuracy,total_requests,min,last", "max"),
+            ("", "tool"),
+        ],
+    )
+    def test_a_missing_column_skips_the_seed_and_says_which(
+        self, header: str, missing: str
+    ) -> None:
+        """Nothing is read from the file and the error names the missing column."""
+        behaviour, (max_date, info) = _parse_seed(header)
+
+        assert (max_date, info) == (0, {})
+        error = behaviour.context.logger.error.call_args.args[0]
+        assert repr(missing) in error
 
 
 # Tests for should_use_global_info
@@ -1371,6 +1433,40 @@ class TestOverwriteLocalInfo:
         assert policy.accuracy_store["tool1"].accuracy == pytest.approx(0.625)
 
 
+class TestOverwriteSkipsUnreadableRows:
+    """A row with an unreadable number is skipped; the others are still seeded."""
+
+    @pytest.mark.parametrize(
+        "bad_row",
+        [
+            {"req_col": "many", "acc_col": "70.0"},
+            {"req_col": "10", "acc_col": "high"},
+            {"req_col": None, "acc_col": "70.0"},
+            {"req_col": "10", "acc_col": ""},
+        ],
+    )
+    def test_unreadable_row_is_skipped(self, bad_row: Dict[str, Any]) -> None:
+        """The bad key keeps its local record and the good key is seeded."""
+        behaviour = _make_behaviour()
+        local = AccuracyInfo(requests=2, accuracy=0.5)
+        policy = _make_policy({"bad": local})
+        behaviour._policy = policy
+        fields = MagicMock(requests="req_col", accuracy="acc_col")
+
+        with patch.object(
+            type(behaviour), "acc_info_fields", new_callable=PropertyMock
+        ) as mock_aif:
+            mock_aif.return_value = fields
+            behaviour._overwrite_local_info(
+                {"bad": bad_row, "good": {"req_col": "10", "acc_col": "70.0"}}
+            )
+
+        assert policy.accuracy_store["bad"] == local
+        assert policy.accuracy_store["good"].requests == 10
+        assert policy.accuracy_store["good"].accuracy == pytest.approx(0.7)
+        behaviour.context.logger.warning.assert_called_once()
+
+
 # Tests for update_accuracy_store
 # ---------------------------------------------------------------------------
 
@@ -1392,6 +1488,18 @@ class TestUpdateAccuracyStore:
         mock_overwrite.assert_called_once()
         # tool2 should be added as default
         assert "tool2" in policy.accuracy_store
+
+    def test_does_not_overwrite_without_global_info(self) -> None:
+        """A seed that yielded no rows overwrites nothing, however new it looks."""
+        behaviour = _make_behaviour()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._policy = _make_policy({})
+
+        with patch.object(behaviour, "_should_use_global_info", return_value=True):
+            with patch.object(behaviour, "_overwrite_local_info") as mock_overwrite:
+                behaviour._update_accuracy_store(0, {})
+
+        mock_overwrite.assert_not_called()
 
     def test_does_not_overwrite_when_not_needed(self) -> None:
         """Should not call _overwrite_local_info when global info is not needed."""
