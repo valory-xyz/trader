@@ -23,7 +23,7 @@ import json
 import random
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from time import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 from packages.valory.skills.chatui_abci.tool_keys import describe_tool_key
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
@@ -36,6 +36,8 @@ RandomnessType = Union[int, float, str, bytes, bytearray, None]
 VOLUME_FACTOR_REGULARIZATION = 0.001
 UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.005, 0.805)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
+# The accuracy a tool's ranking starts from before its own results count.
+PRIOR_ACCURACY = 0.5
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -124,6 +126,12 @@ class EGreedyPolicy:
     Every store is indexed by a ``tool_keys`` key, so each (identity, tool)
     pair has its own accuracy record, consecutive failures, and quarantine.
     """
+
+    # Imaginary answers at `PRIOR_ACCURACY` added to every record when ranking,
+    # so a few results cannot outrank a long one. Set per process from the
+    # `tool_accuracy_prior_requests` param and never serialized, so stored
+    # policies and payloads keep their shape; 0 ranks by accuracy alone.
+    prior_requests: ClassVar[int] = 0
 
     eps: float
     consecutive_failures_threshold: int
@@ -225,13 +233,21 @@ class EGreedyPolicy:
         best_index = argmax(valid_weighted_accuracies)
         return valid_tools[best_index]
 
+    def ranked_accuracy(self, acc_info: AccuracyInfo) -> float:
+        """The record's accuracy pulled toward `PRIOR_ACCURACY` by `prior_requests` answers."""
+        if self.prior_requests == 0:
+            return acc_info.accuracy
+        correct = acc_info.accuracy * acc_info.requests
+        prior_correct = PRIOR_ACCURACY * self.prior_requests
+        return (correct + prior_correct) / (acc_info.requests + self.prior_requests)
+
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         n_requests = self.n_requests
         self.weighted_accuracy = {
             tool: scale_value(
                 (
-                    acc_info.accuracy
+                    self.ranked_accuracy(acc_info)
                     + ((acc_info.requests - acc_info.pending) / (n_requests or 1))
                     * VOLUME_FACTOR_REGULARIZATION
                 ),
