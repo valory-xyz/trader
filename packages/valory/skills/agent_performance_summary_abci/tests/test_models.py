@@ -322,6 +322,67 @@ class TestProfitOverTimeData:
         assert pot.unplaced_mech_requests_count == 0
         assert pot.placed_mech_requests_count == 0
         assert pot.includes_unplaced_mech_fees is False
+        assert pot.pending_mech_requests == []
+        assert pot.last_residual_rebuild_ts == 0
+        assert pot.residual_rebuild_backoff_days == 1
+
+    def test_pending_and_rebuild_fields_round_trip(self) -> None:
+        """The held-back requests and rebuild time survive a JSON round trip."""
+        pot = ProfitOverTimeData(
+            last_updated=1704067200,
+            total_days=0,
+            pending_mech_requests=[{"title": "Q1", "timestamp": 1704067100}],
+            last_residual_rebuild_ts=1704000000,
+        )
+        summary = AgentPerformanceSummary(profit_over_time=pot)
+
+        loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
+
+        assert loaded.profit_over_time == pot
+
+    def test_v2_file_without_new_fields_loads(self) -> None:
+        """A series stored before the two fields existed still loads, at v2."""
+        stored = {
+            "last_updated": 1704067200,
+            "total_days": 0,
+            "data_points": [],
+            "last_mech_timestamp": 1704067100,
+            "schema_version": 2,
+        }
+
+        pot = ProfitOverTimeData(**stored)  # type: ignore[arg-type]
+
+        assert pot.pending_mech_requests == []
+        assert pot.last_residual_rebuild_ts == 0
+        assert pot.schema_version < 3
+
+    @pytest.mark.parametrize(
+        "profit_over_time",
+        [
+            {"last_updated": 1, "total_days": 0, "field_from_a_newer_build": 1},
+            {"last_updated": 1, "total_days": 1, "data_points": [{"date": "x"}]},
+        ],
+        ids=["unknown_field", "bad_data_point"],
+    )
+    def test_unreadable_series_is_dropped_and_siblings_kept(
+        self, profit_over_time: Dict[str, Any]
+    ) -> None:
+        """A series this build cannot read is dropped without losing the rest of the summary."""
+        summary = AgentPerformanceSummary(
+            **{  # type: ignore[arg-type]
+                "agent_behavior": "observing",
+                "achievements": {"items": {}, "eligible_since": 1790000000},
+                "prediction_history": {"total_predictions": 3},
+                "profit_over_time": profit_over_time,
+            }
+        )
+
+        assert summary.profit_over_time is None
+        assert summary.agent_behavior == "observing"
+        assert summary.achievements is not None
+        assert summary.achievements.eligible_since == 1790000000
+        assert summary.prediction_history is not None
+        assert summary.prediction_history.total_predictions == 3
 
 
 class TestAchievement:
