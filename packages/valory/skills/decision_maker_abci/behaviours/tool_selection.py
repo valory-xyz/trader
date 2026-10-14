@@ -116,13 +116,22 @@ class ToolSelectionBehaviour(StorageManagerBehaviour):
         if selected_mechs and not self.benchmarking_mode.enabled:
             selected_lower = {m.lower() for m in selected_mechs}
             mechs_by_key = self._mechs_by_key()
-            candidate = {
-                key
-                for key in candidate
-                if selected_lower.intersection(mechs_by_key.get(key, ()))
-            }
-            if not candidate:
-                cause = "selected_mechs"
+            serving = {mech for mechs in mechs_by_key.values() for mech in mechs}
+            if selected_lower & serving:
+                candidate = {
+                    key
+                    for key in candidate
+                    if selected_lower.intersection(mechs_by_key.get(key, ()))
+                }
+                if not candidate:
+                    cause = "selected_mechs"
+            else:
+                # As in mech-interact: a pin no discovered mech can serve is
+                # ignored, not a conflict; the stored pin applies again later.
+                self.context.logger.warning(
+                    f"No pinned mech {sorted(selected_lower)} was discovered with a "
+                    "usable tool; selecting as if none were pinned this round."
+                )
 
         allowed_tools = self.shared_state.chatui_config.allowed_tools
         if allowed_tools and candidate:

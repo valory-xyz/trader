@@ -506,31 +506,42 @@ class TestSelectToolWithSelectedMechs:
 
         assert result == "tool-b"
 
-    def test_pin_set_but_mechs_info_empty_fails_closed(self) -> None:
-        """Pin applies whenever set; empty mechs_info collapses the candidate.
+    @pytest.mark.parametrize(
+        "mechs_info",
+        [
+            [],
+            [_StubMech("0xb", {"tool-a", "tool-b"})],
+            [_StubMech("0xa", set()), _StubMech("0xb", {"tool-a", "tool-b"})],
+        ],
+    )
+    def test_a_pin_no_discovered_mech_can_serve_is_ignored(
+        self, mechs_info: List[Any]
+    ) -> None:
+        """A pinned mech that is not discovered, or serves no tool, restricts nothing.
 
-        v2 normally populates mechs_info during MechInformationRound before
-        ToolSelectionRound reads it. If it lands here empty (e.g. subgraph
-        returned zero matching mechs), the pin yields no candidate and the
-        round fails closed rather than silently broadening to the
-        unrestricted policy.
+        Selection carries on as if no mech were pinned, as mech-interact does
+        for the request, instead of returning no tool every round.
+
+        :param mechs_info: the discovered mechs, none of which serves the pin.
         """
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
             {"tool-a", "tool-b"},
             selected_mechs=["0xa"],
-            mechs_info=[],
+            mechs_info=mechs_info,
         )
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(policy, "select_tool") as mock_select:
+            with patch.object(policy, "select_tool", return_value="tool-a") as select:
                 result = _run_select_tool(behaviour)
 
-        assert result is None
-        mock_select.assert_not_called()
+        assert result == "tool-a"
+        select.assert_called_once()
+        warning = behaviour.context.logger.warning.call_args.args[0]  # type: ignore[attr-defined]
+        assert "No pinned mech ['0xa']" in warning
 
     def test_pin_collapse_returns_none_when_mechs_info_present(self) -> None:
         """A genuinely unsatisfiable pin must fail closed (return None).
