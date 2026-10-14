@@ -70,10 +70,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaf64c4jcviat3ymc4gao534nad5rkir7edyghbnu4wytznseddwy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiemcur665qcrcpqywszhypznnuxwkow6uvfgza53jkl3xh5dm34qm
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeiadr3q5brccmp2gunpzp75unqfbxi663mdghvu5xkkaoi6zrigt7a
-- valory/trader_abci:0.1.0:bafybeialtksacegufvjw6heqdutdadx5fv6rojgpdtkrrnsyhsnvitvazq
+- valory/decision_maker_abci:0.1.0:bafybeig4zmohnco5rvwbwxzcq3pwvvu3qnr3owfnnbwpdir2ds37r3hig4
+- valory/trader_abci:0.1.0:bafybeieju3phe2fm7egdf7tvwrjiuin5mydssq7joxmugd4sw5yrjqjddu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/check_stop_trading_abci:0.1.0:bafybeiaecp7nrygw5ge74zcugmce56fp66rtzrdyn3d5vmmmq3i4c4vrly
 - valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
@@ -220,7 +220,7 @@ models:
       trading_strategy: ${str:kelly_criterion}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:true}
       ipfs_address: ${str:https://gateway.autonolas.tech/ipfs/}
-      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk}
+      tools_accuracy_hash: ${TOOLS_ACCURACY_HASH:str:QmYyfAn7d8KyL1xzdtDfMCvgGjBBKTRd9KZikKWu5HzYa8}
       prompt_template: ${PROMPT_TEMPLATE:str:With the given question "@{question}"
         and the `yes` option represented by `@{yes}` and the `no` option represented
         by `@{no}`, what are the respective probabilities of `p_yes` and `p_no` occurring?}

@@ -40,7 +40,7 @@ fingerprint:
   behaviours/round_behaviour.py: bafybeiaxn7lofhbwjwbm5x6i47k2s5u4f3o3xcs4zek3agwgatwwknu5iu
   behaviours/sampling.py: bafybeiekvb3vg23mompqe4ivvtqdsba324b4gcxvlhsqjcqau2ar6dszhi
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
-  behaviours/storage_manager.py: bafybeiasad6zhsskgfwrogqtkttuu6t5wibo6aozhmyrr46vvbvphi6sqy
+  behaviours/storage_manager.py: bafybeigehh3xx4ui3ie3khnlbwkieaogrda5sryi5gpkvpvxvkfra5vjmy
   behaviours/tool_selection.py: bafybeiahzpdf6ql3rmqsxm3zmyjbxgvvm4qhgceng4x4w7uukkm6ju4pgi
   dialogues.py: bafybeieyicxgks5it6a5llkwithftdv32dosfmwg3zbxgaleltr7yn47ku
   fsm_specification.yaml: bafybeicqku5zjvyyvg3qz3x3yxrkq7ilsnpj5rorw5ehw5ecddmg24o7fa
@@ -113,7 +113,7 @@ fingerprint:
   tests/behaviours/test_reedem.py: bafybeicogm6qti4pzjhhumfivvfy4qut5ob6o5gsrcdvryllgapz4n672u
   tests/behaviours/test_sampling.py: bafybeiffjditwljfnx7sgch7zkvf5krnsvjioq3sgbjq6z3jvdgptaprki
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
-  tests/behaviours/test_storage_manager.py: bafybeigg6cbzp4oe7j65hteppok542ihkopgepaqm66ujgpn44c2ldfoem
+  tests/behaviours/test_storage_manager.py: bafybeih5qn6ttpowkc7dcvzemsnzkepg4ddpbcvmw5jb4kyhetxfi37j44
   tests/behaviours/test_tool_selection.py: bafybeieunzjkwmw6hwvifbhymfo5cji2x2lve5a7yuv7k3ekkh4vkrerp4
   tests/conftest.py: bafybeifhufbb2izwbomfa5tjpspmc6iwpeulzmqkaxaye23gktnnuz7xmm
   tests/io_/__init__.py: bafybeieix5jroitmrjfpwakoywslzq3b3cwsfnx6z2ij7ahy4plmntzgqm
@@ -346,7 +346,7 @@ models:
       trading_strategy: strategy_name
       use_fallback_strategy: true
       ipfs_address: https://gateway.autonolas.tech/ipfs/
-      tools_accuracy_hash: QmR8etyW3TPFadNtNrW54vfnFqmh8vBrMARWV76EmxCZyk
+      tools_accuracy_hash: QmYyfAn7d8KyL1xzdtDfMCvgGjBBKTRd9KZikKWu5HzYa8
       prompt_template: With the given question "@{question}" and the `yes` option
         represented by `@{yes}` and the `no` option represented by `@{no}`, what are
         the respective probabilities of `p_yes` and `p_no` occurring?
