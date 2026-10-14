@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeigg5lxcnezs7ahijl67gt227nph3cguewuswklprnlxiou74jen5i
+agent: valory/trader:0.1.0:bafybeigc46z7yt56ttxvx7lczacrl7tvtfe5jxqwugdccnc2v6hi2wjf7m
 number_of_agents: 1
 deployment:
   agent:
@@ -118,6 +118,7 @@ models:
       withdrawal_return_buffer: ${WITHDRAWAL_RETURN_BUFFER:float:0.05}
       dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
+      tool_accuracy_prior_requests: ${TOOL_ACCURACY_PRIOR_REQUESTS:int:10}
       store_path: ${STORE_PATH:str:/data/}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
