@@ -21,7 +21,6 @@
 
 from dataclasses import replace
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any, List, Optional, Tuple
 
 import pytest
@@ -37,9 +36,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
     Standing,
     VALORY_TERMS,
     VERIFIED_MEANS,
-    cap_for,
     payment_line,
-    payment_type_id,
     render_report,
 )
 from packages.valory.skills.chatui_abci.models import Offer
@@ -397,44 +394,3 @@ def test_payment_line(
 ) -> None:
     """A ceiling is printed only when the asset can be named; never for Nevermined or unknown types."""
     assert payment_line(payment_type, rate, chain_id) == expected
-
-
-class _Caps(str, Enum):
-    """Stand-in for mech-interact's PaymentType: values are the selectors with 0x."""
-
-    NATIVE = NATIVE
-    USDC = USDC
-
-
-@pytest.mark.parametrize(
-    "type_id, expected",
-    [
-        (payment_type_id(NATIVE), 10**16),
-        (payment_type_id(NATIVE.upper().replace("0X", "0x")), 10**16),
-        (payment_type_id(USDC), 10000),
-        (payment_type_id(OLAS), None),
-        (None, None),
-    ],
-)
-def test_cap_for_matches_the_payment_type_by_selector(
-    type_id: Optional[str], expected: Optional[int]
-) -> None:
-    """The agent's cap is found by selector; an asset without a cap has none."""
-    caps = {_Caps.NATIVE: 10**16, _Caps.USDC: 10000}
-    assert cap_for(type_id, caps) == expected
-
-
-@pytest.mark.parametrize(
-    "raw, expected",
-    [
-        (NATIVE, NATIVE[2:]),
-        ("0X" + NATIVE[2:].upper(), NATIVE[2:]),
-        ("", None),
-        (None, None),
-    ],
-)
-def test_payment_type_id_is_lowercase_without_prefix(
-    raw: Any, expected: Optional[str]
-) -> None:
-    """Selectors compare equal whatever case or prefix the source used."""
-    assert payment_type_id(raw) == expected

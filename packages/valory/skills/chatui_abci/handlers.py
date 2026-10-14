@@ -83,9 +83,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
     Standing,
-    cap_for,
     payment_line,
-    payment_type_id,
     render_report,
 )
 from packages.valory.skills.chatui_abci.models import (
@@ -110,6 +108,7 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
     read_live_rate,
     read_mech,
 )
+from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -316,9 +315,11 @@ class HttpHandler(BaseHttpHandler):
         address = facts.address
         standing = Standing(
             valory=address in self.context.params.valid_mechs,
-            cap=cap_for(
-                payment_type_id(facts.payment_type),
+            cap=delivery_rate_bound(
+                address,
+                str(facts.payment_type),
                 self.context.params.delivery_rate_caps,
+                {},
             ),
             accepted_rate=self.shared_state.approved_mech_rates.get(address),
             pinnable=address in self._get_available_valid_mechs(),

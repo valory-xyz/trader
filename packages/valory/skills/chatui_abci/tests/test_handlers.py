@@ -21,7 +21,6 @@
 
 import json
 from dataclasses import asdict
-from enum import Enum
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
@@ -55,6 +54,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
 )
+from packages.valory.skills.chatui_abci.mech_templates import accept_line
 from packages.valory.skills.chatui_abci.models import (
     ChatuiConfig,
     Offer,
@@ -70,6 +70,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     FieldsThatCanBeRemoved,
     TradingStrategy,
 )
+from packages.valory.skills.mech_interact_abci.payment_types import PaymentType
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -110,13 +111,6 @@ NATIVE_RATE = 10**16  # 0.01 xDAI
 USDC_RATE = 10000  # 0.01 USDC
 
 
-class _PaymentType(str, Enum):
-    """Stand-in for mech-interact's enum: the caps are keyed by it, values are the selectors."""
-
-    NATIVE = "0x" + NATIVE_TYPE_ID
-    USDC = "0x" + USDC_TYPE_ID
-
-
 def _make_handler(
     available_tools: set = AVAILABLE_TOOLS,
     current_config: Optional[ChatuiConfig] = None,
@@ -137,7 +131,7 @@ def _make_handler(
     context = MagicMock()
     context.params.is_running_on_polymarket = False  # wxDAI / 18 decimals
     context.params.delivery_rate_caps = (
-        {_PaymentType.NATIVE: NATIVE_RATE, _PaymentType.USDC: USDC_RATE}
+        {PaymentType.NATIVE: NATIVE_RATE, PaymentType.TOKEN_USDC: USDC_RATE}
         if delivery_rate_caps is None
         else delivery_rate_caps
     )
@@ -3067,6 +3061,14 @@ class TestAnAddressMessage:
             f"To stop pinning it, reply: unpin {THIRD_PARTY}",
         ]
         assert handler.shared_state.mech_offers == {}
+
+    def test_a_price_raised_within_the_cap_is_offered_again(self) -> None:
+        """The offer is bounded by the asset's cap, not by the rate accepted earlier."""
+        handler, wire = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE // 2})
+        reply = _report_for(handler, wire, THIRD_PARTY)
+
+        assert accept_line("0.01 xDAI", THIRD_PARTY) in reply.split("<br>")
+        assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
 
     def test_a_discovered_valory_mech_gets_the_valory_ending(self) -> None:
         """A Valory mech is never offered; it can be pinned."""

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from html import escape
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from packages.valory.skills.chatui_abci.models import Offer
 from packages.valory.skills.mech_interact_abci.mech_reader import (
@@ -31,22 +31,20 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
     MechFacts,
     RecordStatus,
 )
+from packages.valory.skills.mech_interact_abci.payment_types import (
+    NVM_PAYMENT_TYPES,
+    PaymentType,
+)
 
 LINE_BREAK = "<br>"
 CHAIN_NAMES = {100: "Gnosis", 137: "Polygon", 8453: "Base", 10: "Optimism"}
 NATIVE_ASSETS = {100: "xDAI", 137: "POL", 8453: "ETH", 10: "ETH"}
-# payment type id (lowercase, no 0x) -> (asset label or None for native, decimals)
-TOKEN_PAYMENTS = {
-    "ba699a34be8fe0e7725e93dcbce1701b0211a8ca61330aaeb8a05bf2ec7abed1": (None, 18),
-    "3679d66ef546e66ce9057c4a052f317b135bc8e8c509638f7966edfd4fcf45e9": ("OLAS", 18),
-    "6406bb5f31a732f898e1ce9fdd988a80a808d36ab5d9a4a4805a8be8d197d5e3": ("USDC", 6),
+# payment type -> (asset label, or None for the chain's native token; decimals)
+TOKEN_PAYMENTS: Dict[PaymentType, Tuple[Optional[str], int]] = {
+    PaymentType.NATIVE: (None, 18),
+    PaymentType.TOKEN_OLAS: ("OLAS", 18),
+    PaymentType.TOKEN_USDC: ("USDC", 6),
 }
-NEVERMINED_PAYMENTS = frozenset(
-    {
-        "803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316",
-        "0d6fd99afa9c4c580fab5e341922c2a5c4b61d880da60506193d7bf88944dd14",
-    }
-)
 VALORY_TERMS = (
     "By submitting a request to this Mech, you agree to be bound by Valory AG's "
     "Mech Terms (v1.0), available at https://www.valory.xyz/terms/mechs."
@@ -73,7 +71,11 @@ PRICE_UNREADABLE = "I can't read what this mech charges, so it cannot be approve
 
 @dataclass(frozen=True)
 class Standing:
-    """What this agent holds about the mech: Valory or not, its cap, the accepted rate, the pin."""
+    """What this agent holds about the mech: Valory or not, its cap, the accepted rate, the pin.
+
+    `cap` is the asset's cap as discovery bounds it before any accepted rate,
+    so a raised price can be offered again up to it.
+    """
 
     valory: bool
     cap: Optional[int]
@@ -92,12 +94,15 @@ def payment_line(
     :param chain_id: the chain the mech is on.
     :return: the payment method and the ceiling text, or `None` when no figure can be named.
     """
-    type_id = str(payment_type or "").lower().removeprefix("0x")
-    if type_id in NEVERMINED_PAYMENTS:
-        return "a Nevermined subscription", None
-    if type_id not in TOKEN_PAYMENTS:
+    try:
+        kind = PaymentType(str(payment_type).lower())
+    except ValueError:
         return "an unrecognised payment method", None
-    asset, decimals = TOKEN_PAYMENTS[type_id]
+    if kind in NVM_PAYMENT_TYPES:
+        return "a Nevermined subscription", None
+    if kind not in TOKEN_PAYMENTS:
+        return "an unrecognised payment method", None
+    asset, decimals = TOKEN_PAYMENTS[kind]
     asset = asset or NATIVE_ASSETS.get(chain_id or 0)
     if asset is None:
         return "the chain's native token", None
@@ -107,28 +112,6 @@ def payment_line(
         return asset, None
     amount = Decimal(rate) / (Decimal(10) ** decimals)
     return asset, f"{amount.normalize():f} {asset}"
-
-
-def payment_type_id(payment_type: Any) -> Optional[str]:
-    """Normalise a payment type id to lowercase hex without the 0x prefix."""
-    type_id = str(payment_type or "").lower().removeprefix("0x")
-    return type_id or None
-
-
-def cap_for(type_id: Optional[str], caps: Mapping[Any, int]) -> Optional[int]:
-    """The agent's cap for a payment type, in the asset's smallest unit.
-
-    :param type_id: the payment type id, lowercase hex without 0x.
-    :param caps: mech-interact's `delivery_rate_caps`, keyed by its payment
-        type enum, whose values are the selectors with the 0x prefix.
-    :return: the cap, or `None` when the asset has no cap.
-    """
-    if type_id is None:
-        return None
-    for payment_type, cap in caps.items():
-        if payment_type_id(getattr(payment_type, "value", payment_type)) == type_id:
-            return cap
-    return None
 
 
 def accept_line(price_text: str, address: str) -> str:
