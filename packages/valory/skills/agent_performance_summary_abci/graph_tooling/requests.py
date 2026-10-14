@@ -53,7 +53,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_DAILY_PROFIT_STATISTICS_QUERY,
-    GET_MECH_REQUESTS_BY_TITLES_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
@@ -280,8 +279,9 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         requester: str,
         since: Optional[datetime] = None,
         until: Optional[datetime] = None,
+        endpoint: str = "scored-rows",
     ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
-        """Page ``/v1/data/scored-rows`` for one Safe (async HTTP).
+        """Page a ``/v1/data`` row endpoint for one Safe (async HTTP).
 
         Uses the framework's async HTTP protocol so the FSM round
         doesn't block on synchronous I/O — Tendermint heartbeats and
@@ -300,6 +300,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             (inclusive per the endpoint contract).
         :param until: optional upper bound on ``requested_at``
             (exclusive per the endpoint contract).
+        :param endpoint: ``scored-rows`` or its complement ``unscored-rows``.
         :return: list of scored-row dicts on success, ``None`` on any
             failure (including MAX_PAGES exceeded).
         :yield: framework yields for each paginated request.
@@ -315,11 +316,12 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 since=since,
                 until=until,
                 cursor=cursor,
+                endpoint=endpoint,
             )
             response = yield from self.get_http_response(method="GET", url=url)
             if response.status_code != 200:
                 self.context.logger.error(
-                    f"mech-analytics scored-rows responded {response.status_code} "
+                    f"mech-analytics {endpoint} responded {response.status_code} "
                     f"(page {page_index + 1})"
                 )
                 return None
@@ -327,7 +329,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 payload = json.loads(response.body.decode())
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                 self.context.logger.error(
-                    f"mech-analytics scored-rows JSON parse failed: {exc}"
+                    f"mech-analytics {endpoint} JSON parse failed: {exc}"
                 )
                 return None
             page = parse_scored_rows_page(payload, self.context.logger)
@@ -338,7 +340,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             if cursor is None:
                 return all_rows
         self.context.logger.error(
-            f"mech-analytics scored-rows exceeded MAX_PAGES={MAX_PAGES}; "
+            f"mech-analytics {endpoint} exceeded MAX_PAGES={MAX_PAGES}; "
             "endpoint may be returning a cursor cycle"
         )
         return None
@@ -900,9 +902,16 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         return True
 
     def _fetch_all_mech_requests(
-        self, agent_safe_address: str
+        self, agent_safe_address: str, block_timestamp_gt: int = 0
     ) -> Generator[None, None, Optional[List]]:
-        """Fetch all mech requests for the agent with pagination support."""
+        """Fetch all mech requests for the agent with pagination support.
+
+        :param agent_safe_address: the agent's safe address
+        :param block_timestamp_gt: only return requests strictly after this
+            timestamp (watermark); ``0`` fetches the full history
+        :return: list of mech request dicts, or None on failure
+        :yield: None
+        """
         # Flag-on path: read the per-Safe request list from mech-analytics'
         # /v1/data/scored-rows instead of the marketplace subgraph. Same
         # downstream shape via ``rows_as_subgraph_mech_requests`` so the
@@ -913,11 +922,26 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             # Async pagination via the framework HTTP protocol (see
             # ``_page_mech_analytics_scored_rows`` docstring for why
             # sync ``requests.get`` inside the FSM round is unsafe).
-            rows = yield from self._page_mech_analytics_scored_rows(
-                requester=agent_safe_address,
-            )
-            if rows is None:
-                return None
+            since = None
+            if block_timestamp_gt > 0:
+                # The subgraph filter below is strictly-greater-than while
+                # mech-analytics' ``since`` is inclusive; ``+1`` keeps the
+                # watermark row from being fetched (and charged) twice.
+                since = datetime.fromtimestamp(
+                    int(block_timestamp_gt) + 1, tz=timezone.utc
+                )
+            # The KPI's total also counts requests that were never
+            # delivered or could not be parsed, which only unscored-rows serves.
+            rows: List[Dict[str, Any]] = []
+            for endpoint in ("scored-rows", "unscored-rows"):
+                page_rows = yield from self._page_mech_analytics_scored_rows(
+                    requester=agent_safe_address,
+                    since=since,
+                    endpoint=endpoint,
+                )
+                if page_rows is None:
+                    return None
+                rows.extend(page_rows)
             return rows_as_subgraph_mech_requests(rows)
 
         all_requests = []
@@ -937,7 +961,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                 query=GET_MECH_SENDER_QUERY,
                 variables={
                     "id": agent_safe_address,
-                    "timestamp_gt": 0,
+                    "timestamp_gt": block_timestamp_gt,
                     "skip": skip,
                     "first": batch_size,
                 },
@@ -981,92 +1005,6 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
             skip += batch_size
 
         return all_requests
-
-    def _fetch_mech_requests_by_titles(
-        self,
-        agent_safe_address: str,
-        question_titles: List[str],
-        block_timestamp_gt: int = 0,
-    ) -> Generator[None, None, Optional[List]]:
-        """Fetch mech requests by question titles.
-
-        :param agent_safe_address: the agent's safe address
-        :param question_titles: list of question titles to filter by
-        :param block_timestamp_gt: only return requests after this timestamp (watermark)
-        :return: list of mech request dicts, or None on failure
-        :yield: None
-        """
-        if not question_titles:
-            return []
-
-        # Flag-on path: pull scored rows since the watermark from
-        # mech-analytics and filter to the requested titles client-side.
-        # This is the per-tick incremental fetch path used by
-        # ``_perform_incremental_update`` — without a flag branch here,
-        # off-chain days would silently attribute zero fees even when
-        # the flag is on for the initial backfill.
-        if is_flag_enabled(self.params):
-            since = None
-            if block_timestamp_gt > 0:
-                # The subgraph query below uses ``blockTimestamp_gt``
-                # (strictly greater than); mech-analytics' ``since`` is
-                # inclusive. ``block_timestamp_gt`` is the timestamp of a
-                # row already consumed in a prior round — passing it
-                # straight through would re-fetch that boundary row every
-                # tick, and because the incremental settled-count aggregation
-                # is a monotonic ``max(prev, new)``, any recurrence in
-                # ``question_titles`` would inflate ``fees_by_day`` /
-                # ``unplaced_count`` permanently. ``+1`` keeps the semantics
-                # aligned across the two backends. Same treatment as the
-                # ``ts + 1`` on ``until`` in the per-position helpers.
-                since = datetime.fromtimestamp(
-                    int(block_timestamp_gt) + 1, tz=timezone.utc
-                )
-            rows = yield from self._page_mech_analytics_scored_rows(
-                requester=agent_safe_address,
-                since=since,
-            )
-            if rows is None:
-                return None
-            title_set = set(question_titles)
-            filtered = [row for row in rows if row.get("question_title") in title_set]
-            return rows_as_subgraph_mech_requests(filtered)
-
-        # Determine which subgraph to use based on platform
-        if self.params.is_running_on_polymarket:
-            subgraph = self.context.polygon_mech_subgraph
-            res_context = "polygon_mech_requests_by_titles"
-        else:
-            subgraph = self.context.olas_mech_subgraph
-            res_context = "mech_requests_by_titles"
-
-        result = yield from self._fetch_from_subgraph(
-            query=GET_MECH_REQUESTS_BY_TITLES_QUERY,
-            variables={
-                "sender": agent_safe_address.lower(),
-                "questionTitles": question_titles,
-                "blockTimestamp_gt": str(block_timestamp_gt),
-            },
-            subgraph=subgraph,
-            res_context=res_context,
-        )
-
-        # Honor the docstring contract: ``None`` on transport / schema
-        # failure, empty list on a well-formed empty response. Callers
-        # rely on this distinction to gate the H6 fail-closed path;
-        # coercing ``None`` to ``[]`` here would silently let a subgraph
-        # outage look identical to "nothing new since watermark" and
-        # write zero-attribution days that never self-heal.
-        if result is None:
-            return None
-        if isinstance(result, dict):
-            if "sender" in result:
-                sender = result.get("sender")
-                if sender is None:
-                    return []
-                return sender.get("requests", []) if isinstance(sender, dict) else []
-            return result.get("requests", [])
-        return []
 
     def clean_up(self) -> None:
         """Clean up the resources."""

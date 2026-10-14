@@ -79,10 +79,8 @@ LEADERBOARD_CLOCK_SKEW_SECONDS = 300
 # Path of olas-predict's leaderboard page; deep links must stay under it
 LEADERBOARD_PAGE_PATH = "/leaderboard"
 
-# Bump when on-disk profit_over_time must be rebuilt against the current
-# subgraph endpoint/schema. Files with a lower version are rebuilt once on
-# first run via _perform_initial_backfill.
-PROFIT_OVER_TIME_SCHEMA_VERSION = 2
+# Bump to force a one-shot rebuild of stored profit_over_time.
+PROFIT_OVER_TIME_SCHEMA_VERSION = 3
 
 
 @dataclass
@@ -188,6 +186,13 @@ class ProfitOverTimeData:
         0  # Watermark: max blockTimestamp of processed mech requests
     )
     schema_version: int = 0  # Bumped to trigger one-shot rebuild on cutovers
+    # Requests past the watermark held back uncharged while the KPI counts
+    # them as open; each entry is ``{"title": str, "timestamp": int}``.
+    pending_mech_requests: List[Dict[str, Any]] = field(default_factory=list)
+    last_residual_rebuild_ts: int = 0  # Unix timestamp, 0 if never
+    residual_rebuild_backoff_days: int = 1  # Wait before the next residual rebuild
+    # mech-analytics ids seen in the lookback window; ``None`` when untracked.
+    recent_mech_request_ids: Optional[List[str]] = None
 
     def __post_init__(self) -> None:
         """Convert dicts to dataclass instances."""
@@ -522,7 +527,13 @@ class AgentPerformanceSummary:
             self.prediction_history = PredictionHistory(**self.prediction_history)
 
         if isinstance(self.profit_over_time, dict):
-            self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
+            # Derived from the subgraph and rebuilt when missing, so a block
+            # this build cannot read (e.g. written by a newer schema) is
+            # dropped rather than degrading the whole summary read.
+            try:
+                self.profit_over_time = ProfitOverTimeData(**self.profit_over_time)
+            except (TypeError, ValueError):
+                self.profit_over_time = None
 
         if isinstance(self.achievements, dict):
             self.achievements = Achievements(**self.achievements)

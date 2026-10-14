@@ -253,27 +253,6 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
 }
 """
 
-GET_MECH_REQUESTS_BY_TITLES_QUERY = """
-query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!, $blockTimestamp_gt: BigInt!) {
-  sender(id: $sender) {
-    requests(
-      where: {
-        parsedRequest_: { questionTitle_in: $questionTitles }
-        blockTimestamp_gt: $blockTimestamp_gt
-      }
-      orderBy: blockTimestamp
-      orderDirection: asc
-    ) {
-      id
-      blockTimestamp
-      parsedRequest {
-        questionTitle
-      }
-    }
-  }
-}
-"""
-
 # Polymarket-specific queries
 GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY = """
 query GetPolymarketTraderAgentDetails($id: String!) {

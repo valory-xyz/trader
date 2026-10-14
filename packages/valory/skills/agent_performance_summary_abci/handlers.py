@@ -689,6 +689,20 @@ class HttpHandler(BaseHttpHandler):
                     }
                 )
 
+            if window == "lifetime":
+                # Lifetime points are stamped at 00:00 UTC; end the series at
+                # the current time, as the windowed timelines already do.
+                now = datetime.now(timezone.utc)
+                now_point = {
+                    "timestamp": now.strftime(ISO_TIMESTAMP_FORMAT),
+                    "cumulative_profit": filtered_points[-1].cumulative_profit,
+                }
+                last_day = filtered_points[-1].timestamp // SECONDS_PER_DAY
+                if last_day == int(now.timestamp()) // SECONDS_PER_DAY:
+                    api_points[-1] = now_point
+                else:
+                    api_points.append(now_point)
+
             response: Dict[str, Any] = {
                 "agent_id": safe_address,
                 "currency": "USD",
