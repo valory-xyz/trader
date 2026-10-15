@@ -2634,6 +2634,47 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         # In polymarket mode, bankroll should only be token_balance
         assert captured_kwargs["bankroll"] == 10**18
 
+    @pytest.mark.parametrize("researchability", [0.35, None])
+    def test_get_bet_amount_forwards_researchability(
+        self, researchability: Optional[float]
+    ) -> None:
+        """`get_bet_amount` passes researchability into the strategy kwargs."""
+        behaviour = self.behaviour
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
+        behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
+        behaviour.params.use_fallback_strategy = False
+        behaviour.shared_state.chatui_config.trading_strategy = "test_strategy"
+        behaviour.shared_state.chatui_config.max_bet_size = None
+        behaviour.shared_state.chatui_config.fixed_bet_size = None
+        behaviour.token_balance = 10**18
+        behaviour.wallet_balance = 10**18
+
+        captured_kwargs: Dict[str, Any] = {}
+
+        def mock_execute(*args: Any, **kwargs: Any) -> dict:
+            """Capture kwargs."""
+            captured_kwargs.update(kwargs)
+            return {BET_AMOUNT_FIELD: 100}
+
+        behaviour.execute_strategy = mock_execute  # type: ignore[method-assign]
+        behaviour.shared_state.strategies_executables = {
+            "test_strategy": ("code", "method"),
+        }
+
+        gen = behaviour.get_bet_amount(
+            0.5, 0.5, [100, 100], 10, WXDAI, researchability=researchability
+        )
+        for _ in range(2):
+            next(gen)
+        try:
+            next(gen)
+        except StopIteration:
+            pass
+
+        assert "researchability" in captured_kwargs
+        assert captured_kwargs["researchability"] == researchability
+
     def test_is_usdc_polygon(self) -> None:
         """Test `_is_usdc` for USDC Polygon addresses."""
         behaviour = self.behaviour
