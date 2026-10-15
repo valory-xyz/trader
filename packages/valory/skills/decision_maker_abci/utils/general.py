@@ -45,20 +45,34 @@ _JSON_STRING = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"?', re.DOTALL)
 _JSON_BRACKETS = re.compile(r"[\[\]{}]")
 
 
+def _decode_like_json(text: Union[str, bytes]) -> str:
+    """Decode bytes as `json.loads` would, so the depth scan reads the same text.
+
+    :param text: the JSON document.
+    :return: the document as text.
+    """
+    if isinstance(text, (bytes, bytearray)):
+        raw = bytes(text)
+        return raw.decode(json.detect_encoding(raw), "surrogatepass")
+    return text
+
+
 def json_depth_exceeds(
     text: Union[str, bytes], max_depth: int = MAX_JSON_DEPTH
 ) -> bool:
     """Whether arrays and objects in `text` nest deeper than `max_depth`.
 
-    Brackets inside JSON strings are not counted. Bytes are read as latin-1,
-    which maps every byte to one character and keeps ASCII brackets in place.
+    Brackets inside JSON strings are not counted. Bytes are decoded the way
+    `json.loads` decodes them; bytes that cannot be decoded count as too deep.
 
     :param text: the JSON document.
     :param max_depth: the deepest nesting allowed.
     :return: True when some bracket opens deeper than `max_depth`.
     """
-    if isinstance(text, (bytes, bytearray)):
-        text = bytes(text).decode("latin-1")
+    try:
+        text = _decode_like_json(text)
+    except UnicodeDecodeError:
+        return True
     depth = 0
     for bracket in _JSON_BRACKETS.finditer(_JSON_STRING.sub("", text)):
         if bracket.group() in "[{":
@@ -75,8 +89,10 @@ def loads_bounded(text: Union[str, bytes]) -> Any:
 
     :param text: the JSON document.
     :return: the parsed value.
-    :raises ValueError: when the document nests deeper than `MAX_JSON_DEPTH`.
+    :raises ValueError: when the document nests deeper than `MAX_JSON_DEPTH`
+        or its bytes cannot be decoded.
     """
+    text = _decode_like_json(text)
     if json_depth_exceeds(text):
         raise ValueError(f"JSON nested deeper than {MAX_JSON_DEPTH} levels")
     return json.loads(text)

@@ -156,3 +156,29 @@ class TestLoadsBounded:
         """A document nested past the limit raises ValueError before parsing."""
         with pytest.raises(ValueError, match="nested deeper"):
             loads_bounded(text)
+
+
+class TestMultiByteEncodings:
+    """Bytes in any encoding json.loads accepts are measured as it reads them."""
+
+    @pytest.mark.parametrize("encoding", ["utf-16-le", "utf-16", "utf-32"])
+    def test_nesting_is_measured_after_decoding(self, encoding: str) -> None:
+        """A document over the limit is refused whatever encoding it arrives in."""
+        body = ('["\u2200", ' + OVER_LIMIT + "]").encode(encoding)
+        assert json_depth_exceeds(body) is True
+        with pytest.raises(ValueError, match="nested deeper"):
+            loads_bounded(body)
+
+    @pytest.mark.parametrize("encoding", ["utf-8", "utf-16-le", "utf-32"])
+    def test_a_document_within_the_limit_parses(self, encoding: str) -> None:
+        """A document at the limit parses in every encoding json.loads accepts."""
+        inner = "[" * (MAX_JSON_DEPTH - 1) + "]" * (MAX_JSON_DEPTH - 1)
+        body = ('["\u2200", ' + inner + "]").encode(encoding)
+        assert loads_bounded(body) == json.loads(body)
+
+    def test_bytes_that_cannot_be_decoded_are_refused(self) -> None:
+        """Bytes invalid in the detected encoding are refused, not scanned."""
+        body = b"[\xff\xfe"
+        assert json_depth_exceeds(body) is True
+        with pytest.raises(ValueError):
+            loads_bounded(body)
