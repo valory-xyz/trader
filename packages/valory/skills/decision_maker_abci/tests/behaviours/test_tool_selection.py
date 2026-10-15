@@ -859,6 +859,11 @@ class TestExtractToolMetadata:
         res_raw = MagicMock(body=b"{not json")
         assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
 
+    def test_returns_empty_on_deeply_nested_json(self) -> None:
+        """JSON nested deeper than the parser can follow returns empty dict."""
+        res_raw = MagicMock(body=b"[" * 100_000 + b"]" * 100_000)
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
     def test_returns_empty_when_body_missing_attribute(self) -> None:
         """A response without a `.body` attribute returns empty (AttributeError)."""
         res_raw = object()  # no .body

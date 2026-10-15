@@ -303,7 +303,11 @@ class TestGetDecision:
             json.dumps([0.6, 0.4]),
             json.dumps("p_yes"),
             json.dumps(7),
+            '{"p_yes": 1' + "0" * 400 + ', "p_no": 0.4, "confidence": 0.5, '
+            '"info_utility": 0.5}',
+            "[" * 100_000 + "]" * 100_000,
         ],
+        ids=["partial", "none_value", "list", "string", "number", "huge", "deep"],
     )
     def test_get_decision_with_json_that_is_not_a_prediction(self, result: str) -> None:
         """JSON that does not describe a prediction is unparseable, like invalid JSON."""

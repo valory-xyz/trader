@@ -420,7 +420,13 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Pull `toolMetadata` from the IPFS body, keyed by lowercased name."""
         try:
             body = json.loads(res_raw.body.decode())
-        except (AttributeError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+        except (
+            AttributeError,
+            TypeError,
+            UnicodeDecodeError,
+            ValueError,
+            RecursionError,
+        ):
             return {}
         raw = body.get("toolMetadata") if isinstance(body, dict) else None
         if not isinstance(raw, dict):

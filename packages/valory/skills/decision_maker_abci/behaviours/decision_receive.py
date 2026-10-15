@@ -215,7 +215,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
 
         try:
             return PredictionResponse(**json.loads(self.mech_response.result))
-        except (json.JSONDecodeError, ValueError, TypeError, KeyError) as exc:
+        except Exception as exc:  # the result is mech-supplied; fail closed
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
 
