@@ -39,6 +39,7 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
+from packages.valory.skills.decision_maker_abci.utils.general import loads_bounded
 from packages.valory.skills.market_manager_abci.bets import (
     BINARY_N_SLOTS,
     CONFIDENCE_FIELD,
@@ -214,7 +215,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             return None
 
         try:
-            return PredictionResponse(**json.loads(self.mech_response.result))
+            return PredictionResponse(**loads_bounded(self.mech_response.result))
         except Exception as exc:  # the result is mech-supplied; fail closed
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
