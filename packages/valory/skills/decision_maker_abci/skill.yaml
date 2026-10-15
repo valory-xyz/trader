@@ -16,7 +16,7 @@ fingerprint:
   behaviours/bet_placement.py: bafybeifp26kvhjyaufv5pjspx2ngz7oz7ksiwzqvsaukieqd7uwolgzrii
   behaviours/blacklisting.py: bafybeich664p5m6kr7rubwgopoahbdxfkymwvtbbmcx7sgaknkoluuvlga
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
-  behaviours/decision_receive.py: bafybeicb5z26wzsalhmnozcgia444jznddh3psvkjsgqhdsyezsdksfvfm
+  behaviours/decision_receive.py: bafybeifmv3lfheud5lgvwnojumxzw2yiz5efinrdotilp3ik7ijsd3emt4
   behaviours/decision_request.py: bafybeicqygaiieqnjgawlrm7qo65sgncpuujw2zolmgvjjupnchtoua35q
   behaviours/handle_failed_tx.py: bafybeifqpndbjz27gsduznsrsnft3iqcw6nyekrxirglgpszzqvpheh65m
   behaviours/omen_withdraw.py: bafybeibu5dypwmcyitkrpqctkkomlxsvuqkzqvfi6yout5ja2kihu4deie
@@ -91,7 +91,7 @@ fingerprint:
   tests/behaviours/test_bet_placement.py: bafybeiajpmr5atpu4ymcjhplag6ibger7pnepnfmxy77ardllnv5meg3cy
   tests/behaviours/test_blacklisting.py: bafybeicapisarintor6wyvwu75sgeqbcgyfclnczuzgv2gyl7vfrsxalpm
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
-  tests/behaviours/test_decision_receive.py: bafybeicslgo66uln6su5cz4td54rgwyegbvna2gr6h5lg33mlusu2bl6v4
+  tests/behaviours/test_decision_receive.py: bafybeif5grs4cbvfvv4g3refdjyycl4vennlhhahl57cji64luqsbt2nya
   tests/behaviours/test_decision_request.py: bafybeiacd7ji65apfapxongatdljsne6kl3q3sgmzgkgihtevgz5hfppky
   tests/behaviours/test_handle_failed_tx.py: bafybeiane4rzyxgcc33gjhncioiwibjaebwz5btuvwltj7pzthe7jbf7ru
   tests/behaviours/test_omen_withdrawal_store.py: bafybeia6oof3z4v5vy4gewcnu5yidmfyew47mln5nv4bridoukhyyt2zcq
@@ -149,11 +149,11 @@ fingerprint:
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
   tests/utils/test_general.py: bafybeihlviccbs5276hft722hmoejz4sg7sct2sexn7tfjwvpxnnypun3i
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
-  tests/utils/test_tool_suitability.py: bafybeibrgb7j7fm2dxfnm3qvtxswmej5nhi6fayef5x2s5uoqy45l2iv4y
+  tests/utils/test_tool_suitability.py: bafybeia3ebbc5q6owyxa67zy6qkwtd2r4tyaem5dms5jhvq7qd3hv5mxki
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
   utils/general.py: bafybeiaiszrv22dmqm6h7hoerpg7rpabkpakd4s43ct6p7y5zd2koz7ctq
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
-  utils/tool_suitability.py: bafybeiepc3ckkq25usypn4zltndyl5ubs7fsqwlrqrjhh5ajn7a6peurxy
+  utils/tool_suitability.py: bafybeiaqqlrq2hmjedzgeg5eb6zkapmpeje64hkdjqjl6obn45tshdoh3y
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
@@ -182,7 +182,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeibwjhkazhnvdij3a3y5kbohfmre2tdui3tif33y4fnl3bwapjnwju
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
-- valory/chatui_abci:0.1.0:bafybeieh7ysh2wu63rbs272oupffc5xa5ytmpqtcqc2opa4klddinbquui
+- valory/chatui_abci:0.1.0:bafybeidl5lavg43gjfmr7ia2d5xm4btday3okr7d5oqafrzzvqgluiuuwe
 behaviours:
   main:
     args: {}

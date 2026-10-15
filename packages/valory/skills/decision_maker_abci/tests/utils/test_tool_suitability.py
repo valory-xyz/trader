@@ -63,6 +63,31 @@ _RESOLVER_EXAMPLE_JURY = (
 )
 
 
+class TestMetadataOfAnyShape:
+    """Metadata whose nested fields are not objects reads as not a prediction tool."""
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"output": "text"},
+            {"output": {"schema": "text"}},
+            {"output": {"schema": {"properties": "text"}}},
+            {"output": {"schema": {"properties": {"result": "text"}}}},
+            {"output": {"schema": {"properties": {"result": ["p_yes"]}}}},
+            {"input": "text", "description": "Predicts things."},
+            {"input": ["text"], "description": "Predicts things."},
+            ["not", "an", "object"],
+            "text",
+            7,
+        ],
+    )
+    def test_is_not_a_prediction_tool(self, metadata: Any) -> None:
+        """Every shape gives a verdict, and none of these is a predictor."""
+        verdict, _ = explain_prediction_tool(metadata)
+        assert verdict is False
+        assert is_prediction_tool(metadata) is False
+
+
 class TestIsPredictionTool:
     """Direct verdict tests for is_prediction_tool."""
 

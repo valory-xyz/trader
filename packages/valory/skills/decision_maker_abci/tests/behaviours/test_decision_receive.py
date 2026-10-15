@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -290,6 +292,35 @@ class TestGetDecision:
                 result = behaviour._get_decision()
 
         assert result is None
+
+    @pytest.mark.parametrize(
+        "result",
+        [
+            json.dumps({"p_yes": 0.6}),
+            json.dumps(
+                {"p_yes": None, "p_no": 0.4, "confidence": 0.5, "info_utility": 0.5}
+            ),
+            json.dumps([0.6, 0.4]),
+            json.dumps("p_yes"),
+            json.dumps(7),
+        ],
+    )
+    def test_get_decision_with_json_that_is_not_a_prediction(self, result: str) -> None:
+        """JSON that does not describe a prediction is unparseable, like invalid JSON."""
+        behaviour = _make_behaviour()
+        behaviour._mech_response = MechInteractionResponse(result=result)
+
+        with patch.object(
+            type(behaviour), "benchmarking_mode", new_callable=PropertyMock
+        ) as mock_bm:
+            mock_bm.return_value = MagicMock(enabled=False)
+            with patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd:
+                mock_sd.return_value = MagicMock(
+                    mech_responses=[behaviour._mech_response]
+                )
+                assert behaviour._get_decision() is None
 
     def test_get_decision_error_response(self) -> None:
         """_get_decision should return None when result is None (error)."""
