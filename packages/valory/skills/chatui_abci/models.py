@@ -93,6 +93,14 @@ class ChatuiConfig:
     activity_goal: Optional[int] = None
 
 
+def _keep_newest(store: Dict[str, Any], key: str, value: Any) -> None:
+    """Store the value as the newest, dropping the oldest beyond `MAX_MECH_OFFERS`."""
+    store.pop(key, None)
+    store[key] = value
+    while len(store) > MAX_MECH_OFFERS:
+        del store[next(iter(store))]
+
+
 @dataclass(frozen=True)
 class Offer:
     """The terms a report showed for a mech, which a typed accept must repeat."""
@@ -116,6 +124,8 @@ class SharedState(BaseSharedState):
         self._approved_mech_rates: Optional[Dict[str, int]] = None
         # In memory only: the last offer shown per lowercase address, oldest first.
         self.mech_offers: Dict[str, Offer] = {}
+        # In memory only: why the last report for an address made no offer.
+        self.mech_refusals: Dict[str, str] = {}
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
@@ -180,10 +190,13 @@ class SharedState(BaseSharedState):
 
     def record_mech_offer(self, offer: Offer) -> None:
         """Keep the offer as the newest for its address, holding at most `MAX_MECH_OFFERS`."""
-        self.mech_offers.pop(offer.address, None)
-        self.mech_offers[offer.address] = offer
-        while len(self.mech_offers) > MAX_MECH_OFFERS:
-            del self.mech_offers[next(iter(self.mech_offers))]
+        self.mech_refusals.pop(offer.address, None)
+        _keep_newest(self.mech_offers, offer.address, offer)
+
+    def record_mech_refusal(self, address: str, reason: str) -> None:
+        """Keep why the last report for the address made no offer, holding at most `MAX_MECH_OFFERS`."""
+        self.mech_offers.pop(address, None)
+        _keep_newest(self.mech_refusals, address, reason)
 
     def drop_mech_offer(self, offer: Offer) -> None:
         """Forget the offer, unless a newer one has replaced it."""

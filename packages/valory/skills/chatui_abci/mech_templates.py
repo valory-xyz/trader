@@ -184,7 +184,15 @@ def _pin_hint(address: str, standing: Standing) -> List[str]:
         return []
     if standing.pinned:
         return [f"To stop pinning it, reply: unpin {address}"]
-    return [f"To use only this mech, reply: pin {address}"]
+    return [f"To add it to your pinned mechs, reply: pin {address}"]
+
+
+def verdict(facts: MechFacts, standing: Standing) -> str:
+    """The report's first closing line, which says where the mech stands."""
+    method, price_text = payment_line(
+        facts.payment_type, facts.max_delivery_rate, facts.chain_id
+    )
+    return _ending(facts, standing, method, price_text)[0][0]
 
 
 def _ending(  # pylint: disable=too-many-return-statements

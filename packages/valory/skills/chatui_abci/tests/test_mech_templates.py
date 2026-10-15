@@ -38,6 +38,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
     VERIFIED_MEANS,
     payment_line,
     render_report,
+    verdict,
 )
 from packages.valory.skills.chatui_abci.models import Offer
 from packages.valory.skills.mech_interact_abci.mech_reader import (
@@ -83,7 +84,7 @@ CONSENT = (
 )
 ACCEPT = f"To approve, reply exactly: I accept 0.01 xDAI per request for {MECH}"
 REMOVE = f"To stop using it, reply: remove {MECH}"
-PIN = f"To use only this mech, reply: pin {MECH}"
+PIN = f"To add it to your pinned mechs, reply: pin {MECH}"
 UNPIN = f"To stop pinning it, reply: unpin {MECH}"
 OFFER = Offer(MECH, NATIVE_RATE, NATIVE, "0.01 xDAI")
 
@@ -193,6 +194,7 @@ def test_a_report_that_offers_nothing_ends_with_its_verdict(
     assert lines[-len(ending) :] == ending
     assert "To approve" not in "<br>".join(lines)
     assert offer is None
+    assert verdict(replace(FACTS, **fields), standing) == ending[0]
 
 
 @pytest.mark.parametrize(

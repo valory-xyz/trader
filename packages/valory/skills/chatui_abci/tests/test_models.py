@@ -1086,6 +1086,27 @@ class TestMechOffers:
         state.drop_mech_offer(_offer(mech, 1))
         assert (mech in state.mech_offers) is kept
 
+    def test_an_offer_and_a_refusal_replace_each_other(self) -> None:
+        """Only the last report about a mech decides what an accept is answered with."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech))
+        state.record_mech_refusal(mech, "It cannot be approved.")
+        assert state.mech_offers == {}
+        assert state.mech_refusals == {mech: "It cannot be approved."}
+        state.record_mech_offer(_offer(mech))
+        assert state.mech_refusals == {}
+        assert state.mech_offers == {mech: _offer(mech)}
+
+    def test_the_oldest_refusal_is_dropped_past_the_bound(self) -> None:
+        """Refusals are bounded like offers."""
+        state = _offer_state()
+        mechs = [f"0x{index:040x}" for index in range(MAX_MECH_OFFERS + 1)]
+        for mech in mechs:
+            state.record_mech_refusal(mech, "no")
+        assert len(state.mech_refusals) == MAX_MECH_OFFERS
+        assert mechs[0] not in state.mech_refusals
+
     def test_dropping_an_unknown_offer_does_nothing(self) -> None:
         """No offer, nothing to drop, and no error."""
         state = _offer_state()
