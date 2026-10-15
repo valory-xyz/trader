@@ -147,11 +147,11 @@ fingerprint:
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4
   tests/test_withdrawal_rounds.py: bafybeif5kcaihrxnmiiywnx7txtlwv7c35pvli4zmp2ps3mufwpoeqb2uq
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
-  tests/utils/test_general.py: bafybeibukkxvptnruj3weidhfwbregg5xqy6njqqhs6qzcykr42xt3kihe
+  tests/utils/test_general.py: bafybeicpef6uckoabxqhr4eiq3tebitgilapx5pgk2qjxjnupowjheydtq
   tests/utils/test_scaling.py: bafybeigezaswd7tmhpp2y6ntlwgbp5paxaqahhlgjylgqat2ieq2lw54t4
   tests/utils/test_tool_suitability.py: bafybeia3ebbc5q6owyxa67zy6qkwtd2r4tyaem5dms5jhvq7qd3hv5mxki
   utils/__init__.py: bafybeiazrfg3kwfdl5q45azwz6b6mobqxngxpf4hazmrnkhinpk4qhbbf4
-  utils/general.py: bafybeie2fsgj7mm62fbivqd3byatqtlwxdorsfhqw5aqpsft5utnnd6kea
+  utils/general.py: bafybeide6qp32o5kryn7qshoz6gqwv6gnovmzhpvlqoni7k2bmmfk6gxwi
   utils/scaling.py: bafybeie7ynpy5tjhqgrlth5rhvmroobnjsowbcvhdmpjh4pqvwrn7njw5e
   utils/tool_suitability.py: bafybeiaqqlrq2hmjedzgeg5eb6zkapmpeje64hkdjqjl6obn45tshdoh3y
 fingerprint_ignore_patterns: []
