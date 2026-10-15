@@ -87,7 +87,7 @@ fingerprint:
   tests/behaviours/data/.gitkeep: bafybeiekl43sjsyqfgl6y27ve5ydo4svcngrptgtffblokmspfezroxvvi
   tests/behaviours/dummy_strategy/__init__.py: bafybeiep5w5yckjzy724v63qd5cmzfn3uxytmnizynomxggfobbysfcttq
   tests/behaviours/dummy_strategy/dummy_strategy.py: bafybeih6fpzt2674zd43dpmncnxkm4wnzqe5zpty5a2upqsf5qcooasiwm
-  tests/behaviours/test_base.py: bafybeidgegf7xaxyvzab5ehgkngedtebusclhb7t43vx4genpl2dgqiema
+  tests/behaviours/test_base.py: bafybeibi6tpujqffos32jjmphn2hlqot3og5aol7w5hpsyfoaxg4uw3aiq
   tests/behaviours/test_bet_placement.py: bafybeiajpmr5atpu4ymcjhplag6ibger7pnepnfmxy77ardllnv5meg3cy
   tests/behaviours/test_blacklisting.py: bafybeicapisarintor6wyvwu75sgeqbcgyfclnczuzgv2gyl7vfrsxalpm
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq

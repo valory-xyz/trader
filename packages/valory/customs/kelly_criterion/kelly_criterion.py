@@ -55,6 +55,10 @@ OPTIONAL_FIELDS = frozenset(
         # (FOK takers are not share-count-constrained); still populated by
         # decision_receive.py — kept here to avoid breaking those callers.
         "min_order_shares",
+        # tool-reported 0-1 researchability (None when the tool omits it)
+        "researchability",
+        "min_researchability",
+        "researchability_lambda_min",
     }
 )
 
@@ -69,6 +73,12 @@ DEFAULT_MIN_EDGE = 0.03
 # always <= 1.0, so 1.0 widens the band to the full range = no-op.
 DEFAULT_MAX_EDGE = 1.0
 DEFAULT_MIN_ORACLE_PROB = 0.5
+# Researchability knobs. Both act only when the tool reports the signal.
+# researchability is never below 0.0, so the floor default is a no-op.
+DEFAULT_MIN_RESEARCHABILITY = 0.0
+# lambda = lambda_min + (1 - lambda_min) * researchability is 1.0 for every
+# signal when lambda_min is 1.0, so p_yes is never shrunk by default.
+DEFAULT_RESEARCHABILITY_LAMBDA_MIN = 1.0
 DEFAULT_FEE_PER_TRADE_XDAI = int(1e16)  # 0.01 xDAI
 DEFAULT_FEE_PER_TRADE_USDC = int(1e4)  # 0.01 USDC
 DEFAULT_GRID_POINTS = 500
@@ -229,6 +239,78 @@ def _no_trade(
     }
 
 
+# --- Researchability knobs ---
+
+
+def _apply_researchability(
+    p_yes: float,
+    price_yes: float,
+    kwargs: Dict[str, Any],
+    info: List[str],
+    error: List[str],
+) -> Optional[float]:
+    """Apply the researchability floor, then shrink p_yes toward the market.
+
+    The shrink is p' = m + lambda * (p - m), with
+    lambda = lambda_min + (1 - lambda_min) * researchability. The anchor m
+    is the live mid of the YES book on CLOB (best YES ask and 1 - best NO
+    ask, the prices the edge is measured against), else price_yes. An
+    absent signal leaves p_yes unchanged (plain Kelly).
+
+    :param p_yes: the tool's probability for YES.
+    :param price_yes: the market price of YES.
+    :param kwargs: strategy parameters.
+    :param info: info messages, appended to.
+    :param error: error messages, appended to.
+    :return: the p_yes to size with, or None to skip the bet.
+    """
+    min_researchability = kwargs.get("min_researchability", DEFAULT_MIN_RESEARCHABILITY)
+    lambda_min = kwargs.get(
+        "researchability_lambda_min", DEFAULT_RESEARCHABILITY_LAMBDA_MIN
+    )
+    for knob, value in (
+        ("min_researchability", min_researchability),
+        ("researchability_lambda_min", lambda_min),
+    ):
+        # bool subclasses int, so True/False would otherwise pass as 1/0.
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not 0.0 <= value <= 1.0
+        ):
+            error.append(f"{knob} ({value!r}) must be a number in [0, 1]")
+            return None
+
+    researchability = kwargs.get("researchability")
+    if researchability is None:
+        return p_yes
+
+    info.append(f"researchability: {researchability}")
+    if researchability < min_researchability:
+        info.append(
+            f"No trade: researchability {researchability} < "
+            f"min_researchability {min_researchability}"
+        )
+        return None
+    lam = lambda_min + (1.0 - lambda_min) * researchability
+    # lam == 1.0 must skip the arithmetic: m + 1.0 * (p - m) != p in floats.
+    if lam >= 1.0:
+        return p_yes
+    anchor = price_yes
+    asks_yes = kwargs.get("orderbook_asks_yes")
+    asks_no = kwargs.get("orderbook_asks_no")
+    if kwargs.get("market_type") == "clob" and asks_yes and asks_no:
+        best_yes = min(float(a["price"]) for a in asks_yes)
+        best_no = min(float(a["price"]) for a in asks_no)
+        anchor = (best_yes + 1.0 - best_no) / 2
+    if not 0 < anchor < 1:
+        info.append(f"No shrink: market anchor {anchor} outside (0, 1)")
+        return p_yes
+    p_yes = anchor + lam * (p_yes - anchor)
+    info.append(f"p_yes shrunk toward market {anchor:.4f} (lambda {lam:.3f}): {p_yes}")
+    return p_yes
+
+
 # --- Main entry point ---
 
 
@@ -317,6 +399,12 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     if not (0 < p_yes < 1):
         error.append(f"Invalid p_yes: {p_yes}")
         return _no_trade(info, error)
+
+    adjusted_p_yes = _apply_researchability(p_yes, price_yes, kwargs, info, error)
+    if adjusted_p_yes is None:
+        return _no_trade(info, error)
+    p_yes = adjusted_p_yes
+    p_no = 1.0 - p_yes
 
     # 5. Evaluate BOTH sides independently
     sides = [
