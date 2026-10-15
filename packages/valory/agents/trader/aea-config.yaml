@@ -15,8 +15,8 @@ connections:
 - valory/ledger:0.19.0:bafybeicynh5l5f5f5jpx72qwzis7jvmxk5p4eqltk32uxbj2pgu2x4rqz4
 - valory/p2p_libp2p_client:0.1.0:bafybeielj3jso3wvrarp5n5rq7llpw4vgxybqiyensgjalb5ubfiawwhhu
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
-- valory/genai:0.1.0:bafybeighrq424xlroekehgk2oaqxkvziq22gffqzodm4ynhjgzhch4pcq4
-- valory/x402:0.1.0:bafybeicqjg3d6pnlcsu4442qt5tmsjqkqdtc3ulvbjgoh53jyr7z3lbqqi
+- valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
+- valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
 - valory/polymarket_client:0.1.0:bafybeihm4rw5frtbbocbabsue64j5h3mzhdxnitgcitphx2cn5t5orpfaq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia5glqtngpughlh7kczulhh55imhcvk6mtbp6bg7njrke77ow4dwe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibjt23zyyzariumnnutqlq3jbbj5k7rqbfuuiijhn5ylhjsseb5de
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeiawfvqi6rt4dd7spwxthynkrikhoj4msb3gzt3e7zdkp25pot5mxe
-- valory/trader_abci:0.1.0:bafybeihdsx2ymi2erfmwk2pnuf7cqld7uujuakhmc2a7yjjgstwxgc4liy
+- valory/decision_maker_abci:0.1.0:bafybeicigcybujysldplpuexhuzsr6kqvxhe6fg6ivmwrt5r4yrxn7fq7a
+- valory/trader_abci:0.1.0:bafybeiem542ohgqryl675er5jchnldr6yly3ynilrfmw7jhwiu3jypm6nm
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeickt3jnrkmtcnzr4ugyikfqibif76oiggltflwpjo6iyquwbu44k4
-- valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
-- valory/chatui_abci:0.1.0:bafybeigzlrprrakbiuvq43ieimudzxjncq27romy55sqwshsppzh7zsl6a
-- valory/agent_performance_summary_abci:0.1.0:bafybeiddfb6wzq4m7frhxltcsgph5dj43fiqyrbnuqdmziouy33b5las7e
+- valory/check_stop_trading_abci:0.1.0:bafybeibp7pw5h4tlsaoxwjgivprbhz5egswtg55bvrxmxwsulsr75x5qkq
+- valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
+- valory/chatui_abci:0.1.0:bafybeifs7ezcgroroq3apu4ktldj6jnds4ovqwvsev6q5nqhisntz57yui
+- valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -240,12 +240,14 @@ models:
       dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       redeem_round_timeout: ${float:3600.0}
       policy_epsilon: ${float:0.25}
+      tool_accuracy_prior_requests: ${TOOL_ACCURACY_PRIOR_REQUESTS:int:10}
       store_path: ${STORE_PATH:str:/data/}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x2Ef503950Be67a98746F484DA0bBAdA339DF3326}
       staking_interaction_sleep_time: ${int:5}
       disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${bool:true}
       activity_target: ${ACTIVITY_TARGET:int:8}
+      default_activity_goal: ${DEFAULT_ACTIVITY_GOAL:int:8}
       agent_balance_threshold: ${int:10000000000000000}
       refill_check_interval: ${int:10}
       tool_punishment_multiplier: ${int:1}
@@ -280,10 +282,17 @@ models:
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+      mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000000000000000}
+      mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000000000000000}
+      mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000000000000000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:210000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x0000000000000000000000000000000000000000}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
+      olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
@@ -559,6 +568,11 @@ config:
   genai_api_key: ${GENAI_API_KEY:str:""}
   genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/gnosis/v1beta}
   use_x402: ${USE_X402:bool:false}
+  use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+  mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_chain: ${MECH_CHAIN_ID:str:gnosis}
+  mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"gnosis":"0x0000000000000000000000000000000000000000"}}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000000000000000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill

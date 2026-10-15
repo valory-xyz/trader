@@ -66,6 +66,15 @@ class CheckStopTradingParams(StakingParams):
         # (decoupled-activity) staking regime. Independent of the on-chain
         # liveness KPI, which is normalised to ~1 on the new contracts.
         self.activity_target: int = self._ensure("activity_target", kwargs, int)
+        # Trades per epoch the agent places before standing by, unless the
+        # user sets their own goal through the chat.
+        self.default_activity_goal: int = self._ensure(
+            "default_activity_goal", kwargs, int
+        )
+        enforce(
+            self.default_activity_goal >= 0,
+            "'default_activity_goal' must not be negative",
+        )
         self._read_polymarket_flag(kwargs)
 
         # Default KPI request address is the mech contract

@@ -12,18 +12,19 @@ fingerprint:
   composition.py: bafybeifelwc7ugcvtffbnqkbtxpicgbvh7ih3hu4y7e5kju5uxj4ncmave
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeig7fywd26sybd7edhrhnyeqcyo5rfi7hdhy75eiozakmft77xinsi
-  handlers.py: bafybeidefu2bxiadnxbnlaiz2e4ntrcrraxhrvmvyd7uce3e274lfdodti
-  models.py: bafybeigqefgpbkjd7tz63sdj363cizuecbkrf6kkkvljvb2fjf5j6thuq4
+  handlers.py: bafybeiausytnqsngbh7qlr5tzyzxmdp33e7cfo6kkgxnccbfvu3hecyyiq
+  models.py: bafybeidqxl26hxm7g3mk3j642hv5r62o27j35rqj5zec2pfo6ouoaozhty
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeiemy26ij7parlduqt6i2aibda2ww2easaghkxrkvhltiuborjzu5i
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeig36t6xlip4xyylis3n7t6wx45zftfpfk75fztlz3fgycrd3ad7na
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeiewoqdpdnjvjirx2vpwt5u5m4qwba4easgivgsikqk7tbcp2abisq
-  tests/test_models.py: bafybeianja6z3rspswf4cag3pnq2hgtsbc3hq7ndggyr2p3q6ye34wnoqq
-  ui-build/omenstrat/README.md: bafybeih5ywc7fybza2itvocpwjsdr4y2he2krcg5eudjylow2yduto7vyq
+  tests/test_handlers.py: bafybeihl373oleiibafei4qknvszuu4c7axc6nfvn35qp32trvd35n2cea
+  tests/test_models.py: bafybeicscwwtmlxvkzpptzzc66gbhuzxuycgveanrvcflw7qyivlpts774
+  ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/omenstrat/assets/index-C66CmaPc.js: bafybeihncox2g2imhf6gsd4ngqp4por6iwmridwzeqkppw7h7l6n6quy3y
+  ui-build/omenstrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
+  ui-build/omenstrat/assets/index-BmmoFnZg.js: bafybeiefd6timv623kyg7l7psbtupoqzetula3gwnf5y4zljsh5myr2gy4
   ui-build/omenstrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/omenstrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/omenstrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -31,11 +32,11 @@ fingerprint:
   ui-build/omenstrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/omenstrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/omenstrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/omenstrat/index.html: bafybeibuwyeuiyq54fmdlrbgp5riuqpwckugilkgptefnt5uydjqvuymvu
+  ui-build/omenstrat/index.html: bafybeigllq5sbtf7r2q2amipweix26fiiepqbthcesu4ngugl4oxuo22ti
   ui-build/polystrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/polystrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
-  ui-build/polystrat/assets/index-BocnbQ1V.js: bafybeig26bhuhkokihz3o4oa6lulh6uu3ya35myw5ojwscdpfg4wwetkzy
+  ui-build/polystrat/assets/index-E8EuSotK.js: bafybeiend7hxj5wyj4e53wg5obv7w6qnnvi2ihjik4fdpljrh2orf5rkna
   ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
   ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
   ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
@@ -43,10 +44,11 @@ fingerprint:
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeidm3633dqsnaqltd26emig2thmcgbntuuxzlvgmqr66okhbx4enzm
+  ui-build/polystrat/index.html: bafybeifytthw6o6fbhdmi6zif5niivxw2huf6ej7esxxij6ra5il7ykmae
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
+- valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
@@ -58,13 +60,13 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeiawfvqi6rt4dd7spwxthynkrikhoj4msb3gzt3e7zdkp25pot5mxe
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia5glqtngpughlh7kczulhh55imhcvk6mtbp6bg7njrke77ow4dwe
+- valory/decision_maker_abci:0.1.0:bafybeicigcybujysldplpuexhuzsr6kqvxhe6fg6ivmwrt5r4yrxn7fq7a
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibjt23zyyzariumnnutqlq3jbbj5k7rqbfuuiijhn5ylhjsseb5de
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeickt3jnrkmtcnzr4ugyikfqibif76oiggltflwpjo6iyquwbu44k4
-- valory/mech_interact_abci:0.1.0:bafybeidufmi4gmqwhcakr6h4wsio2leznyiamudf6xdktytkoxsts77ofm
-- valory/chatui_abci:0.1.0:bafybeigzlrprrakbiuvq43ieimudzxjncq27romy55sqwshsppzh7zsl6a
-- valory/agent_performance_summary_abci:0.1.0:bafybeiddfb6wzq4m7frhxltcsgph5dj43fiqyrbnuqdmziouy33b5las7e
+- valory/check_stop_trading_abci:0.1.0:bafybeibp7pw5h4tlsaoxwjgivprbhz5egswtg55bvrxmxwsulsr75x5qkq
+- valory/mech_interact_abci:0.1.0:bafybeif5d45yo2dbnzereymlyrusqc62vmcrtau3iuozufhuonzkc3ldsa
+- valory/chatui_abci:0.1.0:bafybeifs7ezcgroroq3apu4ktldj6jnds4ovqwvsev6q5nqhisntz57yui
+- valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:
   main:
@@ -263,6 +265,7 @@ models:
       withdrawal_return_buffer: 0.05
       dust_epsilon_wxdai: 10000000000000000
       policy_epsilon: 0.25
+      tool_accuracy_prior_requests: 10
       store_path: /data/
       policy_store_update_offset: 259200
       use_subgraph_for_redeeming: true
@@ -271,6 +274,7 @@ models:
       disable_trading: false
       stop_trading_if_staking_kpi_met: true
       activity_target: 8
+      default_activity_goal: 8
       agent_balance_threshold: 10000000000000000
       refill_check_interval: 10
       mech_activity_checker_contract: '0x0000000000000000000000000000000000000000'
@@ -330,11 +334,18 @@ models:
       polygon_ledger_rpc: https://1rpc.io/matic
       lifi_quote_to_amount_url: https://li.quest/v1/quote/toAmount
       use_x402: false
+      use_mech_facilitator: false
+      mech_pre_deposit_floor: 150000000000000000
+      mech_pre_deposit_target: 500000000000000000
+      mech_pre_deposit_cap: 500000000000000000
+      mech_facilitator_base_url: https://x402.olas.autonolas.tech
+      native_gas_reserve: 210000000000000000
       is_agent_performance_summary_enabled: true
       is_achievement_checker_enabled: true
       is_running_on_polymarket: false
       balance_tracker_address: '0x0000000000000000000000000000000000000000'
       mech_analytics_url: ''
+      olas_predict_leaderboard_url: https://predict.olas.network/api/leaderboard/agents
       use_mech_analytics: false
       polymarket_builder_program_enabled: true
       polymarket_collateral_address: '0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB'

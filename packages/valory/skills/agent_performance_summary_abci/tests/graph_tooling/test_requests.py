@@ -40,6 +40,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     _unwrap_trader_agent,
     to_content,
 )
+from packages.valory.skills.agent_performance_summary_abci.tests.constants import (
+    SAFE_ADDRESS,
+    SAFE_ADDRESS_LOWER,
+)
 
 # ---------------------------------------------------------------------------
 # to_content tests
@@ -116,7 +120,6 @@ class TestAPTQueryingBehaviourStructure:
         assert hasattr(APTQueryingBehaviour, "_fetch_olas_in_usd_price")
         assert hasattr(APTQueryingBehaviour, "_fetch_daily_profit_statistics")
         assert hasattr(APTQueryingBehaviour, "_fetch_all_mech_requests")
-        assert hasattr(APTQueryingBehaviour, "_fetch_mech_requests_by_titles")
         assert hasattr(APTQueryingBehaviour, "send_polymarket_connection_request")
 
     def test_has_expected_properties(self) -> None:
@@ -668,6 +671,42 @@ class TestFetchTraderAgent:
 
         assert result == "some_string"
 
+    def test_polymarket_path_sends_lowercased_address(self) -> None:
+        """OPE-1923: the squid matches ``id`` exactly, so ``$id`` must be lowercase."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = True
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"id": "0xagent"}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.polymarket_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
+    def test_omen_path_sends_lowercased_address(self) -> None:
+        """The Omen branch is pinned too, in case that endpoint ever moves."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = False
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"id": "0xagent"}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.olas_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
 
 # ---------------------------------------------------------------------------
 # _fetch_staking_service tests
@@ -863,6 +902,42 @@ class TestFetchTraderAgentBets:
         result = _exhaust(gen)  # type: ignore[arg-type]
 
         assert result is None
+
+    def test_polymarket_path_sends_lowercased_address(self) -> None:
+        """OPE-1923: ``id_eq`` is exact equality, so ``$id`` must be lowercase."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = True
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = [{"bets": [{"id": "bet1"}]}]
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.polymarket_bets_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent_bets(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
+
+    def test_omen_path_sends_lowercased_address(self) -> None:
+        """The Omen branch is pinned too, in case that endpoint ever moves."""
+        b = _make_behaviour()
+        b.context.params.is_running_on_polymarket = False
+
+        mock_sg = MagicMock()
+        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
+        mock_sg.process_response.return_value = {"traderAgent": {"bets": []}}
+        mock_sg.is_retries_exceeded.return_value = False
+        b.context.olas_agents_subgraph = mock_sg
+
+        sent: List[Any] = []
+        b.get_http_response = _recording_gen(sent)  # type: ignore[method-assign]
+
+        _exhaust(b._fetch_trader_agent_bets(SAFE_ADDRESS))  # type: ignore[arg-type]
+
+        assert json.loads(sent[-1])["variables"]["id"] == SAFE_ADDRESS_LOWER
 
 
 # ---------------------------------------------------------------------------
@@ -1722,140 +1797,37 @@ class TestFetchAllMechRequests:
 
         assert result == []
 
-
-# ---------------------------------------------------------------------------
-# _fetch_mech_requests_by_titles tests
-# ---------------------------------------------------------------------------
-
-
-class TestFetchMechRequestsByTitles:
-    """Tests for _fetch_mech_requests_by_titles."""
-
-    def test_empty_titles(self) -> None:
-        """When question_titles is empty, returns empty list without querying."""
-        b = _make_behaviour()
-
-        gen = b._fetch_mech_requests_by_titles("0xagent", [])
-        result = _exhaust(gen)  # type: ignore[arg-type]
-
-        assert result == []
-
-    def test_omen_with_sender_wrapper(self) -> None:
-        """When on omen and result has sender key, extracts requests."""
+    def test_lower_bound_passed_as_timestamp_gt(self) -> None:
+        """A watermark is sent to the subgraph as the exclusive ``timestamp_gt``."""
         b = _make_behaviour()
         b.context.params.is_running_on_polymarket = False
+        calls: List[Dict[str, Any]] = []
 
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {
-            "sender": {"requests": [{"id": "req1"}]}
-        }
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
+        def _spy(*args: Any, **kwargs: Any) -> Any:
+            calls.append(kwargs["variables"])
+            yield
+            return {"sender": {"requests": []}}
 
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["question1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
+        with patch.object(b, "_fetch_from_subgraph", side_effect=_spy):
+            _exhaust(b._fetch_all_mech_requests("0xagent", block_timestamp_gt=1234))
 
-        assert result == [{"id": "req1"}]
+        assert [c["timestamp_gt"] for c in calls] == [1234]
 
-    def test_polymarket_path(self) -> None:
-        """When on polymarket, uses polygon_mech_subgraph."""
+    def test_no_lower_bound_fetches_from_zero(self) -> None:
+        """Without a watermark the full history is fetched, as for the backfill."""
         b = _make_behaviour()
         b.context.params.is_running_on_polymarket = True
+        calls: List[Dict[str, Any]] = []
 
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {
-            "sender": {"requests": [{"id": "req2"}]}
-        }
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.polygon_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
+        def _spy(*args: Any, **kwargs: Any) -> Any:
+            calls.append(kwargs["variables"])
+            yield
+            return {"sender": {"requests": []}}
 
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["question1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
+        with patch.object(b, "_fetch_from_subgraph", side_effect=_spy):
+            _exhaust(b._fetch_all_mech_requests("0xagent"))
 
-        assert result == [{"id": "req2"}]
-
-    def test_result_without_sender_wrapper(self) -> None:
-        """When result has no sender key, tries to get requests from result dict."""
-        b = _make_behaviour()
-        b.context.params.is_running_on_polymarket = False
-
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {"requests": [{"id": "req3"}]}
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
-
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
-
-        assert result == [{"id": "req3"}]
-
-    def test_transport_failure_returns_none(self) -> None:
-        """Transport failure propagates as ``None``, not coerced to ``[]``.
-
-        The incremental-update path in ``behaviours.py`` distinguishes
-        ``None`` (fail-closed, preserve existing profit data via the
-        H6 lookback) from ``[]`` (legitimate "nothing new since
-        watermark", proceed). Silently coercing ``None`` to ``[]``
-        here made every subgraph outage look like a normal empty tick
-        and wrote zero-attribution days that never self-heal.
-        """
-        b = _make_behaviour()
-        b.sleep = _noop_gen  # type: ignore[method-assign]
-        b.context.params.is_running_on_polymarket = False
-
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = None
-        mock_sg.api_id = "test"
-        mock_sg.is_retries_exceeded.return_value = False
-        mock_sg.retries_info.suggested_sleep_time = 1.0
-        b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
-
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
-
-        assert result is None
-
-    def test_result_not_dict(self) -> None:
-        """When result is not a dict, returns empty list."""
-        b = _make_behaviour()
-        b.context.params.is_running_on_polymarket = False
-
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = "string_result"
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
-
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
-
-        assert result == []
-
-    def test_null_sender_in_result(self) -> None:
-        """When sender is None, returns empty list."""
-        b = _make_behaviour()
-        b.context.params.is_running_on_polymarket = False
-
-        mock_sg = MagicMock()
-        mock_sg.get_spec.return_value = {"method": "POST", "url": "http://test"}
-        mock_sg.process_response.return_value = {"sender": None}
-        mock_sg.is_retries_exceeded.return_value = False
-        b.context.olas_mech_subgraph = mock_sg
-        b.get_http_response = _return_gen(MagicMock())  # type: ignore[method-assign]
-
-        gen = b._fetch_mech_requests_by_titles("0xagent", ["q1"])
-        result = _exhaust(gen)  # type: ignore[arg-type]
-
-        assert result == []
+        assert [c["timestamp_gt"] for c in calls] == [0]
 
 
 # ---------------------------------------------------------------------------
@@ -2124,9 +2096,9 @@ class TestFetchCTHeldPositionKeys:
 
 # ---------------------------------------------------------------------------
 # Mech-analytics flag-on tests: cover the async-HTTP paths on the
-# behaviour helper (``_page_mech_analytics_scored_rows``) and the two
-# consumers that route through it (``_fetch_all_mech_requests`` and
-# ``_fetch_mech_requests_by_titles``). Without these, the flag-on
+# behaviour helper (``_page_mech_analytics_scored_rows``) and the
+# consumer that routes through it (``_fetch_all_mech_requests``).
+# Without these, the flag-on
 # branches would ship with zero unit coverage, which is exactly the
 # ROI-affecting key-chain the reviewer flagged as a coverage gate hard
 # fail.
@@ -2259,30 +2231,60 @@ class TestPageMechAnalyticsScoredRows:
 class TestFetchAllMechRequestsFlagOn:
     """``_fetch_all_mech_requests`` flag-on branch — uses async pagination + adapter."""
 
-    def test_flag_on_success_returns_subgraph_shaped_rows(self) -> None:
-        """Successful fetch returns rows in the trader's subgraph shape."""
+    def test_flag_on_success_returns_scored_and_unscored_rows(self) -> None:
+        """Scored and unscored rows both come back in the subgraph shape."""
+        urls: List[str] = []
+        responses = [
+            {
+                "rows": [
+                    {
+                        "question_title": "Q1",
+                        "requested_at": "2026-07-10T12:00:00+00:00",
+                        "tool": "t",
+                    }
+                ],
+                "next_cursor": None,
+            },
+            {
+                "rows": [
+                    {"question_title": None, "requested_at": "2026-07-11T00:00:00Z"}
+                ],
+                "next_cursor": None,
+            },
+        ]
+
+        def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
+            urls.append(kwargs["url"])
+            yield
+            return _http_response(200, responses[len(urls) - 1])
+
+        b = _make_behaviour()
+        b._context = _mech_analytics_ctx()
+        b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
+
+        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
+
+        assert [url.split("?")[0].rsplit("/", 1)[1] for url in urls] == [
+            "scored-rows",
+            "unscored-rows",
+        ]
+        assert result is not None
+        assert [r["parsedRequest"] for r in result] == [
+            {"questionTitle": "Q1", "tool": "t"},
+            None,
+        ]
+
+    def test_flag_on_unscored_failure_returns_none(self) -> None:
+        """A failed unscored fetch is a failure, not a smaller request list."""
         b = _make_behaviour()
         b._context = _mech_analytics_ctx()
         b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
             [
-                _http_response(
-                    200,
-                    {
-                        "rows": [
-                            {
-                                "question_title": "Q1",
-                                "requested_at": "2026-07-10T12:00:00+00:00",
-                                "tool": "t",
-                            }
-                        ],
-                        "next_cursor": None,
-                    },
-                )
+                _http_response(200, {"rows": [], "next_cursor": None}),
+                _http_response(500, {}),
             ]
         )
-        result = _exhaust(b._fetch_all_mech_requests("0xsafe"))
-        assert result is not None
-        assert result[0]["parsedRequest"]["questionTitle"] == "Q1"
+        assert _exhaust(b._fetch_all_mech_requests("0xsafe")) is None
 
     def test_flag_on_failure_returns_none(self) -> None:
         """Fetch failure propagates as None (distinct from empty ``[]``)."""
@@ -2293,67 +2295,13 @@ class TestFetchAllMechRequestsFlagOn:
         )
         assert _exhaust(b._fetch_all_mech_requests("0xsafe")) is None
 
-
-class TestFetchMechRequestsByTitlesFlagOn:
-    """``_fetch_mech_requests_by_titles`` flag-on branch — client-side title filter."""
-
-    def test_flag_on_filters_to_requested_titles_only(self) -> None:
-        """Titles not in the caller's list are dropped from the result."""
-        b = _make_behaviour()
-        b._context = _mech_analytics_ctx()
-        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
-            [
-                _http_response(
-                    200,
-                    {
-                        "rows": [
-                            {
-                                "question_title": "wanted",
-                                "requested_at": "2026-07-10T00:00:00Z",
-                            },
-                            {
-                                "question_title": "other",
-                                "requested_at": "2026-07-10T00:00:00Z",
-                            },
-                        ],
-                        "next_cursor": None,
-                    },
-                )
-            ]
-        )
-        result = _exhaust(
-            b._fetch_mech_requests_by_titles("0xsafe", question_titles=["wanted"])
-        )
-        assert result is not None
-        assert len(result) == 1
-        assert result[0]["parsedRequest"]["questionTitle"] == "wanted"
-
-    def test_flag_on_empty_titles_short_circuits_without_fetch(self) -> None:
-        """Empty title list means no work, no HTTP call."""
-        b = _make_behaviour()
-        b._context = _mech_analytics_ctx()
-        b.get_http_response = MagicMock()  # type: ignore[method-assign]  # would fail if called
-        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", [])) == []
-        assert b.get_http_response.call_count == 0
-
-    def test_flag_on_fetch_failure_returns_none(self) -> None:
-        """Fetch failure propagates as None (distinct from empty list)."""
-        b = _make_behaviour()
-        b._context = _mech_analytics_ctx()
-        b.get_http_response = _queued_get_http_response(  # type: ignore[method-assign]
-            [_http_response(503, {})]
-        )
-        assert _exhaust(b._fetch_mech_requests_by_titles("0xsafe", ["t"])) is None
-
     def test_flag_on_since_offsets_watermark_by_one_second(self) -> None:
         """``block_timestamp_gt`` is a row already consumed; ``since`` must skip it.
 
         The subgraph query uses ``blockTimestamp_gt`` (strictly greater
-        than); mech-analytics' ``since`` is inclusive. Passing
-        ``last_mech_timestamp`` straight through re-fetches the boundary
-        row each tick, and the monotonic ``max(prev, new)`` aggregation
-        would then never let the resulting overcount self-correct. The
-        ``+1`` offset keeps the two backends semantically aligned.
+        than); mech-analytics' ``since`` is inclusive. Passing the
+        watermark straight through would re-fetch, and re-charge, the
+        boundary row every tick.
         """
         watermark = 1_700_000_000
         captured: Dict[str, Any] = {}
@@ -2367,28 +2315,16 @@ class TestFetchMechRequestsByTitlesFlagOn:
         b._context = _mech_analytics_ctx()
         b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
 
-        _exhaust(
-            b._fetch_mech_requests_by_titles(
-                "0xsafe",
-                question_titles=["wanted"],
-                block_timestamp_gt=watermark,
-            )
-        )
+        _exhaust(b._fetch_all_mech_requests("0xsafe", block_timestamp_gt=watermark))
 
         expected_since = datetime.fromtimestamp(
             watermark + 1, tz=timezone.utc
         ).isoformat()
-        # ``build_scored_rows_url`` URL-encodes the ISO string; unquote
-        # for a substring check that's readable in case of failure.
         assert captured.get("url") is not None
         assert f"since={quote(expected_since, safe='')}" in captured["url"]
 
     def test_flag_on_no_watermark_sends_no_since_bound(self) -> None:
-        """Backfill entry point (``block_timestamp_gt=0``) omits ``since`` entirely.
-
-        Guards against a symmetric bug where always adding +1 would
-        skip epoch on the initial backfill path.
-        """
+        """The backfill call (no lower bound) omits ``since`` entirely."""
         captured: Dict[str, Any] = {}
 
         def _spy_get_http_response(*args: Any, **kwargs: Any) -> Any:
@@ -2400,13 +2336,7 @@ class TestFetchMechRequestsByTitlesFlagOn:
         b._context = _mech_analytics_ctx()
         b.get_http_response = _spy_get_http_response  # type: ignore[method-assign]
 
-        _exhaust(
-            b._fetch_mech_requests_by_titles(
-                "0xsafe",
-                question_titles=["wanted"],
-                block_timestamp_gt=0,
-            )
-        )
+        _exhaust(b._fetch_all_mech_requests("0xsafe"))
         assert captured.get("url") is not None
         assert "since=" not in captured["url"]
 

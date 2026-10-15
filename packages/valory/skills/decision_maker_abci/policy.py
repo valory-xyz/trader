@@ -23,15 +23,21 @@ import json
 import random
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from time import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
+from packages.valory.skills.chatui_abci.tool_keys import describe_tool_key
 from packages.valory.skills.decision_maker_abci.utils.scaling import scale_value
 
 RandomnessType = Union[int, float, str, bytes, bytearray, None]
 
-VOLUME_FACTOR_REGULARIZATION = 0.1
-UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.5, 80.5)
+# ``AccuracyInfo.accuracy`` is a fraction in [0, 1]. The volume term and the
+# interval are sized so that accuracy dominates the ranking and the volume term
+# only separates near-equal tools.
+VOLUME_FACTOR_REGULARIZATION = 0.001
+UNSCALED_WEIGHTED_ACCURACY_INTERVAL = (-0.005, 0.805)
 SCALED_WEIGHTED_ACCURACY_INTERVAL = (0, 1)
+# The accuracy a tool's ranking starts from before its own results count.
+PRIOR_ACCURACY = 0.5
 
 
 class DataclassEncoder(json.JSONEncoder):
@@ -57,7 +63,7 @@ class AccuracyInfo:
     requests: int = 0
     # the number of pending evaluations, i.e., responses for which we have not redeemed yet
     pending: int = 0
-    # the accuracy of the tool
+    # the fraction of resolved responses that were correct, in [0, 1]
     accuracy: float = 0.0
 
 
@@ -115,7 +121,17 @@ class EGreedyPolicyDecoder(json.JSONDecoder):
 
 @dataclass
 class EGreedyPolicy:
-    """An e-Greedy policy for the tool selection based on tool accuracy."""
+    """An e-Greedy policy for the tool selection based on tool accuracy.
+
+    Every store is indexed by a ``tool_keys`` key, so each (identity, tool)
+    pair has its own accuracy record, consecutive failures, and quarantine.
+    """
+
+    # Imaginary answers at `PRIOR_ACCURACY` added to every record when ranking,
+    # so a few results cannot outrank a long one. Set per process from the
+    # `tool_accuracy_prior_requests` param and never serialized, so stored
+    # policies and payloads keep their shape; 0 ranks by accuracy alone.
+    prior_requests: ClassVar[int] = 0
 
     eps: float
     consecutive_failures_threshold: int
@@ -139,7 +155,7 @@ class EGreedyPolicy:
 
     @property
     def tools(self) -> List[str]:
-        """Get the policy's tools."""
+        """Get the policy's keys, one per (identity, tool) pair."""
         return list(self.accuracy_store.keys())
 
     @property
@@ -217,13 +233,21 @@ class EGreedyPolicy:
         best_index = argmax(valid_weighted_accuracies)
         return valid_tools[best_index]
 
+    def ranked_accuracy(self, acc_info: AccuracyInfo) -> float:
+        """The record's accuracy pulled toward `PRIOR_ACCURACY` by `prior_requests` answers."""
+        if self.prior_requests == 0:
+            return acc_info.accuracy
+        correct = acc_info.accuracy * acc_info.requests
+        prior_correct = PRIOR_ACCURACY * self.prior_requests
+        return (correct + prior_correct) / (acc_info.requests + self.prior_requests)
+
     def update_weighted_accuracy(self) -> None:
         """Update the weighted accuracy for each tool."""
         n_requests = self.n_requests
         self.weighted_accuracy = {
             tool: scale_value(
                 (
-                    acc_info.accuracy
+                    self.ranked_accuracy(acc_info)
                     + ((acc_info.requests - acc_info.pending) / (n_requests or 1))
                     * VOLUME_FACTOR_REGULARIZATION
                 ),
@@ -247,8 +271,14 @@ class EGreedyPolicy:
         return self.best_tool
 
     def tool_used(self, tool: str) -> None:
-        """Increase the times used for the given tool."""
-        self.accuracy_store[tool].pending += 1
+        """Increase the times used for the given key, starting a record if it has none.
+
+        A record may be missing when the mech that delivered differs from the
+        one the request was sent to.
+
+        :param tool: the key of the (identity, tool) pair that produced the prediction.
+        """
+        self.accuracy_store.setdefault(tool, AccuracyInfo()).pending += 1
         self.update_weighted_accuracy()
 
     def tool_responded(self, tool: str, timestamp: int, failed: bool = True) -> None:
@@ -280,12 +310,14 @@ class EGreedyPolicy:
 
         report = "Policy statistics so far (only for resolved markets):\n"
         stats = (
-            f"\t{tool} tool:\n"
+            f"\t{describe_tool_key(tool)} tool:\n"
             f"\t\tQuarantined: {self.is_quarantined(tool)}\n"
             f"\t\tTimes used: {self.accuracy_store[tool].requests}\n"
             f"\t\tWeighted Accuracy: {self.weighted_accuracy[tool]}"
             for tool in self.tools
         )
         report += "\n".join(stats)
-        report += f"\nBest non-quarantined tool so far is {self.best_tool!r}."
+        best_tool = self.best_tool
+        best = describe_tool_key(best_tool) if best_tool is not None else None
+        report += f"\nBest non-quarantined tool so far is {best!r}."
         return report

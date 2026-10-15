@@ -22,7 +22,7 @@
 import json
 import os
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1346,6 +1346,130 @@ class TestFormatPredictions:
         result = fetcher._format_predictions(bets, "0xsafe")
 
         assert len(result) == 2
+
+    @staticmethod
+    def _fetch_winning_market(
+        fetcher: PredictionsFetcher,
+        mock_post: MagicMock,
+        rows: List[Tuple[str, int, int, str]],
+        total_payout_wei: int,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Run raw wei rows on one answered market through ``fetch_predictions``.
+
+        :param fetcher: the fetcher under test.
+        :param mock_post: patched requests.post.
+        :param rows: ``(bet_id, amount_wei, shares_wei, block_ts)`` per bet on
+            the winning outcome; sells carry negative amounts and shares.
+        :param total_payout_wei: the participant's redeemed payout.
+        :return: formatted items keyed by bet id.
+        """
+        participants = [
+            {
+                "totalPayout": str(total_payout_wei),
+                "totalTraded": str(3 * WEI_TO_NATIVE),
+                "totalFees": "0",
+                "totalBets": len(rows),
+            }
+        ]
+        bets = []
+        for bet_id, amount, shares, block_ts in rows:
+            bet = _make_bet(
+                bet_id=bet_id,
+                amount=str(amount),
+                timestamp=block_ts,
+                participants=participants,
+            )
+            bet["outcomeTokenAmount"] = str(shares)
+            bet["blockTimestamp"] = block_ts
+            bets.append(bet)
+
+        market = bets[0]["fixedProductMarketMaker"]
+        history_response = MagicMock(status_code=200)
+        history_response.json.return_value = {
+            "data": {
+                "marketParticipants": [
+                    {**participants[0], "fixedProductMarketMaker": market, "bets": bets}
+                ]
+            }
+        }
+        finalization_response = MagicMock(status_code=200)
+        finalization_response.json.return_value = {
+            "data": {"fixedProductMarketMakers": [market]}
+        }
+        mock_post.side_effect = [history_response, finalization_response]
+        return {
+            item["id"]: item
+            for item in fetcher.fetch_predictions("0x", first=100)["items"]
+        }
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_multi_bet_per_buy_payout_parity_fixture(
+        self, mock_post: MagicMock
+    ) -> None:
+        """Two buys and one sell on the winning outcome: per-buy payout.
+
+        Winning cards (pearl-api, olas-predict) must reproduce these exact
+        ``total_payout`` values from the same inputs, so keep them in sync.
+
+        :param mock_post: patched requests.post.
+        """
+        result = self._fetch_winning_market(
+            _make_fetcher(),
+            mock_post,
+            rows=[
+                ("buy_1", 2 * WEI_TO_NATIVE, 4 * WEI_TO_NATIVE, "1000"),
+                ("buy_2", 1 * WEI_TO_NATIVE, 2 * WEI_TO_NATIVE, "2000"),
+                ("sell_1", -1 * WEI_TO_NATIVE, -2 * WEI_TO_NATIVE, "3000"),
+            ],
+            total_payout_wei=4 * WEI_TO_NATIVE,
+        )
+
+        assert set(result) == {"buy_1", "buy_2"}
+        # buy_1: half sold for 1.0 (proceeds) + 4.0 x (1.0 / 2.0) remaining.
+        assert result["buy_1"]["bet_amount"] == 2.0
+        assert result["buy_1"]["total_payout"] == 3.0
+        assert result["buy_1"]["net_profit"] == 1.0
+        # buy_2: never sold, 4.0 x (1.0 / 2.0) remaining.
+        assert result["buy_2"]["bet_amount"] == 1.0
+        assert result["buy_2"]["total_payout"] == 2.0
+        assert result["buy_2"]["net_profit"] == 1.0
+        assert all(item["status"] == "won" for item in result.values())
+        assert all(item["has_remaining_shares"] for item in result.values())
+
+    @patch(
+        "packages.valory.skills.agent_performance_summary_abci.graph_tooling.predictions_helper.requests.post"
+    )
+    def test_has_remaining_shares_for_fully_and_partly_sold_buys(
+        self, mock_post: MagicMock
+    ) -> None:
+        """A fully sold buy has no remaining shares; a partly sold one does.
+
+        :param mock_post: patched requests.post.
+        """
+        result = self._fetch_winning_market(
+            _make_fetcher(),
+            mock_post,
+            rows=[
+                ("fully_sold", 1 * WEI_TO_NATIVE, 2 * WEI_TO_NATIVE, "1000"),
+                ("partly_sold", 2 * WEI_TO_NATIVE, 4 * WEI_TO_NATIVE, "2000"),
+                ("sell", -3 * WEI_TO_NATIVE, -4 * WEI_TO_NATIVE, "3000"),
+            ],
+            total_payout_wei=2 * WEI_TO_NATIVE,
+        )
+
+        assert set(result) == {"fully_sold", "partly_sold"}
+        # All 2 shares sold for 1.5 against a cost of 1.0.
+        assert result["fully_sold"]["status"] == "won"
+        assert result["fully_sold"]["has_remaining_shares"] is False
+        assert result["fully_sold"]["total_payout"] == 1.5
+        assert result["fully_sold"]["net_profit"] == 0.5
+        # 2 of 4 shares sold for 1.5, the other 2 redeemed for 2.0.
+        assert result["partly_sold"]["status"] == "won"
+        assert result["partly_sold"]["has_remaining_shares"] is True
+        assert result["partly_sold"]["total_payout"] == 3.5
+        assert result["partly_sold"]["net_profit"] == 1.5
 
     def test_output_ordered_desc_by_blocktimestamp(self) -> None:
         """``_format_predictions`` output is DESC-by-blockTimestamp.
@@ -3273,6 +3397,30 @@ class TestFormatSingleBet:
 
         assert result is not None
         assert result["settled_at"] is None
+
+    def test_transaction_hash_from_subgraph_bet(self) -> None:
+        """The bet's transaction hash is exposed for the explorer link."""
+        fetcher = _make_fetcher()
+        bet = _make_bet()
+        bet["transactionHash"] = "0xabc123"
+        fpmm = bet["fixedProductMarketMaker"]
+
+        result = fetcher._format_single_bet(bet, fpmm, None, None)
+
+        assert result is not None
+        assert result["transaction_hash"] == "0xabc123"
+
+    def test_transaction_hash_none_when_absent(self) -> None:
+        """A bet without a transaction hash yields None, not a crash."""
+        fetcher = _make_fetcher()
+        bet = _make_bet()
+        bet.pop("transactionHash", None)
+        fpmm = bet["fixedProductMarketMaker"]
+
+        result = fetcher._format_single_bet(bet, fpmm, None, None)
+
+        assert result is not None
+        assert result["transaction_hash"] is None
 
     def test_none_market_ctx(self) -> None:
         """Test with None market context."""

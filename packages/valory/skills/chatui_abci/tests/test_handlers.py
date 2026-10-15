@@ -21,12 +21,20 @@
 
 import json
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    update_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.handlers import HttpMethod
+from packages.valory.skills.agent_performance_summary_abci.models import (
+    AGENT_PERFORMANCE_SUMMARY_FILE,
+    read_activity_goal,
+)
 from packages.valory.skills.chatui_abci.handlers import (
     ALLOWED_TOOLS_FIELD,
     AVAILABLE_TRADING_STRATEGIES,
@@ -35,6 +43,8 @@ from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     HttpHandler,
     LLM_MESSAGE_FIELD,
+    MECH_DEPOSIT_REQUIRED_CODE,
+    MECH_PRE_DEPOSIT_EOA_SHORT,
     PREVIOUS_TRADING_TYPE_FIELD,
     SELECTED_MECHS_FIELD,
     SrrHandler,
@@ -275,6 +285,20 @@ class TestAllowedTools:
         assert params[ALLOWED_TOOLS_FIELD] == ["prediction-online"]
         handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
 
+    def test_validation_fallback_strips_the_mech_part_of_policy_keys(self) -> None:
+        """The raw synced set holds (identity, tool) keys; pins are validated by tool name."""
+        mech = "0x" + "a" * 40
+        handler = _make_handler(
+            available_tools={f"{mech}::prediction-online", f"{mech}::resolve-market"},
+            prediction_tools=None,
+        )
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["resolve-market"]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == ["resolve-market"]
+        assert handler._available_tools() == {"prediction-online", "resolve-market"}
+
     def test_validation_falls_back_to_mech_tools_when_unpublished(self) -> None:
         """With no filtered set published, validation uses available_mech_tools.
 
@@ -514,6 +538,219 @@ class TestBehavior:
         handler = _make_handler()
         handler._process_updated_agent_config({})
         handler.shared_state.update_agent_behavior.assert_not_called()  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Activity goal
+# ---------------------------------------------------------------------------
+
+GOAL_PERIOD_START = 1_791_331_200
+GOAL_NOW = GOAL_PERIOD_START + 3_600
+
+
+class TestActivityGoal:
+    """Tests for setting the activity goal through the chat."""
+
+    @staticmethod
+    def _handler(
+        store_path: Path, current_goal: Optional[int] = None, progress: int = 3
+    ) -> _TestableHttpHandler:
+        """Return a handler over ``store_path`` holding a published block."""
+        handler = _make_handler(current_config=ChatuiConfig(activity_goal=current_goal))
+        handler.context.params.store_path = store_path
+        handler.context.params.default_activity_goal = 8
+        handler.shared_state.synced_timestamp = GOAL_NOW
+        update_activity_goal(
+            store_path,
+            8 if current_goal is None else current_goal,
+            progress,
+            GOAL_PERIOD_START,
+            GOAL_PERIOD_START + 60,
+            MagicMock(),
+        )
+        return handler
+
+    @staticmethod
+    def _info_lines(handler: _TestableHttpHandler) -> list:
+        """Return the INFO messages logged about the goal."""
+        return [
+            call.args[0]
+            for call in handler.context.logger.info.call_args_list
+            if "ctivity goal" in call.args[0]
+        ]
+
+    @pytest.mark.parametrize("goal", [0, 20, 500])
+    def test_valid_goal_is_persisted_and_published(
+        self, tmp_path: Path, goal: int
+    ) -> None:
+        """A valid goal, however large, is stored and shown in the block at once."""
+        handler = self._handler(tmp_path)
+
+        params, issues = handler._process_updated_agent_config({"activity_goal": goal})
+
+        assert issues == []
+        assert params == {"activity_goal": goal}
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
+            "activity_goal", goal
+        )
+        assert handler.shared_state.chatui_config.activity_goal == goal
+        block = read_activity_goal(tmp_path)
+        assert block is not None
+        assert block.target == goal
+        assert block.progress == 3
+        assert block.period_start == GOAL_PERIOD_START
+        assert block.is_met is (3 >= goal)
+        assert block.updated_at == GOAL_NOW
+        assert self._info_lines(handler) == [
+            f"Activity goal changed from None to {goal} (None is the default, 8)."
+        ]
+
+    @pytest.mark.parametrize("goal", [True, False, 20.0, 2.5, -1, "20", [20]])
+    def test_invalid_goal_declines_the_whole_reply(
+        self, tmp_path: Path, goal: Any
+    ) -> None:
+        """An invalid goal adds an issue and nothing in the reply is written."""
+        handler = self._handler(tmp_path, current_goal=5)
+        block_before = (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text()
+
+        params, issues = handler._process_updated_agent_config(
+            {
+                "activity_goal": goal,
+                "trading_strategy": TradingStrategy.FIXED_BET.value,
+                "fixed_bet_size": 0.05,
+                "behavior": "A steady strategy.",
+            }
+        )
+
+        assert params == {}
+        assert len(issues) == 1
+        assert "Activity goal" in issues[0]
+        handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        handler._store_chatui_param_to_json.assert_not_called()  # type: ignore[attr-defined]
+        handler.shared_state.update_agent_behavior.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.chatui_config.activity_goal == 5
+        assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text() == block_before
+        lines = self._info_lines(handler)
+        assert len(lines) == 1
+        assert lines[0].startswith("Declined activity goal change")
+
+    def test_removal_reverts_to_default(self, tmp_path: Path) -> None:
+        """Removing the goal stores null and publishes the default target."""
+        handler = self._handler(tmp_path, current_goal=20)
+
+        params, issues = handler._process_updated_agent_config(
+            {
+                "activity_goal": 30,
+                "removed_config_fields": [FieldsThatCanBeRemoved.ACTIVITY_GOAL.value],
+            }
+        )
+
+        assert issues == []
+        assert params == {"activity_goal": None}
+        handler._store_chatui_param_to_json.assert_called_once_with(  # type: ignore[attr-defined]
+            "activity_goal", None
+        )
+        assert handler.shared_state.chatui_config.activity_goal is None
+        block = read_activity_goal(tmp_path)
+        assert block is not None
+        assert block.target == 8
+        assert self._info_lines(handler) == [
+            "Activity goal changed from 20 to None (None is the default, 8)."
+        ]
+
+    def test_publish_failure_keeps_the_reply_applied(self, tmp_path: Path) -> None:
+        """A failed block write is logged; the reply's writes and the goal stand."""
+        handler = self._handler(tmp_path, current_goal=5)
+
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.activity_goal.write_performance_summary_key",
+            side_effect=OSError("disk full"),
+        ):
+            params, issues = handler._process_updated_agent_config(
+                {"activity_goal": 20, "behavior": "A steady strategy."}
+            )
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
+    def test_store_failure_is_reported_not_raised(self, tmp_path: Path) -> None:
+        """A failed store write reports an issue instead of an unreadable reply."""
+        handler = self._handler(tmp_path, current_goal=5)
+        handler._store_chatui_param_to_json.side_effect = OSError("disk full")  # type: ignore[attr-defined]
+
+        _, issues = handler._process_updated_agent_config(
+            {"activity_goal": 20, "behavior": "A steady strategy."}
+        )
+
+        assert len(issues) == 1
+        assert "could not be saved" in issues[0]
+        handler.shared_state.update_agent_behavior.assert_called_once_with(  # type: ignore[attr-defined]
+            "A steady strategy."
+        )
+        handler.context.logger.error.assert_called_once()
+        assert "disk full" in handler.context.logger.error.call_args.args[0]
+
+    @pytest.mark.parametrize(
+        "block_content",
+        [
+            b"\xff\xfe",
+            json.dumps(
+                {
+                    "activity_goal": {
+                        "unit": "trades",
+                        "target": 8,
+                        "progress": "3",
+                        "is_met": False,
+                        "period_start": GOAL_PERIOD_START,
+                        "updated_at": GOAL_NOW,
+                        "last_met_at": None,
+                    }
+                }
+            ).encode(),
+        ],
+        ids=["not_utf8", "wrongly_typed_block"],
+    )
+    def test_unusable_published_block_does_not_fail_the_reply(
+        self, tmp_path: Path, block_content: bytes
+    ) -> None:
+        """An unreadable summary leaves the goal stored and is rebuilt later."""
+        handler = self._handler(tmp_path, current_goal=5)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(block_content)
+
+        params, issues = handler._process_updated_agent_config({"activity_goal": 20})
+
+        assert issues == []
+        assert params == {"activity_goal": 20}
+        assert handler.shared_state.chatui_config.activity_goal == 20
+        assert read_activity_goal(tmp_path) is None
+
+    def test_goal_stored_before_any_evaluation(self, tmp_path: Path) -> None:
+        """Without a published block the goal is still stored; no block is invented."""
+        handler = _make_handler()
+        handler.context.params.store_path = tmp_path
+        handler.context.params.default_activity_goal = 8
+        handler.shared_state.synced_timestamp = GOAL_NOW
+
+        _, issues = handler._process_updated_agent_config({"activity_goal": 4})
+
+        assert issues == []
+        assert handler.shared_state.chatui_config.activity_goal == 4
+        assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+
+    def test_absent_goal_is_noop(self, tmp_path: Path) -> None:
+        """A reply that does not mention the goal leaves it alone."""
+        handler = self._handler(tmp_path, current_goal=5)
+
+        params, _ = handler._process_updated_agent_config({"behavior": "x"})
+
+        assert "activity_goal" not in params
+        assert handler.shared_state.chatui_config.activity_goal == 5
 
 
 # ---------------------------------------------------------------------------
@@ -979,6 +1216,54 @@ class TestHandleChatuiPrompt:
         prompt_str = str(prompt_arg)
         assert "kelly_criterion_no_conf" in prompt_str
         assert "prediction-online" in prompt_str
+
+    @pytest.mark.parametrize(
+        "current_goal, published_progress, expected",
+        [
+            (
+                None,
+                3,
+                [
+                    "- Activity goal: 8 trades per staking epoch (the default)",
+                    "Trades placed so far this epoch: 3.",
+                    "Default: 8.",
+                ],
+            ),
+            (
+                20,
+                None,
+                [
+                    "- Activity goal: 20 trades per staking epoch (set by the user)",
+                    "Trades placed so far this epoch: not counted yet.",
+                    "Default: 8.",
+                ],
+            ),
+        ],
+        ids=["default_with_progress", "user_goal_not_counted_yet"],
+    )
+    def test_prompt_includes_activity_goal(
+        self,
+        current_goal: Optional[int],
+        published_progress: Optional[int],
+        expected: list,
+    ) -> None:
+        """The prompt tells the model the current goal, the default and progress."""
+        handler = self._make_prompt_handler(
+            current_config=ChatuiConfig(activity_goal=current_goal)
+        )
+        handler.context.params.default_activity_goal = 8
+        published = None
+        if published_progress is not None:
+            published = MagicMock(progress=published_progress)
+        handler.shared_state.read_activity_goal_from_disk.return_value = published
+
+        handler._handle_chatui_prompt(
+            self._make_http_msg({"prompt": "what is my goal?"}), MagicMock()
+        )
+
+        prompt = handler._send_chatui_llm_request.call_args.kwargs["prompt"]  # type: ignore[attr-defined]
+        for text in expected:
+            assert text in prompt
 
 
 class TestSendChatuiLlmRequest:
@@ -1900,3 +2185,642 @@ class TestWithdrawalRouteRegistration:
         assert any(
             "withdrawal" in p for p in regex_strings
         ), f"no /api/v1/withdrawal GET route registered; found: {regex_strings}"
+
+
+class TestAnUnreadableLlmReplyDoesNotStopTheAgent:
+    """The prompt asks the model for JSON; nothing makes it comply.
+
+    The service runs under ``stop_and_exit``, so an exception raised out
+    of this handler ends the agent. One prompt answered in prose would
+    stop trading until somebody restarted it.
+    """
+
+    @staticmethod
+    def _handler() -> Any:
+        handler = _make_handler()
+        handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+        handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+        return handler
+
+    @staticmethod
+    def _reply(payload: Any) -> Any:
+        message = MagicMock()
+        message.payload = payload
+        return message
+
+    @pytest.mark.parametrize(
+        "model_text",
+        [
+            pytest.param("I'm sorry, I can't help with that.", id="prose"),
+            pytest.param('```json\n{"message": "hi"}\n```', id="fenced block"),
+            pytest.param("", id="empty"),
+            pytest.param("[1, 2, 3]", id="a list, not an object"),
+            pytest.param('"just a string"', id="a bare string"),
+        ],
+    )
+    def test_a_reply_that_is_not_a_json_object_is_answered_not_raised(
+        self, model_text: str
+    ) -> None:
+        """Each of these used to raise straight out of the handler."""
+        handler = self._handler()
+        payload = json.dumps({"response": model_text})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        body = handler._send_internal_server_error_response.call_args[0][2]
+        assert "error" in body
+
+    def test_a_payload_that_is_not_json_at_all_is_answered_not_raised(self) -> None:
+        """The connection encodes this, but a handler must not end the agent on it."""
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply("not json"), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    def test_a_well_formed_reply_is_still_processed(self) -> None:
+        """The guard must not swallow the normal path."""
+        handler = self._handler()
+        payload = json.dumps(
+            {"response": json.dumps({"message": "done", "updated_config": {}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param(
+                {"updated_agent_config": "set it to balanced"},
+                id="config as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": ["balanced"]},
+                id="config as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"trading_strategy": ["balanced"]}},
+                id="strategy as a list",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"allowed_tools": "one-tool"}},
+                id="tools as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"selected_mechs": "0xabc"}},
+                id="mechs as a string",
+            ),
+            pytest.param(
+                {"updated_agent_config": {"removed_config_fields": "allowed_tools"}},
+                id="removals as a string",
+            ),
+        ],
+    )
+    def test_valid_json_of_the_wrong_shape_is_answered_not_raised(
+        self, reply: Any
+    ) -> None:
+        """The update walks this object field by field, so a wrong type raises.
+
+        Valid JSON shaped differently reads no better than prose, and the
+        model is free to produce it, so it has to be answered the same way.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"allowed_tools": [["a"]]}, id="tool name is a list"),
+            pytest.param({"allowed_tools": [{"a": 1}]}, id="tool name is a dict"),
+        ],
+    )
+    def test_a_list_of_the_right_type_holding_wrong_items_is_answered(
+        self, config: Any
+    ) -> None:
+        """The container type is right, so checking types cannot catch these.
+
+        Tool names are looked up against a set, so an unhashable item
+        raises instead of reading as unknown. Item types that are merely
+        surprising, a null or a dict among the mech names, are already
+        tolerated and reported back as unrecognised, which is the wanted
+        behaviour; it is the raising ones that needed a guard, and
+        enumerating them would not be complete.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": "5"}, id="bet size is a quoted number"),
+            pytest.param({"fixed_bet_size": [5]}, id="bet size is a list"),
+            pytest.param({"max_bet_size": float("inf")}, id="bet size is infinity"),
+        ],
+    )
+    def test_a_numeric_field_of_the_wrong_type_is_answered(self, config: Any) -> None:
+        """The update scales these by the token decimals before comparing.
+
+        A quoted number multiplies the string, a list multiplies the list, and
+        an infinity cannot be made an integer, so each raises somewhere inside
+        the update. Naming the fields one by one would not keep up with the
+        config growing, which is why the update is wrapped as a whole.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param("[" * 1200 + "]" * 1200, id="deeply nested"),
+            pytest.param("1" * 5000, id="integer over the digit limit"),
+        ],
+    )
+    def test_a_reply_that_breaks_the_parser_itself_is_answered(
+        self, payload: str
+    ) -> None:
+        """Neither of these raises JSONDecodeError.
+
+        Deep nesting raises RecursionError, which derives from neither
+        ValueError nor TypeError, and an oversized integer literal raises a
+        plain ValueError. A crafted reply would otherwise still end the agent.
+        """
+        handler = self._handler()
+
+        handler._handle_chatui_llm_response(
+            self._reply(json.dumps({"response": payload})),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            pytest.param({"fixed_bet_size": True}, id="bet size is a bool"),
+            pytest.param({"max_bet_size": float("nan")}, id="bet size is a nan"),
+            pytest.param({"behavior": {"tone": "terse"}}, id="behavior is a dict"),
+        ],
+    )
+    def test_values_that_pass_a_type_check_but_are_not_amounts(
+        self, config: Any
+    ) -> None:
+        """A bool is an int in Python, so it reads as one unit of collateral.
+
+        A NaN passes a range comparison without being an amount at all, and
+        ``behavior`` was accepted whatever its type.
+        """
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps({"updated_agent_config": config})})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "field",
+        ["fixed_bet_size", "max_bet_size"],
+    )
+    def test_an_amount_beyond_the_float_range_is_answered(self, field: str) -> None:
+        """An int is finite however long it is.
+
+        So this is a value the update can read and reject with an issue,
+        rather than a reply it cannot read at all. The readability check runs ahead of the handler's own catch, so asking
+        whether such an int is finite the way a float is asked would end the
+        agent here, before anything could turn it into an issue.
+
+        :param field: the numeric config field carrying the amount.
+        """
+        handler = self._handler()
+        handler._store_chatui_param_to_json = MagicMock()
+        payload = json.dumps(
+            {"response": json.dumps({"updated_agent_config": {field: 10**400}})}
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+        assert field not in handler._send_ok_response.call_args[0][2]
+        handler._store_chatui_param_to_json.assert_not_called()
+
+    def test_a_field_failing_late_leaves_the_earlier_ones_unwritten(self) -> None:
+        """The update is applied whole or not at all.
+
+        The model decides this object's shape, so a later field can fail
+        after earlier ones have been read. Writing as each field was read
+        left the user with a half-changed config and an error, which is
+        worse than the error alone.
+        """
+        handler = self._handler()
+        handler._store_trading_strategy = MagicMock()
+        handler._store_allowed_tools = MagicMock()
+        handler._set_chatui_param = MagicMock()
+        # Valid strategy first, then a bet size that raises when scaled.
+        handler.get_units_and_decimals = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "trading_strategy": "kelly_criterion",
+                            "fixed_bet_size": 5,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_trading_strategy.assert_not_called()
+        handler._set_chatui_param.assert_not_called()
+
+    def test_the_behaviour_text_waits_for_the_other_writes(self) -> None:
+        """The behaviour text is part of the same whole-or-nothing update.
+
+        Applied where it is read, it lands before the amounts it was meant to
+        go with, so a write that fails leaves the agent told to behave one way
+        about sizes it never took.
+        """
+        handler = self._handler()
+        handler._set_chatui_param = MagicMock(side_effect=RuntimeError("boom"))
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {
+                        "updated_agent_config": {
+                            "behavior": "Trade conservatively.",
+                            "fixed_bet_size": 0.05,
+                        }
+                    }
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler.shared_state.update_agent_behavior.assert_not_called()
+
+    def test_a_removal_field_of_the_wrong_type_does_not_clear_the_setting(
+        self,
+    ) -> None:
+        """This one would pass silently rather than raise.
+
+        The removal check is a membership test, and a bare string satisfies
+        it by substring, so ``removed_config_fields: "allowed_tools"`` reads
+        as a request to clear the tools. Nothing raises, so a guard around
+        the update cannot see it; only checking the type can.
+        """
+        handler = self._handler()
+        handler._store_allowed_tools = MagicMock()  # type: ignore[method-assign]
+        payload = json.dumps(
+            {
+                "response": json.dumps(
+                    {"updated_agent_config": {"removed_config_fields": "allowed_tools"}}
+                )
+            }
+        )
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._store_allowed_tools.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            pytest.param({"message": "done"}, id="no config at all"),
+            pytest.param(
+                {"message": "done", "updated_agent_config": {}}, id="empty config"
+            ),
+            pytest.param(
+                {
+                    "updated_agent_config": {
+                        "trading_strategy": "balanced",
+                        "allowed_tools": [],
+                        "removed_config_fields": [],
+                    }
+                },
+                id="right types throughout",
+            ),
+        ],
+    )
+    def test_a_reply_of_the_right_shape_is_not_turned_away(self, reply: Any) -> None:
+        """A field being absent is fine; the update defaults each one."""
+        handler = self._handler()
+        payload = json.dumps({"response": json.dumps(reply)})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+
+    def test_an_llm_error_reply_still_takes_the_error_path(self) -> None:
+        """A reported error is not the same as an unreadable one."""
+        handler = self._handler()
+        payload = json.dumps({"error": "No GENAI_API_KEY set."})
+
+        handler._handle_chatui_llm_response(
+            self._reply(payload), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._handle_chatui_llm_error.assert_called_once()
+        handler._send_internal_server_error_response.assert_not_called()
+
+
+# The reply logged in #1050: every field the model had no reason to change,
+# set to null as the prompt asks.
+_ALL_FIELDS_UNCHANGED: Dict[str, Any] = {
+    "trading_strategy": None,
+    "allowed_tools": None,
+    "selected_mechs": None,
+    "fixed_bet_size": None,
+    "max_bet_size": None,
+    "removed_config_fields": [],
+    "behavior": None,
+}
+_NULLABLE_CONFIG_FIELDS = [
+    *HttpHandler._LLM_CONFIG_FIELD_TYPES,
+    *HttpHandler._LLM_CONFIG_NUMERIC_FIELDS,
+]
+
+
+def _llm_payload(reply: Dict[str, Any]) -> MagicMock:
+    """Wrap a model reply the way the genai connection delivers it."""
+    message = MagicMock()
+    message.payload = json.dumps({"response": json.dumps(reply)})
+    return message
+
+
+def _make_reply_handler(**handler_kwargs: Any) -> Any:
+    """Return a handler whose HTTP answers can be inspected."""
+    handler = _make_handler(**handler_kwargs)
+    handler._send_internal_server_error_response = MagicMock()  # type: ignore[method-assign]
+    handler._send_ok_response = MagicMock()  # type: ignore[method-assign]
+    handler._send_http_response = MagicMock()  # type: ignore[method-assign]
+    return handler
+
+
+class TestANullFieldMeansLeaveItUnchanged:
+    """The prompt tells the model to set every field it is not changing to null."""
+
+    def test_a_reply_changing_nothing_is_answered_with_its_message(self) -> None:
+        """All fields null is the normal answer to a question, not a bad reply."""
+        handler = _make_reply_handler()
+        reply = {"updated_agent_config": _ALL_FIELDS_UNCHANGED, "message": "Hello"}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload(reply), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        body = handler._send_ok_response.call_args[0][2]
+        assert body[LLM_MESSAGE_FIELD] == "Hello"
+        handler._store_trading_strategy.assert_not_called()
+        handler._store_allowed_tools.assert_not_called()
+        handler._store_selected_mechs.assert_not_called()
+
+    def test_the_one_field_that_is_set_is_applied(self) -> None:
+        """Nulls around a real change must not stop the change."""
+        handler = _make_reply_handler()
+        strategy = next(iter(AVAILABLE_TRADING_STRATEGIES))
+        config = {**_ALL_FIELDS_UNCHANGED, "trading_strategy": strategy}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._store_trading_strategy.assert_called_once_with(strategy)
+
+    @pytest.mark.parametrize("field", _NULLABLE_CONFIG_FIELDS)
+    def test_each_field_may_be_null(self, field: str) -> None:
+        """No single field turns the reply unreadable by being null."""
+        handler = _make_reply_handler()
+        strategy = next(iter(AVAILABLE_TRADING_STRATEGIES))
+        config = {"trading_strategy": strategy, field: None}
+        expects_a_change = field != "trading_strategy"
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_called_once()
+        assert handler._store_trading_strategy.called is expects_a_change
+
+    @pytest.mark.parametrize(
+        "wrong",
+        [
+            pytest.param({"trading_strategy": ["balanced"]}, id="strategy as a list"),
+            pytest.param({"allowed_tools": "one-tool"}, id="tools as a string"),
+            pytest.param(
+                {"removed_config_fields": "allowed_tools"}, id="removals as a string"
+            ),
+            pytest.param({"fixed_bet_size": "5"}, id="bet size as a string"),
+            pytest.param({"max_bet_size": True}, id="bet size as a bool"),
+            pytest.param({"max_bet_size": False}, id="bet size as a falsy bool"),
+            pytest.param({"allowed_tools": ""}, id="tools as an empty string"),
+            pytest.param({"trading_strategy": []}, id="strategy as an empty list"),
+            pytest.param({"removed_config_fields": ""}, id="removals as empty string"),
+        ],
+    )
+    def test_a_wrong_type_among_nulls_is_still_refused(self, wrong: Any) -> None:
+        """Accepting null must not loosen what a set value has to be."""
+        handler = _make_reply_handler()
+        config = {**_ALL_FIELDS_UNCHANGED, **wrong}
+
+        handler._handle_chatui_llm_response(
+            _llm_payload({"updated_agent_config": config, "message": "Done"}),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._send_internal_server_error_response.assert_called_once()
+        handler._send_ok_response.assert_not_called()
+        handler._store_trading_strategy.assert_not_called()
+
+    def test_null_removals_do_not_clear_a_setting(self) -> None:
+        """A null removal list removes nothing, the same as an empty one."""
+        handler = _make_reply_handler(
+            current_config=ChatuiConfig(allowed_tools=["prediction-online"])
+        )
+
+        params, issues = handler._process_updated_agent_config(
+            {"removed_config_fields": None}
+        )
+
+        assert (params, issues) == ({}, [])
+        handler._store_allowed_tools.assert_not_called()
+
+
+class TestAnEmptyMechPreDepositIsExplained:
+    """The user can fix an unfunded agent, so the answer has to say so."""
+
+    @staticmethod
+    def _error_payload(**extra: Any) -> MagicMock:
+        message = MagicMock()
+        message.payload = json.dumps(
+            {"error": "mech pre-deposit required: available 0 < required 10", **extra}
+        )
+        return message
+
+    @pytest.mark.parametrize(
+        "on_polymarket,native_token",
+        [
+            pytest.param(False, "xDAI", id="omen"),
+            pytest.param(True, "POL", id="polymarket"),
+        ],
+    )
+    def test_it_names_the_token_to_add(
+        self, on_polymarket: bool, native_token: str
+    ) -> None:
+        """The agent pays for the top-up in the chain's native token."""
+        handler = _make_reply_handler()
+        handler.context.params.is_running_on_polymarket = on_polymarket
+        handler.context.shared_state = {MECH_PRE_DEPOSIT_EOA_SHORT: True}
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        args = handler._send_http_response.call_args[0]
+        assert f"Add {native_token} to your agent" in args[2]["error"]
+        assert args[3] == 402
+
+    @pytest.mark.parametrize(
+        "shared_state",
+        [
+            pytest.param({MECH_PRE_DEPOSIT_EOA_SHORT: False}, id="eoa funded"),
+            pytest.param({}, id="no funding check yet"),
+        ],
+    )
+    def test_a_funded_eoa_is_not_asked_for_money(
+        self, shared_state: Dict[str, Any]
+    ) -> None:
+        """The top-up is on its way, or the chain refused it for a moment."""
+        handler = _make_reply_handler()
+        handler.context.shared_state = shared_state
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        args = handler._send_http_response.call_args[0]
+        assert "temporarily unavailable" in args[2]["error"]
+        assert "Add " not in args[2]["error"]
+        assert args[3] == 402
+
+    def test_it_is_not_reported_as_a_server_error(self) -> None:
+        """A 500 reads as "the agent is broken", which topping up cannot fix."""
+        handler = _make_reply_handler()
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        handler._handle_chatui_llm_error.assert_not_called()
+        handler._send_internal_server_error_response.assert_not_called()
+        handler._send_ok_response.assert_not_called()
+
+    def test_the_balances_reach_the_agent_log(self) -> None:
+        """They tell an empty deposit from one held up by requests in flight."""
+        handler = _make_reply_handler()
+        context = {"balance": 30, "reserved": 25, "available": 5, "required": 10}
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(code=MECH_DEPOSIT_REQUIRED_CODE, context=context),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+        )
+
+        logged = handler.context.logger.warning.call_args[0][0]
+        assert str(context) in logged
+        assert "available 0 < required 10" in logged
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            pytest.param({}, id="no code"),
+            pytest.param({"code": None}, id="null code"),
+            pytest.param({"code": "something_else"}, id="another code"),
+            pytest.param({"code": ""}, id="empty code"),
+        ],
+    )
+    def test_any_other_error_keeps_the_generic_answer(self, extra: Any) -> None:
+        """Only the marketplace's own code selects the funding message."""
+        handler = _make_reply_handler()
+        handler._handle_chatui_llm_error = MagicMock()  # type: ignore[method-assign]
+
+        handler._handle_chatui_llm_response(
+            self._error_payload(**extra), MagicMock(), MagicMock(), MagicMock()
+        )
+
+        handler._handle_chatui_llm_error.assert_called_once()
+        handler._send_http_response.assert_not_called()

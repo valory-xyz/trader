@@ -467,7 +467,7 @@ class TestTryUpdatePolicy:
         behaviour._policy = policy
         initial_requests = policy.accuracy_store["tool1"].requests
 
-        behaviour._try_update_policy("tool1", winning=True)
+        assert behaviour._try_update_policy("tool1", winning=True) is True
 
         assert policy.accuracy_store["tool1"].requests == initial_requests + 1
 
@@ -477,8 +477,7 @@ class TestTryUpdatePolicy:
         policy = _make_policy()
         behaviour._policy = policy
 
-        # Should not raise
-        behaviour._try_update_policy("unknown_tool", winning=True)
+        assert behaviour._try_update_policy("unknown_tool", winning=True) is False
         behaviour.__dict__["_context"].logger.warning.assert_called()
 
 
@@ -499,6 +498,20 @@ class TestUpdatePolicy:
         behaviour._update_policy(mock_trade)
 
         assert "0xtx1" not in behaviour.utilized_tools
+
+    def test_update_policy_keeps_the_entry_when_the_record_is_missing(self) -> None:
+        """A failed update keeps the bet's entry so the outcome can still be credited."""
+        behaviour = _make_redeem_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour.utilized_tools = {"0xtx1": "valory::missing"}
+
+        mock_trade = MagicMock()
+        mock_trade.transactionHash = "0xtx1"
+        mock_trade.is_winning = True
+
+        behaviour._update_policy(mock_trade)
+
+        assert behaviour.utilized_tools == {"0xtx1": "valory::missing"}
 
     def test_update_policy_with_unknown_tool(self) -> None:
         """Should skip when tool is not in utilized_tools."""
@@ -3686,9 +3699,7 @@ class TestAsyncAct:
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet() -> None:
-            """Mock update_bet_transaction_information."""
-            pass
+        mock_update_bet = MagicMock()
 
         behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
@@ -3715,6 +3726,9 @@ class TestAsyncAct:
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
+
+        # Redeem never adds to the ledger; PostBetUpdate already did.
+        mock_update_bet.assert_called_once_with(record_ledger=False)
 
     def test_async_act_with_sell_outcome_transact(self) -> None:
         """Should call update_bet_transaction_information with sell outcome round."""
@@ -3747,9 +3761,7 @@ class TestAsyncAct:
             """Mock finish_behaviour."""
             yield
 
-        def mock_update_bet() -> None:
-            """Mock update_bet_transaction_information."""
-            pass
+        mock_update_bet = MagicMock()
 
         behaviour._normal_act = mock_normal_act  # type: ignore[method-assign]
         behaviour._store_all = mock_store_all  # type: ignore[method-assign]
@@ -3776,3 +3788,6 @@ class TestAsyncAct:
 
             gen = behaviour.async_act()
             _exhaust_gen(gen)
+
+        # Redeem never adds to the ledger; PostBetUpdate already did.
+        mock_update_bet.assert_called_once_with(record_ledger=False)

@@ -22,24 +22,31 @@
 import json
 import platform
 import stat
+import threading
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
-from packages.valory.skills.abstract_round_abci.models import ApiSpecs, BaseParams
+from packages.valory.skills.abstract_round_abci.models import (
+    ApiSpecs,
+    BaseParams,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     Achievement,
     Achievements,
+    ActivityGoal,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
     AgentPerformanceSummaryParams,
     GnosisStakingSubgraph,
+    LeaderboardData,
+    LeaderboardWindowRank,
     OffchainDepositState,
     OlasAgentsSubgraph,
     OlasMechSubgraph,
@@ -54,9 +61,14 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     PredictionHistory,
     ProfitDataPoint,
     ProfitOverTimeData,
+    SUMMARY_FILE_LOCK,
     SharedState,
     Subgraph,
     TradesSubgraph,
+    is_allowed_leaderboard_url,
+    read_activity_goal,
+    write_json_atomically,
+    write_performance_summary_key,
 )
 
 
@@ -310,6 +322,67 @@ class TestProfitOverTimeData:
         assert pot.unplaced_mech_requests_count == 0
         assert pot.placed_mech_requests_count == 0
         assert pot.includes_unplaced_mech_fees is False
+        assert pot.pending_mech_requests == []
+        assert pot.last_residual_rebuild_ts == 0
+        assert pot.residual_rebuild_backoff_days == 1
+
+    def test_pending_and_rebuild_fields_round_trip(self) -> None:
+        """The held-back requests and rebuild time survive a JSON round trip."""
+        pot = ProfitOverTimeData(
+            last_updated=1704067200,
+            total_days=0,
+            pending_mech_requests=[{"title": "Q1", "timestamp": 1704067100}],
+            last_residual_rebuild_ts=1704000000,
+        )
+        summary = AgentPerformanceSummary(profit_over_time=pot)
+
+        loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
+
+        assert loaded.profit_over_time == pot
+
+    def test_v2_file_without_new_fields_loads(self) -> None:
+        """A series stored before the two fields existed still loads, at v2."""
+        stored = {
+            "last_updated": 1704067200,
+            "total_days": 0,
+            "data_points": [],
+            "last_mech_timestamp": 1704067100,
+            "schema_version": 2,
+        }
+
+        pot = ProfitOverTimeData(**stored)  # type: ignore[arg-type]
+
+        assert pot.pending_mech_requests == []
+        assert pot.last_residual_rebuild_ts == 0
+        assert pot.schema_version < 3
+
+    @pytest.mark.parametrize(
+        "profit_over_time",
+        [
+            {"last_updated": 1, "total_days": 0, "field_from_a_newer_build": 1},
+            {"last_updated": 1, "total_days": 1, "data_points": [{"date": "x"}]},
+        ],
+        ids=["unknown_field", "bad_data_point"],
+    )
+    def test_unreadable_series_is_dropped_and_siblings_kept(
+        self, profit_over_time: Dict[str, Any]
+    ) -> None:
+        """A series this build cannot read is dropped without losing the rest of the summary."""
+        summary = AgentPerformanceSummary(
+            **{  # type: ignore[arg-type]
+                "agent_behavior": "observing",
+                "achievements": {"items": {}, "eligible_since": 1790000000},
+                "prediction_history": {"total_predictions": 3},
+                "profit_over_time": profit_over_time,
+            }
+        )
+
+        assert summary.profit_over_time is None
+        assert summary.agent_behavior == "observing"
+        assert summary.achievements is not None
+        assert summary.achievements.eligible_since == 1790000000
+        assert summary.prediction_history is not None
+        assert summary.prediction_history.total_predictions == 3
 
 
 class TestAchievement:
@@ -379,6 +452,21 @@ class TestAchievements:
         )
         a = Achievements(items={"first-bet": ach})
         assert a.items["first-bet"] is ach
+
+    def test_legacy_json_without_eligible_since_loads_as_none(self) -> None:
+        """A file written before the watermark existed loads with ``None``."""
+        s = AgentPerformanceSummary(**json.loads('{"achievements": {"items": {}}}'))
+        assert s.achievements is not None
+        assert s.achievements.eligible_since is None
+
+    def test_eligible_since_round_trips_through_json(self) -> None:
+        """The watermark survives a JSON write and read."""
+        original = AgentPerformanceSummary(
+            achievements=Achievements(eligible_since=1790000000)
+        )
+        restored = AgentPerformanceSummary(**json.loads(json.dumps(asdict(original))))
+        assert restored.achievements is not None
+        assert restored.achievements.eligible_since == 1790000000
 
 
 class TestAgentPerformanceSummary:
@@ -469,7 +557,223 @@ DEFAULT_APS_KWARGS: Dict[str, Any] = {
     "balance_tracker_address": "0x000000000000000000000000000000000000BEEF",
     "mech_analytics_url": "",
     "use_mech_analytics": False,
+    "olas_predict_leaderboard_url": "https://predict.olas.network/api/leaderboard/agents",
 }
+
+
+class TestLeaderboardData:
+    """Tests for the persisted leaderboard section."""
+
+    def test_windows_convert_from_dicts(self) -> None:
+        """Nested window dicts become LeaderboardWindowRank instances."""
+        raw: Dict[str, Any] = {
+            "windows": {
+                "7d": {
+                    "ranked": True,
+                    "fetched_at": 5,
+                    "rank_by_roi": 3,
+                    "rank_by_pnl": 4,
+                    "total_ranked": 10,
+                }
+            },
+            "last_attempt_at": 6,
+        }
+        data = LeaderboardData(**raw)
+        assert data.windows["7d"] == LeaderboardWindowRank(
+            ranked=True, fetched_at=5, rank_by_roi=3, rank_by_pnl=4, total_ranked=10
+        )
+        assert data.last_attempt_at == 6
+
+    def test_defaults(self) -> None:
+        """An empty section has no windows and no attempt yet."""
+        data = LeaderboardData()
+        assert data.windows == {}
+        assert data.last_attempt_at is None
+
+    def test_summary_round_trips_with_and_without_leaderboard(self) -> None:
+        """The section survives asdict/JSON, and older files without it still load."""
+        summary = AgentPerformanceSummary(
+            timestamp=1,
+            leaderboard=LeaderboardData(
+                windows={
+                    "1y": LeaderboardWindowRank(
+                        ranked=False,
+                        fetched_at=2,
+                        not_ranked_reason="not_ranked_yet",
+                        total_ranked=10,
+                        leaderboard_url="https://example/leaderboard",
+                    )
+                },
+                last_attempt_at=3,
+            ),
+        )
+        loaded = AgentPerformanceSummary(**json.loads(json.dumps(asdict(summary))))
+        assert loaded == summary
+
+        old_file = asdict(AgentPerformanceSummary(timestamp=1))
+        del old_file["leaderboard"]
+        assert AgentPerformanceSummary(**old_file).leaderboard is None
+
+    def test_older_entry_without_updated_at_loads(self) -> None:
+        """An entry persisted before ``updated_at`` existed falls back to ``fetched_at``."""
+        data = LeaderboardData.from_dict(
+            {"windows": {"7d": {"ranked": False, "fetched_at": 5}}}
+        )
+        assert data is not None
+        assert data.windows["7d"].updated_at is None
+        assert data.windows["7d"].as_of == 5
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=5, updated_at=3)
+        assert entry.as_of == 3
+
+    @pytest.mark.parametrize(
+        "section",
+        [
+            {"windows": []},
+            {"windows": None},
+            {"windows": "7d"},
+            {"windows": {"7d": None}},
+            {"windows": {"7d": "ranked"}},
+            {"windows": {"7d": {}}},
+            {"windows": {"7d": {"ranked": "yes", "fetched_at": 1}}},
+            {"windows": {"7d": {"ranked": True, "fetched_at": "1"}}},
+            {"windows": {"7d": {"ranked": False, "fetched_at": True}}},
+            {"windows": {"7d": {"ranked": True, "fetched_at": 1, "rank_by_roi": 2}}},
+            {"windows": {"lifetime": {"ranked": False, "fetched_at": 1}}},
+            {"windows": {}, "last_attempt_at": "1700000000"},
+            {"windows": {}, "last_attempt_at": 1.5},
+            {},
+        ],
+    )
+    def test_malformed_section_degrades_to_empty(self, section: Any) -> None:
+        """A malformed section drops what is unusable instead of raising.
+
+        :param section: the persisted ``leaderboard`` value.
+        """
+        summary = AgentPerformanceSummary(**{"timestamp": 1, "leaderboard": section})
+        assert summary.leaderboard == LeaderboardData()
+        assert summary.timestamp == 1
+
+    @pytest.mark.parametrize("section", [None, "x", 3, ["windows"]])
+    def test_non_object_section_is_dropped(self, section: Any) -> None:
+        """A section that is not an object is treated as absent.
+
+        :param section: the persisted ``leaderboard`` value.
+        """
+        assert AgentPerformanceSummary(leaderboard=section).leaderboard is None
+
+    def test_extra_keys_are_ignored_and_bad_fields_dropped(self) -> None:
+        """Unknown keys are ignored; ill-typed optional fields become ``None``."""
+        data = LeaderboardData.from_dict(
+            {
+                "windows": {
+                    "7d": {
+                        "ranked": True,
+                        "fetched_at": 9,
+                        "rank_by_roi": 3,
+                        "rank_by_pnl": 4,
+                        "total_ranked": 10,
+                        "leaderboard_url": 5,
+                        "not_ranked_reason": ["x"],
+                        "updated_at": "today",
+                        "from_the_future": True,
+                    },
+                    "30d": {"ranked": False, "fetched_at": 9, "total_ranked": "lots"},
+                },
+                "last_attempt_at": 9,
+                "also_unknown": 1,
+            }
+        )
+        assert data == LeaderboardData(
+            windows={
+                "7d": LeaderboardWindowRank(
+                    ranked=True,
+                    fetched_at=9,
+                    rank_by_roi=3,
+                    rank_by_pnl=4,
+                    total_ranked=10,
+                ),
+                "30d": LeaderboardWindowRank(ranked=False, fetched_at=9),
+            },
+            last_attempt_at=9,
+        )
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"ranked": True, "rank_by_roi": 1, "rank_by_pnl": 1},
+            {"ranked": True, "rank_by_roi": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": 0, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": 6, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": True, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": True, "rank_by_roi": "1", "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": False, "rank_by_roi": 1, "rank_by_pnl": 1, "total_ranked": 5},
+            {"ranked": False, "total_ranked": -1},
+        ],
+    )
+    def test_inconsistent_entry_is_rejected(self, fields: Dict[str, Any]) -> None:
+        """Ranks must match ``ranked`` and lie within ``1..total_ranked``.
+
+        :param fields: the entry's fields besides ``fetched_at``.
+        """
+        with pytest.raises(ValueError):
+            LeaderboardWindowRank(fetched_at=1, **fields)
+        assert LeaderboardWindowRank.from_dict({"fetched_at": 1, **fields}) is None
+
+
+class TestIsAllowedLeaderboardUrl:
+    """Tests for is_allowed_leaderboard_url."""
+
+    API = "https://predict.olas.network/api/leaderboard/agents"
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://predict.olas.network/leaderboard",
+            "https://predict.olas.network/leaderboard?window=7d&pin=0xabc",
+            "https://Predict.Olas.Network/leaderboard/polystrat#me",
+        ],
+    )
+    def test_allowed(self, url: str) -> None:
+        """Links under the configured host's leaderboard page are allowed.
+
+        :param url: the candidate link.
+        """
+        assert is_allowed_leaderboard_url(url, self.API)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            None,
+            7,
+            "",
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "http://predict.olas.network/leaderboard",
+            "https://evil.example/leaderboard",
+            "https://predict.olas.network.evil.example/leaderboard",
+            "https://user:pw@predict.olas.network/leaderboard",
+            "https://predict.olas.network:444/leaderboard",
+            "https://predict.olas.network:bad/leaderboard",
+            "https://predict.olas.network/",
+            "https://predict.olas.network/leaderboardx",
+            "https://predict.olas.network/api/leaderboard/agents",
+            "https://predict.olas.network/leaderboard\\evil",
+            " https://predict.olas.network/leaderboard",
+            "https://predict.olas.network/leaderboard\t",
+        ],
+    )
+    def test_rejected(self, url: Any) -> None:
+        """Anything else is rejected.
+
+        :param url: the candidate link.
+        """
+        assert not is_allowed_leaderboard_url(url, self.API)
+
+    def test_needs_an_https_api_url(self) -> None:
+        """Without a usable configured URL nothing is allowed."""
+        url = "https://predict.olas.network/leaderboard"
+        assert not is_allowed_leaderboard_url(url, "")
+        assert not is_allowed_leaderboard_url(url, "http://predict.olas.network/api")
 
 
 class TestAgentPerformanceSummaryParams:
@@ -494,6 +798,23 @@ class TestAgentPerformanceSummaryParams:
         assert params.is_running_on_polymarket is False
         assert params.mech_analytics_url == ""
         assert params.use_mech_analytics is False
+        assert (
+            params.olas_predict_leaderboard_url
+            == "https://predict.olas.network/api/leaderboard/agents"
+        )
+
+    def test_unset_leaderboard_url_normalises_to_empty(self, tmp_path: Path) -> None:
+        """A ``null`` leaderboard URL override arrives as ``None`` and disables the fetch.
+
+        :param tmp_path: pytest tmp dir fixture (used as ``store_path``).
+        """
+        with patch.object(BaseParams, "__init__", return_value=None):
+            params = AgentPerformanceSummaryParams(
+                skill_context=MagicMock(),
+                store_path=str(tmp_path),
+                **{**DEFAULT_APS_KWARGS, "olas_predict_leaderboard_url": None},
+            )
+        assert params.olas_predict_leaderboard_url == ""
 
     def test_init_calls_super(self, tmp_path: Path) -> None:
         """Init calls BaseParams.__init__."""
@@ -527,6 +848,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         # The pre-set value should remain (hasattr returned True, so it kept existing value)
         assert params.is_running_on_polymarket is True
@@ -667,6 +989,7 @@ class TestAgentPerformanceSummaryParams:
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
                 mech_analytics_url="",
                 use_mech_analytics=False,
+                olas_predict_leaderboard_url=None,
             )
         assert params.is_running_on_polymarket is True
 
@@ -754,6 +1077,14 @@ class TestGetStorePath:
         }
         with pytest.raises(ValueError, match="is not a directory or is not writable"):
             params.get_store_path(kwargs)
+
+
+MALFORMED_LEADERBOARD_SECTIONS: List[Any] = [
+    {"windows": []},
+    None,
+    "x",
+    {"windows": {"7d": {"bad": 1}}},
+]
 
 
 class _TestableSharedState(SharedState):
@@ -863,6 +1194,76 @@ class TestSharedState:
         result = state.read_existing_performance_summary()
         assert isinstance(result, AgentPerformanceSummary)
         assert result.timestamp is None
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_read_achievements_from_disk_survives_corrupt_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        """Achievements are returned even when a sibling field fails validation.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps(
+                {
+                    "prediction_history": {"unexpected": 1},
+                    "achievements": {"items": {}, "eligible_since": 1790000000},
+                }
+            )
+        )
+
+        assert state.read_existing_performance_summary().achievements is None
+        assert state.read_achievements_from_disk() == Achievements(
+            eligible_since=1790000000
+        )
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            None,
+            "not valid json {{{",
+            json.dumps([]),
+            json.dumps({"timestamp": 1}),
+            json.dumps({"achievements": None}),
+        ],
+    )
+    def test_read_achievements_from_disk_absent(
+        self, tmp_path: Path, content: Any
+    ) -> None:
+        """A missing file, unreadable JSON or absent field yields None silently.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param content: file content, or None for no file.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        if content is not None:
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(content)
+
+        assert state.read_achievements_from_disk() is None
+        state.context.logger.warning.assert_not_called()  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "achievements",
+        [{"unexpected": 1}, {"items": {"id": {"unexpected": 1}}}, {"items": [1]}],
+    )
+    def test_read_achievements_from_disk_invalid(
+        self, tmp_path: Path, achievements: Dict[str, Any]
+    ) -> None:
+        """An invalid achievements field yields None and logs a warning.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param achievements: the persisted achievements field.
+        """
+        state = self._make_state()
+        state.context.params = MagicMock(store_path=tmp_path)  # type: ignore[attr-defined]
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"achievements": achievements})
+        )
+
+        assert state.read_achievements_from_disk() is None
         state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
 
     def test_write_offchain_deposits_preserves_sibling_fields(
@@ -1046,6 +1447,337 @@ class TestSharedState:
         assert data["agent_behavior"] == "active"
         assert data["timestamp"] == 1700000100
 
+    def _make_leaderboard_state(self, tmp_path: Path) -> SharedState:
+        """A shared state storing its summary under ``tmp_path``.
+
+        :param tmp_path: the store path.
+        :return: the shared state.
+        """
+        state = self._make_state()
+        mock_params = MagicMock()
+        mock_params.store_path = tmp_path
+        state.context.params = mock_params  # type: ignore[attr-defined]
+        return state
+
+    def test_update_leaderboard_creates_summary_if_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """The writer creates the file when none exists yet.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.update_leaderboard(LeaderboardData(last_attempt_at=7))
+
+        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "r") as f:
+            data = json.load(f)
+        assert data["leaderboard"] == {"windows": {}, "last_attempt_at": 7}
+
+    def test_update_leaderboard_preserves_other_fields(self, tmp_path: Path) -> None:
+        """The writer replaces only the leaderboard section and keeps the timestamp.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        initial = AgentPerformanceSummary(
+            timestamp=1700000000,
+            agent_behavior="active",
+            agent_details=AgentDetails(id="agent-x"),
+            leaderboard=LeaderboardData(last_attempt_at=1),
+        )
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(asdict(initial), f)
+
+        window = LeaderboardWindowRank(
+            ranked=True, fetched_at=9, rank_by_roi=2, rank_by_pnl=3, total_ranked=5
+        )
+        state.update_leaderboard(
+            LeaderboardData(windows={"7d": window}, last_attempt_at=9)
+        )
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["leaderboard"]["last_attempt_at"] == 9
+        assert data["leaderboard"]["windows"]["7d"]["rank_by_roi"] == 2
+        assert data["timestamp"] == 1700000000
+        assert data["agent_behavior"] == "active"
+        assert data["agent_details"]["id"] == "agent-x"
+
+    @pytest.mark.parametrize("section", MALFORMED_LEADERBOARD_SECTIONS)
+    def test_malformed_leaderboard_does_not_break_the_summary_read(
+        self, tmp_path: Path, section: Any
+    ) -> None:
+        """A malformed leaderboard section never raises or degrades the siblings.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param section: the persisted ``leaderboard`` value.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        with open(tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE, "w") as f:
+            json.dump({"timestamp": 5, "leaderboard": section}, f)
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.timestamp == 5
+        assert summary.leaderboard in (None, LeaderboardData())
+
+    def test_read_leaderboard_from_disk(self, tmp_path: Path) -> None:
+        """The raw reader ignores corrupt siblings and malformed values.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text("not json")
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(json.dumps(["not", "an", "object"]))
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(json.dumps({"leaderboard": "x"}))
+        assert state.read_leaderboard_from_disk() is None
+
+        file_path.write_text(
+            json.dumps(
+                {
+                    "prediction_history": {"not_a_field": 1},
+                    "leaderboard": {
+                        "windows": {"7d": {"ranked": False, "fetched_at": 2}},
+                        "last_attempt_at": 3,
+                    },
+                }
+            )
+        )
+        assert state.read_leaderboard_from_disk() == LeaderboardData(
+            windows={"7d": LeaderboardWindowRank(ranked=False, fetched_at=2)},
+            last_attempt_at=3,
+        )
+
+    @pytest.mark.parametrize(
+        "api_url, stored, loaded",
+        [
+            (
+                TestIsAllowedLeaderboardUrl.API,
+                "https://predict.olas.network/leaderboard?pin=0xabc",
+                "https://predict.olas.network/leaderboard?pin=0xabc",
+            ),
+            (
+                TestIsAllowedLeaderboardUrl.API,
+                "https://staging.predict.olas.network/leaderboard",
+                None,
+            ),
+            (TestIsAllowedLeaderboardUrl.API, "javascript:alert(1)", None),
+            ("", "https://predict.olas.network/leaderboard", None),
+        ],
+    )
+    def test_read_leaderboard_from_disk_rechecks_the_link(
+        self, tmp_path: Path, api_url: str, stored: str, loaded: Optional[str]
+    ) -> None:
+        """A persisted link is dropped unless the current URL setting allows it.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param api_url: the current ``olas_predict_leaderboard_url``.
+        :param stored: the link in the file.
+        :param loaded: the link expected after loading.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.params.olas_predict_leaderboard_url = api_url
+        entry = {"ranked": False, "fetched_at": 2, "leaderboard_url": stored}
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"windows": {"7d": entry, "30d": entry}}})
+        )
+        leaderboard = state.read_leaderboard_from_disk()
+        assert leaderboard is not None
+        assert [e.leaderboard_url for e in leaderboard.windows.values()] == [
+            loaded,
+            loaded,
+        ]
+
+    def test_update_leaderboard_keeps_siblings_of_a_corrupt_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A corrupt sibling field cannot make the writer wipe the rest of the file.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        raw = {
+            "offchain_deposits": {"total_deposited_wei": 5, "last_scanned_block": 9},
+            "prediction_history": {"not_a_field": 1},
+        }
+        with open(file_path, "w") as f:
+            json.dump(raw, f)
+
+        state.update_leaderboard(LeaderboardData(last_attempt_at=3))
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["offchain_deposits"] == raw["offchain_deposits"]
+        assert data["prediction_history"] == raw["prediction_history"]
+        assert data["leaderboard"]["last_attempt_at"] == 3
+
+    @pytest.mark.parametrize("content", ["not json", "[1, 2]", '"x"'])
+    def test_update_leaderboard_skips_a_corrupt_file(
+        self, tmp_path: Path, content: str
+    ) -> None:
+        """A file that is not a JSON object is left alone; the cache still updates.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param content: the unparseable or non-object file content.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        file_path.write_text(content)
+        leaderboard = LeaderboardData(last_attempt_at=3)
+
+        state.update_leaderboard(leaderboard)
+
+        assert file_path.read_text() == content
+        assert state.get_leaderboard() == leaderboard
+        state.context.logger.warning.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_update_leaderboard_logs_a_failed_write(self, tmp_path: Path) -> None:
+        """A failed write is logged as one, and the rank is still served from memory.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=2)
+        with patch(
+            "packages.valory.skills.agent_performance_summary_abci.models.write_json_atomically",
+            side_effect=OSError("disk full"),
+        ):
+            state.update_leaderboard_window("7d", entry)
+
+        assert state.get_leaderboard() == LeaderboardData(windows={"7d": entry})
+        warning = state.context.logger.warning  # type: ignore[attr-defined]
+        warning.assert_called_once()
+        assert "Could not write the leaderboard section" in warning.call_args[0][0]
+
+    def test_get_leaderboard_reads_the_file_once(self, tmp_path: Path) -> None:
+        """The section is parsed lazily once, then served from memory.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"last_attempt_at": 4}})
+        )
+        with patch.object(
+            state, "read_leaderboard_from_disk", wraps=state.read_leaderboard_from_disk
+        ) as reader:
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=4)
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=4)
+            state.update_leaderboard(LeaderboardData(last_attempt_at=5))
+            assert state.get_leaderboard() == LeaderboardData(last_attempt_at=5)
+        reader.assert_called_once()
+
+    def test_update_leaderboard_window_keeps_the_rest(self, tmp_path: Path) -> None:
+        """One window's write keeps the other windows and the watermark.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        old = LeaderboardWindowRank(ranked=False, fetched_at=1)
+        state.update_leaderboard(
+            LeaderboardData(windows={"7d": old, "30d": old}, last_attempt_at=9)
+        )
+        new = LeaderboardWindowRank(ranked=False, fetched_at=2)
+
+        state.update_leaderboard_window("30d", new)
+
+        expected = LeaderboardData(windows={"7d": old, "30d": new}, last_attempt_at=9)
+        assert state.get_leaderboard() == expected
+        assert state.read_leaderboard_from_disk() == expected
+
+    def test_overwrite_keeps_a_leaderboard_written_after_the_read(
+        self, tmp_path: Path
+    ) -> None:
+        """A full-summary write cannot roll back ranks the worker stored meanwhile.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        state.update_leaderboard(LeaderboardData(last_attempt_at=1))
+        summary = state.read_existing_performance_summary()
+        assert summary.leaderboard == LeaderboardData(last_attempt_at=1)
+
+        # The worker thread stores a window between the read and the write
+        entry = LeaderboardWindowRank(ranked=False, fetched_at=2)
+        state.update_leaderboard_window("7d", entry)
+        summary.agent_behavior = "active"
+        state.overwrite_performance_summary(summary)
+
+        on_disk = state.read_existing_performance_summary()
+        assert on_disk.agent_behavior == "active"
+        assert on_disk.leaderboard == LeaderboardData(
+            windows={"7d": entry}, last_attempt_at=1
+        )
+
+    def test_overwrite_reads_the_section_on_first_use(self, tmp_path: Path) -> None:
+        """Before any leaderboard write, the section on disk is carried over.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"leaderboard": {"last_attempt_at": 4}})
+        )
+        state.overwrite_performance_summary(AgentPerformanceSummary(timestamp=1))
+        assert state.read_leaderboard_from_disk() == LeaderboardData(last_attempt_at=4)
+
+    @pytest.mark.parametrize("writer", ["overwrite", "key", "leaderboard"])
+    def test_summary_writers_wait_for_the_lock(
+        self, tmp_path: Path, writer: str
+    ) -> None:
+        """Every summary writer serialises on the shared file lock.
+
+        :param tmp_path: pytest-supplied tmp directory used as the store path.
+        :param writer: the writer under test.
+        """
+        state = self._make_leaderboard_state(tmp_path)
+        write = {
+            "overwrite": lambda: state.overwrite_performance_summary(
+                AgentPerformanceSummary(timestamp=1)
+            ),
+            "key": lambda: write_performance_summary_key(tmp_path, "k", 1),
+            "leaderboard": lambda: state.update_leaderboard(LeaderboardData()),
+        }[writer]
+        thread = threading.Thread(target=write)
+        with SUMMARY_FILE_LOCK:
+            thread.start()
+            thread.join(0.2)
+            assert thread.is_alive()
+            assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+        thread.join(5)
+        assert not thread.is_alive()
+        assert (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+
+    def test_leaderboard_refresh_runs_on_a_daemon_thread(self) -> None:
+        """The job runs on a daemon thread and is reported running until it ends."""
+        state = self._make_state()
+        release, done = threading.Event(), threading.Event()
+
+        def job() -> None:
+            release.wait(5)
+            done.set()
+
+        assert not state.is_leaderboard_refresh_running()
+        try:
+            state.start_leaderboard_refresh(job)
+            thread = state._leaderboard_thread
+            assert thread is not None and thread.daemon
+            assert state.is_leaderboard_refresh_running()
+        finally:
+            release.set()
+        assert done.wait(5)
+        thread.join(5)
+        assert not state.is_leaderboard_refresh_running()
+
     def test_update_funds_locked_in_markets_creates_summary_if_missing(
         self, tmp_path: Path
     ) -> None:
@@ -1199,6 +1931,275 @@ class TestSharedState:
             data = json.load(f)
         assert data["agent_performance"]["metrics"] is not None
         assert data["agent_performance"]["metrics"]["funds_locked_in_markets"] == 75.0
+
+
+ACTIVITY_GOAL_BLOCK: Dict[str, Any] = {
+    "unit": "trades",
+    "target": 8,
+    "progress": 3,
+    "is_met": False,
+    "period_start": 1_791_331_200,
+    "last_met_at": None,
+    "updated_at": 1_791_363_317,
+}
+
+
+class TestActivityGoalPersistence:
+    """The ``activity_goal`` block must survive every summary writer."""
+
+    @staticmethod
+    def _make_state(store_path: Path) -> _TestableSharedState:
+        """Create a shared state storing under ``store_path``."""
+        state = object.__new__(_TestableSharedState)
+        state.context = MagicMock()  # type: ignore[assignment]
+        state.context.params.store_path = store_path  # type: ignore[attr-defined]
+        mock_ts = MagicMock()
+        mock_ts.timestamp.return_value = 1_791_400_000.0
+        state.context.state.round_sequence.last_round_transition_timestamp = mock_ts  # type: ignore[attr-defined]
+        return state
+
+    @staticmethod
+    def _seed(store_path: Path, data: Any) -> Path:
+        """Write ``data`` as the summary file and return its path."""
+        file_path = store_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        with open(file_path, "w") as f:
+            json.dump(data, f)
+        return file_path
+
+    def test_summary_round_trips_activity_goal(self, tmp_path: Path) -> None:
+        """A file holding the block reads back without degrading the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {"agent_behavior": "observing", "activity_goal": ACTIVITY_GOAL_BLOCK},
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.agent_behavior == "observing"
+        assert summary.activity_goal == ActivityGoal(**ACTIVITY_GOAL_BLOCK)
+        assert asdict(summary)["activity_goal"] == ACTIVITY_GOAL_BLOCK
+
+    @pytest.mark.parametrize(
+        "update",
+        [
+            lambda state: state.update_agent_behavior("active"),
+            lambda state: state.update_funds_locked_in_markets(1.5),
+        ],
+        ids=["update_agent_behavior", "update_funds_locked_in_markets"],
+    )
+    def test_whole_summary_writers_keep_block_and_siblings(
+        self, tmp_path: Path, update: Any
+    ) -> None:
+        """Read-modify-write updates keep the block and every sibling field."""
+        state = self._make_state(tmp_path)
+        file_path = self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        update(state)
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        assert data["activity_goal"] == ACTIVITY_GOAL_BLOCK
+        assert data["agent_details"]["id"] == "agent-x"
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            {**ACTIVITY_GOAL_BLOCK, "is_met": True},
+            {"target": 8},
+        ],
+        ids=["inconsistent_block", "incomplete_block"],
+    )
+    def test_summary_drops_invalid_block_and_keeps_siblings(
+        self, tmp_path: Path, block: Dict[str, Any]
+    ) -> None:
+        """An invalid block reads as ``None`` without degrading the rest of the summary."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "agent_behavior": "observing",
+                "agent_details": {"id": "agent-x"},
+                "activity_goal": block,
+            },
+        )
+
+        summary = state.read_existing_performance_summary()
+
+        assert summary.activity_goal is None
+        assert summary.agent_behavior == "observing"
+        assert summary.agent_details is not None
+        assert summary.agent_details.id == "agent-x"
+
+    def test_read_activity_goal_from_disk_ignores_corrupt_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        """A sibling that fails validation does not hide the block."""
+        state = self._make_state(tmp_path)
+        self._seed(
+            tmp_path,
+            {
+                "offchain_deposits": {"total_deposited_wei": -1},
+                "activity_goal": ACTIVITY_GOAL_BLOCK,
+            },
+        )
+
+        assert state.read_existing_performance_summary().activity_goal is None
+        assert state.read_activity_goal_from_disk() == ActivityGoal(
+            **ACTIVITY_GOAL_BLOCK
+        )
+
+    @pytest.mark.parametrize(
+        "content",
+        [
+            None,
+            b"{not json",
+            b"\xff\xfe",
+            b"[]",
+            json.dumps({"agent_behavior": "observing"}).encode(),
+            json.dumps({"activity_goal": "eight"}).encode(),
+            json.dumps({"activity_goal": {"target": 8}}).encode(),
+        ],
+        ids=[
+            "missing",
+            "corrupt",
+            "not_utf8",
+            "not_a_dict",
+            "no_key",
+            "not_a_block",
+            "incomplete_block",
+        ],
+    )
+    def test_read_activity_goal_unavailable(
+        self, tmp_path: Path, content: Optional[bytes]
+    ) -> None:
+        """Anything but a complete block reads as ``None``."""
+        if content is not None:
+            (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_bytes(content)
+
+        assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "field, value",
+        [
+            ("unit", 1),
+            ("target", "8"),
+            ("target", True),
+            ("progress", "3"),
+            ("progress", 3.0),
+            ("is_met", 0),
+            ("period_start", None),
+            ("updated_at", "now"),
+            ("last_met_at", "yesterday"),
+            ("last_met_at", False),
+        ],
+    )
+    def test_read_activity_goal_rejects_wrongly_typed_field(
+        self, tmp_path: Path, field: str, value: Any
+    ) -> None:
+        """A block that would fail arithmetic later reads as ``None`` instead."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, field: value}})
+
+        assert read_activity_goal(tmp_path) is None
+
+    def test_read_activity_goal_accepts_last_met_at_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """A met block carries an int ``last_met_at``."""
+        block = {
+            **ACTIVITY_GOAL_BLOCK,
+            "progress": 8,
+            "is_met": True,
+            "last_met_at": 1_791_340_000,
+        }
+        self._seed(tmp_path, {"activity_goal": block})
+
+        assert read_activity_goal(tmp_path) == ActivityGoal(**block)
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"is_met": True},
+            {"progress": 8, "is_met": False},
+            {"target": -1},
+            {"progress": -1},
+            {"period_start": -1},
+            {"updated_at": -1},
+        ],
+        ids=[
+            "met_below_target",
+            "unmet_at_target",
+            "negative_target",
+            "negative_progress",
+            "negative_period_start",
+            "negative_updated_at",
+        ],
+    )
+    def test_read_activity_goal_rejects_inconsistent_block(
+        self, tmp_path: Path, overrides: Dict[str, Any]
+    ) -> None:
+        """A block whose ``is_met`` contradicts its counts, or with a negative count, reads as ``None``."""
+        self._seed(tmp_path, {"activity_goal": {**ACTIVITY_GOAL_BLOCK, **overrides}})
+
+        assert read_activity_goal(tmp_path) is None
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [{"is_met": True}, {"progress": -1}, {"target": True}],
+        ids=["met_below_target", "negative_progress", "bool_target"],
+    )
+    def test_activity_goal_refuses_invalid_construction(
+        self, overrides: Dict[str, Any]
+    ) -> None:
+        """An invalid block cannot be built in memory either."""
+        with pytest.raises(ValueError, match="invalid ActivityGoal"):
+            ActivityGoal(**{**ACTIVITY_GOAL_BLOCK, **overrides})
+
+    def test_write_performance_summary_key_replaces_non_utf8_file(
+        self, tmp_path: Path
+    ) -> None:
+        """A summary that cannot be decoded is replaced rather than raising."""
+        file_path = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        file_path.write_bytes(b"\xff\xfe")
+
+        write_performance_summary_key(tmp_path, "activity_goal", ACTIVITY_GOAL_BLOCK)
+
+        assert json.loads(file_path.read_text()) == {
+            "activity_goal": ACTIVITY_GOAL_BLOCK
+        }
+
+    def test_write_json_atomically_leaves_no_temp_file_on_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """A failed write removes its temp file and keeps the previous content."""
+        file_path = tmp_path / "data.json"
+        file_path.write_text('{"kept": true}')
+
+        with pytest.raises(TypeError):
+            write_json_atomically(file_path, {"unserialisable": object()})
+
+        assert list(tmp_path.iterdir()) == [file_path]
+        assert json.loads(file_path.read_text()) == {"kept": True}
+
+    def test_write_json_atomically_tolerates_cleanup_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """The original error surfaces even when the temp file cannot be removed."""
+        with (
+            patch(
+                "packages.valory.skills.agent_performance_summary_abci.models.os.unlink",
+                side_effect=OSError("busy"),
+            ),
+            pytest.raises(TypeError),
+        ):
+            write_json_atomically(tmp_path / "data.json", {"bad": object()})
 
 
 class _TestableSubgraph(Subgraph):

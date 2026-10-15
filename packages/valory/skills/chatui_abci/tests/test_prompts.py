@@ -42,6 +42,7 @@ class TestUpdatedAgentConfig:
             selected_mechs=None,
             fixed_bet_size=None,
             max_bet_size=None,
+            activity_goal=None,
             removed_config_fields=[],
             behavior=None,
         )
@@ -49,6 +50,7 @@ class TestUpdatedAgentConfig:
         assert config.allowed_tools is None
         assert config.fixed_bet_size is None
         assert config.max_bet_size is None
+        assert config.activity_goal is None
         assert config.removed_config_fields == []
         assert config.behavior is None
 
@@ -60,6 +62,7 @@ class TestUpdatedAgentConfig:
             selected_mechs=None,
             fixed_bet_size=1.0,
             max_bet_size=2.0,
+            activity_goal=20,
             removed_config_fields=[FieldsThatCanBeRemoved.ALLOWED_TOOLS],
             behavior="test behavior",
         )
@@ -67,6 +70,7 @@ class TestUpdatedAgentConfig:
         assert config.allowed_tools == ["tool-a", "tool-b"]
         assert config.fixed_bet_size == 1.0
         assert config.max_bet_size == 2.0
+        assert config.activity_goal == 20
         assert config.removed_config_fields == [FieldsThatCanBeRemoved.ALLOWED_TOOLS]
         assert config.behavior == "test behavior"
 
@@ -78,6 +82,7 @@ class TestUpdatedAgentConfig:
             selected_mechs=None,
             fixed_bet_size=5.0,
             max_bet_size=None,
+            activity_goal=None,
             removed_config_fields=[
                 FieldsThatCanBeRemoved.FIXED_BET_SIZE,
                 FieldsThatCanBeRemoved.MAX_BET_SIZE,
@@ -99,6 +104,7 @@ class TestChatUILLMResponse:
             selected_mechs=None,
             fixed_bet_size=None,
             max_bet_size=None,
+            activity_goal=None,
             removed_config_fields=[],
             behavior=None,
         )
@@ -149,3 +155,13 @@ class TestChatuiPrompt:
         assert "{units}" in CHATUI_PROMPT
         assert "{absolute_min_bet_size}" in CHATUI_PROMPT
         assert "{absolute_max_bet_size}" in CHATUI_PROMPT
+        assert "{current_activity_goal}" in CHATUI_PROMPT
+        assert "{activity_goal_source}" in CHATUI_PROMPT
+        assert "{default_activity_goal}" in CHATUI_PROMPT
+        assert "{activity_goal_progress}" in CHATUI_PROMPT
+
+    def test_activity_goal_can_be_removed(self) -> None:
+        """The goal is one of the fields the model may revert to its default."""
+        assert FieldsThatCanBeRemoved("activity_goal") is (
+            FieldsThatCanBeRemoved.ACTIVITY_GOAL
+        )

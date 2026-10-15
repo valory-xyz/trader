@@ -21,7 +21,10 @@
 
 import copy
 import json
-from typing import Any, Dict, List, Optional, Set, cast
+import math
+from functools import partial
+from http import HTTPStatus
+from typing import Any, Callable, Dict, List, Optional, Set, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -55,6 +58,11 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    effective_activity_goal,
+    is_valid_activity_goal,
+    retarget_activity_goal,
+)
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpContentType,
 )
@@ -66,6 +74,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.models import (
+    ACTIVITY_GOAL_FIELD,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -78,6 +87,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     build_chatui_llm_response_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
+from packages.valory.skills.chatui_abci.tool_keys import tool_names
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -111,10 +121,20 @@ SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
+MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
+# Set by trader_abci's funding check.
+MECH_PRE_DEPOSIT_EOA_SHORT = "mech_pre_deposit_eoa_short"
 TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
+
+
+# What parsing a model reply can raise. ``JSONDecodeError`` is a ``ValueError``
+# but not the only one: an integer literal over the digit limit raises a plain
+# ``ValueError``, and about a thousand nested brackets raises ``RecursionError``,
+# which does not derive from either.
+_UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 
 
 class HttpHandler(BaseHttpHandler):
@@ -262,6 +282,10 @@ class HttpHandler(BaseHttpHandler):
 
         units, decimals = self.get_units_and_decimals()
 
+        default_activity_goal = self.context.params.default_activity_goal
+        current_activity_goal = self.shared_state.chatui_config.activity_goal
+        published_goal = self.shared_state.read_activity_goal_from_disk()
+
         prompt = CHATUI_PROMPT.format(
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
@@ -287,6 +311,16 @@ class HttpHandler(BaseHttpHandler):
             absolute_max_bet_size=absolute_max_bet_size / (10**decimals),
             units=units,
             decimals=decimals,
+            current_activity_goal=effective_activity_goal(
+                current_activity_goal, default_activity_goal
+            ),
+            activity_goal_source=(
+                "the default" if current_activity_goal is None else "set by the user"
+            ),
+            default_activity_goal=default_activity_goal,
+            activity_goal_progress=(
+                "not counted yet" if published_goal is None else published_goal.progress
+            ),
         )
         self._send_chatui_llm_request(
             prompt=prompt,
@@ -353,7 +387,7 @@ class HttpHandler(BaseHttpHandler):
             # ``frozenset`` renders as "frozenset({...})". The copy keeps the
             # rendering consistent with the ``available_mech_tools`` fallback.
             return set(prediction_tools)
-        return self.synchronized_data.available_mech_tools
+        return tool_names(self.synchronized_data.available_mech_tools)
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -418,16 +452,34 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.chatui_config.trading_strategy
         )
 
-        genai_response: dict = json.loads(llm_response_message.payload)
+        try:
+            genai_response: dict = json.loads(llm_response_message.payload)
+        except _UNPARSEABLE_REPLY:
+            self._handle_unreadable_llm_reply(
+                llm_response_message.payload, http_msg, http_dialogue
+            )
+            return
 
         if "error" in genai_response:
+            if genai_response.get("code") == MECH_DEPOSIT_REQUIRED_CODE:
+                self._handle_mech_deposit_required(
+                    genai_response, http_msg, http_dialogue
+                )
+                return
             self._handle_chatui_llm_error(
                 genai_response["error"], http_msg, http_dialogue
             )
             return
 
         llm_response = genai_response.get(RESPONSE_FIELD, "{}")
-        llm_response_json = json.loads(llm_response)
+        try:
+            llm_response_json = json.loads(llm_response)
+        except _UNPARSEABLE_REPLY:
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
+        if not isinstance(llm_response_json, dict):
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
 
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
@@ -446,9 +498,26 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        updated_params, issues = self._process_updated_agent_config(
-            updated_agent_config
-        )
+        if not self._config_update_is_readable(updated_agent_config):
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
+
+        try:
+            updated_params, issues = self._process_updated_agent_config(
+                updated_agent_config
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            # The update reads this object field by field and expects a
+            # shape the model is under no obligation to produce. Any wrong
+            # type raises somewhere in there, and enumerating them cannot
+            # be complete: a list of the right type can still hold items
+            # that are unhashable or unformattable. So the answer is the
+            # same as for a reply that was never JSON.
+            self.context.logger.error(
+                f"LLM reply was JSON but not usable as a config update: {exc}"
+            )
+            self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
+            return
         selected_trading_strategy = updated_params.get(
             TRADING_STRATEGY_FIELD, previous_trading_strategy
         )
@@ -483,6 +552,16 @@ class HttpHandler(BaseHttpHandler):
         """
         updated_params: Dict = {}
         issues: List[str] = []
+        # Writes are collected and applied at the end rather than as each
+        # field is read. The model decides the shape of this object, so any
+        # field can fail part-way through, and writing as we go left the
+        # earlier settings saved while the caller was told the update failed.
+        writes: List[Callable[[], None]] = []
+        # A list, not a set: the guard ahead of this refuses a bare string,
+        # on which ``in`` would match by substring.
+        removed_fields: List[str] = (
+            updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD) or []
+        )
 
         updated_trading_strategy: Optional[str] = updated_agent_config.get(
             TRADING_STRATEGY_FIELD, None
@@ -490,7 +569,9 @@ class HttpHandler(BaseHttpHandler):
         if updated_trading_strategy:
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
                 updated_params.update({"trading_strategy": updated_trading_strategy})
-                self._store_trading_strategy(updated_trading_strategy)
+                writes.append(
+                    partial(self._store_trading_strategy, updated_trading_strategy)
+                )
             else:
                 issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
                 self.context.logger.warning(issue_message)
@@ -500,13 +581,12 @@ class HttpHandler(BaseHttpHandler):
             ALLOWED_TOOLS_FIELD, None
         )
         allowed_tools_is_removed: bool = (
-            FieldsThatCanBeRemoved.ALLOWED_TOOLS.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.ALLOWED_TOOLS.value in removed_fields
         )
 
         if allowed_tools_is_removed:
             updated_params.update({ALLOWED_TOOLS_FIELD: None})
-            self._store_allowed_tools(None)
+            writes.append(partial(self._store_allowed_tools, None))
 
         elif updated_allowed_tools is not None:
             available = self._available_tools()
@@ -521,23 +601,22 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid:
                 updated_params.update({ALLOWED_TOOLS_FIELD: valid})
-                self._store_allowed_tools(valid)
+                writes.append(partial(self._store_allowed_tools, valid))
             elif not unknown:
                 # empty list explicitly passed — treat as clear
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
-                self._store_allowed_tools(None)
+                writes.append(partial(self._store_allowed_tools, None))
 
         updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
             SELECTED_MECHS_FIELD, None
         )
         selected_mechs_is_removed: bool = (
-            FieldsThatCanBeRemoved.SELECTED_MECHS.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.SELECTED_MECHS.value in removed_fields
         )
 
         if selected_mechs_is_removed:
             updated_params.update({SELECTED_MECHS_FIELD: None})
-            self._store_selected_mechs(None)
+            writes.append(partial(self._store_selected_mechs, None))
 
         elif updated_selected_mechs is not None:
             # Address comparison is case-insensitive; the synced data stores
@@ -555,10 +634,10 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
-                self._store_selected_mechs(valid_mechs)
+                writes.append(partial(self._store_selected_mechs, valid_mechs))
             elif not unknown_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: None})
-                self._store_selected_mechs(None)
+                writes.append(partial(self._store_selected_mechs, None))
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -572,13 +651,11 @@ class HttpHandler(BaseHttpHandler):
             "fixed_bet_size", None
         )
         fixed_bet_size_is_removed: bool = (
-            FieldsThatCanBeRemoved.FIXED_BET_SIZE.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.FIXED_BET_SIZE.value in removed_fields
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
-            self.shared_state.chatui_config.fixed_bet_size = None
-            self._store_chatui_param_to_json("fixed_bet_size", None)
+            writes.append(partial(self._set_chatui_param, "fixed_bet_size", None))
 
         elif updated_fixed_bet_size is not None:
             updated_fixed_bet_size_in_base_units = int(
@@ -589,11 +666,12 @@ class HttpHandler(BaseHttpHandler):
                 and updated_fixed_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"fixed_bet_size": updated_fixed_bet_size})
-                self.shared_state.chatui_config.fixed_bet_size = (
-                    updated_fixed_bet_size_in_base_units
-                )
-                self._store_chatui_param_to_json(
-                    "fixed_bet_size", updated_fixed_bet_size_in_base_units
+                writes.append(
+                    partial(
+                        self._set_chatui_param,
+                        "fixed_bet_size",
+                        updated_fixed_bet_size_in_base_units,
+                    )
                 )
             else:
                 issue_message = f"Fixed bet size {updated_fixed_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -604,13 +682,11 @@ class HttpHandler(BaseHttpHandler):
             "max_bet_size", None
         )
         max_bet_size_is_removed: bool = (
-            FieldsThatCanBeRemoved.MAX_BET_SIZE.value
-            in updated_agent_config.get(REMOVED_CONFIG_FIELDS_FIELD, [])
+            FieldsThatCanBeRemoved.MAX_BET_SIZE.value in removed_fields
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
-            self.shared_state.chatui_config.max_bet_size = None
-            self._store_chatui_param_to_json("max_bet_size", None)
+            writes.append(partial(self._set_chatui_param, "max_bet_size", None))
         elif updated_max_bet_size is not None:
             updated_max_bet_size_in_base_units = int(
                 updated_max_bet_size * (10**decimals)
@@ -620,11 +696,12 @@ class HttpHandler(BaseHttpHandler):
                 and updated_max_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"max_bet_size": updated_max_bet_size})
-                self.shared_state.chatui_config.max_bet_size = (
-                    updated_max_bet_size_in_base_units
-                )
-                self._store_chatui_param_to_json(
-                    "max_bet_size", updated_max_bet_size_in_base_units
+                writes.append(
+                    partial(
+                        self._set_chatui_param,
+                        "max_bet_size",
+                        updated_max_bet_size_in_base_units,
+                    )
                 )
             else:
                 issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -633,9 +710,129 @@ class HttpHandler(BaseHttpHandler):
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
-            self.shared_state.update_agent_behavior(behavior)
+            writes.append(partial(self.shared_state.update_agent_behavior, behavior))
+
+        updated_activity_goal: Any = updated_agent_config.get(ACTIVITY_GOAL_FIELD)
+        if FieldsThatCanBeRemoved.ACTIVITY_GOAL.value in removed_fields:
+            updated_params.update({ACTIVITY_GOAL_FIELD: None})
+            writes.append(partial(self._store_activity_goal, None))
+        elif updated_activity_goal is not None:
+            if not is_valid_activity_goal(updated_activity_goal):
+                issue_message = (
+                    f"Activity goal {updated_activity_goal!r} is not valid. It must "
+                    "be a whole number of trades per staking epoch, 0 or more. "
+                    "No changes were made."
+                )
+                self.context.logger.info(
+                    f"Declined activity goal change: {issue_message}"
+                )
+                issues.append(issue_message)
+                # The goal decides when the agent stops trading, so a reply that
+                # misreads it is declined as a whole rather than half-applied.
+                return {}, issues
+            updated_params.update({ACTIVITY_GOAL_FIELD: updated_activity_goal})
+            writes.append(partial(self._store_activity_goal, updated_activity_goal))
+
+        # Nothing above wrote anything, so reaching here means every field
+        # was readable and the update can be applied as a whole.
+        try:
+            for write in writes:
+                write()
+        except OSError as e:
+            # Raised past here, the caller would report an unreadable reply
+            # while the writes before this one stay applied.
+            self.context.logger.error(f"Could not save the config update: {e}")
+            issues.append(
+                "Some of your changes could not be saved. "
+                "Please check your settings and try again."
+            )
 
         return updated_params, issues
+
+    # Fields the update would misread rather than reject if the type is
+    # wrong, so a broad guard around the update cannot see them. A string
+    # in ``removed_config_fields`` satisfies the membership test by
+    # substring and silently clears that setting; a string in the list
+    # fields is iterated character by character. Both look like success.
+    _LLM_CONFIG_FIELD_TYPES: Dict[str, type] = {
+        TRADING_STRATEGY_FIELD: str,
+        ALLOWED_TOOLS_FIELD: list,
+        SELECTED_MECHS_FIELD: list,
+        REMOVED_CONFIG_FIELDS_FIELD: list,
+        "behavior": str,
+    }
+    # Scaled by the token decimals and then range-checked, so a bool passes
+    # as one unit of the collateral and an infinity or a NaN passes the
+    # comparison. Checked as finite numbers that are not bools.
+    _LLM_CONFIG_NUMERIC_FIELDS = ("fixed_bet_size", "max_bet_size")
+
+    @classmethod
+    def _config_update_is_readable(cls, config: Any) -> bool:
+        """Return whether a config update can be read as intended.
+
+        :param config: the ``updated_agent_config`` value from the reply.
+        :return: whether every field set is the type the update expects.
+
+        Only the fields whose wrong type would pass silently. Everything
+        else that a wrong shape can do raises, and is caught at the call.
+        """
+        if not isinstance(config, dict):
+            return False
+        if not all(
+            isinstance(config[field], expected)
+            for field, expected in cls._LLM_CONFIG_FIELD_TYPES.items()
+            if config.get(field) is not None
+        ):
+            return False
+        return all(
+            cls._is_finite_number(config[field])
+            for field in cls._LLM_CONFIG_NUMERIC_FIELDS
+            if config.get(field) is not None
+        )
+
+    @staticmethod
+    def _is_finite_number(value: Any) -> bool:
+        """Return whether ``value`` is a real, finite number and not a bool.
+
+        :param value: the value from the reply.
+        :return: whether it can be scaled and compared as an amount.
+
+        ``True`` is an ``int`` in Python, so a bool would otherwise read as
+        one unit of the collateral, and an infinity or a NaN would pass a
+        range check without ever being a meaningful amount.
+
+        Every ``int`` is finite by construction. ``math.isfinite`` converts
+        its argument to a float first, so an int of about 309 digits or more
+        raises rather than answering, and this guard runs ahead of the
+        handler's own catch.
+        """
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return False
+        return isinstance(value, int) or math.isfinite(value)
+
+    def _handle_unreadable_llm_reply(
+        self, reply: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer the caller when the model did not reply with the JSON object asked for.
+
+        :param reply: whatever the model sent back.
+        :param http_msg: the original HttpMessage.
+        :param http_dialogue: the original HttpDialogue.
+
+        The prompt asks for a JSON object but nothing makes the model
+        return one, so prose, a fenced block or an apology all land here.
+        Left to raise this ends the agent, because the service runs under
+        ``stop_and_exit``: one badly answered prompt would stop trading.
+        """
+        self.context.logger.error(
+            f"Could not read the LLM reply as a JSON object: {reply!r}"
+        )
+        self._send_internal_server_error_response(
+            http_msg,
+            http_dialogue,
+            {"error": "The model did not answer in the expected format."},
+            content_type=HttpContentType.JSON.header,
+        )
 
     def _handle_chatui_llm_error(
         self, error_message: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -664,12 +861,77 @@ class HttpHandler(BaseHttpHandler):
             content_type=HttpContentType.JSON.header,
         )
 
+    def _handle_mech_deposit_required(
+        self, genai_response: dict, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Explain an unfunded deposit; ask for funds only when the EOA is known short."""
+        native_token = "POL" if self.context.params.is_running_on_polymarket else "xDAI"
+        # The balances tell an empty deposit from one that is below what this
+        # call needs, or held up by requests still in flight.
+        self.context.logger.warning(
+            f"Chat request refused for want of a mech pre-deposit: "
+            f"{genai_response.get('error')} (context: {genai_response.get('context')})"
+        )
+        if self.context.shared_state.get(MECH_PRE_DEPOSIT_EOA_SHORT, False):
+            message = (
+                "Chat needs a small prepaid balance that your agent couldn't "
+                f"fund. Add {native_token} to your agent in Pearl, then try "
+                "again in a few minutes."
+            )
+        else:
+            message = (
+                "Chat is temporarily unavailable while your agent tops up its "
+                "prepaid balance. Please try again in a minute."
+            )
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            {"error": message},
+            HTTPStatus.PAYMENT_REQUIRED.value,
+            HTTPStatus.PAYMENT_REQUIRED.phrase,
+            HttpContentType.JSON.header,
+        )
+
+    def _set_chatui_param(self, param_name: str, value: Any) -> None:
+        """Set one chat-ui config value and persist it.
+
+        :param param_name: the config attribute to set.
+        :param value: the value to store.
+        """
+        setattr(self.shared_state.chatui_config, param_name, value)
+        self._store_chatui_param_to_json(param_name, value)
+
     def _store_chatui_param_to_json(self, param_name: str, value: Any) -> None:
         """Store chatui param to json."""
 
         current_store: dict = self.shared_state._get_current_json_store()
         current_store.update({param_name: value})
         self.shared_state._set_json_store(current_store)
+
+    def _store_activity_goal(self, goal: Optional[int]) -> None:
+        """Store the user's activity goal and show it to Pearl at once.
+
+        :param goal: the new goal, or ``None`` to revert to the default.
+        """
+        previous = self.shared_state.chatui_config.activity_goal
+        self._set_chatui_param(ACTIVITY_GOAL_FIELD, goal)
+        default_goal = self.context.params.default_activity_goal
+        self.context.logger.info(
+            f"Activity goal changed from {previous} to {goal} "
+            f"(None is the default, {default_goal})."
+        )
+
+        # Must not fail the reply; the next evaluation rebuilds the block.
+        try:
+            retarget_activity_goal(
+                self.context.params.store_path,
+                effective_activity_goal(goal, default_goal),
+                self.shared_state.synced_timestamp,
+            )
+        except OSError as e:
+            self.context.logger.error(
+                f"Could not publish the new activity goal to Pearl: {e}"
+            )
 
     def _store_trading_strategy(self, trading_strategy: str) -> None:
         """Store the trading strategy."""

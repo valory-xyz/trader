@@ -152,6 +152,7 @@ query GetPredictionHistory($id: ID!, $first: Int!, $skip: Int!) {
       outcomeTokenAmount
       feeAmount
       outcomeIndex
+      transactionHash
     }
   }
 }
@@ -243,27 +244,6 @@ query GetAllMechRequests($sender: String!, $skip: Int!) {
     ) {
       id
       requestId
-      blockTimestamp
-      parsedRequest {
-        questionTitle
-      }
-    }
-  }
-}
-"""
-
-GET_MECH_REQUESTS_BY_TITLES_QUERY = """
-query GetMechRequestsByTitles($sender: String!, $questionTitles: [String!]!, $blockTimestamp_gt: BigInt!) {
-  sender(id: $sender) {
-    requests(
-      where: {
-        parsedRequest_: { questionTitle_in: $questionTitles }
-        blockTimestamp_gt: $blockTimestamp_gt
-      }
-      orderBy: blockTimestamp
-      orderDirection: asc
-    ) {
-      id
       blockTimestamp
       parsedRequest {
         questionTitle

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeia3kdu4t6iw7iojokho4bswy2y4qfv22t5tknwyufyllwgrm7a5le
+agent: valory/trader:0.1.0:bafybeifh3ipvhiln34lzrvjbt43pe6w3xcoupv3ixppbwfrpwwtrftxuka
 number_of_agents: 1
 deployment:
   agent:
@@ -118,12 +118,14 @@ models:
       withdrawal_return_buffer: ${WITHDRAWAL_RETURN_BUFFER:float:0.05}
       dust_epsilon_wxdai: ${DUST_EPSILON_WXDAI:int:10000000000000000}
       policy_epsilon: ${POLICY_EPSILON:float:0.25}
+      tool_accuracy_prior_requests: ${TOOL_ACCURACY_PRIOR_REQUESTS:int:10}
       store_path: ${STORE_PATH:str:/data/}
       staking_contract_address: ${STAKING_CONTRACT_ADDRESS:str:0x0000000000000000000000000000000000000000}
       staking_interaction_sleep_time: ${STAKING_INTERACTION_SLEEP_TIME:int:5}
       disable_trading: ${DISABLE_TRADING:bool:false}
       stop_trading_if_staking_kpi_met: ${STOP_TRADING_IF_STAKING_KPI_MET:bool:true}
       activity_target: ${ACTIVITY_TARGET:int:8}
+      default_activity_goal: ${DEFAULT_ACTIVITY_GOAL:int:1}
       enable_position_review: ${ENABLE_POSITION_REVIEW:bool:false}
       review_period_seconds: ${REVIEW_PERIOD_SECONDS:int:86400}
       withdrawal_max_fak_attempts: ${WITHDRAWAL_MAX_FAK_ATTEMPTS:int:3}
@@ -161,10 +163,17 @@ models:
       polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
       lifi_quote_to_amount_url: ${LIFI_QUOTE_TO_AMOUNT_URL:str:https://li.quest/v1/quote/toAmount}
       use_x402: ${USE_X402:bool:false}
+      use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+      mech_pre_deposit_floor: ${MECH_PRE_DEPOSIT_FLOOR:int:150000}
+      mech_pre_deposit_target: ${MECH_PRE_DEPOSIT_TARGET:int:500000}
+      mech_pre_deposit_cap: ${MECH_PRE_DEPOSIT_CAP:int:500000}
+      mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+      native_gas_reserve: ${NATIVE_GAS_RESERVE:int:3200000000000000000}
       is_agent_performance_summary_enabled: ${IS_AGENT_PERFORMANCE_SUMMARY_ENABLED:bool:true}
       is_achievement_checker_enabled: ${IS_ACHIEVEMENT_CHECKER_ENABLED:bool:true}
       balance_tracker_address: ${BALANCE_TRACKER_ADDRESS:str:0x5C50ebc17d002A4484585C8fbf62f51953493c0B}
       mech_analytics_url: ${MECH_ANALYTICS_URL:str:null}
+      olas_predict_leaderboard_url: ${OLAS_PREDICT_LEADERBOARD_URL:str:https://predict.olas.network/api/leaderboard/agents}
       use_mech_analytics: ${USE_MECH_ANALYTICS:bool:false}
       is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
       polymarket_builder_program_enabled: ${POLYMARKET_BUILDER_PROGRAM_ENABLED:bool:false}
@@ -395,6 +404,11 @@ config:
   genai_api_key: ${GENAI_API_KEY:str:""}
   genai_x402_server_base_url: ${GENAI_X402_SERVER_BASE_URL:str:https://x402.olas.autonolas.tech/v1/gemini/polygon/v1beta}
   use_x402: ${USE_X402:bool:false}
+  use_mech_facilitator: ${USE_MECH_FACILITATOR:bool:false}
+  mech_facilitator_base_url: ${MECH_FACILITATOR_BASE_URL:str:https://x402.olas.autonolas.tech}
+  mech_chain: ${MECH_CHAIN_ID:str:polygon}
+  mech_safe_addresses: ${SAFE_CONTRACT_ADDRESSES:dict:{"polygon":"0x0000000000000000000000000000000000000000"}}
+  mech_max_delivery_rate: ${MECH_MAX_DELIVERY_RATE:int:100000}
 ---
 public_id: valory/funds_manager:0.1.0
 type: skill

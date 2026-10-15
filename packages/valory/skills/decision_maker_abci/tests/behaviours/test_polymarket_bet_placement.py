@@ -230,6 +230,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -252,6 +253,7 @@ class TestPolymarketBetPlacementBehaviour:
 
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
+        behaviour.update_bet_transaction_information.assert_called_once_with()
 
     def test_async_act_with_deposit_wallet_adds_funder(self) -> None:
         """When the store resolves a DepositWallet, the bet request adds funder."""
@@ -303,6 +305,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -370,6 +373,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                             deposit_wallet_address=None,
                         )
@@ -501,6 +505,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -523,6 +528,7 @@ class TestPolymarketBetPlacementBehaviour:
 
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
+        behaviour.update_bet_transaction_information.assert_called_once_with()
 
     def test_async_act_no_orderbook_error(self) -> None:
         """When no orderbook exists, should send impossible payload."""
@@ -613,6 +619,7 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
         behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
         behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -666,6 +673,7 @@ class TestPolymarketBetPlacementBehaviour:
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_IMPOSSIBLE.value
         assert json.loads(payloads_sent[0].cached_signed_orders) == {}
+        behaviour.update_bet_transaction_information.assert_not_called()
 
     def test_async_act_non_terminal_failure_is_not_blacklisted(self) -> None:
         """Without the flag, a failure still retries and keeps its cached order.
@@ -755,6 +763,7 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour.wait_for_condition_with_sleep = mock_wait  # type: ignore[method-assign]
         behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
         behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+        behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
 
         mock_bet = MagicMock()
         mock_bet.get_outcome.return_value = "Yes"
@@ -812,6 +821,7 @@ class TestPolymarketBetPlacementBehaviour:
         assert payloads_sent[0].event == Event.BET_PLACEMENT_FAILED.value
         cached = json.loads(payloads_sent[0].cached_signed_orders)
         assert len(cached) > 0
+        behaviour.update_bet_transaction_information.assert_not_called()
 
     def test_async_act_failure_no_signed_order(self) -> None:
         """When placement fails without signed_order_json, should not cache."""
@@ -945,6 +955,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=True,
                             policy=mock_policy,
                         )
@@ -1029,6 +1040,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders={},
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(
@@ -1119,6 +1131,7 @@ class TestPolymarketBetPlacementBehaviour:
                             period_count=1,
                             cached_signed_orders=cached_orders,
                             mech_tool="tool1",
+                            mech_tool_key="tool1",
                             is_policy_set=False,
                         )
                         with patch.object(

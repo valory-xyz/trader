@@ -25,7 +25,6 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_ALL_MECH_REQUESTS_QUERY,
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_FPMM_PAYOUTS_QUERY,
-    GET_MECH_REQUESTS_BY_TITLES_QUERY,
     GET_MECH_RESPONSE_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_MECH_TOOL_FOR_QUESTION_QUERY,
@@ -84,10 +83,6 @@ QUERY_CONSTANTS = {
     "GET_ALL_MECH_REQUESTS_QUERY": (
         GET_ALL_MECH_REQUESTS_QUERY,
         "GetAllMechRequests",
-    ),
-    "GET_MECH_REQUESTS_BY_TITLES_QUERY": (
-        GET_MECH_REQUESTS_BY_TITLES_QUERY,
-        "GetMechRequestsByTitles",
     ),
     "GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY": (
         GET_POLYMARKET_TRADER_AGENT_DETAILS_QUERY,
@@ -195,6 +190,12 @@ def test_omen_finalization_query_selects_required_fields() -> None:
         "GET_OMEN_FINALIZATION_QUERY must filter by id_in for batched "
         "enrichment keyed on fpmm ids"
     )
+
+
+def test_omen_prediction_history_query_selects_bet_transaction_hash() -> None:
+    """Achievement records link to the bet's transaction on the explorer."""
+    bets_selection = GET_PREDICTION_HISTORY_QUERY.split("bets {", 1)[1]
+    assert "transactionHash" in bets_selection.split("}", 1)[0]
 
 
 # The predict-polymarket squid speaks OpenReader, not The Graph. These pin the
