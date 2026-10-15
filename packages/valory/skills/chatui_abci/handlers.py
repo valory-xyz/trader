@@ -24,6 +24,7 @@ import json
 import math
 from datetime import datetime, timezone
 from functools import partial
+from html import escape
 from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set, cast
 
@@ -831,8 +832,8 @@ class HttpHandler(BaseHttpHandler):
             valid = [t for t in updated_allowed_tools if t in available]
             if unknown:
                 issue_message = (
-                    f"Unknown tool(s) ignored: {unknown}. "
-                    f"Available tools are: {', '.join(available)}."
+                    f"Unknown tool(s) ignored: {escape(str(unknown))}. "
+                    f"Available tools are: {escape(', '.join(available))}."
                 )
                 self.context.logger.warning(issue_message)
                 issues.append(issue_message)

@@ -45,6 +45,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
+from packages.valory.skills.decision_maker_abci.utils.general import loads_bounded
 from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
     is_prediction_tool,
 )
@@ -419,8 +420,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _extract_tool_metadata(res_raw: Any) -> Dict[str, Dict[str, Any]]:
         """Pull `toolMetadata` from the IPFS body, keyed by lowercased name."""
         try:
-            body = json.loads(res_raw.body.decode())
-        except (AttributeError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            body = loads_bounded(res_raw.body.decode())
+        except (
+            AttributeError,
+            TypeError,
+            UnicodeDecodeError,
+            ValueError,
+            RecursionError,
+        ):
             return {}
         raw = body.get("toolMetadata") if isinstance(body, dict) else None
         if not isinstance(raw, dict):

@@ -238,6 +238,17 @@ class TestAllowedTools:
         handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
         assert params[ALLOWED_TOOLS_FIELD] == ["prediction-online"]
 
+    def test_tool_names_in_the_issue_are_escaped(self) -> None:
+        """Tool names are shown as text in the reply, whatever characters they hold."""
+        handler = _make_handler()
+        handler._available_tools = MagicMock(return_value=["r&d-tool"])  # type: ignore[method-assign]
+        _, issues = handler._process_updated_agent_config(
+            {"allowed_tools": ["q&a-tool"]}
+        )
+        assert "r&amp;d-tool" in issues[0]
+        assert "q&amp;a-tool" in issues[0]
+        assert "r&d-tool" not in issues[0]
+
     def test_all_unknown_adds_issue_no_store(self) -> None:
         """All-unknown tools must add one issue and not store anything."""
         handler = _make_handler()
