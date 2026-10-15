@@ -19,6 +19,8 @@
 
 """Tests for the kelly_criterion strategy."""
 
+from typing import Optional
+
 import pytest
 
 from packages.valory.customs.kelly_criterion.kelly_criterion import (
@@ -514,6 +516,152 @@ class TestRunFilters:
         )
         # YES side should pass (edge 0.70-0.55=0.15 > 0.03)
         assert result["bet_amount"] > 0
+
+
+# ---------------------------------------------------------------------------
+# run — researchability knobs
+# ---------------------------------------------------------------------------
+
+
+class TestRunResearchability:
+    """Tests for the min_researchability floor and the lambda_min shrink."""
+
+    @pytest.mark.parametrize(
+        "base",
+        [
+            CLOB_KWARGS,
+            FPMM_KWARGS,
+            # m + 1.0 * (p - m) != p in floats for this input
+            {**FPMM_KWARGS, "p_yes": 0.06, "price_yes": 0.6, "price_no": 0.4},
+        ],
+    )
+    @pytest.mark.parametrize("researchability", [None, 0.0, 0.35, 1.0])
+    def test_default_knobs_are_noop(
+        self, base: dict, researchability: Optional[float]
+    ) -> None:
+        """Default knobs leave every output identical to a run without the signal."""
+        plain = run(**base)
+        result = run(**{**base, "researchability": researchability})
+        assert plain["bet_amount"] > 0
+        for key in ("bet_amount", "vote", "expected_profit", "g_improvement", "error"):
+            assert result[key] == plain[key], key
+
+    def test_absent_signal_passes_strict_knobs(self) -> None:
+        """A tool that omits the signal is sized as plain Kelly."""
+        plain = run(**CLOB_KWARGS)
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "researchability": None,
+                "min_researchability": 0.9,
+                "researchability_lambda_min": 0.0,
+            }
+        )
+        assert result["bet_amount"] == plain["bet_amount"] > 0
+
+    @pytest.mark.parametrize(
+        "researchability, bets", [(0.49, False), (0.5, True), (0.8, True)]
+    )
+    def test_floor(self, researchability: float, bets: bool) -> None:
+        """Signals below min_researchability are not traded."""
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "researchability": researchability,
+                "min_researchability": 0.5,
+            }
+        )
+        assert (result["bet_amount"] > 0) is bets
+        if not bets:
+            assert any("min_researchability" in i for i in result["info"])
+
+    @pytest.mark.parametrize(
+        "base",
+        [
+            CLOB_KWARGS,
+            FPMM_KWARGS,
+            # stale price_yes (0.55) above the live book: the CLOB anchor is
+            # the book mid (0.49), so no edge is left on either side
+            {
+                **CLOB_KWARGS,
+                "orderbook_asks_yes": [{"price": "0.50", "size": "100"}],
+                "orderbook_asks_no": [{"price": "0.52", "size": "100"}],
+            },
+        ],
+    )
+    def test_zero_researchability_removes_the_edge(self, base: dict) -> None:
+        """A lambda of 0 moves p_yes onto the market, so no edge is left."""
+        assert run(**base)["bet_amount"] > 0
+        result = run(
+            **{
+                **base,
+                "researchability": 0.0,
+                "researchability_lambda_min": 0.0,
+            }
+        )
+        assert result["bet_amount"] == 0
+
+    def test_no_shrink_without_a_usable_anchor(self) -> None:
+        """An anchor outside (0, 1) leaves p_yes as reported."""
+        base = {**FPMM_KWARGS, "price_yes": 0.0}
+        plain = run(**base)
+        result = run(
+            **{
+                **base,
+                "researchability": 0.5,
+                "researchability_lambda_min": 0.0,
+            }
+        )
+        assert result["bet_amount"] == plain["bet_amount"]
+        assert any("No shrink" in i for i in result["info"])
+
+    @pytest.mark.parametrize(
+        "base, p_yes, vote",
+        [
+            (CLOB_KWARGS, 0.70, 0),
+            (CLOB_KWARGS, 0.30, 1),
+            (FPMM_KWARGS, 0.65, 0),
+            (FPMM_KWARGS, 0.35, 1),
+        ],
+    )
+    def test_partial_shrink_reduces_stake(
+        self, base: dict, p_yes: float, vote: int
+    ) -> None:
+        """A mid signal shrinks the stake on either side without cancelling it."""
+        plain = run(**{**base, "p_yes": p_yes})
+        result = run(
+            **{
+                **base,
+                "p_yes": p_yes,
+                "researchability": 0.5,
+                "researchability_lambda_min": 0.4,
+            }
+        )
+        assert plain["vote"] == result["vote"] == vote
+        assert 0 < result["bet_amount"] < plain["bet_amount"]
+        assert any("shrunk toward market" in i for i in result["info"])
+
+    def test_full_researchability_is_not_shrunk(self) -> None:
+        """A researchability of 1.0 gives lambda 1.0 whatever lambda_min is."""
+        plain = run(**CLOB_KWARGS)
+        result = run(
+            **{
+                **CLOB_KWARGS,
+                "researchability": 1.0,
+                "researchability_lambda_min": 0.0,
+            }
+        )
+        assert result["bet_amount"] == plain["bet_amount"]
+
+    @pytest.mark.parametrize(
+        "knob", ["min_researchability", "researchability_lambda_min"]
+    )
+    @pytest.mark.parametrize("value", [-0.1, 1.5, "0.5", None, True])
+    def test_invalid_knob_rejected(self, knob: str, value: object) -> None:
+        """Knobs that are not a number in [0, 1] are rejected."""
+        result = run(**{**CLOB_KWARGS, knob: value})
+        assert result["bet_amount"] == 0
+        assert any(knob in e for e in result["error"])
 
 
 # ---------------------------------------------------------------------------

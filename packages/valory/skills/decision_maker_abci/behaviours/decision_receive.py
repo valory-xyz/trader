@@ -56,6 +56,23 @@ WRITE_TEXT_MODE = "w+t"
 COMMA = ","
 
 
+def _coerce_researchability(value: Any) -> Optional[float]:
+    """Return the optional 0-1 researchability signal, or None.
+
+    Absent, boolean, non-numeric, or out-of-range values all degrade to
+    None: the signal is advisory and must never affect response parsing.
+
+    :param value: the raw value from the mech response JSON.
+    :return: the coerced signal, or None.
+    """
+    # bool subclasses int, so True/False would otherwise pass as 1.0/0.0.
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if not 0 <= value <= 1:
+        return None
+    return float(value)
+
+
 class DecisionReceiveBehaviour(StorageManagerBehaviour):
     """A behaviour in which the agents receive the mech response."""
 
@@ -67,6 +84,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         self._request_id: int = 0
         self._mech_response: Optional[MechInteractionResponse] = None
         self._rows_exceeded: bool = False
+        self._mech_researchability: Optional[float] = None
 
     @property
     def request_id(self) -> int:
@@ -213,11 +231,26 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             )
             return None
 
+        # Reset per response so a market whose tool emits no signal can never
+        # inherit the previous market's value.
+        self._mech_researchability = None
         try:
-            return PredictionResponse(**json.loads(self.mech_response.result))
+            raw_response = json.loads(self.mech_response.result)
+            prediction_response = PredictionResponse(**raw_response)
         except (json.JSONDecodeError, ValueError) as exc:
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
+
+        raw_researchability = raw_response.get("researchability")
+        self._mech_researchability = _coerce_researchability(raw_researchability)
+        if raw_researchability is not None and self._mech_researchability is None:
+            # Distinguish "tool never implemented the field" (absent, quiet)
+            # from "implemented and broken" (present but rejected, loud).
+            self.context.logger.warning(
+                f"Mech response carried an invalid researchability value "
+                f"{raw_researchability!r}; ignoring it."
+            )
+        return prediction_response
 
     def _compute_new_tokens_distribution(
         self,
@@ -508,6 +541,9 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             orderbook_asks_yes=orderbook_asks_yes,
             orderbook_asks_no=orderbook_asks_no,
             min_order_shares=min_order_shares,
+            # getattr: advisory attr, tolerate construction paths that skip
+            # this class's __init__ (some tests build the behaviour bare).
+            researchability=getattr(self, "_mech_researchability", None),
         )
 
         strategy_result = self._last_strategy_result
