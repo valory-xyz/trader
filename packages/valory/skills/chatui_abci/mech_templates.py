@@ -36,7 +36,8 @@ from packages.valory.skills.mech_interact_abci.payment_types import (
     PaymentType,
 )
 
-LINE_BREAK = "<br>"
+# A blank line between paragraphs, for readability in the chat.
+PARAGRAPH_BREAK = "<br><br>"
 CHAIN_NAMES = {100: "Gnosis", 137: "Polygon", 8453: "Base", 10: "Optimism"}
 NATIVE_ASSETS = {100: "xDAI", 137: "POL", 8453: "ETH", 10: "ETH"}
 # payment type -> (asset label, or None for the chain's native token; decimals)
@@ -122,7 +123,7 @@ def accept_line(price_text: str, address: str) -> str:
 def render_report(
     facts: MechFacts, standing: Standing, now: datetime
 ) -> Tuple[str, Optional[Offer]]:
-    """The report, operator text escaped and lines joined with `<br>`, and the offer it ends with, if any."""
+    """The report, operator text escaped and paragraphs separated by a blank line, and the offer it ends with, if any."""
     method, price_text = payment_line(
         facts.payment_type, facts.max_delivery_rate, facts.chain_id
     )
@@ -162,7 +163,7 @@ def render_report(
         offer = Offer(
             facts.address, facts.max_delivery_rate, str(facts.payment_type), price_text
         )
-    return LINE_BREAK.join(lines), offer
+    return PARAGRAPH_BREAK.join(lines), offer
 
 
 def _operator_line(facts: MechFacts) -> str:

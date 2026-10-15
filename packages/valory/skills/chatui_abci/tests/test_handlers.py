@@ -56,6 +56,7 @@ from packages.valory.skills.chatui_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
     NEVER_DELIVERED,
+    PARAGRAPH_BREAK,
     accept_line,
 )
 from packages.valory.skills.chatui_abci.models import (
@@ -3038,8 +3039,8 @@ class TestAnAddressMessage:
         handler._send_ok_response.assert_not_called()
         wire.answer_http(_card())
         reply = _reply(handler)
-        assert reply.startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.<br>")
-        assert reply.endswith(f"<br>To approve, reply exactly: {ACCEPT_PHRASE}")
+        assert reply.startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.<br><br>")
+        assert reply.endswith(f"<br><br>To approve, reply exactly: {ACCEPT_PHRASE}")
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
         handler.context.srr_dialogues.create.assert_not_called()
         handler._send_message.assert_not_called()  # type: ignore[attr-defined]
@@ -3062,7 +3063,7 @@ class TestAnAddressMessage:
         wire.answer_http({"errors": ["down"]}, status=500)
         assert len(wire.sent) == 1
         assert _reply(handler) == (
-            f"{THIRD_PARTY} on Gnosis.<br>"
+            f"{THIRD_PARTY} on Gnosis.<br><br>"
             "Its record cannot be read right now; try again later."
         )
 
@@ -3072,7 +3073,7 @@ class TestAnAddressMessage:
             approved={THIRD_PARTY: NATIVE_RATE}, pin=[CHECKSUMMED]
         )
         reply = _report_for(handler, wire, THIRD_PARTY)
-        assert reply.split("<br>")[-3:] == [
+        assert reply.split(PARAGRAPH_BREAK)[-3:] == [
             "Approved at up to 0.01 xDAI per request.",
             f"To stop using it, reply: remove {THIRD_PARTY}",
             f"To stop pinning it, reply: unpin {THIRD_PARTY}",
@@ -3084,13 +3085,13 @@ class TestAnAddressMessage:
         handler, wire = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE // 2})
         reply = _report_for(handler, wire, THIRD_PARTY)
 
-        assert accept_line("0.01 xDAI", THIRD_PARTY) in reply.split("<br>")
+        assert accept_line("0.01 xDAI", THIRD_PARTY) in reply.split(PARAGRAPH_BREAK)
         assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
 
     def test_a_discovered_valory_mech_gets_the_valory_ending(self) -> None:
         """A Valory mech is never offered; it can be pinned."""
         handler, wire = _mech_handler(discovered={VALORY_MECH})
-        lines = _report_for(handler, wire, VALORY_MECH).split("<br>")
+        lines = _report_for(handler, wire, VALORY_MECH).split(PARAGRAPH_BREAK)
         assert lines[-2].startswith("This is a Valory mech the agent already uses")
         assert lines[-1] == f"To add it to your pinned mechs, reply: pin {VALORY_MECH}"
         assert handler.shared_state.mech_offers == {}

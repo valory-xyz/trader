@@ -31,6 +31,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
     NOT_INDEXED,
     NO_CARD,
     OLAS_DISCLAIMER,
+    PARAGRAPH_BREAK,
     PRICE_UNREADABLE,
     RECORD_UNAVAILABLE,
     Standing,
@@ -94,7 +95,7 @@ def _render(
 ) -> Tuple[List[str], Optional[Offer]]:
     """Render the facts with the fields overridden; the lines and the offer."""
     text, offer = render_report(replace(FACTS, **fields), standing, NOW)
-    return text.split("<br>"), offer
+    return text.split(PARAGRAPH_BREAK), offer
 
 
 def _standing(**fields: Any) -> Standing:
@@ -192,7 +193,7 @@ def test_a_report_that_offers_nothing_ends_with_its_verdict(
     """Each refusal and each settled approval ends the report and records no offer."""
     lines, offer = _render(standing, **fields)
     assert lines[-len(ending) :] == ending
-    assert "To approve" not in "<br>".join(lines)
+    assert "To approve" not in PARAGRAPH_BREAK.join(lines)
     assert offer is None
     assert verdict(replace(FACTS, **fields), standing) == ending[0]
 

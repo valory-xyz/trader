@@ -70,14 +70,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiccn6zisz7lql6c3dqimzheo4olhxqnush42ltwdmd7c7ulb43ice
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifcc7rtxfeidq42amdvjhwa4ej6f6oyq6ljlqfynthftyflt5e5fq
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeibakqu7adkgtjzsocrz5qaahya62jrkrswb7enwrdyfhlh4lbvg4u
-- valory/trader_abci:0.1.0:bafybeiha6hxukvpdxfrelo3y4ugwykrrujdbe2wnokcjp6i2wtadap4npi
+- valory/decision_maker_abci:0.1.0:bafybeici3jwvlr7lxcshwzbtplgdrjhxmug4j7odvhu3yjcmc7e5nt4224
+- valory/trader_abci:0.1.0:bafybeih2pqv7kkfp6xodpx34simkksa6u3gkkbwi4ez77cciucwnk2kzfe
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeigkfqbqycgj5qdoun7ear4flvwbcygeojqhxp4humhlgbmdvo3wuq
+- valory/check_stop_trading_abci:0.1.0:bafybeib2iojt4vpv4owqpx65wswol2h7lxnezbtu37y4e77eakeljofgca
 - valory/mech_interact_abci:0.1.0:bafybeibwjhkazhnvdij3a3y5kbohfmre2tdui3tif33y4fnl3bwapjnwju
-- valory/chatui_abci:0.1.0:bafybeih6a5dtm5ng2jlimypscwrtotu3mwbhj7rongal5r2m2hbgetz67e
+- valory/chatui_abci:0.1.0:bafybeifcqx7zbp2wydkb4bifa4w4iadnmekvsbckipr3wm6ccykzfmduwu
 - valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
