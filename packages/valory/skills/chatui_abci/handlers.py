@@ -712,25 +712,35 @@ class HttpHandler(BaseHttpHandler):
             # Nothing was answered, so the resend of this message decides it.
             self.shared_state.config_proposal = proposal
             return
-        if self._reply_confirms(genai_response):
+        confirmed = self._read_confirmation(genai_response)
+        if confirmed is None:
+            self.shared_state.config_proposal = proposal
+            self._handle_unreadable_llm_reply(
+                llm_response_message.payload, http_msg, http_dialogue
+            )
+            return
+        if confirmed:
             self._apply_proposal(proposal, http_msg, http_dialogue)
             return
         self._answer_prompt(text, http_msg, http_dialogue)
 
     @staticmethod
-    def _reply_confirms(genai_response: Any) -> bool:
+    def _read_confirmation(genai_response: Any) -> Optional[bool]:
         """Return whether the model read the user's message as a confirmation.
 
         :param genai_response: the model connection's reply.
-        :return: ``True`` only for an explicit ``confirmed: true``.
+        :return: the model's ``confirmed`` answer, or ``None`` if it gave none.
         """
         if not isinstance(genai_response, dict):
-            return False
+            return None
         try:
             answer = json.loads(genai_response.get(RESPONSE_FIELD, "{}"))
         except _UNPARSEABLE_REPLY:
-            return False
-        return isinstance(answer, dict) and answer.get("confirmed") is True
+            return None
+        if not isinstance(answer, dict):
+            return None
+        confirmed = answer.get("confirmed")
+        return confirmed if isinstance(confirmed, bool) else None
 
     def _apply_proposal(
         self,
@@ -810,6 +820,9 @@ class HttpHandler(BaseHttpHandler):
                 base_units / 10**decimals, self.context.params.is_running_on_polymarket
             )
 
+        def amount_from_ui_value(value: Optional[float]) -> str:
+            return amount(None if value is None else int(value * 10**decimals))
+
         def goal(value: Optional[int]) -> str:
             goal_in_force = effective_activity_goal(value, default_goal)
             suffix = " (default)" if value is None else ""
@@ -831,12 +844,8 @@ class HttpHandler(BaseHttpHandler):
             ).value.capitalize(),
             ALLOWED_TOOLS_FIELD: lambda value: ", ".join(value or []) or ALL_TOOLS,
             SELECTED_MECHS_FIELD: lambda value: ", ".join(value or []) or ALL_MECHS,
-            "fixed_bet_size": lambda value: amount(
-                None if value is None else int(value * 10**decimals)
-            ),
-            "max_bet_size": lambda value: amount(
-                None if value is None else int(value * 10**decimals)
-            ),
+            "fixed_bet_size": amount_from_ui_value,
+            "max_bet_size": amount_from_ui_value,
             ACTIVITY_GOAL_FIELD: goal,
         }
         changes = []
@@ -1353,6 +1362,9 @@ class HttpHandler(BaseHttpHandler):
         if unpinned:
             remaining = [mech for mech in pin if mech.lower() not in removed]
             self._store_selected_mechs(remaining or None)
+            self._record_pins_changed(
+                [mech.lower() for mech in pin], [mech.lower() for mech in remaining]
+            )
             notes.append(
                 f"It was pinned, so {', '.join(unpinned)} is unpinned"
                 + (

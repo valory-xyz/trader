@@ -388,6 +388,25 @@ class TestMechCommands:
         ]
         assert chat.llm_calls == []
 
+    def test_removing_a_pinned_mech_records_the_unpin(self, chat: _Chat) -> None:
+        """Removing an approved mech that is pinned writes the pin change."""
+        mech = "0x" + "b" * 40
+        chat.handler._store_selected_mechs = MagicMock()  # type: ignore[method-assign]
+        chat.handler.shared_state.approved_mechs = [mech]
+        chat.handler.shared_state.approved_mech_rates = {mech: 1}
+        chat.handler.shared_state.chatui_config.selected_mechs = [mech.upper()]
+
+        chat.send(f"remove {mech}", "c-remove")
+
+        events = [line for line in chat.feed() if line["kind"] == "event"]
+        assert [event["fields"] for event in events] == [
+            [
+                {"label": "Setting", "value": "Pinned mechs"},
+                {"label": "Before", "value": mech},
+                {"label": "After", "value": "All mechs"},
+            ],
+        ]
+
 
 class TestConfirmFlow:
     """A config change from the chat is applied only after a typed confirm."""
@@ -477,30 +496,29 @@ class TestConfirmFlow:
     @pytest.mark.parametrize(
         "payload",
         [
-            {"response": "not json"},
-            {"response": json.dumps(["yes"])},
-            {"response": json.dumps({"confirmed": "yes"})},
+            "garbage",
+            json.dumps({"response": "not json"}),
+            json.dumps({"response": json.dumps(["yes"])}),
+            json.dumps({"response": json.dumps({"confirmed": "yes"})}),
         ],
     )
-    def test_an_unreadable_confirmation_is_not_a_yes(
-        self, chat: _Chat, payload: Dict[str, Any]
+    def test_an_unreadable_confirmation_keeps_the_proposal_for_the_resend(
+        self, chat: _Chat, payload: str
     ) -> None:
-        """Only an explicit ``confirmed: true`` applies the change."""
+        """An unreadable confirmation is a 500, and the resend of the message decides."""
         self._propose(chat, {"max_bet_size": 1.5})
-        chat.send("yes", "c-yes")
-        chat.answer(payload)
-
-        assert chat.handler.shared_state.chatui_config.max_bet_size == 10**18
-        assert 'User prompt: "yes"' in chat.llm_calls[-1][0]
-
-    def test_a_non_json_confirmation_payload_is_not_a_yes(self, chat: _Chat) -> None:
-        """A connection reply that is not JSON at all reads as no."""
-        self._propose(chat, {"max_bet_size": 1.5})
-        chat.send("yes", "c-yes")
+        failed = chat.send("yes", "c-yes")
         _, callback, kwargs = chat.llm_calls[-1]
-        callback(SimpleNamespace(payload="garbage"), MagicMock(), **kwargs)
+        callback(SimpleNamespace(payload=payload), MagicMock(), **kwargs)
 
-        assert 'User prompt: "yes"' in chat.llm_calls[-1][0]
+        assert chat.response(failed)[0] == 500
+        assert chat.handler.shared_state.chatui_config.max_bet_size == 10**18
+
+        chat.send("yes", "c-yes")
+        assert "Decide whether the reply confirms" in chat.llm_calls[-1][0]
+        chat.confirm(True)
+
+        assert chat.handler.shared_state.chatui_config.max_bet_size == 15 * 10**17
 
     def test_a_failed_confirmation_keeps_the_proposal_for_the_resend(
         self, chat: _Chat
