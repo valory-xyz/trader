@@ -22,11 +22,12 @@
 import copy
 import json
 import math
+from dataclasses import replace
 from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -65,6 +66,19 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
     is_valid_activity_goal,
     retarget_activity_goal,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    FeedEntry,
+    KIND_EVENT,
+    ROLE_AGENT,
+    ROLE_USER,
+    append_message,
+    field,
+    find_exchange,
+    format_amount,
+    read_recent,
+    record_event,
+)
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     HttpContentType,
 )
@@ -90,6 +104,9 @@ from packages.valory.skills.chatui_abci.mech_templates import (
 )
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
+    ChatTurn,
+    ConfigChange,
+    ConfigProposal,
     Offer,
     SharedState,
     TradingStrategyUI,
@@ -98,9 +115,12 @@ from packages.valory.skills.chatui_abci.models import (
 )
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
+    CHAT_PROMPT,
+    CONFIRM_PROMPT,
     FieldsThatCanBeRemoved,
     TradingStrategy,
     build_chatui_llm_response_schema,
+    build_confirmation_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
@@ -158,6 +178,41 @@ ACCEPT_UNREADABLE = (
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
+# The chat on the agent's main page
+CHAT_TEXT_FIELD = "text"
+CHAT_CLIENT_ID_FIELD = "client_id"
+CHAT_MESSAGE_FIELD = "message"
+CHAT_REPLY_FIELD = "reply"
+INVALID_CHAT_REQUEST = "A chat message needs a non-empty text and client_id."
+CHAT_SAVE_FAILED = "The message could not be saved. Please try again."
+STILL_ANSWERING = "Your agent is still answering this message."
+CHANGE_NOT_APPLIED = (
+    "I couldn't apply that change, so your settings are unchanged. Please try again."
+)
+CHANGE_REFUSED = "Nothing was changed."
+RECENT_FEED_ENTRIES = 20
+# Keeps a long earlier reply from crowding the prompt.
+RECENT_TEXT_LIMIT = 300
+FEED_TIME_FORMAT = "%Y-%m-%d %H:%M UTC"
+# The chat's statuses where the shared prompt path answers differently.
+CHAT_STATUS_OVERRIDES = {HTTPStatus.TOO_EARLY: HTTPStatus.SERVICE_UNAVAILABLE}
+
+# How each setting a chat change can set is named to the user.
+SETTING_LABELS = {
+    TRADING_STRATEGY_FIELD: "Trading strategy",
+    ALLOWED_TOOLS_FIELD: "Allowed tools",
+    SELECTED_MECHS_FIELD: "Pinned mechs",
+    "fixed_bet_size": "Fixed trade size",
+    "max_bet_size": "Max trade size",
+    ACTIVITY_GOAL_FIELD: "Daily activity target",
+}
+ALL_TOOLS = "All tools"
+ALL_MECHS = "All mechs"
+DEFAULT_VALUE = "Default"
+AMOUNT_SETTINGS = ("fixed_bet_size", "max_bet_size")
+# Enough to tell apart the trade sizes the bounds allow, without showing float noise.
+SETTING_AMOUNT_DECIMALS = 6
+
 
 # What parsing a model reply can raise. ``JSONDecodeError`` is a ``ValueError``
 # but not the only one: an integer literal over the digit limit raises a plain
@@ -169,6 +224,12 @@ _UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the handler."""
+        super().__init__(**kwargs)
+        # The chat requests being answered, by HTTP dialogue.
+        self._chat_turns: Dict[Any, ChatTurn] = {}
+
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
@@ -178,6 +239,7 @@ class HttpHandler(BaseHttpHandler):
         configure_strategies_url = rf"{self.hostname_regex}\/configure_strategies"
         is_enabled_url = rf"{self.hostname_regex}\/features"
         withdrawal_url = rf"{self.hostname_regex}\/api\/v1\/withdrawal"
+        chat_url = rf"{self.hostname_regex}\/api\/v1\/chat$"
 
         self.routes = {
             **self.routes,  # persisting routes from base class
@@ -196,6 +258,7 @@ class HttpHandler(BaseHttpHandler):
                 # correct name according to fe spec
                 (configure_strategies_url, self._handle_chatui_prompt),
                 (withdrawal_url, self._handle_post_withdrawal),
+                (chat_url, self._handle_chat),
             ],
         }
 
@@ -283,6 +346,17 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
+        self._answer_prompt(user_prompt, http_msg, http_dialogue)
+
+    def _answer_prompt(
+        self, user_prompt: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer a user message: a mech command or report, else the model.
+
+        :param user_prompt: the user's message.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
         command = parse_command(user_prompt)
         if command is not None:
             self._run_mech_command(command, http_msg, http_dialogue)
@@ -306,6 +380,519 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
+
+    # ------------------------------------------------------------------ #
+    # POST /api/v1/chat                                                  #
+    # ------------------------------------------------------------------ #
+
+    def _handle_chat(self, http_msg: HttpMessage, http_dialogue: HttpDialogue) -> None:
+        """Answer a chat message, writing it and its reply to the feed.
+
+        The message is written when it arrives and the reply only when it
+        succeeds. A resend with the same ``client_id`` is written once: one
+        already answered gets the lines as written, without a new answer.
+
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        request = self._read_chat_request(http_msg)
+        if request is None:
+            self._send_bad_request_response(
+                http_msg, http_dialogue, {"error": INVALID_CHAT_REQUEST}
+            )
+            return
+        text, client_id = request
+        if self.shared_state.is_answering(client_id):
+            self._send_http_response(
+                http_msg,
+                http_dialogue,
+                {"error": STILL_ANSWERING},
+                HTTPStatus.CONFLICT.value,
+                HTTPStatus.CONFLICT.phrase,
+            )
+            return
+
+        store_path = self.context.params.store_path
+        try:
+            message, reply = find_exchange(store_path, client_id)
+            if message is not None and reply is not None:
+                self._send_ok_response(
+                    http_msg,
+                    http_dialogue,
+                    {CHAT_MESSAGE_FIELD: message, CHAT_REPLY_FIELD: reply},
+                )
+                return
+            if message is None:
+                message = append_message(store_path, ROLE_USER, text, client_id)
+        except OSError as e:
+            self.context.logger.error(f"Could not write the chat message: {e}")
+            self._send_internal_server_error_response(
+                http_msg, http_dialogue, {"error": CHAT_SAVE_FAILED}
+            )
+            return
+
+        self.shared_state.start_answering(client_id)
+        self._chat_turns[http_dialogue.dialogue_label] = ChatTurn(client_id, message)
+        proposal = self.shared_state.take_config_proposal()
+        if proposal is not None:
+            self._check_confirmation(proposal, text, http_msg, http_dialogue)
+            return
+        self._answer_prompt(text, http_msg, http_dialogue)
+
+    @staticmethod
+    def _read_chat_request(http_msg: HttpMessage) -> Optional[Tuple[str, str]]:
+        """Return the message's text and client id, or ``None`` if the body lacks either.
+
+        :param http_msg: the HttpMessage instance
+        :return: the text and the client id.
+        """
+        try:
+            data = json.loads(http_msg.body.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        text = data.get(CHAT_TEXT_FIELD)
+        client_id = data.get(CHAT_CLIENT_ID_FIELD)
+        if not isinstance(text, str) or not text.strip():
+            return None
+        if not isinstance(client_id, str) or not client_id:
+            return None
+        return text, client_id
+
+    def _chat_turn(self, http_dialogue: HttpDialogue) -> Optional[ChatTurn]:
+        """Return the chat message this request answers, if it is a chat request."""
+        return self._chat_turns.get(http_dialogue.dialogue_label)
+
+    def _send_http_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Any,
+        status_code: int,
+        status_text: str,
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Send a response; a chat request's answer is turned into the chat's reply.
+
+        The chat answers through the same code as ``/configure_strategies``,
+        so its answer is written to the feed and reshaped here, where every
+        answer passes.
+
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        :param data: the response body
+        :param status_code: the HTTP status
+        :param status_text: the HTTP status text
+        :param content_type: the content type header
+        """
+        turn = self._chat_turns.pop(http_dialogue.dialogue_label, None)
+        if turn is None:
+            super()._send_http_response(
+                http_msg, http_dialogue, data, status_code, status_text, content_type
+            )
+            return
+        self._end_chat_turn(turn, http_msg, http_dialogue, status_code, data)
+
+    def _send_internal_server_error_response(
+        self,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        data: Any,
+        content_type: Optional[str] = None,
+    ) -> None:
+        """Send a 500 response; through the chat's reply for a chat request.
+
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        :param data: the response body
+        :param content_type: the content type header
+        """
+        turn = self._chat_turns.pop(http_dialogue.dialogue_label, None)
+        if turn is None:
+            super()._send_internal_server_error_response(
+                http_msg, http_dialogue, data, content_type
+            )
+            return
+        self._end_chat_turn(
+            turn, http_msg, http_dialogue, HTTPStatus.INTERNAL_SERVER_ERROR, data
+        )
+
+    def _end_chat_turn(
+        self,
+        turn: ChatTurn,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        status_code: int,
+        data: Any,
+    ) -> None:
+        """Answer a chat request: the written lines on success, else the error.
+
+        :param turn: the chat message being answered.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        :param status_code: the status the shared prompt path answered with.
+        :param data: the body the shared prompt path answered with.
+        """
+        self.shared_state.finish_answering(turn.client_id)
+        body = data if isinstance(data, dict) else {}
+        if status_code == HTTPStatus.OK:
+            store_path = self.context.params.store_path
+            try:
+                # A resend let through by the answering timeout can finish second.
+                _, reply = find_exchange(store_path, turn.client_id)
+                if reply is None:
+                    reply = append_message(
+                        store_path,
+                        ROLE_AGENT,
+                        str(body.get(LLM_MESSAGE_FIELD, "")),
+                        turn.client_id,
+                    )
+                    if turn.proposal is not None:
+                        self.shared_state.config_proposal = turn.proposal
+            except OSError as e:
+                self.context.logger.error(f"Could not write the chat reply: {e}")
+                status_code = HTTPStatus.INTERNAL_SERVER_ERROR
+                body = {"error": CHAT_SAVE_FAILED}
+            else:
+                super()._send_http_response(
+                    http_msg,
+                    http_dialogue,
+                    {CHAT_MESSAGE_FIELD: turn.message, CHAT_REPLY_FIELD: reply},
+                    HTTPStatus.OK.value,
+                    HTTPStatus.OK.phrase,
+                )
+                return
+        status = HTTPStatus(status_code)
+        # The chat asks for funds only when the user must add them.
+        if status == HTTPStatus.PAYMENT_REQUIRED and not self.context.shared_state.get(
+            MECH_PRE_DEPOSIT_EOA_SHORT, False
+        ):
+            status = HTTPStatus.SERVICE_UNAVAILABLE
+        status = CHAT_STATUS_OVERRIDES.get(status, status)
+        super()._send_http_response(
+            http_msg,
+            http_dialogue,
+            {"error": body.get("error") or status.phrase},
+            status.value,
+            status.phrase,
+        )
+
+    def _recent_activity(self, turn: ChatTurn) -> str:
+        """Describe the latest feed entries for the chat prompt, oldest first.
+
+        :param turn: the chat message being answered, which the prompt has already.
+        :return: one line per entry.
+        """
+        try:
+            entries = read_recent(
+                self.context.params.store_path, RECENT_FEED_ENTRIES + 1
+            )
+        except OSError as e:
+            self.context.logger.error(f"Could not read the feed for the chat: {e}")
+            return "(not available)"
+        lines = [
+            self._describe_feed_entry(entry)
+            for entry in entries
+            if entry.get("id") != turn.message.get("id")
+        ][-RECENT_FEED_ENTRIES:]
+        return "\n".join(lines) if lines else "(no activity yet)"
+
+    @staticmethod
+    def _describe_feed_entry(entry: FeedEntry) -> str:
+        """Describe one feed entry on one line.
+
+        :param entry: the entry.
+        :return: the line.
+        """
+        try:
+            when = datetime.fromtimestamp(int(entry["ts"]), tz=timezone.utc).strftime(
+                FEED_TIME_FORMAT
+            )
+        except (KeyError, TypeError, ValueError, OverflowError, OSError):
+            when = "unknown time"
+        if entry.get("kind") == KIND_EVENT:
+            fields = entry.get("fields")
+            details = "; ".join(
+                f"{item.get('label')}: {item.get('value')}"
+                for item in (fields if isinstance(fields, list) else [])
+                if isinstance(item, dict)
+            )
+            return f"- {when} {entry.get('title')}: {details}"
+        speaker = "User" if entry.get("role") == ROLE_USER else "Agent"
+        text = str(entry.get("text", ""))[:RECENT_TEXT_LIMIT]
+        return f"- {when} {speaker}: {text}"
+
+    # ------------------------------------------------------------------ #
+    # Config changes from the chat: proposed, then confirmed by typing   #
+    # ------------------------------------------------------------------ #
+
+    def _propose_config_update(
+        self,
+        updated_agent_config: dict,
+        llm_message: str,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Keep a chat config change for the user to confirm instead of applying it.
+
+        A value the update would refuse is refused now, before any confirm.
+
+        :param updated_agent_config: the change the model set.
+        :param llm_message: the model's message to the user.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        plan = self._plan_or_none(updated_agent_config)
+        if plan is None:
+            self._handle_unreadable_llm_reply(
+                updated_agent_config, http_msg, http_dialogue
+            )
+            return
+        updated_params, issues, _ = plan
+        if issues:
+            self._refuse_change(issues, http_msg, http_dialogue)
+            return
+        changes = self._describe_changes(updated_params)
+        if not changes:
+            self._send_chat_text(llm_message, http_msg, http_dialogue)
+            return
+        label = http_dialogue.dialogue_label
+        self._chat_turns[label] = replace(
+            self._chat_turns[label],
+            proposal=ConfigProposal(config=updated_agent_config, changes=changes),
+        )
+        question = (
+            f"<b>To confirm:</b> change {self._changes_text(changes)}. Reply yes to "
+            "apply it, or anything else to keep your settings."
+        )
+        text = f"{llm_message}<br><br>{question}" if llm_message else question
+        self._send_chat_text(text, http_msg, http_dialogue)
+
+    def _check_confirmation(
+        self,
+        proposal: ConfigProposal,
+        text: str,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Ask the model whether the user's message confirms the pending change.
+
+        :param proposal: the change waiting for confirmation.
+        :param text: the user's message.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        prompt = CONFIRM_PROMPT.format(
+            proposal=f"Change {self._changes_text(proposal.changes)}.",
+            user_reply=text,
+        )
+        self._send_llm_request(
+            prompt,
+            build_confirmation_schema(),
+            self._handle_confirmation_response,
+            {
+                "http_msg": http_msg,
+                "http_dialogue": http_dialogue,
+                "proposal": proposal,
+                "text": text,
+            },
+        )
+
+    def _handle_confirmation_response(
+        self,
+        llm_response_message: SrrMessage,
+        dialogue: Dialogue,  # pylint: disable=unused-argument
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        proposal: ConfigProposal,
+        text: str,
+    ) -> None:
+        """Apply the pending change if the message confirms it; else answer it normally.
+
+        :param llm_response_message: the SrrMessage with the model's answer
+        :param dialogue: the Dialogue
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        :param proposal: the change waiting for confirmation.
+        :param text: the user's message.
+        """
+        try:
+            genai_response: Any = json.loads(llm_response_message.payload)
+        except _UNPARSEABLE_REPLY:
+            genai_response = None
+        if self._answer_llm_error(genai_response, http_msg, http_dialogue):
+            # Nothing was answered, so the resend of this message decides it.
+            self.shared_state.config_proposal = proposal
+            return
+        confirmed = self._read_confirmation(genai_response)
+        if confirmed is None:
+            self.shared_state.config_proposal = proposal
+            self._handle_unreadable_llm_reply(
+                llm_response_message.payload, http_msg, http_dialogue
+            )
+            return
+        if confirmed:
+            self._apply_proposal(proposal, http_msg, http_dialogue)
+            return
+        self._answer_prompt(text, http_msg, http_dialogue)
+
+    @staticmethod
+    def _read_confirmation(genai_response: Any) -> Optional[bool]:
+        """Return whether the model read the user's message as a confirmation.
+
+        :param genai_response: the model connection's reply.
+        :return: the model's ``confirmed`` answer, or ``None`` if it gave none.
+        """
+        if not isinstance(genai_response, dict):
+            return None
+        try:
+            answer = json.loads(genai_response.get(RESPONSE_FIELD, "{}"))
+        except _UNPARSEABLE_REPLY:
+            return None
+        if not isinstance(answer, dict):
+            return None
+        confirmed = answer.get("confirmed")
+        return confirmed if isinstance(confirmed, bool) else None
+
+    def _apply_proposal(
+        self,
+        proposal: ConfigProposal,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Apply a confirmed change, record it in the feed and acknowledge it.
+
+        :param proposal: the confirmed change.
+        :param http_msg: the HttpMessage instance
+        :param http_dialogue: the HttpDialogue instance
+        """
+        plan = self._plan_or_none(proposal.config)
+        if plan is None:
+            self._send_chat_text(CHANGE_NOT_APPLIED, http_msg, http_dialogue)
+            return
+        updated_params, issues, writes = plan
+        if issues:
+            self._refuse_change(issues, http_msg, http_dialogue)
+            return
+        changes = self._describe_changes(updated_params)
+        written, issues = self._apply_config_writes(writes)
+        written_labels = {SETTING_LABELS.get(setting) for setting in written}
+        saved = [change for change in changes if change.setting in written_labels]
+        for change in saved:
+            self._record_config_changed(change)
+        if issues:
+            if saved:
+                issues.append(f"I did change {self._changes_text(saved)}.")
+            self._send_chat_text("\n".join(issues), http_msg, http_dialogue)
+            return
+        acknowledgement = (
+            f"Done. I changed {self._changes_text(changes)}."
+            if changes
+            else "Done. Your settings already had that value."
+        )
+        self._send_chat_text(acknowledgement, http_msg, http_dialogue)
+
+    def _send_chat_text(
+        self, text: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer a chat request with the agent's text."""
+        self._send_ok_response(http_msg, http_dialogue, {LLM_MESSAGE_FIELD: text})
+
+    def _refuse_change(
+        self, issues: List[str], http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer that a chat change was refused as a whole, giving the reasons."""
+        # The issues are worded for ``/configure_strategies``, which applies the
+        # valid part, so on their own they read as if the rest went through.
+        self._send_chat_text(
+            "\n".join([CHANGE_REFUSED, *issues]), http_msg, http_dialogue
+        )
+
+    @staticmethod
+    def _changes_text(changes: List[ConfigChange]) -> str:
+        """Describe the changes in one sentence fragment, escaped for the chat's HTML."""
+        return "; ".join(
+            f"{escape(change.setting)} from {escape(change.before)} "
+            f"to {escape(change.after)}"
+            for change in changes
+        )
+
+    def _record_config_changed(self, change: ConfigChange) -> None:
+        """Append a ``Changed the configuration`` card to the feed."""
+        record_event(
+            self.context.params.store_path,
+            EventType.CONFIG_CHANGED,
+            [
+                field("Setting", change.setting),
+                field("Before", change.before),
+                field("After", change.after),
+            ],
+            self.context.logger,
+        )
+
+    def _describe_changes(self, updated_params: Dict[str, Any]) -> List[ConfigChange]:
+        """Describe each setting the update changes, against the current config.
+
+        :param updated_params: the settings the update sets, as the plan returns them.
+        :return: the changes, leaving out settings set to their current value.
+        """
+        config = self.shared_state.chatui_config
+        _, decimals = self.get_units_and_decimals()
+        default_goal = self.context.params.default_activity_goal
+
+        def amount(base_units: Optional[int]) -> str:
+            if base_units is None:
+                return DEFAULT_VALUE
+            return format_amount(
+                base_units / 10**decimals,
+                self.context.params.is_running_on_polymarket,
+                SETTING_AMOUNT_DECIMALS,
+            )
+
+        def base_units(value: Optional[float]) -> Optional[int]:
+            return None if value is None else int(value * 10**decimals)
+
+        def goal(value: Optional[int]) -> str:
+            goal_in_force = effective_activity_goal(value, default_goal)
+            suffix = " (default)" if value is None else ""
+            return f"{goal_in_force} trades per day{suffix}"
+
+        def strategy(value: Any) -> str:
+            return self._get_ui_trading_strategy(value).value.capitalize()
+
+        def tools(value: Optional[List[str]]) -> str:
+            return ", ".join(value or []) or ALL_TOOLS
+
+        def mechs(value: Optional[List[str]]) -> str:
+            return ", ".join(value or []) or ALL_MECHS
+
+        current: Dict[str, Any] = {
+            TRADING_STRATEGY_FIELD: strategy(config.trading_strategy),
+            ALLOWED_TOOLS_FIELD: tools(config.allowed_tools),
+            SELECTED_MECHS_FIELD: mechs(config.selected_mechs),
+            "fixed_bet_size": config.fixed_bet_size,
+            "max_bet_size": config.max_bet_size,
+            ACTIVITY_GOAL_FIELD: goal(config.activity_goal),
+        }
+        new: Dict[str, Callable[[Any], Any]] = {
+            TRADING_STRATEGY_FIELD: strategy,
+            ALLOWED_TOOLS_FIELD: tools,
+            SELECTED_MECHS_FIELD: mechs,
+            "fixed_bet_size": base_units,
+            "max_bet_size": base_units,
+            ACTIVITY_GOAL_FIELD: goal,
+        }
+        changes = []
+        for setting, value in updated_params.items():
+            before, after = current[setting], new[setting](value)
+            if before == after:
+                continue
+            # Amounts are compared in base units: two sizes can share a display.
+            if setting in AMOUNT_SETTINGS:
+                before, after = amount(before), amount(after)
+            changes.append(ConfigChange(SETTING_LABELS[setting], before, after))
+        return changes
 
     def _send_mech_reply(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, text: str
@@ -429,11 +1016,23 @@ class HttpHandler(BaseHttpHandler):
             return "I can only pin a Valory mech the agent uses or a mech you approved."
         pins = self._pinned_mechs()
         if address not in pins:
+            before = pins
             pins = [*pins, address]
             self._store_selected_mechs(pins)
+            self._record_pins_changed(before, pins)
         return (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
             f"{', '.join(pins)}."
+        )
+
+    def _record_pins_changed(self, before: List[str], after: List[str]) -> None:
+        """Record a typed pin or unpin, which applies at once, in the feed."""
+        self._record_config_changed(
+            ConfigChange(
+                SETTING_LABELS[SELECTED_MECHS_FIELD],
+                ", ".join(before) or ALL_MECHS,
+                ", ".join(after) or ALL_MECHS,
+            )
         )
 
     def _unpin_mech(self, address: str) -> str:
@@ -443,6 +1042,7 @@ class HttpHandler(BaseHttpHandler):
             return f"{address} is not pinned."
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
+        self._record_pins_changed(pins, remaining)
         if remaining:
             return f"Unpinned {address}. Still pinned: {', '.join(remaining)}."
         return f"Unpinned {address}. Mech selection is back to normal."
@@ -490,8 +1090,13 @@ class HttpHandler(BaseHttpHandler):
         current_activity_goal = self.shared_state.chatui_config.activity_goal
         published_goal = self.shared_state.read_activity_goal_from_disk()
 
-        prompt = CHATUI_PROMPT.format(
+        chat_turn = self._chat_turn(http_dialogue)
+        template = CHATUI_PROMPT if chat_turn is None else CHAT_PROMPT
+        prompt = template.format(
             user_prompt=user_prompt,
+            recent_activity=(
+                "" if chat_turn is None else self._recent_activity(chat_turn)
+            ),
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
             available_tools=available_tools,
@@ -707,6 +1312,12 @@ class HttpHandler(BaseHttpHandler):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
 
+        if self._chat_turn(http_dialogue) is not None:
+            self._propose_config_update(
+                updated_agent_config, llm_message, http_msg, http_dialogue
+            )
+            return
+
         try:
             updated_params, issues = self._process_updated_agent_config(
                 updated_agent_config
@@ -790,6 +1401,9 @@ class HttpHandler(BaseHttpHandler):
         if unpinned:
             remaining = [mech for mech in pin if mech.lower() not in removed]
             self._store_selected_mechs(remaining or None)
+            self._record_pins_changed(
+                [mech.lower() for mech in pin], [mech.lower() for mech in remaining]
+            )
             notes.append(
                 f"It was pinned, so {', '.join(unpinned)} is unpinned"
                 + (
@@ -807,13 +1421,45 @@ class HttpHandler(BaseHttpHandler):
         :param updated_agent_config: dict containing updated config
         :return: tuple of (updated_params, issues)
         """
+        updated_params, issues, writes = self._plan_config_update(updated_agent_config)
+        _, write_issues = self._apply_config_writes(writes)
+        issues.extend(write_issues)
+        return updated_params, issues
+
+    def _plan_or_none(
+        self, updated_agent_config: dict
+    ) -> Optional[Tuple[Dict, List[str], Dict[str, Callable[[], None]]]]:
+        """Plan a config update; ``None`` when the model's object cannot be read as one.
+
+        :param updated_agent_config: the change the model set.
+        :return: the plan, or ``None``.
+        """
+        try:
+            return self._plan_config_update(updated_agent_config)
+        except Exception as exc:  # pylint: disable=broad-except
+            # As in ``_handle_chatui_llm_response``: the model decides the
+            # shape, so any field can fail and no list of types is complete.
+            self.context.logger.error(
+                f"LLM reply was JSON but not usable as a config update: {exc}"
+            )
+            return None
+
+    def _plan_config_update(
+        self, updated_agent_config: dict
+    ) -> Tuple[Dict, List[str], Dict[str, Callable[[], None]]]:
+        """Validate a config update and collect its writes, applying nothing.
+
+        :param updated_agent_config: dict containing updated config
+        :return: the settings it sets, the issues found and the writes to apply,
+            by setting.
+        """
         updated_params: Dict = {}
         issues: List[str] = []
         # Writes are collected and applied at the end rather than as each
         # field is read. The model decides the shape of this object, so any
         # field can fail part-way through, and writing as we go left the
         # earlier settings saved while the caller was told the update failed.
-        writes: List[Callable[[], None]] = []
+        writes: Dict[str, Callable[[], None]] = {}
         # A list, not a set: the guard ahead of this refuses a bare string,
         # on which ``in`` would match by substring.
         removed_fields: List[str] = (
@@ -826,8 +1472,8 @@ class HttpHandler(BaseHttpHandler):
         if updated_trading_strategy:
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
                 updated_params.update({"trading_strategy": updated_trading_strategy})
-                writes.append(
-                    partial(self._store_trading_strategy, updated_trading_strategy)
+                writes[TRADING_STRATEGY_FIELD] = partial(
+                    self._store_trading_strategy, updated_trading_strategy
                 )
             else:
                 issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
@@ -843,7 +1489,7 @@ class HttpHandler(BaseHttpHandler):
 
         if allowed_tools_is_removed:
             updated_params.update({ALLOWED_TOOLS_FIELD: None})
-            writes.append(partial(self._store_allowed_tools, None))
+            writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, None)
 
         elif updated_allowed_tools is not None:
             available = self._available_tools()
@@ -858,11 +1504,11 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid:
                 updated_params.update({ALLOWED_TOOLS_FIELD: valid})
-                writes.append(partial(self._store_allowed_tools, valid))
+                writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, valid)
             elif not unknown:
                 # empty list explicitly passed — treat as clear
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
-                writes.append(partial(self._store_allowed_tools, None))
+                writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, None)
 
         updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
             SELECTED_MECHS_FIELD, None
@@ -873,7 +1519,7 @@ class HttpHandler(BaseHttpHandler):
 
         if selected_mechs_is_removed:
             updated_params.update({SELECTED_MECHS_FIELD: None})
-            writes.append(partial(self._store_selected_mechs, None))
+            writes[SELECTED_MECHS_FIELD] = partial(self._store_selected_mechs, None)
 
         elif updated_selected_mechs is not None:
             # Address comparison is case-insensitive; the synced data stores
@@ -891,10 +1537,12 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
-                writes.append(partial(self._store_selected_mechs, valid_mechs))
+                writes[SELECTED_MECHS_FIELD] = partial(
+                    self._store_selected_mechs, valid_mechs
+                )
             elif not unknown_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: None})
-                writes.append(partial(self._store_selected_mechs, None))
+                writes[SELECTED_MECHS_FIELD] = partial(self._store_selected_mechs, None)
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -912,7 +1560,9 @@ class HttpHandler(BaseHttpHandler):
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
-            writes.append(partial(self._set_chatui_param, "fixed_bet_size", None))
+            writes["fixed_bet_size"] = partial(
+                self._set_chatui_param, "fixed_bet_size", None
+            )
 
         elif updated_fixed_bet_size is not None:
             updated_fixed_bet_size_in_base_units = int(
@@ -923,12 +1573,10 @@ class HttpHandler(BaseHttpHandler):
                 and updated_fixed_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"fixed_bet_size": updated_fixed_bet_size})
-                writes.append(
-                    partial(
-                        self._set_chatui_param,
-                        "fixed_bet_size",
-                        updated_fixed_bet_size_in_base_units,
-                    )
+                writes["fixed_bet_size"] = partial(
+                    self._set_chatui_param,
+                    "fixed_bet_size",
+                    updated_fixed_bet_size_in_base_units,
                 )
             else:
                 issue_message = f"Fixed bet size {updated_fixed_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -943,7 +1591,9 @@ class HttpHandler(BaseHttpHandler):
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
-            writes.append(partial(self._set_chatui_param, "max_bet_size", None))
+            writes["max_bet_size"] = partial(
+                self._set_chatui_param, "max_bet_size", None
+            )
         elif updated_max_bet_size is not None:
             updated_max_bet_size_in_base_units = int(
                 updated_max_bet_size * (10**decimals)
@@ -953,12 +1603,10 @@ class HttpHandler(BaseHttpHandler):
                 and updated_max_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"max_bet_size": updated_max_bet_size})
-                writes.append(
-                    partial(
-                        self._set_chatui_param,
-                        "max_bet_size",
-                        updated_max_bet_size_in_base_units,
-                    )
+                writes["max_bet_size"] = partial(
+                    self._set_chatui_param,
+                    "max_bet_size",
+                    updated_max_bet_size_in_base_units,
                 )
             else:
                 issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -967,12 +1615,14 @@ class HttpHandler(BaseHttpHandler):
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
-            writes.append(partial(self.shared_state.update_agent_behavior, behavior))
+            writes["behavior"] = partial(
+                self.shared_state.update_agent_behavior, behavior
+            )
 
         updated_activity_goal: Any = updated_agent_config.get(ACTIVITY_GOAL_FIELD)
         if FieldsThatCanBeRemoved.ACTIVITY_GOAL.value in removed_fields:
             updated_params.update({ACTIVITY_GOAL_FIELD: None})
-            writes.append(partial(self._store_activity_goal, None))
+            writes[ACTIVITY_GOAL_FIELD] = partial(self._store_activity_goal, None)
         elif updated_activity_goal is not None:
             if not is_valid_activity_goal(updated_activity_goal):
                 issue_message = (
@@ -986,25 +1636,39 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
                 # The goal decides when the agent stops trading, so a reply that
                 # misreads it is declined as a whole rather than half-applied.
-                return {}, issues
+                return {}, issues, {}
             updated_params.update({ACTIVITY_GOAL_FIELD: updated_activity_goal})
-            writes.append(partial(self._store_activity_goal, updated_activity_goal))
+            writes[ACTIVITY_GOAL_FIELD] = partial(
+                self._store_activity_goal, updated_activity_goal
+            )
 
         # Nothing above wrote anything, so reaching here means every field
         # was readable and the update can be applied as a whole.
+        return updated_params, issues, writes
+
+    def _apply_config_writes(
+        self, writes: Dict[str, Callable[[], None]]
+    ) -> Tuple[List[str], List[str]]:
+        """Apply a planned update's writes.
+
+        :param writes: the writes by setting, in order.
+        :return: the settings written, and the issue to tell the user if a
+            write failed, else nothing.
+        """
+        written: List[str] = []
         try:
-            for write in writes:
+            for setting, write in writes.items():
                 write()
+                written.append(setting)
         except OSError as e:
             # Raised past here, the caller would report an unreadable reply
             # while the writes before this one stay applied.
             self.context.logger.error(f"Could not save the config update: {e}")
-            issues.append(
+            return written, [
                 "Some of your changes could not be saved. "
                 "Please check your settings and try again."
-            )
-
-        return updated_params, issues
+            ]
+        return written, []
 
     # Fields the update would misread rather than reject if the type is
     # wrong, so a broad guard around the update cannot see them. A string

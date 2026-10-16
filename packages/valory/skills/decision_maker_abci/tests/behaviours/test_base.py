@@ -19,6 +19,7 @@
 
 """This module contains the tests for valory/decision_maker_abci's base behaviour."""
 
+import json
 import re
 import tempfile
 from copy import deepcopy
@@ -44,11 +45,13 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
     ACTIVITY_GOAL_TRADES_FILE,
     read_trades,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import FEED_FILE
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     BET_AMOUNT_FIELD,
     DecisionMakerBaseBehaviour,
     MultisendBatch,
     PUSD_POLYGON,
+    SKIP_NO_TRADE,
     TradingOperation,
     USDC_E_POLYGON,
     USDC_POLYGON,
@@ -1071,6 +1074,11 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet = MagicMock()
         mock_bet.update_investments.return_value = True
         mock_bet.id = "test_bet"
+        mock_bet.title = "Will it rain?"
+        mock_bet.slug = None
+        mock_bet.outcomeTokenMarginalPrices = [0.4, 0.6]
+        mock_bet.get_outcome.return_value = "Yes"
+        behaviour.params.is_running_on_polymarket = False
 
         db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
         behaviour.synchronized_data.db.get_strict = lambda key: db_values.get(key, 0)  # type: ignore[method-assign]
@@ -1152,6 +1160,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         store_bets.assert_called_once()
         assert read_trades(tmp_path) == []
+        assert not (tmp_path / FEED_FILE).exists()
 
     @pytest.mark.parametrize(
         "benchmarking, sell",
@@ -1165,6 +1174,151 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         self._apply_trade_bookkeeping(tmp_path, benchmarking=benchmarking, sell=sell)
 
         assert read_trades(tmp_path) == []
+        assert not (tmp_path / FEED_FILE).exists()
+
+    def test_bet_bookkeeping_writes_one_trade_placed_event(
+        self, tmp_path: Path
+    ) -> None:
+        """A placed bet adds one ``Placed a trade`` card with its fields, in order."""
+        with mock.patch.object(
+            self.behaviour,
+            "convert_to_native",
+            side_effect=lambda amount: amount / 1000,
+        ):
+            self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
+
+        lines = (tmp_path / FEED_FILE).read_text().splitlines()
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["type"] == "trade_placed"
+        assert entry["title"] == "Placed a trade"
+        assert entry["fields"] == [
+            {
+                "label": "Market",
+                "value": "Will it rain?",
+                "url": "https://predict.olas.network/questions/test_bet",
+            },
+            {"label": "Prediction", "value": "Yes"},
+            {"label": "Amount", "value": "1.00 xDAI"},
+            {"label": "AI confidence", "value": "0%"},
+            {"label": "Potential payout", "value": "2.50 xDAI"},
+        ]
+
+    def test_trade_placed_on_polymarket_links_the_slug(self, tmp_path: Path) -> None:
+        """Polymarket cards link the market by slug and show pUSD."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        bet = MagicMock(id="123", title="Will it snow?", slug="will-it-snow")
+        bet.outcomeTokenMarginalPrices = [0.6, 0.4]
+        bet.get_outcome.return_value = "No"
+        db_values = {"bet_amount": 2_000_000, "vote": 1, "confidence": 0.93}
+        behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign, assignment]
+
+        with mock.patch.object(
+            behaviour, "convert_to_native", side_effect=lambda amount: amount / 10**6
+        ):
+            behaviour._record_trade_placed(bet)
+
+        entry = json.loads((tmp_path / FEED_FILE).read_text())
+        assert entry["fields"] == [
+            {
+                "label": "Market",
+                "value": "Will it snow?",
+                "url": "https://polymarket.com/market/will-it-snow",
+            },
+            {"label": "Prediction", "value": "No"},
+            {"label": "Amount", "value": "$2.00 pUSD"},
+            {"label": "AI confidence", "value": "93%"},
+            {"label": "Potential payout", "value": "$5.00 pUSD"},
+        ]
+
+    @pytest.mark.parametrize(
+        "vote, prices",
+        [
+            (None, [0.5, 0.5]),
+            (2, [0.5, 0.5]),
+            (0, [0.0, 1.0]),
+            (0, [float("nan"), 0.5]),
+            (0, []),
+        ],
+    )
+    def test_trade_placed_without_a_usable_price_has_unknown_payout(
+        self, tmp_path: Path, vote: Optional[int], prices: List[float]
+    ) -> None:
+        """No vote, or no positive price for it, leaves the payout unknown."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        bet = MagicMock(id="123", title="Will it snow?", slug="will-it-snow")
+        bet.outcomeTokenMarginalPrices = prices
+        bet.get_outcome.return_value = "Yes"
+        db_values = {"bet_amount": 2_000_000, "vote": vote, "confidence": 0.93}
+        behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign, assignment]
+
+        with mock.patch.object(
+            behaviour, "convert_to_native", side_effect=lambda amount: amount / 10**6
+        ):
+            behaviour._record_trade_placed(bet)
+
+        entry = json.loads((tmp_path / FEED_FILE).read_text())
+        assert entry["fields"][-1] == {"label": "Potential payout", "value": "Unknown"}
+
+    def test_benchmarking_writes_no_feed_event(self, tmp_path: Path) -> None:
+        """A benchmarking run trades nothing real, so its skips stay out of the feed."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.benchmarking_mode.enabled = True
+
+        behaviour._record_market_skipped(MagicMock(), SKIP_NO_TRADE)
+
+        assert not (tmp_path / FEED_FILE).exists()
+
+    def test_positions_sold_is_written_once(self, tmp_path: Path) -> None:
+        """The first sweep that sold something or completed is the withdrawal's card."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.context.state.positions_sold_recorded = False
+
+        # An errored sweep that sold nothing leaves the card to its retry.
+        behaviour._record_positions_sold(0, 0, 4, False)
+        behaviour._record_positions_sold(3, 12.5, 1, False)
+        behaviour._record_positions_sold(1, 2.0, 0, True)
+
+        lines = (tmp_path / FEED_FILE).read_text().splitlines()
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["type"] == "positions_sold"
+        assert entry["fields"] == [
+            {"label": "Positions sold", "value": "3"},
+            {"label": "Amount received", "value": "$12.50 pUSD"},
+            {"label": "Positions that couldn't be sold", "value": "1"},
+        ]
+
+    def test_market_skipped_names_the_reason(self, tmp_path: Path) -> None:
+        """A skipped market card has the market and the reason."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = False
+        behaviour.benchmarking_mode.enabled = False
+        bet = MagicMock(id="0xabc", title="Will it snow?", slug=None)
+
+        behaviour._record_market_skipped(bet, SKIP_NO_TRADE)
+
+        entry = json.loads((tmp_path / FEED_FILE).read_text())
+        assert entry["type"] == "market_skipped"
+        assert entry["fields"] == [
+            {
+                "label": "Market",
+                "value": "Will it snow?",
+                "url": "https://predict.olas.network/questions/0xabc",
+            },
+            {"label": "Reason", "value": SKIP_NO_TRADE},
+        ]
 
     def test_update_sell_transaction_information(self) -> None:
         """Test `update_sell_transaction_information` method."""  # type: ignore[misc]

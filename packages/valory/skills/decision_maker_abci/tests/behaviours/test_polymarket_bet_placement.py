@@ -22,6 +22,9 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_ORDER_IMPOSSIBLE,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
 )
@@ -533,6 +536,9 @@ class TestPolymarketBetPlacementBehaviour:
     def test_async_act_no_orderbook_error(self) -> None:
         """When no orderbook exists, should send impossible payload."""
         behaviour = _make_behaviour()
+        skipped_bet = MagicMock()
+        behaviour.get_active_sampled_bet = MagicMock(return_value=skipped_bet)  # type: ignore[method-assign]
+        behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
         behaviour.token_balance = 1000
 
         payloads_sent = []
@@ -598,6 +604,9 @@ class TestPolymarketBetPlacementBehaviour:
 
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
+            skipped_bet, SKIP_ORDER_IMPOSSIBLE
+        )
 
     def test_async_act_below_minimum_leaves_the_round(self) -> None:
         """An under-minimum order blacklists instead of looping on itself.
@@ -608,6 +617,9 @@ class TestPolymarketBetPlacementBehaviour:
         stay in the cache to be replayed.
         """
         behaviour = _make_behaviour()
+        skipped_bet = MagicMock()
+        behaviour.get_active_sampled_bet = MagicMock(return_value=skipped_bet)  # type: ignore[method-assign]
+        behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
         behaviour.token_balance = 2_000_000
 
         payloads_sent = []
@@ -674,6 +686,9 @@ class TestPolymarketBetPlacementBehaviour:
         assert payloads_sent[0].event == Event.BET_PLACEMENT_IMPOSSIBLE.value
         assert json.loads(payloads_sent[0].cached_signed_orders) == {}
         behaviour.update_bet_transaction_information.assert_not_called()
+        behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
+            skipped_bet, SKIP_ORDER_IMPOSSIBLE
+        )
 
     def test_async_act_non_terminal_failure_is_not_blacklisted(self) -> None:
         """Without the flag, a failure still retries and keeps its cached order.

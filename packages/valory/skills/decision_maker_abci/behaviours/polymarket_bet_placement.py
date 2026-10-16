@@ -24,6 +24,9 @@ from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_ORDER_IMPOSSIBLE,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     PolymarketDepositWalletBehaviour,
 )
@@ -195,6 +198,11 @@ class PolymarketBetPlacementBehaviour(
                     event = Event.BET_PLACEMENT_FAILED
                     if signed_order_json:
                         updated_cache[cache_key] = signed_order_json
+
+        if event == Event.BET_PLACEMENT_IMPOSSIBLE:
+            self._record_market_skipped(
+                self.get_active_sampled_bet(), SKIP_ORDER_IMPOSSIBLE
+            )
 
         # Fallback
         if event is None:  # pragma: no cover

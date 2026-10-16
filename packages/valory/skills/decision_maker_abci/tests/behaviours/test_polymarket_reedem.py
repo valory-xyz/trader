@@ -24,6 +24,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from eth_abi import decode as abi_decode
 
+from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
@@ -504,6 +505,140 @@ class TestBuildRedeemPositionsData:
 
 # ---------------------------------------------------------------------------
 # Tests for redeem_via_builder
+
+
+def _position(condition_id: str, size: float, cur_price: object, **extra: object) -> dict:  # type: ignore[type-arg]
+    """Return a redeemable position as the Polymarket API lists it."""
+    return {
+        "conditionId": condition_id,
+        "outcomeIndex": 0,
+        "outcome": "Yes",
+        "size": size,
+        "curPrice": cur_price,
+        "negativeRisk": False,
+        **extra,
+    }
+
+
+def _run(gen):  # type: ignore[no-untyped-def]
+    """Exhaust a generator and return its value."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration as e:
+        return e.value
+
+
+class TestPayoutsByMarket:
+    """One payout card per market from the redeemed positions."""
+
+    def test_sums_positions_of_a_market_and_drops_losers(self) -> None:
+        """Both sides of an invalid market add up; a losing or unpriced one pays nothing."""
+        positions = [
+            _position("0xa", 10, 0.5, title="Invalid?", slug="invalid"),
+            _position("0xa", 4, "0.5", title="Invalid?", slug="invalid"),
+            _position("0xb", 3, 1, title="Won?"),
+            _position("0xc", 5, 0, title="Lost?"),
+            _position("0xd", 5, None, title="Unpriced?"),
+            {"conditionId": "0xe", "size": 1},
+            _position("0xf", 2, 1),
+        ]
+
+        behaviour = _make_behaviour()
+
+        assert behaviour._payouts_by_market(positions) == [
+            [
+                {
+                    "label": "Market",
+                    "value": "Invalid?",
+                    "url": "https://polymarket.com/market/invalid",
+                },
+                {"label": "Amount", "value": "$7.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "Won?"},
+                {"label": "Amount", "value": "$3.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "0xf"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        ]
+        warnings = [c.args[0] for c in behaviour.context.logger.warning.call_args_list]
+        assert len(warnings) == 2
+        assert "'0xd'" in warnings[0]
+        assert "'0xe'" in warnings[1]
+
+    def test_builder_records_only_redeemed_positions(self) -> None:
+        """The builder path writes a card for each position whose redeem succeeded."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        # The connection sends the relayer's transaction list, an error dict on a
+        # failed redeem, or null when it gives no response at all.
+        results = {
+            "0xok": [{"transactionHash": "0x1"}],
+            "0xfail": {"error": "Relayer client not initialized."},
+            "0xnone": None,
+        }
+
+        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
+            yield
+            return results[condition_id]
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        positions = [
+            _position("0xok", 2, 1, title="Paid?"),
+            _position("0xfail", 2, 1, title="Failed?"),
+            _position("0xnone", 2, 1, title="No response?"),
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+            _run(behaviour._redeem_via_builder(positions))
+
+        behaviour._record_feed_event.assert_called_once_with(  # type: ignore[attr-defined]
+            EventType.PAYOUT_COLLECTED,
+            [
+                {"label": "Market", "value": "Paid?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        )
+
+    def test_safe_tx_keeps_the_cards_for_its_settlement(self) -> None:
+        """The Safe tx path keeps the cards on shared state instead of writing them."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+        positions = [
+            {"conditionId": None, "outcomeIndex": 0, "size": 9, "curPrice": 1},
+            _position("0x" + "ab" * 32, 2, 1, title="Paid?"),
+        ]
+
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx,
+        ):
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x" + "12" * 20,
+                polymarket_ctf_collateral_adapter_address="0x" + "34" * 20,
+            )
+            mock_tx.return_value = "0xfinalHash"
+            assert _run(behaviour._prepare_redeem_tx(positions)) == "0xfinalHash"
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_payouts_to_record == [
+            [
+                {"label": "Market", "value": "Paid?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ]
+        ]
 
 
 class TestRedeemViaBuilder:

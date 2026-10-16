@@ -20,11 +20,20 @@
 """Tests for ``OmenWithdrawalStore`` — the shared chatui JSON-store I/O."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+
+from packages.valory.skills.decision_maker_abci.behaviours.omen_withdraw import (
+    OmenWithdrawBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.omen_withdrawal_store import (
     OmenWithdrawalStore,
     TOP_LEVEL_ERROR_TOKEN_ID,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.post_omen_withdraw import (
+    PostOmenWithdrawBehaviour,
 )
 from packages.valory.skills.market_manager_abci.graph_tooling.utils import (
     WithdrawablePosition,
@@ -283,3 +292,55 @@ class TestWriteFailureLogsAndContinues:
         # Should not raise.
         store.write({"x": 1})
         store._logger.error.assert_called_once()  # type: ignore[attr-defined]
+
+
+class TestOnFinished:
+    """The sweep's result handed to ``on_finished`` when it ends."""
+
+    def test_terminal_state_reports_the_sweep(self, tmp_path: Path) -> None:
+        """Complete or errored hands over the fills, their xDAI and the failed positions."""
+        on_finished = MagicMock()
+        store = OmenWithdrawalStore(
+            tmp_path, "chatui_param_store.json", MagicMock(), on_finished
+        )
+        store.write(
+            {
+                "withdrawal_fills": [
+                    {"return_amount": 1.5},
+                    {"return_amount": 0.25},
+                ],
+                "withdrawal_errors": [
+                    {"fpmm": "0xa", "reason": "dust"},
+                    {"token_id": "", "reason": "fetch failed"},
+                ],
+            }
+        )
+
+        store.set_state("selling")
+        on_finished.assert_not_called()
+        store.set_state("errored")
+        on_finished.assert_called_once_with(2, 1.75, 1, False)
+
+    def test_complete_with_nothing_sold(self, tmp_path: Path) -> None:
+        """A sweep with nothing to sell still reports, with zeros."""
+        on_finished = MagicMock()
+        store = OmenWithdrawalStore(
+            tmp_path, "chatui_param_store.json", MagicMock(), on_finished
+        )
+        store.set_state("complete")
+        on_finished.assert_called_once_with(0, 0, 0, True)
+
+
+@pytest.mark.parametrize(
+    "behaviour_cls", [OmenWithdrawBehaviour, PostOmenWithdrawBehaviour]
+)
+def test_behaviours_report_the_sweep_to_the_feed(
+    behaviour_cls: type, tmp_path: Path
+) -> None:
+    """Both Omen sweep behaviours hand the sweep's end to the feed writer."""
+    behaviour: Any = object.__new__(behaviour_cls)
+    context = MagicMock()
+    context.params.store_path = str(tmp_path)
+    behaviour.__dict__["_context"] = context
+
+    assert behaviour._store._on_finished == behaviour._record_positions_sold
