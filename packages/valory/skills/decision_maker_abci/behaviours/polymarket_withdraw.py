@@ -764,6 +764,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
                 len(
                     {error.get("token_id") for error in errors if error.get("token_id")}
                 ),
+                state == WITHDRAWAL_STATE_COMPLETE,
             )
 
     def _reset_session_records(self) -> None:

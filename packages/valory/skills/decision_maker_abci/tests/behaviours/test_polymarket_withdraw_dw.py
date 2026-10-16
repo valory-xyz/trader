@@ -250,4 +250,4 @@ class TestPositionsSoldOnFinish:
         behaviour._set_state("selling")
         behaviour._record_positions_sold.assert_not_called()  # type: ignore[attr-defined]
         behaviour._set_state("complete")
-        behaviour._record_positions_sold.assert_called_once_with(2, 5.5, 1)  # type: ignore[attr-defined]
+        behaviour._record_positions_sold.assert_called_once_with(2, 5.5, 1, True)  # type: ignore[attr-defined]

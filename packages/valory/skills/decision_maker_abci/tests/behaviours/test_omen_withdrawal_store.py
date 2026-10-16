@@ -319,7 +319,7 @@ class TestOnFinished:
         store.set_state("selling")
         on_finished.assert_not_called()
         store.set_state("errored")
-        on_finished.assert_called_once_with(2, 1.75, 1)
+        on_finished.assert_called_once_with(2, 1.75, 1, False)
 
     def test_complete_with_nothing_sold(self, tmp_path: Path) -> None:
         """A sweep with nothing to sell still reports, with zeros."""
@@ -328,7 +328,7 @@ class TestOnFinished:
             tmp_path, "chatui_param_store.json", MagicMock(), on_finished
         )
         store.set_state("complete")
-        on_finished.assert_called_once_with(0, 0, 0)
+        on_finished.assert_called_once_with(0, 0, 0, True)
 
 
 @pytest.mark.parametrize(

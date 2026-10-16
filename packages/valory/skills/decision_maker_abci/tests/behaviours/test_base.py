@@ -1244,15 +1244,17 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         assert not (tmp_path / FEED_FILE).exists()
 
     def test_positions_sold_is_written_once(self, tmp_path: Path) -> None:
-        """Only the first sweep of a withdrawal is its ``Sold open positions`` card."""
+        """The first sweep that sold something or completed is the withdrawal's card."""
         behaviour = self.behaviour
         behaviour.params.store_path = tmp_path
         behaviour.params.is_running_on_polymarket = True
         behaviour.benchmarking_mode.enabled = False
         behaviour.context.state.positions_sold_recorded = False
 
-        behaviour._record_positions_sold(3, 12.5, 1)
-        behaviour._record_positions_sold(0, 0, 1)
+        # An errored sweep that sold nothing leaves the card to its retry.
+        behaviour._record_positions_sold(0, 0, 4, False)
+        behaviour._record_positions_sold(3, 12.5, 1, False)
+        behaviour._record_positions_sold(1, 2.0, 0, True)
 
         lines = (tmp_path / FEED_FILE).read_text().splitlines()
         assert len(lines) == 1

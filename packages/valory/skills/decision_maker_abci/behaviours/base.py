@@ -527,14 +527,21 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             [self._market_field(bet), feed_field("Reason", reason)],
         )
 
-    def _record_positions_sold(self, sold: int, received: float, unsold: int) -> None:
+    def _record_positions_sold(
+        self, sold: int, received: float, unsold: int, complete: bool
+    ) -> None:
         """Tell the feed how the withdrawal's sell-off went, once per withdrawal.
 
         :param sold: the positions sold.
         :param received: what they sold for, in whole collateral tokens.
         :param unsold: the positions that could not be sold.
+        :param complete: whether the sweep ended without errors.
         """
         if self.shared_state.positions_sold_recorded:
+            return
+        if not complete and sold == 0:
+            # An errored sweep that sold nothing is retried the next cycle,
+            # so leave the card to the sweep that does the selling.
             return
         self.shared_state.positions_sold_recorded = True
         self._record_feed_event(
