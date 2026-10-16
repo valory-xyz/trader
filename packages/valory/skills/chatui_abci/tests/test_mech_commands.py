@@ -86,6 +86,10 @@ def test_remove_pin_and_unpin_read_the_lowercase_address(text: str, verb: Verb) 
         f"I accept 0.01 xDAI for {MECH}",
         f"I accept 0.01 xDAI per request for {MECH} and {OTHER}",
         f"I accept 0.01 xDAI per request for {MECH}, thanks",
+        "list",
+        "list approved now",
+        f"list approved {MECH}",
+        "please list approved",
     ],
 )
 def test_anything_else_is_not_a_command(text: str) -> None:
@@ -116,3 +120,11 @@ def test_addresses_in_are_distinct_lowercase_and_in_order(
 def test_normalise(text: str, expected: Optional[str]) -> None:
     """Lowercase with single spaces, so two renderings of one price compare equal."""
     assert normalise(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text", ["list approved", "List Approved Mechs.", "  list   approved  "]
+)
+def test_list_approved_is_a_command(text: str) -> None:
+    """The list command names no mech."""
+    assert parse_command(text) == Command(Verb.LIST, "")
