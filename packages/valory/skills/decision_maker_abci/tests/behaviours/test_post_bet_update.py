@@ -29,8 +29,12 @@ dispatches to either `update_bet_transaction_information` or
 to advance the round.
 """
 
+import json
+from pathlib import Path
+from typing import Generator
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from packages.valory.skills.agent_performance_summary_abci.feed import FEED_FILE
 from packages.valory.skills.decision_maker_abci.behaviours.post_bet_update import (
     PostBetUpdateBehaviour,
 )
@@ -349,3 +353,65 @@ class TestPostBetUpdateBehaviour:
         update_sell_calls.assert_not_called()
         assert len(payloads_sent) == 1
         assert isinstance(payloads_sent[0], PostBetUpdatePayload)
+
+    def test_retry_with_same_tx_hash_writes_one_trade_event(
+        self, tmp_path: Path
+    ) -> None:
+        """A retried round for the same settled tx writes ``Placed a trade`` once."""
+        behaviour = _make_behaviour()
+        context = behaviour.context
+        context.state.post_bet_update_applied_tx_hash = None
+        context.params.store_path = tmp_path
+        context.params.is_running_on_polymarket = False
+        context.benchmarking_mode.enabled = False
+
+        def mock_finish(_payload: PostBetUpdatePayload) -> Generator:
+            yield
+
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
+        behaviour._update_bet_strategy = MagicMock()  # type: ignore[method-assign]
+        behaviour.convert_to_native = lambda amount: amount / 10**18  # type: ignore[method-assign]
+
+        bet = MagicMock(id="0xmarket", title="Will it rain?", slug=None)
+        bet.potential_net_profit = 10**18
+        bet.get_outcome.return_value = "Yes"
+        mock_synced = MagicMock(
+            tx_submitter=BetPlacementRound.auto_round_id(),
+            did_transact=True,
+            final_tx_hash="0xdeadbeef",
+            bet_amount=2 * 10**18,
+            vote=0,
+            confidence=0.93,
+        )
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour), "sampled_bet", new_callable=PropertyMock
+            ) as mock_bet,
+            patch.object(
+                type(behaviour), "synced_timestamp", new_callable=PropertyMock
+            ) as mock_ts,
+        ):
+            mock_sd.return_value = mock_synced
+            mock_bet.return_value = bet
+            mock_ts.return_value = 1700000000
+            _exhaust(behaviour.async_act())
+            _exhaust(behaviour.async_act())
+
+        lines = (tmp_path / FEED_FILE).read_text().splitlines()
+        assert len(lines) == 1
+        assert json.loads(lines[0])["fields"] == [
+            {
+                "label": "Market",
+                "value": "Will it rain?",
+                "url": "https://predict.olas.network/questions/0xmarket",
+            },
+            {"label": "Prediction", "value": "Yes"},
+            {"label": "Amount", "value": "2.00 xDAI"},
+            {"label": "AI confidence", "value": "93%"},
+            {"label": "Potential payout", "value": "3.00 xDAI"},
+        ]

@@ -49,6 +49,19 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutEx
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
     record_trade,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    Field,
+)
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    field as feed_field,
+)
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    format_amount,
+    format_percent,
+    market_url,
+    record_event,
+)
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
@@ -97,6 +110,13 @@ NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
+
+# Why the agent skipped a market, as the feed shows it.
+SKIP_NO_MECH_RESPONSE = "The AI mech gave no usable prediction"
+SKIP_NO_TRADE = "The trading strategy found no trade worth placing"
+SKIP_SPREAD = "The market's price spread is outside the allowed range"
+SKIP_REBET_NOT_ALLOWED = "The conditions to trade this market again are not met"
+SKIP_ORDER_IMPOSSIBLE = "The order can't be placed on this market"
 
 
 class TradingOperation(str, Enum):
@@ -477,10 +497,56 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     f"Could not record trade for bet {sampled_bet.id}, leaving the "
                     f"trades ledger untouched: {e}"
                 )
+            self._record_trade_placed(sampled_bet)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
+
+    def _market_field(self, bet: Bet) -> Field:
+        """Build an event card's market field, linked to the market's page."""
+        url = market_url(self.params.is_running_on_polymarket, bet.id, bet.slug)
+        return feed_field("Market", bet.title, url)
+
+    def _format_collateral(self, amount: int) -> str:
+        """Format an amount of the collateral token, given in its smallest unit."""
+        return format_amount(
+            self.convert_to_native(amount), self.params.is_running_on_polymarket
+        )
+
+    def _record_feed_event(self, event_type: EventType, fields: List[Field]) -> None:
+        """Append an event to the feed; benchmarking runs trade nothing real."""
+        if self.benchmarking_mode.enabled:
+            return
+        record_event(self.params.store_path, event_type, fields, self.context.logger)
+
+    def _record_market_skipped(self, bet: Bet, reason: str) -> None:
+        """Tell the feed that the agent decided not to trade a market, and why."""
+        self._record_feed_event(
+            EventType.MARKET_SKIPPED,
+            [self._market_field(bet), feed_field("Reason", reason)],
+        )
+
+    def _record_trade_placed(self, bet: Bet) -> None:
+        """Tell the feed about the trade just placed on the bet's market."""
+        amount = self.synchronized_data.bet_amount
+        vote = self.synchronized_data.vote
+        prediction = bet.get_outcome(vote) if vote is not None else "Unknown"
+        self._record_feed_event(
+            EventType.TRADE_PLACED,
+            [
+                self._market_field(bet),
+                feed_field("Prediction", prediction),
+                feed_field("Amount", self._format_collateral(amount)),
+                feed_field(
+                    "AI confidence", format_percent(self.synchronized_data.confidence)
+                ),
+                feed_field(
+                    "Potential payout",
+                    self._format_collateral(amount + bet.potential_net_profit),
+                ),
+            ],
+        )
 
     def update_sell_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
