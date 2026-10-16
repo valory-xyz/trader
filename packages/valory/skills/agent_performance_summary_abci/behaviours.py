@@ -2976,18 +2976,8 @@ class FetchPerformanceSummaryBehaviour(
         for item in resolved:
             try:
                 market = item["market"]
-                created_at = item.get("created_at")
-                opened = (
-                    format_date(
-                        int(
-                            datetime.fromisoformat(
-                                created_at.replace("Z", "+00:00")
-                            ).timestamp()
-                        )
-                    )
-                    if created_at
-                    else "Unknown"
-                )
+                opened_ts = _parse_iso_timestamp(item.get("created_at"))
+                opened = format_date(opened_ts) if opened_ts is not None else "Unknown"
                 url = (
                     market_url(True, None, slugs.get(market.get("condition_id")))
                     if is_polymarket

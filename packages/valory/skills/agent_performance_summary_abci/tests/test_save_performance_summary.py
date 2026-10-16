@@ -737,6 +737,20 @@ class TestRecordResolvedMarkets:
             {"label": "Opened", "value": "Unknown"},
         ]
 
+    def test_malformed_opening_time_reads_unknown(self, tmp_path: Path) -> None:
+        """A creation time that does not parse still writes the card."""
+        behaviour = self._behaviour(tmp_path, is_polymarket=False)
+
+        behaviour._record_resolved_markets(
+            _history(_prediction("pending", created_at="yesterday")),
+            _history(_prediction("won", created_at="yesterday")),
+        )
+
+        assert self._events(tmp_path)[0]["fields"][-1] == {
+            "label": "Opened",
+            "value": "Unknown",
+        }
+
     def test_malformed_prediction_is_skipped(self, tmp_path: Path) -> None:
         """A malformed item is logged and the others are still written."""
         behaviour = self._behaviour(tmp_path, is_polymarket=False)
