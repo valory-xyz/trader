@@ -112,16 +112,21 @@ def market_url(
     return f"{PREDICT_BASE_URL}/{market_id}" if market_id else None
 
 
-def format_amount(amount: float, is_polymarket: bool) -> str:
+def format_amount(amount: float, is_polymarket: bool, max_decimals: int = 2) -> str:
     """Format an amount in the agent's own token: pUSD on Polymarket, xDAI on Omen.
 
     :param amount: the amount, in whole tokens.
     :param is_polymarket: whether the agent trades on Polymarket.
+    :param max_decimals: the most decimals to show; zeros past the second are dropped.
     :return: the display text.
     """
+    text = f"{amount:,.{max_decimals}f}"
+    if max_decimals > 2:
+        whole, _, fraction = text.partition(".")
+        text = f"{whole}.{fraction.rstrip('0').ljust(2, '0')}"
     if is_polymarket:
-        return f"${amount:,.2f} pUSD"
-    return f"{amount:,.2f} xDAI"
+        return f"${text} pUSD"
+    return f"{text} xDAI"
 
 
 def format_percent(fraction: float) -> str:

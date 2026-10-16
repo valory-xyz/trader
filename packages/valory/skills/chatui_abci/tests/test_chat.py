@@ -710,6 +710,19 @@ class TestDescribeChanges:
             ),
         ]
 
+    def test_trade_sizes_are_compared_in_base_units(self, tmp_path: Path) -> None:
+        """Two sizes that round to the same cents are a change, shown apart."""
+        chat = _Chat(
+            tmp_path,
+            ChatuiConfig(trading_strategy="fixed_bet", fixed_bet_size=3 * 10**16),
+        )
+
+        changes = chat.handler._describe_changes({"fixed_bet_size": 0.025})
+
+        assert changes == [
+            ConfigChange("Fixed trade size", "0.03 xDAI", "0.025 xDAI"),
+        ]
+
 
 class TestRecentActivity:
     """The feed entries the chat prompt shows."""

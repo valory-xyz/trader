@@ -248,6 +248,20 @@ class TestFormatting:
         """Amounts are in the agent's own token."""
         assert format_amount(amount, is_polymarket) == expected
 
+    @pytest.mark.parametrize(
+        "amount, expected",
+        [
+            (0.025, "0.025 xDAI"),
+            (1.5, "1.50 xDAI"),
+            (1234.000001, "1,234.000001 xDAI"),
+        ],
+    )
+    def test_format_amount_with_more_decimals(
+        self, amount: float, expected: str
+    ) -> None:
+        """Past two decimals, only the significant ones are shown."""
+        assert format_amount(amount, False, max_decimals=6) == expected
+
     def test_format_percent(self) -> None:
         """A fraction is a whole percentage."""
         assert format_percent(0.926) == "93%"

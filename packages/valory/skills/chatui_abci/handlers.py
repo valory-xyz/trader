@@ -207,6 +207,9 @@ SETTING_LABELS = {
 ALL_TOOLS = "All tools"
 ALL_MECHS = "All mechs"
 DEFAULT_VALUE = "Default"
+AMOUNT_SETTINGS = ("fixed_bet_size", "max_bet_size")
+# Enough to tell apart the trade sizes the bounds allow, without showing float noise.
+SETTING_AMOUNT_DECIMALS = 6
 
 
 # What parsing a model reply can raise. ``JSONDecodeError`` is a ``ValueError``
@@ -822,11 +825,13 @@ class HttpHandler(BaseHttpHandler):
             if base_units is None:
                 return DEFAULT_VALUE
             return format_amount(
-                base_units / 10**decimals, self.context.params.is_running_on_polymarket
+                base_units / 10**decimals,
+                self.context.params.is_running_on_polymarket,
+                SETTING_AMOUNT_DECIMALS,
             )
 
-        def amount_from_ui_value(value: Optional[float]) -> str:
-            return amount(None if value is None else int(value * 10**decimals))
+        def base_units(value: Optional[float]) -> Optional[int]:
+            return None if value is None else int(value * 10**decimals)
 
         def goal(value: Optional[int]) -> str:
             goal_in_force = effective_activity_goal(value, default_goal)
@@ -842,27 +847,31 @@ class HttpHandler(BaseHttpHandler):
         def mechs(value: Optional[List[str]]) -> str:
             return ", ".join(value or []) or ALL_MECHS
 
-        current = {
+        current: Dict[str, Any] = {
             TRADING_STRATEGY_FIELD: strategy(config.trading_strategy),
             ALLOWED_TOOLS_FIELD: tools(config.allowed_tools),
             SELECTED_MECHS_FIELD: mechs(config.selected_mechs),
-            "fixed_bet_size": amount(config.fixed_bet_size),
-            "max_bet_size": amount(config.max_bet_size),
+            "fixed_bet_size": config.fixed_bet_size,
+            "max_bet_size": config.max_bet_size,
             ACTIVITY_GOAL_FIELD: goal(config.activity_goal),
         }
-        new = {
+        new: Dict[str, Callable[[Any], Any]] = {
             TRADING_STRATEGY_FIELD: strategy,
             ALLOWED_TOOLS_FIELD: tools,
             SELECTED_MECHS_FIELD: mechs,
-            "fixed_bet_size": amount_from_ui_value,
-            "max_bet_size": amount_from_ui_value,
+            "fixed_bet_size": base_units,
+            "max_bet_size": base_units,
             ACTIVITY_GOAL_FIELD: goal,
         }
         changes = []
         for setting, value in updated_params.items():
             before, after = current[setting], new[setting](value)
-            if before != after:
-                changes.append(ConfigChange(SETTING_LABELS[setting], before, after))
+            if before == after:
+                continue
+            # Amounts are compared in base units: two sizes can share a display.
+            if setting in AMOUNT_SETTINGS:
+                before, after = amount(before), amount(after)
+            changes.append(ConfigChange(SETTING_LABELS[setting], before, after))
         return changes
 
     def _send_mech_reply(
