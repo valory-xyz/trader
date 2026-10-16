@@ -828,22 +828,27 @@ class HttpHandler(BaseHttpHandler):
             suffix = " (default)" if value is None else ""
             return f"{goal_in_force} trades per day{suffix}"
 
+        def strategy(value: Any) -> str:
+            return self._get_ui_trading_strategy(value).value.capitalize()
+
+        def tools(value: Optional[List[str]]) -> str:
+            return ", ".join(value or []) or ALL_TOOLS
+
+        def mechs(value: Optional[List[str]]) -> str:
+            return ", ".join(value or []) or ALL_MECHS
+
         current = {
-            TRADING_STRATEGY_FIELD: self._get_ui_trading_strategy(
-                config.trading_strategy
-            ).value.capitalize(),
-            ALLOWED_TOOLS_FIELD: ", ".join(config.allowed_tools or []) or ALL_TOOLS,
-            SELECTED_MECHS_FIELD: ", ".join(config.selected_mechs or []) or ALL_MECHS,
+            TRADING_STRATEGY_FIELD: strategy(config.trading_strategy),
+            ALLOWED_TOOLS_FIELD: tools(config.allowed_tools),
+            SELECTED_MECHS_FIELD: mechs(config.selected_mechs),
             "fixed_bet_size": amount(config.fixed_bet_size),
             "max_bet_size": amount(config.max_bet_size),
             ACTIVITY_GOAL_FIELD: goal(config.activity_goal),
         }
         new = {
-            TRADING_STRATEGY_FIELD: lambda value: self._get_ui_trading_strategy(
-                value
-            ).value.capitalize(),
-            ALLOWED_TOOLS_FIELD: lambda value: ", ".join(value or []) or ALL_TOOLS,
-            SELECTED_MECHS_FIELD: lambda value: ", ".join(value or []) or ALL_MECHS,
+            TRADING_STRATEGY_FIELD: strategy,
+            ALLOWED_TOOLS_FIELD: tools,
+            SELECTED_MECHS_FIELD: mechs,
             "fixed_bet_size": amount_from_ui_value,
             "max_bet_size": amount_from_ui_value,
             ACTIVITY_GOAL_FIELD: goal,
