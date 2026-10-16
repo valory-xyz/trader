@@ -56,12 +56,16 @@ from packages.valory.skills.abstract_round_abci.models import Requests as BaseRe
 from packages.valory.skills.abstract_round_abci.models import (
     TypeCheckMixin,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import Field
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AgentPerformanceSummaryParams,
 )
 from packages.valory.skills.chatui_abci.models import SharedState as ChatUISharedState
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
-from packages.valory.skills.decision_maker_abci.redeem_info import Trade
+from packages.valory.skills.decision_maker_abci.redeem_info import (
+    INVALID_MARKET_ANSWER,
+    Trade,
+)
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.market_manager_abci.bets import Bet
 from packages.valory.skills.market_manager_abci.models import (
@@ -177,6 +181,22 @@ class RedeemingProgress:
         return self.claim_started and self.claim_from_block == self.claim_to_block
 
     @property
+    def claiming_payouts(self) -> List[Tuple[str, int]]:
+        """Get the question and the payout, in wei, of each market being claimed."""
+        claiming = set(self.claiming_condition_ids)
+        payouts = []
+        for trade in self.trades:
+            condition = trade.fpmm.condition
+            if condition.id.to_0x_hex() not in claiming:
+                continue
+            amount = self.claimable_amounts.get(condition.id, 0)
+            # An invalid market pays each outcome an equal share.
+            if trade.fpmm.current_answer_index == INVALID_MARKET_ANSWER:
+                amount //= condition.outcomeSlotCount
+            payouts.append((trade.fpmm.title, amount))
+        return payouts
+
+    @property
     def claim_params(self) -> Optional[ClaimParamsType]:
         """The claim parameters, prepared for the `claimWinnings` call."""
         history_hashes = []
@@ -223,6 +243,8 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # there would ``AttributeError`` on the live instance. ``None`` = not yet
         # detected; set once per process (Pearl restarts on a contract switch).
         self.staking_regime_is_new: Optional[bool] = None
+        # The feed cards of a Polymarket redeem tx, written once it settles.
+        self.polymarket_payouts_to_record: List[List[Field]] = []
         self.strategy_to_filehash: Dict[str, str] = {}
         self.strategies_executables: Dict[str, Tuple[str, str]] = {}
         self.in_flight_req: bool = False
