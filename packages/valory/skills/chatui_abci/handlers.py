@@ -532,13 +532,17 @@ class HttpHandler(BaseHttpHandler):
         self.shared_state.finish_answering(turn.client_id)
         body = data if isinstance(data, dict) else {}
         if status_code == HTTPStatus.OK:
+            store_path = self.context.params.store_path
             try:
-                reply = append_message(
-                    self.context.params.store_path,
-                    ROLE_AGENT,
-                    str(body.get(LLM_MESSAGE_FIELD, "")),
-                    turn.client_id,
-                )
+                # A resend let through by the answering timeout can finish second.
+                _, reply = find_exchange(store_path, turn.client_id)
+                if reply is None:
+                    reply = append_message(
+                        store_path,
+                        ROLE_AGENT,
+                        str(body.get(LLM_MESSAGE_FIELD, "")),
+                        turn.client_id,
+                    )
             except OSError as e:
                 self.context.logger.error(f"Could not write the chat reply: {e}")
                 status_code = HTTPStatus.INTERNAL_SERVER_ERROR

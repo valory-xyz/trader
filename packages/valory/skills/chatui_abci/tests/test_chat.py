@@ -243,6 +243,20 @@ class TestRoute:
 
         assert len(chat.llm_calls) == 2
 
+    def test_a_stuck_answer_and_its_resend_write_one_reply(self, chat: _Chat) -> None:
+        """When both answers come back, the second returns the reply already written."""
+        first = chat.send()
+        chat.handler.shared_state._answering_since[CLIENT_ID] -= 10_000
+        resend = chat.send()
+
+        chat.reply("First.", call=0)
+        chat.reply("Second.", call=1)
+
+        message, reply = chat.feed()
+        assert reply["text"] == "First."
+        assert chat.response(first) == (200, {"message": message, "reply": reply})
+        assert chat.response(resend) == (200, {"message": message, "reply": reply})
+
     def test_resend_after_a_failure_is_answered_without_a_second_line(
         self, chat: _Chat
     ) -> None:
