@@ -39,7 +39,6 @@ from packages.valory.skills.decision_maker_abci.payloads import DecisionReceiveP
 from packages.valory.skills.decision_maker_abci.states.decision_receive import (
     DecisionReceiveRound,
 )
-from packages.valory.skills.decision_maker_abci.utils.general import loads_bounded
 from packages.valory.skills.market_manager_abci.bets import (
     BINARY_N_SLOTS,
     CONFIDENCE_FIELD,
@@ -52,6 +51,7 @@ from packages.valory.skills.market_manager_abci.bets import (
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
 )
+from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","

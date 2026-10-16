@@ -45,10 +45,10 @@ from packages.valory.skills.decision_maker_abci.policy import (
     AccuracyInfo,
     EGreedyPolicy,
 )
-from packages.valory.skills.decision_maker_abci.utils.general import loads_bounded
 from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
     is_prediction_tool,
 )
+from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
