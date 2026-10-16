@@ -1076,7 +1076,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.id = "test_bet"
         mock_bet.title = "Will it rain?"
         mock_bet.slug = None
-        mock_bet.potential_net_profit = 500
+        mock_bet.outcomeTokenMarginalPrices = [0.4, 0.6]
         mock_bet.get_outcome.return_value = "Yes"
         behaviour.params.is_running_on_polymarket = False
 
@@ -1201,7 +1201,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
             {"label": "Prediction", "value": "Yes"},
             {"label": "Amount", "value": "1.00 xDAI"},
             {"label": "AI confidence", "value": "0%"},
-            {"label": "Potential payout", "value": "1.50 xDAI"},
+            {"label": "Potential payout", "value": "2.50 xDAI"},
         ]
 
     def test_trade_placed_on_polymarket_links_the_slug(self, tmp_path: Path) -> None:
@@ -1211,8 +1211,9 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.params.is_running_on_polymarket = True
         behaviour.benchmarking_mode.enabled = False
         bet = MagicMock(id="123", title="Will it snow?", slug="will-it-snow")
-        bet.potential_net_profit = 1_000_000
-        db_values = {"bet_amount": 2_000_000, "vote": None, "confidence": 0.93}
+        bet.outcomeTokenMarginalPrices = [0.6, 0.4]
+        bet.get_outcome.return_value = "No"
+        db_values = {"bet_amount": 2_000_000, "vote": 1, "confidence": 0.93}
         behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign, assignment]
 
         with mock.patch.object(
@@ -1227,11 +1228,43 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 "value": "Will it snow?",
                 "url": "https://polymarket.com/market/will-it-snow",
             },
-            {"label": "Prediction", "value": "Unknown"},
+            {"label": "Prediction", "value": "No"},
             {"label": "Amount", "value": "$2.00 pUSD"},
             {"label": "AI confidence", "value": "93%"},
-            {"label": "Potential payout", "value": "$3.00 pUSD"},
+            {"label": "Potential payout", "value": "$5.00 pUSD"},
         ]
+
+    @pytest.mark.parametrize(
+        "vote, prices",
+        [
+            (None, [0.5, 0.5]),
+            (2, [0.5, 0.5]),
+            (0, [0.0, 1.0]),
+            (0, [float("nan"), 0.5]),
+            (0, []),
+        ],
+    )
+    def test_trade_placed_without_a_usable_price_has_unknown_payout(
+        self, tmp_path: Path, vote: Optional[int], prices: List[float]
+    ) -> None:
+        """No vote, or no positive price for it, leaves the payout unknown."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        bet = MagicMock(id="123", title="Will it snow?", slug="will-it-snow")
+        bet.outcomeTokenMarginalPrices = prices
+        bet.get_outcome.return_value = "Yes"
+        db_values = {"bet_amount": 2_000_000, "vote": vote, "confidence": 0.93}
+        behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign, assignment]
+
+        with mock.patch.object(
+            behaviour, "convert_to_native", side_effect=lambda amount: amount / 10**6
+        ):
+            behaviour._record_trade_placed(bet)
+
+        entry = json.loads((tmp_path / FEED_FILE).read_text())
+        assert entry["fields"][-1] == {"label": "Potential payout", "value": "Unknown"}
 
     def test_benchmarking_writes_no_feed_event(self, tmp_path: Path) -> None:
         """A benchmarking run trades nothing real, so its skips stay out of the feed."""

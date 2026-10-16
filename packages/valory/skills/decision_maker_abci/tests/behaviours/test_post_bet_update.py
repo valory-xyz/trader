@@ -374,7 +374,7 @@ class TestPostBetUpdateBehaviour:
         behaviour.convert_to_native = lambda amount: amount / 10**18  # type: ignore[method-assign]
 
         bet = MagicMock(id="0xmarket", title="Will it rain?", slug=None)
-        bet.potential_net_profit = 10**18
+        bet.outcomeTokenMarginalPrices = [0.8, 0.2]
         bet.get_outcome.return_value = "Yes"
         mock_synced = MagicMock(
             tx_submitter=BetPlacementRound.auto_round_id(),
@@ -413,5 +413,5 @@ class TestPostBetUpdateBehaviour:
             {"label": "Prediction", "value": "Yes"},
             {"label": "Amount", "value": "2.00 xDAI"},
             {"label": "AI confidence", "value": "93%"},
-            {"label": "Potential payout", "value": "3.00 xDAI"},
+            {"label": "Potential payout", "value": "2.50 xDAI"},
         ]

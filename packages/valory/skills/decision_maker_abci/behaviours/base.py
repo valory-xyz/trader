@@ -570,12 +570,17 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 feed_field(
                     "AI confidence", format_percent(self.synchronized_data.confidence)
                 ),
-                feed_field(
-                    "Potential payout",
-                    self._format_collateral(amount + bet.potential_net_profit),
-                ),
+                feed_field("Potential payout", self._potential_payout(bet, amount, vote)),
             ],
         )
+
+    def _potential_payout(self, bet: Bet, amount: int, vote: Optional[int]) -> str:
+        """Format what the trade pays if its prediction is right, at the market price."""
+        prices = bet.outcomeTokenMarginalPrices
+        if vote is None or not 0 <= vote < len(prices) or not prices[vote] > 0:
+            return "Unknown"
+        # Each winning share pays one collateral token.
+        return self._format_collateral(int(amount / prices[vote]))
 
     def update_sell_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
