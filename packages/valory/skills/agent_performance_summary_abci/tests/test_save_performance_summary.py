@@ -19,13 +19,18 @@
 
 """Tests for _save_agent_performance_summary preserving data on API failures."""
 
-from typing import Any, List
+import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock
+
+import pytest
 
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     FetchPerformanceSummaryBehaviour,
     NA,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import FEED_FILE
 from packages.valory.skills.agent_performance_summary_abci.models import (
     Achievements,
     ActivityGoal,
@@ -603,3 +608,167 @@ class TestSaveAgentPerformanceSummary:
 
         saved = behaviour.shared_state.overwrite_performance_summary.call_args[0][0]
         assert saved.timestamp == 1700001000
+
+
+def _prediction(
+    status: str,
+    item_id: str = "bet-1",
+    created_at: Optional[str] = "2026-10-12T09:30:00Z",
+    **market: Any,
+) -> Dict[str, Any]:
+    """Return a prediction history item as the fetchers build it."""
+    return {
+        "id": item_id,
+        "market": {"id": "m-1", "title": "Will it rain?", **market},
+        "prediction_side": "yes",
+        "bet_amount": 2.5,
+        "status": status,
+        "created_at": created_at,
+    }
+
+
+def _history(*items: Dict[str, Any]) -> PredictionHistory:
+    """Return a prediction history holding the items."""
+    return PredictionHistory(
+        total_predictions=len(items), stored_count=len(items), items=list(items)
+    )
+
+
+class TestRecordResolvedMarkets:
+    """``Market resolved`` cards written when a prediction leaves pending."""
+
+    @staticmethod
+    def _behaviour(store_path: Path, is_polymarket: bool) -> _TestableBehaviour:
+        """Return a behaviour writing its feed under ``store_path``."""
+        behaviour = _make_behaviour(AgentPerformanceSummary())
+        behaviour.params = MagicMock(
+            store_path=store_path, is_running_on_polymarket=is_polymarket
+        )
+        return behaviour
+
+    @staticmethod
+    def _events(store_path: Path) -> List[Dict[str, Any]]:
+        """Return the feed's lines."""
+        path = store_path / FEED_FILE
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text().splitlines()]
+
+    @pytest.mark.parametrize("status", ["won", "lost", "invalid"])
+    def test_pending_to_resolved_writes_one_card(
+        self, tmp_path: Path, status: str
+    ) -> None:
+        """A prediction that resolves gets one card with its fields, in order."""
+        behaviour = self._behaviour(tmp_path, is_polymarket=False)
+        url = "https://predict.olas.network/questions/m-1"
+
+        behaviour._record_resolved_markets(
+            _history(_prediction("pending", external_url=url)),
+            _history(_prediction(status, external_url=url)),
+        )
+
+        events = self._events(tmp_path)
+        assert len(events) == 1
+        assert events[0]["type"] == "market_resolved"
+        assert events[0]["fields"] == [
+            {"label": "Market", "value": "Will it rain?", "url": url},
+            {"label": "Result", "value": status.capitalize()},
+            {"label": "Amount traded", "value": "2.50 xDAI"},
+            {"label": "Opened", "value": "12 Oct 2026"},
+        ]
+
+    @pytest.mark.parametrize(
+        "previous, current",
+        [
+            (None, _history(_prediction("won"))),
+            (_history(_prediction("pending")), None),
+            (_history(_prediction("won")), _history(_prediction("won"))),
+            (_history(_prediction("pending")), _history(_prediction("pending"))),
+            (_history(), _history(_prediction("won"))),
+            (_history(_prediction("pending", "a")), _history(_prediction("won", "b"))),
+        ],
+        ids=[
+            "no_previous",
+            "no_current",
+            "already_resolved",
+            "still_pending",
+            "new_prediction",
+            "other_id",
+        ],
+    )
+    def test_no_status_change_writes_nothing(
+        self, tmp_path: Path, previous: Any, current: Any
+    ) -> None:
+        """Only a pending prediction that resolves is a card."""
+        behaviour = self._behaviour(tmp_path, is_polymarket=False)
+
+        behaviour._record_resolved_markets(previous, current)
+
+        assert self._events(tmp_path) == []
+
+    def test_polymarket_links_the_slug_from_the_stored_bets(
+        self, tmp_path: Path
+    ) -> None:
+        """A Polymarket card links the market by the slug of its stored bet."""
+        (tmp_path / "multi_bets.json").write_text(
+            json.dumps(
+                [
+                    "not a bet",
+                    {"condition_id": "0xother", "slug": "other"},
+                    {"condition_id": "0xcond", "slug": "will-it-rain"},
+                ]
+            )
+        )
+        behaviour = self._behaviour(tmp_path, is_polymarket=True)
+
+        behaviour._record_resolved_markets(
+            _history(_prediction("pending", condition_id="0xcond", created_at=None)),
+            _history(_prediction("won", condition_id="0xcond", created_at=None)),
+        )
+
+        assert self._events(tmp_path)[0]["fields"] == [
+            {
+                "label": "Market",
+                "value": "Will it rain?",
+                "url": "https://polymarket.com/market/will-it-rain",
+            },
+            {"label": "Result", "value": "Won"},
+            {"label": "Amount traded", "value": "$2.50 pUSD"},
+            {"label": "Opened", "value": "Unknown"},
+        ]
+
+    def test_malformed_prediction_is_skipped(self, tmp_path: Path) -> None:
+        """A malformed item is logged and the others are still written."""
+        behaviour = self._behaviour(tmp_path, is_polymarket=False)
+        broken = _prediction("won", "broken")
+        del broken["market"]
+
+        behaviour._record_resolved_markets(
+            _history(
+                "not an item",  # type: ignore[arg-type]
+                _prediction("pending", "broken"),
+                _prediction("pending", "ok"),
+            ),
+            _history("not an item", broken, _prediction("lost", "ok")),  # type: ignore[arg-type]
+        )
+
+        events = self._events(tmp_path)
+        assert [e["fields"][1]["value"] for e in events] == ["Lost"]
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_save_writes_the_cards_after_saving(self, tmp_path: Path) -> None:
+        """Saving a refreshed history writes the cards for what resolved."""
+        existing = AgentPerformanceSummary(
+            prediction_history=_history(_prediction("pending"))
+        )
+        behaviour = _make_behaviour(existing)
+        behaviour.params = MagicMock(
+            store_path=tmp_path, is_running_on_polymarket=False
+        )
+
+        behaviour._save_agent_performance_summary(
+            AgentPerformanceSummary(prediction_history=_history(_prediction("won")))
+        )
+
+        behaviour.shared_state.overwrite_performance_summary.assert_called_once()
+        assert [e["type"] for e in self._events(tmp_path)] == ["market_resolved"]
