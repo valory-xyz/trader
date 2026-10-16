@@ -677,9 +677,7 @@ class TestConfirmFlow:
         chat.send("Set my max trade size to 1.5", "c-ask")
         assert "proposal" not in chat.llm_calls[-1][2]
 
-    def test_a_partly_saved_change_records_what_was_saved(
-        self, chat: _Chat
-    ) -> None:
+    def test_a_partly_saved_change_records_what_was_saved(self, chat: _Chat) -> None:
         """Each setting saved before a failed write gets its card and is named."""
         self._propose(chat, {"max_bet_size": 1.5, "activity_goal": 5})
         store = chat.handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
@@ -693,9 +691,7 @@ class TestConfirmFlow:
             "and try again.\nI did change Max trade size from 1.00 xDAI to 1.50 xDAI."
         )
         events = [line for line in chat.feed() if line["kind"] == "event"]
-        assert [event["fields"][0]["value"] for event in events] == [
-            "Max trade size"
-        ]
+        assert [event["fields"][0]["value"] for event in events] == ["Max trade size"]
 
     def test_a_confirmed_change_already_in_place_writes_no_card(
         self, chat: _Chat

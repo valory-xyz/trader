@@ -1560,7 +1560,9 @@ class HttpHandler(BaseHttpHandler):
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
-            writes["fixed_bet_size"] = partial(self._set_chatui_param, "fixed_bet_size", None)
+            writes["fixed_bet_size"] = partial(
+                self._set_chatui_param, "fixed_bet_size", None
+            )
 
         elif updated_fixed_bet_size is not None:
             updated_fixed_bet_size_in_base_units = int(
@@ -1589,7 +1591,9 @@ class HttpHandler(BaseHttpHandler):
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
-            writes["max_bet_size"] = partial(self._set_chatui_param, "max_bet_size", None)
+            writes["max_bet_size"] = partial(
+                self._set_chatui_param, "max_bet_size", None
+            )
         elif updated_max_bet_size is not None:
             updated_max_bet_size_in_base_units = int(
                 updated_max_bet_size * (10**decimals)
@@ -1611,7 +1615,9 @@ class HttpHandler(BaseHttpHandler):
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
-            writes["behavior"] = partial(self.shared_state.update_agent_behavior, behavior)
+            writes["behavior"] = partial(
+                self.shared_state.update_agent_behavior, behavior
+            )
 
         updated_activity_goal: Any = updated_agent_config.get(ACTIVITY_GOAL_FIELD)
         if FieldsThatCanBeRemoved.ACTIVITY_GOAL.value in removed_fields:
