@@ -23,6 +23,7 @@
 import enum
 import json
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Optional, Type
@@ -34,6 +35,7 @@ from packages.valory.skills.abstract_round_abci.models import BaseParams
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
     is_valid_activity_goal,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import FeedEntry
 from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -49,6 +51,8 @@ APPROVED_MECHS_STORE = "approved_mechs.json"
 ADDRESS_PATTERN = re.compile(r"0x[0-9a-f]{40}")
 ACTIVITY_GOAL_FIELD = "activity_goal"
 MAX_MECH_OFFERS = 20
+# A message whose answer never came back stops blocking its resend after this.
+ANSWERING_TIMEOUT_SECONDS = 300
 
 FILE_READ_MODE = "r"
 
@@ -111,6 +115,31 @@ class Offer:
     price_text: str
 
 
+@dataclass(frozen=True)
+class ChatTurn:
+    """A chat message being answered: Pearl's id for it and its line as written."""
+
+    client_id: str
+    message: FeedEntry
+
+
+@dataclass(frozen=True)
+class ConfigChange:
+    """One setting a chat change sets, as the user reads it."""
+
+    setting: str
+    before: str
+    after: str
+
+
+@dataclass(frozen=True)
+class ConfigProposal:
+    """A config change from the chat, kept unapplied until the user confirms it."""
+
+    config: Dict[str, Any]
+    changes: List[ConfigChange]
+
+
 class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
@@ -134,6 +163,31 @@ class SharedState(BaseSharedState):
         # None until the first ToolSelectionRound runs; consumers fall back to
         # the raw `available_mech_tools` synced-data set in that window.
         self.available_prediction_tools: Optional[FrozenSet[str]] = None
+
+        # In memory only, so a restart drops them: the chat requests being
+        # answered by HTTP dialogue, when each client id started being
+        # answered, and the change waiting for the user's confirmation.
+        self.chat_turns: Dict[Any, ChatTurn] = {}
+        self._answering_since: Dict[str, float] = {}
+        self.config_proposal: Optional[ConfigProposal] = None
+
+    def is_answering(self, client_id: str) -> bool:
+        """Return whether the message with this client id is still being answered."""
+        since = self._answering_since.get(client_id)
+        return since is not None and time.time() - since < ANSWERING_TIMEOUT_SECONDS
+
+    def start_answering(self, client_id: str) -> None:
+        """Mark the message with this client id as being answered."""
+        self._answering_since[client_id] = time.time()
+
+    def finish_answering(self, client_id: str) -> None:
+        """Mark the message with this client id as no longer being answered."""
+        self._answering_since.pop(client_id, None)
+
+    def take_config_proposal(self) -> Optional[ConfigProposal]:
+        """Return the change waiting for confirmation and forget it: it gets one reply."""
+        proposal, self.config_proposal = self.config_proposal, None
+        return proposal
 
     def setup(self) -> None:
         """Set up the shared state and apply boot-time withdrawal flag auto-clear.

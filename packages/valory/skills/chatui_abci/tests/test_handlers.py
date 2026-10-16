@@ -150,6 +150,7 @@ def _make_handler(
 
     shared_state = MagicMock()
     shared_state.chatui_config = current_config or ChatuiConfig()
+    shared_state.chat_turns = {}
     rates = dict(approved_rates or {})
     for mech in approved_mechs or []:
         rates.setdefault(mech, NATIVE_RATE)

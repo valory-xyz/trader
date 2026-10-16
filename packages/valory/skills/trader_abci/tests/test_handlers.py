@@ -182,6 +182,27 @@ class TestHttpHandler:
         )
         assert handler == self.handler._handle_get_static_file
 
+    def test_chat_route_resolves_before_static_catch_all(self) -> None:
+        """``POST /api/v1/chat`` reaches the chat, not the static-file catch-all."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/chat", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_chat
+
+    def test_chat_route_is_anchored(self) -> None:
+        """A path merely starting with ``chat`` does not reach the chat."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/api/v1/chatXYZ", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_bad_request
+
+    def test_configure_strategies_route_is_unchanged(self) -> None:
+        """The old chat route still answers through the prompt handler."""
+        handler, _ = self.handler._get_handler(
+            "http://127.0.0.1:8716/configure_strategies", HttpMethod.POST.value
+        )
+        assert handler == self.handler._handle_chatui_prompt
+
     def test_setup_agent_profile_path_gnosis(self) -> None:
         """Test agent_profile_path is set to omenstrat for gnosis."""
         handler = _make_handler(is_polymarket=False)

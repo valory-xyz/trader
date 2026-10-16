@@ -28,7 +28,7 @@ from typing import List
 
 from pydantic import BaseModel
 
-CHATUI_PROMPT = """You are an expert assistant tasked with helping users update an agent's trading configuration.
+_CONFIG_INSTRUCTIONS = """You are an expert assistant tasked with helping users update an agent's trading configuration.
 
 Configuration details:
 - Trading strategy: "{current_trading_strategy}"
@@ -89,7 +89,32 @@ When summarizing your actions, include a field called 'behavior' that describes 
 
 Always refer to actions as a 'trade' when communicating with users; never describe them as a bet.
 
-User prompt: "{user_prompt}"
+"""
+
+_USER_PROMPT = """User prompt: "{user_prompt}"
+"""
+
+CHATUI_PROMPT = _CONFIG_INSTRUCTIONS + _USER_PROMPT
+
+# The chat on the agent's main page: changes are only proposed, and the user's
+# recent activity lets the agent explain what it did.
+CHAT_PROMPT = (
+    _CONFIG_INSTRUCTIONS
+    + """You are chatting with the user on the agent's main page. A configuration change you set is not applied yet: the agent asks the user to confirm it first. So describe any change as a proposal, never as done, and do not ask for the confirmation yourself; the agent adds that question.
+
+The agent's recent activity, oldest first, is below. Use it to answer questions about what the agent did and why, such as its last trade. Do not invent activity that is not listed.
+{recent_activity}
+
+"""
+    + _USER_PROMPT
+)
+
+CONFIRM_PROMPT = """The agent proposed this change to its trading configuration and asked the user to confirm it:
+{proposal}
+
+The user replied: "{user_reply}"
+
+Decide whether the reply confirms this exact change. Set "confirmed" to true only for a clear yes to this change. A refusal, a question, a different request, a different value or anything unclear is false.
 """
 
 
@@ -133,3 +158,14 @@ class ChatUILLMResponse(BaseModel):
 def build_chatui_llm_response_schema() -> dict:
     """Build a schema for the ChatUILLMResponse."""
     return {"class": pickle.dumps(ChatUILLMResponse).hex(), "is_list": False}
+
+
+class ConfirmationResponse(BaseModel):
+    """Whether the user's reply confirms the proposed change."""
+
+    confirmed: bool
+
+
+def build_confirmation_schema() -> dict:
+    """Build a schema for the ConfirmationResponse."""
+    return {"class": pickle.dumps(ConfirmationResponse).hex(), "is_list": False}
