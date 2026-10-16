@@ -788,9 +788,10 @@ class HttpHandler(BaseHttpHandler):
 
     @staticmethod
     def _changes_text(changes: List[ConfigChange]) -> str:
-        """Describe the changes in one sentence fragment."""
+        """Describe the changes in one sentence fragment, escaped for the chat's HTML."""
         return "; ".join(
-            f"{change.setting} from {change.before} to {change.after}"
+            f"{escape(change.setting)} from {escape(change.before)} "
+            f"to {escape(change.after)}"
             for change in changes
         )
 

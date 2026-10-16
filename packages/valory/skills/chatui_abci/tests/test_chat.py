@@ -600,6 +600,25 @@ class TestConfirmFlow:
 
         assert chat.response(dialogue)[0] == 500
 
+    def test_tool_names_are_escaped_in_the_proposal_and_acknowledgement(
+        self, chat: _Chat
+    ) -> None:
+        """A tool name carrying markup reaches the chat escaped, and the card raw."""
+        tool = "<img src=x onerror=alert(1)>"
+        chat.handler.shared_state.available_prediction_tools = frozenset({tool})
+
+        proposed = self._propose(chat, {"allowed_tools": [tool]})
+        confirmed = chat.send("yes", "c-yes")
+        chat.confirm(True)
+
+        escaped = "&lt;img src=x onerror=alert(1)&gt;"
+        for dialogue in (proposed, confirmed):
+            text = chat.response(dialogue)[1]["reply"]["text"]
+            assert tool not in text
+            assert f"to {escaped}" in text
+        events = [line for line in chat.feed() if line["kind"] == "event"]
+        assert events[0]["fields"][-1] == {"label": "After", "value": tool}
+
     def test_a_change_that_no_longer_plans_is_not_applied(self, chat: _Chat) -> None:
         """If the confirmed change now fails, the agent explains and writes no card."""
         self._propose(chat, {"allowed_tools": ["tool-a"]})
