@@ -1195,7 +1195,7 @@ class TestApprovedMechsFile:
     def test_an_unreadable_payment_types_file_means_none(
         self, tmp_path: Path, content: str
     ) -> None:
-        """A corrupt file, a list or a bad address is read as no payment types."""
+        """A corrupt file or a non-object reads as none; a malformed entry is skipped."""
         (tmp_path / APPROVED_MECH_PAYMENT_TYPES_STORE).write_text(content)
         assert self._state(tmp_path).approved_mech_payment_types == {}
 

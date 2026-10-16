@@ -323,12 +323,7 @@ class HttpHandler(BaseHttpHandler):
     def _price_at_live_rate(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
     ) -> None:
-        """Report a third-party mech at the higher of its listed and live rates.
-
-        Accepting checks the live rate, so pricing the report the same way
-        means a listing that lags the contract cannot be offered and refused
-        over and over.
-        """
+        """Report a third-party mech at its live rate, or its listed rate when the live one can't be read."""
         if (
             facts.record is not RecordStatus.FOUND
             or facts.address in self.context.params.valid_mechs
@@ -337,9 +332,7 @@ class HttpHandler(BaseHttpHandler):
             return
 
         def on_rate(live: Optional[int]) -> None:
-            listed = facts.max_delivery_rate
-            rates = [rate for rate in (listed, live) if rate is not None]
-            rate = max(rates) if rates else None
+            rate = facts.max_delivery_rate if live is None else live
             self._send_mech_report(
                 http_msg, http_dialogue, replace(facts, max_delivery_rate=rate)
             )
@@ -380,13 +373,12 @@ class HttpHandler(BaseHttpHandler):
         if command.verb is Verb.ACCEPT:
             self._accept_offer(command, http_msg, http_dialogue)
             return
-        if command.verb is Verb.REMOVE:
-            reply = self._remove_mech(command.address)
-        elif command.verb is Verb.PIN:
-            reply = self._pin_mech(command.address)
-        else:
-            reply = self._unpin_mech(command.address)
-        self._send_mech_reply(http_msg, http_dialogue, reply)
+        act = {
+            Verb.REMOVE: self._remove_mech,
+            Verb.PIN: self._pin_mech,
+            Verb.UNPIN: self._unpin_mech,
+        }[command.verb]
+        self._send_mech_reply(http_msg, http_dialogue, act(command.address))
 
     def _price_text(self, offer: Offer, rate: int) -> str:
         """Render a rate in the offer's asset."""
@@ -461,7 +453,7 @@ class HttpHandler(BaseHttpHandler):
         return f"{address} (send its address to see its price)"
 
     def _list_approved(self) -> str:
-        """The approved third-party mechs with their prices, then the pins."""
+        """The approved third-party mechs, priced where the payment type is known, then the pins."""
         rates = self.shared_state.approved_mech_rates
         approved = (
             "Approved third-party mechs:<br>"

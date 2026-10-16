@@ -3026,7 +3026,7 @@ def _reply(handler: _TestableHttpHandler) -> str:
 def _report_for(
     handler: _TestableHttpHandler, wire: _Wire, address: str, live: int = NATIVE_RATE
 ) -> str:
-    """Ask about the mech, answer its record and card, and return the reply."""
+    """Ask about the mech, answer its record, card and live rate where read, and return the reply."""
     _prompt(handler, f"tell me about {address}")
     wire.answer_http(_record(address))
     wire.answer_http(_card(address))
@@ -3102,25 +3102,46 @@ class TestAnAddressMessage:
         assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
 
     @pytest.mark.parametrize(
-        "listed, live, offered",
+        "listed, live, offered, price",
         [
-            (NATIVE_RATE // 2, NATIVE_RATE, NATIVE_RATE),
-            (NATIVE_RATE, NATIVE_RATE // 2, NATIVE_RATE),
-            (NATIVE_RATE, None, NATIVE_RATE),
+            (NATIVE_RATE // 2, NATIVE_RATE, NATIVE_RATE, "0.01 xDAI"),
+            (NATIVE_RATE, NATIVE_RATE // 2, NATIVE_RATE // 2, "0.005 xDAI"),
+            (NATIVE_RATE * 3, NATIVE_RATE, NATIVE_RATE, "0.01 xDAI"),
+            (NATIVE_RATE, None, NATIVE_RATE, "0.01 xDAI"),
         ],
-        ids=["live_higher", "listed_higher", "live_unreadable"],
+        ids=["live_higher", "live_lower", "listing_over_cap", "live_unreadable"],
     )
-    def test_a_third_party_report_is_priced_at_the_higher_rate(
-        self, listed: int, live: Any, offered: int
+    def test_a_third_party_report_is_priced_at_the_live_rate(
+        self, listed: int, live: Any, offered: int, price: str
     ) -> None:
-        """Accepting checks the live rate, so the report never offers less."""
+        """The live rate prices the offer; the listed one only when it can't be read."""
         handler, wire = _mech_handler()
         _prompt(handler, THIRD_PARTY)
         wire.answer_http(_record(maxDeliveryRate=str(listed)))
         wire.answer_http(_card())
         wire.answer_rate(live)
-        assert "Paid with xDAI, up to 0.01 xDAI per request." in _reply(handler)
+        assert f"Paid with xDAI, up to {price} per request." in _reply(handler)
         assert handler.shared_state.mech_offers[THIRD_PARTY].rate == offered
+
+    @pytest.mark.parametrize(
+        "record, status",
+        [
+            ({"data": {"meches": [], "createMeches": []}}, 200),
+            ({"errors": ["down"]}, 500),
+        ],
+        ids=["not_indexed", "unavailable"],
+    )
+    def test_a_third_party_without_a_record_reads_no_live_rate(
+        self, record: Dict[str, Any], status: int
+    ) -> None:
+        """Without a record there is no price to check."""
+        handler, wire = _mech_handler()
+        _prompt(handler, THIRD_PARTY)
+        wire.answer_http(record, status=status)
+        _reply(handler)
+        assert all(
+            request.get("callable") != "get_max_delivery_rate" for request in wire.sent
+        )
 
     def test_a_valory_mech_report_reads_no_live_rate(self) -> None:
         """A Valory mech is never offered, so its price is not checked."""
@@ -3328,6 +3349,24 @@ class TestListApproved:
         )
         assert wire.sent == []
         handler._send_message.assert_not_called()  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "kind",
+        [
+            "0x803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316",
+            "unknown",
+        ],
+        ids=["nevermined", "unknown"],
+    )
+    def test_a_payment_type_without_a_price_points_to_the_report(
+        self, kind: str
+    ) -> None:
+        """A Nevermined or unknown payment type has no per-request price to show."""
+        handler, _ = _mech_handler(
+            approved={THIRD_PARTY: NATIVE_RATE}, payment_types={THIRD_PARTY: kind}
+        )
+        _prompt(handler, "list approved")
+        assert f"{THIRD_PARTY} (send its address to see its price)" in _reply(handler)
 
     def test_nothing_approved_or_pinned_says_so(self) -> None:
         """Both empty lists are said plainly."""
