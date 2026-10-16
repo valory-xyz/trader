@@ -24,7 +24,7 @@ fingerprint:
   behaviours/polymarket_bet_placement.py: bafybeiet7tguyimxofj7lp5nb6ipmtas4o6jeahzkhz5guh5tcymhxlbba
   behaviours/polymarket_deposit_wallet.py: bafybeieap45udpzrvcu7tjf6kneqgjh5iyfhoallt5jturifwtdqqhjdfy
   behaviours/polymarket_post_set_approval.py: bafybeiglxfjk3n66mzz2u2szsgjfotgt7vn2rhrkgktbp7s5nfgpqcfnnq
-  behaviours/polymarket_reedem.py: bafybeicxmehkvb3ajnfhcjnelzud34x27iqtajek727gx5qhe3sphz4axa
+  behaviours/polymarket_reedem.py: bafybeigyuylc3xmb4lbn6reroorx2teqaehhwcip2h6hizzw5tqzpxqf4q
   behaviours/polymarket_set_approval.py: bafybeicf7sad2u3uukpbeftx2vrduwkzsokdqiswvaf7fjmbyzg3tuatli
   behaviours/polymarket_swap.py: bafybeiack4epupksyvpm5hj6hot2cwtbvme2dqmogxdgzjn6v5mseg2m24
   behaviours/polymarket_sweep.py: bafybeigvjyr6wbyujkext6hzwfi74wqajhy4vd6vb4zczvmrn6jlpbl7oi
@@ -99,7 +99,7 @@ fingerprint:
   tests/behaviours/test_polymarket_dw_behaviours_extra.py: bafybeihgndegqjnrnrbpm767jfm6facokhrb5dncpzqlwqcodyjdelnvoi
   tests/behaviours/test_polymarket_post_set_approval.py: bafybeiaotjhqbay62hz4rxk2glqsqvooxdhyyskibupsimzskusmx2omau
   tests/behaviours/test_polymarket_redeem_accuracy.py: bafybeiek363wvv3tmijumamfydej42m2i3qyr35jgdmrhedqeepkypq24e
-  tests/behaviours/test_polymarket_reedem.py: bafybeihdena2u22epbuiujjzzthybuegjrt5uafle26n2s4xuuonunsq4u
+  tests/behaviours/test_polymarket_reedem.py: bafybeih22tohag6674m7uqdisiyjav3zbgnon3kcwx62363o2g2skjlyyi
   tests/behaviours/test_polymarket_set_approval.py: bafybeidllmex7yfrnj7fby3g7b7jwkjkgaffhx4ollobonawztyhgig6ru
   tests/behaviours/test_polymarket_set_approval_dw.py: bafybeifzgrcypcdzdeaaldrf3kksmtzftdjejy5jy3cvr63syh6uwe3q3q
   tests/behaviours/test_polymarket_swap.py: bafybeiabp4plzgd2bt7gs7zqfe3hgcisxrbcwmb7jc3zw4kjowiyc3n6ye
@@ -182,7 +182,7 @@ skills:
 - valory/mech_interact_abci:0.1.0:bafybeigttr6wvh534datvac4luxzxoghvsj6rg3hzx2gf7ivu47hln7lwe
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeidxcfu2nrpsbnyku6gi5c4tbelldo5tc5xgcxlgcqovn74rjibxba
-- valory/chatui_abci:0.1.0:bafybeiadipa3ke3c3gqckhwdrtlmjznhii5qs2cqcnmqkl55llvgugjwfu
+- valory/chatui_abci:0.1.0:bafybeicdwdgy64qslkpwsm2xcps5nuzzrhxif63bgtmpd3ydvgi3kryvwm
 behaviours:
   main:
     args: {}
