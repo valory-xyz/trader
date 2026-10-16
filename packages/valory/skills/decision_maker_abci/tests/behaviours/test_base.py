@@ -1213,7 +1213,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         bet = MagicMock(id="123", title="Will it snow?", slug="will-it-snow")
         bet.potential_net_profit = 1_000_000
         db_values = {"bet_amount": 2_000_000, "vote": None, "confidence": 0.93}
-        behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign]
+        behaviour.synchronized_data.db.get_strict = db_values.get  # type: ignore[method-assign, assignment]
 
         with mock.patch.object(
             behaviour, "convert_to_native", side_effect=lambda amount: amount / 10**6

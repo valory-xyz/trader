@@ -31,7 +31,7 @@ to advance the round.
 
 import json
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.agent_performance_summary_abci.feed import FEED_FILE
@@ -365,10 +365,10 @@ class TestPostBetUpdateBehaviour:
         context.params.is_running_on_polymarket = False
         context.benchmarking_mode.enabled = False
 
-        def mock_finish(_payload: PostBetUpdatePayload) -> Generator:
+        def mock_finish(_payload: Any) -> Generator:
             yield
 
-        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign]
+        behaviour.finish_behaviour = mock_finish  # type: ignore[method-assign, assignment]
         behaviour.store_bets = MagicMock()  # type: ignore[method-assign]
         behaviour._update_bet_strategy = MagicMock()  # type: ignore[method-assign]
         behaviour.convert_to_native = lambda amount: amount / 10**18  # type: ignore[method-assign]

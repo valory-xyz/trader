@@ -20,6 +20,7 @@
 """Tests for ``OmenWithdrawalStore`` — the shared chatui JSON-store I/O."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -337,7 +338,7 @@ def test_behaviours_report_the_sweep_to_the_feed(
     behaviour_cls: type, tmp_path: Path
 ) -> None:
     """Both Omen sweep behaviours hand the sweep's end to the feed writer."""
-    behaviour = object.__new__(behaviour_cls)
+    behaviour: Any = object.__new__(behaviour_cls)
     context = MagicMock()
     context.params.store_path = str(tmp_path)
     behaviour.__dict__["_context"] = context

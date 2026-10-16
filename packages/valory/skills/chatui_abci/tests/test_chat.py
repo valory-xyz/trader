@@ -112,7 +112,7 @@ class _Chat:
         self.handler = handler
         self.store_path = store_path
         self.llm_calls: List[Tuple[str, Any, Dict[str, Any]]] = []
-        handler._send_llm_request = self._capture  # type: ignore[method-assign]
+        handler._send_llm_request = self._capture  # type: ignore[method-assign, assignment]
 
     def _capture(self, prompt: str, _schema: Any, callback: Any, kwargs: Any) -> None:
         """Keep the model request; the test answers it."""
