@@ -33,6 +33,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 )
 from packages.valory.skills.chatui_abci.models import (
     APPROVED_MECHS_STORE,
+    APPROVED_MECH_PAYMENT_TYPES_STORE,
     CHATUI_PARAM_STORE,
     ChatuiConfig,
     ChatuiParams,
@@ -1121,6 +1122,7 @@ class TestApprovedMechsFile:
     def _state(tmp_path: Path) -> _TestableSharedState:
         state = _make_shared_state({})
         state._approved_mech_rates = None  # type: ignore[attr-defined]
+        state._approved_mech_payment_types = None  # type: ignore[attr-defined]
         state.context.params.store_path = tmp_path  # type: ignore[attr-defined]
         return state
 
@@ -1159,6 +1161,43 @@ class TestApprovedMechsFile:
         state.set_approved_mech_rates({kept: 1, gone: 2})
         state.set_approved_mech_rates({kept: 1})
         assert self._state(tmp_path).approved_mech_rates == {kept: 1}
+
+    def test_an_approval_keeps_its_payment_type_apart(self, tmp_path: Path) -> None:
+        """The approvals file keeps its shape; the payment type has its own file."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.approve_mech(mech, 10000, "native")
+        assert json.loads((tmp_path / APPROVED_MECHS_STORE).read_text()) == {
+            mech: 10000
+        }
+        assert self._state(tmp_path).approved_mech_payment_types == {mech: "native"}
+
+    def test_a_removed_approval_drops_its_payment_type(self, tmp_path: Path) -> None:
+        """Payment types never outlive their approval."""
+        state = self._state(tmp_path)
+        kept, gone = "0x" + "ab" * 20, "0x" + "cd" * 20
+        state.approve_mech(kept, 1, "native")
+        state.approve_mech(gone, 2, "token_usdc")
+        state.set_approved_mech_rates({kept: 1})
+        assert self._state(tmp_path).approved_mech_payment_types == {kept: "native"}
+
+    def test_an_approval_without_a_payment_type_has_none(self, tmp_path: Path) -> None:
+        """Re-approving without one drops a stale payment type."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.approve_mech(mech, 1, "native")
+        state.approve_mech(mech, 2)
+        assert self._state(tmp_path).approved_mech_payment_types == {}
+
+    @pytest.mark.parametrize(
+        "content", ["not json", json.dumps(["native"]), json.dumps({"0xab": "native"})]
+    )
+    def test_an_unreadable_payment_types_file_means_none(
+        self, tmp_path: Path, content: str
+    ) -> None:
+        """A corrupt file, a list or a bad address is read as no payment types."""
+        (tmp_path / APPROVED_MECH_PAYMENT_TYPES_STORE).write_text(content)
+        assert self._state(tmp_path).approved_mech_payment_types == {}
 
     @pytest.mark.parametrize(
         "content",

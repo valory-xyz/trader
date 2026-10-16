@@ -53,6 +53,7 @@ Configuration details:
 - Approved third-party mechs: {current_approved_mechs}
     -- Mechs not run by Valory that the user approved from this chat, each up to the price the user accepted. This is a separate list from the pinned mechs.
     -- You cannot approve or remove a mech. The user does that by sending a mech's address to see its report, then typing the line the report gives, or "remove <address>".
+    -- The user can type "list approved" to see the approved and pinned mechs.
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "fixed_bet" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.

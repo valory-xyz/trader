@@ -22,6 +22,7 @@
 import copy
 import json
 import math
+from dataclasses import replace
 from datetime import datetime, timezone
 from functools import partial
 from html import escape
@@ -83,6 +84,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     parse_command,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
+    PARAGRAPH_BREAK,
     Standing,
     payment_line,
     render_report,
@@ -106,6 +108,7 @@ from packages.valory.skills.chatui_abci.rounds import SynchronizedData
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
 from packages.valory.skills.mech_interact_abci.mech_reader import (
     MechFacts,
+    RecordStatus,
     chain_id_of,
     read_live_rate,
     read_mech,
@@ -298,7 +301,7 @@ class HttpHandler(BaseHttpHandler):
             read_mech(
                 self.context,
                 addresses[0],
-                partial(self._send_mech_report, http_msg, http_dialogue),
+                partial(self._price_at_live_rate, http_msg, http_dialogue),
             )
             return
 
@@ -316,6 +319,32 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             {UPDATED_PARAMS_FIELD: {}, LLM_MESSAGE_FIELD: text},
         )
+
+    def _price_at_live_rate(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
+    ) -> None:
+        """Report a third-party mech at the higher of its listed and live rates.
+
+        Accepting checks the live rate, so pricing the report the same way
+        means a listing that lags the contract cannot be offered and refused
+        over and over.
+        """
+        if (
+            facts.record is not RecordStatus.FOUND
+            or facts.address in self.context.params.valid_mechs
+        ):
+            self._send_mech_report(http_msg, http_dialogue, facts)
+            return
+
+        def on_rate(live: Optional[int]) -> None:
+            listed = facts.max_delivery_rate
+            rates = [rate for rate in (listed, live) if rate is not None]
+            rate = max(rates) if rates else None
+            self._send_mech_report(
+                http_msg, http_dialogue, replace(facts, max_delivery_rate=rate)
+            )
+
+        read_live_rate(self.context, facts.address, on_rate)
 
     def _send_mech_report(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
@@ -345,6 +374,9 @@ class HttpHandler(BaseHttpHandler):
         self, command: Command, http_msg: HttpMessage, http_dialogue: HttpDialogue
     ) -> None:
         """Carry out a typed mech command and answer with what it did."""
+        if command.verb is Verb.LIST:
+            self._send_mech_reply(http_msg, http_dialogue, self._list_approved())
+            return
         if command.verb is Verb.ACCEPT:
             self._accept_offer(command, http_msg, http_dialogue)
             return
@@ -406,11 +438,44 @@ class HttpHandler(BaseHttpHandler):
                 "again to see the new terms."
             )
         again = " again" if address in self.shared_state.approved_mech_rates else ""
-        self.shared_state.approve_mech(address, offer.rate)
-        return (
-            f"Approved {address}{again} at up to {offer.price_text} per request. "
-            "Your agent can use it for its next mech requests."
+        self.shared_state.approve_mech(address, offer.rate, offer.payment_type)
+        goal = self.shared_state.read_activity_goal_from_disk()
+        when = (
+            "Your agent has met its activity goal for this staking epoch, so it "
+            "can use it from the next epoch."
+            if goal is not None and goal.is_met
+            else "Your agent can use it for its next mech requests."
         )
+        return (
+            f"Approved {address}{again} at up to {offer.price_text} per request. {when}"
+        )
+
+    def _approved_entry(self, address: str, rate: int) -> str:
+        """One approved mech with its accepted price, when the payment type is known."""
+        kind = self.shared_state.approved_mech_payment_types.get(address)
+        if kind is not None:
+            chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+            _, text = payment_line(kind, rate, chain_id)
+            if text is not None:
+                return f"{address}, up to {text} per request"
+        return f"{address} (send its address to see its price)"
+
+    def _list_approved(self) -> str:
+        """The approved third-party mechs with their prices, then the pins."""
+        rates = self.shared_state.approved_mech_rates
+        approved = (
+            "Approved third-party mechs:<br>"
+            + "<br>".join(self._approved_entry(a, r) for a, r in rates.items())
+            if rates
+            else "You have not approved any third-party mechs."
+        )
+        pins = self._pinned_mechs()
+        pinned = (
+            f"Pinned mechs: {', '.join(pins)}."
+            if pins
+            else "No mechs are pinned, so the agent chooses among all the mechs it may use."
+        )
+        return PARAGRAPH_BREAK.join([approved, pinned])
 
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
@@ -497,7 +562,11 @@ class HttpHandler(BaseHttpHandler):
             available_tools=available_tools,
             current_selected_mechs=current_selected_mechs,
             current_approved_mechs=(
-                ", ".join(self.shared_state.approved_mechs) or "None"
+                "; ".join(
+                    self._approved_entry(address, rate)
+                    for address, rate in self.shared_state.approved_mech_rates.items()
+                )
+                or "None"
             ),
             available_mechs=(
                 ", ".join(sorted(available_mechs))
