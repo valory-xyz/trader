@@ -776,12 +776,16 @@ class HttpHandler(BaseHttpHandler):
             self._refuse_change(issues, http_msg, http_dialogue)
             return
         changes = self._describe_changes(updated_params)
-        issues = self._apply_config_writes(writes)
+        written, issues = self._apply_config_writes(writes)
+        written_labels = {SETTING_LABELS.get(setting) for setting in written}
+        saved = [change for change in changes if change.setting in written_labels]
+        for change in saved:
+            self._record_config_changed(change)
         if issues:
+            if saved:
+                issues.append(f"I did change {self._changes_text(saved)}.")
             self._send_chat_text("\n".join(issues), http_msg, http_dialogue)
             return
-        for change in changes:
-            self._record_config_changed(change)
         acknowledgement = (
             f"Done. I changed {self._changes_text(changes)}."
             if changes
@@ -1418,12 +1422,13 @@ class HttpHandler(BaseHttpHandler):
         :return: tuple of (updated_params, issues)
         """
         updated_params, issues, writes = self._plan_config_update(updated_agent_config)
-        issues.extend(self._apply_config_writes(writes))
+        _, write_issues = self._apply_config_writes(writes)
+        issues.extend(write_issues)
         return updated_params, issues
 
     def _plan_or_none(
         self, updated_agent_config: dict
-    ) -> Optional[Tuple[Dict, List[str], List[Callable[[], None]]]]:
+    ) -> Optional[Tuple[Dict, List[str], Dict[str, Callable[[], None]]]]:
         """Plan a config update; ``None`` when the model's object cannot be read as one.
 
         :param updated_agent_config: the change the model set.
@@ -1441,11 +1446,12 @@ class HttpHandler(BaseHttpHandler):
 
     def _plan_config_update(
         self, updated_agent_config: dict
-    ) -> Tuple[Dict, List[str], List[Callable[[], None]]]:
+    ) -> Tuple[Dict, List[str], Dict[str, Callable[[], None]]]:
         """Validate a config update and collect its writes, applying nothing.
 
         :param updated_agent_config: dict containing updated config
-        :return: the settings it sets, the issues found and the writes to apply.
+        :return: the settings it sets, the issues found and the writes to apply,
+            by setting.
         """
         updated_params: Dict = {}
         issues: List[str] = []
@@ -1453,7 +1459,7 @@ class HttpHandler(BaseHttpHandler):
         # field is read. The model decides the shape of this object, so any
         # field can fail part-way through, and writing as we go left the
         # earlier settings saved while the caller was told the update failed.
-        writes: List[Callable[[], None]] = []
+        writes: Dict[str, Callable[[], None]] = {}
         # A list, not a set: the guard ahead of this refuses a bare string,
         # on which ``in`` would match by substring.
         removed_fields: List[str] = (
@@ -1466,8 +1472,8 @@ class HttpHandler(BaseHttpHandler):
         if updated_trading_strategy:
             if updated_trading_strategy in AVAILABLE_TRADING_STRATEGIES:
                 updated_params.update({"trading_strategy": updated_trading_strategy})
-                writes.append(
-                    partial(self._store_trading_strategy, updated_trading_strategy)
+                writes[TRADING_STRATEGY_FIELD] = partial(
+                    self._store_trading_strategy, updated_trading_strategy
                 )
             else:
                 issue_message = f"Unsupported trading strategy: {updated_trading_strategy!r}. Available strategies are: {', '.join(AVAILABLE_TRADING_STRATEGIES)}."
@@ -1483,7 +1489,7 @@ class HttpHandler(BaseHttpHandler):
 
         if allowed_tools_is_removed:
             updated_params.update({ALLOWED_TOOLS_FIELD: None})
-            writes.append(partial(self._store_allowed_tools, None))
+            writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, None)
 
         elif updated_allowed_tools is not None:
             available = self._available_tools()
@@ -1498,11 +1504,11 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid:
                 updated_params.update({ALLOWED_TOOLS_FIELD: valid})
-                writes.append(partial(self._store_allowed_tools, valid))
+                writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, valid)
             elif not unknown:
                 # empty list explicitly passed — treat as clear
                 updated_params.update({ALLOWED_TOOLS_FIELD: None})
-                writes.append(partial(self._store_allowed_tools, None))
+                writes[ALLOWED_TOOLS_FIELD] = partial(self._store_allowed_tools, None)
 
         updated_selected_mechs: Optional[List[str]] = updated_agent_config.get(
             SELECTED_MECHS_FIELD, None
@@ -1513,7 +1519,7 @@ class HttpHandler(BaseHttpHandler):
 
         if selected_mechs_is_removed:
             updated_params.update({SELECTED_MECHS_FIELD: None})
-            writes.append(partial(self._store_selected_mechs, None))
+            writes[SELECTED_MECHS_FIELD] = partial(self._store_selected_mechs, None)
 
         elif updated_selected_mechs is not None:
             # Address comparison is case-insensitive; the synced data stores
@@ -1531,10 +1537,12 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
             if valid_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: valid_mechs})
-                writes.append(partial(self._store_selected_mechs, valid_mechs))
+                writes[SELECTED_MECHS_FIELD] = partial(
+                    self._store_selected_mechs, valid_mechs
+                )
             elif not unknown_mechs:
                 updated_params.update({SELECTED_MECHS_FIELD: None})
-                writes.append(partial(self._store_selected_mechs, None))
+                writes[SELECTED_MECHS_FIELD] = partial(self._store_selected_mechs, None)
 
         _, decimals = self.get_units_and_decimals()
         absolute_max_bet_size = self.context.params.strategies_kwargs[
@@ -1552,7 +1560,7 @@ class HttpHandler(BaseHttpHandler):
         )
         if fixed_bet_size_is_removed:
             updated_params.update({"fixed_bet_size": None})
-            writes.append(partial(self._set_chatui_param, "fixed_bet_size", None))
+            writes["fixed_bet_size"] = partial(self._set_chatui_param, "fixed_bet_size", None)
 
         elif updated_fixed_bet_size is not None:
             updated_fixed_bet_size_in_base_units = int(
@@ -1563,12 +1571,10 @@ class HttpHandler(BaseHttpHandler):
                 and updated_fixed_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"fixed_bet_size": updated_fixed_bet_size})
-                writes.append(
-                    partial(
-                        self._set_chatui_param,
-                        "fixed_bet_size",
-                        updated_fixed_bet_size_in_base_units,
-                    )
+                writes["fixed_bet_size"] = partial(
+                    self._set_chatui_param,
+                    "fixed_bet_size",
+                    updated_fixed_bet_size_in_base_units,
                 )
             else:
                 issue_message = f"Fixed bet size {updated_fixed_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -1583,7 +1589,7 @@ class HttpHandler(BaseHttpHandler):
         )
         if max_bet_size_is_removed:
             updated_params.update({"max_bet_size": None})
-            writes.append(partial(self._set_chatui_param, "max_bet_size", None))
+            writes["max_bet_size"] = partial(self._set_chatui_param, "max_bet_size", None)
         elif updated_max_bet_size is not None:
             updated_max_bet_size_in_base_units = int(
                 updated_max_bet_size * (10**decimals)
@@ -1593,12 +1599,10 @@ class HttpHandler(BaseHttpHandler):
                 and updated_max_bet_size_in_base_units <= absolute_max_bet_size
             ):
                 updated_params.update({"max_bet_size": updated_max_bet_size})
-                writes.append(
-                    partial(
-                        self._set_chatui_param,
-                        "max_bet_size",
-                        updated_max_bet_size_in_base_units,
-                    )
+                writes["max_bet_size"] = partial(
+                    self._set_chatui_param,
+                    "max_bet_size",
+                    updated_max_bet_size_in_base_units,
                 )
             else:
                 issue_message = f"Max bet size {updated_max_bet_size} is out of bounds. It must be between {absolute_min_bet_size / 10**decimals} and {absolute_max_bet_size / 10**decimals}."
@@ -1607,12 +1611,12 @@ class HttpHandler(BaseHttpHandler):
 
         behavior: Optional[str] = updated_agent_config.get("behavior", None)
         if behavior:
-            writes.append(partial(self.shared_state.update_agent_behavior, behavior))
+            writes["behavior"] = partial(self.shared_state.update_agent_behavior, behavior)
 
         updated_activity_goal: Any = updated_agent_config.get(ACTIVITY_GOAL_FIELD)
         if FieldsThatCanBeRemoved.ACTIVITY_GOAL.value in removed_fields:
             updated_params.update({ACTIVITY_GOAL_FIELD: None})
-            writes.append(partial(self._store_activity_goal, None))
+            writes[ACTIVITY_GOAL_FIELD] = partial(self._store_activity_goal, None)
         elif updated_activity_goal is not None:
             if not is_valid_activity_goal(updated_activity_goal):
                 issue_message = (
@@ -1626,32 +1630,39 @@ class HttpHandler(BaseHttpHandler):
                 issues.append(issue_message)
                 # The goal decides when the agent stops trading, so a reply that
                 # misreads it is declined as a whole rather than half-applied.
-                return {}, issues, []
+                return {}, issues, {}
             updated_params.update({ACTIVITY_GOAL_FIELD: updated_activity_goal})
-            writes.append(partial(self._store_activity_goal, updated_activity_goal))
+            writes[ACTIVITY_GOAL_FIELD] = partial(
+                self._store_activity_goal, updated_activity_goal
+            )
 
         # Nothing above wrote anything, so reaching here means every field
         # was readable and the update can be applied as a whole.
         return updated_params, issues, writes
 
-    def _apply_config_writes(self, writes: List[Callable[[], None]]) -> List[str]:
+    def _apply_config_writes(
+        self, writes: Dict[str, Callable[[], None]]
+    ) -> Tuple[List[str], List[str]]:
         """Apply a planned update's writes.
 
-        :param writes: the writes, in order.
-        :return: the issue to tell the user if a write failed, else nothing.
+        :param writes: the writes by setting, in order.
+        :return: the settings written, and the issue to tell the user if a
+            write failed, else nothing.
         """
+        written: List[str] = []
         try:
-            for write in writes:
+            for setting, write in writes.items():
                 write()
+                written.append(setting)
         except OSError as e:
             # Raised past here, the caller would report an unreadable reply
             # while the writes before this one stay applied.
             self.context.logger.error(f"Could not save the config update: {e}")
-            return [
+            return written, [
                 "Some of your changes could not be saved. "
                 "Please check your settings and try again."
             ]
-        return []
+        return written, []
 
     # Fields the update would misread rather than reject if the type is
     # wrong, so a broad guard around the update cannot see them. A string
