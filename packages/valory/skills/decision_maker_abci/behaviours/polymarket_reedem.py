@@ -20,7 +20,7 @@
 """This module contains the redeeming state of the decision-making abci app."""
 
 import json
-from typing import Any, Dict, Generator, List, Optional, cast
+from typing import Any, Dict, Generator, List, Optional, Union, cast
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
@@ -112,8 +112,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                     f"Tool {tool!r} not found in accuracy store; skipping."
                 )
 
-    @staticmethod
-    def _payouts_by_market(positions: list) -> List[List[Field]]:
+    def _payouts_by_market(self, positions: list) -> List[List[Field]]:
         """Build one payout card per market from the positions redeemed.
 
         A position pays its size times its resolved price: 1 for the winning
@@ -127,6 +126,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             try:
                 amount = float(position.get("size", 0)) * float(position["curPrice"])
             except (KeyError, TypeError, ValueError):
+                self.context.logger.warning(
+                    f"No valid size or curPrice for condition_id "
+                    f"{position.get('conditionId')!r}; leaving it out of the payout card."
+                )
                 continue
             if amount <= 0:
                 continue
@@ -170,14 +173,15 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         outcome_index: int,
         collateral_token: str,
         is_neg_risk: bool = False,
-    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
+    ) -> Generator[None, None, Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]]:
         """Redeem a single position.
 
         :param condition_id: The condition ID for the position
         :param outcome_index: The outcome index (0 for Yes, 1 for No typically)
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :return: the relayer's transactions for the redeem, or None if it failed
+        :return: the relayer's transactions for the redeem, an error dict if the
+            request failed, or None if the connection gave no response
         :yield: None
         """
         # The deployed Polymarket collateral adapters ignore the uint256[]

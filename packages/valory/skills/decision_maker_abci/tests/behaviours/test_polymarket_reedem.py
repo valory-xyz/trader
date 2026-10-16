@@ -544,7 +544,9 @@ class TestPayoutsByMarket:
             _position("0xf", 2, 1),
         ]
 
-        assert PolymarketRedeemBehaviour._payouts_by_market(positions) == [
+        behaviour = _make_behaviour()
+
+        assert behaviour._payouts_by_market(positions) == [
             [
                 {
                     "label": "Market",
@@ -562,6 +564,10 @@ class TestPayoutsByMarket:
                 {"label": "Amount", "value": "$2.00 pUSD"},
             ],
         ]
+        warnings = [c.args[0] for c in behaviour.context.logger.warning.call_args_list]
+        assert len(warnings) == 2
+        assert "'0xd'" in warnings[0]
+        assert "'0xe'" in warnings[1]
 
     def test_builder_records_only_redeemed_positions(self) -> None:
         """The builder path writes a card for each position whose redeem succeeded."""
