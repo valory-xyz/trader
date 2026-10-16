@@ -188,6 +188,7 @@ STILL_ANSWERING = "Your agent is still answering this message."
 CHANGE_NOT_APPLIED = (
     "I couldn't apply that change, so your settings are unchanged. Please try again."
 )
+CHANGE_REFUSED = "Nothing was changed."
 RECENT_FEED_ENTRIES = 20
 # Keeps a long earlier reply from crowding the prompt.
 RECENT_TEXT_LIMIT = 300
@@ -647,7 +648,7 @@ class HttpHandler(BaseHttpHandler):
             return
         updated_params, issues, _ = plan
         if issues:
-            self._send_chat_text("\n".join(issues), http_msg, http_dialogue)
+            self._refuse_change(issues, http_msg, http_dialogue)
             return
         changes = self._describe_changes(updated_params)
         if not changes:
@@ -767,7 +768,7 @@ class HttpHandler(BaseHttpHandler):
             return
         updated_params, issues, writes = plan
         if issues:
-            self._send_chat_text("\n".join(issues), http_msg, http_dialogue)
+            self._refuse_change(issues, http_msg, http_dialogue)
             return
         changes = self._describe_changes(updated_params)
         issues = self._apply_config_writes(writes)
@@ -788,6 +789,16 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Answer a chat request with the agent's text."""
         self._send_ok_response(http_msg, http_dialogue, {LLM_MESSAGE_FIELD: text})
+
+    def _refuse_change(
+        self, issues: List[str], http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Answer that a chat change was refused as a whole, giving the reasons."""
+        # The issues are worded for ``/configure_strategies``, which applies the
+        # valid part, so on their own they read as if the rest went through.
+        self._send_chat_text(
+            "\n".join([CHANGE_REFUSED, *issues]), http_msg, http_dialogue
+        )
 
     @staticmethod
     def _changes_text(changes: List[ConfigChange]) -> str:

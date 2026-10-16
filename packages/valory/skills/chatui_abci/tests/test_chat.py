@@ -559,10 +559,18 @@ class TestConfirmFlow:
         dialogue = self._propose(chat, {"max_bet_size": 100})
 
         text = chat.response(dialogue)[1]["reply"]["text"]
-        assert (
-            text
-            == "Max bet size 100 is out of bounds. It must be between 0.01 and 2.0."
+        assert text == (
+            "Nothing was changed.\n"
+            "Max bet size 100 is out of bounds. It must be between 0.01 and 2.0."
         )
+        assert chat.handler.shared_state.config_proposal is None
+
+    def test_a_change_with_an_issue_is_refused_as_a_whole(self, chat: _Chat) -> None:
+        """The valid part is not proposed either, and the reply says nothing changed."""
+        dialogue = self._propose(chat, {"allowed_tools": ["tool-a", "tool-x"]})
+
+        text = chat.response(dialogue)[1]["reply"]["text"]
+        assert text.startswith("Nothing was changed.\nUnknown tool(s) ignored")
         assert chat.handler.shared_state.config_proposal is None
 
     def test_an_invalid_activity_target_is_refused_when_proposed(
@@ -627,7 +635,9 @@ class TestConfirmFlow:
         dialogue = chat.send("yes", "c-yes")
         chat.confirm(True)
 
-        assert "Unknown tool(s) ignored" in chat.response(dialogue)[1]["reply"]["text"]
+        assert chat.response(dialogue)[1]["reply"]["text"].startswith(
+            "Nothing was changed.\nUnknown tool(s) ignored"
+        )
         assert all(line["kind"] == "message" for line in chat.feed())
 
     def test_a_change_that_cannot_be_read_again_is_not_applied(
