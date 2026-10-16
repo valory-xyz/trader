@@ -1858,8 +1858,9 @@ class TestAsyncAct:
 
         assert result is None
 
-    def test_prediction_response_none(self) -> None:
-        """Should handle None prediction_response gracefully."""
+    @pytest.mark.parametrize("selling_review", [False, True])
+    def test_prediction_response_none(self, selling_review: bool) -> None:
+        """Should handle None prediction_response; a sell review skips no market."""
         behaviour = _make_behaviour()
         skipped_bet = MagicMock()
         behaviour.get_active_sampled_bet = MagicMock(return_value=skipped_bet)  # type: ignore[method-assign]
@@ -1891,15 +1892,24 @@ class TestAsyncAct:
                     ) as mock_bm:
                         mock_bm.return_value = MagicMock(enabled=False)
                         with patch.object(
-                            behaviour, "finish_behaviour", side_effect=mock_finish
+                            type(behaviour),
+                            "review_bets_for_selling_mode",
+                            new_callable=PropertyMock,
+                            return_value=selling_review,
                         ):
-                            gen = behaviour.async_act()
-                            self._run_generator(gen)
+                            with patch.object(
+                                behaviour, "finish_behaviour", side_effect=mock_finish
+                            ):
+                                gen = behaviour.async_act()
+                                self._run_generator(gen)
 
         behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
-        behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
-            skipped_bet, SKIP_NO_MECH_RESPONSE
-        )
+        if selling_review:
+            behaviour._record_market_skipped.assert_not_called()  # type: ignore[attr-defined]
+        else:
+            behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
+                skipped_bet, SKIP_NO_MECH_RESPONSE
+            )
 
     def test_prediction_with_vote_not_selling_profitable(self) -> None:
         """Should process profitable bet when not in selling mode."""

@@ -691,7 +691,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 return None
 
             prediction_response = self._get_decision()
-            if prediction_response is None:
+            if prediction_response is None and not self.review_bets_for_selling_mode:
                 self._record_market_skipped(
                     self.get_active_sampled_bet(), SKIP_NO_MECH_RESPONSE
                 )
