@@ -164,10 +164,8 @@ class SharedState(BaseSharedState):
         # the raw `available_mech_tools` synced-data set in that window.
         self.available_prediction_tools: Optional[FrozenSet[str]] = None
 
-        # In memory only, so a restart drops them: the chat requests being
-        # answered by HTTP dialogue, when each client id started being
-        # answered, and the change waiting for the user's confirmation.
-        self.chat_turns: Dict[Any, ChatTurn] = {}
+        # In memory only, so a restart drops them: when each chat message
+        # started being answered, and the change waiting for confirmation.
         self._answering_since: Dict[str, float] = {}
         self.config_proposal: Optional[ConfigProposal] = None
 

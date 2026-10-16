@@ -219,6 +219,12 @@ _UNPARSEABLE_REPLY = (ValueError, TypeError, RecursionError)
 class HttpHandler(BaseHttpHandler):
     """This implements the trader handler."""
 
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the handler."""
+        super().__init__(**kwargs)
+        # The chat requests being answered, by HTTP dialogue.
+        self._chat_turns: Dict[Any, ChatTurn] = {}
+
     def setup(self) -> None:
         """Setup the handler."""
         super().setup()
@@ -421,9 +427,7 @@ class HttpHandler(BaseHttpHandler):
             return
 
         self.shared_state.start_answering(client_id)
-        self.shared_state.chat_turns[http_dialogue.dialogue_label] = ChatTurn(
-            client_id, message
-        )
+        self._chat_turns[http_dialogue.dialogue_label] = ChatTurn(client_id, message)
         proposal = self.shared_state.take_config_proposal()
         if proposal is not None:
             self._check_confirmation(proposal, text, http_msg, http_dialogue)
@@ -453,7 +457,7 @@ class HttpHandler(BaseHttpHandler):
 
     def _chat_turn(self, http_dialogue: HttpDialogue) -> Optional[ChatTurn]:
         """Return the chat message this request answers, if it is a chat request."""
-        return self.shared_state.chat_turns.get(http_dialogue.dialogue_label)
+        return self._chat_turns.get(http_dialogue.dialogue_label)
 
     def _send_http_response(
         self,
@@ -477,7 +481,7 @@ class HttpHandler(BaseHttpHandler):
         :param status_text: the HTTP status text
         :param content_type: the content type header
         """
-        turn = self.shared_state.chat_turns.pop(http_dialogue.dialogue_label, None)
+        turn = self._chat_turns.pop(http_dialogue.dialogue_label, None)
         if turn is None:
             super()._send_http_response(
                 http_msg, http_dialogue, data, status_code, status_text, content_type
@@ -499,7 +503,7 @@ class HttpHandler(BaseHttpHandler):
         :param data: the response body
         :param content_type: the content type header
         """
-        turn = self.shared_state.chat_turns.pop(http_dialogue.dialogue_label, None)
+        turn = self._chat_turns.pop(http_dialogue.dialogue_label, None)
         if turn is None:
             super()._send_internal_server_error_response(
                 http_msg, http_dialogue, data, content_type

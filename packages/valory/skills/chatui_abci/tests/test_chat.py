@@ -84,12 +84,12 @@ class _Chat:
         }
         context.shared_state = {}
         handler.context = context
+        handler._chat_turns = {}
 
         state = MagicMock()
         state.chatui_config = config or ChatuiConfig(
             trading_strategy="kelly_criterion", max_bet_size=10**18
         )
-        state.chat_turns = {}
         state._answering_since = {}
         state.config_proposal = None
         state.approved_mechs = []
@@ -169,6 +169,11 @@ def chat(tmp_path: Path) -> _Chat:
 
 class TestRoute:
     """The chat request and its replies."""
+
+    def test_a_new_handler_answers_no_chat_yet(self) -> None:
+        """The chat requests in flight are the handler's own, and start empty."""
+        handler = HttpHandler(name="http", skill_context=MagicMock())
+        assert handler._chat_turns == {}
 
     def test_answer_writes_both_lines_and_returns_them(self, chat: _Chat) -> None:
         """The message is written on arrival and the reply with its client id."""
@@ -346,7 +351,7 @@ class TestErrorStatuses:
         """An error body without text still answers with an ``error``."""
         dialogue = MagicMock()
         dialogue.dialogue_label = "label"
-        chat.handler.shared_state.chat_turns["label"] = ChatTurn(CLIENT_ID, {"id": 1})
+        chat.handler._chat_turns["label"] = ChatTurn(CLIENT_ID, {"id": 1})
 
         chat.handler._send_http_response(
             MagicMock(headers="", version=""), dialogue, "oops", 400, "Bad Request"
