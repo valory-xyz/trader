@@ -10,17 +10,18 @@ fingerprint:
   behaviours.py: bafybeiffmmczzfl6y2gkew53nwmagndw4wgudehi6wsmzbxpfzti6vqmye
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeiclta67qoysyidwpwyjdsg5qfpfi52r5kp3fhxh6ez25jycb2gopy
+  handlers.py: bafybeihxo2b3zapl5w4bqv6xb5zc4v76vf2ap36jwp7mknyfx6uwssnbqm
   mech_commands.py: bafybeie4cippodstkmpctcx5rwszj5eq2b43kg56xhyz2uuwebscdcawhm
   mech_templates.py: bafybeiap2kqflq3wvipphmgibnmyknnmnpjkgoj3exdbkyccsb5u3tzzrm
-  models.py: bafybeidhwpjwumatjm2kr4xmjcokb623gwxp4a5fexoscn6yhn5e43thfa
+  models.py: bafybeie3k7yzxcuye7uwrcr7xkxuco2solos555inwjqzloasjdfluflcm
   payloads.py: bafybeib7gauq5ehcoxsl4jeydjxff56zxnjtzdv2orh4qezzjw6gv5jdzm
-  prompts.py: bafybeido4377hc5ii2smaczu4wou2w7254towxhsnilhd6lsmp674hfo7e
+  prompts.py: bafybeid5r44lxrkhrxo7sxmntcz2phpaascew7qvmcnm2d7kdljotcrfwm
   rounds.py: bafybeidu6roj27bvs54ezyakaxrybjozdswxcw4p52civy4kqyqif3qjnu
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeieormfvkdcrnuufbiokezjzubwephshwtjes3xjwuyeskrb3aclri
+  tests/test_chat.py: bafybeicphscylavoyqlqh3nbx6uq6b3gmw4udjq7fr3dwajzck5eoqnp5i
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
-  tests/test_handlers.py: bafybeicisvvcynpsfbjct7z4nqpuh6c7omkw3zvni46weyc27ypuctz5xu
+  tests/test_handlers.py: bafybeia2gevuxbwdref5ngttglieaanrblnof6ua5wzhdifm54cu5zvrnu
   tests/test_mech_commands.py: bafybeibrhdtxghhhhhm2od7cuovqiird7tuesuwr65i3my5wbbrzemov24
   tests/test_mech_templates.py: bafybeian4qu4pyaownvvruwgwldlqxddwnguwoctizvfvkm4ro7w6djosq
   tests/test_models.py: bafybeicpugsa7gckmqketskk7janpxrnunkahj35la2mtkf6skiyfbaody
@@ -39,7 +40,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
+- valory/agent_performance_summary_abci:0.1.0:bafybeihkcka2h24hyyt3ptw4dxbfylr4zhlyjkzg3k24ahkzaqqosktkji
 - valory/mech_interact_abci:0.1.0:bafybeigttr6wvh534datvac4luxzxoghvsj6rg3hzx2gf7ivu47hln7lwe
 handlers:
   abci:

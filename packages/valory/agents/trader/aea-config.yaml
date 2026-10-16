@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibc4ccnp7g2m3ydnk7rvxoz2ya2ahsonv5y7xbczmfyumsfwbr42q
-- valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeifamnqdcc7p53f5s6ybhm4uhzcoztkc7vi25omsoyndrjk5smcdda
-- valory/trader_abci:0.1.0:bafybeigdlojdy5j6kpoai6ovgy55pcsvcoz7zmxylh7iev6ulmh7mni5lu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeick3aaurn6xb5zm65x5s2i2pxuabcqng2qtz6oxyd7nhpvc5abeyy
+- valory/market_manager_abci:0.1.0:bafybeih7evku3r55bsbcvl7c4whl6pwrugbinnwq4emrq54kjfuhbld2yq
+- valory/decision_maker_abci:0.1.0:bafybeiduqn7zkoxqm5brgizngcbsl557jjhuauz4rzgw3xam5j37we6qh4
+- valory/trader_abci:0.1.0:bafybeic7nuonwwog4xucbkvnm6fnwrnfirtuaratxnn7idkvffqoujbal4
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeigxfaqpgyzjslpzptx3ghxxj2uoyrydlcpsxbouuwsoacrfylzybu
+- valory/check_stop_trading_abci:0.1.0:bafybeigeozk2ghg326aj3k54h75ucagjtjlakoednq4zs3mzbzoetemdwy
 - valory/mech_interact_abci:0.1.0:bafybeigttr6wvh534datvac4luxzxoghvsj6rg3hzx2gf7ivu47hln7lwe
-- valory/chatui_abci:0.1.0:bafybeiez52ichlmtwo5g2cter4ujoy2acx7ewt7pdujkeq33rhqno3fj4m
-- valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
+- valory/chatui_abci:0.1.0:bafybeihipqzukcedwxkogb6npeoqcoy6b5ermfghig3repgazxeg6c4s24
+- valory/agent_performance_summary_abci:0.1.0:bafybeihkcka2h24hyyt3ptw4dxbfylr4zhlyjkzg3k24ahkzaqqosktkji
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
