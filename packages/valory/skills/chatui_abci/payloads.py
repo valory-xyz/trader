@@ -31,3 +31,4 @@ class ChatuiPayload(BaseTxPayload):
 
     vote: bool
     selected_mechs: Optional[str] = None
+    approved_mechs: Optional[str] = None

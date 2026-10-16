@@ -33,6 +33,7 @@ from packages.valory.skills.chatui_abci.payloads import ChatuiPayload
 from packages.valory.skills.chatui_abci.rounds import (
     ChatuiAbciApp,
     ChatuiLoadRound,
+    SERIALIZED_EMPTY_APPROVALS,
     SERIALIZED_EMPTY_PIN,
 )
 
@@ -62,10 +63,16 @@ class ChatuiLoadBehaviour(BaseBehaviour):
                 if pinned
                 else SERIALIZED_EMPTY_PIN
             )
+            approved = self.shared_state.approved_mech_rates
             payload = ChatuiPayload(
                 sender=self.context.agent_address,
                 vote=True,
                 selected_mechs=selected_mechs_payload,
+                approved_mechs=(
+                    json.dumps(approved, sort_keys=True)
+                    if approved
+                    else SERIALIZED_EMPTY_APPROVALS
+                ),
             )
             self.context.logger.info(f"Loaded chat UI parameters: {chatui_config}")
 

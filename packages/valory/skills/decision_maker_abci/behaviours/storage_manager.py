@@ -48,6 +48,7 @@ from packages.valory.skills.decision_maker_abci.policy import (
 from packages.valory.skills.decision_maker_abci.utils.tool_suitability import (
     is_prediction_tool,
 )
+from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 POLICY_STORE = "policy_store_multi_bet_failure_adjusting.json"
 AVAILABLE_TOOLS_STORE = "available_tools_store.json"
@@ -71,9 +72,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         self._mech_tools: Set[str] = set()
         self._remote_accuracy_information: StringIO = StringIO()
         # Tool-suitability classifier cache, populated per boot by
-        # `_fetch_mech_manifests`; keyed by lowercased tool name.
+        # `_fetch_mech_manifests`; keyed by policy key, so a manifest only
+        # describes the tools of the identities whose mechs publish it.
         self._tool_metadata: Dict[str, Dict[str, Any]] = {}
         self._pending_cid: Optional[str] = None
+        self._pending_identities: Set[str] = set()
 
     @property
     def mech_tools(self) -> Set[str]:
@@ -318,18 +321,24 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         if self.benchmarking_mode.enabled:
             return
 
-        seen_cids: Set[str] = set()
+        identities_by_cid: Dict[str, Set[str]] = {}
         for mech in self.synchronized_data.mechs_info:
             metadata_str = (
                 mech.service.metadata_str if mech.service is not None else None
             )
-            if metadata_str is None or metadata_str in seen_cids:
-                continue
-            seen_cids.add(metadata_str)
+            if metadata_str is not None:
+                identities_by_cid.setdefault(metadata_str, set()).add(
+                    self._identity(mech.address)
+                )
+
+        seen_cids = set(identities_by_cid)
+        for metadata_str, identities in identities_by_cid.items():
             self._pending_cid = metadata_str
+            self._pending_identities = identities
             yield from self.wait_for_condition_with_sleep(self._fetch_one_manifest)
 
         self._pending_cid = None
+        self._pending_identities = set()
 
         if seen_cids and not self._tool_metadata:
             self.context.logger.warning(
@@ -367,7 +376,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         extracted = self._extract_tool_metadata(res_raw)
 
         if extracted:
-            self._tool_metadata.update(extracted)
+            for identity in self._pending_identities:
+                for tool, metadata in extracted.items():
+                    self._tool_metadata[tool_key(identity, tool)] = metadata
             self.mech_tools_api.reset_retries()
             return True
 
@@ -409,8 +420,14 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
     def _extract_tool_metadata(res_raw: Any) -> Dict[str, Dict[str, Any]]:
         """Pull `toolMetadata` from the IPFS body, keyed by lowercased name."""
         try:
-            body = json.loads(res_raw.body.decode())
-        except (AttributeError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            body = loads_bounded(res_raw.body.decode())
+        except (
+            AttributeError,
+            TypeError,
+            UnicodeDecodeError,
+            ValueError,
+            RecursionError,
+        ):
             return {}
         raw = body.get("toolMetadata") if isinstance(body, dict) else None
         if not isinstance(raw, dict):
@@ -578,13 +595,23 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _parse_global_info(self) -> Tuple[int, Dict[str, Dict[str, str]]]:
         """Parse the global information of the tools."""
-        sep = self.acc_info_fields.sep
+        fields = self.acc_info_fields
         reader: csv.DictReader = csv.DictReader(
-            self.remote_accuracy_information, delimiter=sep
+            self.remote_accuracy_information, delimiter=fields.sep
         )
 
         max_transaction_date = 0
         tool_to_global_info: Dict[str, Dict[str, str]] = {}
+        columns = reader.fieldnames or []
+        expected = (fields.tool, fields.requests, fields.accuracy, fields.max)
+        missing = [column for column in expected if column not in columns]
+        if missing:
+            self.context.logger.error(
+                f"The tools accuracy file has no {missing} column(s) (it has "
+                f"{columns}); it is not used and the local records are kept."
+            )
+            return max_transaction_date, tool_to_global_info
+
         for row in reader:
             max_transaction_date = self._parse_global_info_row(
                 row, max_transaction_date, tool_to_global_info
@@ -608,12 +635,20 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         accuracy_store = self.policy.accuracy_store
         for tool, row in tool_to_global_info.items():
+            try:
+                requests = int(row[self.acc_info_fields.requests])
+                accuracy = float(row[self.acc_info_fields.accuracy])
+            except (TypeError, ValueError):
+                self.context.logger.warning(
+                    f"Skipping the tools accuracy row of {tool!r}: {row}."
+                )
+                continue
             accuracy_store[tool] = AccuracyInfo(
-                int(row[self.acc_info_fields.requests]),
+                requests,
                 # naturally, no global information is available for pending.
                 # set it using the local policy if this information exists
                 accuracy_store.get(tool, AccuracyInfo()).pending,
-                float(row[self.acc_info_fields.accuracy]) / GLOBAL_ACCURACY_SCALE,
+                accuracy / GLOBAL_ACCURACY_SCALE,
             )
             self.policy.updated_ts = int(datetime.now().timestamp())
 
@@ -630,7 +665,9 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
         :param global_update_timestamp: the timestamp of the latest global information update
         :param tool_to_global_info: the global information of the tools, by policy key
         """
-        if self._should_use_global_info(global_update_timestamp):
+        if tool_to_global_info and self._should_use_global_info(
+            global_update_timestamp
+        ):
             self._overwrite_local_info(tool_to_global_info)
 
         # update the accuracy store by adding tools for which we do not have any global information yet
@@ -674,6 +711,18 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         if self.is_first_period:
             self._update_policy_tools()
+        self._add_offered_tools()
+
+    def _add_offered_tools(self) -> None:
+        """Start an empty record for each offered key without one, so it is selectable."""
+        accuracy_store = self.policy.accuracy_store
+        added = sorted(key for key in self.mech_tools if key not in accuracy_store)
+        if not added:
+            return
+        for key in added:
+            accuracy_store[key] = AccuracyInfo()
+        self.policy.update_weighted_accuracy()
+        self.context.logger.info(f"Started records for newly offered tools: {added}.")
 
     def _try_recover_utilized_tools(self) -> Dict[str, str]:
         """Try to recover the utilized tools from the tools store."""
@@ -746,9 +795,11 @@ class StorageManagerBehaviour(DecisionMakerBaseBehaviour, ABC):
             return
 
         names = tool_names(self.mech_tools)
-        suitable = {
-            tool for tool in names if is_prediction_tool(self._tool_metadata.get(tool))
-        }
+        suitable = tool_names(
+            key
+            for key in self.mech_tools
+            if is_prediction_tool(self._tool_metadata.get(key))
+        )
         if not suitable:
             self.context.logger.warning(
                 f"Tool-suitability classifier marked all {len(names)} "

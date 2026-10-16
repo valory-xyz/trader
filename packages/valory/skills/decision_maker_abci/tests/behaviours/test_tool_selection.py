@@ -143,6 +143,7 @@ def _make_behaviour(
     behaviour.mech_tools = mech_tools  # type: ignore[assignment]
     behaviour._mech_tools = mech_tools  # type: ignore[attr-defined]
     behaviour._tool_metadata = {}  # type: ignore[attr-defined]
+    behaviour._pending_identities = set()  # type: ignore[attr-defined]
 
     # params: the stubs flagged `valory` make up `valid_mechs`; no static mech.
     behaviour.params = MagicMock(  # type: ignore[assignment]
@@ -505,31 +506,42 @@ class TestSelectToolWithSelectedMechs:
 
         assert result == "tool-b"
 
-    def test_pin_set_but_mechs_info_empty_fails_closed(self) -> None:
-        """Pin applies whenever set; empty mechs_info collapses the candidate.
+    @pytest.mark.parametrize(
+        "mechs_info",
+        [
+            [],
+            [_StubMech("0xb", {"tool-a", "tool-b"})],
+            [_StubMech("0xa", set()), _StubMech("0xb", {"tool-a", "tool-b"})],
+        ],
+    )
+    def test_a_pin_no_discovered_mech_can_serve_is_ignored(
+        self, mechs_info: List[Any]
+    ) -> None:
+        """A pinned mech that is not discovered, or serves no tool, restricts nothing.
 
-        v2 normally populates mechs_info during MechInformationRound before
-        ToolSelectionRound reads it. If it lands here empty (e.g. subgraph
-        returned zero matching mechs), the pin yields no candidate and the
-        round fails closed rather than silently broadening to the
-        unrestricted policy.
+        Selection carries on as if no mech were pinned, as mech-interact does
+        for the request, instead of returning no tool every round.
+
+        :param mechs_info: the discovered mechs, none of which serves the pin.
         """
         policy = _make_policy("tool-a", "tool-b")
         behaviour = _make_behaviour(
             policy,
             {"tool-a", "tool-b"},
             selected_mechs=["0xa"],
-            mechs_info=[],
+            mechs_info=mechs_info,
         )
 
         with patch.object(
             _TestableBehaviour, "_setup_policy_and_tools", _mock_setup(True)
         ):
-            with patch.object(policy, "select_tool") as mock_select:
+            with patch.object(policy, "select_tool", return_value="tool-a") as select:
                 result = _run_select_tool(behaviour)
 
-        assert result is None
-        mock_select.assert_not_called()
+        assert result == "tool-a"
+        select.assert_called_once()
+        warning = behaviour.context.logger.warning.call_args.args[0]  # type: ignore[attr-defined]
+        assert "No pinned mech ['0xa']" in warning
 
     def test_pin_collapse_returns_none_when_mechs_info_present(self) -> None:
         """A genuinely unsatisfiable pin must fail closed (return None).
@@ -847,6 +859,11 @@ class TestExtractToolMetadata:
         res_raw = MagicMock(body=b"{not json")
         assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
 
+    def test_returns_empty_on_deeply_nested_json(self) -> None:
+        """JSON nested deeper than the parser can follow returns empty dict."""
+        res_raw = MagicMock(body=b"[" * 100_000 + b"]" * 100_000)
+        assert ToolSelectionBehaviour._extract_tool_metadata(res_raw) == {}
+
     def test_returns_empty_when_body_missing_attribute(self) -> None:
         """A response without a `.body` attribute returns empty (AttributeError)."""
         res_raw = object()  # no .body
@@ -969,7 +986,11 @@ class TestFetchMechManifests:
 
         # 2 unique CIDs -> 2 HTTP calls (the dup CID and the None one are skipped).
         assert call_count["n"] == 2
-        assert set(behaviour._tool_metadata) == {"good", "bad"}
+        assert set(behaviour._tool_metadata) == {
+            f"{mech}::{tool}"
+            for mech in ("0xa", "0xb", "0xc")
+            for tool in ("good", "bad")
+        }
         # Final URL must reflect ipfs_address + CID_PREFIX + last CID so a refactor
         # that drops CID_PREFIX or swaps the concat order trips the test.
         assert api.url == "https://ipfs.example/" + CID_PREFIX + "cid-2"
@@ -1006,7 +1027,7 @@ class TestFetchMechManifests:
 
         _drive_fetch(behaviour)
 
-        assert set(behaviour._tool_metadata) == {"tool"}
+        assert set(behaviour._tool_metadata) == {"0xgood::tool"}
         # Per-CID warning fires for the failing manifest so the silent skip is
         # visible in logs.
         warnings = [
@@ -1069,6 +1090,7 @@ class TestFetchOneManifest:
         """A valid manifest updates the cache, resets retries, returns True."""
         behaviour = _make_behaviour(_make_policy("t"), {"t"})
         behaviour._pending_cid = "cid-ok"
+        behaviour._pending_identities = {VALORY_LABEL, "0xa"}
         behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
             ipfs_address="https://ipfs.example/"
         )
@@ -1084,7 +1106,10 @@ class TestFetchOneManifest:
         done = _drive_fetch_one(behaviour)
 
         assert done is True
-        assert behaviour._tool_metadata == {"t": _PredictionMetadata.predictor()}
+        assert behaviour._tool_metadata == {
+            "valory::t": _PredictionMetadata.predictor(),
+            "0xa::t": _PredictionMetadata.predictor(),
+        }
         api.reset_retries.assert_called()
         api.increment_retries.assert_not_called()
 
@@ -1191,6 +1216,87 @@ class TestFetchOneManifest:
 
         assert done is True
         assert called["n"] == 0
+
+
+VALORY_MECH = "0x" + "aa" * 20
+THIRD_PARTY_MECH = "0x" + "bb" * 20
+
+
+class TestSuitabilityIsPerIdentity:
+    """A manifest describes only the tools of the identities whose mechs publish it."""
+
+    MANIFESTS = {
+        "cid-valory": {
+            "superforcaster": _PredictionMetadata.predictor(),
+            "jury": _PredictionMetadata.resolver(),
+        },
+        "cid-third-party": {
+            "superforcaster": _PredictionMetadata.resolver(),
+            "jury": _PredictionMetadata.predictor(),
+        },
+    }
+
+    @staticmethod
+    def _behaviour(mechs: List[Any]) -> "_TestableBehaviour":
+        """A V2 behaviour whose manifests are served by CID from `MANIFESTS`."""
+        keys = {
+            f"{identity}::{tool}"
+            for identity in (VALORY_LABEL, THIRD_PARTY_MECH)
+            for tool in ("superforcaster", "jury")
+        }
+        behaviour = _make_behaviour(_make_policy(*keys), keys)
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.synchronized_data.mechs_info = mechs  # type: ignore[attr-defined]
+        behaviour.params = MagicMock(  # type: ignore[attr-defined,assignment]
+            ipfs_address="https://ipfs.example/", valid_mechs=frozenset({VALORY_MECH})
+        )
+        api = _attach_mech_tools_api(behaviour)
+
+        def _http_gen(**_kw: Any) -> Generator[None, None, Any]:
+            cid = api.url[len("https://ipfs.example/" + CID_PREFIX) :]
+            body = {"toolMetadata": TestSuitabilityIsPerIdentity.MANIFESTS[cid]}
+            return MagicMock(body=json.dumps(body).encode())
+            yield  # generator function
+
+        behaviour.get_http_response = _http_gen  # type: ignore[method-assign,assignment]
+        return behaviour
+
+    @pytest.mark.parametrize("third_party_first", [True, False])
+    def test_same_named_tools_are_judged_by_their_own_manifest(
+        self, third_party_first: bool
+    ) -> None:
+        """Neither identity's manifest changes the verdict on the other's tool."""
+        mechs = [
+            _StubManifestMech(VALORY_MECH, "cid-valory"),
+            _StubManifestMech(THIRD_PARTY_MECH, "cid-third-party"),
+        ]
+        behaviour = self._behaviour(mechs[::-1] if third_party_first else mechs)
+
+        _drive_fetch(behaviour)
+        candidate, cause = behaviour._candidate_tools()
+
+        assert candidate == {
+            f"{VALORY_LABEL}::superforcaster",
+            f"{THIRD_PARTY_MECH}::jury",
+        }
+        assert cause is None
+
+    def test_a_shared_manifest_describes_every_identity_publishing_it(self) -> None:
+        """Two identities behind one CID get the same verdict for its tools."""
+        behaviour = self._behaviour(
+            [
+                _StubManifestMech(VALORY_MECH, "cid-valory"),
+                _StubManifestMech(THIRD_PARTY_MECH, "cid-valory"),
+            ]
+        )
+
+        _drive_fetch(behaviour)
+        candidate, _ = behaviour._candidate_tools()
+
+        assert candidate == {
+            f"{VALORY_LABEL}::superforcaster",
+            f"{THIRD_PARTY_MECH}::superforcaster",
+        }
 
 
 class TestCandidateToolsSuitability:
@@ -1384,6 +1490,27 @@ class TestMaybePublishSuitableTools:
         assert called[0] is True
         published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
         assert published == frozenset({"predictor"})
+
+    def test_a_name_is_published_when_one_identity_serves_it_as_a_predictor(
+        self,
+    ) -> None:
+        """Tool pins are by name, so a name counts once any identity's tool passes."""
+        keys = {f"{VALORY_LABEL}::jury", f"{THIRD_PARTY_MECH}::jury"}
+        behaviour = _make_behaviour(_make_policy(*keys), keys)
+        behaviour.synchronized_data.is_marketplace_v2 = True  # type: ignore[attr-defined]
+        behaviour.shared_state.available_prediction_tools = None  # type: ignore[attr-defined]
+        _stub_fetch(
+            behaviour,
+            {
+                f"{VALORY_LABEL}::jury": _PredictionMetadata.resolver(),
+                f"{THIRD_PARTY_MECH}::jury": _PredictionMetadata.predictor(),
+            },
+        )
+
+        _drive_publish(behaviour)
+
+        published = behaviour.shared_state.available_prediction_tools  # type: ignore[attr-defined]
+        assert published == frozenset({"jury"})
 
     def test_skips_and_keeps_value_when_already_published(self) -> None:
         """An already-populated set (e.g. ToolSelectionRound this boot) is not touched."""

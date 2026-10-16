@@ -209,6 +209,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                         "valid_mechs": [],
                         "mech_marketplace_v1_suitable_tools": [],
                         "deliveries_lookback_days": 30,
+                        "delivery_rate_caps": {"native": 10**16},
                         "store_path": tempfile.gettempdir(),
                     }
                 }

@@ -20,6 +20,7 @@
 """Tests for packages/valory/skills/chatui_abci/models.py."""
 
 import json
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
@@ -31,9 +32,12 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
     SharedState as BaseSharedState,
 )
 from packages.valory.skills.chatui_abci.models import (
+    APPROVED_MECHS_STORE,
     CHATUI_PARAM_STORE,
     ChatuiConfig,
     ChatuiParams,
+    MAX_MECH_OFFERS,
+    Offer,
     SharedState,
     WITHDRAWAL_STATES,
     WITHDRAWAL_STATE_ARMED,
@@ -620,6 +624,20 @@ class TestChatuiParamsInit:
             )
         mock_super.assert_called_once()
 
+    def test_the_marketplace_api_url_is_left_to_mech_interact(self) -> None:
+        """`MechParams` reads it, so the chat params neither require nor consume it."""
+        kwargs = {
+            "service_endpoint": "https://example.com",
+            "genai_api_key": "dummy",
+            "marketplace_api_url": "https://marketplace.example/api",
+        }
+        with patch.object(BaseParams, "__init__", return_value=None) as mock_super:
+            params = ChatuiParams(skill_context=MagicMock(), **kwargs)
+        assert not hasattr(params, "marketplace_api_url")
+        assert mock_super.call_args.kwargs["marketplace_api_url"] == (
+            "https://marketplace.example/api"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Branch coverage tests
@@ -1008,3 +1026,172 @@ class TestSetupBootAutoClear:
             for call_args in state.context.logger.info.call_args_list  # type: ignore[attr-defined]
         ]
         assert any("withdrawal" in m.lower() and live_state in m for m in info_msgs)
+
+
+def _offer(address: str, rate: int = 10000) -> Offer:
+    """An offer shown for the address."""
+    return Offer(address, rate, "0x6406", "0.01 USDC")
+
+
+def _offer_state() -> _TestableSharedState:
+    """A fresh shared state, without the parent's set-up."""
+    with patch.object(BaseSharedState, "__init__", return_value=None):
+        return _TestableSharedState(skill_context=MagicMock())
+
+
+class TestMechOffers:
+    """The last offer shown per mech, in memory, bounded."""
+
+    def test_an_offer_is_a_frozen_value(self) -> None:
+        """Two offers with the same terms are the same offer; neither can be edited."""
+        mech = "0x" + "ab" * 20
+        assert _offer(mech) == _offer(mech)
+        assert _offer(mech) != _offer(mech, 10001)
+        with pytest.raises(FrozenInstanceError):
+            _offer(mech).rate = 1  # type: ignore[misc]
+
+    def test_a_fresh_state_holds_no_offer(self) -> None:
+        """Nothing is carried over from an earlier run."""
+        assert _offer_state().mech_offers == {}
+
+    def test_a_newer_offer_replaces_the_one_for_its_address(self) -> None:
+        """Only the last terms shown for a mech can be accepted."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech, 1))
+        state.record_mech_offer(_offer(mech, 2))
+        assert state.mech_offers == {mech: _offer(mech, 2)}
+
+    def test_the_oldest_offer_is_dropped_past_the_bound(self) -> None:
+        """Re-recording an address makes it the newest, so it outlives older ones."""
+        state = _offer_state()
+        mechs = [f"0x{index:040x}" for index in range(MAX_MECH_OFFERS + 1)]
+        for mech in mechs[:MAX_MECH_OFFERS]:
+            state.record_mech_offer(_offer(mech))
+        state.record_mech_offer(_offer(mechs[0]))
+        state.record_mech_offer(_offer(mechs[MAX_MECH_OFFERS]))
+        assert len(state.mech_offers) == MAX_MECH_OFFERS
+        assert mechs[1] not in state.mech_offers
+        assert mechs[0] in state.mech_offers
+        assert list(state.mech_offers)[-1] == mechs[MAX_MECH_OFFERS]
+
+    @pytest.mark.parametrize("newer, kept", [(None, False), (2, True)])
+    def test_dropping_an_offer_spares_a_newer_one(self, newer: Any, kept: bool) -> None:
+        """An accept settled late must not drop terms shown after it started."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech, 1))
+        if newer is not None:
+            state.record_mech_offer(_offer(mech, newer))
+        state.drop_mech_offer(_offer(mech, 1))
+        assert (mech in state.mech_offers) is kept
+
+    def test_an_offer_and_a_refusal_replace_each_other(self) -> None:
+        """Only the last report about a mech decides what an accept is answered with."""
+        state = _offer_state()
+        mech = "0x" + "ab" * 20
+        state.record_mech_offer(_offer(mech))
+        state.record_mech_refusal(mech, "It cannot be approved.")
+        assert state.mech_offers == {}
+        assert state.mech_refusals == {mech: "It cannot be approved."}
+        state.record_mech_offer(_offer(mech))
+        assert state.mech_refusals == {}
+        assert state.mech_offers == {mech: _offer(mech)}
+
+    def test_the_oldest_refusal_is_dropped_past_the_bound(self) -> None:
+        """Refusals are bounded like offers."""
+        state = _offer_state()
+        mechs = [f"0x{index:040x}" for index in range(MAX_MECH_OFFERS + 1)]
+        for mech in mechs:
+            state.record_mech_refusal(mech, "no")
+        assert len(state.mech_refusals) == MAX_MECH_OFFERS
+        assert mechs[0] not in state.mech_refusals
+
+    def test_dropping_an_unknown_offer_does_nothing(self) -> None:
+        """No offer, nothing to drop, and no error."""
+        state = _offer_state()
+        state.drop_mech_offer(_offer("0x" + "ab" * 20))
+        assert state.mech_offers == {}
+
+
+class TestApprovedMechsFile:
+    """The approved mechs and their accepted rates live in their own file, apart from the chat config."""
+
+    @staticmethod
+    def _state(tmp_path: Path) -> _TestableSharedState:
+        state = _make_shared_state({})
+        state._approved_mech_rates = None  # type: ignore[attr-defined]
+        state.context.params.store_path = tmp_path  # type: ignore[attr-defined]
+        return state
+
+    def test_missing_file_means_none_approved(self, tmp_path: Path) -> None:
+        """A fresh agent has approved nothing."""
+        state = self._state(tmp_path)
+        assert state.approved_mechs == []
+        assert state.approved_mech_rates == {}
+
+    def test_approving_persists_the_address_and_rate(self, tmp_path: Path) -> None:
+        """approve_mech writes approved_mechs.json, never the chat config file."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.approve_mech(mech.upper().replace("0X", "0x"), 10000)
+        assert json.loads((tmp_path / APPROVED_MECHS_STORE).read_text()) == {
+            mech: 10000
+        }
+        assert not (tmp_path / CHATUI_PARAM_STORE).exists()
+        assert self._state(tmp_path).approved_mech_rates == {mech: 10000}
+        assert self._state(tmp_path).approved_mechs == [mech]
+
+    def test_approving_again_replaces_the_accepted_rate(self, tmp_path: Path) -> None:
+        """A re-approval after a price raise records the new price."""
+        state = self._state(tmp_path)
+        mech = "0x" + "ab" * 20
+        state.approve_mech(mech, 10000)
+        state.approve_mech(mech, 12000)
+        assert self._state(tmp_path).approved_mech_rates == {mech: 12000}
+
+    def test_set_approved_mech_rates_replaces_the_whole_record(
+        self, tmp_path: Path
+    ) -> None:
+        """Removal rewrites the file with what is left."""
+        state = self._state(tmp_path)
+        kept, gone = "0x" + "ab" * 20, "0x" + "cd" * 20
+        state.set_approved_mech_rates({kept: 1, gone: 2})
+        state.set_approved_mech_rates({kept: 1})
+        assert self._state(tmp_path).approved_mech_rates == {kept: 1}
+
+    @pytest.mark.parametrize(
+        "content",
+        ["not json", json.dumps(["0x" + "ab" * 20]), json.dumps(3), b"\xff\xfe"],
+    )
+    def test_unreadable_or_list_file_means_none_approved(
+        self, tmp_path: Path, content: Any
+    ) -> None:
+        """A corrupt file, or the pre-consent list shape, is logged and read as empty."""
+        path = tmp_path / APPROVED_MECHS_STORE
+        if isinstance(content, bytes):
+            path.write_bytes(content)
+        else:
+            path.write_text(content)
+        state = self._state(tmp_path)
+        assert state.approved_mech_rates == {}
+        state.context.logger.error.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_entries_without_an_address_and_a_rate_are_dropped(
+        self, tmp_path: Path
+    ) -> None:
+        """Only 20-byte hex addresses with a non-negative integer rate survive a hand-edited file."""
+        mech, other = "0x" + "cd" * 20, "0x" + "ef" * 20
+        (tmp_path / APPROVED_MECHS_STORE).write_text(
+            json.dumps(
+                {
+                    mech.upper().replace("0X", "0x"): 5,
+                    "0x123": 1,
+                    "bob.eth": 1,
+                    other: "5",
+                    "0x" + "aa" * 20: -1,
+                    "0x" + "bb" * 20: True,
+                }
+            )
+        )
+        assert self._state(tmp_path).approved_mech_rates == {mech: 5}

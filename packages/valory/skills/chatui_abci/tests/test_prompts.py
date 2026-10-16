@@ -165,3 +165,15 @@ class TestChatuiPrompt:
         assert FieldsThatCanBeRemoved("activity_goal") is (
             FieldsThatCanBeRemoved.ACTIVITY_GOAL
         )
+
+    def test_the_config_prompt_carries_no_mech_reports(self) -> None:
+        """Mech facts never reach the config model; it only asks for an address."""
+        assert "Mechs:" not in CHATUI_PROMPT
+        for field in ("{mech_reports}", "{approved_mechs}", "{pending_approval}"):
+            assert field not in CHATUI_PROMPT
+        assert "mech_action" not in CHATUI_PROMPT
+        assert (
+            "If the user asks about a mech without giving its address, ask for the address."
+            in CHATUI_PROMPT
+        )
+        assert "mech_action" not in ChatUILLMResponse.model_fields

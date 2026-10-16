@@ -54,6 +54,16 @@ _RESOLVER_FIELD_RE = re.compile(
 )
 
 
+def _nested(meta: Any, *keys: str) -> Any:
+    """Follow `keys` through nested objects; None where a level is not an object."""
+    value = meta
+    for key in keys:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
 def _description(meta: Dict[str, Any]) -> str:
     """Return the tool's top-level description, or empty string."""
     return str(meta.get("description") or "")
@@ -61,17 +71,12 @@ def _description(meta: Dict[str, Any]) -> str:
 
 def _input_description(meta: Dict[str, Any]) -> str:
     """Return `input.description`, or empty string."""
-    return str((meta.get("input") or {}).get("description") or "")
+    return str(_nested(meta, "input", "description") or "")
 
 
 def _result_field(meta: Dict[str, Any], field: str) -> str:
     """Return `output.schema.properties.result.<field>`, or empty string."""
-    return str(
-        (((meta.get("output") or {}).get("schema") or {}).get("properties") or {})
-        .get("result", {})
-        .get(field, "")
-        or ""
-    )
+    return str(_nested(meta, "output", "schema", "properties", "result", field) or "")
 
 
 def is_prediction_tool(tool_metadata: Optional[Dict[str, Any]]) -> bool:
@@ -84,7 +89,7 @@ def explain_prediction_tool(
     tool_metadata: Optional[Dict[str, Any]],
 ) -> Tuple[bool, str]:
     """Return (verdict, firing-rule-name) for is_prediction_tool."""
-    if not tool_metadata:
+    if not tool_metadata or not isinstance(tool_metadata, dict):
         return False, "no_metadata"
 
     desc = _description(tool_metadata)

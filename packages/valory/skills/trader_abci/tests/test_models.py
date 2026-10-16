@@ -19,10 +19,16 @@
 
 """Tests for trader_abci models."""
 
+import inspect
+import re
+from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import yaml
+
 from packages.valory.connections.x402.clients.mech import slot_registry
+from packages.valory.skills.chatui_abci.models import ChatuiParams
 from packages.valory.skills.decision_maker_abci.models import (
     SharedState as BaseSharedState,
 )
@@ -32,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.rounds import (
 from packages.valory.skills.market_manager_abci.rounds import (
     Event as MarketManagerEvent,
 )
+from packages.valory.skills.mech_interact_abci.models import MechParams
 from packages.valory.skills.mech_interact_abci.nonce_allocator import (
     MECH_SLOT_REGISTRY,
 )
@@ -46,7 +53,7 @@ class TestTraderParams:
     """Tests for the TraderParams model."""
 
     def test_init_sets_attributes(self) -> None:
-        """TraderParams.__init__ sets all 7 custom attributes from kwargs."""
+        """TraderParams.__init__ sets its own attributes from kwargs."""
         kwargs: Dict[str, Any] = {
             "mech_interact_round_timeout_seconds": 300,
             "genai_api_key": "test-key",
@@ -69,6 +76,46 @@ class TestTraderParams:
         assert params.gnosis_ledger_rpc == "https://gnosis-rpc.example.com"
         assert params.polygon_ledger_rpc == "https://polygon-rpc.example.com"
         assert params.use_x402 is True
+
+
+def test_trader_params_set_every_chat_param() -> None:
+    """The chat handler reads `context.params`, which is `TraderParams` in the agent.
+
+    `TraderParams` does not inherit `ChatuiParams`, so each chat param has to be
+    read by `TraderParams` or one of its parents, or the chat fails at runtime.
+    """
+    ensured = re.compile(r'_ensure\(\s*"([a-z_]+)"')
+    chat_params = set(ensured.findall(inspect.getsource(ChatuiParams.__init__)))
+    trader_params = {
+        key
+        for cls in TraderParams.__mro__
+        if inspect.isfunction(vars(cls).get("__init__"))
+        for key in ensured.findall(inspect.getsource(vars(cls)["__init__"]))
+    }
+    assert chat_params, "no chat params found"
+    assert chat_params <= trader_params, chat_params - trader_params
+
+
+def test_the_chat_can_read_mechs_through_the_composed_context() -> None:
+    """`read_mech` and `read_live_rate` read the params and these models from the chat's context.
+
+    In the agent that context is the trader skill's, so its params must be
+    `MechParams` (for `mech_chain_id` and `marketplace_api_url`) and it must
+    declare every model the reader uses.
+    """
+    assert issubclass(TraderParams, MechParams)
+    config = yaml.safe_load(
+        (Path(__file__).parents[1] / "skill.yaml").read_text(encoding="utf-8")
+    )
+    models = config["models"]
+    assert {
+        "mechs_subgraph",
+        "http_dialogues",
+        "contract_api_dialogues",
+        "requests",
+    } <= set(models)
+    assert models["params"]["class_name"] == "TraderParams"
+    assert "marketplace_api_url" in models["params"]["args"]
 
 
 class TestSharedState:

@@ -51,6 +51,7 @@ from packages.valory.skills.market_manager_abci.bets import (
 from packages.valory.skills.mech_interact_abci.states.base import (
     MechInteractionResponse,
 )
+from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 WRITE_TEXT_MODE = "w+t"
 COMMA = ","
@@ -214,8 +215,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             return None
 
         try:
-            return PredictionResponse(**json.loads(self.mech_response.result))
-        except (json.JSONDecodeError, ValueError) as exc:
+            return PredictionResponse(**loads_bounded(self.mech_response.result))
+        except Exception as exc:  # the result is mech-supplied; fail closed
             self.context.logger.error(f"Could not parse the mech's response: {exc}")
             return None
 
