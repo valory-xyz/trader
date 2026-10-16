@@ -86,6 +86,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
     Standing,
     payment_line,
     render_report,
+    verdict,
 )
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
@@ -150,6 +151,10 @@ TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 ASK_ONE_AT_A_TIME = "Ask about one mech at a time."
+ACCEPT_UNREADABLE = (
+    "I couldn't read that. To approve a mech, copy the line from its report "
+    "exactly: I accept <price> per request for <address>"
+)
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
@@ -282,6 +287,9 @@ class HttpHandler(BaseHttpHandler):
         if command is not None:
             self._run_mech_command(command, http_msg, http_dialogue)
             return
+        if normalise(user_prompt).startswith("i accept"):
+            self._send_mech_reply(http_msg, http_dialogue, ACCEPT_UNREADABLE)
+            return
         addresses = addresses_in(user_prompt)
         if len(addresses) > 1:
             self._send_mech_reply(http_msg, http_dialogue, ASK_ONE_AT_A_TIME)
@@ -330,7 +338,7 @@ class HttpHandler(BaseHttpHandler):
         if offer is not None:
             self.shared_state.record_mech_offer(offer)
         else:
-            self.shared_state.mech_offers.pop(address, None)
+            self.shared_state.record_mech_refusal(address, verdict(facts, standing))
         self._send_mech_reply(http_msg, http_dialogue, text)
 
     def _run_mech_command(
@@ -360,6 +368,14 @@ class HttpHandler(BaseHttpHandler):
         """Approve at the shown rate once the live rate is read and is no higher."""
         address = command.address
         offer = self.shared_state.mech_offers.get(address)
+        refusal = self.shared_state.mech_refusals.get(address)
+        if offer is None and refusal is not None:
+            self._send_mech_reply(
+                http_msg,
+                http_dialogue,
+                f"There is nothing to accept for {address}. {refusal}",
+            )
+            return
         if offer is None or normalise(offer.price_text) != command.price_text:
             self._send_mech_reply(
                 http_msg,
@@ -393,7 +409,7 @@ class HttpHandler(BaseHttpHandler):
         self.shared_state.approve_mech(address, offer.rate)
         return (
             f"Approved {address}{again} at up to {offer.price_text} per request. "
-            "Your agent uses it from the next cycle."
+            "Your agent can use it for its next mech requests."
         )
 
     def _remove_mech(self, address: str) -> str:
@@ -480,6 +496,9 @@ class HttpHandler(BaseHttpHandler):
             current_allowed_tools=current_allowed_tools,
             available_tools=available_tools,
             current_selected_mechs=current_selected_mechs,
+            current_approved_mechs=(
+                ", ".join(self.shared_state.approved_mechs) or "None"
+            ),
             available_mechs=(
                 ", ".join(sorted(available_mechs))
                 if available_mechs
