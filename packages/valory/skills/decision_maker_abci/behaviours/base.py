@@ -527,6 +527,28 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             [self._market_field(bet), feed_field("Reason", reason)],
         )
 
+    def _record_positions_sold(self, sold: int, received: float, unsold: int) -> None:
+        """Tell the feed how the withdrawal's sell-off went, once per withdrawal.
+
+        :param sold: the positions sold.
+        :param received: what they sold for, in whole collateral tokens.
+        :param unsold: the positions that could not be sold.
+        """
+        if self.shared_state.positions_sold_recorded:
+            return
+        self.shared_state.positions_sold_recorded = True
+        self._record_feed_event(
+            EventType.POSITIONS_SOLD,
+            [
+                feed_field("Positions sold", str(sold)),
+                feed_field(
+                    "Amount received",
+                    format_amount(received, self.params.is_running_on_polymarket),
+                ),
+                feed_field("Positions that couldn't be sold", str(unsold)),
+            ],
+        )
+
     def _record_trade_placed(self, bet: Bet) -> None:
         """Tell the feed about the trade just placed on the bet's market."""
         amount = self.synchronized_data.bet_amount

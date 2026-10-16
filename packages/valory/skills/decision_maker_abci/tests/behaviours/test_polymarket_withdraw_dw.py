@@ -19,6 +19,8 @@
 
 """Tests for the DepositWallet funder/sweep additions in PolymarketWithdrawBehaviour."""
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
@@ -216,3 +218,36 @@ class TestSweepDwToSafe:
         b._resolve_deposit_wallet = lambda: DW  # type: ignore[method-assign]
         _run(b._sweep_dw_to_safe())
         b.context.logger.warning.assert_called()
+
+
+class TestPositionsSoldOnFinish:
+    """``_set_state`` reports the sell-off once the sweep ends."""
+
+    def test_terminal_state_reports_positions_and_proceeds(
+        self, tmp_path: Path
+    ) -> None:
+        """Fills count per position and add up to shares times price."""
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = tmp_path
+        behaviour._record_positions_sold = MagicMock()  # type: ignore[method-assign]
+        (tmp_path / "chatui_param_store.json").write_text(
+            json.dumps(
+                {
+                    "withdrawal_fills": [
+                        {"token_id": "1", "shares_sold": 4, "fill_price": 0.5},
+                        {"token_id": "1", "shares_sold": 2, "fill_price": 0.5},
+                        {"token_id": "2", "shares_sold": 10, "fill_price": 0.25},
+                    ],
+                    "withdrawal_errors": [
+                        {"token_id": "3", "reason": "no liquidity"},
+                        {"token_id": "3", "reason": "no liquidity"},
+                        {"token_id": "", "reason": "fetch failed"},
+                    ],
+                }
+            )
+        )
+
+        behaviour._set_state("selling")
+        behaviour._record_positions_sold.assert_not_called()  # type: ignore[attr-defined]
+        behaviour._set_state("complete")
+        behaviour._record_positions_sold.assert_called_once_with(2, 5.5, 1)  # type: ignore[attr-defined]

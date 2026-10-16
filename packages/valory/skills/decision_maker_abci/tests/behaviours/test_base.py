@@ -1243,6 +1243,27 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         assert not (tmp_path / FEED_FILE).exists()
 
+    def test_positions_sold_is_written_once(self, tmp_path: Path) -> None:
+        """Only the first sweep of a withdrawal is its ``Sold open positions`` card."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.context.state.positions_sold_recorded = False
+
+        behaviour._record_positions_sold(3, 12.5, 1)
+        behaviour._record_positions_sold(0, 0, 1)
+
+        lines = (tmp_path / FEED_FILE).read_text().splitlines()
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["type"] == "positions_sold"
+        assert entry["fields"] == [
+            {"label": "Positions sold", "value": "3"},
+            {"label": "Amount received", "value": "$12.50 pUSD"},
+            {"label": "Positions that couldn't be sold", "value": "1"},
+        ]
+
     def test_market_skipped_names_the_reason(self, tmp_path: Path) -> None:
         """A skipped market card has the market and the reason."""
         behaviour = self.behaviour
