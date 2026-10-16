@@ -663,6 +663,20 @@ class TestConfirmFlow:
         assert "could not be saved" in chat.response(dialogue)[1]["reply"]["text"]
         assert all(line["kind"] == "message" for line in chat.feed())
 
+    def test_a_proposal_whose_reply_is_not_written_is_dropped(
+        self, chat: _Chat
+    ) -> None:
+        """A resend after a failed proposal reply is proposed again, not confirmed."""
+        dialogue = chat.send("Set my max trade size to 1.5", "c-ask")
+        with patch.object(handlers_module, "append_message", side_effect=OSError):
+            chat.reply("I can raise it.", {"max_bet_size": 1.5})
+
+        assert chat.response(dialogue)[0] == 500
+        assert chat.handler.shared_state.config_proposal is None
+
+        chat.send("Set my max trade size to 1.5", "c-ask")
+        assert "proposal" not in chat.llm_calls[-1][2]
+
     def test_a_confirmed_change_already_in_place_writes_no_card(
         self, chat: _Chat
     ) -> None:

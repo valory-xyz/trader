@@ -22,6 +22,7 @@
 import copy
 import json
 import math
+from dataclasses import replace
 from datetime import datetime, timezone
 from functools import partial
 from html import escape
@@ -547,6 +548,8 @@ class HttpHandler(BaseHttpHandler):
                         str(body.get(LLM_MESSAGE_FIELD, "")),
                         turn.client_id,
                     )
+                    if turn.proposal is not None:
+                        self.shared_state.config_proposal = turn.proposal
             except OSError as e:
                 self.context.logger.error(f"Could not write the chat reply: {e}")
                 status_code = HTTPStatus.INTERNAL_SERVER_ERROR
@@ -654,8 +657,10 @@ class HttpHandler(BaseHttpHandler):
         if not changes:
             self._send_chat_text(llm_message, http_msg, http_dialogue)
             return
-        self.shared_state.config_proposal = ConfigProposal(
-            config=updated_agent_config, changes=changes
+        label = http_dialogue.dialogue_label
+        self._chat_turns[label] = replace(
+            self._chat_turns[label],
+            proposal=ConfigProposal(config=updated_agent_config, changes=changes),
         )
         question = (
             f"<b>To confirm:</b> change {self._changes_text(changes)}. Reply yes to "

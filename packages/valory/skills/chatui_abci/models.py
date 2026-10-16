@@ -116,14 +116,6 @@ class Offer:
 
 
 @dataclass(frozen=True)
-class ChatTurn:
-    """A chat message being answered: Pearl's id for it and its line as written."""
-
-    client_id: str
-    message: FeedEntry
-
-
-@dataclass(frozen=True)
 class ConfigChange:
     """One setting a chat change sets, as the user reads it."""
 
@@ -138,6 +130,19 @@ class ConfigProposal:
 
     config: Dict[str, Any]
     changes: List[ConfigChange]
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    """A chat message being answered: Pearl's id for it and its line as written.
+
+    ``proposal`` is the change its reply asks to confirm, kept here until that
+    reply is written so that a turn which fails leaves nothing to confirm.
+    """
+
+    client_id: str
+    message: FeedEntry
+    proposal: Optional[ConfigProposal] = None
 
 
 class SharedState(BaseSharedState):
