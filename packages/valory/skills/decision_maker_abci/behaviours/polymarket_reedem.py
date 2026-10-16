@@ -336,7 +336,9 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             )
 
             self.context.logger.info(f"Redemption result for {condition_id}: {result}")
-            if result is not None:
+            if result is not None and not (
+                isinstance(result, dict) and result.get("error")
+            ):
                 redeemed.append(position)
 
         for fields in self._payouts_by_market(redeemed):
