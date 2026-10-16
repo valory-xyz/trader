@@ -570,7 +570,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 feed_field(
                     "AI confidence", format_percent(self.synchronized_data.confidence)
                 ),
-                feed_field("Potential payout", self._potential_payout(bet, amount, vote)),
+                feed_field(
+                    "Potential payout", self._potential_payout(bet, amount, vote)
+                ),
             ],
         )
 
