@@ -586,6 +586,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "id": market_id,
                         "title": market.get("question"),
                         "description": market.get("description"),
+                        "slug": market.get("slug"),
                         "category": category,
                         "condition_id": market.get("conditionId"),
                         # Polymarket v2 collateral is protocol-level (pUSD); the param
