@@ -567,7 +567,8 @@ class TestPayoutsByMarket:
         """The builder path writes a card for each position whose redeem succeeded."""
         behaviour = _make_behaviour()
         behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
-        results = {"0xok": {"transactionHash": "0x1"}, "0xfail": {"error": "boom"}}
+        # The connection sends the relayer's transaction list, or null on failure.
+        results = {"0xok": [{"transactionHash": "0x1"}], "0xfail": None}
 
         def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
             yield

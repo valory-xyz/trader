@@ -170,14 +170,14 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         outcome_index: int,
         collateral_token: str,
         is_neg_risk: bool = False,
-    ) -> Generator[None, None, dict]:
+    ) -> Generator[None, None, Optional[List[Dict[str, Any]]]]:
         """Redeem a single position.
 
         :param condition_id: The condition ID for the position
         :param outcome_index: The outcome index (0 for Yes, 1 for No typically)
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :return: Redemption result
+        :return: the relayer's transactions for the redeem, or None if it failed
         :yield: None
         """
         # The deployed Polymarket collateral adapters ignore the uint256[]
@@ -336,7 +336,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             )
 
             self.context.logger.info(f"Redemption result for {condition_id}: {result}")
-            if isinstance(result, dict) and "error" not in result:
+            if result is not None:
                 redeemed.append(position)
 
         for fields in self._payouts_by_market(redeemed):
