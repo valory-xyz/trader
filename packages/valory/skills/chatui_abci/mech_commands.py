@@ -17,38 +17,26 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Read the typed mech commands; the chat acts on a mech only through these."""
+"""Read what a chat message asks of a mech: the typed accept line, or the model's mech intent checked against the chat."""
 
-import enum
 import re
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional, Sequence, Set, Tuple
+
+from packages.valory.skills.chatui_abci.prompts import MechIntent
 
 ADDRESS_PATTERN = re.compile(r"0x[0-9a-fA-F]{40}")
 TRAILING_PUNCTUATION = ".,;:!?"
 _ADDRESS = r"(?P<address>0x[0-9a-f]{40})"
 ACCEPT_PATTERN = re.compile(rf"i accept (?P<price>.+) per request for {_ADDRESS}")
-VERB_PATTERN = re.compile(rf"(?P<verb>remove|pin|unpin) {_ADDRESS}")
-LIST_PATTERN = re.compile(r"list approved(?: mechs)?")
-
-
-class Verb(enum.Enum):
-    """What a command does to the mech it names."""
-
-    ACCEPT = "accept"
-    REMOVE = "remove"
-    PIN = "pin"
-    UNPIN = "unpin"
-    LIST = "list"
 
 
 @dataclass(frozen=True)
-class Command:
-    """A typed command: the verb, the lowercase address (empty for a list) and, for an accept, the normalised price text."""
+class Accept:
+    """A typed accept: the lowercase address and the normalised price text."""
 
-    verb: Verb
     address: str
-    price_text: Optional[str] = None
+    price_text: str
 
 
 def normalise(text: str) -> str:
@@ -61,15 +49,61 @@ def addresses_in(text: str) -> List[str]:
     return list(dict.fromkeys(match.lower() for match in ADDRESS_PATTERN.findall(text)))
 
 
-def parse_command(text: str) -> Optional[Command]:
-    """The command the whole message spells, ignoring case, spacing and trailing punctuation, or `None`."""
+def parse_accept(text: str) -> Optional[Accept]:
+    """The accept the whole message spells, ignoring case, spacing and trailing punctuation, or `None`."""
     message = normalise(text).rstrip(TRAILING_PUNCTUATION).rstrip()
     accept = ACCEPT_PATTERN.fullmatch(message)
-    if accept is not None:
-        return Command(Verb.ACCEPT, accept["address"], accept["price"].strip())
-    if LIST_PATTERN.fullmatch(message) is not None:
-        return Command(Verb.LIST, "")
-    verb = VERB_PATTERN.fullmatch(message)
-    if verb is not None:
-        return Command(Verb(verb["verb"]), verb["address"])
+    if accept is None:
+        return None
+    return Accept(accept["address"], accept["price"].strip())
+
+
+def _named_address(
+    value: Any, message: str, last_shown: Optional[str]
+) -> Optional[str]:
+    """The address, when the user's message names it or it is the last mech shown."""
+    if not isinstance(value, str):
+        return None
+    address = value.strip().lower()
+    if address in addresses_in(message) or address == last_shown:
+        return address
     return None
+
+
+def _listed_address(value: Any, last_list: Sequence[str]) -> Optional[str]:
+    """The address at a 1-based position of the last list shown."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if not 1 <= value <= len(last_list):
+        return None
+    return last_list[value - 1]
+
+
+def resolve_intent(
+    reply: Any, message: str, last_shown: Optional[str], last_list: Sequence[str]
+) -> Tuple[MechIntent, Optional[str]]:
+    """The mech intent the model returned and the one mech it refers to, checked against the chat.
+
+    :param reply: the `mech_intent` of the model's reply, decoded from JSON.
+    :param message: the user's message.
+    :param last_shown: the address of the last report shown, if any.
+    :param last_list: the addresses of the last numbered list shown, in order.
+    :return: the intent, `NONE` for any reply that is not a known intent, and
+        the mech, or `None` unless every reference given names the same mech.
+
+    An address counts only when the message names it or it is the last mech
+    shown, and a position only when it is on the last list, so the mech is
+    always one the user or the chat has put in front of the model.
+    """
+    if not isinstance(reply, dict):
+        return MechIntent.NONE, None
+    try:
+        intent = MechIntent(reply.get("intent"))
+    except (ValueError, TypeError):
+        return MechIntent.NONE, None
+    named: Set[Optional[str]] = set()
+    if reply.get("address") is not None:
+        named.add(_named_address(reply["address"], message, last_shown))
+    if reply.get("position") is not None:
+        named.add(_listed_address(reply["position"], last_list))
+    return intent, named.pop() if len(named) == 1 else None

@@ -20,11 +20,14 @@
 """Tests for the prompts module of the chatui_abci skill."""
 
 import pickle  # nosec
+from string import Formatter
 
 from packages.valory.skills.chatui_abci.prompts import (
     CHATUI_PROMPT,
     ChatUILLMResponse,
     FieldsThatCanBeRemoved,
+    MechIntent,
+    MechIntentReading,
     TradingStrategy,
     UpdatedAgentConfig,
     build_chatui_llm_response_schema,
@@ -108,13 +111,17 @@ class TestChatUILLMResponse:
             removed_config_fields=[],
             behavior=None,
         )
-        resp = ChatUILLMResponse(updated_agent_config=config, message="test")
+        resp = ChatUILLMResponse(
+            updated_agent_config=config, message="test", mech_intent=None
+        )
         assert resp.message == "test"
         assert resp.updated_agent_config is not None
 
     def test_without_config(self) -> None:
         """Test instantiation with no config (None)."""
-        resp = ChatUILLMResponse(updated_agent_config=None, message="hello")
+        resp = ChatUILLMResponse(
+            updated_agent_config=None, message="hello", mech_intent=None
+        )
         assert resp.updated_agent_config is None
         assert resp.message == "hello"
 
@@ -177,3 +184,50 @@ class TestChatuiPrompt:
             in CHATUI_PROMPT
         )
         assert "mech_action" not in ChatUILLMResponse.model_fields
+
+    def test_the_config_prompt_names_no_typed_mech_commands(self) -> None:
+        """Approving, removing and listing mechs are replies, not typed commands."""
+        assert "list approved" not in CHATUI_PROMPT
+        assert "remove <address>" not in CHATUI_PROMPT
+
+
+class TestMechIntentInTheConfigReply:
+    """The config reply carries the mech intent; the prompt adds only the chat's mech state."""
+
+    def test_the_prompt_is_filled_from_the_config_the_message_and_the_chat_state(
+        self,
+    ) -> None:
+        """The only mech fields are the last mech shown, the list length and the offer flag."""
+        fields = {name for _, name, _, _ in Formatter().parse(CHATUI_PROMPT)}
+        assert fields - {None} == {
+            "user_prompt",
+            "current_trading_strategy",
+            "current_allowed_tools",
+            "available_tools",
+            "current_selected_mechs",
+            "available_mechs",
+            "current_approved_mechs",
+            "current_fixed_bet_size",
+            "current_max_bet_size",
+            "units",
+            "absolute_min_bet_size",
+            "absolute_max_bet_size",
+            "current_activity_goal",
+            "activity_goal_source",
+            "default_activity_goal",
+            "activity_goal_progress",
+            "last_shown_mech",
+            "mech_list_length",
+            "pending_offer",
+        }
+
+    def test_the_prompt_names_every_mech_intent(self) -> None:
+        """Each intent the schema allows, other than none, is described to the model."""
+        for intent in MechIntent:
+            if intent is not MechIntent.NONE:
+                assert f'"{intent.value}"' in CHATUI_PROMPT
+
+    def test_the_reply_schema_carries_the_mech_intent(self) -> None:
+        """The intent, an address and a list position, beside the config update."""
+        assert "mech_intent" in ChatUILLMResponse.model_fields
+        assert set(MechIntentReading.model_fields) == {"intent", "address", "position"}

@@ -52,8 +52,8 @@ Configuration details:
     -- The user can add mechs to or remove individual mechs from the current list, or replace it entirely.
 - Approved third-party mechs: {current_approved_mechs}
     -- Mechs not run by Valory that the user approved from this chat, each up to the price the user accepted. This is a separate list from the pinned mechs.
-    -- You cannot approve or remove a mech. The user does that by sending a mech's address to see its report, then typing the line the report gives, or "remove <address>".
-    -- The user can type "list approved" to see the approved and pinned mechs.
+    -- You cannot approve or remove a mech. The user does that by asking about a mech by its address to see its report, then saying to approve or remove it.
+    -- The user can ask which mechs the agent can use to see a numbered list of them.
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "fixed_bet" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
@@ -84,6 +84,9 @@ Carefully read the user's prompt below and decide what configuration changes, if
 
 If the user asks about a mech without giving its address, ask for the address.
 
+Mech requests: last mech shown: {last_shown_mech}; items in the last numbered mech list: {mech_list_length}; offer waiting for approval for the last mech shown: {pending_offer}.
+If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin"; its address is a mech address written in the message, or the last mech shown when the message refers to it or agrees to its offer; its position is a number from the last numbered list when the message refers to one. Leave address and position null when the message names the mech any other way. Otherwise set mech_intent to null and answer as usual.
+
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Separate paragraphs with a blank line (<br><br>). Use these tags to make your explanation clearer and easier to read.
 
 When summarizing your actions, include a field called 'behavior' that describes the agent's behavior in one sentence. This description should be easy for a non-technical user to understand. For example: 'A steady, conservative fixed trade size on markets independent of agent confidence. Ensures a fixed cost basis and insulates outcomes from agent sizing logic instead allowing wins, loss, and market odds at time of participation to determine ROI.' if using fixed_bet or 'Dynamic trade sizes based on the pre-existing market conditions, agent confidence, and available agent funds. This more complex strategy allows both agent sizing bias, and market outcome to determine payout and loss and may be subject to greater volatility.' if using kelly_criterion.
@@ -92,6 +95,26 @@ Always refer to actions as a 'trade' when communicating with users; never descri
 
 User prompt: "{user_prompt}"
 """
+
+
+class MechIntent(enum.Enum):
+    """What a chat message asks of a mech, as the model reads it."""
+
+    ASK = "ask"
+    LIST = "list"
+    APPROVE = "approve"
+    REMOVE = "remove"
+    PIN = "pin"
+    UNPIN = "unpin"
+    NONE = "none"
+
+
+class MechIntentReading(BaseModel):
+    """What the message asks of a mech, and the mech it refers to by address or list position."""
+
+    intent: MechIntent
+    address: typing.Optional[str]
+    position: typing.Optional[int]
 
 
 class TradingStrategy(enum.Enum):
@@ -129,6 +152,7 @@ class ChatUILLMResponse(BaseModel):
 
     updated_agent_config: typing.Optional[UpdatedAgentConfig]
     message: str
+    mech_intent: typing.Optional[MechIntentReading]
 
 
 def build_chatui_llm_response_schema() -> dict:

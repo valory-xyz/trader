@@ -129,6 +129,11 @@ class SharedState(BaseSharedState):
         self.mech_offers: Dict[str, Offer] = {}
         # In memory only: why the last report for an address made no offer.
         self.mech_refusals: Dict[str, str] = {}
+        # In memory only, and per agent rather than per user, since an agent
+        # has one user: the address of the last report shown and the addresses
+        # of the last numbered list shown, which the chat's references resolve to.
+        self.last_shown_mech: Optional[str] = None
+        self.last_mech_list: List[str] = []
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
