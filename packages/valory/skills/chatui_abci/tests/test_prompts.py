@@ -220,6 +220,14 @@ class TestMechIntentInTheConfigReply:
             if intent is not MechIntent.NONE:
                 assert f'"{intent.value}"' in CHATUI_PROMPT
 
+    def test_the_prompt_sends_one_mech_actions_through_the_intent(self) -> None:
+        """No line tells the model it cannot act on a mech, which the intent instruction contradicts."""
+        assert "You cannot approve" not in CHATUI_PROMPT
+        assert (
+            "Approving, removing, pinning or unpinning one mech is done through "
+            "mech_intent" in CHATUI_PROMPT
+        )
+
     def test_the_reply_schema_carries_the_mech_intent(self) -> None:
         """The intent and its reference (address, list position or the mech just shown), beside the config update."""
         assert "mech_intent" in ChatUILLMResponse.model_fields

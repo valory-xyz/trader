@@ -52,7 +52,7 @@ Configuration details:
     -- Pinning or unpinning one mech is a mech_intent, not a config update; use this field only to clear or replace the whole list.
 - Approved third-party mechs: {current_approved_mechs}
     -- Mechs not run by Valory that the user approved from this chat, each up to the price the user accepted. This is a separate list from the pinned mechs.
-    -- You cannot approve or remove a mech. The user does that by asking about a mech by its address to see its report, then saying to approve or remove it.
+    -- Approving, removing, pinning or unpinning one mech is done through mech_intent; the handler carries it out.
     -- The user can ask which mechs the agent can use to see a numbered list of them.
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "fixed_bet" (Balanced) strategy only.

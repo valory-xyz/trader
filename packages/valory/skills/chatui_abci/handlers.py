@@ -117,18 +117,6 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
 )
 from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
 
-
-def _changes_config(update: Any) -> bool:
-    """Whether a config update in a reply sets or clears any setting."""
-    if not isinstance(update, dict):
-        return False
-    return any(
-        value not in (None, [], "")
-        for field, value in update.items()
-        if field != "behavior"
-    )
-
-
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
 LedgerApiHandler = BaseLedgerApiHandler
@@ -177,9 +165,24 @@ ACCEPT_UNREADABLE = (
     "I couldn't read that. To approve a mech, copy the line from its report "
     "exactly: I accept <price> per request for <address>"
 )
-WHICH_MECH = "I couldn't tell which mech you mean."
+WHICH_MECH = (
+    "I couldn't tell which mech you mean. If you meant something else, ask again "
+    "in other words."
+)
+NEXT_STEP = (
+    "Send a mech's address to see its report, or ask which mechs your agent can use."
+)
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
+# The settings a config reply can set, compared with the current config.
+_SETTINGS = (
+    TRADING_STRATEGY_FIELD,
+    ALLOWED_TOOLS_FIELD,
+    SELECTED_MECHS_FIELD,
+    "fixed_bet_size",
+    "max_bet_size",
+    ACTIVITY_GOAL_FIELD,
+)
 
 
 # What parsing a model reply can raise. ``JSONDecodeError`` is a ``ValueError``
@@ -337,6 +340,7 @@ class HttpHandler(BaseHttpHandler):
         self,
         intent: MechIntent,
         address: Optional[str],
+        last_shown: Optional[str],
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
     ) -> None:
@@ -349,7 +353,7 @@ class HttpHandler(BaseHttpHandler):
         elif intent is MechIntent.ASK:
             self._report_mech(address, http_msg, http_dialogue)
         elif intent is MechIntent.APPROVE:
-            self._approve_mech(address, http_msg, http_dialogue)
+            self._approve_mech(address, last_shown, http_msg, http_dialogue)
         else:
             act = {
                 MechIntent.REMOVE: self._remove_mech,
@@ -462,17 +466,22 @@ class HttpHandler(BaseHttpHandler):
         self._take_offer(offer, http_msg, http_dialogue)
 
     def _approve_mech(
-        self, address: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+        self,
+        address: str,
+        last_shown: Optional[str],
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
     ) -> None:
-        """Take the offer the last report showed, repeat why it made none, or show the report first."""
-        offer = self.shared_state.mech_offers.get(address)
-        if offer is not None:
-            self._take_offer(offer, http_msg, http_dialogue)
-            return
-        refusal = self._refusal_reply(address)
-        if refusal is not None:
-            self._send_mech_reply(http_msg, http_dialogue, refusal)
-            return
+        """Take the offer, or repeat why there is none, only when the mech's report was the reply right before; otherwise show the report."""
+        if address == last_shown:
+            offer = self.shared_state.mech_offers.get(address)
+            if offer is not None:
+                self._take_offer(offer, http_msg, http_dialogue)
+                return
+            refusal = self._refusal_reply(address)
+            if refusal is not None:
+                self._send_mech_reply(http_msg, http_dialogue, refusal)
+                return
         self._report_mech(address, http_msg, http_dialogue)
 
     def _take_offer(
@@ -588,7 +597,9 @@ class HttpHandler(BaseHttpHandler):
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
         if address not in self.shared_state.approved_mech_rates:
-            return f"{address} is not approved, so there is nothing to remove."
+            return (
+                f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
+            )
         return " ".join(self._remove_approved_mechs([address]))
 
     def _pinned_mechs(self) -> List[str]:
@@ -613,7 +624,7 @@ class HttpHandler(BaseHttpHandler):
         """Unpin a mech; an empty pin list means normal mech selection."""
         pins = self._pinned_mechs()
         if address not in pins:
-            return f"{address} is not pinned."
+            return f"{address} is not pinned. {NEXT_STEP}"
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
         if remaining:
@@ -889,14 +900,14 @@ class HttpHandler(BaseHttpHandler):
             reading, user_prompt, last_shown, self.shared_state.last_mech_list
         )
         if intent is not MechIntent.NONE:
-            if _changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
+            if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
                 self.context.logger.warning(
                     "The reply asked for a mech action and a config change; "
                     "neither was done."
                 )
                 self._send_mech_reply(http_msg, http_dialogue, ONE_REQUEST_AT_A_TIME)
                 return
-            self._run_mech_intent(intent, address, http_msg, http_dialogue)
+            self._run_mech_intent(intent, address, last_shown, http_msg, http_dialogue)
             return
         if reading is not None and (
             not isinstance(reading, dict)
@@ -926,6 +937,9 @@ class HttpHandler(BaseHttpHandler):
         if not self._config_update_is_readable(updated_agent_config):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
+        updated_agent_config = self._keep_named_or_pinned_mechs(
+            updated_agent_config, user_prompt
+        )
 
         try:
             updated_params, issues = self._process_updated_agent_config(
@@ -967,6 +981,61 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             response_body,
         )
+
+    def _changes_config(self, update: Any) -> bool:
+        """Whether a reply's config update removes a setting or sets one to a value other than the current one; `behavior` never counts."""
+        if not isinstance(update, dict):
+            return False
+        if update.get(REMOVED_CONFIG_FIELDS_FIELD):
+            return True
+        return any(
+            update.get(name) is not None and not self._is_current(name, update[name])
+            for name in _SETTINGS
+        )
+
+    def _is_current(self, name: str, value: Any) -> bool:
+        """Whether a reply's value for a setting is the agent's current one; a value that cannot be compared is not."""
+        config = self.shared_state.chatui_config
+        if name == ALLOWED_TOOLS_FIELD:
+            return isinstance(value, list) and set(map(str, value)) == set(
+                config.allowed_tools or []
+            )
+        if name == SELECTED_MECHS_FIELD:
+            return isinstance(value, list) and {
+                str(mech).lower() for mech in value
+            } == set(self._pinned_mechs())
+        if name in self._LLM_CONFIG_NUMERIC_FIELDS:
+            # The reply is in display units; the config keeps the smallest unit.
+            if not self._is_finite_number(value):
+                return False
+            _, decimals = self.get_units_and_decimals()
+            scaled = value * (10**decimals)
+            if isinstance(scaled, float) and not math.isfinite(scaled):
+                return False
+            return int(scaled) == getattr(config, name)
+        if name == ACTIVITY_GOAL_FIELD:
+            return value == effective_activity_goal(
+                config.activity_goal, self.context.params.default_activity_goal
+            )
+        return value == config.trading_strategy
+
+    def _keep_named_or_pinned_mechs(
+        self, update: Dict[str, Any], user_prompt: str
+    ) -> Dict[str, Any]:
+        """The update with its pin list cut to mechs named in the user's message or already pinned."""
+        mechs = update.get(SELECTED_MECHS_FIELD)
+        if not mechs:
+            return update
+        allowed = set(addresses_in(user_prompt)) | set(self._pinned_mechs())
+        kept = [mech for mech in mechs if str(mech).lower() in allowed]
+        dropped = len(mechs) - len(kept)
+        if not dropped:
+            return update
+        self.context.logger.warning(
+            f"Dropped {dropped} mech(s) from the reply's pin list: neither named in "
+            "the message nor already pinned."
+        )
+        return {**update, SELECTED_MECHS_FIELD: kept or None}
 
     def _answer_llm_error(
         self, genai_response: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue
