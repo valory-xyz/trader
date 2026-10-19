@@ -91,7 +91,7 @@ class _Chat:
         state.chatui_config = config or ChatuiConfig(
             trading_strategy="kelly_criterion", max_bet_size=10**18
         )
-        state._answering_since = {}
+        state._answering = {}
         state.config_proposal = None
         state.unsaved_replies = {}
         state.approved_mechs = []
@@ -103,6 +103,7 @@ class _Chat:
             "start_answering",
             "finish_answering",
             "take_config_proposal",
+            "restore_config_proposal",
         ):
             setattr(state, name, MethodType(getattr(SharedState, name), state))
         handler.shared_state = state
@@ -167,6 +168,12 @@ class _Chat:
 def chat(tmp_path: Path) -> _Chat:
     """A chat with an empty feed."""
     return _Chat(tmp_path)
+
+
+def _age_the_answer(chat: _Chat, client_id: str = CLIENT_ID) -> None:
+    """Make the message's pending answer look stuck past the timeout."""
+    attempt, since = chat.handler.shared_state._answering[client_id]
+    chat.handler.shared_state._answering[client_id] = (attempt, since - 10_000)
 
 
 class TestRoute:
@@ -239,7 +246,7 @@ class TestRoute:
     def test_a_stuck_answer_stops_blocking_the_resend(self, chat: _Chat) -> None:
         """An answer that never came back does not block its resend forever."""
         chat.send()
-        chat.handler.shared_state._answering_since[CLIENT_ID] -= 10_000
+        _age_the_answer(chat)
 
         chat.send()
 
@@ -264,7 +271,7 @@ class TestRoute:
     def test_a_stuck_answer_and_its_resend_write_one_reply(self, chat: _Chat) -> None:
         """When both answers come back, the second returns the reply already written."""
         first = chat.send()
-        chat.handler.shared_state._answering_since[CLIENT_ID] -= 10_000
+        _age_the_answer(chat)
         resend = chat.send()
 
         chat.reply("First.", call=0)
@@ -274,6 +281,22 @@ class TestRoute:
         assert reply["text"] == "First."
         assert chat.response(first) == (200, {"message": message, "reply": reply})
         assert chat.response(resend) == (200, {"message": message, "reply": reply})
+
+    def test_a_late_first_answer_leaves_the_resend_answering(
+        self, chat: _Chat
+    ) -> None:
+        """The stuck answer coming back does not let a third send race the resend."""
+        chat.send()
+        _age_the_answer(chat)
+        chat.send()
+
+        chat.reply("First.", call=0)
+        third = chat.send()
+
+        assert chat.response(third) == (409, {"error": STILL_ANSWERING})
+        assert len(chat.llm_calls) == 2
+        chat.reply("Second.", call=1)
+        assert not chat.handler.shared_state.is_answering(CLIENT_ID)
 
     def test_resend_after_a_failure_is_answered_without_a_second_line(
         self, chat: _Chat
@@ -572,6 +595,25 @@ class TestConfirmFlow:
             "user",
             "agent",
         ]
+
+    @pytest.mark.parametrize(
+        "payload", [{"error": "boom"}, {"response": json.dumps({"confirmed": "?"})}]
+    )
+    def test_a_failed_confirmation_keeps_a_newer_proposal(
+        self, chat: _Chat, payload: Dict[str, Any]
+    ) -> None:
+        """A confirmation that fails after a newer proposal does not bring the old one back."""
+        self._propose(chat, {"max_bet_size": 1.5})
+        chat.send("yes", "c-yes")
+        newer = ConfigProposal(
+            config={"max_bet_size": 1.2},
+            changes=[ConfigChange("Max trade size", "1.00 xDAI", "1.20 xDAI")],
+        )
+        chat.handler.shared_state.config_proposal = newer
+
+        chat.answer(payload)
+
+        assert chat.handler.shared_state.config_proposal is newer
 
     def test_an_out_of_range_value_is_refused_when_proposed(self, chat: _Chat) -> None:
         """A value outside the bounds is refused at once, with nothing to confirm."""

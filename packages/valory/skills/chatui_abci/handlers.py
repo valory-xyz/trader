@@ -420,11 +420,10 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        self.shared_state.start_answering(client_id)
         unsaved_reply = self.shared_state.unsaved_replies.pop(client_id, None)
-        self._chat_turns[http_dialogue.dialogue_label] = ChatTurn(
-            client_id, message, applied_change=unsaved_reply is not None
-        )
+        turn = ChatTurn(client_id, message, applied_change=unsaved_reply is not None)
+        self.shared_state.start_answering(turn)
+        self._chat_turns[http_dialogue.dialogue_label] = turn
         if unsaved_reply is not None:
             self._send_chat_text(unsaved_reply, http_msg, http_dialogue)
             return
@@ -524,7 +523,7 @@ class HttpHandler(BaseHttpHandler):
         :param status_code: the status the shared prompt path answered with.
         :param data: the body the shared prompt path answered with.
         """
-        self.shared_state.finish_answering(turn.client_id)
+        self.shared_state.finish_answering(turn)
         body = data if isinstance(data, dict) else {}
         if status_code == HTTPStatus.OK:
             store_path = self.context.params.store_path
@@ -710,11 +709,11 @@ class HttpHandler(BaseHttpHandler):
             genai_response = None
         if self._answer_llm_error(genai_response, http_msg, http_dialogue):
             # Nothing was answered, so the resend of this message decides it.
-            self.shared_state.config_proposal = proposal
+            self.shared_state.restore_config_proposal(proposal)
             return
         confirmed = self._read_confirmation(genai_response)
         if confirmed is None:
-            self.shared_state.config_proposal = proposal
+            self.shared_state.restore_config_proposal(proposal)
             self._handle_unreadable_llm_reply(
                 llm_response_message.payload, http_msg, http_dialogue
             )

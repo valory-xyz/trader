@@ -26,7 +26,7 @@ import re
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, List, Optional, Type
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple, Type
 
 from aea.skills.base import SkillContext
 
@@ -139,13 +139,15 @@ class ChatTurn:
     ``proposal`` is the change its reply asks to confirm, kept here until that
     reply is written so that a turn which fails leaves nothing to confirm.
     ``applied_change`` marks a reply acknowledging a change already applied,
-    which a resend must report rather than answer anew.
+    which a resend must report rather than answer anew. ``attempt`` tells this
+    answer apart from a resend's, and survives ``replace``.
     """
 
     client_id: str
     message: FeedEntry
     proposal: Optional[ConfigProposal] = None
     applied_change: bool = False
+    attempt: object = field(default_factory=object, compare=False, repr=False)
 
 
 class SharedState(BaseSharedState):
@@ -172,9 +174,9 @@ class SharedState(BaseSharedState):
         # the raw `available_mech_tools` synced-data set in that window.
         self.available_prediction_tools: Optional[FrozenSet[str]] = None
 
-        # In memory only, so a restart drops them: when each chat message
-        # started being answered, and the change waiting for confirmation.
-        self._answering_since: Dict[str, float] = {}
+        # In memory only, so a restart drops them: the attempt answering each
+        # chat message and when it started, and the change waiting for confirmation.
+        self._answering: Dict[str, Tuple[object, float]] = {}
         self.config_proposal: Optional[ConfigProposal] = None
         # The acknowledgement of an applied change whose reply could not be
         # written, by client id, for the resend to write.
@@ -182,21 +184,31 @@ class SharedState(BaseSharedState):
 
     def is_answering(self, client_id: str) -> bool:
         """Return whether the message with this client id is still being answered."""
-        since = self._answering_since.get(client_id)
-        return since is not None and time.time() - since < ANSWERING_TIMEOUT_SECONDS
+        answering = self._answering.get(client_id)
+        return (
+            answering is not None
+            and time.time() - answering[1] < ANSWERING_TIMEOUT_SECONDS
+        )
 
-    def start_answering(self, client_id: str) -> None:
-        """Mark the message with this client id as being answered."""
-        self._answering_since[client_id] = time.time()
+    def start_answering(self, turn: ChatTurn) -> None:
+        """Mark the turn's message as being answered by it."""
+        self._answering[turn.client_id] = (turn.attempt, time.time())
 
-    def finish_answering(self, client_id: str) -> None:
-        """Mark the message with this client id as no longer being answered."""
-        self._answering_since.pop(client_id, None)
+    def finish_answering(self, turn: ChatTurn) -> None:
+        """Mark the turn's message as no longer being answered, unless a resend took it over."""
+        answering = self._answering.get(turn.client_id)
+        if answering is not None and answering[0] is turn.attempt:
+            del self._answering[turn.client_id]
 
     def take_config_proposal(self) -> Optional[ConfigProposal]:
         """Return the change waiting for confirmation and forget it: it gets one reply."""
         proposal, self.config_proposal = self.config_proposal, None
         return proposal
+
+    def restore_config_proposal(self, proposal: ConfigProposal) -> None:
+        """Put back a change its confirmation could not decide, unless a newer one is waiting."""
+        if self.config_proposal is None:
+            self.config_proposal = proposal
 
     def setup(self) -> None:
         """Set up the shared state and apply boot-time withdrawal flag auto-clear.
