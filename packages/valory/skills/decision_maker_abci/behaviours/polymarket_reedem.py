@@ -152,6 +152,32 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             for market in markets.values()
         ]
 
+    def _record_settled_builder_redeems(self, redeemable_positions: list) -> None:
+        """Write the payout cards of the builder redeems that have landed.
+
+        The relayer only accepts a redeem, so a position counts as paid once the
+        positions API no longer lists it as redeemable.
+
+        :param redeemable_positions: the positions the API lists as redeemable.
+        """
+        still_redeemable = {
+            position.get("conditionId") for position in redeemable_positions
+        }
+        pending = self.shared_state.polymarket_builder_redeems_pending
+        settled = [
+            position
+            for condition_id, positions in pending.items()
+            if condition_id not in still_redeemable
+            for position in positions
+        ]
+        self.shared_state.polymarket_builder_redeems_pending = {
+            condition_id: positions
+            for condition_id, positions in pending.items()
+            if condition_id in still_redeemable
+        }
+        for fields in self._payouts_by_market(settled):
+            self._record_feed_event(EventType.PAYOUT_COLLECTED, fields)
+
     def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
         """Fetch redeemable positions from Polymarket."""
         # Prepare payload data
@@ -249,6 +275,8 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # update is always called with winning=True.  This mirrors
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
+            self.shared_state.polymarket_payouts_to_record = []
+            self._record_settled_builder_redeems(redeemable_positions)
 
             # Re-serialise policy and utilized_tools *after* the accuracy-store update
             # so that the updated values are carried in the payload.
@@ -312,7 +340,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
     ) -> Generator:
         """Redeem positions via builder flow (connection request)."""
 
-        redeemed: list = []
+        redeemed: Dict[str, List[Dict[str, Any]]] = {}
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
             outcome_index = position.get("outcomeIndex")
@@ -343,10 +371,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             if result is not None and not (
                 isinstance(result, dict) and result.get("error")
             ):
-                redeemed.append(position)
+                redeemed.setdefault(condition_id, []).append(position)
 
-        for fields in self._payouts_by_market(redeemed):
-            self._record_feed_event(EventType.PAYOUT_COLLECTED, fields)
+        # A resend for the same market replaces its pending positions.
+        self.shared_state.polymarket_builder_redeems_pending.update(redeemed)
 
         self.payload = PolymarketRedeemPayload(
             sender=self.context.agent_address,

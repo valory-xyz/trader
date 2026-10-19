@@ -245,6 +245,9 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.staking_regime_is_new: Optional[bool] = None
         # The feed cards of a Polymarket redeem tx, written once it settles.
         self.polymarket_payouts_to_record: List[List[Field]] = []
+        # The positions a builder redeem was sent for, by condition id, until
+        # the positions API stops listing them as redeemable.
+        self.polymarket_builder_redeems_pending: Dict[str, List[Dict[str, Any]]] = {}
         # Withdrawal mode lasts until a restart, re-running the sweep each
         # cycle; only its first result is the withdrawal the user asked for.
         self.positions_sold_recorded: bool = False
