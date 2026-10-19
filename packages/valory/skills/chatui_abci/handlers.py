@@ -323,7 +323,7 @@ class HttpHandler(BaseHttpHandler):
     def _price_at_live_rate(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
     ) -> None:
-        """Report a third-party mech at its live rate, or its listed rate when the live one can't be read."""
+        """Report a third-party mech at the higher of its listed and live rates, the rate discovery and requests both accept."""
         if (
             facts.record is not RecordStatus.FOUND
             or facts.address in self.context.params.valid_mechs
@@ -332,7 +332,10 @@ class HttpHandler(BaseHttpHandler):
             return
 
         def on_rate(live: Optional[int]) -> None:
-            rate = facts.max_delivery_rate if live is None else live
+            rate = max(
+                (r for r in (facts.max_delivery_rate, live) if r is not None),
+                default=None,
+            )
             self._send_mech_report(
                 http_msg, http_dialogue, replace(facts, max_delivery_rate=rate)
             )
