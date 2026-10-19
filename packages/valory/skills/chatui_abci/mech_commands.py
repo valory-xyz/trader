@@ -21,7 +21,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Sequence, Set, Tuple
 
 from packages.valory.skills.chatui_abci.prompts import MechIntent
 
@@ -74,14 +74,24 @@ def _named_address(value: Any, message: str) -> Optional[str]:
     return address if address in addresses_in(message) else None
 
 
+def _listed_address(value: Any, last_list: Sequence[str]) -> Optional[str]:
+    """The address at a 1-based position of the last list shown."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if not 1 <= value <= len(last_list):
+        return None
+    return last_list[value - 1]
+
+
 def resolve_intent(
-    reply: Any, message: str, last_shown: Optional[str]
+    reply: Any, message: str, last_shown: Optional[str], last_list: Sequence[str]
 ) -> Tuple[MechIntent, Optional[str]]:
     """The mech intent the model returned and the one mech it refers to, checked against the chat.
 
     :param reply: the `mech_intent` of the model's reply, decoded from JSON.
     :param message: the user's message.
     :param last_shown: the address of the last report shown, if any.
+    :param last_list: the addresses of the last numbered list shown, in order.
     :return: the intent, `NONE` for any reply that is not a known intent, and
         the mech, or `None` unless every reference given names the same mech.
 
@@ -97,4 +107,6 @@ def resolve_intent(
         named.add(_named_address(reply["address"], message))
     if reply.get("last_shown") is True:
         named.add(last_shown)
+    if reply.get("position") not in (None, 0, False):
+        named.add(_listed_address(reply["position"], last_list))
     return intent, named.pop() if len(named) == 1 else None

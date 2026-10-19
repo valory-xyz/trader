@@ -85,6 +85,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     resolve_intent,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
+    PARAGRAPH_BREAK,
     Standing,
     payment_line,
     render_report,
@@ -180,10 +181,12 @@ ACCEPT_UNREADABLE = (
     "exactly: I accept <price> per request for <address>"
 )
 WHICH_MECH = (
-    "I couldn't tell which mech you mean. Send its address to see its report. If "
-    "you meant something else, ask again in other words."
+    "I couldn't tell which mech you mean. If you meant something else, ask again "
+    "in other words."
 )
-NEXT_STEP = "Send a mech's address to see its report."
+NEXT_STEP = (
+    "Send a mech's address to see its report, or ask which mechs your agent can use."
+)
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 # The settings a config reply can set, compared with the current config.
@@ -358,8 +361,10 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Carry out a mech intent in code; without the mech it needs, ask which one."""
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
-        if address is None:
-            self._send_mech_reply(http_msg, http_dialogue, WHICH_MECH)
+        if intent is MechIntent.LIST:
+            self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
+        elif address is None:
+            self._send_mech_reply(http_msg, http_dialogue, self._which_mech())
         elif intent is MechIntent.ASK:
             self._report_mech(address, http_msg, http_dialogue)
         elif intent is MechIntent.APPROVE:
@@ -556,6 +561,53 @@ class HttpHandler(BaseHttpHandler):
         if price is not None:
             return f"{address}, up to {price} per request"
         return f"{address} (send its address to see its price)"
+
+    def _list_entry(self, address: str) -> str:
+        """One listed mech: approved at its accepted price, or Valory with its payment method."""
+        rate = self.shared_state.approved_mech_rates.get(address)
+        if rate is not None:
+            price = self._approved_price(address, rate)
+            terms = (
+                f"approved, up to {price} per request"
+                if price is not None
+                else "approved; ask about it to see its price"
+            )
+        else:
+            kind = self.synchronized_data.mech_payment_types.get(address)
+            chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+            terms = (
+                "Valory"
+                if kind is None
+                else f"Valory, paid with {payment_line(kind, None, chain_id)[0]}"
+            )
+        pinned = ", pinned" if address in self._pinned_mechs() else ""
+        return f"{address}, {terms}{pinned}"
+
+    def _mech_list(self) -> str:
+        """Number the mechs the agent may use, Valory then approved, and keep the list for references to it."""
+        approved = self.shared_state.approved_mechs
+        valory = sorted(self._get_available_valid_mechs() - set(approved))
+        mechs = [*valory, *approved]
+        self.shared_state.last_mech_list = mechs
+        if not mechs:
+            return (
+                "Your agent has no mechs to list yet. Send a mech's address to see "
+                "its report."
+            )
+        entries = "<br>".join(
+            f"{number}. {self._list_entry(address)}"
+            for number, address in enumerate(mechs, start=1)
+        )
+        return PARAGRAPH_BREAK.join(
+            [
+                f"Mechs your agent can use:<br>{entries}",
+                "Refer to one by its number or its address.",
+            ]
+        )
+
+    def _which_mech(self) -> str:
+        """Ask which mech a message meant, with the list to pick from."""
+        return PARAGRAPH_BREAK.join([WHICH_MECH, self._mech_list()])
 
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
@@ -870,7 +922,9 @@ class HttpHandler(BaseHttpHandler):
             return
 
         reading = llm_response_json.get(MECH_INTENT_FIELD)
-        intent, address = resolve_intent(reading, user_prompt, last_shown)
+        intent, address = resolve_intent(
+            reading, user_prompt, last_shown, self.shared_state.last_mech_list
+        )
         if intent is not MechIntent.NONE:
             if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
                 self.context.logger.warning(

@@ -35,6 +35,8 @@ from packages.valory.skills.chatui_abci.prompts import MechIntent
 MECH = "0x" + "b0" * 20
 CHECKSUMMED = "0x" + "B0" * 20
 OTHER = "0x" + "e0" * 20
+LISTED = "0x" + "a0" * 20
+LAST_LIST = [LISTED, OTHER]
 
 
 @pytest.mark.parametrize(
@@ -114,27 +116,43 @@ def test_normalise(text: str, expected: Optional[str]) -> None:
             MECH,
         ),
         (
-            {"intent": "approve", "address": MECH, "last_shown": False},
+            {"intent": "approve", "address": MECH, "last_shown": False, "position": 0},
             f"use {MECH}",
             None,
             MECH,
         ),
-        ({"intent": "pin", "address": "", "last_shown": True}, "pin it", MECH, MECH),
+        (
+            {"intent": "ask", "address": "", "position": 1},
+            "the first one",
+            None,
+            LISTED,
+        ),
+        ({"intent": "pin", "position": 2}, "pin the second one", None, OTHER),
+        ({"intent": "ask", "position": 1}, "the first one", MECH, LISTED),
+        (
+            {"intent": "ask", "address": LISTED, "position": 1},
+            f"the first one, {LISTED}",
+            None,
+            LISTED,
+        ),
     ],
     ids=[
         "checksummed_address_in_message",
         "padded_address_in_message",
         "last_shown",
         "last_shown_and_address_agree",
-        "unused_last_shown_false",
-        "empty_address_beside_last_shown",
+        "unused_fields_filled_with_false_and_zero",
+        "empty_address_beside_a_position",
+        "position",
+        "position_over_last_shown",
+        "address_and_position_agree",
     ],
 )
 def test_a_reference_the_chat_can_place_resolves(
     reply: Any, message: str, last_shown: Optional[str], expected: str
 ) -> None:
-    """An address from the message or the mech whose report was just shown."""
-    intent, mech = resolve_intent(reply, message, last_shown)
+    """An address from the message or the last report, or a position on the last list."""
+    intent, mech = resolve_intent(reply, message, last_shown, LAST_LIST)
     assert intent is MechIntent(reply["intent"])
     assert mech == expected
 
@@ -143,7 +161,7 @@ def test_a_reference_the_chat_can_place_resolves(
     "reply, message, last_shown",
     [
         ({"intent": "approve"}, "let's use it", MECH),
-        ({"intent": "approve", "address": None, "last_shown": None}, "yes", MECH),
+        ({"intent": "approve", "address": None, "position": None}, "yes", MECH),
         ({"intent": "approve", "last_shown": True}, "let's use it", None),
         ({"intent": "approve", "address": MECH}, "let's use it", MECH),
         ({"intent": "approve", "address": OTHER}, f"use {MECH}", MECH),
@@ -155,7 +173,18 @@ def test_a_reference_the_chat_can_place_resolves(
             OTHER,
         ),
         ({"intent": "approve", "address": 5}, "use it", MECH),
-        ({"intent": "ask", "position": 1}, "the first one", MECH),
+        ({"intent": "ask", "position": 0}, "the zeroth one", None),
+        ({"intent": "ask", "position": 3}, "the third one", None),
+        ({"intent": "ask", "position": -1}, "the last one", None),
+        ({"intent": "ask", "position": True}, "the first one", None),
+        ({"intent": "ask", "position": 1.0}, "the first one", None),
+        ({"intent": "ask", "position": "1"}, "the first one", None),
+        (
+            {"intent": "ask", "address": MECH, "position": 1},
+            f"the first one, {MECH}",
+            None,
+        ),
+        ({"intent": "ask", "address": OTHER, "position": 1}, "the first one", None),
     ],
     ids=[
         "no_reference",
@@ -167,14 +196,21 @@ def test_a_reference_the_chat_can_place_resolves(
         "last_shown_false",
         "last_shown_and_address_disagree",
         "address_not_a_string",
-        "position_is_not_a_reference",
+        "position_zero",
+        "position_past_the_end",
+        "position_negative",
+        "position_bool",
+        "position_float",
+        "position_string",
+        "address_and_position_disagree",
+        "one_reference_unplaceable",
     ],
 )
 def test_a_reference_the_chat_cannot_place_resolves_to_no_mech(
     reply: Any, message: str, last_shown: Optional[str]
 ) -> None:
     """The intent stands, but no mech is taken that the user or the chat did not show."""
-    intent, mech = resolve_intent(reply, message, last_shown)
+    intent, mech = resolve_intent(reply, message, last_shown, LAST_LIST)
     assert intent is MechIntent(reply["intent"])
     assert mech is None
 
@@ -191,7 +227,6 @@ def test_a_reference_the_chat_cannot_place_resolves_to_no_mech(
         {"intent": "APPROVE", "address": MECH},
         {"intent": "delete", "address": MECH},
         {"intent": ["approve"], "address": MECH},
-        {"intent": "list"},
     ],
     ids=[
         "null",
@@ -203,11 +238,10 @@ def test_a_reference_the_chat_cannot_place_resolves_to_no_mech(
         "wrong_case",
         "unknown_intent",
         "unhashable_intent",
-        "list_intent",
     ],
 )
 def test_a_reply_without_a_known_intent_is_none(reply: Any) -> None:
     """Nothing in the mech flow runs on a reply that is not one of the intents."""
-    intent, mech = resolve_intent(reply, f"use {MECH}", MECH)
+    intent, mech = resolve_intent(reply, f"use {MECH}", MECH, LAST_LIST)
     assert intent is MechIntent.NONE
     assert mech is None

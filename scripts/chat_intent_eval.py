@@ -95,6 +95,7 @@ TOOLS = ("claude-prediction-online", "prediction-offline", "prediction-online")
 DECIMALS = 18
 DEFAULT_ACTIVITY_GOAL = 10
 CONFIG = ChatuiConfig(trading_strategy="kelly_criterion", max_bet_size=5 * 10**17)
+LAST_LIST: Tuple[str, ...] = (*VALORY_MECHS, MECH)
 
 Outcome = Tuple[str, Optional[str]]
 
@@ -107,6 +108,7 @@ class Case:
     message: str
     expected: FrozenSet[Outcome]
     last_shown: Optional[str] = None
+    last_list: Tuple[str, ...] = ()
 
 
 def _outcomes(*outcomes: Outcome) -> FrozenSet[Outcome]:
@@ -188,6 +190,17 @@ CASES = (
         "approve it and set bets to 5",
         _outcomes(("approve", MECH)),
         last_shown=MECH,
+    ),
+    Case(
+        "which_mechs",
+        "which mechs can my agent use?",
+        _outcomes(("list", None)),
+    ),
+    Case(
+        "second_on_the_list",
+        "tell me about the second one",
+        _outcomes(("ask", VALORY_MECHS[1])),
+        last_list=LAST_LIST,
     ),
 )
 
@@ -276,7 +289,7 @@ def handler_action(
 ) -> Tuple[Outcome, str]:
     """The intent and mech the handler resolves from the reply, and what it does next."""
     intent, mech = resolve_intent(
-        reply.get("mech_intent"), case.message, case.last_shown
+        reply.get("mech_intent"), case.message, case.last_shown, case.last_list
     )
     outcome = (intent.value, None if intent is MechIntent.NONE else mech)
     if intent is MechIntent.NONE:
@@ -285,6 +298,8 @@ def handler_action(
         reply.get("updated_agent_config")
     ):
         return outcome, "does neither: a mech action and a config change"
+    if intent is MechIntent.LIST:
+        return outcome, "shows the numbered list"
     if mech is None:
         return outcome, "asks which mech"
     if intent is MechIntent.APPROVE:
