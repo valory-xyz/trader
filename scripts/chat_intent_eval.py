@@ -46,6 +46,7 @@ import json
 import os
 import pickle  # nosec
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -80,6 +81,9 @@ GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+# A busy or rate-limited model is retried this many times, waiting longer each time.
+RETRY_STATUSES = frozenset({429, 500, 503})
+MAX_ATTEMPTS = 6
 TIMEOUT_SECONDS = 60
 
 MECH = "0x77af31de935740567cf4ff1986d04b2c964a786a"
@@ -228,12 +232,18 @@ def ask_model(
             "response_json_schema": response_json_schema(),
         },
     }
-    response = requests.post(
-        GEMINI_URL.format(model=model),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        data=json.dumps(body),
-        timeout=TIMEOUT_SECONDS,
-    )
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        response = requests.post(
+            GEMINI_URL.format(model=model),
+            headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+            data=json.dumps(body),
+            timeout=TIMEOUT_SECONDS,
+        )
+        if response.status_code not in RETRY_STATUSES or attempt == MAX_ATTEMPTS:
+            break
+        wait = 5 * attempt
+        print(f"  model busy ({response.status_code}), retrying in {wait}s")
+        time.sleep(wait)
     if not response.ok:
         sys.exit(
             f"The model call failed ({response.status_code}): {response.text[:500]}"
