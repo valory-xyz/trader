@@ -44,9 +44,11 @@ It exits with 1 when any returned intent is not one the case expects.
 import argparse
 import json
 import os
+import re
 import pickle  # nosec
 import sys
 import time
+from urllib.parse import quote
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -85,6 +87,7 @@ MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 RETRY_STATUSES = frozenset({429, 500, 503})
 MAX_ATTEMPTS = 6
 TIMEOUT_SECONDS = 60
+MODEL_NAME = re.compile(r"[a-z0-9][a-z0-9.-]{0,63}")
 
 MECH = "0x77af31de935740567cf4ff1986d04b2c964a786a"
 VALORY_MECHS = (
@@ -240,7 +243,7 @@ def ask_model(
     }
     for attempt in range(1, MAX_ATTEMPTS + 1):
         response = requests.post(
-            GEMINI_URL.format(model=model),
+            GEMINI_URL.format(model=quote(model_name(model), safe="")),
             headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
             data=json.dumps(body),
             timeout=TIMEOUT_SECONDS,
@@ -334,11 +337,18 @@ def list_models(api_key: str) -> List[str]:
     )
 
 
+def model_name(value: str) -> str:
+    """A model name made only of the characters model ids use."""
+    if not MODEL_NAME.fullmatch(value):
+        raise argparse.ArgumentTypeError(f"not a model name: {value!r}")
+    return value
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Read the command line."""
     names = [case.name for case in CASES]
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model", default=DEFAULT_MODEL, type=model_name)
     parser.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE)
     parser.add_argument("--repeat", type=int, default=1, help="calls per case")
     parser.add_argument(
