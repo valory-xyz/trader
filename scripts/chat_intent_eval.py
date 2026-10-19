@@ -79,6 +79,7 @@ API_KEY_ENV = "GENAI_API_KEY"
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
+MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 TIMEOUT_SECONDS = 60
 
 MECH = "0x77af31de935740567cf4ff1986d04b2c964a786a"
@@ -149,6 +150,28 @@ CASES = (
         last_shown=MECH,
     ),
     Case("how_do_pins_work", "how do pins work?", _outcomes(("none", None))),
+    Case(
+        "what_if_i_remove_it",
+        "what happens if I remove it?",
+        _outcomes(("none", None), ("ask", MECH)),
+        last_shown=MECH,
+    ),
+    Case(
+        "should_i_pin_it",
+        "should I pin it?",
+        _outcomes(("none", None), ("ask", MECH)),
+        last_shown=MECH,
+    ),
+    Case(
+        "can_i_remove_later",
+        f"can I remove {MECH} later if it does badly?",
+        _outcomes(("none", None), ("ask", MECH)),
+    ),
+    Case(
+        "what_does_unpin_do",
+        "what does unpinning a mech do?",
+        _outcomes(("none", None)),
+    ),
     Case("trading_off_today", "turn trading off for today", _outcomes(("none", None))),
     Case(
         "approve_and_set_bets",
@@ -211,7 +234,10 @@ def ask_model(
         data=json.dumps(body),
         timeout=TIMEOUT_SECONDS,
     )
-    response.raise_for_status()
+    if not response.ok:
+        sys.exit(
+            f"The model call failed ({response.status_code}): {response.text[:500]}"
+        )
     text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
     return json.loads(text)
 
@@ -273,6 +299,25 @@ def run(
     return misses
 
 
+def list_models(api_key: str) -> List[str]:
+    """The models this key can call with generateContent."""
+    response = requests.get(
+        MODELS_URL,
+        headers={"x-goog-api-key": api_key},
+        params={"pageSize": 1000},
+        timeout=TIMEOUT_SECONDS,
+    )
+    if not response.ok:
+        sys.exit(
+            f"Listing models failed ({response.status_code}): {response.text[:500]}"
+        )
+    return sorted(
+        model["name"].removeprefix("models/")
+        for model in response.json().get("models", [])
+        if "generateContent" in model.get("supportedGenerationMethods", [])
+    )
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     """Read the command line."""
     names = [case.name for case in CASES]
@@ -283,6 +328,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--case", action="append", choices=names, help="run only this case"
     )
+    parser.add_argument(
+        "--list-models", action="store_true", help="list the models this key can use"
+    )
     return parser.parse_args(argv)
 
 
@@ -292,6 +340,9 @@ def main() -> None:
     api_key = os.environ.get(API_KEY_ENV)
     if not api_key:
         sys.exit(f"Set {API_KEY_ENV} to a Gemini API key.")
+    if args.list_models:
+        print("\n".join(list_models(api_key)))
+        return
     cases = [case for case in CASES if args.case is None or case.name in args.case]
     misses = run(cases, api_key, args.model, args.temperature, args.repeat)
     print(f"{misses} of {len(cases) * args.repeat} readings were not expected.")
