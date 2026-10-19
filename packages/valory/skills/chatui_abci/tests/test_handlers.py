@@ -198,9 +198,21 @@ def _config_reply(
     return json.dumps({"response": json.dumps(reply)})
 
 
-def _intent(intent: Any = "none", address: Any = None, position: Any = None) -> str:
+def _intent(
+    intent: Any = "none",
+    address: Any = None,
+    position: Any = None,
+    last_shown: Any = None,
+) -> str:
     """A config-chat reply whose mech intent is this one and which changes no config."""
-    return _config_reply({"intent": intent, "address": address, "position": position})
+    return _config_reply(
+        {
+            "intent": intent,
+            "address": address,
+            "position": position,
+            "last_shown": last_shown,
+        }
+    )
 
 
 def _answer_model(handler: _TestableHttpHandler, payload: str) -> None:
@@ -3085,10 +3097,11 @@ def _chat(
     intent: str = "none",
     address: Optional[str] = None,
     position: Optional[int] = None,
+    last_shown: Optional[bool] = None,
 ) -> None:
     """POST a chat message and answer the config call with this mech intent."""
     _prompt(handler, text)
-    _answer_model(handler, _intent(intent, address, position))
+    _answer_model(handler, _intent(intent, address, position, last_shown))
 
 
 def _model_prompts(handler: _TestableHttpHandler) -> List[str]:
@@ -3523,7 +3536,7 @@ class TestApproveIntent:
         """The pronoun is the last mech shown; the shown rate is saved after the live read."""
         handler, wire = _mech_handler()
         _shown(handler, wire)
-        _chat(handler, "let's use it", "approve", THIRD_PARTY)
+        _chat(handler, "let's use it", "approve", last_shown=True)
         assert wire.sent[-1]["callable"] == "get_max_delivery_rate"
         assert wire.sent[-1]["contract_address"] == THIRD_PARTY
         handler.shared_state.approve_mech.assert_not_called()
@@ -3540,7 +3553,7 @@ class TestApproveIntent:
         """What the user saw is not what the mech charges now."""
         handler, wire = _mech_handler()
         _shown(handler, wire)
-        _chat(handler, "yes", "approve", THIRD_PARTY)
+        _chat(handler, "yes", "approve", last_shown=True)
         wire.answer_rate(NATIVE_RATE + 1)
         handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler).startswith("The listing is out of date")
@@ -3570,7 +3583,7 @@ class TestApproveIntent:
         handler, wire = _mech_handler()
         _shown(handler, wire, THIRD_PARTY, live, **record)
         sent = len(wire.sent)
-        _chat(handler, "yes", "approve", THIRD_PARTY)
+        _chat(handler, "yes", "approve", last_shown=True)
         assert len(wire.sent) == sent
         handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler) == (
@@ -3743,7 +3756,7 @@ class TestRemoveIntent:
             approved={THIRD_PARTY: 1, OTHER_MECH: 2}, pin=[VALORY_MECH, THIRD_PARTY]
         )
         handler.shared_state.last_shown_mech = THIRD_PARTY
-        _chat(handler, "stop using that one", "remove", THIRD_PARTY)
+        _chat(handler, "stop using that one", "remove", last_shown=True)
         handler.shared_state.set_approved_mech_rates.assert_called_once_with(
             {OTHER_MECH: 2}
         )
@@ -3792,7 +3805,7 @@ class TestPinIntent:
         """A discovered Valory mech or an approved one joins the pin list."""
         handler, _ = _mech_handler(approved=approved, pin=pins, discovered=discovered)
         handler.shared_state.last_shown_mech = address
-        _chat(handler, "only use this one from now on", "pin", address)
+        _chat(handler, "only use this one from now on", "pin", last_shown=True)
         handler._store_selected_mechs.assert_called_once_with(stored)  # type: ignore[attr-defined]
         assert _reply(handler) == (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
@@ -3905,44 +3918,21 @@ class TestAnUnreadableAccept:
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
 
 
-class TestTheMechStateInTheConfigPrompt:
-    """The model reads intent from the user's message, the config and the chat's mech state."""
+class TestTheConfigPromptCarriesNoMechState:
+    """The model reads intent from the user's message and the config alone."""
 
-    @staticmethod
-    def _mech_line(shown: str, length: int, pending: str) -> str:
-        """The prompt line that carries the chat's mech state."""
-        return (
-            f"Mech requests: last mech shown: {shown}; items in the last numbered "
-            f"mech list: {length}; offer waiting for approval for the last mech "
-            f"shown: {pending}.\n"
-        )
-
-    def test_it_carries_the_last_mech_shown_the_list_length_and_the_offer(
+    def test_no_address_card_text_or_offer_from_the_chat_reaches_the_model(
         self,
     ) -> None:
-        """No card text, name, tool or service id from the report reaches the model."""
+        """Which mech was shown, the list and the offer stay in code."""
         handler, wire = _mech_handler(discovered={VALORY_MECH, OTHER_VALORY_MECH})
         _listed(handler)
         _shown(handler, wire)
         _prompt(handler, "let's use it")
         prompt = _model_prompts(handler)[-1]
         assert 'User prompt: "let\'s use it"' in prompt
-        assert self._mech_line(THIRD_PARTY, 2, "yes") in prompt
-        for text in ("Bob Mech", "superforcaster", "3786"):
+        for text in (THIRD_PARTY, "Bob Mech", "superforcaster", "3786", "0.01 xDAI"):
             assert text not in prompt
-
-    def test_with_nothing_shown_it_says_so(self) -> None:
-        """No mech, no list and no offer."""
-        handler, _ = _mech_handler(offers=(OFFER,))
-        _prompt(handler, "let's use it")
-        assert self._mech_line("none", 0, "no") in _model_prompts(handler)[-1]
-
-    def test_a_report_that_made_no_offer_leaves_none_waiting(self) -> None:
-        """A refusal is not an offer to approve."""
-        handler, wire = _mech_handler()
-        _shown(handler, wire, selfDeliveredFromReceived="0")
-        _prompt(handler, "yes")
-        assert self._mech_line(THIRD_PARTY, 0, "no") in _model_prompts(handler)[-1]
 
 
 class TestAReplyWithAMechIntent:

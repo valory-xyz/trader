@@ -84,8 +84,7 @@ Carefully read the user's prompt below and decide what configuration changes, if
 
 If the user asks about a mech without giving its address, ask for the address.
 
-Mech requests: last mech shown: {last_shown_mech}; items in the last numbered mech list: {mech_list_length}; offer waiting for approval for the last mech shown: {pending_offer}.
-If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin"; its address is a mech address written in the message, or the last mech shown when the message refers to it or agrees to its offer; its position is a number from the last numbered list when the message refers to one. Leave address and position null when the message names the mech any other way. Otherwise set mech_intent to null and answer as usual.
+If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin"; its address is a mech address written in the message; set last_shown to true when the message refers to the mech whose report was just shown (such as "it", "this one", or "yes" to its offer); its position is a number from the last numbered list when the message refers to one. Leave all three unset when the message names the mech any other way. Otherwise set mech_intent to null and answer as usual.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Separate paragraphs with a blank line (<br><br>). Use these tags to make your explanation clearer and easier to read.
 
@@ -110,11 +109,12 @@ class MechIntent(enum.Enum):
 
 
 class MechIntentReading(BaseModel):
-    """What the message asks of a mech, and the mech it refers to by address or list position."""
+    """What the message asks of a mech, and the mech it refers to by address, list position or as the one just shown."""
 
     intent: MechIntent
     address: typing.Optional[str]
     position: typing.Optional[int]
+    last_shown: typing.Optional[bool]
 
 
 class TradingStrategy(enum.Enum):

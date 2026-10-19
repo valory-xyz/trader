@@ -216,9 +216,6 @@ class TestMechIntentInTheConfigReply:
             "activity_goal_source",
             "default_activity_goal",
             "activity_goal_progress",
-            "last_shown_mech",
-            "mech_list_length",
-            "pending_offer",
         }
 
     def test_the_prompt_names_every_mech_intent(self) -> None:
@@ -228,6 +225,11 @@ class TestMechIntentInTheConfigReply:
                 assert f'"{intent.value}"' in CHATUI_PROMPT
 
     def test_the_reply_schema_carries_the_mech_intent(self) -> None:
-        """The intent, an address and a list position, beside the config update."""
+        """The intent and its reference (address, list position or the mech just shown), beside the config update."""
         assert "mech_intent" in ChatUILLMResponse.model_fields
-        assert set(MechIntentReading.model_fields) == {"intent", "address", "position"}
+        assert set(MechIntentReading.model_fields) == {
+            "intent",
+            "address",
+            "position",
+            "last_shown",
+        }

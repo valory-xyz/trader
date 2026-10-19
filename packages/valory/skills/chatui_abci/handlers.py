@@ -677,13 +677,6 @@ class HttpHandler(BaseHttpHandler):
             activity_goal_progress=(
                 "not counted yet" if published_goal is None else published_goal.progress
             ),
-            last_shown_mech=self.shared_state.last_shown_mech or "none",
-            mech_list_length=len(self.shared_state.last_mech_list),
-            pending_offer=(
-                "yes"
-                if self.shared_state.last_shown_mech in self.shared_state.mech_offers
-                else "no"
-            ),
         )
         self._send_chatui_llm_request(
             prompt=prompt,

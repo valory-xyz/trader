@@ -58,16 +58,12 @@ def parse_accept(text: str) -> Optional[Accept]:
     return Accept(accept["address"], accept["price"].strip())
 
 
-def _named_address(
-    value: Any, message: str, last_shown: Optional[str]
-) -> Optional[str]:
-    """The address, when the user's message names it or it is the last mech shown."""
+def _named_address(value: Any, message: str) -> Optional[str]:
+    """The address, when the user's message names it."""
     if not isinstance(value, str):
         return None
     address = value.strip().lower()
-    if address in addresses_in(message) or address == last_shown:
-        return address
-    return None
+    return address if address in addresses_in(message) else None
 
 
 def _listed_address(value: Any, last_list: Sequence[str]) -> Optional[str]:
@@ -91,9 +87,9 @@ def resolve_intent(
     :return: the intent, `NONE` for any reply that is not a known intent, and
         the mech, or `None` unless every reference given names the same mech.
 
-    An address counts only when the message names it or it is the last mech
-    shown, and a position only when it is on the last list, so the mech is
-    always one the user or the chat has put in front of the model.
+    An address counts only when the message names it, `last_shown` only as
+    the last report shown, and a position only when it is on the last list,
+    so the mech is always one the user named or the chat showed.
     """
     if not isinstance(reply, dict):
         return MechIntent.NONE, None
@@ -103,7 +99,9 @@ def resolve_intent(
         return MechIntent.NONE, None
     named: Set[Optional[str]] = set()
     if reply.get("address") is not None:
-        named.add(_named_address(reply["address"], message, last_shown))
+        named.add(_named_address(reply["address"], message))
+    if reply.get("last_shown") is not None:
+        named.add(last_shown if reply["last_shown"] is True else None)
     if reply.get("position") is not None:
         named.add(_listed_address(reply["position"], last_list))
     return intent, named.pop() if len(named) == 1 else None
