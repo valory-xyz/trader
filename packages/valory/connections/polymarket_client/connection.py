@@ -1361,10 +1361,15 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.exception(error_msg)
             return None, None, error_msg
 
+        if not isinstance(body, dict):
+            error_msg = f"Unexpected response shape from {url}: {str(body)[:200]}"
+            self.logger.error(error_msg)
+            return None, None, error_msg
+
         # A documented miss is `data: null` or an empty list, never an error.
-        rows = body.get("data") if isinstance(body, dict) else None
-        pagination = body.get("pagination") if isinstance(body, dict) else None
+        rows = body.get("data")
         rows = [] if rows is None else rows
+        pagination = body.get("pagination")
         if (
             not isinstance(pagination, dict)
             or not isinstance(rows, list)
@@ -1443,7 +1448,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         }
         if redeemable:
             params["status"] = "REDEEMABLE"
-            params["include_archived"] = _bool_param(True)
+            params["include_archived"] = "true"
         return params
 
     def _select_positions(
@@ -1473,17 +1478,15 @@ class PolymarketClientConnection(BaseSyncConnection):
         sort_by: str = "TOKENS",
         sort_direction: str = "DESC",
         redeemable: Optional[bool] = None,
-        cursor: Optional[str] = None,
         address: Optional[str] = None,
     ) -> Tuple[Any, Any]:
-        """Get one page of positions from Polymarket for the safe (or a given) address.
+        """Get the first page of positions from Polymarket for the safe (or a given) address.
 
         :param size_threshold: Minimum position size threshold
         :param limit: Maximum number of positions to return
         :param sort_by: Field to sort by (e.g., TOKENS)
         :param sort_direction: Sort direction (ASC or DESC)
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
-        :param cursor: cursor of the page to read; None reads the first page
         :param address: holder address to query; defaults to the Safe. The
             CLOB v2 withdrawal sell-loop passes the DepositWallet here because
             the sellable CTF has been moved Safe→DW by the withdrawal top-up.
@@ -1493,7 +1496,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             size_threshold, limit, sort_by, sort_direction, redeemable, address
         )
         rows, _next_cursor, error = self._get_data_api_page(
-            DATA_API_POSITIONS_URL, params, cursor
+            DATA_API_POSITIONS_URL, params
         )
         if error:
             return None, error
@@ -1555,20 +1558,16 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _get_trades(
         self,
         limit: int = DATA_API_PAGE_LIMIT,
-        cursor: Optional[str] = None,
         taker_only: bool = True,
     ) -> Tuple[Any, Any]:
-        """Get one page of trades from Polymarket for the safe address.
+        """Get the first page of trades from Polymarket for the safe address.
 
         :param limit: Maximum number of trades to return (default: 100)
-        :param cursor: cursor of the page to read; None reads the first page
         :param taker_only: Only show trades where user was taker (default: True)
         :return: Tuple of (trades_data, error_message)
         """
         params = self._trades_params(limit, taker_only)
-        rows, _next_cursor, error = self._get_data_api_page(
-            DATA_API_TRADES_URL, params, cursor
-        )
+        rows, _next_cursor, error = self._get_data_api_page(DATA_API_TRADES_URL, params)
         if error:
             return None, error
 

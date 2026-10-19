@@ -306,7 +306,7 @@ class TestFetchRedeemablePositions:
             result = e.value
 
         assert result == []
-        behaviour.context.logger.warning.assert_called_once()
+        behaviour.context.logger.error.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

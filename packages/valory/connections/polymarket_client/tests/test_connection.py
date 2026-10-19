@@ -2564,16 +2564,15 @@ class TestPositionsReads:
         assert error is None
         assert [p["asset"] for p in positions] == ["1", "2"]
 
-    def test_get_positions_reads_the_page_at_cursor(self) -> None:
-        """A single-page read sends the cursor and selects rows the same way."""
+    def test_get_positions_reads_only_the_first_page(self) -> None:
+        """A single-page read sends no cursor, stops there and selects rows the same way."""
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
         with patch("requests.get", return_value=_v2_response(rows, "next")) as mock_get:
-            positions, error = conn._get_positions(
-                redeemable=False, cursor=SAMPLE_CURSOR
-            )
+            positions, error = conn._get_positions(redeemable=False)
         assert error is None
-        assert _sent_params(mock_get)["cursor"] == SAMPLE_CURSOR
+        assert mock_get.call_count == 1
+        assert "cursor" not in _sent_params(mock_get)
         assert [p["redeemable"] for p in positions] == [False]
 
     @pytest.mark.parametrize("read", ["_get_positions", "_fetch_all_positions"])
@@ -2639,15 +2638,16 @@ class TestTradesReads:
         assert error is None
         assert [t["size"] for t in trades] == [1.0, 2.0]
 
-    def test_get_trades_reads_the_page_at_cursor(self) -> None:
-        """A single-page read sends the cursor and maps the rows."""
+    def test_get_trades_reads_only_the_first_page(self) -> None:
+        """A single-page read sends no cursor, stops there and maps the rows."""
         conn = _make_connection()
         with patch(
-            "requests.get", return_value=_v2_response([_v2_trade_row()])
+            "requests.get", return_value=_v2_response([_v2_trade_row()], "next")
         ) as mock_get:
-            trades, error = conn._get_trades(cursor=SAMPLE_CURSOR)
+            trades, error = conn._get_trades()
         assert error is None
-        assert _sent_params(mock_get)["cursor"] == SAMPLE_CURSOR
+        assert mock_get.call_count == 1
+        assert "cursor" not in _sent_params(mock_get)
         assert trades[0]["conditionId"] == SAMPLE_CONDITION_ID
 
     @pytest.mark.parametrize("read", ["_get_trades", "_fetch_all_trades"])

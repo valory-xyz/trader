@@ -8,11 +8,11 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeibsu3nncm2npr2ivys4vth4xicckg74mgeabkxnxqvciihoz3l7oi
+  connection.py: bafybeiftzd3htnw2xnjiz762vioxk5eh44octhfr6qf2q4d6vudh4qk6ee
   relayer_proxy.py: bafybeifayzte6v3nacqvckrkqlgvafkagpbbx2vi5jkr2m4npuuxoguyvq
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeibatv6x45kianr3sdpd2ddbel2xfpp7ufkgwv4y3ujzh753hoiog4
+  tests/test_connection.py: bafybeiharqsl42oppvsls3eumkcmu4i4db2fon4otvdtjspbgxsdrkmpq4
   tests/test_connection_dw.py: bafybeibijqy36tpguxgznvo2dk25szigkif2fnqgc6qsad4gc2w5juhd3q
   tests/test_relayer_proxy.py: bafybeidsgcstp2evlzmfrrghjdiku4lyi3lvkgrutie2rd4b5okwsjcmui
 fingerprint_ignore_patterns: []
