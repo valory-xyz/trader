@@ -214,6 +214,12 @@ class TestMechIntentInTheConfigReply:
             "activity_goal_progress",
         }
 
+    def test_a_question_about_an_action_is_answered_not_carried_out(self) -> None:
+        """The prompt says a question about removing or pinning is not that action."""
+        assert (
+            "is not that action: set mech_intent to null and answer it" in CHATUI_PROMPT
+        )
+
     def test_the_prompt_names_every_mech_intent(self) -> None:
         """Each intent the schema allows, other than none, is described to the model."""
         for intent in MechIntent:

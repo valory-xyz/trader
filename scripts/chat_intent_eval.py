@@ -161,6 +161,12 @@ CASES = (
         last_shown=MECH,
     ),
     Case(
+        "should_i_approve_it",
+        "should I approve it?",
+        _outcomes(("none", None), ("ask", MECH)),
+        last_shown=MECH,
+    ),
+    Case(
         "should_i_pin_it",
         "should I pin it?",
         _outcomes(("none", None), ("ask", MECH)),
@@ -272,7 +278,7 @@ def handler_action(
     intent, mech = resolve_intent(
         reply.get("mech_intent"), case.message, case.last_shown
     )
-    outcome = (intent.value, mech)
+    outcome = (intent.value, None if intent is MechIntent.NONE else mech)
     if intent is MechIntent.NONE:
         return outcome, "answers with the model's message and config update"
     if handler._changes_config(  # pylint: disable=protected-access
