@@ -3008,11 +3008,7 @@ class FetchPerformanceSummaryBehaviour(
     def _polymarket_slugs(self) -> Dict[str, str]:
         """Return the slug of each known Polymarket market by its condition id."""
         fetcher = PolymarketPredictionsFetcher(self.context, self.context.logger)
-        return {
-            bet["condition_id"]: bet["slug"]
-            for bet in fetcher._load_multi_bets_data(str(self.params.store_path))
-            if isinstance(bet, dict) and bet.get("condition_id") and bet.get("slug")
-        }
+        return fetcher.load_market_slugs(str(self.params.store_path))
 
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:
