@@ -229,11 +229,10 @@ class TestMechIntentInTheConfigReply:
         )
 
     def test_the_reply_schema_carries_the_mech_intent(self) -> None:
-        """The intent and its reference (address, list position or the mech just shown), beside the config update."""
+        """The intent and its reference (address or the mech just shown), beside the config update."""
         assert "mech_intent" in ChatUILLMResponse.model_fields
         assert set(MechIntentReading.model_fields) == {
             "intent",
             "address",
-            "position",
             "last_shown",
         }

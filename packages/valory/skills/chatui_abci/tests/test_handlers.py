@@ -162,7 +162,6 @@ def _make_handler(
     shared_state.mech_offers = {}
     shared_state.mech_refusals = {}
     shared_state.last_shown_mech = None
-    shared_state.last_mech_list = []
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )
@@ -171,7 +170,6 @@ def _make_handler(
     sync_data = MagicMock()
     sync_data.available_mech_tools = available_tools
     sync_data.available_valid_mechs = available_mechs or set()
-    sync_data.mech_payment_types = {}
     handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     # Patch store helpers — no filesystem side-effects.
@@ -200,20 +198,10 @@ def _config_reply(
     return json.dumps({"response": json.dumps(reply)})
 
 
-def _intent(
-    intent: Any = "none",
-    address: Any = None,
-    position: Any = None,
-    last_shown: Any = None,
-) -> str:
+def _intent(intent: Any = "none", address: Any = None, last_shown: Any = None) -> str:
     """A config-chat reply whose mech intent is this one and which changes no config."""
     return _config_reply(
-        {
-            "intent": intent,
-            "address": address,
-            "position": position,
-            "last_shown": last_shown,
-        }
+        {"intent": intent, "address": address, "last_shown": last_shown}
     )
 
 
@@ -2952,16 +2940,10 @@ ABOVE_CAP = (
     "it cannot be approved."
 )
 WHICH_MECH = (
-    "I couldn't tell which mech you mean. If you meant something else, ask again "
-    "in other words."
+    "I couldn't tell which mech you mean. Send its address to see its report. If "
+    "you meant something else, ask again in other words."
 )
-NEXT_STEP = (
-    "Send a mech's address to see its report, or ask which mechs your agent can use."
-)
-NOTHING_TO_LIST = (
-    "Your agent has no mechs to list yet. Send a mech's address to see its report."
-)
-LIST_FOOTER = "Refer to one by its number or its address."
+NEXT_STEP = "Send a mech's address to see its report."
 # The checkpoint that starts the current staking epoch.
 EPOCH = 1_700_000_000
 
@@ -3037,7 +3019,6 @@ def _mech_handler(
     valid: Optional[set] = None,
     offers: Tuple[Offer, ...] = (),
     payment_types: Optional[Dict[str, str]] = None,
-    discovered_types: Optional[Dict[str, str]] = None,
 ) -> Tuple[_TestableHttpHandler, _Wire]:
     """A handler whose connections are the wire; offers and approvals behave as in `SharedState`."""
     handler = _make_handler(
@@ -3055,7 +3036,6 @@ def _mech_handler(
     context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
     handler._send_message = MagicMock()  # type: ignore[method-assign]
     handler._send_ok_response = MagicMock()
-    handler.synchronized_data.mech_payment_types = dict(discovered_types or {})
     state = handler.shared_state
     state.read_activity_goal_from_disk.return_value = None
     state.record_mech_offer = partial(SharedState.record_mech_offer, state)
@@ -3100,12 +3080,11 @@ def _chat(
     text: str,
     intent: str = "none",
     address: Optional[str] = None,
-    position: Optional[int] = None,
     last_shown: Optional[bool] = None,
 ) -> None:
     """POST a chat message and answer the config call with this mech intent."""
     _prompt(handler, text)
-    _answer_model(handler, _intent(intent, address, position, last_shown))
+    _answer_model(handler, _intent(intent, address, last_shown))
 
 
 def _model_prompts(handler: _TestableHttpHandler) -> List[str]:
@@ -3149,12 +3128,6 @@ def _shown(
 ) -> None:
     """Show the mech's report as an earlier turn of the chat."""
     _report_for(handler, wire, address, live, **record)
-    handler._send_ok_response.reset_mock()
-
-
-def _listed(handler: _TestableHttpHandler) -> None:
-    """Show the numbered list as an earlier turn of the chat."""
-    _chat(handler, "which mechs can my agent use?", "list")
     handler._send_ok_response.reset_mock()
 
 
@@ -3627,25 +3600,12 @@ class TestApproveIntent:
     def test_a_reference_with_nothing_shown_asks_which_mech(
         self, address: Optional[str]
     ) -> None:
-        """Nothing is read or approved; the list is offered to pick from."""
+        """Nothing is read or approved; the user is asked for the address."""
         handler, wire = _mech_handler(discovered={VALORY_MECH}, offers=(OFFER,))
         _chat(handler, "let's use it", "approve", address)
-        assert _reply(handler) == PARAGRAPH_BREAK.join(
-            [
-                WHICH_MECH,
-                f"Mechs your agent can use:<br>1. {VALORY_MECH}, Valory",
-                LIST_FOOTER,
-            ]
-        )
+        assert _reply(handler) == WHICH_MECH
         assert wire.sent == []
         handler.shared_state.approve_mech.assert_not_called()
-        assert handler.shared_state.last_mech_list == [VALORY_MECH]
-
-    def test_with_no_mechs_to_list_it_asks_for_an_address(self) -> None:
-        """An empty list is not shown; the user is asked for an address."""
-        handler, _ = _mech_handler()
-        _chat(handler, "let's use it", "approve")
-        assert _reply(handler) == PARAGRAPH_BREAK.join([WHICH_MECH, NOTHING_TO_LIST])
 
 
 class TestAnApprovalNeedsTheReportJustBefore:
@@ -3736,138 +3696,6 @@ class TestAnApprovalNeedsTheReportJustBefore:
         )
 
 
-class TestListIntent:
-    """The list intent is answered with a numbered list the handler builds and keeps."""
-
-    def test_valory_then_approved_mechs_are_numbered_with_their_terms(self) -> None:
-        """Valory mechs in address order with their payment method, then approvals in order."""
-        handler, wire = _mech_handler(
-            discovered={OTHER_VALORY_MECH, VALORY_MECH},
-            approved={THIRD_PARTY: NATIVE_RATE, OTHER_MECH: 5},
-            payment_types={THIRD_PARTY: NATIVE},
-            discovered_types={VALORY_MECH: NATIVE},
-            pin=[CHECKSUMMED],
-        )
-        _chat(handler, "which mechs can my agent use?", "list")
-        assert _reply(handler) == PARAGRAPH_BREAK.join(
-            [
-                "Mechs your agent can use:<br>"
-                f"1. {VALORY_MECH}, Valory, paid with xDAI<br>"
-                f"2. {OTHER_VALORY_MECH}, Valory<br>"
-                f"3. {THIRD_PARTY}, approved, up to 0.01 xDAI per request, pinned<br>"
-                f"4. {OTHER_MECH}, approved; ask about it to see its price",
-                LIST_FOOTER,
-            ]
-        )
-        assert handler.shared_state.last_mech_list == [
-            VALORY_MECH,
-            OTHER_VALORY_MECH,
-            THIRD_PARTY,
-            OTHER_MECH,
-        ]
-        assert wire.sent == []
-        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
-
-    @pytest.mark.parametrize(
-        "kind, terms",
-        [
-            (NATIVE, "Valory, paid with xDAI"),
-            (NEVERMINED, "Valory, paid with a Nevermined subscription"),
-            ("unknown", "Valory, paid with an unrecognised payment method"),
-        ],
-        ids=["native", "nevermined", "unknown"],
-    )
-    def test_a_valory_mech_shows_its_discovered_payment_method(
-        self, kind: str, terms: str
-    ) -> None:
-        """The method comes from what mech-interact discovered, with no new read."""
-        handler, wire = _mech_handler(
-            discovered={VALORY_MECH}, discovered_types={VALORY_MECH: kind}
-        )
-        _chat(handler, "list the mechs", "list")
-        assert f"1. {VALORY_MECH}, {terms}" in _reply(handler)
-        assert wire.sent == []
-
-    def test_a_mech_both_discovered_and_approved_is_listed_once(self) -> None:
-        """It is listed among the approvals, at its accepted price."""
-        handler, _ = _mech_handler(
-            discovered={THIRD_PARTY},
-            approved={THIRD_PARTY: NATIVE_RATE},
-            payment_types={THIRD_PARTY: NATIVE},
-        )
-        _chat(handler, "list the mechs", "list")
-        assert handler.shared_state.last_mech_list == [THIRD_PARTY]
-
-    def test_nothing_to_list_says_so(self) -> None:
-        """An empty list is said plainly and kept empty."""
-        handler, _ = _mech_handler()
-        handler.shared_state.last_mech_list = [THIRD_PARTY]
-        _chat(handler, "list the mechs", "list")
-        assert _reply(handler) == NOTHING_TO_LIST
-        assert handler.shared_state.last_mech_list == []
-
-    def test_an_accept_records_the_payment_type_for_the_list(self) -> None:
-        """What the report offered in is what the list shows later."""
-        handler, wire = _mech_handler(offers=(OFFER,))
-        _prompt(handler, ACCEPT_PHRASE)
-        wire.answer_rate(NATIVE_RATE)
-        handler._send_ok_response.reset_mock()
-        _chat(handler, "list the mechs", "list")
-        assert f"1. {THIRD_PARTY}, approved, up to 0.01 xDAI per request" in _reply(
-            handler
-        )
-
-
-class TestPositionReferences:
-    """A position resolves to the address at that place in the last list shown."""
-
-    def test_a_listed_position_is_reported(self) -> None:
-        """The second item of the list is the mech read and shown."""
-        handler, wire = _mech_handler(
-            discovered={VALORY_MECH}, approved={THIRD_PARTY: NATIVE_RATE}
-        )
-        _listed(handler)
-        _chat(handler, "tell me about the second one", "ask", position=2)
-        assert THIRD_PARTY.encode() in wire.sent[0]["body"]
-        _answer_report(wire, THIRD_PARTY)
-        assert _reply(handler).startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.")
-        assert handler.shared_state.last_shown_mech == THIRD_PARTY
-
-    def test_approving_a_listed_mech_with_no_offer_shows_its_report_first(
-        self,
-    ) -> None:
-        """No report with an offer was shown for it, so nothing is approved yet."""
-        handler, wire = _mech_handler(discovered={VALORY_MECH, OTHER_VALORY_MECH})
-        _listed(handler)
-        _chat(handler, "approve the second one", "approve", position=2)
-        assert OTHER_VALORY_MECH.encode() in wire.sent[0]["body"]
-        handler.shared_state.approve_mech.assert_not_called()
-
-    @pytest.mark.parametrize(
-        "address, position",
-        [(None, None), (None, 2), (None, 0), (OTHER_MECH, None), (VALORY_MECH, 1)],
-        ids=[
-            "described_otherwise",
-            "past_the_end",
-            "position_zero",
-            "address_not_named",
-            "address_named_nowhere",
-        ],
-    )
-    def test_an_unplaceable_reference_shows_the_list_again(
-        self, address: Optional[str], position: Optional[int]
-    ) -> None:
-        """The list is shown again to pick a number from; nothing is read."""
-        handler, wire = _mech_handler(discovered={VALORY_MECH})
-        _listed(handler)
-        handler.shared_state.last_mech_list = []
-        _chat(handler, "the cheap one", "ask", address, position)
-        assert _reply(handler).startswith(WHICH_MECH + PARAGRAPH_BREAK)
-        assert f"1. {VALORY_MECH}, Valory" in _reply(handler)
-        assert handler.shared_state.last_mech_list == [VALORY_MECH]
-        assert wire.sent == []
-
-
 class TestRemoveIntent:
     """Removing drops an approval and any pin on it."""
 
@@ -3927,12 +3755,8 @@ class TestTheMechJustShownExpires:
 
     @pytest.mark.parametrize(
         "between",
-        [
-            ("which mechs can my agent use?", "list"),
-            ("stop using it", "remove"),
-            ("go risky", "none"),
-        ],
-        ids=["list", "remove", "config"],
+        [("stop using it", "remove"), ("go risky", "none")],
+        ids=["remove", "config"],
     )
     def test_yes_after_another_reply_approves_nothing(
         self, between: Tuple[str, str]
@@ -4096,9 +3920,8 @@ class TestTheConfigPromptCarriesNoMechState:
     def test_no_address_card_text_or_offer_from_the_chat_reaches_the_model(
         self,
     ) -> None:
-        """Which mech was shown, the list and the offer stay in code."""
+        """Which mech was shown and the offer stay in code."""
         handler, wire = _mech_handler(discovered={VALORY_MECH, OTHER_VALORY_MECH})
-        _listed(handler)
         _shown(handler, wire)
         _prompt(handler, "let's use it")
         prompt = _model_prompts(handler)[-1]
@@ -4115,17 +3938,18 @@ class TestAReplyWithAMechIntent:
         "fixed_bet_size": 0.5,
         "behavior": "Trades more.",
     }
+    UNPIN = {"intent": "unpin", "address": VALORY_MECH}
 
     def test_a_mech_intent_with_a_config_change_does_neither(self) -> None:
         """Nothing is stored, no mech action runs, and the user is told to ask separately."""
-        handler, _ = _mech_handler(discovered={VALORY_MECH})
-        _prompt(handler, "show me the mechs and go risky")
-        _answer_model(handler, _config_reply({"intent": "list"}, self.CONFIG))
+        handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
+        _prompt(handler, f"unpin {VALORY_MECH} and go risky")
+        _answer_model(handler, _config_reply(self.UNPIN, self.CONFIG))
         handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         handler._store_chatui_param_to_json.assert_not_called()
         handler.shared_state.update_agent_behavior.assert_not_called()
         assert _reply(handler) == ONE_REQUEST_AT_A_TIME
-        assert handler.shared_state.last_mech_list == []
         handler.context.logger.warning.assert_called()
 
     @pytest.mark.parametrize(
@@ -4146,16 +3970,14 @@ class TestAReplyWithAMechIntent:
 
     def test_a_behaviour_line_alone_is_not_a_config_change(self) -> None:
         """The model's behaviour summary does not block a mech intent."""
-        handler, _ = _mech_handler(discovered={VALORY_MECH})
-        _prompt(handler, "show me the mechs")
+        handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
+        _prompt(handler, f"unpin {VALORY_MECH}")
         _answer_model(
             handler,
-            _config_reply(
-                {"intent": "list"}, {"behavior": "Trades.", "allowed_tools": []}
-            ),
+            _config_reply(self.UNPIN, {"behavior": "Trades.", "allowed_tools": []}),
         )
-        assert _reply(handler).startswith(
-            f"Mechs your agent can use:<br>1. {VALORY_MECH}"
+        assert _reply(handler) == (
+            f"Unpinned {VALORY_MECH}. Mech selection is back to normal."
         )
 
     def test_the_same_config_update_without_an_intent_is_applied(self) -> None:
@@ -4169,7 +3991,7 @@ class TestAReplyWithAMechIntent:
         """The handler asks which mech; the model's text is not shown."""
         handler, _ = _mech_handler()
         _chat(handler, "approve the cheap one", "approve")
-        assert _reply(handler) == PARAGRAPH_BREAK.join([WHICH_MECH, NOTHING_TO_LIST])
+        assert _reply(handler) == WHICH_MECH
         handler._send_ok_response.assert_called_once()
 
 

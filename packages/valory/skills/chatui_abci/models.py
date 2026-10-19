@@ -131,7 +131,6 @@ class SharedState(BaseSharedState):
         self.mech_refusals: Dict[str, str] = {}
         # In memory; per agent, as an agent has one user.
         self.last_shown_mech: Optional[str] = None
-        self.last_mech_list: List[str] = []
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin

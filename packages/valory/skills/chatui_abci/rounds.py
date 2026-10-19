@@ -22,7 +22,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Type, cast
+from typing import Dict, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -63,29 +63,18 @@ class SynchronizedData(BaseSynchronizedData):
         produced by the Autonolas subgraph and the `valid_mechs`
         normalization in mech-interact.
         """
-        return {str(m["address"]).lower() for m in self._mechs_info()}
-
-    @property
-    def mech_payment_types(self) -> Dict[str, str]:
-        """Get the payment type id of each mech visible to mech-interact, by lowercase address."""
-        return {
-            str(m["address"]).lower(): str(m["payment_type"]).lower()
-            for m in self._mechs_info()
-            if m.get("payment_type")
-        }
-
-    def _mechs_info(self) -> List[Dict[str, Any]]:
-        """The `mechs_info` entries that carry an address; unreadable data reads as none."""
         raw = self.db.get("mechs_info", "[]")
         if not isinstance(raw, str):
-            return []
+            return set()
         try:
             mechs = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
-            return []
-        if not isinstance(mechs, list):
-            return []
-        return [m for m in mechs if isinstance(m, dict) and m.get("address")]
+            return set()
+        return {
+            str(m["address"]).lower()
+            for m in (mechs or [])
+            if isinstance(m, dict) and m.get("address")
+        }
 
 
 class Event(Enum):
