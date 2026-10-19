@@ -2894,6 +2894,8 @@ STATE = ContractApiMessage.Performative.STATE
 ERROR = ContractApiMessage.Performative.ERROR
 ACCEPT_PHRASE = f"I accept 0.01 xDAI per request for {THIRD_PARTY}"
 OFFER = Offer(THIRD_PARTY, NATIVE_RATE, NATIVE, "0.01 xDAI")
+# The checkpoint that starts the current staking epoch.
+EPOCH = 1_700_000_000
 
 
 def _record(address: str = THIRD_PARTY, **overrides: Any) -> Dict[str, Any]:
@@ -3242,18 +3244,46 @@ class TestAccept:
             "Your agent can use it for its next mech requests."
         )
 
-    def test_an_approval_while_trading_waits_says_when_it_is_used(self) -> None:
-        """With the epoch's activity goal met, the mech is used from the next epoch."""
+    @pytest.mark.parametrize(
+        "stop_flag, target_met, goal, paused",
+        [
+            (True, True, SimpleNamespace(is_met=True, period_start=EPOCH), True),
+            (True, False, SimpleNamespace(is_met=True, period_start=EPOCH), False),
+            (False, True, SimpleNamespace(is_met=True, period_start=EPOCH), False),
+            (True, True, SimpleNamespace(is_met=False, period_start=EPOCH), False),
+            (True, True, SimpleNamespace(is_met=True, period_start=EPOCH - 1), False),
+            (True, True, None, False),
+        ],
+        ids=[
+            "paused",
+            "activity_target_not_met",
+            "stop_disabled",
+            "goal_not_met",
+            "goal_from_an_earlier_epoch",
+            "no_goal",
+        ],
+    )
+    def test_the_approval_says_when_the_mech_is_used(
+        self, stop_flag: bool, target_met: bool, goal: Any, paused: bool
+    ) -> None:
+        """From the next epoch only when the agent skips trading for the rest of this one."""
         handler, wire = _mech_handler(offers=(OFFER,))
-        handler.shared_state.read_activity_goal_from_disk.return_value = (
-            SimpleNamespace(is_met=True)
-        )
+        handler.context.params.stop_trading_if_staking_kpi_met = stop_flag
+        handler.synchronized_data.db = {
+            "is_activity_target_met": target_met,
+            "previous_checkpoint": EPOCH,
+        }
+        handler.shared_state.read_activity_goal_from_disk.return_value = goal
         _prompt(handler, ACCEPT_PHRASE)
         wire.answer_rate(NATIVE_RATE)
+        when = (
+            "Your agent has met its activity goal for this staking epoch, so it "
+            "can use it from the next epoch."
+            if paused
+            else "Your agent can use it for its next mech requests."
+        )
         assert _reply(handler) == (
-            f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. Your agent has "
-            "met its activity goal for this staking epoch, so it can use it from "
-            "the next epoch."
+            f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. {when}"
         )
 
     def test_a_higher_live_rate_saves_nothing_and_drops_the_offer(self) -> None:

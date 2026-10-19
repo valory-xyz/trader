@@ -431,15 +431,26 @@ class HttpHandler(BaseHttpHandler):
             )
         again = " again" if address in self.shared_state.approved_mech_rates else ""
         self.shared_state.approve_mech(address, offer.rate, offer.payment_type)
-        goal = self.shared_state.read_activity_goal_from_disk()
         when = (
             "Your agent has met its activity goal for this staking epoch, so it "
             "can use it from the next epoch."
-            if goal is not None and goal.is_met
+            if self._trading_paused()
             else "Your agent can use it for its next mech requests."
         )
         return (
             f"Approved {address}{again} at up to {offer.price_text} per request. {when}"
+        )
+
+    def _trading_paused(self) -> bool:
+        """Whether the agent skips trading for the rest of this epoch, by the stop-trading vote's conditions."""
+        goal = self.shared_state.read_activity_goal_from_disk()
+        db = self.synchronized_data.db
+        return bool(
+            self.context.params.stop_trading_if_staking_kpi_met
+            and db.get("is_activity_target_met", False)
+            and goal is not None
+            and goal.is_met
+            and goal.period_start == db.get("previous_checkpoint", None)
         )
 
     def _approved_entry(self, address: str, rate: int) -> str:
