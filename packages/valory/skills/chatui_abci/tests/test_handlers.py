@@ -74,6 +74,7 @@ from packages.valory.skills.chatui_abci.prompts import (
     FieldsThatCanBeRemoved,
     TradingStrategy,
 )
+from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
 from packages.valory.skills.mech_interact_abci.payment_types import PaymentType
 
 # ---------------------------------------------------------------------------
@@ -3210,25 +3211,72 @@ class TestAskIntent:
         assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
 
     @pytest.mark.parametrize(
-        "listed, live, offered, price",
+        "listed, live",
         [
-            (NATIVE_RATE // 2, NATIVE_RATE, NATIVE_RATE, "0.01 xDAI"),
-            (NATIVE_RATE, NATIVE_RATE // 2, NATIVE_RATE // 2, "0.005 xDAI"),
-            (NATIVE_RATE * 3, NATIVE_RATE, NATIVE_RATE, "0.01 xDAI"),
-            (NATIVE_RATE, None, NATIVE_RATE, "0.01 xDAI"),
+            (NATIVE_RATE // 2, NATIVE_RATE),
+            (NATIVE_RATE, NATIVE_RATE // 2),
+            (NATIVE_RATE, None),
         ],
-        ids=["live_higher", "live_lower", "listing_over_cap", "live_unreadable"],
+        ids=["live_higher", "listed_higher", "live_unreadable"],
     )
-    def test_a_third_party_report_is_priced_at_the_live_rate(
-        self, listed: int, live: Any, offered: int, price: str
+    def test_a_third_party_report_is_priced_at_the_higher_rate(
+        self, listed: int, live: Any
     ) -> None:
-        """The live rate prices the offer; the listed one only when it can't be read."""
+        """The offer is the higher of the listed and live rates."""
         handler, wire = _mech_handler()
         reply = _report_for(
             handler, wire, THIRD_PARTY, live, maxDeliveryRate=str(listed)
         )
-        assert f"Paid with xDAI, up to {price} per request." in reply
-        assert handler.shared_state.mech_offers[THIRD_PARTY].rate == offered
+        assert "Paid with xDAI, up to 0.01 xDAI per request." in reply
+        assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
+
+    def test_a_listing_over_the_cap_is_refused_even_when_the_live_rate_is_not(
+        self,
+    ) -> None:
+        """Discovery checks the listing, so a mech listed over the cap is never offered."""
+        handler, wire = _mech_handler()
+        reply = _report_for(
+            handler,
+            wire,
+            THIRD_PARTY,
+            NATIVE_RATE,
+            maxDeliveryRate=str(NATIVE_RATE * 3),
+        )
+        assert reply.endswith(
+            "It charges 0.03 xDAI per request, above the 0.01 xDAI this agent "
+            "allows, so it cannot be approved."
+        )
+        assert handler.shared_state.mech_offers == {}
+
+    @pytest.mark.parametrize(
+        "listed, live",
+        [
+            (NATIVE_RATE // 2, NATIVE_RATE),
+            (NATIVE_RATE, NATIVE_RATE // 2),
+            (NATIVE_RATE, None),
+        ],
+        ids=["live_higher", "listed_higher", "live_unreadable"],
+    )
+    def test_an_approval_passes_the_delivery_rate_bound(
+        self, listed: int, live: Any
+    ) -> None:
+        """The approved rate is one both discovery's listing check and the live check accept."""
+        handler, wire = _mech_handler()
+        reply = _report_for(
+            handler, wire, THIRD_PARTY, live, maxDeliveryRate=str(listed)
+        )
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, reply.rsplit("reply exactly: ", 1)[1])
+        wire.answer_rate(NATIVE_RATE if live is None else live)
+        bound = delivery_rate_bound(
+            THIRD_PARTY,
+            NATIVE,
+            handler.context.params.delivery_rate_caps,
+            handler.shared_state.approved_mech_rates,
+        )
+        assert bound is not None
+        assert listed <= bound
+        assert live is None or live <= bound
 
     @pytest.mark.parametrize(
         "record, status",
