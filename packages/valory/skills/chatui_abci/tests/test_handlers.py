@@ -48,6 +48,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     LLM_MESSAGE_FIELD,
     MECH_DEPOSIT_REQUIRED_CODE,
     MECH_PRE_DEPOSIT_EOA_SHORT,
+    ONE_REQUEST_AT_A_TIME,
     PREVIOUS_TRADING_TYPE_FIELD,
     SELECTED_MECHS_FIELD,
     SrrHandler,
@@ -57,6 +58,7 @@ from packages.valory.skills.chatui_abci.handlers import (
 from packages.valory.skills.chatui_abci.mech_templates import (
     NEVER_DELIVERED,
     PARAGRAPH_BREAK,
+    PRICE_UNREADABLE,
     accept_line,
 )
 from packages.valory.skills.chatui_abci.models import (
@@ -3031,11 +3033,7 @@ def _mech_handler(
     payment_types: Optional[Dict[str, str]] = None,
     discovered_types: Optional[Dict[str, str]] = None,
 ) -> Tuple[_TestableHttpHandler, _Wire]:
-    """A handler whose connections are the wire; offers and approvals behave as in `SharedState`.
-
-    `payment_types` are the approvals' payment types; `discovered_types` are
-    those mech-interact discovered.
-    """
+    """A handler whose connections are the wire; offers and approvals behave as in `SharedState`."""
     handler = _make_handler(
         current_config=ChatuiConfig(selected_mechs=pin),
         approved_rates=approved or {},
@@ -3291,6 +3289,18 @@ class TestAskIntent:
         assert listed <= bound
         assert live is None or live <= bound
 
+    def test_a_mech_listed_without_a_price_is_not_offered(self) -> None:
+        """Discovery skips a mech with no listed rate, so its live rate is not offered."""
+        handler, wire = _mech_handler()
+        _chat(handler, f"tell me about {THIRD_PARTY}", "ask", THIRD_PARTY)
+        wire.answer_http(_record(maxDeliveryRate=None))
+        wire.answer_http(_card())
+        assert _reply(handler).endswith(PRICE_UNREADABLE)
+        assert all(
+            request.get("callable") != "get_max_delivery_rate" for request in wire.sent
+        )
+        assert handler.shared_state.mech_offers == {}
+
     @pytest.mark.parametrize(
         "record, status",
         [
@@ -3451,6 +3461,20 @@ class TestAccept:
         )
         assert _reply(handler) == (
             f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. {when}"
+        )
+
+    def test_an_approval_before_the_stop_vote_reads_as_trading(self) -> None:
+        """Without this period's stop-trading result yet, the reply does not promise a wait."""
+        handler, wire = _mech_handler(offers=(OFFER,))
+        handler.context.params.stop_trading_if_staking_kpi_met = True
+        handler.synchronized_data.db = {"previous_checkpoint": EPOCH}
+        handler.shared_state.read_activity_goal_from_disk.return_value = (
+            SimpleNamespace(is_met=True, period_start=EPOCH)
+        )
+        _prompt(handler, ACCEPT_PHRASE)
+        wire.answer_rate(NATIVE_RATE)
+        assert _reply(handler).endswith(
+            "Your agent can use it for its next mech requests."
         )
 
     def test_a_higher_live_rate_saves_nothing_and_drops_the_offer(self) -> None:
@@ -3770,11 +3794,62 @@ class TestRemoveIntent:
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
         handler, _ = _mech_handler(approved={OTHER_MECH: 2})
-        _chat(handler, f"remove {CHECKSUMMED}", "remove", CHECKSUMMED)
+        _chat(handler, f"stop using {CHECKSUMMED}", "remove", CHECKSUMMED)
         handler.shared_state.set_approved_mech_rates.assert_not_called()
         assert _reply(handler) == (
             f"{THIRD_PARTY} is not approved, so there is nothing to remove."
         )
+
+
+class TestTypedRemove:
+    """`remove <address>` works without the model, so an approval can always be revoked."""
+
+    @pytest.mark.parametrize(
+        "text", [f"remove {CHECKSUMMED}", f"  Remove {THIRD_PARTY}. "]
+    )
+    def test_it_removes_without_a_model_call(self, text: str) -> None:
+        """The approval and its pin go, and the model is not asked."""
+        handler, _ = _mech_handler(approved={THIRD_PARTY: 1}, pin=[THIRD_PARTY])
+        _prompt(handler, text)
+        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.approved_mech_rates == {}
+        assert _reply(handler).startswith(f"Removed {THIRD_PARTY}.")
+
+    def test_a_mech_never_approved_is_said_so(self) -> None:
+        """Nothing is written."""
+        handler, _ = _mech_handler(approved={OTHER_MECH: 2})
+        _prompt(handler, f"remove {THIRD_PARTY}")
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        assert _reply(handler) == (
+            f"{THIRD_PARTY} is not approved, so there is nothing to remove."
+        )
+
+
+class TestTheMechJustShownExpires:
+    """A report counts as the mech just shown only when it was the reply right before."""
+
+    @pytest.mark.parametrize(
+        "between",
+        [
+            ("which mechs can my agent use?", "list"),
+            ("stop using it", "remove"),
+            ("go risky", "none"),
+        ],
+        ids=["list", "remove", "config"],
+    )
+    def test_yes_after_another_reply_approves_nothing(
+        self, between: Tuple[str, str]
+    ) -> None:
+        """The report on screen is gone, so "yes" asks which mech instead of approving."""
+        handler, wire = _mech_handler(approved={OTHER_MECH: 1})
+        _shown(handler, wire)
+        handler._send_ok_response.reset_mock()
+        text, intent = between
+        _chat(handler, text, intent, last_shown=intent == "remove" or None)
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "yes", "approve", last_shown=True)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler).startswith("I couldn't tell which mech you mean.")
 
 
 class TestPinIntent:
@@ -3919,7 +3994,7 @@ class TestAnUnreadableAccept:
 
 
 class TestTheConfigPromptCarriesNoMechState:
-    """The model reads intent from the user's message and the config alone."""
+    """The model gets no mech reports, chat addresses or offers."""
 
     def test_no_address_card_text_or_offer_from_the_chat_reaches_the_model(
         self,
@@ -3944,17 +4019,47 @@ class TestAReplyWithAMechIntent:
         "behavior": "Trades more.",
     }
 
-    def test_its_config_update_is_never_applied(self) -> None:
-        """Nothing is stored and the reply is the handler's list, not the model's message."""
+    def test_a_mech_intent_with_a_config_change_does_neither(self) -> None:
+        """Nothing is stored, no mech action runs, and the user is told to ask separately."""
         handler, _ = _mech_handler(discovered={VALORY_MECH})
         _prompt(handler, "show me the mechs and go risky")
         _answer_model(handler, _config_reply({"intent": "list"}, self.CONFIG))
         handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
         handler._store_chatui_param_to_json.assert_not_called()
         handler.shared_state.update_agent_behavior.assert_not_called()
-        reply = _reply(handler)
-        assert reply.startswith(f"Mechs your agent can use:<br>1. {VALORY_MECH}")
-        assert MODEL_MESSAGE not in reply
+        assert _reply(handler) == ONE_REQUEST_AT_A_TIME
+        assert handler.shared_state.last_mech_list == []
+        handler.context.logger.warning.assert_called()
+
+    @pytest.mark.parametrize(
+        "reading", [{"intent": "delete", "address": THIRD_PARTY}, "approve"]
+    )
+    def test_an_unreadable_mech_intent_is_logged_and_answered_as_config(
+        self, reading: Any
+    ) -> None:
+        """A garbled intent is not acted on, and the log shows it."""
+        handler, _ = _mech_handler()
+        _prompt(handler, "hello")
+        _answer_model(handler, _config_reply(reading))
+        assert _reply(handler) == MODEL_MESSAGE
+        assert any(
+            "unreadable mech intent" in str(call)
+            for call in handler.context.logger.warning.call_args_list
+        )
+
+    def test_a_behaviour_line_alone_is_not_a_config_change(self) -> None:
+        """The model's behaviour summary does not block a mech intent."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        _prompt(handler, "show me the mechs")
+        _answer_model(
+            handler,
+            _config_reply(
+                {"intent": "list"}, {"behavior": "Trades.", "allowed_tools": []}
+            ),
+        )
+        assert _reply(handler).startswith(
+            f"Mechs your agent can use:<br>1. {VALORY_MECH}"
+        )
 
     def test_the_same_config_update_without_an_intent_is_applied(self) -> None:
         """The update above is one the config chat would otherwise apply."""

@@ -174,15 +174,11 @@ class TestChatuiPrompt:
         )
 
     def test_the_config_prompt_carries_no_mech_reports(self) -> None:
-        """Mech facts never reach the config model; it only asks for an address."""
+        """Mech reports never reach the config model."""
         assert "Mechs:" not in CHATUI_PROMPT
         for field in ("{mech_reports}", "{approved_mechs}", "{pending_approval}"):
             assert field not in CHATUI_PROMPT
         assert "mech_action" not in CHATUI_PROMPT
-        assert (
-            "If the user asks about a mech without giving its address, ask for the address."
-            in CHATUI_PROMPT
-        )
         assert "mech_action" not in ChatUILLMResponse.model_fields
 
     def test_the_config_prompt_names_no_typed_mech_commands(self) -> None:
@@ -197,7 +193,7 @@ class TestMechIntentInTheConfigReply:
     def test_the_prompt_is_filled_from_the_config_the_message_and_the_chat_state(
         self,
     ) -> None:
-        """The only mech fields are the last mech shown, the list length and the offer flag."""
+        """The prompt is filled from the config, the message and the mech lists, not chat state."""
         fields = {name for _, name, _, _ in Formatter().parse(CHATUI_PROMPT)}
         assert fields - {None} == {
             "user_prompt",

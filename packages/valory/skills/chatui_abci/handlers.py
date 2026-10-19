@@ -81,6 +81,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     addresses_in,
     normalise,
     parse_accept,
+    parse_remove,
     resolve_intent,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
@@ -115,6 +116,18 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
     read_mech,
 )
 from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
+
+
+def _changes_config(update: Any) -> bool:
+    """Whether a config update in a reply sets or clears any setting."""
+    if not isinstance(update, dict):
+        return False
+    return any(
+        value not in (None, [], "")
+        for field, value in update.items()
+        if field != "behavior"
+    )
+
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -156,6 +169,10 @@ TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 ASK_ONE_AT_A_TIME = "Ask about one mech at a time."
+ONE_REQUEST_AT_A_TIME = (
+    "I can either act on a mech or change your settings in one message, so I "
+    "did neither. Please ask for them separately."
+)
 ACCEPT_UNREADABLE = (
     "I couldn't read that. To approve a mech, copy the line from its report "
     "exactly: I accept <price> per request for <address>"
@@ -289,9 +306,16 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
+        # "The mech just shown" means the reply right before this message.
+        last_shown = self.shared_state.last_shown_mech
+        self.shared_state.last_shown_mech = None
         accept = parse_accept(user_prompt)
         if accept is not None:
             self._accept_offer(accept, http_msg, http_dialogue)
+            return
+        removed = parse_remove(user_prompt)
+        if removed is not None:
+            self._send_mech_reply(http_msg, http_dialogue, self._remove_mech(removed))
             return
         # A typed price is consent to that price, so a line that does not
         # parse is never read as an approval at the price shown.
@@ -305,7 +329,9 @@ class HttpHandler(BaseHttpHandler):
         available_tools = self._get_available_tools(http_msg, http_dialogue)
         if available_tools is None:
             return
-        self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
+        self._send_chatui_prompt(
+            user_prompt, available_tools, http_msg, http_dialogue, last_shown
+        )
 
     def _run_mech_intent(
         self,
@@ -314,7 +340,7 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
     ) -> None:
-        """Carry out a mech intent in code; a mech it needs but can't name gets the list."""
+        """Carry out a mech intent in code; without the mech it needs, ask which one."""
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
         if intent is MechIntent.LIST:
             self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
@@ -355,19 +381,18 @@ class HttpHandler(BaseHttpHandler):
     def _price_at_live_rate(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
     ) -> None:
-        """Report a third-party mech at the higher of its listed and live rates, the rate discovery and requests both accept."""
+        """Report a third-party mech at the higher of its listed and live rates; one with no listing is unpriced, as discovery skips it."""
+        listed = facts.max_delivery_rate
         if (
             facts.record is not RecordStatus.FOUND
             or facts.address in self.context.params.valid_mechs
+            or listed is None
         ):
             self._send_mech_report(http_msg, http_dialogue, facts)
             return
 
         def on_rate(live: Optional[int]) -> None:
-            rate = max(
-                (r for r in (facts.max_delivery_rate, live) if r is not None),
-                default=None,
-            )
+            rate = listed if live is None else max(listed, live)
             self._send_mech_report(
                 http_msg, http_dialogue, replace(facts, max_delivery_rate=rate)
             )
@@ -399,10 +424,14 @@ class HttpHandler(BaseHttpHandler):
             self.shared_state.record_mech_refusal(address, verdict(facts, standing))
         self._send_mech_reply(http_msg, http_dialogue, text)
 
+    def _rate_text(self, payment_type: str, rate: int) -> Optional[str]:
+        """A rate in its payment asset on this chain, or `None` when no figure can be named."""
+        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+        return payment_line(payment_type, rate, chain_id)[1]
+
     def _price_text(self, offer: Offer, rate: int) -> str:
         """Render a rate in the offer's asset."""
-        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
-        _, text = payment_line(offer.payment_type, rate, chain_id)
+        text = self._rate_text(offer.payment_type, rate)
         return text if text is not None else str(rate)
 
     def _refusal_reply(self, address: str) -> Optional[str]:
@@ -500,8 +529,7 @@ class HttpHandler(BaseHttpHandler):
         kind = self.shared_state.approved_mech_payment_types.get(address)
         if kind is None:
             return None
-        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
-        return payment_line(kind, rate, chain_id)[1]
+        return self._rate_text(kind, rate)
 
     def _approved_entry(self, address: str, rate: int) -> str:
         """One approved mech with its accepted price, when the payment type is known."""
@@ -598,6 +626,7 @@ class HttpHandler(BaseHttpHandler):
         available_tools: Any,
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
+        last_shown: Optional[str] = None,
     ) -> None:
         """Fill the config prompt and ask the LLM.
 
@@ -605,6 +634,7 @@ class HttpHandler(BaseHttpHandler):
         :param available_tools: the tools the user may pin.
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
+        :param last_shown: the mech whose report was the reply before this message
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
@@ -683,6 +713,7 @@ class HttpHandler(BaseHttpHandler):
             http_msg=http_msg,
             http_dialogue=http_dialogue,
             user_prompt=user_prompt,
+            last_shown=last_shown,
         )
 
     def _send_chatui_llm_request(
@@ -691,6 +722,7 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         user_prompt: str,
+        last_shown: Optional[str] = None,
     ) -> None:
         """Ask the model for a config update or a mech intent; `_handle_chatui_llm_response` gets the reply."""
         self._send_llm_request(
@@ -701,6 +733,7 @@ class HttpHandler(BaseHttpHandler):
                 "http_msg": http_msg,
                 "http_dialogue": http_dialogue,
                 "user_prompt": user_prompt,
+                "last_shown": last_shown,
             },
         )
 
@@ -806,11 +839,12 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         user_prompt: str = "",
+        last_shown: Optional[str] = None,
     ) -> None:
         """
         Handle the response from the LLM.
 
-        A reply whose mech intent resolves is carried out in code, and its
+        A reply with a known mech intent is carried out in code, and its
         message and config update are not used.
 
         :param llm_response_message: the SrrMessage with the LLM output
@@ -818,6 +852,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the original HttpMessage
         :param http_dialogue: the original HttpDialogue
         :param user_prompt: the user's message, the only text an intent's address may come from
+        :param last_shown: the mech whose report was the reply before this message
         """
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
@@ -849,15 +884,27 @@ class HttpHandler(BaseHttpHandler):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
 
+        reading = llm_response_json.get(MECH_INTENT_FIELD)
         intent, address = resolve_intent(
-            llm_response_json.get(MECH_INTENT_FIELD),
-            user_prompt,
-            self.shared_state.last_shown_mech,
-            self.shared_state.last_mech_list,
+            reading, user_prompt, last_shown, self.shared_state.last_mech_list
         )
         if intent is not MechIntent.NONE:
+            if _changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
+                self.context.logger.warning(
+                    "The reply asked for a mech action and a config change; "
+                    "neither was done."
+                )
+                self._send_mech_reply(http_msg, http_dialogue, ONE_REQUEST_AT_A_TIME)
+                return
             self._run_mech_intent(intent, address, http_msg, http_dialogue)
             return
+        if reading is not None and (
+            not isinstance(reading, dict)
+            or reading.get("intent") not in (None, MechIntent.NONE.value)
+        ):
+            self.context.logger.warning(
+                f"Ignoring an unreadable mech intent: {reading}"
+            )
 
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})

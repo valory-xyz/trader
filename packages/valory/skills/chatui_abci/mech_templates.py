@@ -68,7 +68,7 @@ NEVER_DELIVERED = (
     "It has never delivered an on-chain request, so it cannot be approved."
 )
 PRICE_UNREADABLE = "I can't read what this mech charges, so it cannot be approved."
-# The report just shown is the mech a reply's "it" refers to.
+# No address: the hints refer to the mech just shown.
 REMOVE_HINT = "To stop using it, tell me to remove it."
 PIN_HINT = "To add it to your pinned mechs, tell me to pin it."
 UNPIN_HINT = "To stop pinning it, tell me to unpin it."

@@ -49,7 +49,7 @@ Configuration details:
     -- When null/empty, all configured valid mechs are eligible.
     -- Can be cleared to restore unrestricted mech selection if the user says to remove or clear the pinned mechs.
     -- Each address must be one of the available mechs listed above and is matched case-insensitively.
-    -- The user can add mechs to or remove individual mechs from the current list, or replace it entirely.
+    -- Pinning or unpinning one mech is a mech_intent, not a config update; use this field only to clear or replace the whole list.
 - Approved third-party mechs: {current_approved_mechs}
     -- Mechs not run by Valory that the user approved from this chat, each up to the price the user accepted. This is a separate list from the pinned mechs.
     -- You cannot approve or remove a mech. The user does that by asking about a mech by its address to see its report, then saying to approve or remove it.
@@ -81,8 +81,6 @@ Configuration details:
 Note: The fixed_bet_size parameter only applies when using the Balanced strategy, and max_bet_size only applies when using the Risky strategy. Setting one does not affect the other strategy.
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
-
-If the user asks about a mech without giving its address, ask for the address.
 
 If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin"; its address is a mech address written in the message; set last_shown to true when the message refers to the mech whose report was just shown (such as "it", "this one", or "yes" to its offer); its position is a number from the last numbered list when the message refers to one. Leave all three unset when the message names the mech any other way. Otherwise set mech_intent to null and answer as usual.
 

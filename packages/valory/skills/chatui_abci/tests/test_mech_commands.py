@@ -115,6 +115,18 @@ def test_normalise(text: str, expected: Optional[str]) -> None:
             MECH,
             MECH,
         ),
+        (
+            {"intent": "approve", "address": MECH, "last_shown": False, "position": 0},
+            f"use {MECH}",
+            None,
+            MECH,
+        ),
+        (
+            {"intent": "ask", "address": "", "position": 1},
+            "the first one",
+            None,
+            LISTED,
+        ),
         ({"intent": "pin", "position": 2}, "pin the second one", None, OTHER),
         ({"intent": "ask", "position": 1}, "the first one", MECH, LISTED),
         (
@@ -129,6 +141,8 @@ def test_normalise(text: str, expected: Optional[str]) -> None:
         "padded_address_in_message",
         "last_shown",
         "last_shown_and_address_agree",
+        "unused_fields_filled_with_false_and_zero",
+        "empty_address_beside_a_position",
         "position",
         "position_over_last_shown",
         "address_and_position_agree",

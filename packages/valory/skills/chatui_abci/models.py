@@ -129,9 +129,7 @@ class SharedState(BaseSharedState):
         self.mech_offers: Dict[str, Offer] = {}
         # In memory only: why the last report for an address made no offer.
         self.mech_refusals: Dict[str, str] = {}
-        # In memory only, and per agent rather than per user, since an agent
-        # has one user: the address of the last report shown and the addresses
-        # of the last numbered list shown, which the chat's references resolve to.
+        # In memory; per agent, as an agent has one user.
         self.last_shown_mech: Optional[str] = None
         self.last_mech_list: List[str] = []
 
@@ -201,13 +199,9 @@ class SharedState(BaseSharedState):
     def approve_mech(
         self, address: str, rate: int, payment_type: Optional[str] = None
     ) -> None:
-        """Record the mech as approved at this rate and payment type, replacing any earlier one.
-
-        The payment type is written first: a type left without its approval
-        is ignored, while an approval left with an old type would be shown
-        in the wrong asset.
-        """
+        """Record the mech as approved at this rate and payment type, replacing any earlier one."""
         address = str(address).lower()
+        # First, so a failed write leaves an ignored orphan type, not an approval shown in an old asset.
         types = self.approved_mech_payment_types
         if payment_type:
             types[address] = str(payment_type)

@@ -87,7 +87,6 @@ ACCEPT = (
     "To approve, reply yes, or reply exactly: "
     f"I accept 0.01 xDAI per request for {MECH}"
 )
-# The hints name no address: the report just shown is the mech a reply refers to.
 REMOVE = "To stop using it, tell me to remove it."
 PIN = "To add it to your pinned mechs, tell me to pin it."
 UNPIN = "To stop pinning it, tell me to unpin it."
