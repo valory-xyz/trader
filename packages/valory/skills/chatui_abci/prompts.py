@@ -107,7 +107,7 @@ class MechIntent(enum.Enum):
 
 
 class MechIntentReading(BaseModel):
-    """What the message asks of a mech, and the mech it refers to by address, list position or as the one just shown."""
+    """A mech intent and its reference: an address, a list position, or the mech just shown."""
 
     intent: MechIntent
     address: typing.Optional[str]

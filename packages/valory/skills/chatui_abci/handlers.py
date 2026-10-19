@@ -27,7 +27,18 @@ from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -130,6 +141,18 @@ def _tools_for_prompt(tools: Any, operator_tools: Set[str]) -> str:
     if hidden:
         text += f" (and {hidden} tool(s) from approved third-party mechs, not listed)"
     return text
+
+
+def _list_number(
+    reading: Any, address: Optional[str], last_list: Sequence[str]
+) -> Optional[int]:
+    """The list number a resolved mech came from; `resolve_intent` already matched it to the mech."""
+    if not isinstance(reading, dict) or address is None or not last_list:
+        return None
+    position = reading.get("position")
+    if isinstance(position, bool) or not isinstance(position, int) or position < 1:
+        return None
+    return position
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
@@ -324,9 +347,11 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        # "The mech just shown" means the reply right before this message.
+        # "The mech just shown" and the list's numbers mean the reply right before this message.
         last_shown = self.shared_state.last_shown_mech
         self.shared_state.last_shown_mech = None
+        last_list = list(self.shared_state.last_mech_list)
+        self.shared_state.last_mech_list = []
         accept = parse_accept(user_prompt)
         if accept is not None:
             self._accept_offer(accept, http_msg, http_dialogue)
@@ -348,7 +373,7 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         self._send_chatui_prompt(
-            user_prompt, available_tools, http_msg, http_dialogue, last_shown
+            user_prompt, available_tools, http_msg, http_dialogue, last_shown, last_list
         )
 
     def _run_mech_intent(
@@ -358,6 +383,7 @@ class HttpHandler(BaseHttpHandler):
         last_shown: Optional[str],
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
+        number: Optional[int] = None,
     ) -> None:
         """Carry out a mech intent in code; without the mech it needs, ask which one."""
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
@@ -375,7 +401,10 @@ class HttpHandler(BaseHttpHandler):
                 MechIntent.PIN: self._pin_mech,
                 MechIntent.UNPIN: self._unpin_mech,
             }[intent]
-            self._send_mech_reply(http_msg, http_dialogue, act(address))
+            reply = act(address)
+            if number is not None:
+                reply = f"Number {number} on the list just shown is {address}. {reply}"
+            self._send_mech_reply(http_msg, http_dialogue, reply)
 
     def _report_mech(
         self, address: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -584,7 +613,7 @@ class HttpHandler(BaseHttpHandler):
         return f"{address}, {terms}{pinned}"
 
     def _mech_list(self) -> str:
-        """Number the mechs the agent may use, Valory then approved, and keep the list for references to it."""
+        """Number the mechs the agent may use, Valory then approved, and keep the list."""
         approved = self.shared_state.approved_mechs
         valory = sorted(self._get_available_valid_mechs() - set(approved))
         mechs = [*valory, *approved]
@@ -615,7 +644,13 @@ class HttpHandler(BaseHttpHandler):
             return (
                 f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
             )
-        return " ".join(self._remove_approved_mechs([address]))
+        return " ".join(
+            [
+                *self._remove_approved_mechs([address]),
+                f"To use it again, send {address} to see its report and approve it, "
+                "then pin it again if it was pinned.",
+            ]
+        )
 
     def _pinned_mechs(self) -> List[str]:
         """The pinned mech addresses, lowercase."""
@@ -632,7 +667,7 @@ class HttpHandler(BaseHttpHandler):
             self._store_selected_mechs(pins)
         return (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
-            f"{', '.join(pins)}."
+            f"{', '.join(pins)}. To undo, tell me to unpin {address}."
         )
 
     def _unpin_mech(self, address: str) -> str:
@@ -642,9 +677,10 @@ class HttpHandler(BaseHttpHandler):
             return f"{address} is not pinned. {NEXT_STEP}"
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
+        undo = f"To undo, tell me to pin {address}."
         if remaining:
-            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}."
-        return f"Unpinned {address}. Mech selection is back to normal."
+            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}. {undo}"
+        return f"Unpinned {address}. Mech selection is back to normal. {undo}"
 
     def _send_chatui_prompt(
         self,
@@ -653,6 +689,7 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
     ) -> None:
         """Fill the config prompt and ask the LLM.
 
@@ -661,6 +698,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
         :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
@@ -741,6 +779,7 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue=http_dialogue,
             user_prompt=user_prompt,
             last_shown=last_shown,
+            last_list=last_list,
         )
 
     def _send_chatui_llm_request(
@@ -750,6 +789,7 @@ class HttpHandler(BaseHttpHandler):
         http_dialogue: HttpDialogue,
         user_prompt: str,
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
     ) -> None:
         """Ask the model for a config update or a mech intent; `_handle_chatui_llm_response` gets the reply."""
         self._send_llm_request(
@@ -761,6 +801,7 @@ class HttpHandler(BaseHttpHandler):
                 "http_dialogue": http_dialogue,
                 "user_prompt": user_prompt,
                 "last_shown": last_shown,
+                "last_list": last_list,
             },
         )
 
@@ -877,6 +918,7 @@ class HttpHandler(BaseHttpHandler):
         http_dialogue: HttpDialogue,
         user_prompt: str = "",
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
     ) -> None:
         """
         Handle the response from the LLM.
@@ -890,6 +932,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_dialogue: the original HttpDialogue
         :param user_prompt: the user's message, the only text an intent's address may come from
         :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
         """
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
@@ -922,9 +965,7 @@ class HttpHandler(BaseHttpHandler):
             return
 
         reading = llm_response_json.get(MECH_INTENT_FIELD)
-        intent, address = resolve_intent(
-            reading, user_prompt, last_shown, self.shared_state.last_mech_list
-        )
+        intent, address = resolve_intent(reading, user_prompt, last_shown, last_list)
         if intent is not MechIntent.NONE:
             if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
                 self.context.logger.warning(
@@ -933,7 +974,10 @@ class HttpHandler(BaseHttpHandler):
                 )
                 self._send_mech_reply(http_msg, http_dialogue, ONE_REQUEST_AT_A_TIME)
                 return
-            self._run_mech_intent(intent, address, last_shown, http_msg, http_dialogue)
+            number = _list_number(reading, address, last_list)
+            self._run_mech_intent(
+                intent, address, last_shown, http_msg, http_dialogue, number
+            )
             return
         if reading is not None and (
             not isinstance(reading, dict)

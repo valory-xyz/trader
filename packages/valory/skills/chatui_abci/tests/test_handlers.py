@@ -3158,6 +3158,57 @@ def _listed(handler: _TestableHttpHandler) -> None:
     handler._send_ok_response.reset_mock()
 
 
+class TestAListNumberRefersToTheListJustShown:
+    """A number resolves only against the list that was the reply right before."""
+
+    @staticmethod
+    def _handler() -> _TestableHttpHandler:
+        handler, _ = _mech_handler(
+            discovered={VALORY_MECH}, approved={THIRD_PARTY: NATIVE_RATE}
+        )
+        _listed(handler)
+        return handler
+
+    def test_a_number_right_after_the_list_acts_and_says_which_mech(self) -> None:
+        """The reply names the number, the mech and how to get it back."""
+        handler = self._handler()
+        _chat(handler, "remove the second one", "remove", position=2)
+        handler.shared_state.set_approved_mech_rates.assert_called_once_with({})
+        reply = _reply(handler)
+        assert reply.startswith(
+            f"Number 2 on the list just shown is {THIRD_PARTY}. Removed {THIRD_PARTY}."
+        )
+        assert reply.endswith(
+            f"To use it again, send {THIRD_PARTY} to see its report and approve it, "
+            "then pin it again if it was pinned."
+        )
+
+    def test_a_number_after_another_reply_acts_on_nothing(self) -> None:
+        """Another reply in between retires the list, so the number is not placed."""
+        handler = self._handler()
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "remove the second one", "remove", position=2)
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        assert _reply(handler).startswith("I couldn't tell which mech you mean.")
+
+    def test_pinning_by_number_says_how_to_undo(self) -> None:
+        """Pin names the number and the unpin that undoes it."""
+        handler = self._handler()
+        _chat(handler, "only use the first one", "pin", position=1)
+        reply = _reply(handler)
+        assert reply.startswith(
+            f"Number 1 on the list just shown is {VALORY_MECH}. Pinned {VALORY_MECH}."
+        )
+        assert reply.endswith(f"To undo, tell me to unpin {VALORY_MECH}.")
+
+    def test_an_address_needs_no_number_note(self) -> None:
+        """A mech named by address is not described as a list number."""
+        handler = self._handler()
+        _chat(handler, f"pin {VALORY_MECH}", "pin", VALORY_MECH)
+        assert _reply(handler).startswith(f"Pinned {VALORY_MECH}.")
+
+
 class TestAskIntent:
     """The ask intent is answered with the mech's report, rendered by the handler."""
 
@@ -3885,7 +3936,9 @@ class TestRemoveIntent:
         assert _reply(handler) == (
             f"Removed {THIRD_PARTY}. No new requests go to it from the next cycle; "
             "a request already sent to it can still be answered and bet on. "
-            f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}."
+            f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}. "
+            f"To use it again, send {THIRD_PARTY} to see its report and approve it, "
+            "then pin it again if it was pinned."
         )
 
     def test_a_mech_never_approved_is_said_so(self) -> None:
@@ -3981,7 +4034,7 @@ class TestPinIntent:
         handler._store_selected_mechs.assert_called_once_with(stored)  # type: ignore[attr-defined]
         assert _reply(handler) == (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
-            f"{', '.join(stored)}."
+            f"{', '.join(stored)}. To undo, tell me to unpin {address}."
         )
 
     @pytest.mark.parametrize(
@@ -4012,7 +4065,7 @@ class TestPinIntent:
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         assert _reply(handler) == (
             f"Pinned {VALORY_MECH}. Mech requests now go only to your pinned mechs: "
-            f"{VALORY_MECH}."
+            f"{VALORY_MECH}. To undo, tell me to unpin {VALORY_MECH}."
         )
 
     def test_unpinning_one_of_several_keeps_the_rest(self) -> None:
@@ -4020,8 +4073,9 @@ class TestPinIntent:
         handler, _ = _mech_handler(pin=[VALORY_MECH, THIRD_PARTY])
         _chat(handler, f"unpin {CHECKSUMMED}", "unpin", CHECKSUMMED)
         handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
-        assert (
-            _reply(handler) == f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}."
+        assert _reply(handler) == (
+            f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
         )
 
     def test_unpinning_the_last_pin_restores_normal_selection(self) -> None:
@@ -4030,7 +4084,8 @@ class TestPinIntent:
         _chat(handler, f"unpin {THIRD_PARTY}", "unpin", THIRD_PARTY)
         handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
         assert _reply(handler) == (
-            f"Unpinned {THIRD_PARTY}. Mech selection is back to normal."
+            f"Unpinned {THIRD_PARTY}. Mech selection is back to normal. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
         )
 
     def test_unpinning_a_mech_not_pinned_says_so(self) -> None:
@@ -4398,8 +4453,9 @@ class TestOnlyARealConfigChangeBlocksAMechIntent:
         handler = self._unpin_with(config)
         handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
         handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
-        assert (
-            _reply(handler) == f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}."
+        assert _reply(handler) == (
+            f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
         )
 
     @pytest.mark.parametrize(
