@@ -1420,8 +1420,9 @@ class PolymarketClientConnection(BaseSyncConnection):
     ) -> Dict[str, Any]:
         """Build the Data API v2 query for a positions read.
 
-        Positions on archived markets are included, so a held position is
-        never hidden from redeem, withdrawal or the performance summary.
+        Only the redeemable read includes archived markets, so a settled
+        position is still redeemed; open reads leave them out, as v1 did,
+        since an archived market has no order book to sell into.
 
         :param size_threshold: minimum position size in tokens
         :param limit: page size
@@ -1439,10 +1440,10 @@ class PolymarketClientConnection(BaseSyncConnection):
             "filter_amount": size_threshold,
             "sort_by": sort_by,
             "sort_direction": sort_direction,
-            "include_archived": _bool_param(True),
         }
         if redeemable:
             params["status"] = "REDEEMABLE"
+            params["include_archived"] = _bool_param(True)
         return params
 
     def _select_positions(

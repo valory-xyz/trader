@@ -2503,30 +2503,32 @@ class TestPositionsReads:
             "filter_amount": 5,
             "sort_by": "TOKENS",
             "sort_direction": "DESC",
-            "include_archived": "true",
         }
 
     @pytest.mark.parametrize(
-        "redeemable,expected_status,expected_redeemable_flags",
+        "redeemable,expected_status,expected_archived,expected_redeemable_flags",
         [
-            (True, "REDEEMABLE", [True]),
-            (False, None, [False]),
-            (None, None, [True, False]),
+            (True, "REDEEMABLE", "true", [True]),
+            (False, None, None, [False]),
+            (None, None, None, [True, False]),
         ],
     )
     def test_redeemable_selects_rows(
         self,
         redeemable: Optional[bool],
         expected_status: Optional[str],
+        expected_archived: Optional[str],
         expected_redeemable_flags: list,
     ) -> None:
-        """`redeemable` picks the status asked for and the rows returned.
+        """`redeemable` picks the status, archive scope and rows returned.
 
         v2 ignores a `redeemable` parameter, and its open status also returns
-        settled rows, so the filter must hold whatever the server sends.
+        settled rows, so the filter must hold whatever the server sends. Only
+        the redeemable read reaches into archived markets.
 
         :param redeemable: the filter asked for
         :param expected_status: the v2 status sent, if any
+        :param expected_archived: the include_archived value sent, if any
         :param expected_redeemable_flags: redeemable flags of the rows returned
         """
         conn = _make_connection()
@@ -2534,6 +2536,7 @@ class TestPositionsReads:
         with patch("requests.get", return_value=_v2_response(rows)) as mock_get:
             positions, _ = conn._fetch_all_positions(redeemable=redeemable)
         assert _sent_params(mock_get).get("status") == expected_status
+        assert _sent_params(mock_get).get("include_archived") == expected_archived
         assert "redeemable" not in _sent_params(mock_get)
         assert [p["redeemable"] for p in positions] == expected_redeemable_flags
 
