@@ -1322,19 +1322,126 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         behaviour.context.state.positions_sold_recorded = False
 
         # An errored sweep that sold nothing leaves the card to its retry.
-        behaviour._record_positions_sold(0, 0, 4, False)
-        behaviour._record_positions_sold(3, 12.5, 1, False)
-        behaviour._record_positions_sold(1, 2.0, 0, True)
+        behaviour._record_positions_sold([], [{"token_id": "1"}], False)
+        behaviour._record_positions_sold(
+            [{"token_id": "1", "shares_sold": 25, "fill_price": 0.5}],
+            [{"token_id": "2"}],
+            False,
+        )
+        behaviour._record_positions_sold(
+            [{"token_id": "3", "shares_sold": 4, "fill_price": 0.5}], [], True
+        )
 
         lines = (tmp_path / FEED_FILE).read_text().splitlines()
         assert len(lines) == 1
         entry = json.loads(lines[0])
         assert entry["type"] == "positions_sold"
         assert entry["fields"] == [
-            {"label": "Positions sold", "value": "3"},
+            {"label": "Positions sold", "value": "1"},
             {"label": "Amount received", "value": "$12.50 pUSD"},
             {"label": "Positions that couldn't be sold", "value": "1"},
         ]
+
+    @pytest.mark.parametrize(
+        "fills, errors",
+        [
+            (
+                [
+                    {"token_id": "1", "shares_sold": 4, "fill_price": 0.5},
+                    {"token_id": "1", "shares_sold": 2, "fill_price": 0.5},
+                    {"token_id": "2", "shares_sold": 10, "fill_price": 0.25},
+                ],
+                [
+                    {"token_id": "1", "reason": "no liquidity"},
+                    {"token_id": "3", "reason": "no liquidity"},
+                    {"token_id": "3", "reason": "no liquidity"},
+                    {"token_id": "", "reason": "fetch failed"},
+                ],
+            ),
+            (
+                [
+                    {
+                        "token_id": "",
+                        "fpmm": "0xA",
+                        "outcome_index": 0,
+                        "shares_sold": 4,
+                        "fill_price": 0.5,
+                    },
+                    {
+                        "token_id": "",
+                        "fpmm": "0xa",
+                        "outcome_index": 0,
+                        "shares_sold": 2,
+                        "fill_price": 0.5,
+                    },
+                    {
+                        "token_id": "",
+                        "fpmm": "0xb",
+                        "outcome_index": 1,
+                        "shares_sold": 10,
+                        "fill_price": 0.25,
+                    },
+                ],
+                [
+                    {
+                        "token_id": "9",
+                        "fpmm": "0xa",
+                        "outcome_index": 0,
+                        "reason": "dust",
+                    },
+                    {
+                        "token_id": "7",
+                        "fpmm": "0xa",
+                        "outcome_index": 1,
+                        "reason": "dust",
+                    },
+                    {
+                        "token_id": "7",
+                        "fpmm": "0xa",
+                        "outcome_index": 1,
+                        "reason": "dust",
+                    },
+                    {"token_id": "", "reason": "fetch failed"},
+                ],
+            ),
+        ],
+        ids=["polymarket", "omen"],
+    )
+    def test_positions_sold_counts_each_position_once(
+        self, tmp_path: Path, fills: List[Dict[str, Any]], errors: List[Dict[str, Any]]
+    ) -> None:
+        """On both chains a position counts once, and a retry that sold it is not unsold."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.params.is_running_on_polymarket = True
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.context.state.positions_sold_recorded = False
+
+        behaviour._record_positions_sold(fills, errors, False)
+
+        entry = json.loads((tmp_path / FEED_FILE).read_text())
+        assert entry["fields"] == [
+            {"label": "Positions sold", "value": "2"},
+            {"label": "Amount received", "value": "$5.50 pUSD"},
+            {"label": "Positions that couldn't be sold", "value": "1"},
+        ]
+
+    def test_an_unreadable_sweep_result_is_logged_not_raised(
+        self, tmp_path: Path
+    ) -> None:
+        """A malformed fill writes no card and leaves it to a later sweep."""
+        behaviour = self.behaviour
+        behaviour.params.store_path = tmp_path
+        behaviour.benchmarking_mode.enabled = False
+        behaviour.context.state.positions_sold_recorded = False
+
+        behaviour._record_positions_sold(
+            [{"token_id": "1", "shares_sold": "lots", "fill_price": 0.5}], [], True
+        )
+
+        assert not (tmp_path / FEED_FILE).exists()
+        assert behaviour.context.state.positions_sold_recorded is False
+        behaviour.context.logger.error.assert_called_once()
 
     def test_market_skipped_names_the_reason(self, tmp_path: Path) -> None:
         """A skipped market card has the market and the reason."""

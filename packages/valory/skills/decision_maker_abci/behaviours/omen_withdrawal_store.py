@@ -66,7 +66,9 @@ class OmenWithdrawalStore:
         store_dir: Path,
         filename: str,
         logger: Logger,
-        on_finished: Optional[Callable[[int, float, int, bool], None]] = None,
+        on_finished: Optional[
+            Callable[[List[Dict[str, Any]], List[Dict[str, Any]], bool], None]
+        ] = None,
     ) -> None:
         """Bind to a directory + filename + logger.
 
@@ -75,9 +77,8 @@ class OmenWithdrawalStore:
         :param filename: store filename (typically
             ``CHATUI_PARAM_STORE``).
         :param logger: skill logger used for warn/error messages.
-        :param on_finished: called when the sweep ends with the positions
-            sold, the xDAI they returned, the positions that failed and
-            whether the sweep ended without errors.
+        :param on_finished: called when the sweep ends with its fills, its
+            errors and whether it ended without errors.
         """
         self._store_dir = store_dir
         self._filename = filename
@@ -112,13 +113,9 @@ class OmenWithdrawalStore:
         self._logger.info(f"omen withdrawal: state -> {state}")
         finished = state in (WITHDRAWAL_STATE_COMPLETE, WITHDRAWAL_STATE_ERRORED)
         if finished and self._on_finished is not None:
-            fills = store.get("withdrawal_fills") or []
-            errors = store.get("withdrawal_errors") or []
             self._on_finished(
-                len(fills),
-                sum(float(fill.get("return_amount") or 0) for fill in fills),
-                # Whole-sweep errors name no position.
-                sum(1 for error in errors if error.get("fpmm")),
+                store.get("withdrawal_fills") or [],
+                store.get("withdrawal_errors") or [],
                 state == WITHDRAWAL_STATE_COMPLETE,
             )
 

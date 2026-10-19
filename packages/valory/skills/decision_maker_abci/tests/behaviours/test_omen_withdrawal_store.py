@@ -298,28 +298,19 @@ class TestOnFinished:
     """The sweep's result handed to ``on_finished`` when it ends."""
 
     def test_terminal_state_reports_the_sweep(self, tmp_path: Path) -> None:
-        """Complete or errored hands over the fills, their xDAI and the failed positions."""
+        """Complete or errored hands over the sweep's fills and errors."""
         on_finished = MagicMock()
         store = OmenWithdrawalStore(
             tmp_path, "chatui_param_store.json", MagicMock(), on_finished
         )
-        store.write(
-            {
-                "withdrawal_fills": [
-                    {"return_amount": 1.5},
-                    {"return_amount": 0.25},
-                ],
-                "withdrawal_errors": [
-                    {"fpmm": "0xa", "reason": "dust"},
-                    {"token_id": "", "reason": "fetch failed"},
-                ],
-            }
-        )
+        fills = [{"fpmm": "0xa", "outcome_index": 0, "shares_sold": 1.5}]
+        errors = [{"token_id": "", "reason": "fetch failed"}]
+        store.write({"withdrawal_fills": fills, "withdrawal_errors": errors})
 
         store.set_state("selling")
         on_finished.assert_not_called()
         store.set_state("errored")
-        on_finished.assert_called_once_with(2, 1.75, 1, False)
+        on_finished.assert_called_once_with(fills, errors, False)
 
     def test_complete_with_nothing_sold(self, tmp_path: Path) -> None:
         """A sweep with nothing to sell still reports, with zeros."""
@@ -328,7 +319,7 @@ class TestOnFinished:
             tmp_path, "chatui_param_store.json", MagicMock(), on_finished
         )
         store.set_state("complete")
-        on_finished.assert_called_once_with(0, 0, 0, True)
+        on_finished.assert_called_once_with([], [], True)
 
 
 @pytest.mark.parametrize(

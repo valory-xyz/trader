@@ -223,31 +223,18 @@ class TestSweepDwToSafe:
 class TestPositionsSoldOnFinish:
     """``_set_state`` reports the sell-off once the sweep ends."""
 
-    def test_terminal_state_reports_positions_and_proceeds(
-        self, tmp_path: Path
-    ) -> None:
-        """Fills count per position and add up to shares times price."""
+    def test_terminal_state_reports_the_sweep(self, tmp_path: Path) -> None:
+        """Complete or errored hands the sweep's fills and errors to the feed writer."""
         behaviour = _make_behaviour()
         behaviour.context.params.store_path = tmp_path
         behaviour._record_positions_sold = MagicMock()  # type: ignore[method-assign]
+        fills = [{"token_id": "1", "shares_sold": 4, "fill_price": 0.5}]
+        errors = [{"token_id": "", "reason": "fetch failed"}]
         (tmp_path / "chatui_param_store.json").write_text(
-            json.dumps(
-                {
-                    "withdrawal_fills": [
-                        {"token_id": "1", "shares_sold": 4, "fill_price": 0.5},
-                        {"token_id": "1", "shares_sold": 2, "fill_price": 0.5},
-                        {"token_id": "2", "shares_sold": 10, "fill_price": 0.25},
-                    ],
-                    "withdrawal_errors": [
-                        {"token_id": "3", "reason": "no liquidity"},
-                        {"token_id": "3", "reason": "no liquidity"},
-                        {"token_id": "", "reason": "fetch failed"},
-                    ],
-                }
-            )
+            json.dumps({"withdrawal_fills": fills, "withdrawal_errors": errors})
         )
 
         behaviour._set_state("selling")
         behaviour._record_positions_sold.assert_not_called()  # type: ignore[attr-defined]
         behaviour._set_state("complete")
-        behaviour._record_positions_sold.assert_called_once_with(2, 5.5, 1, True)  # type: ignore[attr-defined]
+        behaviour._record_positions_sold.assert_called_once_with(fills, errors, True)  # type: ignore[attr-defined]

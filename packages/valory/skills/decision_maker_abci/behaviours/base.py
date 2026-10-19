@@ -529,32 +529,60 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             [self._market_field(bet), feed_field("Reason", reason)],
         )
 
+    @staticmethod
+    def _swept_position(record: Dict[str, Any]) -> Optional[Tuple[Any, ...]]:
+        """Return the position a sweep's fill or error is for; None for a whole-sweep error.
+
+        :param record: a fill or error the withdrawal sweep stored.
+        :return: Omen's market and outcome, else Polymarket's token id.
+        """
+        if record.get("fpmm"):
+            return (str(record["fpmm"]).lower(), record.get("outcome_index"))
+        if record.get("token_id"):
+            return (record["token_id"],)
+        return None
+
     def _record_positions_sold(
-        self, sold: int, received: float, unsold: int, complete: bool
+        self,
+        fills: List[Dict[str, Any]],
+        errors: List[Dict[str, Any]],
+        complete: bool,
     ) -> None:
         """Tell the feed how the withdrawal's sell-off went, once per withdrawal.
 
-        :param sold: the positions sold.
-        :param received: what they sold for, in whole collateral tokens.
-        :param unsold: the positions that could not be sold.
+        A position counts once, and as sold if any retry sold it.
+
+        :param fills: the sweep's fills.
+        :param errors: the sweep's errors.
         :param complete: whether the sweep ended without errors.
         """
         if self.shared_state.positions_sold_recorded:
             return
-        if not complete and sold == 0:
+        if not complete and not fills:
             # An errored sweep that sold nothing is retried the next cycle,
             # so leave the card to the sweep that does the selling.
+            return
+        try:
+            sold = {self._swept_position(fill) for fill in fills}
+            unsold = {self._swept_position(error) for error in errors} - sold
+            unsold.discard(None)
+            received = sum(
+                float(fill.get("shares_sold") or 0) * float(fill.get("fill_price") or 0)
+                for fill in fills
+            )
+        except (AttributeError, TypeError, ValueError) as e:
+            self.context.logger.error(f"Could not read the withdrawal's result: {e}")
             return
         self.shared_state.positions_sold_recorded = True
         self._record_feed_event(
             EventType.POSITIONS_SOLD,
             [
-                feed_field("Positions sold", str(sold)),
+                feed_field("Positions sold", str(len(sold))),
                 feed_field(
                     "Amount received",
                     format_amount(received, self.params.is_running_on_polymarket),
                 ),
-                feed_field("Positions that couldn't be sold", str(unsold)),
+                feed_field("Positions that couldn't be sold", str(len(unsold))),
             ],
         )
 

@@ -751,19 +751,9 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         self._write_store(store)
         self.context.logger.info(f"withdrawal: state -> {state}")
         if state in (WITHDRAWAL_STATE_COMPLETE, WITHDRAWAL_STATE_ERRORED):
-            fills = store.get("withdrawal_fills") or []
-            errors = store.get("withdrawal_errors") or []
-            # A position partly filled over retries has several fills.
             self._record_positions_sold(
-                len({fill.get("token_id") for fill in fills}),
-                sum(
-                    float(fill.get("shares_sold") or 0)
-                    * float(fill.get("fill_price") or 0)
-                    for fill in fills
-                ),
-                len(
-                    {error.get("token_id") for error in errors if error.get("token_id")}
-                ),
+                store.get("withdrawal_fills") or [],
+                store.get("withdrawal_errors") or [],
                 state == WITHDRAWAL_STATE_COMPLETE,
             )
 
