@@ -35,6 +35,7 @@ from packages.valory.skills.agent_performance_summary_abci.feed import (
     field,
 )
 from packages.valory.skills.chatui_abci import handlers as handlers_module
+from packages.valory.skills.chatui_abci import models as models_module
 from packages.valory.skills.chatui_abci.handlers import (
     CHANGE_NOT_APPLIED,
     CHAT_SAVE_FAILED,
@@ -92,6 +93,7 @@ class _Chat:
         )
         state._answering_since = {}
         state.config_proposal = None
+        state.unsaved_replies = {}
         state.approved_mechs = []
         state.approved_mech_rates = {}
         state.available_prediction_tools = frozenset({"tool-a", "tool-b"})
@@ -243,6 +245,22 @@ class TestRoute:
 
         assert len(chat.llm_calls) == 2
 
+    @pytest.mark.parametrize(
+        "elapsed, blocked", [(299, True), (300, False), (301, False)]
+    )
+    def test_the_resend_is_blocked_for_300_seconds(
+        self, chat: _Chat, elapsed: int, blocked: bool
+    ) -> None:
+        """A resend is refused while the answer has been pending under 300 s."""
+        with patch.object(models_module.time, "time", return_value=1_000_000.0):
+            chat.send()
+        with patch.object(
+            models_module.time, "time", return_value=1_000_000.0 + elapsed
+        ):
+            chat.send()
+
+        assert len(chat.llm_calls) == (1 if blocked else 2)
+
     def test_a_stuck_answer_and_its_resend_write_one_reply(self, chat: _Chat) -> None:
         """When both answers come back, the second returns the reply already written."""
         first = chat.send()
@@ -310,6 +328,7 @@ class TestRoute:
 
         assert chat.response(dialogue) == (500, {"error": CHAT_SAVE_FAILED})
         assert not chat.handler.shared_state.is_answering(CLIENT_ID)
+        assert chat.handler.shared_state.unsaved_replies == {}
 
 
 class TestErrorStatuses:
@@ -676,6 +695,33 @@ class TestConfirmFlow:
 
         chat.send("Set my max trade size to 1.5", "c-ask")
         assert "proposal" not in chat.llm_calls[-1][2]
+
+    def test_a_confirmed_change_whose_reply_is_not_written_is_reported_on_resend(
+        self, chat: _Chat
+    ) -> None:
+        """An applied change stays acknowledged by the resend, without a new answer."""
+        self._propose(chat, {"max_bet_size": 1.5})
+        dialogue = chat.send("yes", "c-yes")
+        with patch.object(handlers_module, "append_message", side_effect=OSError):
+            chat.confirm(True)
+            assert chat.response(dialogue) == (500, {"error": CHAT_SAVE_FAILED})
+            assert chat.handler.shared_state.chatui_config.max_bet_size == 15 * 10**17
+
+            failed_resend = chat.send("yes", "c-yes")
+            assert chat.response(failed_resend) == (500, {"error": CHAT_SAVE_FAILED})
+
+        llm_calls = len(chat.llm_calls)
+        resend = chat.send("yes", "c-yes")
+
+        assert len(chat.llm_calls) == llm_calls
+        status, body = chat.response(resend)
+        assert status == 200
+        assert body["reply"]["text"] == (
+            "Done. I changed Max trade size from 1.00 xDAI to 1.50 xDAI."
+        )
+        assert body["reply"]["client_id"] == "c-yes"
+        assert [line["kind"] for line in chat.feed()].count("event") == 1
+        assert chat.handler.shared_state.unsaved_replies == {}
 
     def test_a_partly_saved_change_records_what_was_saved(self, chat: _Chat) -> None:
         """Each setting saved before a failed write gets its card and is named."""

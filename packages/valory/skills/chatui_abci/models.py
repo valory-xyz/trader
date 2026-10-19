@@ -138,11 +138,14 @@ class ChatTurn:
 
     ``proposal`` is the change its reply asks to confirm, kept here until that
     reply is written so that a turn which fails leaves nothing to confirm.
+    ``applied_change`` marks a reply acknowledging a change already applied,
+    which a resend must report rather than answer anew.
     """
 
     client_id: str
     message: FeedEntry
     proposal: Optional[ConfigProposal] = None
+    applied_change: bool = False
 
 
 class SharedState(BaseSharedState):
@@ -173,6 +176,9 @@ class SharedState(BaseSharedState):
         # started being answered, and the change waiting for confirmation.
         self._answering_since: Dict[str, float] = {}
         self.config_proposal: Optional[ConfigProposal] = None
+        # The acknowledgement of an applied change whose reply could not be
+        # written, by client id, for the resend to write.
+        self.unsaved_replies: Dict[str, str] = {}
 
     def is_answering(self, client_id: str) -> bool:
         """Return whether the message with this client id is still being answered."""

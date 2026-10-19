@@ -178,7 +178,6 @@ ACCEPT_UNREADABLE = (
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 
-# The chat on the agent's main page
 CHAT_TEXT_FIELD = "text"
 CHAT_CLIENT_ID_FIELD = "client_id"
 CHAT_MESSAGE_FIELD = "message"
@@ -191,13 +190,11 @@ CHANGE_NOT_APPLIED = (
 )
 CHANGE_REFUSED = "Nothing was changed."
 RECENT_FEED_ENTRIES = 20
-# Keeps a long earlier reply from crowding the prompt.
+# Keeps a long earlier reply or market title from crowding the prompt.
 RECENT_TEXT_LIMIT = 300
 FEED_TIME_FORMAT = "%Y-%m-%d %H:%M UTC"
-# The chat's statuses where the shared prompt path answers differently.
 CHAT_STATUS_OVERRIDES = {HTTPStatus.TOO_EARLY: HTTPStatus.SERVICE_UNAVAILABLE}
 
-# How each setting a chat change can set is named to the user.
 SETTING_LABELS = {
     TRADING_STRATEGY_FIELD: "Trading strategy",
     ALLOWED_TOOLS_FIELD: "Allowed tools",
@@ -381,16 +378,8 @@ class HttpHandler(BaseHttpHandler):
             return
         self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
 
-    # ------------------------------------------------------------------ #
-    # POST /api/v1/chat                                                  #
-    # ------------------------------------------------------------------ #
-
     def _handle_chat(self, http_msg: HttpMessage, http_dialogue: HttpDialogue) -> None:
         """Answer a chat message, writing it and its reply to the feed.
-
-        The message is written when it arrives and the reply only when it
-        succeeds. A resend with the same ``client_id`` is written once: one
-        already answered gets the lines as written, without a new answer.
 
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
@@ -432,7 +421,13 @@ class HttpHandler(BaseHttpHandler):
             return
 
         self.shared_state.start_answering(client_id)
-        self._chat_turns[http_dialogue.dialogue_label] = ChatTurn(client_id, message)
+        unsaved_reply = self.shared_state.unsaved_replies.pop(client_id, None)
+        self._chat_turns[http_dialogue.dialogue_label] = ChatTurn(
+            client_id, message, applied_change=unsaved_reply is not None
+        )
+        if unsaved_reply is not None:
+            self._send_chat_text(unsaved_reply, http_msg, http_dialogue)
+            return
         proposal = self.shared_state.take_config_proposal()
         if proposal is not None:
             self._check_confirmation(proposal, text, http_msg, http_dialogue)
@@ -475,10 +470,6 @@ class HttpHandler(BaseHttpHandler):
     ) -> None:
         """Send a response; a chat request's answer is turned into the chat's reply.
 
-        The chat answers through the same code as ``/configure_strategies``,
-        so its answer is written to the feed and reshaped here, where every
-        answer passes.
-
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
         :param data: the response body
@@ -508,14 +499,13 @@ class HttpHandler(BaseHttpHandler):
         :param data: the response body
         :param content_type: the content type header
         """
-        turn = self._chat_turns.pop(http_dialogue.dialogue_label, None)
-        if turn is None:
-            super()._send_internal_server_error_response(
-                http_msg, http_dialogue, data, content_type
-            )
-            return
-        self._end_chat_turn(
-            turn, http_msg, http_dialogue, HTTPStatus.INTERNAL_SERVER_ERROR, data
+        self._send_http_response(
+            http_msg,
+            http_dialogue,
+            data,
+            HTTPStatus.INTERNAL_SERVER_ERROR.value,
+            HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+            content_type,
         )
 
     def _end_chat_turn(
@@ -538,20 +528,21 @@ class HttpHandler(BaseHttpHandler):
         body = data if isinstance(data, dict) else {}
         if status_code == HTTPStatus.OK:
             store_path = self.context.params.store_path
+            reply_text = str(body.get(LLM_MESSAGE_FIELD, ""))
             try:
                 # A resend let through by the answering timeout can finish second.
                 _, reply = find_exchange(store_path, turn.client_id)
                 if reply is None:
                     reply = append_message(
-                        store_path,
-                        ROLE_AGENT,
-                        str(body.get(LLM_MESSAGE_FIELD, "")),
-                        turn.client_id,
+                        store_path, ROLE_AGENT, reply_text, turn.client_id
                     )
                     if turn.proposal is not None:
                         self.shared_state.config_proposal = turn.proposal
             except OSError as e:
                 self.context.logger.error(f"Could not write the chat reply: {e}")
+                if turn.applied_change:
+                    # The settings changed already, so the resend must not lose that.
+                    self.shared_state.unsaved_replies[turn.client_id] = reply_text
                 status_code = HTTPStatus.INTERNAL_SERVER_ERROR
                 body = {"error": CHAT_SAVE_FAILED}
             else:
@@ -581,7 +572,7 @@ class HttpHandler(BaseHttpHandler):
     def _recent_activity(self, turn: ChatTurn) -> str:
         """Describe the latest feed entries for the chat prompt, oldest first.
 
-        :param turn: the chat message being answered, which the prompt has already.
+        :param turn: the chat message being answered, left out as the prompt quotes it.
         :return: one line per entry.
         """
         try:
@@ -614,7 +605,7 @@ class HttpHandler(BaseHttpHandler):
         if entry.get("kind") == KIND_EVENT:
             fields = entry.get("fields")
             details = "; ".join(
-                f"{item.get('label')}: {item.get('value')}"
+                f"{item.get('label')}: {str(item.get('value'))[:RECENT_TEXT_LIMIT]}"
                 for item in (fields if isinstance(fields, list) else [])
                 if isinstance(item, dict)
             )
@@ -622,10 +613,6 @@ class HttpHandler(BaseHttpHandler):
         speaker = "User" if entry.get("role") == ROLE_USER else "Agent"
         text = str(entry.get("text", ""))[:RECENT_TEXT_LIMIT]
         return f"- {when} {speaker}: {text}"
-
-    # ------------------------------------------------------------------ #
-    # Config changes from the chat: proposed, then confirmed by typing   #
-    # ------------------------------------------------------------------ #
 
     def _propose_config_update(
         self,
@@ -777,6 +764,11 @@ class HttpHandler(BaseHttpHandler):
             return
         changes = self._describe_changes(updated_params)
         written, issues = self._apply_config_writes(writes)
+        if written:
+            label = http_dialogue.dialogue_label
+            self._chat_turns[label] = replace(
+                self._chat_turns[label], applied_change=True
+            )
         written_labels = {SETTING_LABELS.get(setting) for setting in written}
         saved = [change for change in changes if change.setting in written_labels]
         for change in saved:
