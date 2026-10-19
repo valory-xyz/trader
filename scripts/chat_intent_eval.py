@@ -132,7 +132,7 @@ CASES = (
     Case(
         "should_i_approve",
         f"should I approve {MECH}?",
-        _outcomes(("approve", MECH), ("ask", MECH)),
+        _outcomes(("approve", MECH), ("ask", MECH), ("none", None)),
     ),
     Case("tell_me_about", f"tell me about {MECH}", _outcomes(("ask", MECH))),
     Case(
