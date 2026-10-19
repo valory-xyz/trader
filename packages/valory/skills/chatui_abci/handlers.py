@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -883,7 +883,7 @@ class HttpHandler(BaseHttpHandler):
         if not self._config_update_is_readable(updated_agent_config):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
-        updated_agent_config = self._keep_named_or_pinned_mechs(
+        updated_agent_config, pin_note = self._keep_named_or_pinned_mechs(
             updated_agent_config, user_prompt
         )
 
@@ -891,6 +891,8 @@ class HttpHandler(BaseHttpHandler):
             updated_params, issues = self._process_updated_agent_config(
                 updated_agent_config
             )
+            if pin_note:
+                issues = [pin_note, *issues]
         except Exception as exc:  # pylint: disable=broad-except
             # The update reads this object field by field and expects a
             # shape the model is under no obligation to produce. Any wrong
@@ -967,21 +969,24 @@ class HttpHandler(BaseHttpHandler):
 
     def _keep_named_or_pinned_mechs(
         self, update: Dict[str, Any], user_prompt: str
-    ) -> Dict[str, Any]:
-        """The update with its pin list cut to mechs named in the user's message or already pinned."""
+    ) -> Tuple[Dict[str, Any], Optional[str]]:
+        """The update with its pin list cut to mechs named in the user's message or already pinned, and a note when any were left out."""
         mechs = update.get(SELECTED_MECHS_FIELD)
         if not mechs:
-            return update
+            return update, None
         allowed = set(addresses_in(user_prompt)) | set(self._pinned_mechs())
         kept = [mech for mech in mechs if str(mech).lower() in allowed]
-        dropped = len(mechs) - len(kept)
+        dropped = [
+            str(mech).lower() for mech in mechs if str(mech).lower() not in allowed
+        ]
         if not dropped:
-            return update
-        self.context.logger.warning(
-            f"Dropped {dropped} mech(s) from the reply's pin list: neither named in "
-            "the message nor already pinned."
+            return update, None
+        note = (
+            f"Not pinned, since your message didn't name them: {', '.join(dropped)}. "
+            "Send the address of a mech you want to pin."
         )
-        return {**update, SELECTED_MECHS_FIELD: kept or None}
+        self.context.logger.warning(note)
+        return {**update, SELECTED_MECHS_FIELD: kept or None}, note
 
     def _answer_llm_error(
         self, genai_response: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue

@@ -4282,16 +4282,27 @@ class TestAPinListReplyKeepsOnlyNamedOrPinnedMechs:
     def test_a_list_of_mechs_never_named_is_not_stored(
         self, text: str, pins: Optional[List[str]], mechs: List[str]
     ) -> None:
-        """Nothing is written; the model's message is the answer and the log says how many were dropped."""
+        """Nothing is written, and the reply says which mechs were not pinned instead of the model's message."""
         handler = self._pin_reply(text, pins, {"selected_mechs": mechs})
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
-        assert handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD] == (
-            MODEL_MESSAGE
+        reply = handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+        assert reply.startswith("Not pinned, since your message didn't name them: ")
+        assert MODEL_MESSAGE not in reply
+        for mech in mechs:
+            assert mech.lower() in reply
+
+    def test_a_partly_named_list_says_which_were_left_out(self) -> None:
+        """The named mech is pinned and the reply names only the one left out."""
+        handler = self._pin_reply(
+            f"use {OTHER_VALORY_MECH} as well",
+            [VALORY_MECH],
+            {"selected_mechs": [VALORY_MECH, OTHER_VALORY_MECH, THIRD_PARTY]},
         )
-        assert any(
-            f"Dropped {len(mechs)} mech(s)" in str(call)
-            for call in handler.context.logger.warning.call_args_list
+        reply = handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+        assert reply.startswith(
+            f"Not pinned, since your message didn't name them: {THIRD_PARTY}."
         )
+        assert OTHER_VALORY_MECH not in reply.split(".")[0]
 
     def test_clearing_by_removal_is_unchanged(self) -> None:
         """A removal clears the pins whatever the message names."""
