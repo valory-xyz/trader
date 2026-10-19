@@ -60,12 +60,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeig2ihbvchi2f5vbgwfysuqtuhgrze3fdvlzezskpkljmh6vtq77hq
-- valory/decision_maker_abci:0.1.0:bafybeieseiwosgip4ajcrd36uwkye7yqmdgvzzxiyko2yl7nmxslqxppoa
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigpic4ytevpmyfu2hkcm5ey272gszdpvtcn3mv5b4b34kzibr237i
+- valory/decision_maker_abci:0.1.0:bafybeia67o43p23kbakaojdh2iof4ik6spio5qlno6gjwlzek7huqsi3ju
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibkqeoy4w7rwumh2j35oi7uhayvtwr4ybhdpuzxjsgbgz276ssu54
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeiarmpyeh2m6savaqxax3gfyifeobnusc3gp25fllxdx7e2pmaobpi
+- valory/check_stop_trading_abci:0.1.0:bafybeih5yzkcgg2yre7jkzgwagps7mcz4utbxsahjqm5rr2uw22makx66i
 - valory/mech_interact_abci:0.1.0:bafybeigttr6wvh534datvac4luxzxoghvsj6rg3hzx2gf7ivu47hln7lwe
-- valory/chatui_abci:0.1.0:bafybeic52wnyivfuejl4wqewlpgc4lgfzsz6p4b2j3zcmzagpotdmxbqte
+- valory/chatui_abci:0.1.0:bafybeie6zxws3dd5gzc5idu3t6xeqhcdkcg74uxbui6sjzws7mwgylftam
 - valory/agent_performance_summary_abci:0.1.0:bafybeih2gasopidtv2cr32rb6akb7yflxktsphl6azfuwmdoxohtuiwnqu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:

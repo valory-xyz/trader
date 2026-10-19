@@ -196,13 +196,9 @@ class SharedState(BaseSharedState):
     def approve_mech(
         self, address: str, rate: int, payment_type: Optional[str] = None
     ) -> None:
-        """Record the mech as approved at this rate and payment type, replacing any earlier one.
-
-        The payment type is written first: a type left without its approval
-        is ignored, while an approval left with an old type would be shown
-        in the wrong asset.
-        """
+        """Record the mech as approved at this rate and payment type, replacing any earlier one."""
         address = str(address).lower()
+        # First, so a failed write leaves an ignored orphan type, not an approval shown in an old asset.
         types = self.approved_mech_payment_types
         if payment_type:
             types[address] = str(payment_type)

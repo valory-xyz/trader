@@ -57,6 +57,7 @@ from packages.valory.skills.chatui_abci.handlers import (
 from packages.valory.skills.chatui_abci.mech_templates import (
     NEVER_DELIVERED,
     PARAGRAPH_BREAK,
+    PRICE_UNREADABLE,
     accept_line,
 )
 from packages.valory.skills.chatui_abci.models import (
@@ -3172,6 +3173,18 @@ class TestAnAddressMessage:
         assert listed <= bound
         assert live is None or live <= bound
 
+    def test_a_mech_listed_without_a_price_is_not_offered(self) -> None:
+        """Discovery skips a mech with no listed rate, so its live rate is not offered."""
+        handler, wire = _mech_handler()
+        _prompt(handler, THIRD_PARTY)
+        wire.answer_http(_record(maxDeliveryRate=None))
+        wire.answer_http(_card())
+        assert _reply(handler).endswith(PRICE_UNREADABLE)
+        assert all(
+            request.get("callable") != "get_max_delivery_rate" for request in wire.sent
+        )
+        assert handler.shared_state.mech_offers == {}
+
     @pytest.mark.parametrize(
         "record, status",
         [
@@ -3331,6 +3344,20 @@ class TestAccept:
         )
         assert _reply(handler) == (
             f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. {when}"
+        )
+
+    def test_an_approval_before_the_stop_vote_reads_as_trading(self) -> None:
+        """Without this period's stop-trading result yet, the reply does not promise a wait."""
+        handler, wire = _mech_handler(offers=(OFFER,))
+        handler.context.params.stop_trading_if_staking_kpi_met = True
+        handler.synchronized_data.db = {"previous_checkpoint": EPOCH}
+        handler.shared_state.read_activity_goal_from_disk.return_value = (
+            SimpleNamespace(is_met=True, period_start=EPOCH)
+        )
+        _prompt(handler, ACCEPT_PHRASE)
+        wire.answer_rate(NATIVE_RATE)
+        assert _reply(handler).endswith(
+            "Your agent can use it for its next mech requests."
         )
 
     def test_a_higher_live_rate_saves_nothing_and_drops_the_offer(self) -> None:
