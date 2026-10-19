@@ -282,9 +282,7 @@ class TestRoute:
         assert chat.response(first) == (200, {"message": message, "reply": reply})
         assert chat.response(resend) == (200, {"message": message, "reply": reply})
 
-    def test_a_late_first_answer_leaves_the_resend_answering(
-        self, chat: _Chat
-    ) -> None:
+    def test_a_late_first_answer_leaves_the_resend_answering(self, chat: _Chat) -> None:
         """The stuck answer coming back does not let a third send race the resend."""
         chat.send()
         _age_the_answer(chat)
