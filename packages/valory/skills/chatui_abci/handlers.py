@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, cast
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -106,7 +106,11 @@ from packages.valory.skills.chatui_abci.prompts import (
     build_chatui_llm_response_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
-from packages.valory.skills.chatui_abci.tool_keys import tool_names
+from packages.valory.skills.chatui_abci.tool_keys import (
+    VALORY_LABEL,
+    split_tool_key,
+    tool_names,
+)
 from packages.valory.skills.mech_interact_abci.mech_reader import (
     MechFacts,
     RecordStatus,
@@ -115,6 +119,17 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
     read_mech,
 )
 from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
+
+
+def _tools_for_prompt(tools: Any, operator_tools: Set[str]) -> str:
+    """The tool names the prompt may show, with a count of those it leaves out."""
+    shown = sorted(str(tool) for tool in tools if tool not in operator_tools)
+    hidden = sum(1 for tool in tools if tool in operator_tools)
+    text = ", ".join(shown) or "none"
+    if hidden:
+        text += f" (and {hidden} tool(s) from approved third-party mechs, not listed)"
+    return text
+
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -597,9 +612,10 @@ class HttpHandler(BaseHttpHandler):
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
+        operator_tools = self._operator_tool_names()
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
-            ", ".join(current_allowed_tools_raw)
+            _tools_for_prompt(current_allowed_tools_raw, operator_tools)
             if current_allowed_tools_raw
             else "Automatic tool selection based on policy (all available tools)"
         )
@@ -628,7 +644,7 @@ class HttpHandler(BaseHttpHandler):
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
-            available_tools=available_tools,
+            available_tools=_tools_for_prompt(available_tools, operator_tools),
             current_selected_mechs=current_selected_mechs,
             current_approved_mechs=(
                 "; ".join(
@@ -751,6 +767,16 @@ class HttpHandler(BaseHttpHandler):
             # rendering consistent with the ``available_mech_tools`` fallback.
             return set(prediction_tools)
         return tool_names(self.synchronized_data.available_mech_tools)
+
+    def _operator_tool_names(self) -> Set[str]:
+        """Names of tools only approved third-party mechs serve; the prompt leaves them out."""
+        keys: Iterable[str] = self.synchronized_data.available_mech_tools or []
+        third_party: Set[str] = set()
+        valory: Set[str] = set()
+        for key in keys:
+            identity, tool = split_tool_key(key)
+            (third_party if identity not in (None, VALORY_LABEL) else valory).add(tool)
+        return third_party - valory
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue

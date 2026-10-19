@@ -3914,6 +3914,57 @@ class TestAnUnreadableAccept:
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
 
 
+class TestTheConfigPromptListsOnlyValoryToolNames:
+    """Tool names only an approved third-party mech serves stay out of the prompt."""
+
+    OPERATOR_TOOL = "operator-tool"
+
+    def _handler(self, allowed: Optional[List[str]] = None) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        handler.shared_state.chatui_config.allowed_tools = allowed
+        handler.synchronized_data.available_mech_tools = [
+            "valory::superforcaster",
+            "valory::prediction-online",
+            f"{THIRD_PARTY}::prediction-online",
+            f"{THIRD_PARTY}::{self.OPERATOR_TOOL}",
+        ]
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "prediction-online", self.OPERATOR_TOOL}
+        )
+        return handler
+
+    def test_available_tools_leave_out_third_party_only_names(self) -> None:
+        """A name a Valory mech also serves is shown; one only a third party serves is counted."""
+        handler = self._handler()
+        _prompt(handler, "which tools can I use?")
+        prompt = _model_prompts(handler)[-1]
+        assert (
+            "-- Available tools: prediction-online, superforcaster (and 1 tool(s) "
+            "from approved third-party mechs, not listed)\n"
+        ) in prompt
+        assert self.OPERATOR_TOOL not in prompt
+
+    def test_allowed_tools_leave_out_third_party_only_names(self) -> None:
+        """The user's current selection is shown the same way."""
+        handler = self._handler(allowed=["superforcaster", self.OPERATOR_TOOL])
+        _prompt(handler, "what is my setup?")
+        prompt = _model_prompts(handler)[-1]
+        assert (
+            "- Allowed tools: superforcaster (and 1 tool(s) from approved "
+            "third-party mechs, not listed)\n"
+        ) in prompt
+        assert self.OPERATOR_TOOL not in prompt
+
+    def test_a_third_party_tool_typed_exactly_is_still_selectable(self) -> None:
+        """Selection is checked against every available tool, not only the listed ones."""
+        handler = self._handler()
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": [self.OPERATOR_TOOL]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == [self.OPERATOR_TOOL]
+
+
 class TestTheConfigPromptCarriesNoMechState:
     """The model gets no mech reports, chat addresses or offers."""
 

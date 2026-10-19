@@ -41,7 +41,7 @@ Configuration details:
     -- When set, the agent's e-greedy policy will only select from this subset of tools on each trade. The policy continues learning across all tools, but selection is restricted to the allowed list.
     -- When null/empty, the agent freely selects from all available tools based on its policy.
     -- Can be cleared to restore unrestricted tool selection if the user says to remove or clear the allowed tools.
-    -- Each tool in the list must be one of the available tools listed above.
+    -- Each tool in the list must be one of the available tools listed above, or a tool name the user typed exactly.
     -- The user can add tools to or remove individual tools from the current allowed list, or replace it entirely.
 - Pinned mechs: {current_selected_mechs}
     -- Available mechs: {available_mechs}
