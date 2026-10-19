@@ -154,7 +154,7 @@ class TestRecordEvent:
         """A field that cannot be written as JSON is logged and swallowed."""
         logger = MagicMock()
         fields = [{"label": "Amount", "value": object()}]
-        record_event(tmp_path, EventType.CONFIG_CHANGED, fields, logger)  # type: ignore[list-item]
+        record_event(tmp_path, EventType.CONFIG_CHANGED, fields, logger)  # type: ignore[arg-type]
         logger.error.assert_called_once()
         assert not (tmp_path / FEED_FILE).exists()
 
