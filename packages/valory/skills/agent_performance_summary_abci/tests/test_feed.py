@@ -150,6 +150,14 @@ class TestRecordEvent:
         record_event(tmp_path / "missing", EventType.CONFIG_CHANGED, [], logger)
         logger.error.assert_called_once()
 
+    def test_unserialisable_field_is_logged(self, tmp_path: Path) -> None:
+        """A field that cannot be written as JSON is logged and swallowed."""
+        logger = MagicMock()
+        fields = [{"label": "Amount", "value": object()}]
+        record_event(tmp_path, EventType.CONFIG_CHANGED, fields, logger)  # type: ignore[list-item]
+        logger.error.assert_called_once()
+        assert not (tmp_path / FEED_FILE).exists()
+
 
 class TestRead:
     """Reading recent entries."""

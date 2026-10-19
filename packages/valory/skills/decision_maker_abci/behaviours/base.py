@@ -497,11 +497,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                     f"Could not record trade for bet {sampled_bet.id}, leaving the "
                     f"trades ledger untouched: {e}"
                 )
-            self._record_trade_placed(sampled_bet)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
+
+        if record_ledger:
+            self._record_trade_placed(sampled_bet)
 
     def _market_field(self, bet: Bet) -> Field:
         """Build an event card's market field, linked to the market's page."""
@@ -558,12 +560,11 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     def _record_trade_placed(self, bet: Bet) -> None:
         """Tell the feed about the trade just placed on the bet's market."""
-        amount = self.synchronized_data.bet_amount
-        vote = self.synchronized_data.vote
-        prediction = bet.get_outcome(vote) if vote is not None else "Unknown"
-        self._record_feed_event(
-            EventType.TRADE_PLACED,
-            [
+        try:
+            amount = self.synchronized_data.bet_amount
+            vote = self.synchronized_data.vote
+            prediction = bet.get_outcome(vote) if vote is not None else "Unknown"
+            fields = [
                 self._market_field(bet),
                 feed_field("Prediction", prediction),
                 feed_field("Amount", self._format_collateral(amount)),
@@ -573,8 +574,13 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 feed_field(
                     "Potential payout", self._potential_payout(bet, amount, vote)
                 ),
-            ],
-        )
+            ]
+        except (IndexError, TypeError, ValueError) as e:
+            self.context.logger.error(
+                f"Could not build the trade_placed event for bet {bet.id}: {e}"
+            )
+            return
+        self._record_feed_event(EventType.TRADE_PLACED, fields)
 
     def _potential_payout(self, bet: Bet, amount: int, vote: Optional[int]) -> str:
         """Format what the trade pays if its prediction is right, at the market price."""

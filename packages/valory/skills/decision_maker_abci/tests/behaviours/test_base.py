@@ -1059,6 +1059,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         benchmarking: bool,
         sell: bool = False,
         record_ledger: bool = True,
+        outcome_error: Optional[Exception] = None,
     ) -> MagicMock:
         """Run the bet or sell bookkeeping against a store at ``store_path``.
 
@@ -1066,6 +1067,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         :param benchmarking: whether benchmarking mode is enabled.
         :param sell: run the sell bookkeeping instead of the bet one.
         :param record_ledger: the ``record_ledger`` argument of the bet bookkeeping.
+        :param outcome_error: what the bet raises when asked for its outcome.
         :return: the patched ``store_bets``.
         """
         behaviour = self.behaviour
@@ -1078,6 +1080,7 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.slug = None
         mock_bet.outcomeTokenMarginalPrices = [0.4, 0.6]
         mock_bet.get_outcome.return_value = "Yes"
+        mock_bet.get_outcome.side_effect = outcome_error
         behaviour.params.is_running_on_polymarket = False
 
         db_values = {"sampled_bet_index": 0, "bet_amount": 1000}
@@ -1138,6 +1141,40 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         store_bets.assert_called_once()
         logged = [c.args[0] for c in self.behaviour.context.logger.error.call_args_list]  # type: ignore[attr-defined]
         assert any(str(error) in m for m in logged)
+
+    @pytest.mark.parametrize(
+        "error", [ValueError("no outcomes"), IndexError("vote out of range")]
+    )
+    def test_trade_placed_card_error_still_stores_bets(
+        self, tmp_path: Path, error: Exception
+    ) -> None:
+        """A card that cannot be built is logged, and the placed bet is still persisted."""
+        store_bets = self._apply_trade_bookkeeping(
+            tmp_path, benchmarking=False, outcome_error=error
+        )
+
+        store_bets.assert_called_once()
+        assert read_trades(tmp_path) == [
+            {"timestamp": 1700000000, "bet_id": "test_bet"}
+        ]
+        assert not (tmp_path / FEED_FILE).exists()
+        logged = [c.args[0] for c in self.behaviour.context.logger.error.call_args_list]  # type: ignore[attr-defined]
+        assert any(str(error) in m for m in logged)
+
+    def test_bets_are_stored_before_the_trade_placed_card(self, tmp_path: Path) -> None:
+        """The placed bet is persisted before the feed is touched."""
+        stored_first: List[bool] = []
+        with mock.patch.object(
+            type(self.behaviour),
+            "_record_trade_placed",
+            autospec=True,
+            side_effect=lambda behaviour, _bet: stored_first.append(
+                behaviour.store_bets.called
+            ),
+        ):
+            self._apply_trade_bookkeeping(tmp_path, benchmarking=False)
+
+        assert stored_first == [True]
 
     def test_non_utf8_ledger_still_stores_bets(self, tmp_path: Path) -> None:
         """An undecodable ledger is left intact and the placed bet is still persisted."""

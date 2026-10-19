@@ -276,7 +276,7 @@ def record_event(
     """
     try:
         append_event(store_path, event_type, fields)
-    except OSError as e:
+    except (OSError, TypeError, ValueError) as e:
         logger.error(f"Could not write the {event_type.value} event to the feed: {e}")
 
 
