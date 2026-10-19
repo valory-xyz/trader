@@ -22,6 +22,7 @@
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from eth_abi import decode as abi_decode
 
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
@@ -284,6 +285,28 @@ class TestFetchRedeemablePositions:
             result = e.value
 
         assert result == expected_positions
+
+    @pytest.mark.parametrize(
+        "connection_response",
+        [{"error": "Error fetching positions: 503"}, None, "garbled"],
+    )
+    def test_failed_read_yields_no_positions(self, connection_response) -> None:  # type: ignore[no-untyped-def]
+        """A failed read is no positions to redeem, never a non-list."""
+        behaviour = _make_behaviour()
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            connection_response
+        )
+
+        gen = behaviour._fetch_redeemable_positions()
+        result = None
+        try:
+            while True:
+                next(gen)
+        except StopIteration as e:
+            result = e.value
+
+        assert result == []
+        behaviour.context.logger.warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -1205,6 +1228,36 @@ class TestAsyncAct:
         payload = payloads_sent[0]
         assert isinstance(payload, PolymarketRedeemPayload)
         assert payload.event == "no_redeeming"
+
+    def test_async_act_failed_positions_read_ends_round_without_redeeming(
+        self,
+    ) -> None:
+        """A failed positions read ends the round with NO_REDEEMING and keeps tool records."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._utilized_tools = {"cond1": "tool1"}
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            {"error": "Error fetching positions: 503"}
+        )
+        payloads_sent = []
+
+        def capture_finish(payload) -> None:  # type: ignore[no-untyped-def, misc]
+            """Capture finish behaviour payload."""
+            payloads_sent.append(payload)  # type: ignore[no-untyped-def]
+            yield
+
+        behaviour.finish_behaviour = capture_finish  # type: ignore[method-assign]
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            for _ in behaviour.async_act():
+                pass
+
+        assert [p.event for p in payloads_sent] == ["no_redeeming"]
+        assert behaviour._utilized_tools == {"cond1": "tool1"}
 
     def test_async_act_setup_fails(self) -> None:
         """Should return early when _setup_policy_and_tools fails."""
