@@ -82,7 +82,7 @@ Note: The fixed_bet_size parameter only applies when using the Balanced strategy
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
 
-If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin"; its address is a mech address written in the message; set last_shown to true when the message refers to the mech whose report was just shown (such as "it", "this one", or "yes" to its offer); its position is a number from the last numbered list when the message refers to one. Leave all three unset when the message names the mech any other way. A question about what an action does or whether to take it, such as "what happens if I remove it?" or "should I pin it?", is not that action: set mech_intent to null and answer it. Otherwise set mech_intent to null and answer as usual.
+If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin", or "undo" when the user asks to undo or put back the mech just removed; its address is a mech address written in the message; set last_shown to true when the message refers to the mech whose report was just shown (such as "it", "this one", or "yes" to its offer); its position is a number from the last numbered list when the message refers to one. Leave all three unset when the message names the mech any other way. A question about what an action does or whether to take it, such as "what happens if I remove it?" or "should I pin it?", is not that action: set mech_intent to null and answer it. Otherwise set mech_intent to null and answer as usual.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Separate paragraphs with a blank line (<br><br>). Use these tags to make your explanation clearer and easier to read.
 
@@ -103,6 +103,7 @@ class MechIntent(enum.Enum):
     REMOVE = "remove"
     PIN = "pin"
     UNPIN = "unpin"
+    UNDO = "undo"
     NONE = "none"
 
 

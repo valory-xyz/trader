@@ -105,6 +105,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
     Offer,
+    RemovedMech,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -352,6 +353,8 @@ class HttpHandler(BaseHttpHandler):
         self.shared_state.last_shown_mech = None
         last_list = list(self.shared_state.last_mech_list)
         self.shared_state.last_mech_list = []
+        last_removed = self.shared_state.last_removed
+        self.shared_state.last_removed = None
         accept = parse_accept(user_prompt)
         if accept is not None:
             self._accept_offer(accept, http_msg, http_dialogue)
@@ -373,7 +376,13 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         self._send_chatui_prompt(
-            user_prompt, available_tools, http_msg, http_dialogue, last_shown, last_list
+            user_prompt,
+            available_tools,
+            http_msg,
+            http_dialogue,
+            last_shown,
+            last_list,
+            last_removed,
         )
 
     def _run_mech_intent(
@@ -384,10 +393,15 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         number: Optional[int] = None,
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Carry out a mech intent in code; without the mech it needs, ask which one."""
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
-        if intent is MechIntent.LIST:
+        if intent is MechIntent.UNDO:
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed)
+            )
+        elif intent is MechIntent.LIST:
             self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
         elif address is None:
             self._send_mech_reply(http_msg, http_dialogue, self._which_mech())
@@ -644,12 +658,40 @@ class HttpHandler(BaseHttpHandler):
             return (
                 f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
             )
+        removed = RemovedMech(
+            address,
+            self.shared_state.approved_mech_rates[address],
+            self.shared_state.approved_mech_payment_types.get(address),
+            address in self._pinned_mechs(),
+        )
+        notes = self._remove_approved_mechs([address])
+        self.shared_state.last_removed = removed
         return " ".join(
             [
-                *self._remove_approved_mechs([address]),
-                f"To use it again, send {address} to see its report and approve it, "
-                "then pin it again if it was pinned.",
+                *notes,
+                "To undo, reply undo. After another message, send its address to see "
+                "its report and approve it again.",
             ]
+        )
+
+    def _undo_removal(self, removed: Optional[RemovedMech]) -> str:
+        """Put back the approval the reply before this message removed, at the ceiling the user had accepted."""
+        if removed is None:
+            return "There is no removal to undo."
+        self.shared_state.approve_mech(
+            removed.address, removed.rate, removed.payment_type
+        )
+        again = ""
+        if removed.pinned:
+            pins = self._pinned_mechs()
+            if removed.address not in pins:
+                self._store_selected_mechs([*pins, removed.address])
+            again = " and pinned it again"
+        price = self._approved_price(removed.address, removed.rate)
+        ceiling = f"up to {price} per request" if price else "the price you accepted"
+        return (
+            f"Put back {removed.address} at {ceiling}{again}. If it now charges more, "
+            "your agent won't use it until you approve the new price."
         )
 
     def _pinned_mechs(self) -> List[str]:
@@ -694,6 +736,7 @@ class HttpHandler(BaseHttpHandler):
         http_dialogue: HttpDialogue,
         last_shown: Optional[str] = None,
         last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Fill the config prompt and ask the LLM.
 
@@ -703,6 +746,7 @@ class HttpHandler(BaseHttpHandler):
         :param http_dialogue: the HttpDialogue instance
         :param last_shown: the mech whose report was the reply before this message
         :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
@@ -784,6 +828,7 @@ class HttpHandler(BaseHttpHandler):
             user_prompt=user_prompt,
             last_shown=last_shown,
             last_list=last_list,
+            last_removed=last_removed,
         )
 
     def _send_chatui_llm_request(
@@ -794,6 +839,7 @@ class HttpHandler(BaseHttpHandler):
         user_prompt: str,
         last_shown: Optional[str] = None,
         last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Ask the model for a config update or a mech intent; `_handle_chatui_llm_response` gets the reply."""
         self._send_llm_request(
@@ -806,6 +852,7 @@ class HttpHandler(BaseHttpHandler):
                 "user_prompt": user_prompt,
                 "last_shown": last_shown,
                 "last_list": last_list,
+                "last_removed": last_removed,
             },
         )
 
@@ -922,6 +969,7 @@ class HttpHandler(BaseHttpHandler):
         user_prompt: str = "",
         last_shown: Optional[str] = None,
         last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """
         Handle the response from the LLM.
@@ -936,6 +984,7 @@ class HttpHandler(BaseHttpHandler):
         :param user_prompt: the user's message, the only text an intent's address may come from
         :param last_shown: the mech whose report was the reply before this message
         :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
@@ -979,7 +1028,13 @@ class HttpHandler(BaseHttpHandler):
                 return
             number = _list_number(reading, address, last_list)
             self._run_mech_intent(
-                intent, address, last_shown, http_msg, http_dialogue, number
+                intent,
+                address,
+                last_shown,
+                http_msg,
+                http_dialogue,
+                number,
+                last_removed,
             )
             return
         if reading is not None and (

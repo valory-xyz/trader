@@ -162,6 +162,7 @@ def _make_handler(
     shared_state.mech_offers = {}
     shared_state.mech_refusals = {}
     shared_state.last_shown_mech = None
+    shared_state.last_removed = None
     shared_state.last_mech_list = []
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
@@ -3179,8 +3180,8 @@ class TestAListNumberRefersToTheListJustShown:
             f"Number 2 on the list just shown is {THIRD_PARTY}. Removed {THIRD_PARTY}."
         )
         assert reply.endswith(
-            f"To use it again, send {THIRD_PARTY} to see its report and approve it, "
-            "then pin it again if it was pinned."
+            "To undo, reply undo. After another message, send its address to see "
+            "its report and approve it again."
         )
 
     def test_a_number_after_another_reply_acts_on_nothing(self) -> None:
@@ -3937,8 +3938,8 @@ class TestRemoveIntent:
             f"Removed {THIRD_PARTY}. No new requests go to it from the next cycle; "
             "a request already sent to it can still be answered and bet on. "
             f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}. "
-            f"To use it again, send {THIRD_PARTY} to see its report and approve it, "
-            "then pin it again if it was pinned."
+            "To undo, reply undo. After another message, send its address to see "
+            "its report and approve it again."
         )
 
     def test_a_mech_never_approved_is_said_so(self) -> None:
@@ -4000,6 +4001,84 @@ class TestTheMechJustShownExpires:
         _chat(handler, "yes", "approve", last_shown=True)
         handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler).startswith(WHICH_MECH)
+
+
+class TestUndoRightAfterARemoval:
+    """An undo as the next message puts back the removed approval as it was."""
+
+    @staticmethod
+    def _removed(pinned: bool) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(
+            approved={THIRD_PARTY: NATIVE_RATE},
+            payment_types={THIRD_PARTY: NATIVE},
+            pin=[VALORY_MECH, THIRD_PARTY] if pinned else [VALORY_MECH],
+            discovered={VALORY_MECH},
+        )
+        _prompt(handler, f"remove {THIRD_PARTY}")
+        handler._send_ok_response.reset_mock()
+        handler._store_selected_mechs.reset_mock()  # type: ignore[attr-defined]
+        handler.shared_state.approve_mech.reset_mock()
+        return handler
+
+    @pytest.mark.parametrize("pinned", [True, False], ids=["pinned", "not_pinned"])
+    def test_undo_puts_back_the_ceiling_the_payment_type_and_the_pin(
+        self, pinned: bool
+    ) -> None:
+        """The same ceiling comes back, so the agent can never pay more than agreed."""
+        handler = self._removed(pinned)
+        handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH]
+        _chat(handler, "undo", "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+        if pinned:
+            handler._store_selected_mechs.assert_called_once_with(  # type: ignore[attr-defined]
+                [VALORY_MECH, THIRD_PARTY]
+            )
+        else:
+            handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        again = " and pinned it again" if pinned else ""
+        assert _reply(handler) == (
+            f"Put back {THIRD_PARTY} at up to 0.01 xDAI per request{again}. If it "
+            "now charges more, your agent won't use it until you approve the new price."
+        )
+
+    def test_undo_does_not_pin_twice(self) -> None:
+        """A mech pinned again before the undo is not added a second time."""
+        handler = self._removed(pinned=True)
+        handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH, THIRD_PARTY]
+        _chat(handler, "undo", "undo")
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert "and pinned it again" in _reply(handler)
+
+    def test_undo_without_a_known_payment_type_names_no_figure(self) -> None:
+        """An approval kept before payment types were recorded puts back its ceiling unnamed."""
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        _prompt(handler, f"remove {THIRD_PARTY}")
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "undo", "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, None
+        )
+        assert _reply(handler).startswith(
+            f"Put back {THIRD_PARTY} at the price you accepted."
+        )
+
+    def test_undo_after_another_message_puts_nothing_back(self) -> None:
+        """Another reply in between retires the removal."""
+        handler = self._removed(pinned=False)
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "undo", "undo")
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "There is no removal to undo."
+
+    def test_undo_with_nothing_removed_says_so(self) -> None:
+        """No removal before it, nothing to put back."""
+        handler, _ = _mech_handler()
+        _chat(handler, "put it back", "undo")
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "There is no removal to undo."
 
 
 class TestPinIntent:
