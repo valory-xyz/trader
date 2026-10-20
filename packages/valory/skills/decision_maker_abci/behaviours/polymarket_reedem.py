@@ -178,11 +178,11 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         for fields in self._payouts_by_market(settled):
             self._record_feed_event(EventType.PAYOUT_COLLECTED, fields)
 
-    def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
+    def _fetch_redeemable_positions(self) -> Generator[None, None, Optional[list]]:
         """Fetch redeemable positions from Polymarket.
 
         :yield: framework yields between dispatch and the connection response.
-        :return: the redeemable positions, or an empty list if the read failed.
+        :return: the redeemable positions, or None if the read failed.
         """
         # Prepare payload data
         polymarket_bet_payload = {
@@ -199,7 +199,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             self.context.logger.error(
                 f"Redeemable positions fetch failed: {redeemable_positions}"
             )
-            return []
+            return None
 
         return redeemable_positions
 
@@ -274,7 +274,8 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             current_mech_tools = json.dumps(list(self.mech_tools))
 
             # Fetch redeemable positions once for both flows
-            redeemable_positions = yield from self._fetch_redeemable_positions()
+            fetched_positions = yield from self._fetch_redeemable_positions()
+            redeemable_positions = fetched_positions or []
             self.context.logger.info(
                 f"Fetched {len(redeemable_positions)} redeemable positions"
             )
@@ -286,7 +287,9 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
             self.shared_state.polymarket_payouts_to_record = []
-            self._record_settled_builder_redeems(redeemable_positions)
+            # A failed read says nothing about whether the pending redeems landed.
+            if fetched_positions is not None:
+                self._record_settled_builder_redeems(redeemable_positions)
 
             # Re-serialise policy and utilized_tools *after* the accuracy-store update
             # so that the updated values are carried in the payload.

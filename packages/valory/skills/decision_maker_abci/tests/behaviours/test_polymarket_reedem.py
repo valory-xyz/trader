@@ -291,8 +291,8 @@ class TestFetchRedeemablePositions:
         "connection_response",
         [{"error": "Error fetching positions: 503"}, None, "garbled"],
     )
-    def test_failed_read_yields_no_positions(self, connection_response) -> None:  # type: ignore[no-untyped-def]
-        """A failed read is no positions to redeem, never a non-list."""
+    def test_failed_read_returns_none(self, connection_response) -> None:  # type: ignore[no-untyped-def]
+        """A failed read returns None, never a non-list."""
         behaviour = _make_behaviour()
         behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             connection_response
@@ -306,7 +306,7 @@ class TestFetchRedeemablePositions:
         except StopIteration as e:
             result = e.value
 
-        assert result == []
+        assert result is None
         behaviour.context.logger.error.assert_called_once()
 
 
@@ -1483,6 +1483,29 @@ class TestAsyncAct:
 
         assert [p.event for p in payloads_sent] == ["no_redeeming"]
         assert behaviour._utilized_tools == {"cond1": "tool1"}
+
+    def test_async_act_failed_positions_read_keeps_the_pending(self) -> None:
+        """A failed positions read writes no payout card and keeps the pending builder redeems."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        pending = {"0xa": [_position("0xa", 2, 1, title="Landed?")]}
+        behaviour.context.state.polymarket_builder_redeems_pending = pending
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            {"error": "Error fetching positions: 503"}
+        )
+        behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            _run(behaviour.async_act())
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_builder_redeems_pending == pending
 
     def test_async_act_setup_fails(self) -> None:
         """Should return early when _setup_policy_and_tools fails."""
