@@ -26,7 +26,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, NamedTuple, Optional, Tuple, cast
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, cast
 
 import requests
 from aea.configurations.base import PublicId
@@ -60,6 +60,56 @@ from packages.valory.protocols.srr.message import SrrMessage
 
 PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
+DATA_API_POSITIONS_URL = f"{DATA_API_BASE_URL}/v2/positions"
+DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
+DATA_API_PAGE_LIMIT = 100
+# A paginated Data API read needing more pages than this is reported as failed.
+DATA_API_MAX_PAGES = 200
+# Data API v2 rows are snake_case; callers read the v1 camelCase field names.
+POSITION_FIELDS_V2_TO_V1 = {
+    "proxy_wallet": "proxyWallet",
+    "token_id": "asset",  # nosec B105
+    "condition_id": "conditionId",
+    "current_size": "size",
+    "avg_price": "avgPrice",
+    "entry_cost_usdc": "initialValue",
+    "entry_fees_usdc": "entryFeesUsdc",
+    "current_value": "currentValue",
+    "current_price": "curPrice",
+    "percent_pnl": "percentPnl",
+    "realized_pnl": "realizedPnl",
+    "percent_realized_pnl": "percentRealizedPnl",
+    "redeemable": "redeemable",
+    "mergeable": "mergeable",
+    "title": "title",
+    "slug": "slug",
+    "icon": "icon",
+    "event_id": "eventId",
+    "event_slug": "eventSlug",
+    "outcome": "outcome",
+    "outcome_index": "outcomeIndex",
+    "opposite_outcome": "oppositeOutcome",
+    "opposite_token_id": "oppositeAsset",  # nosec B105
+    "end_date": "endDate",
+    "negative_risk": "negativeRisk",
+}
+TRADE_FIELDS_V2_TO_V1 = {
+    "proxy_wallet": "proxyWallet",
+    "side": "side",
+    "token_id": "asset",  # nosec B105
+    "condition_id": "conditionId",
+    "size": "size",
+    "price": "price",
+    "timestamp": "timestamp",
+    "title": "title",
+    "slug": "slug",
+    "event_slug": "eventSlug",
+    "outcome": "outcome",
+    "outcome_index": "outcomeIndex",
+    "transaction_hash": "transactionHash",
+}
+# Gamma market `version` the agent can trade; other versions use different contracts.
+SUPPORTED_MARKET_VERSION = "v1"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 RELAYER_URL = "https://relayer-v2.polymarket.com/"
 # Default wildcard predict-api proxy that fronts the CLOB v2 DepositWallet
@@ -108,6 +158,15 @@ MIN_MARKETABLE_USD = 1.0
 # All must appear, so an unrelated "invalid amount ..." rejection is not also
 # treated as terminal.
 BELOW_MINIMUM_MARKERS = ("invalid amount", "min size")
+
+
+def _bool_param(value: bool) -> str:
+    """Render a boolean query parameter; Data API v2 accepts only ``true``/``false``.
+
+    :param value: the boolean to send
+    :return: ``"true"`` or ``"false"``
+    """
+    return "true" if value else "false"
 
 
 class SrrDialogues(BaseSrrDialogues):
@@ -1095,7 +1154,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         return yes_no_markets
 
     def _filter_tradeable_markets(self, markets: list) -> list:
-        """Filter to markets that are active and have populated price + CLOB tokens.
+        """Filter to active markets of a supported version with populated price + CLOB tokens.
 
         The /events endpoint can surface nested markets that are yes/no-shaped
         but not yet (or no longer) tradeable — empty outcomePrices/clobTokenIds
@@ -1104,10 +1163,17 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         :param markets: List of market dictionaries
         :return: Markets with non-empty outcomePrices and clobTokenIds, active=True
+            and version SUPPORTED_MARKET_VERSION
         """
         tradeable = []
         for market in markets:
             if not market.get("active"):
+                continue
+            if market.get("version") != SUPPORTED_MARKET_VERSION:
+                self.logger.debug(
+                    f"Dropped market {market.get('id')}: "
+                    f"unsupported version {market.get('version')!r}"
+                )
                 continue
             try:
                 outcome_prices = json.loads(market.get("outcomePrices") or "[]")
@@ -1253,59 +1319,191 @@ class PolymarketClientConnection(BaseSyncConnection):
             self.logger.exception(error_msg)
             return None, error_msg
 
+    @staticmethod
+    def _to_v1_fields(row: Dict[str, Any], field_map: Dict[str, str]) -> Dict[str, Any]:
+        """Rename a Data API v2 row to the v1 field names callers read.
+
+        :param row: a snake_case row from a Data API v2 read
+        :param field_map: v2 field name to v1 field name
+        :return: the row keyed by v1 names; fields with no v1 counterpart are dropped
+        """
+        return {v1: row[v2] for v2, v1 in field_map.items() if v2 in row}
+
+    def _get_data_api_page(
+        self,
+        url: str,
+        params: Dict[str, Any],
+        cursor: Optional[str] = None,
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str], Optional[str]]:
+        """Fetch one page of a Data API v2 read.
+
+        :param url: the v2 route to read
+        :param params: query parameters shared by every page
+        :param cursor: the cursor of the page to read; None reads the first page
+        :return: Tuple of (rows, next_cursor, error_message); next_cursor is
+            None on the last page
+        """
+        page_params = dict(params)
+        if cursor is not None:
+            page_params["cursor"] = cursor
+        try:
+            response = requests.get(
+                url, params=page_params, timeout=API_REQUEST_TIMEOUT
+            )
+            response.raise_for_status()
+            body = response.json()
+        except (requests.exceptions.RequestException, ValueError) as e:
+            error_msg = f"Error fetching {url}: {str(e)}"
+            self.logger.error(error_msg)
+            return None, None, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error fetching {url}: {str(e)}"
+            self.logger.exception(error_msg)
+            return None, None, error_msg
+
+        if not isinstance(body, dict):
+            error_msg = f"Unexpected response shape from {url}: {str(body)[:200]}"
+            self.logger.error(error_msg)
+            return None, None, error_msg
+
+        # A documented miss is `data: null` or an empty list, never an error.
+        rows = body.get("data")
+        rows = [] if rows is None else rows
+        pagination = body.get("pagination")
+        if (
+            not isinstance(pagination, dict)
+            or not isinstance(rows, list)
+            or not all(isinstance(row, dict) for row in rows)
+        ):
+            error_msg = f"Unexpected response shape from {url}: {str(body)[:200]}"
+            self.logger.error(error_msg)
+            return None, None, error_msg
+        return rows, pagination.get("next_cursor"), None
+
+    def _get_all_data_api_pages(
+        self,
+        url: str,
+        params: Dict[str, Any],
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+        """Follow a Data API v2 read across every page.
+
+        A read is returned whole or not at all: a failed page, a repeated
+        cursor or more than DATA_API_MAX_PAGES pages yields an error.
+
+        :param url: the v2 route to read
+        :param params: query parameters shared by every page
+        :return: Tuple of (all_rows, error_message)
+        """
+        all_rows: List[Dict[str, Any]] = []
+        seen_cursors = set()
+        cursor: Optional[str] = None
+        for _ in range(DATA_API_MAX_PAGES):
+            rows, cursor, error = self._get_data_api_page(url, params, cursor)
+            if error:
+                return None, error
+            all_rows.extend(rows or [])
+            if not cursor:
+                return all_rows, None
+            if cursor in seen_cursors:
+                error_msg = f"Repeated pagination cursor from {url}"
+                self.logger.error(error_msg)
+                return None, error_msg
+            seen_cursors.add(cursor)
+
+        error_msg = f"Read from {url} exceeded {DATA_API_MAX_PAGES} pages"
+        self.logger.error(error_msg)
+        return None, error_msg
+
+    def _positions_params(
+        self,
+        size_threshold: int,
+        limit: int,
+        sort_by: str,
+        sort_direction: str,
+        redeemable: Optional[bool],
+        address: Optional[str],
+    ) -> Dict[str, Any]:
+        """Build the Data API v2 query for a positions read.
+
+        Only the redeemable read includes archived markets, so a settled
+        position is still redeemed; open reads leave them out, as v1 did,
+        since an archived market has no order book to sell into.
+
+        :param size_threshold: minimum position size in tokens
+        :param limit: page size
+        :param sort_by: field to sort by (e.g., TOKENS)
+        :param sort_direction: sort direction (ASC or DESC)
+        :param redeemable: True reads settled positions only; otherwise open
+            positions, which include settled ones
+        :param address: holder address; defaults to the Safe
+        :return: the query parameters
+        """
+        params: Dict[str, Any] = {
+            "user": address or self.safe_address,
+            "limit": limit,
+            "filter_type": "TOKENS",
+            "filter_amount": size_threshold,
+            "sort_by": sort_by,
+            "sort_direction": sort_direction,
+        }
+        if redeemable:
+            params["status"] = "REDEEMABLE"
+            params["include_archived"] = "true"
+        return params
+
+    def _select_positions(
+        self,
+        rows: List[Dict[str, Any]],
+        redeemable: Optional[bool],
+    ) -> List[Dict[str, Any]]:
+        """Map position rows to v1 names and keep those matching ``redeemable``.
+
+        v2 has no status for "not redeemable", and its default status returns
+        settled rows alongside open ones, so the ``redeemable`` filter is
+        applied here on the row flag.
+
+        :param rows: positions rows from Data API v2
+        :param redeemable: keep only rows with this redeemable flag; None keeps all
+        :return: the selected positions, keyed by v1 names
+        """
+        positions = [self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1) for row in rows]
+        if redeemable is None:
+            return positions
+        return [p for p in positions if bool(p.get("redeemable")) is redeemable]
+
     def _get_positions(
         self,
         size_threshold: int = 1,
-        limit: int = 100,
+        limit: int = DATA_API_PAGE_LIMIT,
         sort_by: str = "TOKENS",
         sort_direction: str = "DESC",
         redeemable: Optional[bool] = None,
-        offset: int = 0,
         address: Optional[str] = None,
     ) -> Tuple[Any, Any]:
-        """Get positions from Polymarket for the safe (or a given) address.
+        """Get the first page of positions from Polymarket for the safe (or a given) address.
 
         :param size_threshold: Minimum position size threshold
         :param limit: Maximum number of positions to return
         :param sort_by: Field to sort by (e.g., TOKENS)
         :param sort_direction: Sort direction (ASC or DESC)
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
-        :param offset: Pagination offset (default: 0)
         :param address: holder address to query; defaults to the Safe. The
             CLOB v2 withdrawal sell-loop passes the DepositWallet here because
             the sellable CTF has been moved Safe→DW by the withdrawal top-up.
         :return: Tuple of (positions_data, error_message)
         """
-        user = address or self.safe_address
-        try:
-            url = f"{DATA_API_BASE_URL}/positions"
-            params = {
-                "sizeThreshold": size_threshold,
-                "limit": limit,
-                "sortBy": sort_by,
-                "sortDirection": sort_direction,
-                "offset": offset,
-                "user": user,
-            }
-            # Only include redeemable parameter if explicitly provided
-            if redeemable is not None:
-                params["redeemable"] = redeemable
+        params = self._positions_params(
+            size_threshold, limit, sort_by, sort_direction, redeemable, address
+        )
+        rows, _next_cursor, error = self._get_data_api_page(
+            DATA_API_POSITIONS_URL, params
+        )
+        if error:
+            return None, error
 
-            response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            positions = response.json()
-            self.logger.info(f"Fetched {len(positions)} positions for {user}")
-            return positions, None
-
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Error fetching positions: {str(e)}"
-            self.logger.error(error_msg)
-            return None, error_msg
-        except Exception as e:
-            error_msg = f"Unexpected error fetching positions: {str(e)}"
-            self.logger.exception(error_msg)
-            return None, error_msg
+        positions = self._select_positions(rows or [], redeemable)
+        self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
+        return positions, None
 
     def _fetch_all_positions(
         self,
@@ -1326,91 +1524,59 @@ class PolymarketClientConnection(BaseSyncConnection):
             moved Safe→DW by the withdrawal top-up, so the Safe now reads 0).
         :return: Tuple of (all_positions_data, error_message)
         """
-        user = address or self.safe_address
-        all_positions = []
-        limit = 100  # Max limit per request
-        offset = 0
+        params = self._positions_params(
+            size_threshold,
+            DATA_API_PAGE_LIMIT,
+            sort_by,
+            sort_direction,
+            redeemable,
+            address,
+        )
+        rows, error = self._get_all_data_api_pages(DATA_API_POSITIONS_URL, params)
+        if error:
+            return None, error
 
-        try:
-            while True:
-                positions, error = self._get_positions(
-                    size_threshold=size_threshold,
-                    limit=limit,
-                    sort_by=sort_by,
-                    sort_direction=sort_direction,
-                    redeemable=redeemable,
-                    offset=offset,
-                    address=user,
-                )
+        positions = self._select_positions(rows or [], redeemable)
+        self.logger.info(
+            f"Fetched total of {len(positions)} positions for {params['user']}"
+        )
+        return positions, None
 
-                if error:
-                    return None, error
+    def _trades_params(self, limit: int, taker_only: bool) -> Dict[str, Any]:
+        """Build the Data API v2 query for the Safe's trades.
 
-                if not positions or len(positions) == 0:
-                    break
-
-                all_positions.extend(positions)
-
-                # If we got fewer results than the limit, we've reached the end
-                if len(positions) < limit:
-                    break
-
-                # Increment offset for next page
-                offset += limit
-
-            self.logger.info(
-                f"Fetched total of {len(all_positions)} positions for {user}"
-            )
-            return all_positions, None
-
-        except Exception as e:
-            error_msg = f"Unexpected error fetching all positions: {str(e)}"
-            self.logger.exception(error_msg)
-            return None, error_msg
+        :param limit: page size
+        :param taker_only: only trades where the Safe was taker
+        :return: the query parameters
+        """
+        return {
+            "user": self.safe_address,
+            "limit": limit,
+            "taker_only": _bool_param(taker_only),
+        }
 
     def _get_trades(
         self,
-        limit: int = 100,
-        offset: int = 0,
+        limit: int = DATA_API_PAGE_LIMIT,
         taker_only: bool = True,
     ) -> Tuple[Any, Any]:
-        """Get trades from Polymarket for the safe address.
+        """Get the first page of trades from Polymarket for the safe address.
 
         :param limit: Maximum number of trades to return (default: 100)
-        :param offset: Pagination offset (default: 0)
         :param taker_only: Only show trades where user was taker (default: True)
         :return: Tuple of (trades_data, error_message)
         """
-        try:
-            url = f"{DATA_API_BASE_URL}/trades"
-            params = {
-                "limit": limit,
-                "offset": offset,
-                "takerOnly": taker_only,
-                "user": self.safe_address,
-            }
+        params = self._trades_params(limit, taker_only)
+        rows, _next_cursor, error = self._get_data_api_page(DATA_API_TRADES_URL, params)
+        if error:
+            return None, error
 
-            request_url = f"{url}?{'&'.join([f'{k}={v}' for k, v in params.items()])}"
-            self.logger.info(f"Fetching trades from: {request_url}")
-
-            response = requests.get(url, params=params, timeout=API_REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            trades = response.json()
-            self.logger.info(
-                f"Fetched {len(trades)} trades for {self.safe_address} "
-                f"(offset={offset}, limit={limit}, takerOnly={taker_only})"
-            )
-            return trades, None
-
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Error fetching trades: {str(e)}"
-            self.logger.error(error_msg)
-            return None, error_msg
-        except Exception as e:
-            error_msg = f"Unexpected error fetching trades: {str(e)}"
-            self.logger.exception(error_msg)
-            return None, error_msg
+        trades = [self._to_v1_fields(row, TRADE_FIELDS_V2_TO_V1) for row in rows or []]
+        self.logger.info(
+            f"Fetched {len(trades)} trades for {self.safe_address} "
+            f"(limit={limit}, takerOnly={taker_only})"
+        )
+        return trades, None
 
     def _fetch_all_trades(
         self,
@@ -1421,58 +1587,23 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param taker_only: Only show trades where user was taker (default: True)
         :return: Tuple of (all_trades_data, error_message)
         """
-        all_trades = []
-        limit = 100  # Max limit per request
-        offset = 0
+        params = self._trades_params(DATA_API_PAGE_LIMIT, taker_only)
+        rows, error = self._get_all_data_api_pages(DATA_API_TRADES_URL, params)
+        if error:
+            return None, error
 
-        try:
-            self.logger.info(
-                f"Starting to fetch all trades (takerOnly={taker_only}, limit={limit})"
+        all_trades = [
+            self._to_v1_fields(row, TRADE_FIELDS_V2_TO_V1) for row in rows or []
+        ]
+        self.logger.info(
+            f"Fetched total of {len(all_trades)} trades for {self.safe_address} "
+            f"(takerOnly={taker_only})"
+        )
+        if all_trades:
+            self.logger.debug(
+                f"Trades fetched: {[(t.get('conditionId'), t.get('side'), t.get('outcomeIndex')) for t in all_trades[:10]]}"
             )
-
-            while True:
-                trades, error = self._get_trades(
-                    limit=limit,
-                    offset=offset,
-                    taker_only=taker_only,
-                )
-
-                if error:
-                    return None, error
-
-                if not trades or len(trades) == 0:
-                    break
-
-                all_trades.extend(trades)
-
-                self.logger.info(
-                    f"Paginating: fetched {len(trades)} trades, "
-                    f"total so far: {len(all_trades)}, next offset: {offset + limit}"
-                )
-
-                # If we got fewer results than the limit, we've reached the end
-                if len(trades) < limit:
-                    break
-
-                # Increment offset for next page
-                offset += limit
-
-            pages_fetched = (len(all_trades) + limit - 1) // limit if all_trades else 0
-
-            self.logger.info(
-                f"Fetched total of {len(all_trades)} trades for {self.safe_address} "
-                f"(completed pagination with {pages_fetched} page(s))"
-            )
-            if all_trades:
-                self.logger.debug(
-                    f"Trades fetched: {[(t.get('conditionId'), t.get('side'), t.get('outcomeIndex')) for t in all_trades[:10]]}"
-                )
-            return all_trades, None
-
-        except Exception as e:
-            error_msg = f"Unexpected error fetching all trades: {str(e)}"
-            self.logger.exception(error_msg)
-            return None, error_msg
+        return all_trades, None
 
     def _redeem_positions(
         self,
