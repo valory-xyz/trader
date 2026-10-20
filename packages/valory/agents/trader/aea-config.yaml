@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeihm4rw5frtbbocbabsue64j5h3mzhdxnitgcitphx2cn5t5orpfaq
+- valory/polymarket_client:0.1.0:bafybeiaycpfvuukairdzlbqnw6gvxgbdfaqdhcdxxtoszle5fhe67q6zve
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihorwono3mgb5pwqhor3t75hx54lswcfudutyq3rki4so52ndy67q
-- valory/market_manager_abci:0.1.0:bafybeih7evku3r55bsbcvl7c4whl6pwrugbinnwq4emrq54kjfuhbld2yq
-- valory/decision_maker_abci:0.1.0:bafybeigva3b3sxpmcuik4f65riarwrkrxq74e4yr5mwvut7t5leokhwzri
-- valory/trader_abci:0.1.0:bafybeihb3tp24a7mbroyizadqfcvzoue64cfpxmwt6gqrxtrx3edy5agpm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif4dlqt7tjki7g3kc7zf7vtcgul6sjsknbzkcm4ah3n576ztvs7gy
+- valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
+- valory/decision_maker_abci:0.1.0:bafybeig2idytmor73ifv35a4pequqnnjrz57hfrk6dgpgmq2izco43daau
+- valory/trader_abci:0.1.0:bafybeicyrg2zggghqauhfbdq6ea5dq7q257cywrwqknstihfn3fcrovyku
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeiem4hhhuyw6hl3hr4jhxyp5uja57totkuhhwwp6w2ftw7ldjpklhq
+- valory/check_stop_trading_abci:0.1.0:bafybeiafmydbl375kg34kqjvhk7fytippqulptd4ac6zblolmx3hwenazq
 - valory/mech_interact_abci:0.1.0:bafybeid3wg6uzf7mwrv6fpi2pmnbfsgc4ekbgpvakmcvoqfuq6znztpfei
-- valory/chatui_abci:0.1.0:bafybeiesux2otna7tz5h4z4wvgqpuvgm5mj7hvenryebpv25jt5wu5mxvm
-- valory/agent_performance_summary_abci:0.1.0:bafybeigp2ujwn7gvp7gcdrchzfeem3bmy3cpwvajw6j5cdlfencmdvtw6u
+- valory/chatui_abci:0.1.0:bafybeibai72bssdeyfsypk3bekvvfdj3fe7d2cqapv26unno6jndnh5duy
+- valory/agent_performance_summary_abci:0.1.0:bafybeiber3axwwonu47iks66afla7quytbk5odv7e2db5bvup3ufoz6dne
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe

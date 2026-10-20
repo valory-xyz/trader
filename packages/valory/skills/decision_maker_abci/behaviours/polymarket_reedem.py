@@ -179,7 +179,11 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             self._record_feed_event(EventType.PAYOUT_COLLECTED, fields)
 
     def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
-        """Fetch redeemable positions from Polymarket."""
+        """Fetch redeemable positions from Polymarket.
+
+        :yield: framework yields between dispatch and the connection response.
+        :return: the redeemable positions, or an empty list if the read failed.
+        """
         # Prepare payload data
         polymarket_bet_payload = {
             "request_type": RequestType.FETCH_ALL_POSITIONS.value,
@@ -190,6 +194,12 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         redeemable_positions = yield from self.send_polymarket_connection_request(
             polymarket_bet_payload
         )
+
+        if not isinstance(redeemable_positions, list):
+            self.context.logger.error(
+                f"Redeemable positions fetch failed: {redeemable_positions}"
+            )
+            return []
 
         return redeemable_positions
 
