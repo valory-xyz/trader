@@ -20,14 +20,15 @@
 """Tests for the polymarket_client connection."""
 
 import json
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
 from packages.valory.connections.polymarket_client.connection import (
-    DATA_API_BASE_URL,
+    DATA_API_POSITIONS_URL,
+    DATA_API_TRADES_URL,
     GAMMA_API_BASE_URL,
     MAX_RATE_LIMIT_SLEEP,
     MAX_UINT256,
@@ -37,6 +38,7 @@ from packages.valory.connections.polymarket_client.connection import (
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
     SrrDialogues,
+    _bool_param,
     _validate_builder_code,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
@@ -45,6 +47,7 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 # Helpers
 # ---------------------------------------------------------------------------
 
+CONNECTION_MODULE = "packages.valory.connections.polymarket_client.connection"
 SAFE_ADDRESS = "0x0000000000000000000000000000000000000001"
 COLLATERAL_ADDRESS = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"  # pUSD (v2)
 USDC_E_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # legacy wrap source
@@ -1596,12 +1599,14 @@ class TestFilterTradeableMarkets:
                 "outcomePrices": "[]",
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
             },
             {
                 "id": "m2",
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
             },
         ]
         result = conn._filter_tradeable_markets(markets)
@@ -1616,12 +1621,14 @@ class TestFilterTradeableMarkets:
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": "[]",
                 "active": True,
+                "version": "v1",
             },
             {
                 "id": "m2",
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
             },
         ]
         result = conn._filter_tradeable_markets(markets)
@@ -1636,12 +1643,14 @@ class TestFilterTradeableMarkets:
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": '["t1","t2"]',
                 "active": False,
+                "version": "v1",
             },
             {
                 "id": "m2",
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
             },
         ]
         result = conn._filter_tradeable_markets(markets)
@@ -1676,6 +1685,7 @@ class TestFilterTradeableMarkets:
                 "outcomePrices": "not json",
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
             },
         ]
         result = conn._filter_tradeable_markets(markets)
@@ -1690,6 +1700,7 @@ class TestFilterTradeableMarkets:
                 "outcomePrices": '["0.4","0.6"]',
                 "clobTokenIds": '["tok1","tok2"]',
                 "active": True,
+                "version": "v1",
             },
         ]
         result = conn._filter_tradeable_markets(markets)
@@ -1699,6 +1710,26 @@ class TestFilterTradeableMarkets:
         """No markets → empty list."""
         conn = _make_connection()
         assert conn._filter_tradeable_markets([]) == []
+
+    @pytest.mark.parametrize(
+        "version,kept",
+        [("v1", True), ("v2", False), ("V1", False), ("", False), (None, False)],
+    )
+    def test_keeps_only_supported_market_version(
+        self, version: Optional[str], kept: bool
+    ) -> None:
+        """Only Gamma `version` v1 markets are tradeable; missing or other versions drop."""
+        conn = _make_connection()
+        market = {
+            "id": "m1",
+            "outcomePrices": '["0.4","0.6"]',
+            "clobTokenIds": '["tok1","tok2"]',
+            "active": True,
+        }
+        if version is not None:
+            market["version"] = version
+        result = conn._filter_tradeable_markets([market])
+        assert [m["id"] for m in result] == (["m1"] if kept else [])
 
 
 # ---------------------------------------------------------------------------
@@ -1721,6 +1752,7 @@ class TestFetchMarketsAppliesTradeableFilter:
                 "outcomePrices": '["0.4","0.6"]',
                 "clobTokenIds": '["tok1","tok2"]',
                 "active": True,
+                "version": "v1",
                 "_poly_tags": ["politics"],
             },
             {
@@ -1730,6 +1762,7 @@ class TestFetchMarketsAppliesTradeableFilter:
                 "outcomePrices": "[]",
                 "clobTokenIds": '["tok1","tok2"]',
                 "active": True,
+                "version": "v1",
                 "_poly_tags": ["politics"],
             },
             {
@@ -1739,6 +1772,7 @@ class TestFetchMarketsAppliesTradeableFilter:
                 "outcomePrices": '["0.4","0.6"]',
                 "clobTokenIds": '["tok1","tok2"]',
                 "active": False,
+                "version": "v1",
                 "_poly_tags": ["politics"],
             },
         ]
@@ -1911,6 +1945,7 @@ class TestFetchMarkets:
                 "outcomePrices": '["0.5","0.5"]',
                 "clobTokenIds": '["t1","t2"]',
                 "active": True,
+                "version": "v1",
                 "_poly_tags": ["politics"],
             },
             # fails yes/no filter (multi-outcome)
@@ -2207,325 +2242,424 @@ class TestFetchMarketBySlug:
 
 
 # ---------------------------------------------------------------------------
-# _get_positions
+# Data API v2 reads (positions and trades)
 # ---------------------------------------------------------------------------
 
+DW_ADDRESS = "0x5AE1AA40AB7790b7eEE44a780Ef34FF217F8785C"
+SAMPLE_CURSOR = "cursor-page-2"
+SAMPLE_CONDITION_ID = (
+    "0x61c2b9e70f7fdf3441fd1cfa2c8fa93308fefe3f5ecc2db87c393efab3a207a3"
+)
+SAMPLE_TOKEN_ID = (
+    "19481059675849073197346646944327368414853269458422440354312650320744503267393"
+)
 
-class TestGetPositions:
-    """Tests for _get_positions."""
 
-    def test_returns_positions(self) -> None:
-        """Returns list of positions on success."""
+def _v2_position_row(redeemable: bool = False, **overrides: Any) -> dict:
+    """Build a Data API v2 positions row shaped like a live response.
+
+    :param redeemable: the row's redeemable flag
+    :param overrides: fields to replace
+    :return: the row
+    """
+    row = {
+        "proxy_wallet": SAFE_ADDRESS,
+        "token_id": SAMPLE_TOKEN_ID,
+        "condition_id": SAMPLE_CONDITION_ID,
+        "current_size": 1705.62,
+        "avg_price": 0.0193,
+        "entry_cost_usdc": 33.0839,
+        "total_cost_usdc": 33.5,
+        "current_price": 0.0,
+        "redeemable": redeemable,
+        "status": "REDEEMABLE" if redeemable else "OPEN",
+        "archived": False,
+        "title": "US x Iran Effective Ceasefire by August 31?",
+        "outcome": "No",
+        "outcome_index": 1,
+        "negative_risk": False,
+        "last_event_at": 1786557868,
+    }
+    row.update(overrides)
+    return row
+
+
+def _v2_trade_row(**overrides: Any) -> dict:
+    """Build a Data API v2 trades row shaped like a live response.
+
+    :param overrides: fields to replace
+    :return: the row
+    """
+    row = {
+        "proxy_wallet": SAFE_ADDRESS,
+        "side": "BUY",
+        "token_id": SAMPLE_TOKEN_ID,
+        "condition_id": SAMPLE_CONDITION_ID,
+        "size": 150.0,
+        "price": 0.3,
+        "timestamp": 1792418853,
+        "outcome": "No",
+        "outcome_index": 1,
+        "transaction_hash": "0x85eb",
+        "pseudonym": "Admirable-Child",
+    }
+    row.update(overrides)
+    return row
+
+
+def _v2_response(rows: Any, next_cursor: Any = None) -> MagicMock:
+    """Build a fake HTTP response carrying one Data API v2 page.
+
+    :param rows: the page's `data` value
+    :param next_cursor: the page's `pagination.next_cursor`
+    :return: the fake response
+    """
+    response = MagicMock()
+    response.json.return_value = {
+        "data": rows,
+        "pagination": {
+            "limit": 100,
+            "has_more": bool(next_cursor),
+            "next_cursor": next_cursor,
+        },
+    }
+    return response
+
+
+def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
+    """Return the query parameters of one recorded requests.get call.
+
+    :param mock_get: the patched requests.get
+    :param call_index: which call to inspect
+    :return: the params sent
+    """
+    return mock_get.call_args_list[call_index][1]["params"]
+
+
+class TestBoolParam:
+    """Tests for _bool_param."""
+
+    @pytest.mark.parametrize("value,expected", [(True, "true"), (False, "false")])
+    def test_renders_lowercase(self, value: bool, expected: str) -> None:
+        """Booleans go out as lowercase strings; v2 rejects Python's `True`."""
+        assert _bool_param(value) == expected
+
+
+class TestGetDataApiPage:
+    """Tests for _get_data_api_page."""
+
+    def test_returns_rows_and_next_cursor(self) -> None:
+        """A page yields its rows and the cursor of the next page."""
         conn = _make_connection()
-        positions = [{"token": "tok1", "size": 10}]  # nosec B105
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = positions
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        rows = [_v2_trade_row()]
+        with patch("requests.get", return_value=_v2_response(rows, SAMPLE_CURSOR)):
+            result = conn._get_data_api_page(
+                DATA_API_TRADES_URL, {"user": SAFE_ADDRESS}
+            )
+        assert result == (rows, SAMPLE_CURSOR, None)
 
-        with patch("requests.get", return_value=mock_resp):
-            result, error = conn._get_positions()
-
-        assert result == positions
-        assert error is None
-
-    def test_includes_redeemable_param_when_set(self) -> None:
-        """Includes 'redeemable' in params when explicitly provided."""
+    def test_null_data_is_an_empty_page(self) -> None:
+        """`data: null` is a documented miss, not an error."""
         conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        with patch("requests.get", return_value=_v2_response(None)):
+            result = conn._get_data_api_page(DATA_API_TRADES_URL, {})
+        assert result == ([], None, None)
 
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_positions(redeemable=True)
-
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs["params"]["redeemable"] is True
-
-    def test_excludes_redeemable_when_none(self) -> None:
-        """Does not include 'redeemable' in params when it is None."""
+    @pytest.mark.parametrize("cursor", [None, SAMPLE_CURSOR])
+    def test_sends_cursor_only_when_given(self, cursor: Any) -> None:
+        """The cursor is a query parameter only after the first page."""
         conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        with patch("requests.get", return_value=_v2_response([])) as mock_get:
+            conn._get_data_api_page(DATA_API_TRADES_URL, {"user": SAFE_ADDRESS}, cursor)
+        assert _sent_params(mock_get).get("cursor") == cursor
 
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_positions(redeemable=None)
-
-        call_kwargs = mock_get.call_args[1]
-        assert "redeemable" not in call_kwargs["params"]
-
-    def test_safe_address_sent_as_user_param(self) -> None:
-        """The safe address is passed as the 'user' query parameter."""
+    @pytest.mark.parametrize(
+        "body",
+        [
+            [_v2_trade_row()],
+            {"data": [_v2_trade_row()]},
+            {"data": "rows", "pagination": {}},
+            {"data": ["not-a-row"], "pagination": {}},
+            None,
+        ],
+    )
+    def test_unexpected_shape_returns_error(self, body: Any) -> None:
+        """A v1-shaped or otherwise malformed body is an error, never rows."""
         conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
+        response = MagicMock()
+        response.json.return_value = body
+        with patch("requests.get", return_value=response):
+            rows, next_cursor, error = conn._get_data_api_page(DATA_API_TRADES_URL, {})
+        assert rows is None and next_cursor is None
+        assert "Unexpected response shape" in error
 
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_positions()
-
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs["params"]["user"] == SAFE_ADDRESS
-
-    def test_address_override_sent_as_user_param(self) -> None:
-        """An explicit address overrides the Safe as the 'user' query param."""
+    @pytest.mark.parametrize(
+        "failure,message",
+        [
+            (requests.exceptions.HTTPError("400 Bad Request"), "Error fetching"),
+            (requests.exceptions.ConnectionError("down"), "Error fetching"),
+            (ValueError("Expecting value"), "Error fetching"),
+            (RuntimeError("boom"), "Unexpected error fetching"),
+        ],
+    )
+    def test_failed_read_returns_error(self, failure: Exception, message: str) -> None:
+        """HTTP errors, non-JSON bodies and anything else come back as an error."""
         conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        dw = "0x5AE1AA40AB7790b7eEE44a780Ef34FF217F8785C"
+        response = MagicMock()
+        response.json.side_effect = failure
+        with patch("requests.get", return_value=response):
+            rows, next_cursor, error = conn._get_data_api_page(DATA_API_TRADES_URL, {})
+        assert rows is None and next_cursor is None
+        assert message in error
 
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_positions(address=dw)
 
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs["params"]["user"] == dw
+class TestGetAllDataApiPages:
+    """Tests for _get_all_data_api_pages."""
 
-    def test_request_exception_returns_error(self) -> None:
-        """Returns (None, error) on RequestException."""
+    def test_follows_cursor_until_null(self) -> None:
+        """Every page is read, the second with the first page's cursor."""
         conn = _make_connection()
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        with patch(
-            "requests.get",
-            side_effect=requests.exceptions.RequestException("fail"),
+        page1, page2 = [_v2_trade_row(size=1.0)], [_v2_trade_row(size=2.0)]
+        responses = [_v2_response(page1, SAMPLE_CURSOR), _v2_response(page2)]
+        with patch("requests.get", side_effect=responses) as mock_get:
+            rows, error = conn._get_all_data_api_pages(
+                DATA_API_TRADES_URL, {"limit": 100}
+            )
+        assert (rows, error) == (page1 + page2, None)
+        assert "cursor" not in _sent_params(mock_get, 0)
+        assert _sent_params(mock_get, 1)["cursor"] == SAMPLE_CURSOR
+
+    def test_failed_page_discards_the_partial_read(self) -> None:
+        """A failure after the first page returns an error, not page one alone."""
+        conn = _make_connection()
+        responses = [
+            _v2_response([_v2_trade_row()], SAMPLE_CURSOR),
+            requests.exceptions.ConnectionError("down"),
+        ]
+        with patch("requests.get", side_effect=responses):
+            rows, error = conn._get_all_data_api_pages(DATA_API_TRADES_URL, {})
+        assert rows is None
+        assert "Error fetching" in error
+
+    def test_repeated_cursor_returns_error(self) -> None:
+        """A cursor seen before stops the read instead of looping forever."""
+        conn = _make_connection()
+        responses = [_v2_response([], SAMPLE_CURSOR), _v2_response([], SAMPLE_CURSOR)]
+        with patch("requests.get", side_effect=responses):
+            rows, error = conn._get_all_data_api_pages(DATA_API_TRADES_URL, {})
+        assert rows is None
+        assert "Repeated pagination cursor" in error
+
+    def test_page_cap_returns_error(self) -> None:
+        """A read needing more than the page cap is an error, never truncated."""
+        conn = _make_connection()
+        responses = [_v2_response([_v2_trade_row()], f"c{i}") for i in range(3)]
+        with (
+            patch(f"{CONNECTION_MODULE}.DATA_API_MAX_PAGES", 2),
+            patch("requests.get", side_effect=responses) as mock_get,
         ):
-            result, error = conn._get_positions()
+            rows, error = conn._get_all_data_api_pages(DATA_API_TRADES_URL, {})
+        assert rows is None
+        assert "exceeded 2 pages" in error
+        assert mock_get.call_count == 2
 
-        assert result is None
-        assert "Error fetching positions" in error
 
-    def test_generic_exception_returns_error(self) -> None:
-        """Returns (None, error) on generic Exception."""
+class TestPositionsReads:
+    """Tests for _get_positions and _fetch_all_positions."""
+
+    def test_maps_v2_fields_to_the_names_callers_read(self) -> None:
+        """Each field a skill reads arrives under its v1 name with its value."""
         conn = _make_connection()
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        with patch("requests.get", side_effect=RuntimeError("oops")):
-            result, error = conn._get_positions()
-
-        assert result is None
-        assert "Unexpected error" in error
-
-    def test_uses_data_api_positions_url(self) -> None:
-        """_get_positions fetches from DATA_API_BASE_URL/positions, not a different base URL."""
-        conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_positions()
-
-        url_called = mock_get.call_args[0][0]
-        assert url_called == f"{DATA_API_BASE_URL}/positions"
-
-
-# ---------------------------------------------------------------------------
-# _fetch_all_positions
-# ---------------------------------------------------------------------------
-
-
-class TestFetchAllPositions:
-    """Tests for _fetch_all_positions."""
-
-    def test_single_page(self) -> None:
-        """Returns all positions when they fit in a single page."""
-        conn = _make_connection()
-        positions = [{"id": f"p{i}"} for i in range(10)]
-        conn._get_positions = MagicMock(return_value=(positions, None))
-
-        result, error = conn._fetch_all_positions()
-        assert len(result) == 10
+        with patch("requests.get", return_value=_v2_response([_v2_position_row(True)])):
+            positions, error = conn._fetch_all_positions()
         assert error is None
+        assert positions == [
+            {
+                "proxyWallet": SAFE_ADDRESS,
+                "asset": SAMPLE_TOKEN_ID,
+                "conditionId": SAMPLE_CONDITION_ID,
+                "size": 1705.62,
+                "avgPrice": 0.0193,
+                "initialValue": 33.0839,
+                "curPrice": 0.0,
+                "redeemable": True,
+                "title": "US x Iran Effective Ceasefire by August 31?",
+                "outcome": "No",
+                "outcomeIndex": 1,
+                "negativeRisk": False,
+            }
+        ]
 
-    def test_multiple_pages(self) -> None:
-        """Paginates and concatenates results from multiple pages."""
+    def test_query_uses_the_v2_route_and_parameters(self) -> None:
+        """Positions read v2 with its filter, sort and archive parameters."""
         conn = _make_connection()
-        page1 = [{"id": f"p{i}"} for i in range(100)]
-        page2 = [{"id": f"p{i}"} for i in range(5)]
-        conn._get_positions = MagicMock(side_effect=[(page1, None), (page2, None)])
+        with patch("requests.get", return_value=_v2_response([])) as mock_get:
+            conn._fetch_all_positions(size_threshold=5)
+        assert mock_get.call_args[0][0] == DATA_API_POSITIONS_URL
+        assert _sent_params(mock_get) == {
+            "user": SAFE_ADDRESS,
+            "limit": 100,
+            "filter_type": "TOKENS",
+            "filter_amount": 5,
+            "sort_by": "TOKENS",
+            "sort_direction": "DESC",
+        }
 
-        result, error = conn._fetch_all_positions()
-        assert len(result) == 105
+    @pytest.mark.parametrize(
+        "redeemable,expected_status,expected_archived,expected_redeemable_flags",
+        [
+            (True, "REDEEMABLE", "true", [True]),
+            (False, None, None, [False]),
+            (None, None, None, [True, False]),
+        ],
+    )
+    def test_redeemable_selects_rows(
+        self,
+        redeemable: Optional[bool],
+        expected_status: Optional[str],
+        expected_archived: Optional[str],
+        expected_redeemable_flags: list,
+    ) -> None:
+        """`redeemable` picks the status, archive scope and rows returned.
+
+        v2 ignores a `redeemable` parameter, and its open status also returns
+        settled rows, so the filter must hold whatever the server sends. Only
+        the redeemable read reaches into archived markets.
+
+        :param redeemable: the filter asked for
+        :param expected_status: the v2 status sent, if any
+        :param expected_archived: the include_archived value sent, if any
+        :param expected_redeemable_flags: redeemable flags of the rows returned
+        """
+        conn = _make_connection()
+        rows = [_v2_position_row(True), _v2_position_row(False)]
+        with patch("requests.get", return_value=_v2_response(rows)) as mock_get:
+            positions, _ = conn._fetch_all_positions(redeemable=redeemable)
+        assert _sent_params(mock_get).get("status") == expected_status
+        assert _sent_params(mock_get).get("include_archived") == expected_archived
+        assert "redeemable" not in _sent_params(mock_get)
+        assert [p["redeemable"] for p in positions] == expected_redeemable_flags
+
+    @pytest.mark.parametrize(
+        "address,expected_user", [(None, SAFE_ADDRESS), (DW_ADDRESS, DW_ADDRESS)]
+    )
+    def test_holder_defaults_to_the_safe(
+        self, address: Any, expected_user: str
+    ) -> None:
+        """The holder is the Safe unless an address is given (the DW sell-loop)."""
+        conn = _make_connection()
+        with patch("requests.get", return_value=_v2_response([])) as mock_get:
+            conn._fetch_all_positions(address=address)
+        assert _sent_params(mock_get)["user"] == expected_user
+
+    def test_fetch_all_reads_every_page(self) -> None:
+        """Positions on later pages are not dropped."""
+        conn = _make_connection()
+        responses = [
+            _v2_response([_v2_position_row(token_id="1")], SAMPLE_CURSOR),
+            _v2_response([_v2_position_row(token_id="2")]),
+        ]
+        with patch("requests.get", side_effect=responses):
+            positions, error = conn._fetch_all_positions()
         assert error is None
+        assert [p["asset"] for p in positions] == ["1", "2"]
 
-    def test_error_propagates(self) -> None:
-        """Returns (None, error) when _get_positions fails."""
+    def test_get_positions_reads_only_the_first_page(self) -> None:
+        """A single-page read sends no cursor, stops there and selects rows the same way."""
         conn = _make_connection()
-        conn._get_positions = MagicMock(return_value=(None, "API error"))
-
-        result, error = conn._fetch_all_positions()
-        assert result is None
-        assert error == "API error"
-
-    def test_empty_positions(self) -> None:
-        """Returns empty list when no positions exist."""
-        conn = _make_connection()
-        conn._get_positions = MagicMock(return_value=([], None))
-
-        result, error = conn._fetch_all_positions()
-        assert result == []
+        rows = [_v2_position_row(True), _v2_position_row(False)]
+        with patch("requests.get", return_value=_v2_response(rows, "next")) as mock_get:
+            positions, error = conn._get_positions(redeemable=False)
         assert error is None
+        assert mock_get.call_count == 1
+        assert "cursor" not in _sent_params(mock_get)
+        assert [p["redeemable"] for p in positions] == [False]
 
-    def test_generic_exception_returns_error(self) -> None:
-        """Catches generic exceptions and returns error."""
+    @pytest.mark.parametrize("read", ["_get_positions", "_fetch_all_positions"])
+    def test_failed_read_returns_error(self, read: str) -> None:
+        """A failed read returns an error result rather than raising."""
         conn = _make_connection()
-        conn._get_positions = MagicMock(side_effect=RuntimeError("crash"))
-
-        result, error = conn._fetch_all_positions()
-        assert result is None
-        assert "Unexpected error" in error
-
-    def test_address_threaded_to_get_positions(self) -> None:
-        """An explicit address is forwarded to every _get_positions page call."""
-        conn = _make_connection()
-        conn._get_positions = MagicMock(return_value=([], None))
-        dw = "0x5AE1AA40AB7790b7eEE44a780Ef34FF217F8785C"
-
-        conn._fetch_all_positions(address=dw)
-
-        assert conn._get_positions.call_args[1]["address"] == dw
-
-
-# ---------------------------------------------------------------------------
-# _get_trades
-# ---------------------------------------------------------------------------
-
-
-class TestGetTrades:
-    """Tests for _get_trades."""
-
-    def test_returns_trades(self) -> None:
-        """Returns list of trades on success."""
-        conn = _make_connection()
-        trades = [{"conditionId": "cid1"}]
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = trades
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-
-        with patch("requests.get", return_value=mock_resp):
-            result, error = conn._get_trades()
-
-        assert result == trades
-        assert error is None
-
-    def test_safe_address_and_taker_only_params_sent(self) -> None:
-        """safe_address is sent as 'user' and taker_only as 'takerOnly'."""
-        conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_trades(taker_only=False)
-
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs["params"]["user"] == SAFE_ADDRESS
-        assert call_kwargs["params"]["takerOnly"] is False
-
-    def test_request_exception_returns_error(self) -> None:
-        """Returns (None, error) on RequestException."""
-        conn = _make_connection()
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
         with patch(
-            "requests.get",
-            side_effect=requests.exceptions.RequestException("fail"),
+            "requests.get", side_effect=requests.exceptions.ConnectionError("x")
         ):
-            result, error = conn._get_trades()
+            positions, error = getattr(conn, read)()
+        assert positions is None
+        assert "Error fetching" in error
 
-        assert result is None
-        assert "Error fetching trades" in error
 
-    def test_generic_exception_returns_error(self) -> None:
-        """Returns (None, error) on generic Exception."""
+class TestTradesReads:
+    """Tests for _get_trades and _fetch_all_trades."""
+
+    def test_maps_v2_fields_to_the_names_callers_read(self) -> None:
+        """Each field the bet-investment rebuild reads arrives under its v1 name."""
         conn = _make_connection()
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-        with patch("requests.get", side_effect=RuntimeError("oops")):
-            result, error = conn._get_trades()
-
-        assert result is None
-        assert "Unexpected error" in error
-
-    def test_uses_data_api_trades_url(self) -> None:
-        """_get_trades fetches from DATA_API_BASE_URL/trades, not a different base URL."""
-        conn = _make_connection()
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = []
-        conn.configuration.config.get.return_value = {"polygon": SAFE_ADDRESS}
-
-        with patch("requests.get", return_value=mock_resp) as mock_get:
-            conn._get_trades()
-
-        url_called = mock_get.call_args[0][0]
-        assert url_called == f"{DATA_API_BASE_URL}/trades"
-
-
-# ---------------------------------------------------------------------------
-# _fetch_all_trades
-# ---------------------------------------------------------------------------
-
-
-class TestFetchAllTrades:
-    """Tests for _fetch_all_trades."""
-
-    def test_single_page(self) -> None:
-        """Returns all trades from a single page."""
-        conn = _make_connection()
-        trades = [{"conditionId": f"c{i}"} for i in range(10)]
-        conn._get_trades = MagicMock(return_value=(trades, None))
-
-        result, error = conn._fetch_all_trades()
-        assert len(result) == 10
+        with patch("requests.get", return_value=_v2_response([_v2_trade_row()])):
+            trades, error = conn._fetch_all_trades()
         assert error is None
+        assert trades == [
+            {
+                "proxyWallet": SAFE_ADDRESS,
+                "side": "BUY",
+                "asset": SAMPLE_TOKEN_ID,
+                "conditionId": SAMPLE_CONDITION_ID,
+                "size": 150.0,
+                "price": 0.3,
+                "timestamp": 1792418853,
+                "outcome": "No",
+                "outcomeIndex": 1,
+                "transactionHash": "0x85eb",
+            }
+        ]
 
-    def test_multiple_pages(self) -> None:
-        """Paginates and concatenates results."""
+    @pytest.mark.parametrize("taker_only,expected", [(True, "true"), (False, "false")])
+    def test_query_uses_the_v2_route_and_parameters(
+        self, taker_only: bool, expected: str
+    ) -> None:
+        """Trades read v2 with lowercase `taker_only` and no `offset`."""
         conn = _make_connection()
-        page1 = [{"conditionId": f"c{i}"} for i in range(100)]
-        page2 = [{"conditionId": f"c{i}"} for i in range(50)]
-        conn._get_trades = MagicMock(side_effect=[(page1, None), (page2, None)])
+        with patch("requests.get", return_value=_v2_response([])) as mock_get:
+            conn._fetch_all_trades(taker_only=taker_only)
+        assert mock_get.call_args[0][0] == DATA_API_TRADES_URL
+        assert _sent_params(mock_get) == {
+            "user": SAFE_ADDRESS,
+            "limit": 100,
+            "taker_only": expected,
+        }
 
-        result, error = conn._fetch_all_trades()
-        assert len(result) == 150
+    def test_fetch_all_reads_every_page(self) -> None:
+        """Trades on later pages are not dropped."""
+        conn = _make_connection()
+        responses = [
+            _v2_response([_v2_trade_row(size=1.0)], SAMPLE_CURSOR),
+            _v2_response([_v2_trade_row(size=2.0)]),
+        ]
+        with patch("requests.get", side_effect=responses):
+            trades, error = conn._fetch_all_trades()
         assert error is None
+        assert [t["size"] for t in trades] == [1.0, 2.0]
 
-    def test_empty_trades(self) -> None:
-        """Returns empty list when no trades exist."""
+    def test_get_trades_reads_only_the_first_page(self) -> None:
+        """A single-page read sends no cursor, stops there and maps the rows."""
         conn = _make_connection()
-        conn._get_trades = MagicMock(return_value=([], None))
-
-        result, error = conn._fetch_all_trades()
-        assert result == []
+        with patch(
+            "requests.get", return_value=_v2_response([_v2_trade_row()], "next")
+        ) as mock_get:
+            trades, error = conn._get_trades()
         assert error is None
+        assert mock_get.call_count == 1
+        assert "cursor" not in _sent_params(mock_get)
+        assert trades[0]["conditionId"] == SAMPLE_CONDITION_ID
 
-    def test_error_propagates(self) -> None:
-        """Returns (None, error) when _get_trades fails."""
+    @pytest.mark.parametrize("read", ["_get_trades", "_fetch_all_trades"])
+    def test_failed_read_returns_error(self, read: str) -> None:
+        """A failed read returns an error result rather than raising."""
         conn = _make_connection()
-        conn._get_trades = MagicMock(return_value=(None, "fetch error"))
-
-        result, error = conn._fetch_all_trades()
-        assert result is None
-        assert error == "fetch error"
-
-    def test_generic_exception_returns_error(self) -> None:
-        """Catches generic exceptions and returns error."""
-        conn = _make_connection()
-        conn._get_trades = MagicMock(side_effect=RuntimeError("crash"))
-
-        result, error = conn._fetch_all_trades()
-        assert result is None
-        assert "Unexpected error" in error
-
-    def test_full_page_triggers_next_page_fetch(self) -> None:
-        """A full page (limit items) causes another request; an empty page stops pagination."""
-        conn = _make_connection()
-        # Return exactly 100 items (limit), triggering a follow-up request
-        page1 = [{"conditionId": f"c{i}"} for i in range(100)]
-        conn._get_trades = MagicMock(side_effect=[(page1, None), ([], None)])
-
-        result, error = conn._fetch_all_trades()
-        # Both pages fetched; empty second page ends pagination
-        assert conn._get_trades.call_count == 2
-        assert len(result) == 100
-        assert error is None
+        with patch(
+            "requests.get", side_effect=requests.exceptions.ConnectionError("x")
+        ):
+            trades, error = getattr(conn, read)()
+        assert trades is None
+        assert "Error fetching" in error
 
 
 # ---------------------------------------------------------------------------
