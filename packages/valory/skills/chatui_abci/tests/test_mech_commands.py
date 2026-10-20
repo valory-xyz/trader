@@ -302,3 +302,12 @@ def test_an_undo_with_nothing_removed_has_no_mech() -> None:
         MechIntent.UNDO,
         None,
     )
+
+
+def test_an_undo_does_not_take_the_mech_just_shown() -> None:
+    """The reply before an undo is the removal, so a just-shown reference means the removed mech."""
+    reply = {"intent": "undo", "last_shown": True}
+    assert resolve_intent(reply, "put it back", OTHER, LAST_LIST, MECH) == (
+        MechIntent.UNDO,
+        MECH,
+    )

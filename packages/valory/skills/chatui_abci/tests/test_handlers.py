@@ -54,6 +54,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     SrrHandler,
     TRADING_TYPE_FIELD,
     UPDATED_PARAMS_FIELD,
+    VALORY_NOT_REMOVABLE,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
     NEVER_DELIVERED,
@@ -164,6 +165,7 @@ def _make_handler(
     shared_state.last_shown_mech = None
     shared_state.last_removed = None
     shared_state.last_mech_list = []
+    shared_state.discovered_mechs = (frozenset(), {})
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )
@@ -1184,7 +1186,8 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result == AVAILABLE_TOOLS
+        assert result is not None
+        assert result[0] == AVAILABLE_TOOLS
 
     def test_prefers_filtered_set_when_published(self) -> None:
         """The filtered set wins over the raw synced set when present."""
@@ -1195,7 +1198,8 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result == {"prediction-online"}
+        assert result is not None
+        assert result[0] == {"prediction-online"}
 
     def test_falls_back_to_mech_tools_when_unpublished(self) -> None:
         """With no filtered set published, return the raw synced set."""
@@ -1206,7 +1210,8 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result == {"prediction-online", "resolve-market"}
+        assert result is not None
+        assert result[0] == {"prediction-online", "resolve-market"}
 
     def test_falls_back_to_mech_tools_when_published_set_empty(self) -> None:
         """An empty published set must fall back to raw, not "reject everything".
@@ -1221,7 +1226,8 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result == {"prediction-online", "resolve-market"}
+        assert result is not None
+        assert result[0] == {"prediction-online", "resolve-market"}
 
     def test_returns_none_and_sends_too_early_on_type_error(self) -> None:
         """When synchronized_data raises TypeError, return None and send 425."""
@@ -1234,6 +1240,17 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
+        assert result is None
+        handler._send_too_early_request_response.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_sends_too_early_while_synced_tools_are_not_loaded(self) -> None:
+        """After a restart the filtered set can load before the synced tool keys; the prompt needs both."""
+        handler = _make_handler(prediction_tools={"prediction-online"})
+        type(handler.synchronized_data).available_mech_tools = property(  # type: ignore[attr-defined]
+            lambda self: (_ for _ in ()).throw(TypeError("not ready"))
+        )
+        handler._send_too_early_request_response = MagicMock()  # type: ignore[assignment]
+        result = handler._get_available_tools(MagicMock(), MagicMock())
         assert result is None
         handler._send_too_early_request_response.assert_called_once()  # type: ignore[attr-defined]
 
@@ -1250,7 +1267,9 @@ class TestHandleChatuiPrompt:
         handler = _make_handler(current_config=current_config)
         handler._send_bad_request_response = MagicMock()  # type: ignore[assignment]
         handler._send_chatui_llm_request = MagicMock()  # type: ignore[assignment]
-        handler._get_available_tools = MagicMock(return_value=AVAILABLE_TOOLS)  # type: ignore[assignment]
+        handler._get_available_tools = MagicMock(  # type: ignore[assignment]
+            return_value=(AVAILABLE_TOOLS, set(AVAILABLE_TOOLS))
+        )
         return handler
 
     @staticmethod
@@ -3788,6 +3807,43 @@ class TestAnApprovalNeedsTheReportJustBefore:
         )
 
 
+class TestDiscoveredMechsBetweenPeriods:
+    """`mechs_info` is not kept across periods, so the last discovered mechs stand in until the next discovery."""
+
+    @staticmethod
+    def _listed_then_reset() -> _TestableHttpHandler:
+        handler, _ = _mech_handler(
+            discovered={VALORY_MECH}, discovered_types={VALORY_MECH: NATIVE}
+        )
+        _chat(handler, "which mechs can my agent use?", "list")
+        handler._send_ok_response.reset_mock()
+        handler.synchronized_data.mechs_info_loaded = False
+        handler.synchronized_data.available_valid_mechs = set()
+        handler.synchronized_data.mech_payment_types = {}
+        return handler
+
+    def test_the_list_keeps_the_last_discovered_mechs(self) -> None:
+        """Between a reset and the next discovery the list and payment methods stay."""
+        handler = self._listed_then_reset()
+        _chat(handler, "which mechs can my agent use?", "list")
+        assert _reply(handler).startswith(
+            f"Mechs your agent can use:<br>1. {VALORY_MECH}, Valory, paid with xDAI"
+        )
+
+    def test_a_valory_mech_can_still_be_pinned(self) -> None:
+        """Pinning checks the same discovered mechs."""
+        handler = self._listed_then_reset()
+        _chat(handler, f"pin {VALORY_MECH}", "pin", address=VALORY_MECH)
+        handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
+
+    def test_a_discovery_that_finds_none_replaces_the_last_one(self) -> None:
+        """An empty `mechs_info` written this period is read as no mechs, not as missing."""
+        handler = self._listed_then_reset()
+        handler.synchronized_data.mechs_info_loaded = True
+        _chat(handler, "which mechs can my agent use?", "list")
+        assert _reply(handler).startswith("Your agent has no mechs to list yet.")
+
+
 class TestListIntent:
     """The list intent is answered with a numbered list the handler builds and keeps."""
 
@@ -3942,6 +3998,18 @@ class TestRemoveIntent:
             "its report and approve it again."
         )
 
+    @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
+    def test_a_valory_mech_is_not_removable(self, typed: bool) -> None:
+        """A Valory mech has no approval to remove; the reply points to pinning."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        if typed:
+            _prompt(handler, f"remove {VALORY_MECH}")
+        else:
+            _chat(handler, f"stop using {VALORY_MECH}", "remove", address=VALORY_MECH)
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert _reply(handler) == VALORY_NOT_REMOVABLE.format(address=VALORY_MECH)
+
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
         handler, _ = _mech_handler(approved={OTHER_MECH: 2})
@@ -3965,6 +4033,18 @@ class TestTypedRemove:
         handler._send_message.assert_not_called()  # type: ignore[attr-defined]
         assert handler.shared_state.approved_mech_rates == {}
         assert _reply(handler).startswith(f"Removed {THIRD_PARTY}.")
+
+    @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
+    def test_a_valory_mech_is_not_removable(self, typed: bool) -> None:
+        """A Valory mech has no approval to remove; the reply points to pinning."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        if typed:
+            _prompt(handler, f"remove {VALORY_MECH}")
+        else:
+            _chat(handler, f"stop using {VALORY_MECH}", "remove", address=VALORY_MECH)
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert _reply(handler) == VALORY_NOT_REMOVABLE.format(address=VALORY_MECH)
 
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
@@ -4105,6 +4185,19 @@ class TestUndoRightAfterARemoval:
         """Other wording reaches the undo through the model's reading."""
         handler = self._removed(pinned=False)
         _chat(handler, text, "undo", address=address)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    @pytest.mark.parametrize(
+        "text", ["put it back please", "restore the mech I just removed"]
+    )
+    def test_an_undo_read_as_the_mech_just_shown_puts_back_the_removed_mech(
+        self, text: str
+    ) -> None:
+        """The model reads "it" as the mech just shown; for an undo that is the removed mech."""
+        handler = self._removed(pinned=False)
+        _chat(handler, text, "undo", last_shown=True)
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE, NATIVE
         )

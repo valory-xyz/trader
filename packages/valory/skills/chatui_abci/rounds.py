@@ -74,6 +74,11 @@ class SynchronizedData(BaseSynchronizedData):
             if m.get("payment_type")
         }
 
+    @property
+    def mechs_info_loaded(self) -> bool:
+        """Whether mech-interact has written `mechs_info` in this period; it is not kept across periods."""
+        return isinstance(self.db.get("mechs_info", None), str)
+
     def _mechs_info(self) -> List[Dict[str, Any]]:
         """The `mechs_info` entries that carry an address; unreadable data reads as none."""
         raw = self.db.get("mechs_info", "[]")

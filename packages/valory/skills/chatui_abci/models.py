@@ -25,7 +25,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, List, NamedTuple, Optional, Type
+from typing import Any, Dict, FrozenSet, List, NamedTuple, Optional, Tuple, Type
 
 from aea.skills.base import SkillContext
 
@@ -142,6 +142,12 @@ class SharedState(BaseSharedState):
         self.last_shown_mech: Optional[str] = None
         self.last_mech_list: List[str] = []
         self.last_removed: Optional[RemovedMech] = None
+        # In memory: the mechs mech-interact last discovered and their payment
+        # types, which stand in while a new period has not discovered them yet.
+        self.discovered_mechs: Tuple[FrozenSet[str], Dict[str, str]] = (
+            frozenset(),
+            {},
+        )
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin
