@@ -70,14 +70,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigtycubatr4szlx3y4nwyz6z524qcr5s5wo5ggozvkyq42rxj6jdu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidhcgf4lr6z2elmiyty6rwazwjwrawv43rlhymkvc3hpnyc57z72i
 - valory/market_manager_abci:0.1.0:bafybeifydyzqnsozq3vwjvkw3dj3e5jliblxuy5sge6ssj44qjl3fekw7a
-- valory/decision_maker_abci:0.1.0:bafybeibilwtnih7il6l4agwsmb2d4exghu223pybbx4mivqommtqvjw4e4
-- valory/trader_abci:0.1.0:bafybeiht5pataqks237symjmyaho4nlqjrsgnkyhxz67zieoy2bq33fwby
+- valory/decision_maker_abci:0.1.0:bafybeic6ebkenyugbhhcthgwgjkmcbcbytczagaebvupjfgn5cjk5mysju
+- valory/trader_abci:0.1.0:bafybeifeuv7gmtimheev5zwgevm77577qa7o55hcqjfqzwxqhpttcgz3mu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeibyogx6i4i7jmxu3vt47n47oelqrgrzo6v7ekhplm7zbvmp7aj3ea
+- valory/check_stop_trading_abci:0.1.0:bafybeihu73xdk6a5fuu52l2nyh5nc5awv2vwgt6bbjcuto3hkwlvpfy6em
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeihhcehc6xsvboiwx2u6phrasoop3sq3ksfrlcxwcutnr575ih5zey
+- valory/chatui_abci:0.1.0:bafybeiavwdbbnhbgibejuyo7eteyt6moa7wn5dgm3e62fmjgh336nxvpei
 - valory/agent_performance_summary_abci:0.1.0:bafybeiacwc4jn24337f3v7fq4374tby6e7ykqnqhhd2rwenqd7c7lf6scu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:

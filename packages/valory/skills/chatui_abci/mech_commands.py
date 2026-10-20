@@ -21,7 +21,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional, Set, Tuple
+from typing import Any, List, Optional, Sequence, Set, Tuple
 
 from packages.valory.skills.chatui_abci.prompts import MechIntent
 
@@ -30,6 +30,7 @@ TRAILING_PUNCTUATION = ".,;:!?"
 _ADDRESS = r"(?P<address>0x[0-9a-f]{40})"
 ACCEPT_PATTERN = re.compile(rf"i accept (?P<price>.+) per request for {_ADDRESS}")
 REMOVE_PATTERN = re.compile(rf"remove {_ADDRESS}")
+UNDO_MESSAGE = "undo"
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,11 @@ def parse_remove(text: str) -> Optional[str]:
     return remove["address"] if remove is not None else None
 
 
+def parse_undo(text: str) -> bool:
+    """Whether the whole message is a typed `undo`."""
+    return normalise(text).rstrip(TRAILING_PUNCTUATION).rstrip() == UNDO_MESSAGE
+
+
 def _named_address(value: Any, message: str) -> Optional[str]:
     """The address, when the user's message names it."""
     if not isinstance(value, str):
@@ -74,14 +80,30 @@ def _named_address(value: Any, message: str) -> Optional[str]:
     return address if address in addresses_in(message) else None
 
 
+def _listed_address(value: Any, last_list: Sequence[str]) -> Optional[str]:
+    """The address at a 1-based position of the last list shown."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if not 1 <= value <= len(last_list):
+        return None
+    return last_list[value - 1]
+
+
 def resolve_intent(
-    reply: Any, message: str, last_shown: Optional[str]
+    reply: Any,
+    message: str,
+    last_shown: Optional[str],
+    last_list: Sequence[str],
+    last_removed: Optional[str] = None,
 ) -> Tuple[MechIntent, Optional[str]]:
     """The mech intent the model returned and the one mech it refers to, checked against the chat.
 
     :param reply: the `mech_intent` of the model's reply, decoded from JSON.
     :param message: the user's message.
     :param last_shown: the address of the last report shown, if any.
+    :param last_list: the addresses of the last numbered list shown, in order.
+    :param last_removed: the address the reply before this message removed, if
+        any; an undo refers to it, so any other reference must agree with it.
     :return: the intent, `NONE` for any reply that is not a known intent, and
         the mech, or `None` unless every reference given names the same mech.
 
@@ -93,8 +115,12 @@ def resolve_intent(
     except (ValueError, TypeError):
         return MechIntent.NONE, None
     named: Set[Optional[str]] = set()
+    if intent is MechIntent.UNDO:
+        named.add(last_removed)
     if reply.get("address") not in (None, ""):
         named.add(_named_address(reply["address"], message))
     if reply.get("last_shown") is True:
         named.add(last_shown)
+    if reply.get("position") not in (None, 0, False):
+        named.add(_listed_address(reply["position"], last_list))
     return intent, named.pop() if len(named) == 1 else None

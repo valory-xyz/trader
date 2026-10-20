@@ -27,7 +27,18 @@ from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -82,9 +93,11 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     normalise,
     parse_accept,
     parse_remove,
+    parse_undo,
     resolve_intent,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
+    PARAGRAPH_BREAK,
     Standing,
     payment_line,
     render_report,
@@ -93,6 +106,7 @@ from packages.valory.skills.chatui_abci.mech_templates import (
 from packages.valory.skills.chatui_abci.models import (
     ACTIVITY_GOAL_FIELD,
     Offer,
+    RemovedMech,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -129,6 +143,18 @@ def _tools_for_prompt(tools: Any, valory_tools: Set[str]) -> str:
     if hidden:
         text += f" (and {hidden} other tool(s), not listed)"
     return text
+
+
+def _list_number(
+    reading: Any, address: Optional[str], last_list: Sequence[str]
+) -> Optional[int]:
+    """The list number a resolved mech came from; `resolve_intent` already matched it to the mech."""
+    if not isinstance(reading, dict) or address is None or not last_list:
+        return None
+    position = reading.get("position")
+    if isinstance(position, bool) or not isinstance(position, int) or position < 1:
+        return None
+    return position
 
 
 ChatuiABCIHandler = BaseABCIRoundHandler
@@ -180,10 +206,12 @@ ACCEPT_UNREADABLE = (
     "exactly: I accept <price> per request for <address>"
 )
 WHICH_MECH = (
-    "I couldn't tell which mech you mean. Send its address to see its report. If "
-    "you meant something else, ask again in other words."
+    "I couldn't tell which mech you mean. If you meant something else, ask again "
+    "in other words."
 )
-NEXT_STEP = "Send a mech's address to see its report."
+NEXT_STEP = (
+    "Send a mech's address to see its report, or ask which mechs your agent can use."
+)
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
 # The settings a config reply can set, compared with the current config.
@@ -321,9 +349,13 @@ class HttpHandler(BaseHttpHandler):
             )
             return
 
-        # "The mech just shown" means the reply right before this message.
+        # "The mech just shown" and the list's numbers mean the reply right before this message.
         last_shown = self.shared_state.last_shown_mech
         self.shared_state.last_shown_mech = None
+        last_list = list(self.shared_state.last_mech_list)
+        self.shared_state.last_mech_list = []
+        last_removed = self.shared_state.last_removed
+        self.shared_state.last_removed = None
         accept = parse_accept(user_prompt)
         if accept is not None:
             self._accept_offer(accept, http_msg, http_dialogue)
@@ -331,6 +363,12 @@ class HttpHandler(BaseHttpHandler):
         removed = parse_remove(user_prompt)
         if removed is not None:
             self._send_mech_reply(http_msg, http_dialogue, self._remove_mech(removed))
+            return
+        if parse_undo(user_prompt):
+            undone = None if last_removed is None else last_removed.address
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed, undone)
+            )
             return
         # A typed price is consent to that price, so a line that does not
         # parse is never read as an approval at the price shown.
@@ -345,7 +383,13 @@ class HttpHandler(BaseHttpHandler):
         if available_tools is None:
             return
         self._send_chatui_prompt(
-            user_prompt, available_tools, http_msg, http_dialogue, last_shown
+            user_prompt,
+            available_tools,
+            http_msg,
+            http_dialogue,
+            last_shown,
+            last_list,
+            last_removed,
         )
 
     def _run_mech_intent(
@@ -355,11 +399,19 @@ class HttpHandler(BaseHttpHandler):
         last_shown: Optional[str],
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
+        number: Optional[int] = None,
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Carry out a mech intent in code; without the mech it needs, ask which one."""
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
-        if address is None:
-            self._send_mech_reply(http_msg, http_dialogue, WHICH_MECH)
+        if intent is MechIntent.UNDO:
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed, address)
+            )
+        elif intent is MechIntent.LIST:
+            self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
+        elif address is None:
+            self._send_mech_reply(http_msg, http_dialogue, self._which_mech())
         elif intent is MechIntent.ASK:
             self._report_mech(address, http_msg, http_dialogue)
         elif intent is MechIntent.APPROVE:
@@ -370,7 +422,10 @@ class HttpHandler(BaseHttpHandler):
                 MechIntent.PIN: self._pin_mech,
                 MechIntent.UNPIN: self._unpin_mech,
             }[intent]
-            self._send_mech_reply(http_msg, http_dialogue, act(address))
+            reply = act(address)
+            if number is not None:
+                reply = f"Number {number} on the list just shown is {address}. {reply}"
+            self._send_mech_reply(http_msg, http_dialogue, reply)
 
     def _report_mech(
         self, address: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
@@ -557,13 +612,108 @@ class HttpHandler(BaseHttpHandler):
             return f"{address}, up to {price} per request"
         return f"{address} (send its address to see its price)"
 
+    def _list_entry(self, address: str) -> str:
+        """One listed mech: approved at its accepted price, or Valory with its payment method."""
+        rate = self.shared_state.approved_mech_rates.get(address)
+        if rate is not None:
+            price = self._approved_price(address, rate)
+            terms = (
+                f"approved, up to {price} per request"
+                if price is not None
+                else "approved; ask about it to see its price"
+            )
+        else:
+            kind = self.synchronized_data.mech_payment_types.get(address)
+            chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+            terms = (
+                "Valory"
+                if kind is None
+                else f"Valory, paid with {payment_line(kind, None, chain_id)[0]}"
+            )
+        pinned = ", pinned" if address in self._pinned_mechs() else ""
+        return f"{address}, {terms}{pinned}"
+
+    def _mech_list(self) -> str:
+        """Number the mechs the agent may use, Valory then approved, and keep the list."""
+        approved = self.shared_state.approved_mechs
+        valory = sorted(self._get_available_valid_mechs() - set(approved))
+        mechs = [*valory, *approved]
+        self.shared_state.last_mech_list = mechs
+        if not mechs:
+            return (
+                "Your agent has no mechs to list yet. Send a mech's address to see "
+                "its report."
+            )
+        entries = "<br>".join(
+            f"{number}. {self._list_entry(address)}"
+            for number, address in enumerate(mechs, start=1)
+        )
+        return PARAGRAPH_BREAK.join(
+            [
+                f"Mechs your agent can use:<br>{entries}",
+                "Refer to one by its number or its address.",
+            ]
+        )
+
+    def _which_mech(self) -> str:
+        """Ask which mech a message meant, with the list to pick from."""
+        return PARAGRAPH_BREAK.join([WHICH_MECH, self._mech_list()])
+
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
         if address not in self.shared_state.approved_mech_rates:
             return (
                 f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
             )
-        return " ".join(self._remove_approved_mechs([address]))
+        removed = RemovedMech(
+            address,
+            self.shared_state.approved_mech_rates[address],
+            self.shared_state.approved_mech_payment_types.get(address),
+            address in self._pinned_mechs(),
+        )
+        notes = self._remove_approved_mechs([address])
+        self.shared_state.last_removed = removed
+        return " ".join(
+            [
+                *notes,
+                "To undo, reply undo. After another message, send its address to see "
+                "its report and approve it again.",
+            ]
+        )
+
+    def _undo_removal(
+        self, removed: Optional[RemovedMech], address: Optional[str]
+    ) -> str:
+        """Put back the approval the reply before this message removed, at the ceiling the user had accepted.
+
+        :param removed: the approval the reply before this message removed, if any.
+        :param address: the mech the message refers to; anything but the removed
+            mech puts nothing back and keeps the undo open for the next message.
+        :return: the reply.
+        """
+        if removed is None:
+            return "There is no removal to undo."
+        if address != removed.address:
+            self.shared_state.last_removed = removed
+            return (
+                f"Your message names another mech, not {removed.address}, the one "
+                "just removed, so nothing was put back. To put it back, reply undo."
+            )
+        self.shared_state.approve_mech(
+            removed.address, removed.rate, removed.payment_type
+        )
+        again = ""
+        if removed.pinned:
+            pins = self._pinned_mechs()
+            if removed.address not in pins:
+                self._store_selected_mechs([*pins, removed.address])
+            again = " and pinned it again"
+        price = self._approved_price(removed.address, removed.rate)
+        ceiling = f"up to {price} per request" if price else "the price you accepted"
+        return (
+            f"Put back {removed.address} at {ceiling}{again}. If it now charges more, "
+            "your agent won't use it until you approve the new price."
+        )
 
     def _pinned_mechs(self) -> List[str]:
         """The pinned mech addresses, lowercase."""
@@ -575,12 +725,16 @@ class HttpHandler(BaseHttpHandler):
         if address not in self._get_available_valid_mechs():
             return "I can only pin a Valory mech the agent uses or a mech you approved."
         pins = self._pinned_mechs()
-        if address not in pins:
-            pins = [*pins, address]
-            self._store_selected_mechs(pins)
+        if address in pins:
+            return (
+                f"{address} is already pinned. Mech requests go only to your pinned "
+                f"mechs: {', '.join(pins)}."
+            )
+        pins = [*pins, address]
+        self._store_selected_mechs(pins)
         return (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
-            f"{', '.join(pins)}."
+            f"{', '.join(pins)}. To undo, tell me to unpin {address}."
         )
 
     def _unpin_mech(self, address: str) -> str:
@@ -590,9 +744,10 @@ class HttpHandler(BaseHttpHandler):
             return f"{address} is not pinned. {NEXT_STEP}"
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
+        undo = f"To undo, tell me to pin {address}."
         if remaining:
-            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}."
-        return f"Unpinned {address}. Mech selection is back to normal."
+            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}. {undo}"
+        return f"Unpinned {address}. Mech selection is back to normal. {undo}"
 
     def _send_chatui_prompt(
         self,
@@ -601,6 +756,8 @@ class HttpHandler(BaseHttpHandler):
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Fill the config prompt and ask the LLM.
 
@@ -609,6 +766,8 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
         :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
@@ -689,6 +848,8 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue=http_dialogue,
             user_prompt=user_prompt,
             last_shown=last_shown,
+            last_list=last_list,
+            last_removed=last_removed,
         )
 
     def _send_chatui_llm_request(
@@ -698,6 +859,8 @@ class HttpHandler(BaseHttpHandler):
         http_dialogue: HttpDialogue,
         user_prompt: str,
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Ask the model for a config update or a mech intent; `_handle_chatui_llm_response` gets the reply."""
         self._send_llm_request(
@@ -709,6 +872,8 @@ class HttpHandler(BaseHttpHandler):
                 "http_dialogue": http_dialogue,
                 "user_prompt": user_prompt,
                 "last_shown": last_shown,
+                "last_list": last_list,
+                "last_removed": last_removed,
             },
         )
 
@@ -824,6 +989,8 @@ class HttpHandler(BaseHttpHandler):
         http_dialogue: HttpDialogue,
         user_prompt: str = "",
         last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """
         Handle the response from the LLM.
@@ -837,6 +1004,8 @@ class HttpHandler(BaseHttpHandler):
         :param http_dialogue: the original HttpDialogue
         :param user_prompt: the user's message, the only text an intent's address may come from
         :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
@@ -869,7 +1038,13 @@ class HttpHandler(BaseHttpHandler):
             return
 
         reading = llm_response_json.get(MECH_INTENT_FIELD)
-        intent, address = resolve_intent(reading, user_prompt, last_shown)
+        intent, address = resolve_intent(
+            reading,
+            user_prompt,
+            last_shown,
+            last_list,
+            None if last_removed is None else last_removed.address,
+        )
         if intent is not MechIntent.NONE:
             if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
                 self.context.logger.warning(
@@ -878,7 +1053,16 @@ class HttpHandler(BaseHttpHandler):
                 )
                 self._send_mech_reply(http_msg, http_dialogue, ONE_REQUEST_AT_A_TIME)
                 return
-            self._run_mech_intent(intent, address, last_shown, http_msg, http_dialogue)
+            number = _list_number(reading, address, last_list)
+            self._run_mech_intent(
+                intent,
+                address,
+                last_shown,
+                http_msg,
+                http_dialogue,
+                number,
+                last_removed,
+            )
             return
         if reading is not None and (
             not isinstance(reading, dict)
