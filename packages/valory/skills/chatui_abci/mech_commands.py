@@ -103,9 +103,9 @@ def resolve_intent(
     :param last_shown: the address of the last report shown, if any.
     :param last_list: the addresses of the last numbered list shown, in order.
     :param last_removed: the address the reply before this message removed, if
-        any; an undo refers to it, so an address or position must agree with
-        it. The reply before an undo is the removal, not a report, so the mech
-        just shown is no reference for an undo.
+        any; an undo refers to it, so an address must agree with it. The
+        reply before an undo is the removal, not a report or a list, so
+        neither the mech just shown nor a list position refers to anything.
     :return: the intent, `NONE` for any reply that is not a known intent, and
         the mech, or `None` unless every reference given names the same mech.
 
@@ -117,12 +117,13 @@ def resolve_intent(
     except (ValueError, TypeError):
         return MechIntent.NONE, None
     named: Set[Optional[str]] = set()
-    if intent is MechIntent.UNDO:
-        named.add(last_removed)
     if reply.get("address") not in (None, ""):
         named.add(_named_address(reply["address"], message))
-    if reply.get("last_shown") is True and intent is not MechIntent.UNDO:
-        named.add(last_shown)
-    if reply.get("position") not in (None, 0, False):
-        named.add(_listed_address(reply["position"], last_list))
+    if intent is MechIntent.UNDO:
+        named.add(last_removed)
+    else:
+        if reply.get("last_shown") is True:
+            named.add(last_shown)
+        if reply.get("position") not in (None, 0, False):
+            named.add(_listed_address(reply["position"], last_list))
     return intent, named.pop() if len(named) == 1 else None

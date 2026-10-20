@@ -394,6 +394,10 @@ class HttpHandler(BaseHttpHandler):
 
         tools = self._get_available_tools(http_msg, http_dialogue)
         if tools is None:
+            # Nothing was answered, so a retry still refers to the reply before.
+            self.shared_state.last_shown_mech = last_shown
+            self.shared_state.last_mech_list = last_list
+            self.shared_state.last_removed = last_removed
             return
         available_tools, valory_tools = tools
         self._send_chatui_prompt(
@@ -916,7 +920,12 @@ class HttpHandler(BaseHttpHandler):
         self._send_message(request_srr_message, srr_dialogue, callback, callback_kwargs)
 
     def _discovered_mechs(self) -> Tuple[FrozenSet[str], Dict[str, str]]:
-        """The mechs mech-interact discovered and their payment types; the last ones read until a new period discovers them."""
+        """The mechs mech-interact discovered and their payment types; the last ones read until a new period discovers them.
+
+        The fallback is refreshed only when the chat reads a period's
+        `mechs_info`, so after a restart it stays empty until a message
+        arrives once mech-interact has written it.
+        """
         data = self.synchronized_data
         if data.mechs_info_loaded:
             self.shared_state.discovered_mechs = (

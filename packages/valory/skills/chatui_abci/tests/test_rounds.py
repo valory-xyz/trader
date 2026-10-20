@@ -116,10 +116,19 @@ class TestSynchronizedData:
         [
             ({}, False),
             ({"mechs_info": [None]}, False),
+            ({"mechs_info": ["not-json"]}, False),
+            ({"mechs_info": [json.dumps({"address": "0xabc"})]}, False),
             ({"mechs_info": [json.dumps([])]}, True),
             ({"mechs_info": [json.dumps([{"address": "0xabc"}])]}, True),
         ],
-        ids=["missing", "none", "written_empty", "written"],
+        ids=[
+            "missing",
+            "none",
+            "unparseable",
+            "not_a_list",
+            "written_empty",
+            "written",
+        ],
     )
     def test_mechs_info_loaded_only_once_written_this_period(
         self, setup: Dict[str, Any], loaded: bool

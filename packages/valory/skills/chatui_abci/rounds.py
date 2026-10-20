@@ -76,21 +76,24 @@ class SynchronizedData(BaseSynchronizedData):
 
     @property
     def mechs_info_loaded(self) -> bool:
-        """Whether mech-interact has written `mechs_info` in this period; it is not kept across periods."""
-        return isinstance(self.db.get("mechs_info", None), str)
+        """Whether this period holds a readable `mechs_info` list; mech-interact does not keep it across periods."""
+        return self._read_mechs_info() is not None
 
     def _mechs_info(self) -> List[Dict[str, Any]]:
-        """The `mechs_info` entries that carry an address; unreadable data reads as none."""
-        raw = self.db.get("mechs_info", "[]")
+        """The `mechs_info` entries that carry an address; missing or unreadable data reads as none."""
+        mechs = self._read_mechs_info() or []
+        return [m for m in mechs if isinstance(m, dict) and m.get("address")]
+
+    def _read_mechs_info(self) -> Optional[List[Any]]:
+        """The `mechs_info` list written in this period, or `None` when it is missing or unreadable."""
+        raw = self.db.get("mechs_info", None)
         if not isinstance(raw, str):
-            return []
+            return None
         try:
             mechs = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return []
-        if not isinstance(mechs, list):
-            return []
-        return [m for m in mechs if isinstance(m, dict) and m.get("address")]
+        except json.JSONDecodeError:
+            return None
+        return mechs if isinstance(mechs, list) else None
 
 
 class Event(Enum):

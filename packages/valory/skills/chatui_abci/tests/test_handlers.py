@@ -1186,8 +1186,7 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result is not None
-        assert result[0] == AVAILABLE_TOOLS
+        assert result == (AVAILABLE_TOOLS, AVAILABLE_TOOLS)
 
     def test_prefers_filtered_set_when_published(self) -> None:
         """The filtered set wins over the raw synced set when present."""
@@ -1198,8 +1197,10 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result is not None
-        assert result[0] == {"prediction-online"}
+        assert result == (
+            {"prediction-online"},
+            {"prediction-online", "resolve-market"},
+        )
 
     def test_falls_back_to_mech_tools_when_unpublished(self) -> None:
         """With no filtered set published, return the raw synced set."""
@@ -1210,8 +1211,10 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result is not None
-        assert result[0] == {"prediction-online", "resolve-market"}
+        assert result == (
+            {"prediction-online", "resolve-market"},
+            {"prediction-online", "resolve-market"},
+        )
 
     def test_falls_back_to_mech_tools_when_published_set_empty(self) -> None:
         """An empty published set must fall back to raw, not "reject everything".
@@ -1226,8 +1229,10 @@ class TestGetAvailableTools:
         http_msg = MagicMock()
         http_dialogue = MagicMock()
         result = handler._get_available_tools(http_msg, http_dialogue)
-        assert result is not None
-        assert result[0] == {"prediction-online", "resolve-market"}
+        assert result == (
+            {"prediction-online", "resolve-market"},
+            {"prediction-online", "resolve-market"},
+        )
 
     def test_returns_none_and_sends_too_early_on_type_error(self) -> None:
         """When synchronized_data raises TypeError, return None and send 425."""
@@ -1242,6 +1247,15 @@ class TestGetAvailableTools:
         result = handler._get_available_tools(http_msg, http_dialogue)
         assert result is None
         handler._send_too_early_request_response.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_the_valory_names_leave_out_third_party_tools(self) -> None:
+        """Both sets load; only tool names a Valory mech serves are in the second."""
+        handler = _make_handler(
+            available_tools={"valory::superforcaster", f"{THIRD_PARTY}::operator-tool"},
+            prediction_tools={"superforcaster", "operator-tool"},
+        )
+        result = handler._get_available_tools(MagicMock(), MagicMock())
+        assert result == ({"superforcaster", "operator-tool"}, {"superforcaster"})
 
     def test_sends_too_early_while_synced_tools_are_not_loaded(self) -> None:
         """After a restart the filtered set can load before the synced tool keys; the prompt needs both."""
@@ -3998,18 +4012,6 @@ class TestRemoveIntent:
             "its report and approve it again."
         )
 
-    @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
-    def test_a_valory_mech_is_not_removable(self, typed: bool) -> None:
-        """A Valory mech has no approval to remove; the reply points to pinning."""
-        handler, _ = _mech_handler(discovered={VALORY_MECH})
-        if typed:
-            _prompt(handler, f"remove {VALORY_MECH}")
-        else:
-            _chat(handler, f"stop using {VALORY_MECH}", "remove", address=VALORY_MECH)
-        handler.shared_state.set_approved_mech_rates.assert_not_called()
-        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
-        assert _reply(handler) == VALORY_NOT_REMOVABLE.format(address=VALORY_MECH)
-
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
         handler, _ = _mech_handler(approved={OTHER_MECH: 2})
@@ -4036,8 +4038,8 @@ class TestTypedRemove:
 
     @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
     def test_a_valory_mech_is_not_removable(self, typed: bool) -> None:
-        """A Valory mech has no approval to remove; the reply points to pinning."""
-        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        """A Valory mech has no approval to remove and stays pinned; the reply points to pinning."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
         if typed:
             _prompt(handler, f"remove {VALORY_MECH}")
         else:
@@ -4201,6 +4203,19 @@ class TestUndoRightAfterARemoval:
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE, NATIVE
         )
+
+    def test_a_message_answered_too_early_keeps_the_references(self) -> None:
+        """Nothing was answered, so a retry can still put the removal back."""
+        handler = self._removed(pinned=False)
+        handler.shared_state.last_shown_mech = OTHER_MECH
+        handler.shared_state.last_mech_list = [VALORY_MECH]
+        removed = handler.shared_state.last_removed
+        handler._get_available_tools = MagicMock(return_value=None)  # type: ignore[assignment]
+        _prompt(handler, "put it back please")
+        handler._send_ok_response.assert_not_called()
+        assert handler.shared_state.last_shown_mech == OTHER_MECH
+        assert handler.shared_state.last_mech_list == [VALORY_MECH]
+        assert handler.shared_state.last_removed == removed
 
     def test_an_undo_naming_another_mech_puts_nothing_back(self) -> None:
         """The undo keeps waiting for the next message, so the removal is not lost."""
