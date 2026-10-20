@@ -4059,13 +4059,13 @@ class TestPinIntent:
         )
 
     def test_an_already_pinned_mech_is_not_pinned_twice(self) -> None:
-        """The list is left as it is."""
+        """The list is left as it is, and no undo is offered that would drop the earlier pin."""
         handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
         _chat(handler, f"pin {VALORY_MECH}", "pin", VALORY_MECH)
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         assert _reply(handler) == (
-            f"Pinned {VALORY_MECH}. Mech requests now go only to your pinned mechs: "
-            f"{VALORY_MECH}. To undo, tell me to unpin {VALORY_MECH}."
+            f"{VALORY_MECH} is already pinned. Mech requests go only to your pinned "
+            f"mechs: {VALORY_MECH}."
         )
 
     def test_unpinning_one_of_several_keeps_the_rest(self) -> None:
@@ -4170,8 +4170,8 @@ class TestTheConfigPromptListsOnlyValoryToolNames:
         _prompt(handler, "which tools can I use?")
         prompt = _model_prompts(handler)[-1]
         assert (
-            "-- Available tools: prediction-online, superforcaster (and 1 tool(s) "
-            "from approved third-party mechs, not listed)\n"
+            "-- Available tools: prediction-online, superforcaster (and 1 other "
+            "tool(s), not listed)\n"
         ) in prompt
         assert self.OPERATOR_TOOL not in prompt
 
@@ -4181,10 +4181,31 @@ class TestTheConfigPromptListsOnlyValoryToolNames:
         _prompt(handler, "what is my setup?")
         prompt = _model_prompts(handler)[-1]
         assert (
-            "- Allowed tools: superforcaster (and 1 tool(s) from approved "
-            "third-party mechs, not listed)\n"
+            "- Allowed tools: superforcaster (and 1 other tool(s), not listed)\n"
         ) in prompt
         assert self.OPERATOR_TOOL not in prompt
+
+    def test_a_selected_tool_no_valory_mech_serves_is_not_listed(self) -> None:
+        """A selection left from a mech no longer discovered is counted, not listed."""
+        handler = self._handler(allowed=["superforcaster", "left-over-tool"])
+        _prompt(handler, "what is my setup?")
+        prompt = _model_prompts(handler)[-1]
+        assert "left-over-tool" not in prompt
+        assert (
+            "- Allowed tools: superforcaster (and 1 other tool(s), not listed)\n"
+            in prompt
+        )
+
+    def test_an_available_tool_not_yet_keyed_to_a_mech_is_not_listed(self) -> None:
+        """A name offered before discovery records its mech is counted, not listed."""
+        handler = self._handler()
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "not-yet-keyed"}
+        )
+        _prompt(handler, "which tools can I use?")
+        prompt = _model_prompts(handler)[-1]
+        assert "not-yet-keyed" not in prompt
+        assert "superforcaster (and 1 other tool(s), not listed)" in prompt
 
     def test_a_third_party_tool_typed_exactly_is_still_selectable(self) -> None:
         """Selection is checked against every available tool, not only the listed ones."""

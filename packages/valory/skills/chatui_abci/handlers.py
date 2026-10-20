@@ -133,13 +133,13 @@ from packages.valory.skills.mech_interact_abci.mech_reader import (
 from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
 
 
-def _tools_for_prompt(tools: Any, operator_tools: Set[str]) -> str:
-    """The tool names the prompt may show, with a count of those it leaves out."""
-    shown = sorted(str(tool) for tool in tools if tool not in operator_tools)
-    hidden = sum(1 for tool in tools if tool in operator_tools)
+def _tools_for_prompt(tools: Any, valory_tools: Set[str]) -> str:
+    """The tool names a Valory mech serves, with a count of the others, which are not listed."""
+    shown = sorted(str(tool) for tool in tools if tool in valory_tools)
+    hidden = sum(1 for tool in tools if tool not in valory_tools)
     text = ", ".join(shown) or "none"
     if hidden:
-        text += f" (and {hidden} tool(s) from approved third-party mechs, not listed)"
+        text += f" (and {hidden} other tool(s), not listed)"
     return text
 
 
@@ -662,9 +662,13 @@ class HttpHandler(BaseHttpHandler):
         if address not in self._get_available_valid_mechs():
             return "I can only pin a Valory mech the agent uses or a mech you approved."
         pins = self._pinned_mechs()
-        if address not in pins:
-            pins = [*pins, address]
-            self._store_selected_mechs(pins)
+        if address in pins:
+            return (
+                f"{address} is already pinned. Mech requests go only to your pinned "
+                f"mechs: {', '.join(pins)}."
+            )
+        pins = [*pins, address]
+        self._store_selected_mechs(pins)
         return (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
             f"{', '.join(pins)}. To undo, tell me to unpin {address}."
@@ -702,10 +706,10 @@ class HttpHandler(BaseHttpHandler):
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
-        operator_tools = self._operator_tool_names()
+        valory_tools = self._valory_tool_names()
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
-            _tools_for_prompt(current_allowed_tools_raw, operator_tools)
+            _tools_for_prompt(current_allowed_tools_raw, valory_tools)
             if current_allowed_tools_raw
             else "Automatic tool selection based on policy (all available tools)"
         )
@@ -734,7 +738,7 @@ class HttpHandler(BaseHttpHandler):
             user_prompt=user_prompt,
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
-            available_tools=_tools_for_prompt(available_tools, operator_tools),
+            available_tools=_tools_for_prompt(available_tools, valory_tools),
             current_selected_mechs=current_selected_mechs,
             current_approved_mechs=(
                 "; ".join(
@@ -861,15 +865,14 @@ class HttpHandler(BaseHttpHandler):
             return set(prediction_tools)
         return tool_names(self.synchronized_data.available_mech_tools)
 
-    def _operator_tool_names(self) -> Set[str]:
-        """Names of tools only approved third-party mechs serve; the prompt leaves them out."""
+    def _valory_tool_names(self) -> Set[str]:
+        """Names of tools a Valory mech serves, the only tool names the prompt lists."""
         keys: Iterable[str] = self.synchronized_data.available_mech_tools or []
-        third_party: Set[str] = set()
-        valory: Set[str] = set()
-        for key in keys:
-            identity, tool = split_tool_key(key)
-            (third_party if identity not in (None, VALORY_LABEL) else valory).add(tool)
-        return third_party - valory
+        return {
+            tool
+            for identity, tool in map(split_tool_key, keys)
+            if identity in (None, VALORY_LABEL)
+        }
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
