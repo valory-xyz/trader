@@ -22,6 +22,7 @@
 import copy
 import json
 import math
+import re
 from dataclasses import replace
 from datetime import datetime, timezone
 from functools import partial
@@ -145,6 +146,11 @@ def _tools_for_prompt(tools: Any, valory_tools: Set[str]) -> str:
     return text
 
 
+def _typed_names(text: str) -> Set[str]:
+    """The words of a message, split on spaces and punctuation that a tool name does not use."""
+    return {word.strip(".") for word in TYPED_NAME_SEPARATORS.split(text)}
+
+
 def _list_number(
     reading: Any, address: Optional[str], last_list: Sequence[str]
 ) -> Optional[int]:
@@ -185,6 +191,7 @@ UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
+TYPED_NAME_SEPARATORS = re.compile(r"[\s,;:!?\"'`()\[\]{}]+")
 SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
 MECH_INTENT_FIELD = "mech_intent"
@@ -1097,11 +1104,13 @@ class HttpHandler(BaseHttpHandler):
         )
 
         try:
+            updated_agent_config, tools_note = self._keep_unlisted_allowed_tools(
+                updated_agent_config, user_prompt
+            )
             updated_params, issues = self._process_updated_agent_config(
                 updated_agent_config
             )
-            if pin_note:
-                issues = [pin_note, *issues]
+            issues = [note for note in (pin_note, tools_note) if note] + issues
         except Exception as exc:  # pylint: disable=broad-except
             # The update reads this object field by field and expects a
             # shape the model is under no obligation to produce. Any wrong
@@ -1196,6 +1205,46 @@ class HttpHandler(BaseHttpHandler):
         )
         self.context.logger.warning(note)
         return {**update, SELECTED_MECHS_FIELD: kept or None}, note
+
+    def _keep_unlisted_allowed_tools(
+        self, update: Dict[str, Any], user_prompt: str
+    ) -> Tuple[Dict[str, Any], Optional[str]]:
+        """The update with the allowed tools the prompt did not list put back, unless the user's message names them.
+
+        The model sends the whole allowed list but sees only tool names a Valory
+        mech serves, so an edit it makes cannot drop a tool it was not shown.
+        Clearing the field through the removed fields still clears every tool.
+
+        :param update: the config update the model returned.
+        :param user_prompt: the user's message.
+        :return: the update, and a note giving the new list when a tool was kept,
+            or `None`.
+        """
+        tools = update.get(ALLOWED_TOOLS_FIELD)
+        if not isinstance(tools, list):
+            return update, None
+        typed = _typed_names(user_prompt)
+        listed = self._valory_tool_names()
+        available = self._available_tools()
+        current = self.shared_state.chatui_config.allowed_tools or []
+        kept = [
+            tool
+            for tool in current
+            if tool not in listed
+            and tool not in tools
+            and tool not in typed
+            and tool in available
+        ]
+        if not kept:
+            return update, None
+        now = [tool for tool in tools if tool in available] + kept
+        note = (
+            f"Allowed tools are now: {escape(', '.join(map(str, now)))}. Kept "
+            f"{escape(', '.join(kept))}, since your message didn't name it. To drop "
+            "a tool, send its exact name."
+        )
+        self.context.logger.info(note)
+        return {**update, ALLOWED_TOOLS_FIELD: [*tools, *kept]}, note
 
     def _answer_llm_error(
         self, genai_response: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue

@@ -4340,6 +4340,107 @@ class TestTheConfigPromptListsOnlyValoryToolNames:
         assert params[ALLOWED_TOOLS_FIELD] == [self.OPERATOR_TOOL]
 
 
+class TestAnEditKeepsAllowedToolsThePromptDidNotList:
+    """The model edits the allowed list without seeing every tool in it, so it cannot drop one it was not shown."""
+
+    OPERATOR_TOOL = "operator-tool"
+
+    def _edit(
+        self,
+        message: str,
+        config: Dict[str, Any],
+        allowed: Optional[List[str]] = None,
+    ) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        handler.shared_state.chatui_config.allowed_tools = allowed or [
+            "superforcaster",
+            self.OPERATOR_TOOL,
+        ]
+        handler.synchronized_data.available_mech_tools = [
+            "valory::superforcaster",
+            "valory::prediction-online",
+            f"{THIRD_PARTY}::{self.OPERATOR_TOOL}",
+        ]
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "prediction-online", self.OPERATOR_TOOL}
+        )
+        _prompt(handler, message)
+        _answer_model(handler, _config_reply(config=config))
+        return handler
+
+    @staticmethod
+    def _message(handler: _TestableHttpHandler) -> str:
+        return handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+
+    @pytest.mark.parametrize(
+        "sent, stored",
+        [
+            (["prediction-online"], ["prediction-online", OPERATOR_TOOL]),
+            ([], [OPERATOR_TOOL]),
+        ],
+        ids=["another_tool_set", "empty_list"],
+    )
+    def test_an_unlisted_tool_stays_allowed(
+        self, sent: List[str], stored: List[str]
+    ) -> None:
+        """An edit to the tools the model saw keeps the one it did not, and the reply says so."""
+        handler = self._edit(
+            "swap superforcaster for prediction-online", {"allowed_tools": sent}
+        )
+        handler._store_allowed_tools.assert_called_once_with(stored)  # type: ignore[attr-defined]
+        assert self._message(handler) == (
+            f"Allowed tools are now: {', '.join(stored)}. Kept {self.OPERATOR_TOOL}, "
+            "since your message didn't name it. To drop a tool, send its exact name."
+        )
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            f"stop using {OPERATOR_TOOL}",
+            f"stop using {OPERATOR_TOOL}.",
+            f"drop `{OPERATOR_TOOL}`, keep superforcaster",
+        ],
+    )
+    def test_an_unlisted_tool_the_message_names_can_be_dropped(
+        self, message: str
+    ) -> None:
+        """Typing the tool's exact name lets the model's list stand."""
+        handler = self._edit(message, {"allowed_tools": ["superforcaster"]})
+        handler._store_allowed_tools.assert_called_once_with(["superforcaster"])  # type: ignore[attr-defined]
+        assert self._message(handler) == MODEL_MESSAGE
+
+    def test_a_longer_name_does_not_name_the_tool(self) -> None:
+        """A word that only contains the tool's name is not the name."""
+        handler = self._edit(
+            f"stop using {self.OPERATOR_TOOL}-v2", {"allowed_tools": ["superforcaster"]}
+        )
+        handler._store_allowed_tools.assert_called_once_with(  # type: ignore[attr-defined]
+            ["superforcaster", self.OPERATOR_TOOL]
+        )
+
+    def test_an_unlisted_tool_no_longer_available_is_not_put_back(self) -> None:
+        """A selection left from a mech that is gone is not restored."""
+        handler = self._edit(
+            "use prediction-online",
+            {"allowed_tools": ["prediction-online"]},
+            allowed=["superforcaster", "left-over-tool"],
+        )
+        handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
+        assert self._message(handler) == MODEL_MESSAGE
+
+    def test_clearing_the_field_clears_every_tool(self) -> None:
+        """The removed-fields clear still goes back to free tool selection."""
+        handler = self._edit(
+            "clear my allowed tools", {"removed_config_fields": ["allowed_tools"]}
+        )
+        handler._store_allowed_tools.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_a_reply_without_a_tool_edit_stores_no_tools(self) -> None:
+        """No allowed-tools list in the reply, nothing to keep."""
+        handler = self._edit("go risky", {"trading_strategy": "kelly_criterion"})
+        handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+
+
 class TestTheConfigPromptCarriesNoMechState:
     """The model gets no mech reports, chat addresses or offers."""
 
