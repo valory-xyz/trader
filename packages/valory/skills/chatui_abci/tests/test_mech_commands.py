@@ -28,6 +28,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     addresses_in,
     normalise,
     parse_accept,
+    parse_undo,
     resolve_intent,
 )
 from packages.valory.skills.chatui_abci.prompts import MechIntent
@@ -245,3 +246,59 @@ def test_a_reply_without_a_known_intent_is_none(reply: Any) -> None:
     intent, mech = resolve_intent(reply, f"use {MECH}", MECH, LAST_LIST)
     assert intent is MechIntent.NONE
     assert mech is None
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("undo", True),
+        ("  Undo. ", True),
+        ("UNDO!", True),
+        ("undo that", False),
+        ("please undo", False),
+        ("undone", False),
+        ("", False),
+    ],
+)
+def test_parse_undo_reads_only_a_whole_message_undo(text: str, expected: bool) -> None:
+    """Only a message that is the word alone is a typed undo."""
+    assert parse_undo(text) is expected
+
+
+@pytest.mark.parametrize(
+    "reply, message, expected",
+    [
+        ({"intent": "undo"}, "put it back", MECH),
+        ({"intent": "undo", "address": MECH}, f"put back {MECH}", MECH),
+        ({"intent": "undo", "address": OTHER}, f"put back {OTHER}", None),
+        ({"intent": "undo", "position": 2}, "put back the second one", None),
+        (
+            {"intent": "undo", "address": MECH, "position": 2},
+            f"put back the second one, {MECH}",
+            None,
+        ),
+    ],
+    ids=[
+        "no_reference",
+        "the_removed_mech_by_address",
+        "another_mech_by_address",
+        "another_mech_by_position",
+        "references_disagree",
+    ],
+)
+def test_an_undo_refers_to_the_mech_just_removed(
+    reply: Any, message: str, expected: Optional[str]
+) -> None:
+    """An undo takes the removed mech, and any other reference must agree with it."""
+    intent, mech = resolve_intent(reply, message, None, LAST_LIST, MECH)
+    assert intent is MechIntent.UNDO
+    assert mech == expected
+
+
+def test_an_undo_with_nothing_removed_has_no_mech() -> None:
+    """Without a removal, an undo has no mech, even one the message names."""
+    reply = {"intent": "undo", "address": MECH}
+    assert resolve_intent(reply, f"put back {MECH}", None, LAST_LIST) == (
+        MechIntent.UNDO,
+        None,
+    )

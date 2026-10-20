@@ -93,6 +93,7 @@ from packages.valory.skills.chatui_abci.mech_commands import (
     normalise,
     parse_accept,
     parse_remove,
+    parse_undo,
     resolve_intent,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
@@ -363,6 +364,12 @@ class HttpHandler(BaseHttpHandler):
         if removed is not None:
             self._send_mech_reply(http_msg, http_dialogue, self._remove_mech(removed))
             return
+        if parse_undo(user_prompt):
+            undone = None if last_removed is None else last_removed.address
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed, undone)
+            )
+            return
         # A typed price is consent to that price, so a line that does not
         # parse is never read as an approval at the price shown.
         if normalise(user_prompt).startswith("i accept"):
@@ -399,7 +406,7 @@ class HttpHandler(BaseHttpHandler):
         self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
         if intent is MechIntent.UNDO:
             self._send_mech_reply(
-                http_msg, http_dialogue, self._undo_removal(last_removed)
+                http_msg, http_dialogue, self._undo_removal(last_removed, address)
             )
         elif intent is MechIntent.LIST:
             self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
@@ -674,10 +681,24 @@ class HttpHandler(BaseHttpHandler):
             ]
         )
 
-    def _undo_removal(self, removed: Optional[RemovedMech]) -> str:
-        """Put back the approval the reply before this message removed, at the ceiling the user had accepted."""
+    def _undo_removal(
+        self, removed: Optional[RemovedMech], address: Optional[str]
+    ) -> str:
+        """Put back the approval the reply before this message removed, at the ceiling the user had accepted.
+
+        :param removed: the approval the reply before this message removed, if any.
+        :param address: the mech the message refers to; anything but the removed
+            mech puts nothing back and keeps the undo open for the next message.
+        :return: the reply.
+        """
         if removed is None:
             return "There is no removal to undo."
+        if address != removed.address:
+            self.shared_state.last_removed = removed
+            return (
+                f"Your message names another mech, not {removed.address}, the one "
+                "just removed, so nothing was put back. To put it back, reply undo."
+            )
         self.shared_state.approve_mech(
             removed.address, removed.rate, removed.payment_type
         )
@@ -1017,7 +1038,13 @@ class HttpHandler(BaseHttpHandler):
             return
 
         reading = llm_response_json.get(MECH_INTENT_FIELD)
-        intent, address = resolve_intent(reading, user_prompt, last_shown, last_list)
+        intent, address = resolve_intent(
+            reading,
+            user_prompt,
+            last_shown,
+            last_list,
+            None if last_removed is None else last_removed.address,
+        )
         if intent is not MechIntent.NONE:
             if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
                 self.context.logger.warning(

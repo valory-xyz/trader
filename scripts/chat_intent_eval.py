@@ -44,15 +44,15 @@ It exits with 1 when any returned intent is not one the case expects.
 import argparse
 import json
 import os
-import re
 import pickle  # nosec
+import re
 import sys
 import time
-from urllib.parse import quote
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Tuple
+from urllib.parse import quote
 
 import requests
 
@@ -112,6 +112,7 @@ class Case:
     expected: FrozenSet[Outcome]
     last_shown: Optional[str] = None
     last_list: Tuple[str, ...] = ()
+    last_removed: Optional[str] = None
 
 
 def _outcomes(*outcomes: Outcome) -> FrozenSet[Outcome]:
@@ -205,6 +206,24 @@ CASES = (
         _outcomes(("ask", VALORY_MECHS[1])),
         last_list=LAST_LIST,
     ),
+    Case(
+        "put_it_back",
+        "put it back",
+        _outcomes(("undo", MECH)),
+        last_removed=MECH,
+    ),
+    Case(
+        "undo_that",
+        "undo that",
+        _outcomes(("undo", MECH)),
+        last_removed=MECH,
+    ),
+    Case(
+        "put_back_another_mech",
+        f"put back {VALORY_MECHS[0]}",
+        _outcomes(("undo", None), ("approve", VALORY_MECHS[0]), ("none", None)),
+        last_removed=MECH,
+    ),
 )
 
 
@@ -292,7 +311,11 @@ def handler_action(
 ) -> Tuple[Outcome, str]:
     """The intent and mech the handler resolves from the reply, and what it does next."""
     intent, mech = resolve_intent(
-        reply.get("mech_intent"), case.message, case.last_shown, case.last_list
+        reply.get("mech_intent"),
+        case.message,
+        case.last_shown,
+        case.last_list,
+        case.last_removed,
     )
     outcome = (intent.value, None if intent is MechIntent.NONE else mech)
     if intent is MechIntent.NONE:
@@ -303,6 +326,10 @@ def handler_action(
         return outcome, "does neither: a mech action and a config change"
     if intent is MechIntent.LIST:
         return outcome, "shows the numbered list"
+    if intent is MechIntent.UNDO:
+        if mech is None:
+            return outcome, "puts nothing back"
+        return outcome, "puts back the removed mech"
     if mech is None:
         return outcome, "asks which mech"
     if intent is MechIntent.APPROVE:

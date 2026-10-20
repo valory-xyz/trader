@@ -4027,7 +4027,7 @@ class TestUndoRightAfterARemoval:
         """The same ceiling comes back, so the agent can never pay more than agreed."""
         handler = self._removed(pinned)
         handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH]
-        _chat(handler, "undo", "undo")
+        _prompt(handler, "undo")
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE, NATIVE
         )
@@ -4047,7 +4047,7 @@ class TestUndoRightAfterARemoval:
         """A mech pinned again before the undo is not added a second time."""
         handler = self._removed(pinned=True)
         handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH, THIRD_PARTY]
-        _chat(handler, "undo", "undo")
+        _prompt(handler, "undo")
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         assert "and pinned it again" in _reply(handler)
 
@@ -4056,7 +4056,7 @@ class TestUndoRightAfterARemoval:
         handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
         _prompt(handler, f"remove {THIRD_PARTY}")
         handler._send_ok_response.reset_mock()
-        _chat(handler, "undo", "undo")
+        _prompt(handler, "undo")
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE, None
         )
@@ -4069,16 +4069,60 @@ class TestUndoRightAfterARemoval:
         handler = self._removed(pinned=False)
         _chat(handler, "go risky", "none")
         handler._send_ok_response.reset_mock()
-        _chat(handler, "undo", "undo")
+        _prompt(handler, "undo")
         handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler) == "There is no removal to undo."
 
-    def test_undo_with_nothing_removed_says_so(self) -> None:
+    @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
+    def test_undo_with_nothing_removed_says_so(self, typed: bool) -> None:
         """No removal before it, nothing to put back."""
         handler, _ = _mech_handler()
-        _chat(handler, "put it back", "undo")
+        if typed:
+            _prompt(handler, "undo")
+        else:
+            _chat(handler, "put it back", "undo")
         handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler) == "There is no removal to undo."
+
+    def test_a_typed_undo_needs_no_model_call(self) -> None:
+        """The word alone puts the removal back in code, so a model miss cannot spend it."""
+        handler = self._removed(pinned=False)
+        handler.context.srr_dialogues.create.reset_mock()
+        _prompt(handler, "Undo.")
+        assert _model_prompts(handler) == []
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    @pytest.mark.parametrize(
+        "text, address",
+        [("put it back", None), (f"put back {THIRD_PARTY}", THIRD_PARTY)],
+        ids=["no_mech_named", "the_removed_mech_named"],
+    )
+    def test_an_undo_read_by_the_model_puts_back_the_removed_mech(
+        self, text: str, address: Optional[str]
+    ) -> None:
+        """Other wording reaches the undo through the model's reading."""
+        handler = self._removed(pinned=False)
+        _chat(handler, text, "undo", address=address)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    def test_an_undo_naming_another_mech_puts_nothing_back(self) -> None:
+        """The undo keeps waiting for the next message, so the removal is not lost."""
+        handler = self._removed(pinned=False)
+        _chat(handler, f"put back {OTHER_MECH}", "undo", address=OTHER_MECH)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == (
+            f"Your message names another mech, not {THIRD_PARTY}, the one just "
+            "removed, so nothing was put back. To put it back, reply undo."
+        )
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
 
 
 class TestPinIntent:
