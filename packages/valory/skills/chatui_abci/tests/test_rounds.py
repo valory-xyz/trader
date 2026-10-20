@@ -91,6 +91,26 @@ class TestSynchronizedData:
         data = SynchronizedData(db=AbciAppDB(setup_data={"mechs_info": ["not-json"]}))
         assert data.available_valid_mechs == set()
 
+    @pytest.mark.parametrize("raw", ["5", '{"address": "0xabc"}', "null"])
+    def test_mechs_info_that_is_not_a_list_reads_as_none(self, raw: str) -> None:
+        """A db payload of the wrong shape yields no mechs rather than raising."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"mechs_info": [raw]}))
+        assert data.available_valid_mechs == set()
+        assert data.mech_payment_types == {}
+
+    def test_mech_payment_types_by_lowercase_address(self) -> None:
+        """Each discovered mech's payment type, lowercase; mechs without one are left out."""
+        mechs_info = [
+            {"address": "0xABC", "payment_type": "0xBA69"},
+            {"address": "0xdef", "payment_type": ""},
+            {"address": "0x123"},
+            {"payment_type": "0xba69"},
+        ]
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"mechs_info": [json.dumps(mechs_info)]})
+        )
+        assert data.mech_payment_types == {"0xabc": "0xba69"}
+
 
 class TestFinishedChatuiLoadRound:
     """Tests for the FinishedChatuiLoadRound class."""

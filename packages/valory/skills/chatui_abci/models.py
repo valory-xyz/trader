@@ -25,7 +25,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, List, Optional, Type
+from typing import Any, Dict, FrozenSet, List, NamedTuple, Optional, Type
 
 from aea.skills.base import SkillContext
 
@@ -103,6 +103,15 @@ def _keep_newest(store: Dict[str, Any], key: str, value: Any) -> None:
         del store[next(iter(store))]
 
 
+class RemovedMech(NamedTuple):
+    """An approval as it was before its removal, which an undo right after puts back."""
+
+    address: str
+    rate: int
+    payment_type: Optional[str]
+    pinned: bool
+
+
 @dataclass(frozen=True)
 class Offer:
     """The terms a report showed for a mech, which a typed accept must repeat."""
@@ -129,6 +138,10 @@ class SharedState(BaseSharedState):
         self.mech_offers: Dict[str, Offer] = {}
         # In memory only: why the last report for an address made no offer.
         self.mech_refusals: Dict[str, str] = {}
+        # In memory; per agent, as an agent has one user.
+        self.last_shown_mech: Optional[str] = None
+        self.last_mech_list: List[str] = []
+        self.last_removed: Optional[RemovedMech] = None
 
         # Suitability-filtered tool set published by the decision-maker's
         # ToolSelectionBehaviour each round (the post-classifier, pre-pin

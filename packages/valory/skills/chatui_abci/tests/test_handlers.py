@@ -48,6 +48,7 @@ from packages.valory.skills.chatui_abci.handlers import (
     LLM_MESSAGE_FIELD,
     MECH_DEPOSIT_REQUIRED_CODE,
     MECH_PRE_DEPOSIT_EOA_SHORT,
+    ONE_REQUEST_AT_A_TIME,
     PREVIOUS_TRADING_TYPE_FIELD,
     SELECTED_MECHS_FIELD,
     SrrHandler,
@@ -160,6 +161,9 @@ def _make_handler(
     shared_state.approved_mech_payment_types = {}
     shared_state.mech_offers = {}
     shared_state.mech_refusals = {}
+    shared_state.last_shown_mech = None
+    shared_state.last_removed = None
+    shared_state.last_mech_list = []
     shared_state.available_prediction_tools = (
         frozenset(prediction_tools) if prediction_tools is not None else None
     )
@@ -168,6 +172,7 @@ def _make_handler(
     sync_data = MagicMock()
     sync_data.available_mech_tools = available_tools
     sync_data.available_valid_mechs = available_mechs or set()
+    sync_data.mech_payment_types = {}
     handler.synchronized_data = sync_data  # type: ignore[assignment]
 
     # Patch store helpers — no filesystem side-effects.
@@ -177,6 +182,46 @@ def _make_handler(
     handler._store_chatui_param_to_json = MagicMock()  # type: ignore[method-assign]
 
     return handler
+
+
+MODEL_MESSAGE = "The model's own answer."
+
+
+def _config_reply(
+    mech_intent: Any = None,
+    config: Optional[Dict[str, Any]] = None,
+    message: str = MODEL_MESSAGE,
+) -> str:
+    """A config-chat reply carrying a mech intent, as the genai connection delivers it."""
+    reply = {
+        "message": message,
+        "updated_agent_config": config,
+        "mech_intent": mech_intent,
+    }
+    return json.dumps({"response": json.dumps(reply)})
+
+
+def _intent(
+    intent: Any = "none",
+    address: Any = None,
+    position: Any = None,
+    last_shown: Any = None,
+) -> str:
+    """A config-chat reply whose mech intent is this one and which changes no config."""
+    return _config_reply(
+        {
+            "intent": intent,
+            "address": address,
+            "position": position,
+            "last_shown": last_shown,
+        }
+    )
+
+
+def _answer_model(handler: _TestableHttpHandler, payload: str) -> None:
+    """Hand the payload to the callback of the latest model request."""
+    _, dialogue, callback, kwargs = handler._send_message.call_args[0]  # type: ignore[attr-defined]
+    callback(SimpleNamespace(payload=payload), dialogue, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -1343,6 +1388,7 @@ class TestSendChatuiLlmRequest:
             prompt="test prompt",
             http_msg=http_msg,
             http_dialogue=http_dialogue,
+            user_prompt="make me risky",
         )
 
         mock_srr_dialogues.create.assert_called_once()
@@ -1356,6 +1402,7 @@ class TestSendChatuiLlmRequest:
         callback_kwargs = call_args[0][3]
         assert callback_kwargs["http_msg"] is http_msg
         assert callback_kwargs["http_dialogue"] is http_dialogue
+        assert callback_kwargs["user_prompt"] == "make me risky"
 
     def test_payload_contains_prompt_and_schema(self) -> None:
         """Payload sent via SRR must contain 'prompt' and 'schema'."""
@@ -1366,7 +1413,10 @@ class TestSendChatuiLlmRequest:
         handler._send_message = MagicMock()  # type: ignore[assignment]
 
         handler._send_chatui_llm_request(
-            prompt="hello", http_msg=MagicMock(), http_dialogue=MagicMock()
+            prompt="hello",
+            http_msg=MagicMock(),
+            http_dialogue=MagicMock(),
+            user_prompt="hello",
         )
 
         create_kwargs = mock_srr_dialogues.create.call_args
@@ -2881,14 +2931,16 @@ class TestAnEmptyMechPreDepositIsExplained:
 
 
 # ---------------------------------------------------------------------------
-# Mech reports and typed mech commands
+# Mech reports, the typed accept line and mech intents
 # ---------------------------------------------------------------------------
 
 THIRD_PARTY = "0x" + "b0" * 20
 CHECKSUMMED = "0x" + "B0" * 20
 OTHER_MECH = "0x" + "e0" * 20
 VALORY_MECH = "0x" + "a0" * 20
+OTHER_VALORY_MECH = "0x" + "c0" * 20
 NATIVE = "0x" + NATIVE_TYPE_ID
+NEVERMINED = "0x803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316"
 SUBGRAPH = "https://subgraph.example/marketplace-gnosis"
 MARKETPLACE_API = "https://marketplace.example/api/erc8004"
 CARD_URL = f"{MARKETPLACE_API}/gnosis/ai-agents/3786/agent-card.json"
@@ -2896,6 +2948,21 @@ STATE = ContractApiMessage.Performative.STATE
 ERROR = ContractApiMessage.Performative.ERROR
 ACCEPT_PHRASE = f"I accept 0.01 xDAI per request for {THIRD_PARTY}"
 OFFER = Offer(THIRD_PARTY, NATIVE_RATE, NATIVE, "0.01 xDAI")
+ABOVE_CAP = (
+    "It charges 0.03 xDAI per request, above the 0.01 xDAI this agent allows, so "
+    "it cannot be approved."
+)
+WHICH_MECH = (
+    "I couldn't tell which mech you mean. If you meant something else, ask again "
+    "in other words."
+)
+NEXT_STEP = (
+    "Send a mech's address to see its report, or ask which mechs your agent can use."
+)
+NOTHING_TO_LIST = (
+    "Your agent has no mechs to list yet. Send a mech's address to see its report."
+)
+LIST_FOOTER = "Refer to one by its number or its address."
 # The checkpoint that starts the current staking epoch.
 EPOCH = 1_700_000_000
 
@@ -2971,6 +3038,7 @@ def _mech_handler(
     valid: Optional[set] = None,
     offers: Tuple[Offer, ...] = (),
     payment_types: Optional[Dict[str, str]] = None,
+    discovered_types: Optional[Dict[str, str]] = None,
 ) -> Tuple[_TestableHttpHandler, _Wire]:
     """A handler whose connections are the wire; offers and approvals behave as in `SharedState`."""
     handler = _make_handler(
@@ -2988,6 +3056,7 @@ def _mech_handler(
     context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
     handler._send_message = MagicMock()  # type: ignore[method-assign]
     handler._send_ok_response = MagicMock()
+    handler.synchronized_data.mech_payment_types = dict(discovered_types or {})
     state = handler.shared_state
     state.read_activity_goal_from_disk.return_value = None
     state.record_mech_offer = partial(SharedState.record_mech_offer, state)
@@ -3027,26 +3096,131 @@ def _reply(handler: _TestableHttpHandler) -> str:
     return body[LLM_MESSAGE_FIELD]
 
 
-def _report_for(
-    handler: _TestableHttpHandler, wire: _Wire, address: str, live: int = NATIVE_RATE
-) -> str:
-    """Ask about the mech, answer its record, card and live rate where read, and return the reply."""
-    _prompt(handler, f"tell me about {address}")
-    wire.answer_http(_record(address))
-    wire.answer_http(_card(address))
+def _chat(
+    handler: _TestableHttpHandler,
+    text: str,
+    intent: str = "none",
+    address: Optional[str] = None,
+    position: Optional[int] = None,
+    last_shown: Optional[bool] = None,
+) -> None:
+    """POST a chat message and answer the config call with this mech intent."""
+    _prompt(handler, text)
+    _answer_model(handler, _intent(intent, address, position, last_shown))
+
+
+def _model_prompts(handler: _TestableHttpHandler) -> List[str]:
+    """The prompts of the model requests sent, in order."""
+    return [
+        json.loads(call.kwargs["payload"])["prompt"]
+        for call in handler.context.srr_dialogues.create.call_args_list
+    ]
+
+
+def _answer_report(
+    wire: _Wire, address: str, live: Any = NATIVE_RATE, **record: Any
+) -> None:
+    """Answer the mech's record, card and, where read, live rate."""
+    wire.answer_http(_record(address, **record))
+    if wire.callbacks:
+        wire.answer_http(_card(address))
     if wire.callbacks:
         wire.answer_rate(live)
+
+
+def _report_for(
+    handler: _TestableHttpHandler,
+    wire: _Wire,
+    address: str,
+    live: Any = NATIVE_RATE,
+    **record: Any,
+) -> str:
+    """Ask about the mech, answer what is read, and return the reply."""
+    _chat(handler, f"tell me about {address}", "ask", address)
+    _answer_report(wire, address, live, **record)
     return _reply(handler)
 
 
-class TestAnAddressMessage:
-    """A message naming one mech is answered with its report; no model is asked."""
+def _shown(
+    handler: _TestableHttpHandler,
+    wire: _Wire,
+    address: str = THIRD_PARTY,
+    live: Any = NATIVE_RATE,
+    **record: Any,
+) -> None:
+    """Show the mech's report as an earlier turn of the chat."""
+    _report_for(handler, wire, address, live, **record)
+    handler._send_ok_response.reset_mock()
 
-    def test_the_report_is_read_and_rendered_without_the_model(self) -> None:
-        """Two reads, then the rendered report, whose offer is kept for a typed accept."""
+
+def _listed(handler: _TestableHttpHandler) -> None:
+    """Show the numbered list as an earlier turn of the chat."""
+    _chat(handler, "which mechs can my agent use?", "list")
+    handler._send_ok_response.reset_mock()
+
+
+class TestAListNumberRefersToTheListJustShown:
+    """A number resolves only against the list that was the reply right before."""
+
+    @staticmethod
+    def _handler() -> _TestableHttpHandler:
+        handler, _ = _mech_handler(
+            discovered={VALORY_MECH}, approved={THIRD_PARTY: NATIVE_RATE}
+        )
+        _listed(handler)
+        return handler
+
+    def test_a_number_right_after_the_list_acts_and_says_which_mech(self) -> None:
+        """The reply names the number, the mech and how to get it back."""
+        handler = self._handler()
+        _chat(handler, "remove the second one", "remove", position=2)
+        handler.shared_state.set_approved_mech_rates.assert_called_once_with({})
+        reply = _reply(handler)
+        assert reply.startswith(
+            f"Number 2 on the list just shown is {THIRD_PARTY}. Removed {THIRD_PARTY}."
+        )
+        assert reply.endswith(
+            "To undo, reply undo. After another message, send its address to see "
+            "its report and approve it again."
+        )
+
+    def test_a_number_after_another_reply_acts_on_nothing(self) -> None:
+        """Another reply in between retires the list, so the number is not placed."""
+        handler = self._handler()
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "remove the second one", "remove", position=2)
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        assert _reply(handler).startswith("I couldn't tell which mech you mean.")
+
+    def test_pinning_by_number_says_how_to_undo(self) -> None:
+        """Pin names the number and the unpin that undoes it."""
+        handler = self._handler()
+        _chat(handler, "only use the first one", "pin", position=1)
+        reply = _reply(handler)
+        assert reply.startswith(
+            f"Number 1 on the list just shown is {VALORY_MECH}. Pinned {VALORY_MECH}."
+        )
+        assert reply.endswith(f"To undo, tell me to unpin {VALORY_MECH}.")
+
+    def test_an_address_needs_no_number_note(self) -> None:
+        """A mech named by address is not described as a list number."""
+        handler = self._handler()
+        _chat(handler, f"pin {VALORY_MECH}", "pin", VALORY_MECH)
+        assert _reply(handler).startswith(f"Pinned {VALORY_MECH}.")
+
+
+class TestAskIntent:
+    """The ask intent is answered with the mech's report, rendered by the handler."""
+
+    def test_the_report_is_read_and_rendered_by_the_handler(self) -> None:
+        """One intent call, two reads, the live rate, then the report; its offer is kept."""
         handler, wire = _mech_handler()
         _prompt(handler, f"what is {CHECKSUMMED}?")
+        assert wire.sent == []
+        _answer_model(handler, _intent("ask", CHECKSUMMED))
         assert [request["url"] for request in wire.sent] == [SUBGRAPH]
+        assert THIRD_PARTY.encode() in wire.sent[0]["body"]
         wire.answer_http(_record())
         assert [request["url"] for request in wire.sent] == [SUBGRAPH, CARD_URL]
         handler._send_ok_response.assert_not_called()
@@ -3056,33 +3230,33 @@ class TestAnAddressMessage:
         wire.answer_rate(NATIVE_RATE)
         reply = _reply(handler)
         assert reply.startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.<br><br>")
-        assert reply.endswith(f"<br><br>To approve, reply exactly: {ACCEPT_PHRASE}")
+        assert reply.endswith(
+            f"<br><br>To approve, reply yes, or reply exactly: {ACCEPT_PHRASE}"
+        )
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
-        handler.context.srr_dialogues.create.assert_not_called()
-        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.last_shown_mech == THIRD_PARTY
+        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
         handler.shared_state.approve_mech.assert_not_called()
 
     def test_a_report_without_an_offer_drops_the_one_kept(self) -> None:
-        """The last report shown is what an accept can take up."""
+        """The last report shown is what an approval can take up."""
         handler, wire = _mech_handler(offers=(OFFER,))
-        _prompt(handler, THIRD_PARTY)
-        wire.answer_http(_record(selfDeliveredFromReceived="0"))
-        wire.answer_http(_card())
-        wire.answer_rate(NATIVE_RATE)
-        assert _reply(handler).endswith("so it cannot be approved.")
+        reply = _report_for(handler, wire, THIRD_PARTY, selfDeliveredFromReceived="0")
+        assert reply.endswith("so it cannot be approved.")
         assert handler.shared_state.mech_offers == {}
         assert handler.shared_state.mech_refusals == {THIRD_PARTY: NEVER_DELIVERED}
 
     def test_an_unreadable_record_is_answered_without_a_card_read(self) -> None:
-        """A failed subgraph read ends the report at once."""
+        """A failed subgraph read ends the report at once; it is still the mech shown."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
+        _chat(handler, THIRD_PARTY, "ask", THIRD_PARTY)
         wire.answer_http({"errors": ["down"]}, status=500)
         assert len(wire.sent) == 1
         assert _reply(handler) == (
             f"{THIRD_PARTY} on Gnosis.<br><br>"
             "Its record cannot be read right now; try again later."
         )
+        assert handler.shared_state.last_shown_mech == THIRD_PARTY
 
     def test_an_approved_pinned_mech_shows_the_agents_terms(self) -> None:
         """The accepted rate and the pin come from the agent's state."""
@@ -3092,8 +3266,8 @@ class TestAnAddressMessage:
         reply = _report_for(handler, wire, THIRD_PARTY)
         assert reply.split(PARAGRAPH_BREAK)[-3:] == [
             "Approved at up to 0.01 xDAI per request.",
-            f"To stop using it, reply: remove {THIRD_PARTY}",
-            f"To stop pinning it, reply: unpin {THIRD_PARTY}",
+            "To stop using it, tell me to remove it.",
+            "To stop pinning it, tell me to unpin it.",
         ]
         assert handler.shared_state.mech_offers == {}
 
@@ -3119,11 +3293,10 @@ class TestAnAddressMessage:
     ) -> None:
         """The offer is the higher of the listed and live rates."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
-        wire.answer_http(_record(maxDeliveryRate=str(listed)))
-        wire.answer_http(_card())
-        wire.answer_rate(live)
-        assert "Paid with xDAI, up to 0.01 xDAI per request." in _reply(handler)
+        reply = _report_for(
+            handler, wire, THIRD_PARTY, live, maxDeliveryRate=str(listed)
+        )
+        assert "Paid with xDAI, up to 0.01 xDAI per request." in reply
         assert handler.shared_state.mech_offers[THIRD_PARTY].rate == NATIVE_RATE
 
     def test_a_listing_over_the_cap_is_refused_even_when_the_live_rate_is_not(
@@ -3131,11 +3304,14 @@ class TestAnAddressMessage:
     ) -> None:
         """Discovery checks the listing, so a mech listed over the cap is never offered."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
-        wire.answer_http(_record(maxDeliveryRate=str(NATIVE_RATE * 3)))
-        wire.answer_http(_card())
-        wire.answer_rate(NATIVE_RATE)
-        assert _reply(handler).endswith(
+        reply = _report_for(
+            handler,
+            wire,
+            THIRD_PARTY,
+            NATIVE_RATE,
+            maxDeliveryRate=str(NATIVE_RATE * 3),
+        )
+        assert reply.endswith(
             "It charges 0.03 xDAI per request, above the 0.01 xDAI this agent "
             "allows, so it cannot be approved."
         )
@@ -3155,13 +3331,11 @@ class TestAnAddressMessage:
     ) -> None:
         """The approved rate is one both discovery's listing check and the live check accept."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
-        wire.answer_http(_record(maxDeliveryRate=str(listed)))
-        wire.answer_http(_card())
-        wire.answer_rate(live)
-        reply = _reply(handler)
+        reply = _report_for(
+            handler, wire, THIRD_PARTY, live, maxDeliveryRate=str(listed)
+        )
         handler._send_ok_response.reset_mock()
-        _prompt(handler, reply.rsplit("To approve, reply exactly: ", 1)[1])
+        _prompt(handler, reply.rsplit("reply exactly: ", 1)[1])
         wire.answer_rate(NATIVE_RATE if live is None else live)
         bound = delivery_rate_bound(
             THIRD_PARTY,
@@ -3176,7 +3350,7 @@ class TestAnAddressMessage:
     def test_a_mech_listed_without_a_price_is_not_offered(self) -> None:
         """Discovery skips a mech with no listed rate, so its live rate is not offered."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
+        _chat(handler, f"tell me about {THIRD_PARTY}", "ask", THIRD_PARTY)
         wire.answer_http(_record(maxDeliveryRate=None))
         wire.answer_http(_card())
         assert _reply(handler).endswith(PRICE_UNREADABLE)
@@ -3198,7 +3372,7 @@ class TestAnAddressMessage:
     ) -> None:
         """Without a record there is no price to check."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
+        _chat(handler, THIRD_PARTY, "ask", THIRD_PARTY)
         wire.answer_http(record, status=status)
         _reply(handler)
         assert all(
@@ -3208,7 +3382,7 @@ class TestAnAddressMessage:
     def test_a_valory_mech_report_reads_no_live_rate(self) -> None:
         """A Valory mech is never offered, so its price is not checked."""
         handler, wire = _mech_handler(discovered={VALORY_MECH})
-        _prompt(handler, VALORY_MECH)
+        _chat(handler, VALORY_MECH, "ask", VALORY_MECH)
         wire.answer_http(_record(VALORY_MECH))
         wire.answer_http(_card(VALORY_MECH))
         assert len(wire.sent) == 2
@@ -3219,7 +3393,7 @@ class TestAnAddressMessage:
         handler, wire = _mech_handler(discovered={VALORY_MECH})
         lines = _report_for(handler, wire, VALORY_MECH).split(PARAGRAPH_BREAK)
         assert lines[-2].startswith("This is a Valory mech the agent already uses")
-        assert lines[-1] == f"To add it to your pinned mechs, reply: pin {VALORY_MECH}"
+        assert lines[-1] == "To add it to your pinned mechs, tell me to pin it."
         assert handler.shared_state.mech_offers == {}
 
     @pytest.mark.parametrize(
@@ -3241,7 +3415,7 @@ class TestAnAddressMessage:
     def test_the_same_mech_named_twice_is_one_address(self) -> None:
         """A checksummed and a lowercase spelling name the same mech."""
         handler, wire = _mech_handler()
-        _prompt(handler, f"{CHECKSUMMED} or {THIRD_PARTY}?")
+        _chat(handler, f"{CHECKSUMMED} or {THIRD_PARTY}?", "ask", CHECKSUMMED)
         assert [request["url"] for request in wire.sent] == [SUBGRAPH]
 
 
@@ -3255,6 +3429,7 @@ class TestAccept:
         """The shown rate is the most the agent pays, whatever the live rate below it."""
         handler, wire = _mech_handler(approved={OTHER_MECH: 1}, offers=(OFFER,))
         _prompt(handler, ACCEPT_PHRASE)
+        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
         assert len(wire.sent) == 1
         assert wire.sent[0]["contract_address"] == THIRD_PARTY
         assert wire.sent[0]["callable"] == "get_max_delivery_rate"
@@ -3425,62 +3600,263 @@ class TestAccept:
         """The line the report prints is the line that approves."""
         handler, wire = _mech_handler()
         reply = _report_for(handler, wire, THIRD_PARTY)
-        phrase = reply.rsplit("To approve, reply exactly: ", 1)[1]
+        phrase = reply.rsplit("reply exactly: ", 1)[1]
         handler._send_ok_response.reset_mock()
         _prompt(handler, phrase)
         wire.answer_rate(NATIVE_RATE)
         handler.shared_state.approve_mech.assert_called_once_with(
             THIRD_PARTY, NATIVE_RATE, NATIVE
         )
+        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
 
 
-class TestListApproved:
-    """`list approved` answers from the agent's records, without the model."""
+class TestApproveIntent:
+    """Approving takes an offer a report showed, at its price, once the live rate allows it."""
 
-    def test_approved_mechs_are_listed_with_prices_and_the_pins(self) -> None:
-        """A known payment type gives the price; an approval without one says how to see it."""
-        handler, wire = _mech_handler(
-            approved={THIRD_PARTY: NATIVE_RATE, OTHER_MECH: 5},
-            payment_types={THIRD_PARTY: NATIVE},
-            pin=[CHECKSUMMED],
+    @pytest.mark.parametrize("text", ["let's use it", "yes"])
+    @pytest.mark.parametrize("live", [NATIVE_RATE - 1, NATIVE_RATE])
+    def test_approving_the_mech_just_shown_takes_its_offer(
+        self, live: int, text: str
+    ) -> None:
+        """The pronoun is the last mech shown; the shown rate is saved after the live read."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire)
+        _chat(handler, text, "approve", last_shown=True)
+        assert wire.sent[-1]["callable"] == "get_max_delivery_rate"
+        assert wire.sent[-1]["contract_address"] == THIRD_PARTY
+        handler.shared_state.approve_mech.assert_not_called()
+        wire.answer_rate(live)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
         )
-        _prompt(handler, "list approved")
         assert _reply(handler) == (
-            "Approved third-party mechs:<br>"
-            f"{THIRD_PARTY}, up to 0.01 xDAI per request<br>"
-            f"{OTHER_MECH} (send its address to see its price)"
-            f"{PARAGRAPH_BREAK}Pinned mechs: {THIRD_PARTY}."
+            f"Approved {THIRD_PARTY} at up to 0.01 xDAI per request. "
+            "Your agent can use it for its next mech requests."
         )
-        assert wire.sent == []
-        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
+
+    def test_a_higher_live_rate_approves_nothing(self) -> None:
+        """What the user saw is not what the mech charges now."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire)
+        _chat(handler, "yes", "approve", last_shown=True)
+        wire.answer_rate(NATIVE_RATE + 1)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler).startswith("The listing is out of date")
+
+    def test_approving_a_mech_never_shown_shows_its_report_first(self) -> None:
+        """No offer was shown, so the report comes first and ends with how to approve."""
+        handler, wire = _mech_handler()
+        _chat(handler, f"approve {THIRD_PARTY}", "approve", THIRD_PARTY)
+        assert [request["url"] for request in wire.sent] == [SUBGRAPH]
+        _answer_report(wire, THIRD_PARTY)
+        assert _reply(handler).endswith(accept_line("0.01 xDAI", THIRD_PARTY))
+        handler.shared_state.approve_mech.assert_not_called()
+        assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
 
     @pytest.mark.parametrize(
-        "kind",
+        "record, live, reason",
         [
-            "0x803dd08fe79d91027fc9024e254a0942372b92f3ccabc1bd19f4a5c2b251c316",
-            "unknown",
+            ({"selfDeliveredFromReceived": "0"}, NATIVE_RATE, NEVER_DELIVERED),
+            ({"maxDeliveryRate": str(NATIVE_RATE * 3)}, NATIVE_RATE * 3, ABOVE_CAP),
         ],
-        ids=["nevermined", "unknown"],
+        ids=["never_delivered", "above_cap"],
     )
-    def test_a_payment_type_without_a_price_points_to_the_report(
-        self, kind: str
+    def test_approving_after_a_refusal_repeats_the_reason(
+        self, record: Dict[str, Any], live: int, reason: str
     ) -> None:
-        """A Nevermined or unknown payment type has no per-request price to show."""
-        handler, _ = _mech_handler(
-            approved={THIRD_PARTY: NATIVE_RATE}, payment_types={THIRD_PARTY: kind}
-        )
-        _prompt(handler, "list approved")
-        assert f"{THIRD_PARTY} (send its address to see its price)" in _reply(handler)
-
-    def test_nothing_approved_or_pinned_says_so(self) -> None:
-        """Both empty lists are said plainly."""
-        handler, _ = _mech_handler()
-        _prompt(handler, "list approved mechs")
+        """No read, nothing approved, and the refusal the report gave."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire, THIRD_PARTY, live, **record)
+        sent = len(wire.sent)
+        _chat(handler, "yes", "approve", last_shown=True)
+        assert len(wire.sent) == sent
+        handler.shared_state.approve_mech.assert_not_called()
         assert _reply(handler) == (
-            "You have not approved any third-party mechs."
-            f"{PARAGRAPH_BREAK}No mechs are pinned, so the agent chooses among "
-            "all the mechs it may use."
+            f"There is nothing to accept for {THIRD_PARTY}. {reason}"
         )
+
+    @pytest.mark.parametrize("address", [THIRD_PARTY, None], ids=["pronoun", "none"])
+    def test_a_reference_with_nothing_shown_asks_which_mech(
+        self, address: Optional[str]
+    ) -> None:
+        """Nothing is read or approved; the list is offered to pick from."""
+        handler, wire = _mech_handler(discovered={VALORY_MECH}, offers=(OFFER,))
+        _chat(handler, "let's use it", "approve", address)
+        assert _reply(handler) == PARAGRAPH_BREAK.join(
+            [
+                WHICH_MECH,
+                f"Mechs your agent can use:<br>1. {VALORY_MECH}, Valory",
+                LIST_FOOTER,
+            ]
+        )
+        assert wire.sent == []
+        handler.shared_state.approve_mech.assert_not_called()
+        assert handler.shared_state.last_mech_list == [VALORY_MECH]
+
+    def test_with_no_mechs_to_list_it_asks_for_an_address(self) -> None:
+        """An empty list is not shown; the user is asked for an address."""
+        handler, _ = _mech_handler()
+        _chat(handler, "let's use it", "approve")
+        assert _reply(handler) == PARAGRAPH_BREAK.join([WHICH_MECH, NOTHING_TO_LIST])
+
+
+class TestAnApprovalNeedsTheReportJustBefore:
+    """A read approval takes an offer only when that mech's report was the reply right before."""
+
+    def test_approving_by_address_right_after_its_report_takes_the_offer(
+        self,
+    ) -> None:
+        """The typed address is the mech just shown, so its offer is taken."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire)
+        sent = len(wire.sent)
+        _chat(handler, f"approve {CHECKSUMMED}", "approve", CHECKSUMMED)
+        assert len(wire.sent) == sent + 1
+        assert wire.sent[-1]["callable"] == "get_max_delivery_rate"
+        wire.answer_rate(NATIVE_RATE)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    @pytest.mark.parametrize(
+        "text, intent, address",
+        [("go risky", "none", None), (f"and {OTHER_MECH}?", "ask", OTHER_MECH)],
+        ids=["config_reply", "another_report"],
+    )
+    def test_an_offer_held_from_an_earlier_report_is_shown_again(
+        self, text: str, intent: str, address: Optional[str]
+    ) -> None:
+        """Another reply came in between, so the report is shown again and nothing is approved."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire)
+        _chat(handler, text, intent, address)
+        if address is not None:
+            _answer_report(wire, address)
+        handler._send_ok_response.reset_mock()
+        assert handler.shared_state.mech_offers[THIRD_PARTY] == OFFER
+        sent = len(wire.sent)
+        _chat(handler, f"approve {THIRD_PARTY}", "approve", THIRD_PARTY)
+        assert [request["url"] for request in wire.sent[sent:]] == [SUBGRAPH]
+        _answer_report(wire, THIRD_PARTY)
+        assert _reply(handler).endswith(accept_line("0.01 xDAI", THIRD_PARTY))
+        handler.shared_state.approve_mech.assert_not_called()
+        assert handler.shared_state.last_shown_mech == THIRD_PARTY
+
+    @pytest.mark.parametrize("offers", [(OFFER,), ()], ids=["offer_held", "no_offer"])
+    def test_should_i_approve_with_no_report_before_shows_the_report(
+        self, offers: Tuple[Offer, ...]
+    ) -> None:
+        """The question is answered with the report, which asks for a yes; nothing is approved."""
+        handler, wire = _mech_handler(offers=offers)
+        _chat(handler, f"should I approve {THIRD_PARTY}?", "approve", THIRD_PARTY)
+        assert [request["url"] for request in wire.sent] == [SUBGRAPH]
+        _answer_report(wire, THIRD_PARTY)
+        assert _reply(handler).endswith(accept_line("0.01 xDAI", THIRD_PARTY))
+        handler.shared_state.approve_mech.assert_not_called()
+
+    def test_a_refusal_from_an_earlier_report_shows_the_report_again(self) -> None:
+        """The reason is repeated only right after the report; later the report is read again."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire, THIRD_PARTY, NATIVE_RATE, selfDeliveredFromReceived="0")
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        sent = len(wire.sent)
+        _chat(handler, f"approve {THIRD_PARTY}", "approve", THIRD_PARTY)
+        assert [request["url"] for request in wire.sent[sent:]] == [SUBGRAPH]
+        _answer_report(wire, THIRD_PARTY, selfDeliveredFromReceived="0")
+        assert _reply(handler).endswith(NEVER_DELIVERED)
+        handler.shared_state.approve_mech.assert_not_called()
+
+    def test_a_mech_just_shown_with_no_terms_kept_is_reported_again(self) -> None:
+        """With neither an offer nor a refusal kept for it, the report is read again."""
+        handler, wire = _mech_handler()
+        handler.shared_state.last_shown_mech = THIRD_PARTY
+        _chat(handler, "yes", "approve", last_shown=True)
+        assert [request["url"] for request in wire.sent] == [SUBGRAPH]
+        handler.shared_state.approve_mech.assert_not_called()
+
+    def test_the_accept_line_after_other_replies_takes_a_held_offer(self) -> None:
+        """The typed price is consent on its own, whatever came in between."""
+        handler, wire = _mech_handler()
+        _shown(handler, wire)
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, ACCEPT_PHRASE)
+        wire.answer_rate(NATIVE_RATE)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+
+class TestListIntent:
+    """The list intent is answered with a numbered list the handler builds and keeps."""
+
+    def test_valory_then_approved_mechs_are_numbered_with_their_terms(self) -> None:
+        """Valory mechs in address order with their payment method, then approvals in order."""
+        handler, wire = _mech_handler(
+            discovered={OTHER_VALORY_MECH, VALORY_MECH},
+            approved={THIRD_PARTY: NATIVE_RATE, OTHER_MECH: 5},
+            payment_types={THIRD_PARTY: NATIVE},
+            discovered_types={VALORY_MECH: NATIVE},
+            pin=[CHECKSUMMED],
+        )
+        _chat(handler, "which mechs can my agent use?", "list")
+        assert _reply(handler) == PARAGRAPH_BREAK.join(
+            [
+                "Mechs your agent can use:<br>"
+                f"1. {VALORY_MECH}, Valory, paid with xDAI<br>"
+                f"2. {OTHER_VALORY_MECH}, Valory<br>"
+                f"3. {THIRD_PARTY}, approved, up to 0.01 xDAI per request, pinned<br>"
+                f"4. {OTHER_MECH}, approved; ask about it to see its price",
+                LIST_FOOTER,
+            ]
+        )
+        assert handler.shared_state.last_mech_list == [
+            VALORY_MECH,
+            OTHER_VALORY_MECH,
+            THIRD_PARTY,
+            OTHER_MECH,
+        ]
+        assert wire.sent == []
+        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "kind, terms",
+        [
+            (NATIVE, "Valory, paid with xDAI"),
+            (NEVERMINED, "Valory, paid with a Nevermined subscription"),
+            ("unknown", "Valory, paid with an unrecognised payment method"),
+        ],
+        ids=["native", "nevermined", "unknown"],
+    )
+    def test_a_valory_mech_shows_its_discovered_payment_method(
+        self, kind: str, terms: str
+    ) -> None:
+        """The method comes from what mech-interact discovered, with no new read."""
+        handler, wire = _mech_handler(
+            discovered={VALORY_MECH}, discovered_types={VALORY_MECH: kind}
+        )
+        _chat(handler, "list the mechs", "list")
+        assert f"1. {VALORY_MECH}, {terms}" in _reply(handler)
+        assert wire.sent == []
+
+    def test_a_mech_both_discovered_and_approved_is_listed_once(self) -> None:
+        """It is listed among the approvals, at its accepted price."""
+        handler, _ = _mech_handler(
+            discovered={THIRD_PARTY},
+            approved={THIRD_PARTY: NATIVE_RATE},
+            payment_types={THIRD_PARTY: NATIVE},
+        )
+        _chat(handler, "list the mechs", "list")
+        assert handler.shared_state.last_mech_list == [THIRD_PARTY]
+
+    def test_nothing_to_list_says_so(self) -> None:
+        """An empty list is said plainly and kept empty."""
+        handler, _ = _mech_handler()
+        handler.shared_state.last_mech_list = [THIRD_PARTY]
+        _chat(handler, "list the mechs", "list")
+        assert _reply(handler) == NOTHING_TO_LIST
+        assert handler.shared_state.last_mech_list == []
 
     def test_an_accept_records_the_payment_type_for_the_list(self) -> None:
         """What the report offered in is what the list shows later."""
@@ -3488,19 +3864,72 @@ class TestListApproved:
         _prompt(handler, ACCEPT_PHRASE)
         wire.answer_rate(NATIVE_RATE)
         handler._send_ok_response.reset_mock()
-        _prompt(handler, "list approved")
-        assert f"{THIRD_PARTY}, up to 0.01 xDAI per request" in _reply(handler)
+        _chat(handler, "list the mechs", "list")
+        assert f"1. {THIRD_PARTY}, approved, up to 0.01 xDAI per request" in _reply(
+            handler
+        )
 
 
-class TestRemove:
-    """`remove <address>` drops an approval and any pin on it."""
+class TestPositionReferences:
+    """A position resolves to the address at that place in the last list shown."""
 
-    def test_an_approved_mech_is_removed_and_unpinned(self) -> None:
+    def test_a_listed_position_is_reported(self) -> None:
+        """The second item of the list is the mech read and shown."""
+        handler, wire = _mech_handler(
+            discovered={VALORY_MECH}, approved={THIRD_PARTY: NATIVE_RATE}
+        )
+        _listed(handler)
+        _chat(handler, "tell me about the second one", "ask", position=2)
+        assert THIRD_PARTY.encode() in wire.sent[0]["body"]
+        _answer_report(wire, THIRD_PARTY)
+        assert _reply(handler).startswith(f"Bob Mech, {THIRD_PARTY}, on Gnosis.")
+        assert handler.shared_state.last_shown_mech == THIRD_PARTY
+
+    def test_approving_a_listed_mech_with_no_offer_shows_its_report_first(
+        self,
+    ) -> None:
+        """No report with an offer was shown for it, so nothing is approved yet."""
+        handler, wire = _mech_handler(discovered={VALORY_MECH, OTHER_VALORY_MECH})
+        _listed(handler)
+        _chat(handler, "approve the second one", "approve", position=2)
+        assert OTHER_VALORY_MECH.encode() in wire.sent[0]["body"]
+        handler.shared_state.approve_mech.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "address, position",
+        [(None, None), (None, 2), (None, 0), (OTHER_MECH, None), (VALORY_MECH, 1)],
+        ids=[
+            "described_otherwise",
+            "past_the_end",
+            "position_zero",
+            "address_not_named",
+            "address_named_nowhere",
+        ],
+    )
+    def test_an_unplaceable_reference_shows_the_list_again(
+        self, address: Optional[str], position: Optional[int]
+    ) -> None:
+        """The list is shown again to pick a number from; nothing is read."""
+        handler, wire = _mech_handler(discovered={VALORY_MECH})
+        _listed(handler)
+        handler.shared_state.last_mech_list = []
+        _chat(handler, "the cheap one", "ask", address, position)
+        assert _reply(handler).startswith(WHICH_MECH + PARAGRAPH_BREAK)
+        assert f"1. {VALORY_MECH}, Valory" in _reply(handler)
+        assert handler.shared_state.last_mech_list == [VALORY_MECH]
+        assert wire.sent == []
+
+
+class TestRemoveIntent:
+    """Removing drops an approval and any pin on it."""
+
+    def test_the_mech_just_shown_is_removed_and_unpinned(self) -> None:
         """The record and the pin forget the mech; other pins stay."""
         handler, _ = _mech_handler(
             approved={THIRD_PARTY: 1, OTHER_MECH: 2}, pin=[VALORY_MECH, THIRD_PARTY]
         )
-        _prompt(handler, f"Remove {CHECKSUMMED}.")
+        handler.shared_state.last_shown_mech = THIRD_PARTY
+        _chat(handler, "stop using that one", "remove", last_shown=True)
         handler.shared_state.set_approved_mech_rates.assert_called_once_with(
             {OTHER_MECH: 2}
         )
@@ -3508,8 +3937,34 @@ class TestRemove:
         assert _reply(handler) == (
             f"Removed {THIRD_PARTY}. No new requests go to it from the next cycle; "
             "a request already sent to it can still be answered and bet on. "
-            f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}."
+            f"It was pinned, so {THIRD_PARTY} is unpinned; still pinned: {VALORY_MECH}. "
+            "To undo, reply undo. After another message, send its address to see "
+            "its report and approve it again."
         )
+
+    def test_a_mech_never_approved_is_said_so(self) -> None:
+        """Nothing is written."""
+        handler, _ = _mech_handler(approved={OTHER_MECH: 2})
+        _chat(handler, f"stop using {CHECKSUMMED}", "remove", CHECKSUMMED)
+        handler.shared_state.set_approved_mech_rates.assert_not_called()
+        assert _reply(handler) == (
+            f"{THIRD_PARTY} is not approved, so there is nothing to remove. {NEXT_STEP}"
+        )
+
+
+class TestTypedRemove:
+    """`remove <address>` works without the model, so an approval can always be revoked."""
+
+    @pytest.mark.parametrize(
+        "text", [f"remove {CHECKSUMMED}", f"  Remove {THIRD_PARTY}. "]
+    )
+    def test_it_removes_without_a_model_call(self, text: str) -> None:
+        """The approval and its pin go, and the model is not asked."""
+        handler, _ = _mech_handler(approved={THIRD_PARTY: 1}, pin=[THIRD_PARTY])
+        _prompt(handler, text)
+        handler._send_message.assert_not_called()  # type: ignore[attr-defined]
+        assert handler.shared_state.approved_mech_rates == {}
+        assert _reply(handler).startswith(f"Removed {THIRD_PARTY}.")
 
     def test_a_mech_never_approved_is_said_so(self) -> None:
         """Nothing is written."""
@@ -3517,12 +3972,161 @@ class TestRemove:
         _prompt(handler, f"remove {THIRD_PARTY}")
         handler.shared_state.set_approved_mech_rates.assert_not_called()
         assert _reply(handler) == (
-            f"{THIRD_PARTY} is not approved, so there is nothing to remove."
+            f"{THIRD_PARTY} is not approved, so there is nothing to remove. {NEXT_STEP}"
         )
 
 
-class TestPin:
-    """`pin` and `unpin` change the pin list for mechs the agent may use."""
+class TestTheMechJustShownExpires:
+    """A report counts as the mech just shown only when it was the reply right before."""
+
+    @pytest.mark.parametrize(
+        "between",
+        [
+            ("which mechs can my agent use?", "list"),
+            ("stop using it", "remove"),
+            ("go risky", "none"),
+        ],
+        ids=["list", "remove", "config"],
+    )
+    def test_yes_after_another_reply_approves_nothing(
+        self, between: Tuple[str, str]
+    ) -> None:
+        """The report on screen is gone, so "yes" asks which mech instead of approving."""
+        handler, wire = _mech_handler(approved={OTHER_MECH: 1})
+        _shown(handler, wire)
+        handler._send_ok_response.reset_mock()
+        text, intent = between
+        _chat(handler, text, intent, last_shown=intent == "remove" or None)
+        handler._send_ok_response.reset_mock()
+        _chat(handler, "yes", "approve", last_shown=True)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler).startswith(WHICH_MECH)
+
+
+class TestUndoRightAfterARemoval:
+    """An undo as the next message puts back the removed approval as it was."""
+
+    @staticmethod
+    def _removed(pinned: bool) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(
+            approved={THIRD_PARTY: NATIVE_RATE},
+            payment_types={THIRD_PARTY: NATIVE},
+            pin=[VALORY_MECH, THIRD_PARTY] if pinned else [VALORY_MECH],
+            discovered={VALORY_MECH},
+        )
+        _prompt(handler, f"remove {THIRD_PARTY}")
+        handler._send_ok_response.reset_mock()
+        handler._store_selected_mechs.reset_mock()  # type: ignore[attr-defined]
+        handler.shared_state.approve_mech.reset_mock()
+        return handler
+
+    @pytest.mark.parametrize("pinned", [True, False], ids=["pinned", "not_pinned"])
+    def test_undo_puts_back_the_ceiling_the_payment_type_and_the_pin(
+        self, pinned: bool
+    ) -> None:
+        """The same ceiling comes back, so the agent can never pay more than agreed."""
+        handler = self._removed(pinned)
+        handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH]
+        _prompt(handler, "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+        if pinned:
+            handler._store_selected_mechs.assert_called_once_with(  # type: ignore[attr-defined]
+                [VALORY_MECH, THIRD_PARTY]
+            )
+        else:
+            handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        again = " and pinned it again" if pinned else ""
+        assert _reply(handler) == (
+            f"Put back {THIRD_PARTY} at up to 0.01 xDAI per request{again}. If it "
+            "now charges more, your agent won't use it until you approve the new price."
+        )
+
+    def test_undo_does_not_pin_twice(self) -> None:
+        """A mech pinned again before the undo is not added a second time."""
+        handler = self._removed(pinned=True)
+        handler.shared_state.chatui_config.selected_mechs = [VALORY_MECH, THIRD_PARTY]
+        _prompt(handler, "undo")
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        assert "and pinned it again" in _reply(handler)
+
+    def test_undo_without_a_known_payment_type_names_no_figure(self) -> None:
+        """An approval kept before payment types were recorded puts back its ceiling unnamed."""
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        _prompt(handler, f"remove {THIRD_PARTY}")
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, None
+        )
+        assert _reply(handler).startswith(
+            f"Put back {THIRD_PARTY} at the price you accepted."
+        )
+
+    def test_undo_after_another_message_puts_nothing_back(self) -> None:
+        """Another reply in between retires the removal."""
+        handler = self._removed(pinned=False)
+        _chat(handler, "go risky", "none")
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, "undo")
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "There is no removal to undo."
+
+    @pytest.mark.parametrize("typed", [True, False], ids=["typed", "model"])
+    def test_undo_with_nothing_removed_says_so(self, typed: bool) -> None:
+        """No removal before it, nothing to put back."""
+        handler, _ = _mech_handler()
+        if typed:
+            _prompt(handler, "undo")
+        else:
+            _chat(handler, "put it back", "undo")
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "There is no removal to undo."
+
+    def test_a_typed_undo_needs_no_model_call(self) -> None:
+        """The word alone puts the removal back in code, so a model miss cannot spend it."""
+        handler = self._removed(pinned=False)
+        handler.context.srr_dialogues.create.reset_mock()
+        _prompt(handler, "Undo.")
+        assert _model_prompts(handler) == []
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    @pytest.mark.parametrize(
+        "text, address",
+        [("put it back", None), (f"put back {THIRD_PARTY}", THIRD_PARTY)],
+        ids=["no_mech_named", "the_removed_mech_named"],
+    )
+    def test_an_undo_read_by_the_model_puts_back_the_removed_mech(
+        self, text: str, address: Optional[str]
+    ) -> None:
+        """Other wording reaches the undo through the model's reading."""
+        handler = self._removed(pinned=False)
+        _chat(handler, text, "undo", address=address)
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+    def test_an_undo_naming_another_mech_puts_nothing_back(self) -> None:
+        """The undo keeps waiting for the next message, so the removal is not lost."""
+        handler = self._removed(pinned=False)
+        _chat(handler, f"put back {OTHER_MECH}", "undo", address=OTHER_MECH)
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == (
+            f"Your message names another mech, not {THIRD_PARTY}, the one just "
+            "removed, so nothing was put back. To put it back, reply undo."
+        )
+        handler._send_ok_response.reset_mock()
+        _prompt(handler, "undo")
+        handler.shared_state.approve_mech.assert_called_once_with(
+            THIRD_PARTY, NATIVE_RATE, NATIVE
+        )
+
+
+class TestPinIntent:
+    """Pinning and unpinning change the pin list for mechs the agent may use."""
 
     @pytest.mark.parametrize(
         "address, discovered, approved, pins, stored",
@@ -3538,7 +4142,7 @@ class TestPin:
             ),
         ],
     )
-    def test_a_mech_the_agent_may_use_is_pinned(
+    def test_the_mech_just_shown_is_pinned_when_the_agent_may_use_it(
         self,
         address: str,
         discovered: Optional[set],
@@ -3548,11 +4152,12 @@ class TestPin:
     ) -> None:
         """A discovered Valory mech or an approved one joins the pin list."""
         handler, _ = _mech_handler(approved=approved, pin=pins, discovered=discovered)
-        _prompt(handler, f"pin {address.upper().replace('0X', '0x')}")
+        handler.shared_state.last_shown_mech = address
+        _chat(handler, "only use this one from now on", "pin", last_shown=True)
         handler._store_selected_mechs.assert_called_once_with(stored)  # type: ignore[attr-defined]
         assert _reply(handler) == (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
-            f"{', '.join(stored)}."
+            f"{', '.join(stored)}. To undo, tell me to unpin {address}."
         )
 
     @pytest.mark.parametrize(
@@ -3570,73 +4175,67 @@ class TestPin:
         handler, _ = _mech_handler(
             approved=approved, discovered=discovered, valid=valid
         )
-        _prompt(handler, f"pin {THIRD_PARTY}")
+        _chat(handler, f"pin {THIRD_PARTY}", "pin", THIRD_PARTY)
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         assert _reply(handler) == (
             "I can only pin a Valory mech the agent uses or a mech you approved."
         )
 
     def test_an_already_pinned_mech_is_not_pinned_twice(self) -> None:
-        """The list is left as it is."""
+        """The list is left as it is, and no undo is offered that would drop the earlier pin."""
         handler, _ = _mech_handler(discovered={VALORY_MECH}, pin=[VALORY_MECH])
-        _prompt(handler, f"pin {VALORY_MECH}")
+        _chat(handler, f"pin {VALORY_MECH}", "pin", VALORY_MECH)
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
         assert _reply(handler) == (
-            f"Pinned {VALORY_MECH}. Mech requests now go only to your pinned mechs: "
-            f"{VALORY_MECH}."
+            f"{VALORY_MECH} is already pinned. Mech requests go only to your pinned "
+            f"mechs: {VALORY_MECH}."
         )
 
     def test_unpinning_one_of_several_keeps_the_rest(self) -> None:
         """Mech selection stays pinned to the others."""
         handler, _ = _mech_handler(pin=[VALORY_MECH, THIRD_PARTY])
-        _prompt(handler, f"unpin {CHECKSUMMED}")
+        _chat(handler, f"unpin {CHECKSUMMED}", "unpin", CHECKSUMMED)
         handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
-        assert (
-            _reply(handler) == f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}."
+        assert _reply(handler) == (
+            f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
         )
 
     def test_unpinning_the_last_pin_restores_normal_selection(self) -> None:
         """An empty pin list is stored as none."""
         handler, _ = _mech_handler(pin=[THIRD_PARTY])
-        _prompt(handler, f"unpin {THIRD_PARTY}")
+        _chat(handler, f"unpin {THIRD_PARTY}", "unpin", THIRD_PARTY)
         handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
         assert _reply(handler) == (
-            f"Unpinned {THIRD_PARTY}. Mech selection is back to normal."
+            f"Unpinned {THIRD_PARTY}. Mech selection is back to normal. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
         )
 
     def test_unpinning_a_mech_not_pinned_says_so(self) -> None:
         """Nothing is written."""
         handler, _ = _mech_handler(pin=[VALORY_MECH])
-        _prompt(handler, f"unpin {THIRD_PARTY}")
+        _chat(handler, f"unpin {THIRD_PARTY}", "unpin", THIRD_PARTY)
         handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
-        assert _reply(handler) == f"{THIRD_PARTY} is not pinned."
+        assert _reply(handler) == f"{THIRD_PARTY} is not pinned. {NEXT_STEP}"
 
 
 class TestAnAcceptAfterARefusal:
     """An accept for a mech whose last report made no offer is answered with why."""
 
     @pytest.mark.parametrize(
-        "record, reason",
+        "record, live, reason",
         [
-            ({"selfDeliveredFromReceived": "0"}, NEVER_DELIVERED),
-            (
-                {"maxDeliveryRate": str(NATIVE_RATE * 3)},
-                "It charges 0.03 xDAI per request, above the 0.01 xDAI this agent "
-                "allows, so it cannot be approved.",
-            ),
+            ({"selfDeliveredFromReceived": "0"}, NATIVE_RATE, NEVER_DELIVERED),
+            ({"maxDeliveryRate": str(NATIVE_RATE * 3)}, NATIVE_RATE * 3, ABOVE_CAP),
         ],
         ids=["never_delivered", "above_cap"],
     )
     def test_the_reply_gives_the_report_reason(
-        self, record: Dict[str, Any], reason: str
+        self, record: Dict[str, Any], live: int, reason: str
     ) -> None:
         """No read, nothing approved, and the refusal the report gave."""
         handler, wire = _mech_handler()
-        _prompt(handler, THIRD_PARTY)
-        wire.answer_http(_record(**record))
-        wire.answer_http(_card())
-        wire.answer_rate(int(record.get("maxDeliveryRate", NATIVE_RATE)))
-        handler._send_ok_response.reset_mock()
+        _shown(handler, wire, THIRD_PARTY, live, **record)
         _prompt(handler, f"I accept 0.03 xDAI per request for {THIRD_PARTY}")
         assert len(wire.sent) == 3
         handler.shared_state.approve_mech.assert_not_called()
@@ -3669,23 +4268,325 @@ class TestAnUnreadableAccept:
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
 
 
-class TestAPlainMessage:
-    """Without a command or an address, the message is a config request."""
+class TestTheConfigPromptListsOnlyValoryToolNames:
+    """Tool names only an approved third-party mech serves stay out of the prompt."""
 
-    @pytest.mark.parametrize("text", ["yes", "Yes, approve it", "accept it"])
-    def test_it_goes_to_the_config_prompt_and_approves_nothing(self, text: str) -> None:
-        """One model call under the config schema; no mech is read or approved."""
-        handler, wire = _mech_handler(offers=(OFFER,))
-        _prompt(handler, text)
-        assert handler._send_message.call_count == 1  # type: ignore[attr-defined]
-        payload = json.loads(
-            handler.context.srr_dialogues.create.call_args.kwargs["payload"]
+    OPERATOR_TOOL = "operator-tool"
+
+    def _handler(self, allowed: Optional[List[str]] = None) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        handler.shared_state.chatui_config.allowed_tools = allowed
+        handler.synchronized_data.available_mech_tools = [
+            "valory::superforcaster",
+            "valory::prediction-online",
+            f"{THIRD_PARTY}::prediction-online",
+            f"{THIRD_PARTY}::{self.OPERATOR_TOOL}",
+        ]
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "prediction-online", self.OPERATOR_TOOL}
         )
-        assert f'User prompt: "{text}"' in payload["prompt"]
-        assert "Trading strategy" in payload["prompt"]
+        return handler
+
+    def test_available_tools_leave_out_third_party_only_names(self) -> None:
+        """A name a Valory mech also serves is shown; one only a third party serves is counted."""
+        handler = self._handler()
+        _prompt(handler, "which tools can I use?")
+        prompt = _model_prompts(handler)[-1]
+        assert (
+            "-- Available tools: prediction-online, superforcaster (and 1 other "
+            "tool(s), not listed)\n"
+        ) in prompt
+        assert self.OPERATOR_TOOL not in prompt
+
+    def test_allowed_tools_leave_out_third_party_only_names(self) -> None:
+        """The user's current selection is shown the same way."""
+        handler = self._handler(allowed=["superforcaster", self.OPERATOR_TOOL])
+        _prompt(handler, "what is my setup?")
+        prompt = _model_prompts(handler)[-1]
+        assert (
+            "- Allowed tools: superforcaster (and 1 other tool(s), not listed)\n"
+        ) in prompt
+        assert self.OPERATOR_TOOL not in prompt
+
+    def test_a_selected_tool_no_valory_mech_serves_is_not_listed(self) -> None:
+        """A selection left from a mech no longer discovered is counted, not listed."""
+        handler = self._handler(allowed=["superforcaster", "left-over-tool"])
+        _prompt(handler, "what is my setup?")
+        prompt = _model_prompts(handler)[-1]
+        assert "left-over-tool" not in prompt
+        assert (
+            "- Allowed tools: superforcaster (and 1 other tool(s), not listed)\n"
+            in prompt
+        )
+
+    def test_an_available_tool_not_yet_keyed_to_a_mech_is_not_listed(self) -> None:
+        """A name offered before discovery records its mech is counted, not listed."""
+        handler = self._handler()
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "not-yet-keyed"}
+        )
+        _prompt(handler, "which tools can I use?")
+        prompt = _model_prompts(handler)[-1]
+        assert "not-yet-keyed" not in prompt
+        assert "superforcaster (and 1 other tool(s), not listed)" in prompt
+
+    def test_a_third_party_tool_typed_exactly_is_still_selectable(self) -> None:
+        """Selection is checked against every available tool, not only the listed ones."""
+        handler = self._handler()
+        params, issues = handler._process_updated_agent_config(
+            {"allowed_tools": [self.OPERATOR_TOOL]}
+        )
+        assert issues == []
+        assert params[ALLOWED_TOOLS_FIELD] == [self.OPERATOR_TOOL]
+
+
+class TestAnEditKeepsAllowedToolsThePromptDidNotList:
+    """The model edits the allowed list without seeing every tool in it, so it cannot drop one it was not shown."""
+
+    OPERATOR_TOOL = "operator-tool"
+
+    def _edit(
+        self,
+        message: str,
+        config: Dict[str, Any],
+        allowed: Optional[List[str]] = None,
+    ) -> _TestableHttpHandler:
+        handler, _ = _mech_handler(approved={THIRD_PARTY: NATIVE_RATE})
+        handler.shared_state.chatui_config.allowed_tools = allowed or [
+            "superforcaster",
+            self.OPERATOR_TOOL,
+        ]
+        handler.synchronized_data.available_mech_tools = [
+            "valory::superforcaster",
+            "valory::prediction-online",
+            f"{THIRD_PARTY}::{self.OPERATOR_TOOL}",
+        ]
+        handler.shared_state.available_prediction_tools = frozenset(
+            {"superforcaster", "prediction-online", self.OPERATOR_TOOL}
+        )
+        _prompt(handler, message)
+        _answer_model(handler, _config_reply(config=config))
+        return handler
+
+    @staticmethod
+    def _message(handler: _TestableHttpHandler) -> str:
+        return handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+
+    @pytest.mark.parametrize(
+        "sent, stored",
+        [
+            (["prediction-online"], ["prediction-online", OPERATOR_TOOL]),
+            ([], [OPERATOR_TOOL]),
+        ],
+        ids=["another_tool_set", "empty_list"],
+    )
+    def test_an_unlisted_tool_stays_allowed(
+        self, sent: List[str], stored: List[str]
+    ) -> None:
+        """An edit to the tools the model saw keeps the one it did not, and the reply says so."""
+        handler = self._edit(
+            "swap superforcaster for prediction-online", {"allowed_tools": sent}
+        )
+        handler._store_allowed_tools.assert_called_once_with(stored)  # type: ignore[attr-defined]
+        assert self._message(handler) == (
+            f"Allowed tools are now: {', '.join(stored)}. Kept {self.OPERATOR_TOOL}, "
+            "since your message didn't name it. To drop a tool, send its exact name."
+        )
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            f"stop using {OPERATOR_TOOL}",
+            f"stop using {OPERATOR_TOOL}.",
+            f"drop `{OPERATOR_TOOL}`, keep superforcaster",
+        ],
+    )
+    def test_an_unlisted_tool_the_message_names_can_be_dropped(
+        self, message: str
+    ) -> None:
+        """Typing the tool's exact name lets the model's list stand."""
+        handler = self._edit(message, {"allowed_tools": ["superforcaster"]})
+        handler._store_allowed_tools.assert_called_once_with(["superforcaster"])  # type: ignore[attr-defined]
+        assert self._message(handler) == MODEL_MESSAGE
+
+    def test_a_longer_name_does_not_name_the_tool(self) -> None:
+        """A word that only contains the tool's name is not the name."""
+        handler = self._edit(
+            f"stop using {self.OPERATOR_TOOL}-v2", {"allowed_tools": ["superforcaster"]}
+        )
+        handler._store_allowed_tools.assert_called_once_with(  # type: ignore[attr-defined]
+            ["superforcaster", self.OPERATOR_TOOL]
+        )
+
+    def test_an_unlisted_tool_no_longer_available_is_not_put_back(self) -> None:
+        """A selection left from a mech that is gone is not restored."""
+        handler = self._edit(
+            "use prediction-online",
+            {"allowed_tools": ["prediction-online"]},
+            allowed=["superforcaster", "left-over-tool"],
+        )
+        handler._store_allowed_tools.assert_called_once_with(["prediction-online"])  # type: ignore[attr-defined]
+        assert self._message(handler) == MODEL_MESSAGE
+
+    def test_clearing_the_field_clears_every_tool(self) -> None:
+        """The removed-fields clear still goes back to free tool selection."""
+        handler = self._edit(
+            "clear my allowed tools", {"removed_config_fields": ["allowed_tools"]}
+        )
+        handler._store_allowed_tools.assert_called_once_with(None)  # type: ignore[attr-defined]
+
+    def test_a_reply_without_a_tool_edit_stores_no_tools(self) -> None:
+        """No allowed-tools list in the reply, nothing to keep."""
+        handler = self._edit("go risky", {"trading_strategy": "kelly_criterion"})
+        handler._store_allowed_tools.assert_not_called()  # type: ignore[attr-defined]
+
+
+class TestTheConfigPromptCarriesNoMechState:
+    """The model gets no mech reports, chat addresses or offers."""
+
+    def test_no_address_card_text_or_offer_from_the_chat_reaches_the_model(
+        self,
+    ) -> None:
+        """Which mech was shown, the list and the offer stay in code."""
+        handler, wire = _mech_handler(discovered={VALORY_MECH, OTHER_VALORY_MECH})
+        _listed(handler)
+        _shown(handler, wire)
+        _prompt(handler, "let's use it")
+        prompt = _model_prompts(handler)[-1]
+        assert 'User prompt: "let\'s use it"' in prompt
+        for text in (THIRD_PARTY, "Bob Mech", "superforcaster", "3786", "0.01 xDAI"):
+            assert text not in prompt
+
+
+class TestAReplyWithAMechIntent:
+    """A reply whose mech intent resolves is carried out in code; its message and config are not used."""
+
+    CONFIG = {
+        "trading_strategy": "kelly_criterion",
+        "fixed_bet_size": 0.5,
+        "behavior": "Trades more.",
+    }
+
+    def test_a_mech_intent_with_a_config_change_does_neither(self) -> None:
+        """Nothing is stored, no mech action runs, and the user is told to ask separately."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        _prompt(handler, "show me the mechs and go risky")
+        _answer_model(handler, _config_reply({"intent": "list"}, self.CONFIG))
+        handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        handler._store_chatui_param_to_json.assert_not_called()
+        handler.shared_state.update_agent_behavior.assert_not_called()
+        assert _reply(handler) == ONE_REQUEST_AT_A_TIME
+        assert handler.shared_state.last_mech_list == []
+        handler.context.logger.warning.assert_called()
+
+    @pytest.mark.parametrize(
+        "reading", [{"intent": "delete", "address": THIRD_PARTY}, "approve"]
+    )
+    def test_an_unreadable_mech_intent_is_logged_and_answered_as_config(
+        self, reading: Any
+    ) -> None:
+        """A garbled intent is not acted on, and the log shows it."""
+        handler, _ = _mech_handler()
+        _prompt(handler, "hello")
+        _answer_model(handler, _config_reply(reading))
+        assert _reply(handler) == MODEL_MESSAGE
+        assert any(
+            "unreadable mech intent" in str(call)
+            for call in handler.context.logger.warning.call_args_list
+        )
+
+    def test_a_behaviour_line_alone_is_not_a_config_change(self) -> None:
+        """The model's behaviour summary does not block a mech intent."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        _prompt(handler, "show me the mechs")
+        _answer_model(
+            handler,
+            _config_reply(
+                {"intent": "list"}, {"behavior": "Trades.", "allowed_tools": []}
+            ),
+        )
+        assert _reply(handler).startswith(
+            f"Mechs your agent can use:<br>1. {VALORY_MECH}"
+        )
+
+    def test_the_same_config_update_without_an_intent_is_applied(self) -> None:
+        """The update above is one the config chat would otherwise apply."""
+        handler, _ = _mech_handler(discovered={VALORY_MECH})
+        _prompt(handler, "go risky")
+        _answer_model(handler, _config_reply(None, self.CONFIG))
+        handler._store_trading_strategy.assert_called_once_with("kelly_criterion")  # type: ignore[attr-defined]
+
+    def test_an_unplaceable_reference_ignores_the_message(self) -> None:
+        """The handler asks which mech; the model's text is not shown."""
+        handler, _ = _mech_handler()
+        _chat(handler, "approve the cheap one", "approve")
+        assert _reply(handler) == PARAGRAPH_BREAK.join([WHICH_MECH, NOTHING_TO_LIST])
+        handler._send_ok_response.assert_called_once()
+
+
+class TestAMessageWithNoMechIntent:
+    """A reply with no mech intent is handled exactly as the config chat handles it."""
+
+    @pytest.mark.parametrize("text", ["turn trading off for today", "yes"])
+    def test_it_is_one_config_call_and_approves_nothing(self, text: str) -> None:
+        """One model call; the model's message is the answer; no mech is read or approved."""
+        handler, wire = _mech_handler(offers=(OFFER,))
+        _chat(handler, text, "none")
+        (prompt,) = _model_prompts(handler)
+        assert f'User prompt: "{text}"' in prompt
+        assert "Trading strategy" in prompt
+        assert _reply(handler) == MODEL_MESSAGE
         assert wire.sent == []
         handler.shared_state.approve_mech.assert_not_called()
         assert handler.shared_state.mech_offers == {THIRD_PARTY: OFFER}
+
+    @pytest.mark.parametrize(
+        "mech_intent",
+        [
+            None,
+            "approve",
+            5,
+            ["approve", THIRD_PARTY],
+            {},
+            {"address": THIRD_PARTY},
+            {"intent": "delete", "address": THIRD_PARTY},
+            {"intent": None, "address": THIRD_PARTY},
+            {"intent": "APPROVE", "address": THIRD_PARTY},
+            {"intent": "none", "address": THIRD_PARTY},
+        ],
+        ids=[
+            "null",
+            "string",
+            "number",
+            "list",
+            "empty",
+            "missing_intent",
+            "unknown_intent",
+            "null_intent",
+            "wrong_case",
+            "none_intent",
+        ],
+    )
+    def test_an_invalid_mech_intent_is_a_normal_config_reply(
+        self, mech_intent: Any
+    ) -> None:
+        """Nothing in the mech flow runs on a mech intent that can't be read."""
+        handler, wire = _mech_handler(offers=(OFFER,))
+        handler.shared_state.last_shown_mech = THIRD_PARTY
+        _prompt(handler, "let's use it")
+        _answer_model(handler, _config_reply(mech_intent))
+        assert _reply(handler) == MODEL_MESSAGE
+        assert wire.sent == []
+        handler.shared_state.approve_mech.assert_not_called()
+
+    def test_a_reply_without_the_field_is_a_normal_config_reply(self) -> None:
+        """An older reply shape still reads; whatever it says, nothing is approved."""
+        handler, _ = _mech_handler(offers=(OFFER,))
+        _prompt(handler, "approve it")
+        reply = {"message": "ok", "mech_action": {"confirm_approval": True}}
+        _answer_model(handler, json.dumps({"response": json.dumps(reply)}))
+        handler.shared_state.approve_mech.assert_not_called()
+        assert _reply(handler) == "ok"
 
     @pytest.mark.parametrize(
         "approved, payment_types, listed",
@@ -3711,27 +4612,11 @@ class TestAPlainMessage:
         handler, _ = _mech_handler(
             approved=approved, payment_types=payment_types, pin=[VALORY_MECH]
         )
-        _prompt(handler, "which mechs have I approved?")
-        prompt = json.loads(
-            handler.context.srr_dialogues.create.call_args.kwargs["payload"]
-        )["prompt"]
+        _prompt(handler, "how do pins work?")
+        prompt = _model_prompts(handler)[-1]
         assert f"- Approved third-party mechs: {listed}\n" in prompt
         assert f"- Pinned mechs: {VALORY_MECH}\n" in prompt
         assert "Selected mechs" not in prompt
-
-    def test_the_config_reply_cannot_approve_a_mech(self) -> None:
-        """Whatever the model says, the approved record is untouched."""
-        handler, _ = _mech_handler(offers=(OFFER,))
-        _prompt(handler, "approve it")
-        _, dialogue, callback, kwargs = handler._send_message.call_args[0]  # type: ignore[attr-defined]
-        reply = {"message": "ok", "mech_action": {"confirm_approval": True}}
-        callback(
-            SimpleNamespace(payload=json.dumps({"response": json.dumps(reply)})),
-            dialogue,
-            **kwargs,
-        )
-        handler.shared_state.approve_mech.assert_not_called()
-        assert _reply(handler) == "ok"
 
 
 class TestPinnableMechs:
@@ -3757,3 +4642,203 @@ class TestPinnableMechs:
             approved_mechs=[],
         )
         assert handler._get_available_valid_mechs() == {VALORY_MECH}
+
+
+CURRENT_CONFIG = ChatuiConfig(
+    trading_strategy="fixed_bet",
+    allowed_tools=["prediction-online"],
+    selected_mechs=[THIRD_PARTY, VALORY_MECH],
+    fixed_bet_size=5 * 10**16,
+    max_bet_size=10**17,
+)
+
+
+class TestOnlyARealConfigChangeBlocksAMechIntent:
+    """A reply that repeats the current settings beside a mech intent does not block it."""
+
+    @staticmethod
+    def _unpin_with(config: Dict[str, Any]) -> _TestableHttpHandler:
+        """Ask to unpin a mech, the reply carrying this config update."""
+        handler, _ = _mech_handler()
+        handler.shared_state.chatui_config = CURRENT_CONFIG
+        _prompt(handler, f"unpin {THIRD_PARTY}")
+        _answer_model(
+            handler,
+            _config_reply({"intent": "unpin", "address": THIRD_PARTY}, config),
+        )
+        return handler
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"trading_strategy": "fixed_bet"},
+            {"allowed_tools": ["prediction-online"]},
+            {"selected_mechs": [VALORY_MECH, CHECKSUMMED]},
+            {"fixed_bet_size": 0.05},
+            {"max_bet_size": 0.1},
+            {"activity_goal": 10},
+            {"behavior": "Trades.", "removed_config_fields": []},
+            {"trading_strategy": None, "removed_config_fields": None},
+        ],
+        ids=[
+            "strategy",
+            "tools",
+            "pins_any_order_and_case",
+            "fixed_bet_in_display_units",
+            "max_bet_in_display_units",
+            "default_activity_goal",
+            "behaviour_and_no_removals",
+            "nulls",
+        ],
+    )
+    def test_repeating_the_current_settings_runs_the_mech_action(
+        self, config: Dict[str, Any]
+    ) -> None:
+        """The unpin is carried out; no setting is written."""
+        handler = self._unpin_with(config)
+        handler._store_selected_mechs.assert_called_once_with([VALORY_MECH])  # type: ignore[attr-defined]
+        handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        assert _reply(handler) == (
+            f"Unpinned {THIRD_PARTY}. Still pinned: {VALORY_MECH}. "
+            f"To undo, tell me to pin {THIRD_PARTY}."
+        )
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"trading_strategy": "kelly_criterion"},
+            {"allowed_tools": ["prediction-offline"]},
+            {"allowed_tools": []},
+            {"selected_mechs": [VALORY_MECH]},
+            {"fixed_bet_size": 0.06},
+            {"max_bet_size": 0.2},
+            {"activity_goal": 11},
+            {"removed_config_fields": ["max_bet_size"]},
+            {"fixed_bet_size": "0.05"},
+            {"max_bet_size": 1e308},
+            {"allowed_tools": "prediction-online"},
+        ],
+        ids=[
+            "strategy",
+            "tools",
+            "tools_cleared",
+            "pins",
+            "fixed_bet",
+            "max_bet",
+            "activity_goal",
+            "removal",
+            "amount_as_text",
+            "amount_beyond_range",
+            "tools_as_text",
+        ],
+    )
+    def test_a_real_change_does_neither(self, config: Dict[str, Any]) -> None:
+        """Neither the unpin nor the change is made, and the user is told to ask separately."""
+        handler = self._unpin_with(config)
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        handler._store_trading_strategy.assert_not_called()  # type: ignore[attr-defined]
+        assert _reply(handler) == ONE_REQUEST_AT_A_TIME
+
+
+class TestAPinListReplyKeepsOnlyNamedOrPinnedMechs:
+    """A reply replacing the pin list may add only mechs the user's message names."""
+
+    @staticmethod
+    def _pin_reply(
+        text: str, pins: Optional[List[str]], config: Dict[str, Any]
+    ) -> _TestableHttpHandler:
+        """Send the message and answer it with this config update and no mech intent."""
+        handler, _ = _mech_handler(
+            pin=pins,
+            discovered={VALORY_MECH, OTHER_VALORY_MECH},
+            approved={THIRD_PARTY: NATIVE_RATE},
+        )
+        _prompt(handler, text)
+        _answer_model(handler, _config_reply(None, config))
+        return handler
+
+    @pytest.mark.parametrize(
+        "text, pins, mechs, stored",
+        [
+            (f"pin {VALORY_MECH}", None, [VALORY_MECH], [VALORY_MECH]),
+            (
+                f"also pin 0x{'C0' * 20}",
+                [VALORY_MECH],
+                [VALORY_MECH, OTHER_VALORY_MECH],
+                [VALORY_MECH, OTHER_VALORY_MECH],
+            ),
+            (
+                f"use {OTHER_VALORY_MECH} as well",
+                [VALORY_MECH],
+                [VALORY_MECH, OTHER_VALORY_MECH, THIRD_PARTY],
+                [VALORY_MECH, OTHER_VALORY_MECH],
+            ),
+            (
+                "keep only the first pin",
+                [VALORY_MECH, OTHER_VALORY_MECH],
+                [VALORY_MECH],
+                [VALORY_MECH],
+            ),
+            ("clear my pins", [VALORY_MECH], [], None),
+        ],
+        ids=[
+            "named",
+            "kept_and_named",
+            "one_not_named_dropped",
+            "subset_of_pins",
+            "empty_list_clears",
+        ],
+    )
+    def test_named_or_already_pinned_mechs_are_stored(
+        self,
+        text: str,
+        pins: Optional[List[str]],
+        mechs: List[str],
+        stored: Optional[List[str]],
+    ) -> None:
+        """What is stored is the reply's list without mechs the message did not name."""
+        handler = self._pin_reply(text, pins, {"selected_mechs": mechs})
+        handler._store_selected_mechs.assert_called_once_with(stored)  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "text, pins, mechs",
+        [
+            ("pin the Valory mech", None, [VALORY_MECH]),
+            (f"pin {THIRD_PARTY}", [VALORY_MECH], [OTHER_VALORY_MECH]),
+            ("pin them all", None, [VALORY_MECH, OTHER_VALORY_MECH, THIRD_PARTY]),
+        ],
+        ids=["not_named", "another_mech_than_named", "several_not_named"],
+    )
+    def test_a_list_of_mechs_never_named_is_not_stored(
+        self, text: str, pins: Optional[List[str]], mechs: List[str]
+    ) -> None:
+        """Nothing is written, and the reply says which mechs were not pinned instead of the model's message."""
+        handler = self._pin_reply(text, pins, {"selected_mechs": mechs})
+        handler._store_selected_mechs.assert_not_called()  # type: ignore[attr-defined]
+        reply = handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+        assert reply.startswith("Not pinned, since your message didn't name them: ")
+        assert MODEL_MESSAGE not in reply
+        for mech in mechs:
+            assert mech.lower() in reply
+
+    def test_a_partly_named_list_says_which_were_left_out(self) -> None:
+        """The named mech is pinned and the reply names only the one left out."""
+        handler = self._pin_reply(
+            f"use {OTHER_VALORY_MECH} as well",
+            [VALORY_MECH],
+            {"selected_mechs": [VALORY_MECH, OTHER_VALORY_MECH, THIRD_PARTY]},
+        )
+        reply = handler._send_ok_response.call_args[0][2][LLM_MESSAGE_FIELD]
+        assert reply.startswith(
+            f"Not pinned, since your message didn't name them: {THIRD_PARTY}."
+        )
+        assert OTHER_VALORY_MECH not in reply.split(".")[0]
+
+    def test_clearing_by_removal_is_unchanged(self) -> None:
+        """A removal clears the pins whatever the message names."""
+        handler = self._pin_reply(
+            "clear my pins",
+            [VALORY_MECH],
+            {"removed_config_fields": ["selected_mechs"]},
+        )
+        handler._store_selected_mechs.assert_called_once_with(None)  # type: ignore[attr-defined]
