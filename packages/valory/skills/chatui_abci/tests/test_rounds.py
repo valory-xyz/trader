@@ -20,7 +20,7 @@
 """Tests for the rounds module of the chatui_abci skill."""
 
 import json
-from typing import Any, Tuple, cast
+from typing import Any, Dict, Tuple, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -90,6 +90,52 @@ class TestSynchronizedData:
         """Malformed db payload yields an empty set rather than raising."""
         data = SynchronizedData(db=AbciAppDB(setup_data={"mechs_info": ["not-json"]}))
         assert data.available_valid_mechs == set()
+
+    @pytest.mark.parametrize("raw", ["5", '{"address": "0xabc"}', "null"])
+    def test_mechs_info_that_is_not_a_list_reads_as_none(self, raw: str) -> None:
+        """A db payload of the wrong shape yields no mechs rather than raising."""
+        data = SynchronizedData(db=AbciAppDB(setup_data={"mechs_info": [raw]}))
+        assert data.available_valid_mechs == set()
+        assert data.mech_payment_types == {}
+
+    def test_mech_payment_types_by_lowercase_address(self) -> None:
+        """Each discovered mech's payment type, lowercase; mechs without one are left out."""
+        mechs_info = [
+            {"address": "0xABC", "payment_type": "0xBA69"},
+            {"address": "0xdef", "payment_type": ""},
+            {"address": "0x123"},
+            {"payment_type": "0xba69"},
+        ]
+        data = SynchronizedData(
+            db=AbciAppDB(setup_data={"mechs_info": [json.dumps(mechs_info)]})
+        )
+        assert data.mech_payment_types == {"0xabc": "0xba69"}
+
+    @pytest.mark.parametrize(
+        "setup, loaded",
+        [
+            ({}, False),
+            ({"mechs_info": [None]}, False),
+            ({"mechs_info": ["not-json"]}, False),
+            ({"mechs_info": [json.dumps({"address": "0xabc"})]}, False),
+            ({"mechs_info": [json.dumps([])]}, True),
+            ({"mechs_info": [json.dumps([{"address": "0xabc"}])]}, True),
+        ],
+        ids=[
+            "missing",
+            "none",
+            "unparseable",
+            "not_a_list",
+            "written_empty",
+            "written",
+        ],
+    )
+    def test_mechs_info_loaded_only_once_written_this_period(
+        self, setup: Dict[str, Any], loaded: bool
+    ) -> None:
+        """A missing key is a period not discovered yet; an empty list written is a discovery that found none."""
+        data = SynchronizedData(db=AbciAppDB(setup_data=setup))
+        assert data.mechs_info_loaded is loaded
 
 
 class TestFinishedChatuiLoadRound:

@@ -70,14 +70,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie4wnp76qp3vn7vtflwhl2xmkdlgwxly5lhdtbgvoe3d5qt4wayxy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie6rblr2obloootnwgeeuxlpnolw5qwrwev7vrfukyxlw32f47wce
 - valory/market_manager_abci:0.1.0:bafybeifydyzqnsozq3vwjvkw3dj3e5jliblxuy5sge6ssj44qjl3fekw7a
-- valory/decision_maker_abci:0.1.0:bafybeichnwc7suegrgxe2dgfqvl6iqkyjmqt34xtshejeyfmdbapvl7e7i
-- valory/trader_abci:0.1.0:bafybeid24fycyirwejg7mdw2aewnbolynmhesvfsrvpeuuhc4olxvp7tji
+- valory/decision_maker_abci:0.1.0:bafybeid2r3o7v6uwty5cj3twqp4e6cya42replfdldsr7pezgft42swdny
+- valory/trader_abci:0.1.0:bafybeiaumvphypbxx3qaex2e3helz537g3pvqt6zrpf3icyk4ch3pm6bsi
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeidzrtuukocfcdnyy5idvpj7pqrqjidcbhrwd7dcczgwxmb6amcxzu
-- valory/mech_interact_abci:0.1.0:bafybeid3wg6uzf7mwrv6fpi2pmnbfsgc4ekbgpvakmcvoqfuq6znztpfei
-- valory/chatui_abci:0.1.0:bafybeifexgh6zfksat6rvajilct32lxnaqx7nrko5lqclbqcrimfjig5de
+- valory/check_stop_trading_abci:0.1.0:bafybeih4nokke7mchejjsesu2zeczvrr23z32d3snzi6enx6l6rqkmr4ji
+- valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
+- valory/chatui_abci:0.1.0:bafybeiciwbrczq2ais5tmbinuf46pdkgw7xyuhrmqifkbugdgj4n2l3tw4
 - valory/agent_performance_summary_abci:0.1.0:bafybeiacwc4jn24337f3v7fq4374tby6e7ykqnqhhd2rwenqd7c7lf6scu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
