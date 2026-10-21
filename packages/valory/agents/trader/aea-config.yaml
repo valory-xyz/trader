@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeigmpolqeys44mcy2pw3uh6yt3stbp7fkitl6cogv76yl27ai3ctie
+- valory/polymarket_client:0.1.0:bafybeicm54pyync2bohfgs5g4znv7chif73ahxttsqsfryr4k4hyvbyipy
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifnzktkxatqnj6kuf4xqhjphgeapwphznhswdzqcfoj2j64ujmy3u
-- valory/market_manager_abci:0.1.0:bafybeigeaekekuxtyby474r4cy4xxmqma4vnf5klgwyal5co74rgsxnm5i
-- valory/decision_maker_abci:0.1.0:bafybeiguqxmp3d63fv2fduqynkoipio6zos3wjxz4ee3622xs34llnmlwu
-- valory/trader_abci:0.1.0:bafybeig7h32ifuunggsm2moq4x26j3bvpgybfauadyjq5bws7ycbaqok64
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicvrsmx467jzeww3uzd4hsknslto2w7g2v2c6nbxbvk6gacmxf4bm
+- valory/market_manager_abci:0.1.0:bafybeiaoce3lmfrcffvlhruachuddepdoi72eotdz37lsia4mp5mooxpmq
+- valory/decision_maker_abci:0.1.0:bafybeidtbk4jrg4vnm25nbxopwzkqu4jqrri4a7nrbmsixcddwina4fwqm
+- valory/trader_abci:0.1.0:bafybeibszzmp26ct6r3jkm3rkev6chcgpxjauwmfxhnn3x4pudw67jyuzy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeiaa3gzvpp6sma5ao73cjgjn23bry3bqnpssy2vlo4ab6xk5srz2de
+- valory/check_stop_trading_abci:0.1.0:bafybeiggkvzyuou2fhmbhlyoavnh2athx3g7szxttb2kcjhgkfrj4gcnpu
 - valory/mech_interact_abci:0.1.0:bafybeid3wg6uzf7mwrv6fpi2pmnbfsgc4ekbgpvakmcvoqfuq6znztpfei
-- valory/chatui_abci:0.1.0:bafybeidvxxgk57ccsbm4axxzsz5xpfc33va6ovv36dvcduw7lfjje6ke7u
-- valory/agent_performance_summary_abci:0.1.0:bafybeif6p26l4a62bmt6scb537iml5qr7qqohtunkn6xdqd5i3eantpjlq
+- valory/chatui_abci:0.1.0:bafybeihxiciikookije7guxpazytpp5nbe3tujxb4o6f3n4tck76bamft4
+- valory/agent_performance_summary_abci:0.1.0:bafybeiarc7m7ecwux6dwi757d4b6nqhunzq6d7lgbfvazcxhrdnzau32rq
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
