@@ -19,7 +19,7 @@
 
 """Tests for the behaviours of the agent top-up skill."""
 
-from typing import Any, Dict, Generator, Iterator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -92,7 +92,7 @@ class _Harness:
         self.context.state.synchronized_data.db = AbciAppDB(
             setup_data=AbciAppDB.data_to_lists(setup)
         )
-        self.responses: Iterator[MagicMock] = iter(responses or [])
+        self.responses: List[MagicMock] = list(responses or [])
         self.contract_calls: List[Dict[str, Any]] = []
         self.sent: List[AgentTopUpPayload] = []
 
@@ -100,7 +100,7 @@ class _Harness:
         """Record a contract API call and return the next stubbed response."""
         self.contract_calls.append(kwargs)
         yield
-        return next(self.responses)
+        return self.responses.pop(0)
 
     def _send(self, payload: AgentTopUpPayload) -> Generator[None, None, None]:
         """Record the payload sent."""
@@ -232,7 +232,7 @@ class TestNoMove:
         )
 
         assert harness.run() is None
-        assert harness.contract_calls == []
+        assert not harness.contract_calls
         assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 0
 
 
@@ -364,7 +364,7 @@ class TestGnosisUnwrap:
         )
 
         assert harness.run() is None
-        assert harness.contract_calls == []
+        assert not harness.contract_calls
 
     def test_withdraw_build_failure_prepares_nothing(self) -> None:
         """An unwrap that cannot be built ends the check."""
