@@ -45,6 +45,7 @@ from packages.valory.skills.decision_maker_abci.payloads import (
 )
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
     DW_APPROVALS_VERSION,
+    POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
     PolymarketSetApprovalRound,
@@ -77,8 +78,21 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             # built below.
             yield from self._provision_deposit_wallet()
 
-            # Check if builder program is enabled
-            if self.context.params.polymarket_builder_program_enabled:
+            if self._safe_allowances_current():
+                # Only the DepositWallet needed this pass. No Safe tx is sent;
+                # the round routes to the post-approval check, which re-reads
+                # the Safe approvals on chain.
+                self.context.logger.info(
+                    "Safe allowances already recorded under the current "
+                    "version - skipping the Safe approvals."
+                )
+                self.payload = PolymarketSetApprovalPayload(
+                    self.context.agent_address,
+                    None,
+                    None,
+                    False,
+                )
+            elif self.context.params.polymarket_builder_program_enabled:
                 self.context.logger.info(
                     "Polymarket builder program enabled - calling connection to set approvals..."
                 )
@@ -100,6 +114,25 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
                 )
 
         yield from self.finish_behaviour(self.payload)
+
+    def _safe_allowances_current(self) -> bool:
+        """Whether ``polymarket.json`` records the Safe approvals as current.
+
+        :return: ``True`` if the file records ``allowances_set`` under the
+            current ``POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION`` stamp.
+        """
+        allowances_path = self.params.store_path / "polymarket.json"
+        try:
+            with open(allowances_path) as f:
+                allowances_data = json.load(f)
+        except (OSError, ValueError):
+            return False
+        return (
+            isinstance(allowances_data, dict)
+            and bool(allowances_data.get("allowances_set"))
+            and allowances_data.get("clob_version")
+            == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
+        )
 
     def _set_approval(self) -> Generator[None, None, None]:
         """Set approval for Polymarket contracts."""
