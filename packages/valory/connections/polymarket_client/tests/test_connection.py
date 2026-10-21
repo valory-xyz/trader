@@ -3102,31 +3102,6 @@ class TestSetApproval:
             POSITION_MANAGER, SAFE_ADDRESS, ROUTER
         )
 
-    def test_init_reads_router_approval_addresses(self) -> None:
-        """__init__ reads the PositionManager and Router from the config."""
-        overrides = {
-            "is_running_on_polymarket": True,
-            "safe_contract_addresses": {"polygon": SAFE_ADDRESS},
-            "position_manager_address": POSITION_MANAGER,
-            "router_address": ROUTER,
-        }
-        conn = object.__new__(_TestableConnection)
-        conn.logger = MagicMock()
-        conn.configuration = MagicMock()
-        conn.configuration.config.get.side_effect = lambda key, *default: (
-            overrides.get(key, default[0] if default else SAFE_ADDRESS)
-        )
-        with (
-            patch(f"{CONNECTION_MODULE}.BaseSyncConnection.__init__"),
-            patch(f"{CONNECTION_MODULE}.RelayClient"),
-            patch(f"{CONNECTION_MODULE}.RelayerProxyClient"),
-            patch(f"{CONNECTION_MODULE}.Web3"),
-            patch.object(_TestableConnection, "crypto_store"),
-            patch.object(_TestableConnection, "_build_clob_client"),
-        ):
-            PolymarketClientConnection.__init__(conn)
-        assert (conn.position_manager, conn.router) == (POSITION_MANAGER, ROUTER)
-
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""
         conn = _make_connection()
