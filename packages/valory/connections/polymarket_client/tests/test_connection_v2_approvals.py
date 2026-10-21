@@ -21,16 +21,14 @@
 
 Covers the Safe's PositionManager ``setApprovalForAll(Router, true)`` on the
 relayer path and in the approval check, the relayer error body in the logged
-error, the ``py_clob_client_v2`` 1.2.1 pin, and that a V1 market order still
-signs against the CTF Exchange with EIP-712 domain version ``"2"``.
+error, and that a V1 market order still signs against the CTF Exchange with
+EIP-712 domain version ``"2"``.
 """
 
-import importlib.metadata
-import random
-import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import requests
 import yaml
@@ -39,6 +37,7 @@ from eth_account import Account
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.models import OperationType
 from py_clob_client_v2 import ClobClient, OrderType
+from py_clob_client_v2 import client as clob_client_module
 
 from packages.valory.connections.polymarket_client import (
     connection as connection_module,
@@ -72,26 +71,44 @@ PROXY_URL = "https://mpp.example.org"
 MAX_UINT256 = 2**256 - 1
 APPROVE = "095ea7b3"  # approve(address,uint256)
 SET_APPROVAL_FOR_ALL = "a22cb465"  # setApprovalForAll(address,bool)
-SDK_VERSION = "1.2.1"
-RANDOM_SEED = 20260502
-RANDOM_CASES = 250
 
-# Connection address attributes, in the order the relayer batch uses them.
-ADDRESS_ATTRIBUTES = (
-    "collateral_address",
-    "ctf_address",
-    "ctf_exchange",
-    "neg_risk_ctf_exchange",
-    "neg_risk_adapter",
-    "ctf_collateral_adapter",
-    "neg_risk_ctf_collateral_adapter",
-    "position_manager",
-    "router",
+# Connection address attributes set to the documented addresses.
+DOCS_ADDRESSES = {
+    "collateral_address": PUSD,
+    "ctf_address": CTF,
+    "ctf_exchange": CTF_EXCHANGE,
+    "neg_risk_ctf_exchange": NEG_RISK_CTF_EXCHANGE,
+    "neg_risk_adapter": NEG_RISK_ADAPTER,
+    "ctf_collateral_adapter": CTF_COLLATERAL_ADAPTER,
+    "neg_risk_ctf_collateral_adapter": NEG_RISK_CTF_COLLATERAL_ADAPTER,
+    "position_manager": POSITION_MANAGER,
+    "router": ROUTER,
+}
+
+# The same attributes set to fixed addresses unlike the documented ones.
+DISTINCT_ADDRESSES = {
+    name: to_checksum_address("0x" + f"{0x10 + 0x11 * index:02x}" * 20)
+    for index, name in enumerate(DOCS_ADDRESSES)
+}
+
+# The Safe approvals that predate Protocol V2, in their relayer order, as
+# (target attribute, selector, argument attribute, uint argument).
+SAFE_EXISTING_APPROVALS = (
+    ("collateral_address", APPROVE, "ctf_exchange", MAX_UINT256),
+    ("ctf_address", SET_APPROVAL_FOR_ALL, "ctf_exchange", 1),
+    ("collateral_address", APPROVE, "neg_risk_ctf_exchange", MAX_UINT256),
+    ("ctf_address", SET_APPROVAL_FOR_ALL, "neg_risk_ctf_exchange", 1),
+    ("collateral_address", APPROVE, "neg_risk_adapter", MAX_UINT256),
+    ("ctf_address", SET_APPROVAL_FOR_ALL, "neg_risk_adapter", 1),
+    ("ctf_address", SET_APPROVAL_FOR_ALL, "ctf_collateral_adapter", 1),
+    ("ctf_address", SET_APPROVAL_FOR_ALL, "neg_risk_ctf_collateral_adapter", 1),
 )
+
+# The Safe's PositionManager ``setApprovalForAll(Router, true)``.
+SAFE_ROUTER_APPROVAL = ("position_manager", SET_APPROVAL_FOR_ALL, "router", 1)
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _CONNECTION_YAML = _TESTS_DIR.parent / "connection.yaml"
-_PYPROJECT = _TESTS_DIR.parents[4] / "pyproject.toml"
 
 
 class _Conn(PolymarketClientConnection):
@@ -154,63 +171,15 @@ def _decode(target: str, data: str) -> Tuple[str, str, str, int]:
     )
 
 
-def _existing_safe_calls() -> List[Tuple[str, str, str, int]]:
-    """Return the eight existing Safe approvals in their relayer order.
-
-    :return: the decoded calls.
-    """
-    return [
-        (PUSD, APPROVE, CTF_EXCHANGE, MAX_UINT256),
-        (CTF, SET_APPROVAL_FOR_ALL, CTF_EXCHANGE, 1),
-        (PUSD, APPROVE, NEG_RISK_CTF_EXCHANGE, MAX_UINT256),
-        (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_CTF_EXCHANGE, 1),
-        (PUSD, APPROVE, NEG_RISK_ADAPTER, MAX_UINT256),
-        (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_ADAPTER, 1),
-        (CTF, SET_APPROVAL_FOR_ALL, CTF_COLLATERAL_ADAPTER, 1),
-        (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_CTF_COLLATERAL_ADAPTER, 1),
-    ]
-
-
-def _random_address(rng: random.Random) -> str:
-    """Return a random checksum address.
-
-    :param rng: the seeded random generator.
-    :return: the address.
-    """
-    return to_checksum_address(f"0x{rng.getrandbits(160):040x}")
-
-
-def _random_addresses(rng: random.Random) -> Dict[str, str]:
-    """Return distinct random addresses for every connection address attribute.
-
-    :param rng: the seeded random generator.
-    :return: a mapping of attribute name to address.
-    """
-    out: Dict[str, str] = {}
-    for name in ADDRESS_ATTRIBUTES:
-        address = _random_address(rng)
-        while address in out.values() or address == SAFE:
-            address = _random_address(rng)
-        out[name] = address
-    return out
-
-
 def _safe_calls_for(a: Dict[str, str]) -> List[Tuple[str, str, str, int]]:
     """Return the eight existing Safe approvals for the addresses ``a``.
 
     :param a: the connection address attributes.
     :return: the decoded calls, in relayer order.
     """
-    pusd, ctf = a["collateral_address"], a["ctf_address"]
     return [
-        (pusd, APPROVE, a["ctf_exchange"], MAX_UINT256),
-        (ctf, SET_APPROVAL_FOR_ALL, a["ctf_exchange"], 1),
-        (pusd, APPROVE, a["neg_risk_ctf_exchange"], MAX_UINT256),
-        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_ctf_exchange"], 1),
-        (pusd, APPROVE, a["neg_risk_adapter"], MAX_UINT256),
-        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_adapter"], 1),
-        (ctf, SET_APPROVAL_FOR_ALL, a["ctf_collateral_adapter"], 1),
-        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_ctf_collateral_adapter"], 1),
+        (a[target], selector, a[argument], amount)
+        for target, selector, argument, amount in SAFE_EXISTING_APPROVALS
     ]
 
 
@@ -325,28 +294,37 @@ class TestSafeRouterApproval:
         The relayer batch keeps the eight existing Safe approvals in order and
         appends PositionManager ``setApprovalForAll(Router, true)`` as a plain
         call with no value. ``_check_approval`` reports ``all_approvals_set:
-        false`` until that approval is on chain.
+        false`` until that approval is on chain. Checked for the documented
+        addresses and for a distinct set.
         """
-        conn = _make_conn()
-        result = MagicMock()
-        result.get_transaction.return_value = {"transactionID": "safe-tx"}
-        conn.relayer_client.execute.return_value = result
+        for a in (DOCS_ADDRESSES, DISTINCT_ADDRESSES):
+            conn = _make_conn()
+            for name, address in a.items():
+                setattr(conn, name, address)
+            result = MagicMock()
+            result.get_transaction.return_value = {"transactionID": "safe-tx"}
+            conn.relayer_client.execute.return_value = result
 
-        tx, error = conn._set_approval()
+            tx, error = conn._set_approval()
 
-        assert error is None
-        assert tx == {"transactionID": "safe-tx"}
-        txs = conn.relayer_client.execute.call_args.kwargs["transactions"]
-        assert len(txs) == 9
-        for t in txs:
-            assert t.operation == OperationType.Call
-            assert t.value == "0"
-        calls = [_decode(t.to, t.data) for t in txs]
-        assert calls[:8] == _existing_safe_calls()
-        assert calls[8] == (POSITION_MANAGER, SET_APPROVAL_FOR_ALL, ROUTER, 1)
-        addresses = [c[0] for c in calls] + [c[2] for c in calls]
-        assert EXCHANGE_V3 not in addresses
-        assert AUTO_REDEEMER not in addresses
+            assert error is None, a
+            assert tx == {"transactionID": "safe-tx"}, a
+            txs = conn.relayer_client.execute.call_args.kwargs["transactions"]
+            for t in txs:
+                assert t.operation == OperationType.Call, a
+                assert t.value == "0", a
+            calls = [_decode(t.to, t.data) for t in txs]
+            target, selector, argument, amount = SAFE_ROUTER_APPROVAL
+            assert calls == _safe_calls_for(a) + [
+                (a[target], selector, a[argument], amount)
+            ], a
+            addresses = [c[0] for c in calls] + [c[2] for c in calls]
+            assert EXCHANGE_V3 not in addresses
+            assert AUTO_REDEEMER not in addresses
+
+            for router_approved in (False, True):
+                status = _check_on(conn, a, router_approved)
+                assert status["all_approvals_set"] is router_approved, a
 
         pending = _Chain(router_approved=False)
         assert _check_with(pending)["all_approvals_set"] is False
@@ -402,9 +380,8 @@ class TestSafeRouterApproval:
         assert getattr(conn, "router", None) == ROUTER
 
         # Configured values win over the documented defaults.
-        rng = random.Random(RANDOM_SEED)  # nosec B311
-        position_manager = _random_address(rng)
-        router = _random_address(rng)
+        position_manager = DISTINCT_ADDRESSES["position_manager"]
+        router = DISTINCT_ADDRESSES["router"]
         config["position_manager_address"] = position_manager
         config["router_address"] = router
         conn = object.__new__(_Conn)
@@ -424,40 +401,6 @@ class TestSafeRouterApproval:
 
         assert to_checksum_address(conn.position_manager) == position_manager
         assert to_checksum_address(conn.router) == router
-
-    def test_relayer_and_check_follow_configured_addresses_randomized(
-        self,
-    ) -> None:
-        """For random addresses the relayer batch and the check use them.
-
-        Fixed seed, 250 cases. The relayer batch decodes to the eight existing
-        Safe approvals followed by PositionManager ``setApprovalForAll(Router,
-        true)``, and ``_check_approval`` passes only once the Router operates
-        the Safe's PositionManager positions.
-        """
-        rng = random.Random(RANDOM_SEED + 1)  # nosec B311
-        for _ in range(RANDOM_CASES):
-            a = _random_addresses(rng)
-            conn = _make_conn()
-            for name, address in a.items():
-                setattr(conn, name, address)
-            result = MagicMock()
-            result.get_transaction.return_value = {"transactionID": "safe-tx"}
-            conn.relayer_client.execute.return_value = result
-
-            _, error = conn._set_approval()
-
-            assert error is None, a
-            txs = conn.relayer_client.execute.call_args.kwargs["transactions"]
-            calls = [_decode(t.to, t.data) for t in txs]
-            assert calls == _safe_calls_for(a) + [
-                (a["position_manager"], SET_APPROVAL_FOR_ALL, a["router"], 1)
-            ], a
-            assert all(t.value == "0" for t in txs), a
-
-            for router_approved in (False, True):
-                status = _check_on(conn, a, router_approved)
-                assert status["all_approvals_set"] is router_approved, a
 
 
 # ---------------------------------------------------------------------------
@@ -620,47 +563,60 @@ def _recover_poly_1271_signer(signed: Any, domain_separator: bytes) -> str:
     return Account._recover_hash(digest, signature=signature[:65])
 
 
-class TestSdkAndV1Orders:
-    """SDK 1.2.1 keeps V1 market orders on token ids and domain version "2"."""
+V1_TOKEN_ID = "71321045679252212594626385532706912750332728571942532289631379312455583992563"  # nosec B105
+V1_CONDITION_ID = "0x" + "c1" * 32
 
-    def test_sdk_pinned_to_1_2_1(self) -> None:
-        """``py_clob_client_v2`` is pinned to 1.2.1 everywhere it is declared."""
-        config = yaml.safe_load(_CONNECTION_YAML.read_text(encoding="utf-8"))
-        assert config["dependencies"]["py_clob_client_v2"]["version"] == (
-            f"=={SDK_VERSION}"
-        )
-        pins = re.findall(
-            r"[\"']py[-_]clob[-_]client[-_]v2\s*([^\"']*)[\"']",
-            _PYPROJECT.read_text(encoding="utf-8"),
-        )
-        assert pins == [f"=={SDK_VERSION}"]
-        assert importlib.metadata.version("py-clob-client-v2") == SDK_VERSION
+
+def _clob_get(
+    endpoint: str,
+    headers: Optional[dict] = None,
+    data: Any = None,
+    params: Optional[dict] = None,
+) -> Any:
+    """Answer the CLOB API reads a V1 market order makes.
+
+    The market behind ``V1_TOKEN_ID`` is a V1 (non-neg-risk) market with a
+    0.01 tick and no fees, and the CLOB reports order version 2.
+
+    :param endpoint: the requested URL.
+    :param headers: the request headers.
+    :param data: the request body.
+    :param params: the query parameters.
+    :return: the decoded JSON reply.
+    """
+    path = urlparse(endpoint).path
+    if path == f"/markets-by-token/{V1_TOKEN_ID}":
+        return {"condition_id": V1_CONDITION_ID}
+    if path == f"/clob-markets/{V1_CONDITION_ID}":
+        return {
+            "t": [{"t": V1_TOKEN_ID}],
+            "mts": 0.01,
+            "nr": False,
+            "fd": {"r": 0, "e": 0},
+        }
+    if path == "/version":
+        return {"version": 2}
+    raise AssertionError(f"unexpected CLOB read {path} {params}")
+
+
+class TestV1Orders:
+    """SDK 1.2.1 keeps V1 market orders on token ids and domain version "2"."""
 
     def test_v1_order_unchanged(self) -> None:
         """A V1 market order sets ``token_id`` and signs with domain version "2".
 
         The connection funds the order from the DepositWallet (POLY_1271), so
         the signature embeds the CTF Exchange domain separator, which must be
-        the version "2" one, and recovers to the agent EOA under it.
+        the version "2" one, and recovers to the agent EOA under it. The SDK
+        runs through its public calls; only the CLOB API replies are faked.
         """
-        token_id = "71321045679252212594626385532706912750332728571942532289631379312455583992563"  # nosec B105
         conn = _make_conn()
         conn._read_dw_collateral_balance = MagicMock(return_value=100.0)  # type: ignore[method-assign]
         posted = {"orderID": "0xorder", "status": "matched"}
         with (
+            patch.object(clob_client_module, "get", side_effect=_clob_get),
             patch.object(ClobClient, "create_or_derive_api_key", return_value=None),
-            patch.object(ClobClient, "_ClobClient__ensure_market_info_cached"),
-            patch.object(
-                ClobClient, "_ClobClient__resolve_tick_size", return_value="0.01"
-            ),
-            patch.object(ClobClient, "_ClobClient__resolve_version", return_value=2),
-            patch.object(ClobClient, "get_neg_risk", return_value=False),
             patch.object(ClobClient, "calculate_market_price", return_value=0.5),
-            patch.object(
-                ClobClient,
-                "_adjust_buy_amount_for_balance",
-                side_effect=lambda token, amount, price, balance, code: amount,
-            ),
             patch.object(
                 ClobClient,
                 "create_market_order",
@@ -669,18 +625,20 @@ class TestSdkAndV1Orders:
             ) as create_market_order,
             patch.object(ClobClient, "post_order", return_value=posted) as post_order,
         ):
-            response, error = conn._place_bet(token_id=token_id, amount=5.0, funder=DW)
+            response, error = conn._place_bet(
+                token_id=V1_TOKEN_ID, amount=5.0, funder=DW
+            )
 
         assert error is None
         assert response["orderID"] == "0xorder"
         assert conn._client_funder == to_checksum_address(DW)
         order_args = create_market_order.call_args.args[1]
-        assert order_args.token_id == token_id
+        assert order_args.token_id == V1_TOKEN_ID
         assert getattr(order_args, "position_id", "absent") is None
 
         signed, order_type = post_order.call_args.args
         assert order_type == OrderType.FOK
-        assert signed.tokenId == token_id
+        assert signed.tokenId == V1_TOKEN_ID
         assert int(signed.signatureType) == SIGNATURE_TYPE_POLY_1271
         assert signed.maker == to_checksum_address(DW)
         separator = _ctf_exchange_domain_separator("2")

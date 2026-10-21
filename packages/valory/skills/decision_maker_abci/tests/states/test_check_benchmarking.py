@@ -24,15 +24,37 @@ import tempfile
 from enum import Enum
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, List, Tuple
+from typing import Any, Dict, Generator, List, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
 )
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    DW_APPROVALS_VERSION,
+)
+from packages.valory.skills.decision_maker_abci.tests.polymarket_approvals import (
+    DW_V2_APPROVALS,
+    POSITION_MANAGER,
+    ROUTER,
+    decode_dw_calls,
+    docs_addresses,
+    expected_calls,
+)
+
+# A DepositWallet record whose approvals are confirmed for the current set.
+_CURRENT_DW_RECORD = {
+    "dw_address": "0xDW",
+    "dw_owner": "0xagent",
+    "approvals_done": True,
+    "approvals_version": DW_APPROVALS_VERSION,
+}
 
 
 def test_check_benchmarking_mode_round_initialization() -> None:
@@ -94,10 +116,7 @@ def test_end_block_allowances_current_and_dw_present_skips() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         mock_context.params.store_path = tmpdir
         _current_allowances(tmpdir)
-        _write_dw(
-            tmpdir,
-            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
-        )
+        _write_dw(tmpdir, _CURRENT_DW_RECORD)
 
         round_instance = CheckBenchmarkingModeRound(
             synchronized_data=mock_synced_data, context=mock_context
@@ -207,6 +226,57 @@ def test_end_block_allowances_current_but_dw_invalid_json_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
+@pytest.mark.parametrize(
+    "record",
+    [
+        {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
+        {**_CURRENT_DW_RECORD, "approvals_version": None},
+        {**_CURRENT_DW_RECORD, "approvals_version": DW_APPROVALS_VERSION - 1},
+        {**_CURRENT_DW_RECORD, "approvals_version": DW_APPROVALS_VERSION + 1},
+        {**_CURRENT_DW_RECORD, "approvals_version": str(DW_APPROVALS_VERSION)},
+        {**_CURRENT_DW_RECORD, "approvals_done": False},
+        {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": False},
+        {
+            "dw_address": "0xDW",
+            "dw_owner": "0xagent",
+            "approvals_version": DW_APPROVALS_VERSION,
+        },
+        {**_CURRENT_DW_RECORD, "approvals_done": "true"},
+        {**_CURRENT_DW_RECORD, "approvals_done": 1},
+    ],
+    ids=[
+        "pre_v2",
+        "version_none",
+        "version_stale",
+        "version_newer",
+        "version_string",
+        "approvals_pending",
+        "approvals_pending_pre_v2",
+        "approvals_flag_missing",
+        "approvals_flag_string",
+        "approvals_flag_int",
+    ],
+)
+def test_end_block_allowances_current_but_dw_approvals_not_current_reapproves(
+    record: Dict[str, Any],
+) -> None:
+    """Current Safe allowances do not skip setup while the DW approvals lag.
+
+    The gate is skipped only for a record whose ``approvals_done`` is ``True``
+    and whose ``approvals_version`` is exactly the current one; a pre-V2
+    record, a stale or foreign version, or unconfirmed approvals re-enter
+    SET_APPROVAL even when ``polymarket.json`` carries the current stamp.
+
+    :param record: the persisted DepositWallet record.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _current_allowances(tmpdir)
+        _write_dw(tmpdir, record)
+        event = _end_block_event(tmpdir)
+
+    assert event == Event.SET_APPROVAL
+
+
 def test_end_block_polymarket_stale_v1_allowances_file_reapproves() -> None:
     """A legacy v1 file (no ``clob_version``) must trigger re-approval.
 
@@ -298,10 +368,7 @@ def test_end_block_polymarket_stale_v4_allowances_file_reapproves() -> None:
         mock_context.params.store_path = tmpdir
         with open(Path(tmpdir) / "polymarket.json", "w") as f:
             json.dump({"allowances_set": True, "clob_version": "v4"}, f)
-        _write_dw(
-            tmpdir,
-            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
-        )
+        _write_dw(tmpdir, _CURRENT_DW_RECORD)
 
         round_instance = CheckBenchmarkingModeRound(
             synchronized_data=mock_synced_data, context=mock_context
@@ -311,31 +378,6 @@ def test_end_block_polymarket_stale_v4_allowances_file_reapproves() -> None:
     assert result is not None
     _, event = result
     assert event == Event.SET_APPROVAL
-
-
-# Polygon addresses from https://docs.polymarket.com/resources/contracts
-_POSITION_MANAGER = "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"
-_ROUTER = "0x12121212006e4CD160D18e3f00711DA5c3372600"
-_SAFE_ADDRESS_PARAMS = {
-    "polymarket_collateral_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
-    "polymarket_ctf_address": "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
-    "polymarket_ctf_exchange_address": "0xE111180000d2663C0091e4f400237545B87B996B",
-    "polymarket_neg_risk_ctf_exchange_address": (
-        "0xe2222d279d744050d28e00520010520000310F59"
-    ),
-    "polymarket_neg_risk_adapter_address": (
-        "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
-    ),
-    "polymarket_ctf_collateral_adapter_address": (
-        "0xAdA100Db00Ca00073811820692005400218FcE1f"
-    ),
-    "polymarket_neg_risk_ctf_collateral_adapter_address": (
-        "0xadA2005600Dec949baf300f4C6120000bDB6eAab"
-    ),
-    "polymarket_exchange_v3_address": "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
-    "polymarket_position_manager_address": _POSITION_MANAGER,
-    "polymarket_router_address": _ROUTER,
-}
 
 
 def _drive(gen) -> Any:  # type: ignore[no-untyped-def]
@@ -372,7 +414,7 @@ def _safe_multisend_calls() -> List[Tuple[str, str]]:
     behaviour.multisend_data = b""
     behaviour._safe_tx_hash = ""
     context = MagicMock()
-    context.params = SimpleNamespace(**_SAFE_ADDRESS_PARAMS)
+    context.params = SimpleNamespace(**docs_addresses())
     behaviour.__dict__["_context"] = context
 
     def _ok():  # type: ignore[no-untyped-def]
@@ -424,16 +466,13 @@ def test_upgraded_install_gets_safe_router_approval_once() -> None:
     confirms it on chain the next period skips the approval round.
     """
     router_call = (
-        _POSITION_MANAGER,
-        "a22cb465" + "00" * 12 + _ROUTER[2:].lower() + "00" * 31 + "01",
+        POSITION_MANAGER,
+        "a22cb465" + "00" * 12 + ROUTER[2:].lower() + "00" * 31 + "01",
     )
     with tempfile.TemporaryDirectory() as tmpdir:
         with open(Path(tmpdir) / "polymarket.json", "w") as f:
             json.dump({"allowances_set": True, "clob_version": "v4"}, f)
-        _write_dw(
-            tmpdir,
-            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
-        )
+        _write_dw(tmpdir, _CURRENT_DW_RECORD)
 
         # First period after the upgrade: the approval round is entered.
         assert _end_block_event(tmpdir) == Event.SET_APPROVAL
@@ -450,6 +489,73 @@ def test_upgraded_install_gets_safe_router_approval_once() -> None:
             stamp = json.load(f)
         assert stamp == {"allowances_set": True, "clob_version": "v5"}
         assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
+        assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
+
+
+def _provision_dw(tmpdir: str, mined: bool) -> List[List[Dict[str, Any]]]:
+    """Run the setup behaviour's DepositWallet provisioning against a relayer.
+
+    :param tmpdir: the store directory.
+    :param mined: whether the relayed approvals batch mines.
+    :return: the transactions of every relayed approvals batch.
+    """
+    from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (  # noqa: WPS433
+        PolymarketSetApprovalBehaviour,
+    )
+
+    behaviour = object.__new__(PolymarketSetApprovalBehaviour)
+    context = MagicMock()
+    context.agent_address = "0xAGENT"
+    context.params = SimpleNamespace(
+        store_path=Path(tmpdir), mech_chain_id="polygon", **docs_addresses()
+    )
+    behaviour.__dict__["_context"] = context
+    batches: List[Dict[str, Any]] = []
+
+    def _send(request_type: RequestType, params: dict) -> Generator[None, None, Any]:
+        yield
+        if request_type == RequestType.EXEC_WALLET_BATCH:
+            batches.append(params)
+            return {"transaction_id": "tx"}
+        if request_type == RequestType.RELAYER_TX:
+            return {"terminal": True, "ok": mined}
+        return None
+
+    def _owner(dw_address: str) -> Generator[None, None, str]:
+        yield
+        return "0xAGENT"
+
+    behaviour._send_polymarket_request = _send  # type: ignore[method-assign, assignment]
+    behaviour._verify_dw_owner = _owner  # type: ignore[method-assign, assignment]
+    behaviour.sleep = lambda seconds: (yield)  # type: ignore[method-assign]
+    _drive(behaviour._provision_deposit_wallet())
+    return [batch["transactions"] for batch in batches]
+
+
+def test_unmined_dw_upgrade_reenters_setup_although_safe_check_passes() -> None:
+    """A pre-V2 DW whose upgrade batch is not mined keeps re-entering setup.
+
+    The install carries a pre-V2 DepositWallet record and a current Safe
+    allowances file. In the approval pass the DW upgrade batch is relayed but
+    not mined while the Safe check passes; the next period must still enter
+    SET_APPROVAL. Once the batch mines, the period after skips the round.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _current_allowances(tmpdir)
+        _write_dw(
+            tmpdir,
+            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
+        )
+
+        relayed = _provision_dw(tmpdir, mined=False)
+        assert [sorted(decode_dw_calls(txs)) for txs in relayed] == [
+            sorted(expected_calls(DW_V2_APPROVALS, docs_addresses()))
+        ]
+        assert _post_check(tmpdir, all_approvals_set=True) is True
+        assert _end_block_event(tmpdir) == Event.SET_APPROVAL
+
+        assert len(_provision_dw(tmpdir, mined=True)) == 1
+        assert _post_check(tmpdir, all_approvals_set=True) is True
         assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
 
 

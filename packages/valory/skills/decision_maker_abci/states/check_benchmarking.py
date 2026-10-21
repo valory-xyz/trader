@@ -47,6 +47,9 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 # invalidated so upgraded installs send that approval.
 POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v5"
 
+# Bump when the DepositWallet approval set changes.
+DW_APPROVALS_VERSION = 2
+
 
 class CheckBenchmarkingModeRound(VotingRound):
     """A round for checking whether the benchmarking mode is enabled."""

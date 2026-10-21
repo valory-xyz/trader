@@ -184,6 +184,48 @@ class TestRequest:
         assert "signature expired" in message
         assert "403" in message
 
+    def test_request_http_error_body_is_capped(self) -> None:
+        """A non-2xx error keeps only the first 500 characters of the body.
+
+        A gateway error page would otherwise land in full in every log line.
+        """
+        client = _make_client()
+        body = "".join(chr(ord("a") + i % 26) for i in range(2000))
+        response = requests.Response()
+        response.status_code = 502
+        response.reason = "Bad Gateway"
+        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/exec_wallet_batch"
+        response._content = body.encode("utf-8")
+        with patch.object(requests, "request", return_value=response):
+            with pytest.raises(RelayerProxyError) as excinfo:
+                client._request("POST", "exec_wallet_batch", json_body={})
+        message = str(excinfo.value)
+        assert body[:500] in message
+        assert body[:501] not in message
+        assert "502" in message
+
+    def test_request_2xx_non_json_body_is_reported(self) -> None:
+        """A 2xx whose body is not JSON says so and keeps the capped body.
+
+        ``requests`` raises its JSON decode error as a ``RequestException``
+        too, so it must still be reported as a non-JSON reply, with the first
+        500 characters of the body (here a gateway HTML page).
+        """
+        client = _make_client()
+        page = "<html><body>" + "gateway timeout " * 100 + "</body></html>"
+        response = requests.Response()
+        response.status_code = 200
+        response.reason = "OK"
+        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/transaction"
+        response._content = page.encode("utf-8")
+        with patch.object(requests, "request", return_value=response):
+            with pytest.raises(RelayerProxyError) as excinfo:
+                client._request("GET", "transaction")
+        message = str(excinfo.value)
+        assert "returned non-JSON" in message
+        assert page[:500] in message
+        assert page[:501] not in message
+
     def test_request_non_json(self) -> None:
         """A non-JSON body is wrapped."""
         client = _make_client()
