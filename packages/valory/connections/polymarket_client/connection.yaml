@@ -12,10 +12,9 @@ fingerprint:
   relayer_proxy.py: bafybeigzkzhw65dj3ezfonkgtzyzvaxcqkomc3lz4lpbq72agf6oc5nhqe
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeic2nbtwtzffywugdiqqnciwsj4zshwaujavyj6n7ndzcwmkihhcua
-  tests/test_connection_dw.py: bafybeibijqy36tpguxgznvo2dk25szigkif2fnqgc6qsad4gc2w5juhd3q
-  tests/test_connection_v2_approvals.py: bafybeieowoid4dkiyltliu6rjqvvvsybmgdqnu5sgyxpgysiw7mvz6hflm
-  tests/test_relayer_proxy.py: bafybeifgzdvlidgmclso3qrdb4lm3t4pff44wcb4xuold3qzblkabc356u
+  tests/test_connection.py: bafybeia36g5e4qjgb3nuwydecmwc5rdayz5knioqgoq2hr43kaoqv2gxpq
+  tests/test_connection_dw.py: bafybeih2pxtm3tf2onz2sjl3zuy2mfuyumo5x27d3sb4obtnnj7uy3ulz4
+  tests/test_relayer_proxy.py: bafybeibpm5vx67hc5bkdpeqsl36wxtlugwi7t467lipo5ek3pe7afske3i
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
