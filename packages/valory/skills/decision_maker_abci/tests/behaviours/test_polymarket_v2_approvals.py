@@ -474,6 +474,31 @@ class TestDepositWalletApprovalRecordVersioning:
             expected_calls(DW_V1_APPROVALS + DW_V2_APPROVALS, docs_addresses())
         )
 
+    def test_unconfirmed_record_with_current_version_gets_full_batch(
+        self, tmp_path: Path
+    ) -> None:
+        """The version counts only for confirmed approvals.
+
+        A record with ``approvals_done: false`` gets the full batch even when
+        it carries the current ``approvals_version``.
+
+        :param tmp_path: the store directory.
+        """
+        _write_record(
+            tmp_path, approvals_done=False, approvals_version=DW_APPROVALS_VERSION
+        )
+        sent: List[Tuple[RequestType, dict]] = []
+        behaviour = _make_behaviour(docs_addresses(), tmp_path)
+        _install_relayer(behaviour, sent)
+        _run(behaviour._provision_deposit_wallet())
+
+        batches = _batches(sent)
+        assert len(batches) == 1
+        assert sorted(decode_dw_calls(batches[0]["transactions"])) == sorted(
+            expected_calls(DW_V1_APPROVALS + DW_V2_APPROVALS, docs_addresses())
+        )
+        assert _read_record(tmp_path)["approvals_done"] is True
+
 
 # ---------------------------------------------------------------------------
 # Safe approvals

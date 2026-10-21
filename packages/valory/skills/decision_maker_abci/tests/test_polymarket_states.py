@@ -352,11 +352,13 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
         runs. The builder program, or an agreed ``tx_hash`` of ``None`` (the
         Safe approvals were skipped), routes to ``DONE`` so the post-approval
         round re-checks the Safe on chain; an agreed hash with the builder
-        program disabled routes to ``PREPARE_TX`` for settlement.
+        program disabled routes to ``PREPARE_TX`` for settlement. Only ``None``
+        means "skipped": the empty hash of a failed Safe multisend build keeps
+        today's ``PREPARE_TX`` route.
         """
         routes = {}
         for builder_program_enabled in (False, True):
-            for tx_hash in (None, "0xhash"):
+            for tx_hash in (None, "", "0xhash"):
                 context = MagicMock()
                 context.params.polymarket_builder_program_enabled = (
                     builder_program_enabled
@@ -377,8 +379,10 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
 
         assert routes == {
             (False, None): Event.DONE,
+            (False, ""): Event.PREPARE_TX,
             (False, "0xhash"): Event.PREPARE_TX,
             (True, None): Event.DONE,
+            (True, ""): Event.DONE,
             (True, "0xhash"): Event.DONE,
         }
 

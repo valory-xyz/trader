@@ -184,16 +184,23 @@ class TestRequest:
         assert "signature expired" in message
         assert "403" in message
 
-    def test_request_http_error_body_is_capped(self) -> None:
+    @pytest.mark.parametrize(
+        "status, reason", [(403, "Forbidden"), (502, "Bad Gateway")], ids=["4xx", "5xx"]
+    )
+    def test_request_http_error_body_is_capped(self, status: int, reason: str) -> None:
         """A non-2xx error keeps only the first 500 characters of the body.
 
         A gateway error page would otherwise land in full in every log line.
+        The cap holds for a relayer rejection as well as a gateway error.
+
+        :param status: the HTTP status of the reply.
+        :param reason: the HTTP reason phrase of the reply.
         """
         client = _make_client()
         body = "".join(chr(ord("a") + i % 26) for i in range(2000))
         response = requests.Response()
-        response.status_code = 502
-        response.reason = "Bad Gateway"
+        response.status_code = status
+        response.reason = reason
         response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/exec_wallet_batch"
         response._content = body.encode("utf-8")
         with patch.object(requests, "request", return_value=response):
@@ -202,7 +209,7 @@ class TestRequest:
         message = str(excinfo.value)
         assert body[:500] in message
         assert body[:501] not in message
-        assert "502" in message
+        assert str(status) in message
 
     def test_request_2xx_non_json_body_is_reported(self) -> None:
         """A 2xx whose body is not JSON says so and keeps the capped body.
