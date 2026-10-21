@@ -49,6 +49,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
+    FailedAgentTopUpTxRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedOmenWithdrawRound,
@@ -265,6 +266,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         19. HandleFailedTxRound
             - blacklist: 9.
             - no op: 16.
+            - agent topup failed: 45.
             - no majority: 19.
         20. PostBetUpdateRound
             - done: 27.
@@ -323,8 +325,9 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             - none: 42.
         43. FinishedOmenWithdrawRound
         44. WithdrawalIdleRound
+        45. FailedAgentTopUpTxRound
 
-    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedOmenWithdrawRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketTopUpTxPreparationRound, FinishedPolymarketWithdrawTopUpTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
+    Final states: {BenchmarkingDoneRound, BenchmarkingModeDisabledRound, FailedAgentTopUpTxRound, FinishedDecisionMakerRound, FinishedDecisionRequestRound, FinishedOmenWithdrawRound, FinishedPolymarketBetPlacementRound, FinishedPolymarketRedeemRound, FinishedPolymarketSwapTxPreparationRound, FinishedPolymarketTopUpTxPreparationRound, FinishedPolymarketWithdrawTopUpTxPreparationRound, FinishedPolymarketWrapCollateralTxPreparationRound, FinishedPostBetUpdateRound, FinishedRedeemTxPreparationRound, FinishedSetApprovalTxPreparationRound, FinishedWithoutDecisionRound, FinishedWithoutRedeemingRound, ImpossibleRound, RefillRequiredRound, WithdrawalIdleRound}
 
     Timeouts:
         round timeout: 30.0
@@ -563,6 +566,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         HandleFailedTxRound: {
             Event.BLACKLIST: BlacklistingRound,
             Event.NO_OP: RedeemRound,
+            Event.AGENT_TOPUP_FAILED: FailedAgentTopUpTxRound,
             Event.NO_MAJORITY: HandleFailedTxRound,
         },
         PostBetUpdateRound: {
@@ -646,6 +650,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         },
         FinishedOmenWithdrawRound: {},
         WithdrawalIdleRound: {},
+        FailedAgentTopUpTxRound: {},
     }
     cross_period_persisted_keys = frozenset(
         {
@@ -680,6 +685,7 @@ class DecisionMakerAbciApp(AbciApp[Event]):
         ImpossibleRound,
         BenchmarkingDoneRound,
         WithdrawalIdleRound,
+        FailedAgentTopUpTxRound,
     }
     event_to_timeout: Dict[Event, float] = {
         Event.ROUND_TIMEOUT: 30.0,
@@ -758,4 +764,5 @@ class DecisionMakerAbciApp(AbciApp[Event]):
             get_name(SynchronizedData.next_mock_data_row),
         },
         WithdrawalIdleRound: set(),
+        FailedAgentTopUpTxRound: set(),
     }
