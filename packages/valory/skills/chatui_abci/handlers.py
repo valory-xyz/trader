@@ -22,12 +22,25 @@
 import copy
 import json
 import math
+import re
 from dataclasses import replace
 from datetime import datetime, timezone
 from functools import partial
 from html import escape
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    cast,
+)
 
 from aea.configurations.data_types import PublicId
 from aea.protocols.base import Message
@@ -90,13 +103,16 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.chatui_abci.dialogues import HttpDialogue
 from packages.valory.skills.chatui_abci.mech_commands import (
-    Command,
-    Verb,
+    Accept,
     addresses_in,
     normalise,
-    parse_command,
+    parse_accept,
+    parse_remove,
+    parse_undo,
+    resolve_intent,
 )
 from packages.valory.skills.chatui_abci.mech_templates import (
+    PARAGRAPH_BREAK,
     Standing,
     payment_line,
     render_report,
@@ -108,6 +124,7 @@ from packages.valory.skills.chatui_abci.models import (
     ConfigChange,
     ConfigProposal,
     Offer,
+    RemovedMech,
     SharedState,
     TradingStrategyUI,
     WITHDRAWAL_STATE_ARMED,
@@ -118,19 +135,53 @@ from packages.valory.skills.chatui_abci.prompts import (
     CHAT_PROMPT,
     CONFIRM_PROMPT,
     FieldsThatCanBeRemoved,
+    MechIntent,
     TradingStrategy,
     build_chatui_llm_response_schema,
     build_confirmation_schema,
 )
 from packages.valory.skills.chatui_abci.rounds import SynchronizedData
-from packages.valory.skills.chatui_abci.tool_keys import tool_names
+from packages.valory.skills.chatui_abci.tool_keys import (
+    VALORY_LABEL,
+    split_tool_key,
+    tool_names,
+)
 from packages.valory.skills.mech_interact_abci.mech_reader import (
     MechFacts,
+    RecordStatus,
     chain_id_of,
     read_live_rate,
     read_mech,
 )
 from packages.valory.skills.mech_interact_abci.models import delivery_rate_bound
+
+
+def _tools_for_prompt(tools: Any, valory_tools: Set[str]) -> str:
+    """The tool names a Valory mech serves, with a count of the others, which are not listed."""
+    shown = sorted(str(tool) for tool in tools if tool in valory_tools)
+    hidden = sum(1 for tool in tools if tool not in valory_tools)
+    text = ", ".join(shown) or "none"
+    if hidden:
+        text += f" (and {hidden} other tool(s), not listed)"
+    return text
+
+
+def _typed_names(text: str) -> Set[str]:
+    """The words of a message, split on spaces and punctuation that a tool name does not use."""
+    return {word.strip(".") for word in TYPED_NAME_SEPARATORS.split(text)}
+
+
+def _list_number(
+    reading: Any, address: Optional[str], last_list: Sequence[str]
+) -> Optional[int]:
+    """The list number a resolved mech came from; `resolve_intent` already matched it to the mech."""
+    if not isinstance(reading, dict) or address is None or not last_list:
+        return None
+    position = reading.get("position")
+    if isinstance(position, bool) or not isinstance(position, int) or position < 1:
+        return None
+    return position
+
 
 ChatuiABCIHandler = BaseABCIRoundHandler
 SigningHandler = BaseSigningHandler
@@ -160,8 +211,10 @@ UPDATED_PARAMS_FIELD = "updated_params"
 LLM_MESSAGE_FIELD = "reasoning"
 TRADING_STRATEGY_FIELD = "trading_strategy"
 ALLOWED_TOOLS_FIELD = "allowed_tools"
+TYPED_NAME_SEPARATORS = re.compile(r"[\s,;:!?\"'`()\[\]{}]+")
 SELECTED_MECHS_FIELD = "selected_mechs"
 REMOVED_CONFIG_FIELDS_FIELD = "removed_config_fields"
+MECH_INTENT_FIELD = "mech_intent"
 GENAI_API_KEY_NOT_SET_ERROR = "No API_KEY or ADC found."
 GENAI_RATE_LIMIT_ERROR = "429"
 MECH_DEPOSIT_REQUIRED_CODE = "mech_deposit_required"
@@ -171,12 +224,37 @@ TRADING_TYPE_FIELD = "trading_type"
 PREVIOUS_TRADING_TYPE_FIELD = "previous_trading_type"
 
 ASK_ONE_AT_A_TIME = "Ask about one mech at a time."
+ONE_REQUEST_AT_A_TIME = (
+    "I can either act on a mech or change your settings in one message, so I "
+    "did neither. Please ask for them separately."
+)
 ACCEPT_UNREADABLE = (
     "I couldn't read that. To approve a mech, copy the line from its report "
     "exactly: I accept <price> per request for <address>"
 )
+WHICH_MECH = (
+    "I couldn't tell which mech you mean. If you meant something else, ask again "
+    "in other words."
+)
+VALORY_NOT_REMOVABLE = (
+    "{address} is a Valory mech your agent uses by default, so there is no "
+    "approval to remove. To keep requests off it, pin the mechs you want; mech "
+    "requests then go only to your pinned mechs."
+)
+NEXT_STEP = (
+    "Send a mech's address to see its report, or ask which mechs your agent can use."
+)
 
 AVAILABLE_TRADING_STRATEGIES = frozenset(strategy.value for strategy in TradingStrategy)
+# The settings a config reply can set, compared with the current config.
+_SETTINGS = (
+    TRADING_STRATEGY_FIELD,
+    ALLOWED_TOOLS_FIELD,
+    SELECTED_MECHS_FIELD,
+    "fixed_bet_size",
+    "max_bet_size",
+    ACTIVITY_GOAL_FIELD,
+)
 
 CHAT_TEXT_FIELD = "text"
 CHAT_CLIENT_ID_FIELD = "client_id"
@@ -354,29 +432,99 @@ class HttpHandler(BaseHttpHandler):
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
         """
-        command = parse_command(user_prompt)
-        if command is not None:
-            self._run_mech_command(command, http_msg, http_dialogue)
+        # "The mech just shown" and the list's numbers mean the reply right before this message.
+        last_shown = self.shared_state.last_shown_mech
+        self.shared_state.last_shown_mech = None
+        last_list = list(self.shared_state.last_mech_list)
+        self.shared_state.last_mech_list = []
+        last_removed = self.shared_state.last_removed
+        self.shared_state.last_removed = None
+        accept = parse_accept(user_prompt)
+        if accept is not None:
+            self._accept_offer(accept, http_msg, http_dialogue)
             return
+        removed = parse_remove(user_prompt)
+        if removed is not None:
+            self._send_mech_reply(http_msg, http_dialogue, self._remove_mech(removed))
+            return
+        if parse_undo(user_prompt):
+            undone = None if last_removed is None else last_removed.address
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed, undone)
+            )
+            return
+        # A typed price is consent to that price, so a line that does not
+        # parse is never read as an approval at the price shown.
         if normalise(user_prompt).startswith("i accept"):
             self._send_mech_reply(http_msg, http_dialogue, ACCEPT_UNREADABLE)
             return
-        addresses = addresses_in(user_prompt)
-        if len(addresses) > 1:
+        if len(addresses_in(user_prompt)) > 1:
             self._send_mech_reply(http_msg, http_dialogue, ASK_ONE_AT_A_TIME)
             return
-        if addresses:
-            read_mech(
-                self.context,
-                addresses[0],
-                partial(self._send_mech_report, http_msg, http_dialogue),
-            )
-            return
 
-        available_tools = self._get_available_tools(http_msg, http_dialogue)
-        if available_tools is None:
+        tools = self._get_available_tools(http_msg, http_dialogue)
+        if tools is None:
+            # Nothing was answered, so a retry still refers to the reply before.
+            self.shared_state.last_shown_mech = last_shown
+            self.shared_state.last_mech_list = last_list
+            self.shared_state.last_removed = last_removed
             return
-        self._send_chatui_prompt(user_prompt, available_tools, http_msg, http_dialogue)
+        available_tools, valory_tools = tools
+        self._send_chatui_prompt(
+            user_prompt,
+            available_tools,
+            valory_tools,
+            http_msg,
+            http_dialogue,
+            last_shown,
+            last_list,
+            last_removed,
+        )
+
+    def _run_mech_intent(
+        self,
+        intent: MechIntent,
+        address: Optional[str],
+        last_shown: Optional[str],
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        number: Optional[int] = None,
+        last_removed: Optional[RemovedMech] = None,
+    ) -> None:
+        """Carry out a mech intent in code; without the mech it needs, ask which one."""
+        self.context.logger.info(f"Mech intent: {intent.value}, mech: {address}")
+        if intent is MechIntent.UNDO:
+            self._send_mech_reply(
+                http_msg, http_dialogue, self._undo_removal(last_removed, address)
+            )
+        elif intent is MechIntent.LIST:
+            self._send_mech_reply(http_msg, http_dialogue, self._mech_list())
+        elif address is None:
+            self._send_mech_reply(http_msg, http_dialogue, self._which_mech())
+        elif intent is MechIntent.ASK:
+            self._report_mech(address, http_msg, http_dialogue)
+        elif intent is MechIntent.APPROVE:
+            self._approve_mech(address, last_shown, http_msg, http_dialogue)
+        else:
+            act = {
+                MechIntent.REMOVE: self._remove_mech,
+                MechIntent.PIN: self._pin_mech,
+                MechIntent.UNPIN: self._unpin_mech,
+            }[intent]
+            reply = act(address)
+            if number is not None:
+                reply = f"Number {number} on the list just shown is {address}. {reply}"
+            self._send_mech_reply(http_msg, http_dialogue, reply)
+
+    def _report_mech(
+        self, address: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Read the mech and answer with its report."""
+        read_mech(
+            self.context,
+            address,
+            partial(self._price_at_live_rate, http_msg, http_dialogue),
+        )
 
     def _handle_chat(self, http_msg: HttpMessage, http_dialogue: HttpDialogue) -> None:
         """Answer a chat message, writing it and its reply to the feed.
@@ -895,6 +1043,27 @@ class HttpHandler(BaseHttpHandler):
             {UPDATED_PARAMS_FIELD: {}, LLM_MESSAGE_FIELD: text},
         )
 
+    def _price_at_live_rate(
+        self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
+    ) -> None:
+        """Report a third-party mech at the higher of its listed and live rates; one with no listing is unpriced, as discovery skips it."""
+        listed = facts.max_delivery_rate
+        if (
+            facts.record is not RecordStatus.FOUND
+            or facts.address in self.context.params.valid_mechs
+            or listed is None
+        ):
+            self._send_mech_report(http_msg, http_dialogue, facts)
+            return
+
+        def on_rate(live: Optional[int]) -> None:
+            rate = listed if live is None else max(listed, live)
+            self._send_mech_report(
+                http_msg, http_dialogue, replace(facts, max_delivery_rate=rate)
+            )
+
+        read_live_rate(self.context, facts.address, on_rate)
+
     def _send_mech_report(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue, facts: MechFacts
     ) -> None:
@@ -913,48 +1082,41 @@ class HttpHandler(BaseHttpHandler):
             pinned=address in self._pinned_mechs(),
         )
         text, offer = render_report(facts, standing, datetime.now(timezone.utc))
+        self.shared_state.last_shown_mech = address
         if offer is not None:
             self.shared_state.record_mech_offer(offer)
         else:
             self.shared_state.record_mech_refusal(address, verdict(facts, standing))
         self._send_mech_reply(http_msg, http_dialogue, text)
 
-    def _run_mech_command(
-        self, command: Command, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> None:
-        """Carry out a typed mech command and answer with what it did."""
-        if command.verb is Verb.ACCEPT:
-            self._accept_offer(command, http_msg, http_dialogue)
-            return
-        if command.verb is Verb.REMOVE:
-            reply = self._remove_mech(command.address)
-        elif command.verb is Verb.PIN:
-            reply = self._pin_mech(command.address)
-        else:
-            reply = self._unpin_mech(command.address)
-        self._send_mech_reply(http_msg, http_dialogue, reply)
+    def _rate_text(self, payment_type: str, rate: int) -> Optional[str]:
+        """A rate in its payment asset on this chain, or `None` when no figure can be named."""
+        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+        return payment_line(payment_type, rate, chain_id)[1]
 
     def _price_text(self, offer: Offer, rate: int) -> str:
         """Render a rate in the offer's asset."""
-        chain_id = chain_id_of(str(self.context.params.mech_chain_id))
-        _, text = payment_line(offer.payment_type, rate, chain_id)
+        text = self._rate_text(offer.payment_type, rate)
         return text if text is not None else str(rate)
 
-    def _accept_offer(
-        self, command: Command, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> None:
-        """Approve at the shown rate once the live rate is read and is no higher."""
-        address = command.address
-        offer = self.shared_state.mech_offers.get(address)
+    def _refusal_reply(self, address: str) -> Optional[str]:
+        """Why there is nothing to accept, when the last report for the mech made no offer."""
         refusal = self.shared_state.mech_refusals.get(address)
-        if offer is None and refusal is not None:
-            self._send_mech_reply(
-                http_msg,
-                http_dialogue,
-                f"There is nothing to accept for {address}. {refusal}",
-            )
+        if refusal is None:
+            return None
+        return f"There is nothing to accept for {address}. {refusal}"
+
+    def _accept_offer(
+        self, accept: Accept, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Approve when the typed price is the one the last report showed."""
+        address = accept.address
+        refusal = self._refusal_reply(address)
+        if refusal is not None:
+            self._send_mech_reply(http_msg, http_dialogue, refusal)
             return
-        if offer is None or normalise(offer.price_text) != command.price_text:
+        offer = self.shared_state.mech_offers.get(address)
+        if offer is None or normalise(offer.price_text) != accept.price_text:
             self._send_mech_reply(
                 http_msg,
                 http_dialogue,
@@ -962,11 +1124,36 @@ class HttpHandler(BaseHttpHandler):
                 "Ask about the mech to see its current terms.",
             )
             return
+        self._take_offer(offer, http_msg, http_dialogue)
+
+    def _approve_mech(
+        self,
+        address: str,
+        last_shown: Optional[str],
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+    ) -> None:
+        """Take the offer, or repeat why there is none, only when the mech's report was the reply right before; otherwise show the report."""
+        if address == last_shown:
+            offer = self.shared_state.mech_offers.get(address)
+            if offer is not None:
+                self._take_offer(offer, http_msg, http_dialogue)
+                return
+            refusal = self._refusal_reply(address)
+            if refusal is not None:
+                self._send_mech_reply(http_msg, http_dialogue, refusal)
+                return
+        self._report_mech(address, http_msg, http_dialogue)
+
+    def _take_offer(
+        self, offer: Offer, http_msg: HttpMessage, http_dialogue: HttpDialogue
+    ) -> None:
+        """Approve at the shown rate once the live rate is read and is no higher."""
 
         def on_rate(live: Optional[int]) -> None:
             self._send_mech_reply(http_msg, http_dialogue, self._settle(offer, live))
 
-        read_live_rate(self.context, address, on_rate)
+        read_live_rate(self.context, offer.address, on_rate)
 
     def _settle(self, offer: Offer, live: Optional[int]) -> str:
         """Record the approval when the live rate is readable and within the offer, and say what happened."""
@@ -984,17 +1171,151 @@ class HttpHandler(BaseHttpHandler):
                 "again to see the new terms."
             )
         again = " again" if address in self.shared_state.approved_mech_rates else ""
-        self.shared_state.approve_mech(address, offer.rate)
-        return (
-            f"Approved {address}{again} at up to {offer.price_text} per request. "
-            "Your agent can use it for its next mech requests."
+        self.shared_state.approve_mech(address, offer.rate, offer.payment_type)
+        when = (
+            "Your agent has met its activity goal for this staking epoch, so it "
+            "can use it from the next epoch."
+            if self._trading_paused()
+            else "Your agent can use it for its next mech requests."
         )
+        return (
+            f"Approved {address}{again} at up to {offer.price_text} per request. {when}"
+        )
+
+    def _trading_paused(self) -> bool:
+        """Whether the agent skips trading for the rest of this epoch, by the stop-trading vote's conditions."""
+        goal = self.shared_state.read_activity_goal_from_disk()
+        db = self.synchronized_data.db
+        return bool(
+            self.context.params.stop_trading_if_staking_kpi_met
+            and db.get("is_activity_target_met", False)
+            and goal is not None
+            and goal.is_met
+            and goal.period_start == db.get("previous_checkpoint", None)
+        )
+
+    def _approved_price(self, address: str, rate: int) -> Optional[str]:
+        """An approved mech's accepted price, when its payment type names an asset."""
+        kind = self.shared_state.approved_mech_payment_types.get(address)
+        if kind is None:
+            return None
+        return self._rate_text(kind, rate)
+
+    def _approved_entry(self, address: str, rate: int) -> str:
+        """One approved mech with its accepted price, when the payment type is known."""
+        price = self._approved_price(address, rate)
+        if price is not None:
+            return f"{address}, up to {price} per request"
+        return f"{address} (send its address to see its price)"
+
+    def _list_entry(self, address: str, payment_types: Dict[str, str]) -> str:
+        """One listed mech: approved at its accepted price, or Valory with its payment method."""
+        rate = self.shared_state.approved_mech_rates.get(address)
+        if rate is not None:
+            price = self._approved_price(address, rate)
+            terms = (
+                f"approved, up to {price} per request"
+                if price is not None
+                else "approved; ask about it to see its price"
+            )
+        else:
+            kind = payment_types.get(address)
+            chain_id = chain_id_of(str(self.context.params.mech_chain_id))
+            terms = (
+                "Valory"
+                if kind is None
+                else f"Valory, paid with {payment_line(kind, None, chain_id)[0]}"
+            )
+        pinned = ", pinned" if address in self._pinned_mechs() else ""
+        return f"{address}, {terms}{pinned}"
+
+    def _mech_list(self) -> str:
+        """Number the mechs the agent may use, Valory then approved, and keep the list."""
+        approved = self.shared_state.approved_mechs
+        discovered, payment_types = self._discovered_mechs()
+        valid_mechs = self.context.params.valid_mechs
+        valory = sorted(
+            mech for mech in discovered if mech in valid_mechs and mech not in approved
+        )
+        mechs = [*valory, *approved]
+        self.shared_state.last_mech_list = mechs
+        if not mechs:
+            return (
+                "Your agent has no mechs to list yet. Send a mech's address to see "
+                "its report."
+            )
+        entries = "<br>".join(
+            f"{number}. {self._list_entry(address, payment_types)}"
+            for number, address in enumerate(mechs, start=1)
+        )
+        return PARAGRAPH_BREAK.join(
+            [
+                f"Mechs your agent can use:<br>{entries}",
+                "Refer to one by its number or its address.",
+            ]
+        )
+
+    def _which_mech(self) -> str:
+        """Ask which mech a message meant, with the list to pick from."""
+        return PARAGRAPH_BREAK.join([WHICH_MECH, self._mech_list()])
 
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
         if address not in self.shared_state.approved_mech_rates:
-            return f"{address} is not approved, so there is nothing to remove."
-        return " ".join(self._remove_approved_mechs([address]))
+            if address in self.context.params.valid_mechs:
+                return VALORY_NOT_REMOVABLE.format(address=address)
+            return (
+                f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
+            )
+        removed = RemovedMech(
+            address,
+            self.shared_state.approved_mech_rates[address],
+            self.shared_state.approved_mech_payment_types.get(address),
+            address in self._pinned_mechs(),
+        )
+        notes = self._remove_approved_mechs([address])
+        self.shared_state.last_removed = removed
+        return " ".join(
+            [
+                *notes,
+                "To undo, reply undo. After another message, send its address to see "
+                "its report and approve it again.",
+            ]
+        )
+
+    def _undo_removal(
+        self, removed: Optional[RemovedMech], address: Optional[str]
+    ) -> str:
+        """Put back the approval the reply before this message removed, at the ceiling the user had accepted.
+
+        :param removed: the approval the reply before this message removed, if any.
+        :param address: the mech the message refers to; anything but the removed
+            mech puts nothing back and keeps the undo open for the next message.
+        :return: the reply.
+        """
+        if removed is None:
+            return "There is no removal to undo."
+        if address != removed.address:
+            self.shared_state.last_removed = removed
+            return (
+                f"Your message names another mech, not {removed.address}, the one "
+                "just removed, so nothing was put back. To put it back, reply undo."
+            )
+        self.shared_state.approve_mech(
+            removed.address, removed.rate, removed.payment_type
+        )
+        again = ""
+        if removed.pinned:
+            pins = self._pinned_mechs()
+            if removed.address not in pins:
+                self._store_selected_mechs([*pins, removed.address])
+            again = " and pinned it again"
+        price = self._approved_price(removed.address, removed.rate)
+        ceiling = f"up to {price} per request" if price else "the price you accepted"
+        return (
+            f"Put back {removed.address} at {ceiling}{again}. If it now charges more, "
+            "your agent won't use it until you approve the new price."
+        )
 
     def _pinned_mechs(self) -> List[str]:
         """The pinned mech addresses, lowercase."""
@@ -1006,14 +1327,18 @@ class HttpHandler(BaseHttpHandler):
         if address not in self._get_available_valid_mechs():
             return "I can only pin a Valory mech the agent uses or a mech you approved."
         pins = self._pinned_mechs()
-        if address not in pins:
-            before = pins
-            pins = [*pins, address]
-            self._store_selected_mechs(pins)
-            self._record_pins_changed(before, pins)
+        if address in pins:
+            return (
+                f"{address} is already pinned. Mech requests go only to your pinned "
+                f"mechs: {', '.join(pins)}."
+            )
+        before = pins
+        pins = [*pins, address]
+        self._store_selected_mechs(pins)
+        self._record_pins_changed(before, pins)
         return (
             f"Pinned {address}. Mech requests now go only to your pinned mechs: "
-            f"{', '.join(pins)}."
+            f"{', '.join(pins)}. To undo, tell me to unpin {address}."
         )
 
     def _record_pins_changed(self, before: List[str], after: List[str]) -> None:
@@ -1030,33 +1355,42 @@ class HttpHandler(BaseHttpHandler):
         """Unpin a mech; an empty pin list means normal mech selection."""
         pins = self._pinned_mechs()
         if address not in pins:
-            return f"{address} is not pinned."
+            return f"{address} is not pinned. {NEXT_STEP}"
         remaining = [mech for mech in pins if mech != address]
         self._store_selected_mechs(remaining or None)
         self._record_pins_changed(pins, remaining)
+        undo = f"To undo, tell me to pin {address}."
         if remaining:
-            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}."
-        return f"Unpinned {address}. Mech selection is back to normal."
+            return f"Unpinned {address}. Still pinned: {', '.join(remaining)}. {undo}"
+        return f"Unpinned {address}. Mech selection is back to normal. {undo}"
 
     def _send_chatui_prompt(
         self,
         user_prompt: str,
         available_tools: Any,
+        valory_tools: Set[str],
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
+        last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """Fill the config prompt and ask the LLM.
 
         :param user_prompt: the user's message.
         :param available_tools: the tools the user may pin.
+        :param valory_tools: the tool names a Valory mech serves, the only ones listed.
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
+        :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
-            ", ".join(current_allowed_tools_raw)
+            _tools_for_prompt(current_allowed_tools_raw, valory_tools)
             if current_allowed_tools_raw
             else "Automatic tool selection based on policy (all available tools)"
         )
@@ -1090,10 +1424,14 @@ class HttpHandler(BaseHttpHandler):
             ),
             current_trading_strategy=current_trading_strategy,
             current_allowed_tools=current_allowed_tools,
-            available_tools=available_tools,
+            available_tools=_tools_for_prompt(available_tools, valory_tools),
             current_selected_mechs=current_selected_mechs,
             current_approved_mechs=(
-                ", ".join(self.shared_state.approved_mechs) or "None"
+                "; ".join(
+                    self._approved_entry(address, rate)
+                    for address, rate in self.shared_state.approved_mech_rates.items()
+                )
+                or "None"
             ),
             available_mechs=(
                 ", ".join(sorted(available_mechs))
@@ -1129,17 +1467,35 @@ class HttpHandler(BaseHttpHandler):
             prompt=prompt,
             http_msg=http_msg,
             http_dialogue=http_dialogue,
+            user_prompt=user_prompt,
+            last_shown=last_shown,
+            last_list=last_list,
+            last_removed=last_removed,
         )
 
     def _send_chatui_llm_request(
-        self, prompt: str, http_msg: HttpMessage, http_dialogue: HttpDialogue
+        self,
+        prompt: str,
+        http_msg: HttpMessage,
+        http_dialogue: HttpDialogue,
+        user_prompt: str,
+        last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
-        """Ask the model for a config update; `_handle_chatui_llm_response` gets the reply."""
+        """Ask the model for a config update or a mech intent; `_handle_chatui_llm_response` gets the reply."""
         self._send_llm_request(
             prompt,
             build_chatui_llm_response_schema(),
             self._handle_chatui_llm_response,
-            {"http_msg": http_msg, "http_dialogue": http_dialogue},
+            {
+                "http_msg": http_msg,
+                "http_dialogue": http_dialogue,
+                "user_prompt": user_prompt,
+                "last_shown": last_shown,
+                "last_list": last_list,
+                "last_removed": last_removed,
+            },
         )
 
     def _send_llm_request(
@@ -1162,13 +1518,22 @@ class HttpHandler(BaseHttpHandler):
         )
         self._send_message(request_srr_message, srr_dialogue, callback, callback_kwargs)
 
+    def _discovered_mechs(self) -> Tuple[FrozenSet[str], Dict[str, str]]:
+        """The discovered mechs and their payment types, kept from the last period until a new one writes them."""
+        data = self.synchronized_data
+        if data.mechs_info_loaded:
+            self.shared_state.discovered_mechs = (
+                frozenset(data.available_valid_mechs),
+                data.mech_payment_types,
+            )
+        mechs, payment_types = self.shared_state.discovered_mechs
+        return mechs, dict(payment_types)
+
     def _get_available_valid_mechs(self) -> Set[str]:
         """Return the mechs the user may pin: discovered Valory mechs and approved mechs."""
         valid_mechs = self.context.params.valid_mechs
         discovered = {
-            mech
-            for mech in self.synchronized_data.available_valid_mechs
-            if mech in valid_mechs
+            mech for mech in self._discovered_mechs()[0] if mech in valid_mechs
         }
         return discovered | set(self.shared_state.approved_mechs)
 
@@ -1198,12 +1563,21 @@ class HttpHandler(BaseHttpHandler):
             return set(prediction_tools)
         return tool_names(self.synchronized_data.available_mech_tools)
 
+    def _valory_tool_names(self) -> Set[str]:
+        """Names of tools a Valory mech serves, the only tool names the prompt lists."""
+        keys: Iterable[str] = self.synchronized_data.available_mech_tools or []
+        return {
+            tool
+            for identity, tool in map(split_tool_key, keys)
+            if identity in (None, VALORY_LABEL)
+        }
+
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> Optional[Set[str]]:
-        """Get available mech tools, handle errors if not available."""
+    ) -> Optional[Tuple[Set[str], Set[str]]]:
+        """Get the available mech tools and the tool names a Valory mech serves; answer 425 while either is not loaded."""
         try:
-            return self._available_tools()
+            return self._available_tools(), self._valory_tool_names()
         except (TypeError, AttributeError) as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
@@ -1243,14 +1617,25 @@ class HttpHandler(BaseHttpHandler):
         dialogue: Dialogue,  # pylint: disable=unused-argument
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
+        user_prompt: str = "",
+        last_shown: Optional[str] = None,
+        last_list: Sequence[str] = (),
+        last_removed: Optional[RemovedMech] = None,
     ) -> None:
         """
         Handle the response from the LLM.
+
+        A reply with a known mech intent is carried out in code, and its
+        message and config update are not used.
 
         :param llm_response_message: the SrrMessage with the LLM output
         :param dialogue: the Dialogue
         :param http_msg: the original HttpMessage
         :param http_dialogue: the original HttpDialogue
+        :param user_prompt: the user's message, the only text an intent's address may come from
+        :param last_shown: the mech whose report was the reply before this message
+        :param last_list: the numbered list that was the reply before this message
+        :param last_removed: the approval the reply before this message removed
         """
         self.context.logger.info(
             f"LLM response payload: {llm_response_message.payload}"
@@ -1282,6 +1667,41 @@ class HttpHandler(BaseHttpHandler):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
 
+        reading = llm_response_json.get(MECH_INTENT_FIELD)
+        intent, address = resolve_intent(
+            reading,
+            user_prompt,
+            last_shown,
+            last_list,
+            None if last_removed is None else last_removed.address,
+        )
+        if intent is not MechIntent.NONE:
+            if self._changes_config(llm_response_json.get(UPDATED_CONFIG_FIELD)):
+                self.context.logger.warning(
+                    "The reply asked for a mech action and a config change; "
+                    "neither was done."
+                )
+                self._send_mech_reply(http_msg, http_dialogue, ONE_REQUEST_AT_A_TIME)
+                return
+            number = _list_number(reading, address, last_list)
+            self._run_mech_intent(
+                intent,
+                address,
+                last_shown,
+                http_msg,
+                http_dialogue,
+                number,
+                last_removed,
+            )
+            return
+        if reading is not None and (
+            not isinstance(reading, dict)
+            or reading.get("intent") not in (None, MechIntent.NONE.value)
+        ):
+            self.context.logger.warning(
+                f"Ignoring an unreadable mech intent: {reading}"
+            )
+
         llm_message = llm_response_json.get(MESSAGE_FIELD, "")
         updated_agent_config = llm_response_json.get(UPDATED_CONFIG_FIELD, {})
 
@@ -1302,6 +1722,9 @@ class HttpHandler(BaseHttpHandler):
         if not self._config_update_is_readable(updated_agent_config):
             self._handle_unreadable_llm_reply(llm_response, http_msg, http_dialogue)
             return
+        updated_agent_config, pin_note = self._keep_named_or_pinned_mechs(
+            updated_agent_config, user_prompt
+        )
 
         if self._chat_turn(http_dialogue) is not None:
             self._propose_config_update(
@@ -1310,9 +1733,13 @@ class HttpHandler(BaseHttpHandler):
             return
 
         try:
+            updated_agent_config, tools_note = self._keep_unlisted_allowed_tools(
+                updated_agent_config, user_prompt
+            )
             updated_params, issues = self._process_updated_agent_config(
                 updated_agent_config
             )
+            issues = [note for note in (pin_note, tools_note) if note] + issues
         except Exception as exc:  # pylint: disable=broad-except
             # The update reads this object field by field and expects a
             # shape the model is under no obligation to produce. Any wrong
@@ -1349,6 +1776,104 @@ class HttpHandler(BaseHttpHandler):
             http_dialogue,
             response_body,
         )
+
+    def _changes_config(self, update: Any) -> bool:
+        """Whether a reply's config update removes a setting or sets one to a value other than the current one; `behavior` never counts."""
+        if not isinstance(update, dict):
+            return False
+        if update.get(REMOVED_CONFIG_FIELDS_FIELD):
+            return True
+        return any(
+            update.get(name) is not None and not self._is_current(name, update[name])
+            for name in _SETTINGS
+        )
+
+    def _is_current(self, name: str, value: Any) -> bool:
+        """Whether a reply's value for a setting is the agent's current one; a value that cannot be compared is not."""
+        config = self.shared_state.chatui_config
+        if name == ALLOWED_TOOLS_FIELD:
+            return isinstance(value, list) and set(map(str, value)) == set(
+                config.allowed_tools or []
+            )
+        if name == SELECTED_MECHS_FIELD:
+            return isinstance(value, list) and {
+                str(mech).lower() for mech in value
+            } == set(self._pinned_mechs())
+        if name in self._LLM_CONFIG_NUMERIC_FIELDS:
+            # The reply is in display units; the config keeps the smallest unit.
+            if not self._is_finite_number(value):
+                return False
+            _, decimals = self.get_units_and_decimals()
+            scaled = value * (10**decimals)
+            if isinstance(scaled, float) and not math.isfinite(scaled):
+                return False
+            return int(scaled) == getattr(config, name)
+        if name == ACTIVITY_GOAL_FIELD:
+            return value == effective_activity_goal(
+                config.activity_goal, self.context.params.default_activity_goal
+            )
+        return value == config.trading_strategy
+
+    def _keep_named_or_pinned_mechs(
+        self, update: Dict[str, Any], user_prompt: str
+    ) -> Tuple[Dict[str, Any], Optional[str]]:
+        """The update with its pin list cut to mechs named in the user's message or already pinned, and a note when any were left out."""
+        mechs = update.get(SELECTED_MECHS_FIELD)
+        if not mechs:
+            return update, None
+        allowed = set(addresses_in(user_prompt)) | set(self._pinned_mechs())
+        kept = [mech for mech in mechs if str(mech).lower() in allowed]
+        dropped = [
+            str(mech).lower() for mech in mechs if str(mech).lower() not in allowed
+        ]
+        if not dropped:
+            return update, None
+        note = (
+            f"Not pinned, since your message didn't name them: {', '.join(dropped)}. "
+            "Send the address of a mech you want to pin."
+        )
+        self.context.logger.warning(note)
+        return {**update, SELECTED_MECHS_FIELD: kept or None}, note
+
+    def _keep_unlisted_allowed_tools(
+        self, update: Dict[str, Any], user_prompt: str
+    ) -> Tuple[Dict[str, Any], Optional[str]]:
+        """The update with the allowed tools the prompt did not list put back, unless the user's message names them.
+
+        The model sends the whole allowed list but sees only tool names a Valory
+        mech serves, so an edit it makes cannot drop a tool it was not shown.
+        Clearing the field through the removed fields still clears every tool.
+
+        :param update: the config update the model returned.
+        :param user_prompt: the user's message.
+        :return: the update, and a note giving the new list when a tool was kept,
+            or `None`.
+        """
+        tools = update.get(ALLOWED_TOOLS_FIELD)
+        if not isinstance(tools, list):
+            return update, None
+        typed = _typed_names(user_prompt)
+        listed = self._valory_tool_names()
+        available = self._available_tools()
+        current = self.shared_state.chatui_config.allowed_tools or []
+        kept = [
+            tool
+            for tool in current
+            if tool not in listed
+            and tool not in tools
+            and tool not in typed
+            and tool in available
+        ]
+        if not kept:
+            return update, None
+        now = [tool for tool in tools if tool in available] + kept
+        note = (
+            f"Allowed tools are now: {escape(', '.join(map(str, now)))}. Kept "
+            f"{escape(', '.join(kept))}, since your message didn't name it. To drop "
+            "a tool, send its exact name."
+        )
+        self.context.logger.info(note)
+        return {**update, ALLOWED_TOOLS_FIELD: [*tools, *kept]}, note
 
     def _answer_llm_error(
         self, genai_response: Any, http_msg: HttpMessage, http_dialogue: HttpDialogue

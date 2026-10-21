@@ -22,7 +22,7 @@
 import json
 from abc import ABC
 from enum import Enum
-from typing import Dict, Optional, Set, Tuple, Type, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, cast
 
 from packages.valory.skills.abstract_round_abci.base import (
     AbciApp,
@@ -63,18 +63,37 @@ class SynchronizedData(BaseSynchronizedData):
         produced by the Autonolas subgraph and the `valid_mechs`
         normalization in mech-interact.
         """
-        raw = self.db.get("mechs_info", "[]")
+        return {str(m["address"]).lower() for m in self._mechs_info()}
+
+    @property
+    def mech_payment_types(self) -> Dict[str, str]:
+        """Get the payment type id of each mech visible to mech-interact, by lowercase address."""
+        return {
+            str(m["address"]).lower(): str(m["payment_type"]).lower()
+            for m in self._mechs_info()
+            if m.get("payment_type")
+        }
+
+    @property
+    def mechs_info_loaded(self) -> bool:
+        """Whether this period holds a readable `mechs_info` list."""
+        return self._read_mechs_info() is not None
+
+    def _mechs_info(self) -> List[Dict[str, Any]]:
+        """The `mechs_info` entries that carry an address; missing or unreadable data reads as none."""
+        mechs = self._read_mechs_info() or []
+        return [m for m in mechs if isinstance(m, dict) and m.get("address")]
+
+    def _read_mechs_info(self) -> Optional[List[Any]]:
+        """The `mechs_info` list written in this period, or `None` when it is missing or unreadable."""
+        raw = self.db.get("mechs_info", None)
         if not isinstance(raw, str):
-            return set()
+            return None
         try:
             mechs = json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            return set()
-        return {
-            str(m["address"]).lower()
-            for m in (mechs or [])
-            if isinstance(m, dict) and m.get("address")
-        }
+        except json.JSONDecodeError:
+            return None
+        return mechs if isinstance(mechs, list) else None
 
 
 class Event(Enum):

@@ -96,6 +96,10 @@ class _Chat:
         state.unsaved_replies = {}
         state.approved_mechs = []
         state.approved_mech_rates = {}
+        state.approved_mech_payment_types = {}
+        state.last_shown_mech = None
+        state.last_mech_list = []
+        state.last_removed = None
         state.available_prediction_tools = frozenset({"tool-a", "tool-b"})
         state.read_activity_goal_from_disk.return_value = None
         for name in (
@@ -144,6 +148,12 @@ class _Chat:
     ) -> None:
         """Answer a pending model request with a chat reply."""
         body = {"message": message, "updated_agent_config": config or {}}
+        self.answer({"response": json.dumps(body)}, call)
+
+    def intent(self, intent: str, address: str, call: int = -1) -> None:
+        """Answer a pending model request with a mech intent and no config change."""
+        mech_intent = {"intent": intent, "address": address}
+        body = {"message": "", "updated_agent_config": {}, "mech_intent": mech_intent}
         self.answer({"response": json.dumps(body)}, call)
 
     def confirm(self, confirmed: bool, call: int = -1) -> None:
@@ -415,16 +425,18 @@ class TestErrorStatuses:
 
 
 class TestMechCommands:
-    """Typed mech commands answer in the chat and record what they change."""
+    """Mech commands answer in the chat and record what they change."""
 
     def test_pin_and_unpin_record_the_change(self, chat: _Chat) -> None:
-        """Pinning and unpinning apply at once and each writes a card."""
+        """Pinning and unpinning apply at once, with no confirm step, and each writes a card."""
         mech = "0x" + "a" * 40
         chat.handler._store_selected_mechs = MagicMock()  # type: ignore[method-assign]
 
         pinned = chat.send(f"pin {mech}", "c-pin")
+        chat.intent("pin", mech)
         chat.handler.shared_state.chatui_config.selected_mechs = [mech]
         chat.send(f"unpin {mech}", "c-unpin")
+        chat.intent("unpin", mech)
 
         assert chat.response(pinned)[0] == 200
         events = [line for line in chat.feed() if line["kind"] == "event"]
@@ -440,7 +452,7 @@ class TestMechCommands:
                 {"label": "After", "value": "All mechs"},
             ],
         ]
-        assert chat.llm_calls == []
+        assert len(chat.llm_calls) == 2
 
     def test_removing_a_pinned_mech_records_the_unpin(self, chat: _Chat) -> None:
         """Removing an approved mech that is pinned writes the pin change."""

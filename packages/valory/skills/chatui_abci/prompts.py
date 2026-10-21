@@ -41,7 +41,7 @@ Configuration details:
     -- When set, the agent's e-greedy policy will only select from this subset of tools on each trade. The policy continues learning across all tools, but selection is restricted to the allowed list.
     -- When null/empty, the agent freely selects from all available tools based on its policy.
     -- Can be cleared to restore unrestricted tool selection if the user says to remove or clear the allowed tools.
-    -- Each tool in the list must be one of the available tools listed above.
+    -- Each tool in the list must be one of the available tools listed above, or a tool name the user typed exactly.
     -- The user can add tools to or remove individual tools from the current allowed list, or replace it entirely.
 - Pinned mechs: {current_selected_mechs}
     -- Available mechs: {available_mechs}
@@ -49,10 +49,11 @@ Configuration details:
     -- When null/empty, all configured valid mechs are eligible.
     -- Can be cleared to restore unrestricted mech selection if the user says to remove or clear the pinned mechs.
     -- Each address must be one of the available mechs listed above and is matched case-insensitively.
-    -- The user can add mechs to or remove individual mechs from the current list, or replace it entirely.
+    -- Pinning or unpinning one mech is a mech_intent, not a config update; use this field only to clear or replace the whole list.
 - Approved third-party mechs: {current_approved_mechs}
     -- Mechs not run by Valory that the user approved from this chat, each up to the price the user accepted. This is a separate list from the pinned mechs.
-    -- You cannot approve or remove a mech. The user does that by sending a mech's address to see its report, then typing the line the report gives, or "remove <address>".
+    -- Approving, removing, pinning or unpinning one mech is done through mech_intent; the handler carries it out.
+    -- The user can ask which mechs the agent can use to see a numbered list of them.
 - Fixed bet size: "{current_fixed_bet_size}"
     -- Used with the "fixed_bet" (Balanced) strategy only.
     -- When set, this overrides the threshold-based bet amounts and uses a fixed amount for all bets.
@@ -81,7 +82,7 @@ Note: The fixed_bet_size parameter only applies when using the Balanced strategy
 
 Carefully read the user's prompt below and decide what configuration changes, if any, should be made. If only one field should be updated, set the others to null. A field can not be deselected and set at the same time.
 
-If the user asks about a mech without giving its address, ask for the address.
+If the user asks about, lists, approves (including "yes" to the offer just shown), removes, pins or unpins a mech, set mech_intent and leave every config field null. Its intent is one of "ask", "list", "approve", "remove", "pin", "unpin", or "undo" when the user asks to undo or put back the mech just removed; its address is a mech address written in the message; set last_shown to true when the message refers to the mech whose report was just shown (such as "it", "this one", or "yes" to its offer); its position is a number from the last numbered list when the message refers to one. Leave all three unset when the message names the mech any other way. A question about what an action does or whether to take it, such as "what happens if I remove it?" or "should I pin it?", is not that action: set mech_intent to null and answer it. Otherwise set mech_intent to null and answer as usual.
 
 Always include a clear message to the user explaining your reasoning for the update, or ask for clarification if needed. This message should be phrased in a way that is for the user, not for the agent. The user may not always ask for a change, the user can also ask for information about the current configuration or the available configurations, in which case, you should respond appropriately. You can format your message using basic HTML tags such as <b> for bold, <i> for italics, <ul>/<li> for lists, and <br> for line breaks. Separate paragraphs with a blank line (<br><br>). Use these tags to make your explanation clearer and easier to read.
 
@@ -120,6 +121,28 @@ Decide whether the reply confirms this exact change. Set "confirmed" to true onl
 """
 
 
+class MechIntent(enum.Enum):
+    """What a chat message asks of a mech, as the model reads it."""
+
+    ASK = "ask"
+    LIST = "list"
+    APPROVE = "approve"
+    REMOVE = "remove"
+    PIN = "pin"
+    UNPIN = "unpin"
+    UNDO = "undo"
+    NONE = "none"
+
+
+class MechIntentReading(BaseModel):
+    """A mech intent and its reference: an address, a list position, or the mech just shown."""
+
+    intent: MechIntent
+    address: typing.Optional[str]
+    position: typing.Optional[int]
+    last_shown: typing.Optional[bool]
+
+
 class TradingStrategy(enum.Enum):
     """TradingStrategy"""
 
@@ -155,6 +178,7 @@ class ChatUILLMResponse(BaseModel):
 
     updated_agent_config: typing.Optional[UpdatedAgentConfig]
     message: str
+    mech_intent: typing.Optional[MechIntentReading]
 
 
 def build_chatui_llm_response_schema() -> dict:
