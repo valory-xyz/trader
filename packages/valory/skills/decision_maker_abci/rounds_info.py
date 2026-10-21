@@ -26,6 +26,11 @@ import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
 ROUNDS_INFO = {
+    "agent_top_up_round": {
+        "name": "Topping up the agent signer",
+        "description": "Moves native token from the agent safe to the agent signer when the signer runs low on gas.",
+        "transitions": {},
+    },
     "benchmarking_randomness_round": {
         "name": "Gathering randomness in benchmarking mode",
         "description": "Introduces randomness so the agent can run realistic benchmarking tests.",

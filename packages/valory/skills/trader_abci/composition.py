@@ -29,6 +29,12 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound,
 )
+from packages.valory.skills.agent_topup_abci.rounds import (
+    AgentTopUpAbciApp,
+    AgentTopUpRound,
+    AgentTopUpTxPreparedRound,
+    FinishedAgentTopUpRound,
+)
 from packages.valory.skills.chatui_abci.rounds import (
     ChatuiAbciApp,
     ChatuiLoadRound,
@@ -56,6 +62,7 @@ from packages.valory.skills.decision_maker_abci.states.decision_request import (
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     BenchmarkingDoneRound,
     BenchmarkingModeDisabledRound,
+    FailedAgentTopUpTxRound,
     FinishedDecisionMakerRound,
     FinishedDecisionRequestRound,
     FinishedOmenWithdrawRound,
@@ -161,6 +168,7 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     ChecksPassedRound,
+    FinishedAgentTopUpTxRound,
     FinishedBetPlacementTxRound,
     FinishedMechRequestTxRound,
     FinishedOffchainMechDepositSettledRound,
@@ -180,7 +188,14 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 )
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    FinishedRegistrationRound: FetchPerformanceDataRound,
+    # Every period starts with the Agent Signer top-up check. Its txs settle
+    # through the multiplexer and re-enter the round, which prepares the next
+    # one (unwrap, then transfer) or finishes the check.
+    FinishedRegistrationRound: AgentTopUpRound,
+    AgentTopUpTxPreparedRound: PreTxSettlementRound,
+    FinishedAgentTopUpTxRound: AgentTopUpRound,
+    FailedAgentTopUpTxRound: FetchPerformanceDataRound,
+    FinishedAgentTopUpRound: FetchPerformanceDataRound,
     FinishedFetchPerformanceDataRound: ChatuiLoadRound,
     FinishedChatuiLoadRound: MechVersionDetectionRound,
     FinishedMarketplaceLegacyDetectedRound: CheckBenchmarkingModeRound,
@@ -293,7 +308,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedStakingRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
-    FinishedResetAndPauseRound: FetchPerformanceDataRound,
+    FinishedResetAndPauseRound: AgentTopUpRound,
     FinishedResetAndPauseErrorRound: ResetAndPauseRound,
     # this has no effect, because the `BenchmarkingDoneRound` is terminal
     BenchmarkingDoneRound: ResetAndPauseRound,
@@ -310,6 +325,7 @@ termination_config = BackgroundAppConfig(
 TraderAbciApp = chain(
     (
         AgentRegistrationAbciApp,
+        AgentTopUpAbciApp,
         AgentPerformanceSummaryAbciApp,
         ChatuiAbciApp,
         DecisionMakerAbciApp,

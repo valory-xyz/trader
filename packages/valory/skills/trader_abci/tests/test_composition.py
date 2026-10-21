@@ -23,8 +23,17 @@
 
 import pytest
 
+from packages.valory.skills.agent_performance_summary_abci.rounds import (
+    FetchPerformanceDataRound,
+)
+from packages.valory.skills.agent_topup_abci.rounds import (
+    AgentTopUpRound,
+    AgentTopUpTxPreparedRound,
+    FinishedAgentTopUpRound,
+)
 from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradingRound
 from packages.valory.skills.decision_maker_abci.states.final_states import (
+    FailedAgentTopUpTxRound,
     FinishedPostBetUpdateRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
@@ -48,6 +57,8 @@ from packages.valory.skills.mech_interact_abci.states.final_states import (
 )
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
+from packages.valory.skills.registration_abci.rounds import FinishedRegistrationRound
+from packages.valory.skills.reset_pause_abci.rounds import FinishedResetAndPauseRound
 from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
@@ -60,6 +71,7 @@ from packages.valory.skills.trader_abci.composition import (
     termination_config,
 )
 from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
+    FinishedAgentTopUpTxRound,
     FinishedBetPlacementTxRound,
     FinishedOffchainMechDepositSettledRound,
     FinishedPolymarketWrapCollateralTxRound,
@@ -68,7 +80,18 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     PreTxSettlementRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 61
+EXPECTED_TRANSITION_MAPPING_LENGTH = 65
+
+# Agent Signer top-up at period start: each settled tx re-enters the round,
+# and the check ends, finished or failed, where the period used to start.
+AGENT_TOPUP_TRANSITIONS = {
+    FinishedRegistrationRound: AgentTopUpRound,
+    FinishedResetAndPauseRound: AgentTopUpRound,
+    AgentTopUpTxPreparedRound: PreTxSettlementRound,
+    FinishedAgentTopUpTxRound: AgentTopUpRound,
+    FailedAgentTopUpTxRound: FetchPerformanceDataRound,
+    FinishedAgentTopUpRound: FetchPerformanceDataRound,
+}
 
 # Transitions introduced or rewired by the always-redeem-first /
 # `PostBetUpdateRound` FSM restructure (PR #904). Each pair must hold
@@ -118,6 +141,16 @@ def test_offchain_transition(src: type, dst: type) -> None:
         f"{src.__name__} -> {abci_app_transition_mapping[src].__name__}, "
         f"expected {dst.__name__}"
     )
+
+
+@pytest.mark.parametrize(
+    "src,dst",
+    list(AGENT_TOPUP_TRANSITIONS.items()),
+    ids=lambda cls: getattr(cls, "__name__", str(cls)),
+)
+def test_agent_topup_transition(src: type, dst: type) -> None:
+    """Each agent top-up transition must resolve to its exact target round."""
+    assert abci_app_transition_mapping[src] is dst
 
 
 @pytest.mark.parametrize(
