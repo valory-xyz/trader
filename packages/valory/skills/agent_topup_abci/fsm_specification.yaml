@@ -1,0 +1,21 @@
+alphabet_in:
+- DONE
+- NO_MAJORITY
+- PREPARE_TX
+- ROUND_TIMEOUT
+default_start_state: AgentTopUpRound
+final_states:
+- AgentTopUpTxPreparedRound
+- FinishedAgentTopUpRound
+label: AgentTopUpAbciApp
+start_states:
+- AgentTopUpRound
+states:
+- AgentTopUpRound
+- AgentTopUpTxPreparedRound
+- FinishedAgentTopUpRound
+transition_func:
+    (AgentTopUpRound, DONE): FinishedAgentTopUpRound
+    (AgentTopUpRound, NO_MAJORITY): AgentTopUpRound
+    (AgentTopUpRound, PREPARE_TX): AgentTopUpTxPreparedRound
+    (AgentTopUpRound, ROUND_TIMEOUT): AgentTopUpRound
