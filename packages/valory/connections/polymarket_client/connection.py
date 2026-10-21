@@ -438,6 +438,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         self.neg_risk_ctf_collateral_adapter = to_checksum_address(
             self.configuration.config.get("neg_risk_ctf_collateral_adapter_address")
         )
+        # Protocol V2: the Safe lets the Router operate its PositionManager
+        # positions to claim V2 winnings.
+        self.position_manager = to_checksum_address(
+            self.configuration.config.get("position_manager_address")
+        )
+        self.router = to_checksum_address(
+            self.configuration.config.get("router_address")
+        )
 
         # Initialize Web3 for approval checking
         rpc_url = self.configuration.config.get("polygon_ledger_rpc")
