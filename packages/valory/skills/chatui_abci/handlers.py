@@ -631,7 +631,7 @@ class HttpHandler(BaseHttpHandler):
             return f"{address}, up to {price} per request"
         return f"{address} (send its address to see its price)"
 
-    def _list_entry(self, address: str) -> str:
+    def _list_entry(self, address: str, payment_types: Dict[str, str]) -> str:
         """One listed mech: approved at its accepted price, or Valory with its payment method."""
         rate = self.shared_state.approved_mech_rates.get(address)
         if rate is not None:
@@ -642,7 +642,7 @@ class HttpHandler(BaseHttpHandler):
                 else "approved; ask about it to see its price"
             )
         else:
-            kind = self._discovered_mechs()[1].get(address)
+            kind = payment_types.get(address)
             chain_id = chain_id_of(str(self.context.params.mech_chain_id))
             terms = (
                 "Valory"
@@ -655,7 +655,11 @@ class HttpHandler(BaseHttpHandler):
     def _mech_list(self) -> str:
         """Number the mechs the agent may use, Valory then approved, and keep the list."""
         approved = self.shared_state.approved_mechs
-        valory = sorted(self._get_available_valid_mechs() - set(approved))
+        discovered, payment_types = self._discovered_mechs()
+        valid_mechs = self.context.params.valid_mechs
+        valory = sorted(
+            mech for mech in discovered if mech in valid_mechs and mech not in approved
+        )
         mechs = [*valory, *approved]
         self.shared_state.last_mech_list = mechs
         if not mechs:
@@ -664,7 +668,7 @@ class HttpHandler(BaseHttpHandler):
                 "its report."
             )
         entries = "<br>".join(
-            f"{number}. {self._list_entry(address)}"
+            f"{number}. {self._list_entry(address, payment_types)}"
             for number, address in enumerate(mechs, start=1)
         )
         return PARAGRAPH_BREAK.join(
@@ -920,12 +924,7 @@ class HttpHandler(BaseHttpHandler):
         self._send_message(request_srr_message, srr_dialogue, callback, callback_kwargs)
 
     def _discovered_mechs(self) -> Tuple[FrozenSet[str], Dict[str, str]]:
-        """The mechs mech-interact discovered and their payment types; the last ones read until a new period discovers them.
-
-        The fallback is refreshed only when the chat reads a period's
-        `mechs_info`, so after a restart it stays empty until a message
-        arrives once mech-interact has written it.
-        """
+        """The discovered mechs and their payment types, kept from the last period until a new one writes them."""
         data = self.synchronized_data
         if data.mechs_info_loaded:
             self.shared_state.discovered_mechs = (

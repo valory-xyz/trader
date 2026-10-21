@@ -76,7 +76,7 @@ class SynchronizedData(BaseSynchronizedData):
 
     @property
     def mechs_info_loaded(self) -> bool:
-        """Whether this period holds a readable `mechs_info` list; mech-interact does not keep it across periods."""
+        """Whether this period holds a readable `mechs_info` list."""
         return self._read_mechs_info() is not None
 
     def _mechs_info(self) -> List[Dict[str, Any]]:

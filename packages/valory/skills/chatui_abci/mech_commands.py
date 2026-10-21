@@ -103,9 +103,7 @@ def resolve_intent(
     :param last_shown: the address of the last report shown, if any.
     :param last_list: the addresses of the last numbered list shown, in order.
     :param last_removed: the address the reply before this message removed, if
-        any; an undo refers to it, so an address must agree with it. The
-        reply before an undo is the removal, not a report or a list, so
-        neither the mech just shown nor a list position refers to anything.
+        any; an undo refers only to it, and an address must agree with it.
     :return: the intent, `NONE` for any reply that is not a known intent, and
         the mech, or `None` unless every reference given names the same mech.
 

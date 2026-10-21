@@ -142,8 +142,7 @@ class SharedState(BaseSharedState):
         self.last_shown_mech: Optional[str] = None
         self.last_mech_list: List[str] = []
         self.last_removed: Optional[RemovedMech] = None
-        # In memory: the mechs mech-interact last discovered and their payment
-        # types, which stand in while a new period has not discovered them yet.
+        # In memory: the last discovered mechs, used until a new period discovers them.
         self.discovered_mechs: Tuple[FrozenSet[str], Dict[str, str]] = (
             frozenset(),
             {},
