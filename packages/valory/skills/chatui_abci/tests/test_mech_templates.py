@@ -83,10 +83,13 @@ CONSENT = (
     "price, your agent stops using this mech until you accept the new price. It "
     "starts with no track record on your side and earns work through normal scoring."
 )
-ACCEPT = f"To approve, reply exactly: I accept 0.01 xDAI per request for {MECH}"
-REMOVE = f"To stop using it, reply: remove {MECH}"
-PIN = f"To add it to your pinned mechs, reply: pin {MECH}"
-UNPIN = f"To stop pinning it, reply: unpin {MECH}"
+ACCEPT = (
+    "To approve, reply yes, or reply exactly: "
+    f"I accept 0.01 xDAI per request for {MECH}"
+)
+REMOVE = "To stop using it, tell me to remove it."
+PIN = "To add it to your pinned mechs, tell me to pin it."
+UNPIN = "To stop pinning it, tell me to unpin it."
 OFFER = Offer(MECH, NATIVE_RATE, NATIVE, "0.01 xDAI")
 
 
@@ -136,7 +139,8 @@ def test_a_price_at_the_cap_is_approvable() -> None:
             _standing(valory=True),
             {},
             [
-                "This is a Valory mech the agent already uses; its accuracy is at "
+                "This is a Valory mech the agent already uses, so it needs no "
+                "approval. Its accuracy is at "
                 "https://mech-analytics-api.autonolas.tech/v1/metrics/mech/100/"
                 f"{MECH}. {VALORY_TERMS}"
             ],

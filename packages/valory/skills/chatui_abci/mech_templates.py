@@ -68,6 +68,10 @@ NEVER_DELIVERED = (
     "It has never delivered an on-chain request, so it cannot be approved."
 )
 PRICE_UNREADABLE = "I can't read what this mech charges, so it cannot be approved."
+# No address: the hints refer to the mech just shown.
+REMOVE_HINT = "To stop using it, tell me to remove it."
+PIN_HINT = "To add it to your pinned mechs, tell me to pin it."
+UNPIN_HINT = "To stop pinning it, tell me to unpin it."
 
 
 @dataclass(frozen=True)
@@ -116,8 +120,11 @@ def payment_line(
 
 
 def accept_line(price_text: str, address: str) -> str:
-    """The exact phrase that accepts the offer."""
-    return f"To approve, reply exactly: I accept {price_text} per request for {address}"
+    """How to accept the offer: a reply saying so, or the exact phrase."""
+    return (
+        "To approve, reply yes, or reply exactly: "
+        f"I accept {price_text} per request for {address}"
+    )
 
 
 def render_report(
@@ -179,13 +186,11 @@ def _operator_line(facts: MechFacts) -> str:
     return f"Run by {who}, verified. {VERIFIED_MEANS}"
 
 
-def _pin_hint(address: str, standing: Standing) -> List[str]:
+def _pin_hint(standing: Standing) -> List[str]:
     """How to pin or unpin the mech, only when the agent may pin it."""
     if not standing.pinnable:
         return []
-    if standing.pinned:
-        return [f"To stop pinning it, reply: unpin {address}"]
-    return [f"To add it to your pinned mechs, reply: pin {address}"]
+    return [UNPIN_HINT if standing.pinned else PIN_HINT]
 
 
 def verdict(facts: MechFacts, standing: Standing) -> str:
@@ -201,13 +206,12 @@ def _ending(  # pylint: disable=too-many-return-statements
 ) -> Tuple[List[str], bool]:
     """The closing lines from the first verdict that applies, and whether they make an offer."""
     address = facts.address
-    remove_hint = f"To stop using it, reply: remove {address}"
     if standing.valory:
         analytics = ANALYTICS_MECH_URL.format(chain_id=facts.chain_id, address=address)
         return [
-            "This is a Valory mech the agent already uses; its accuracy is at "
-            f"{analytics}. {VALORY_TERMS}",
-            *_pin_hint(address, standing),
+            "This is a Valory mech the agent already uses, so it needs no "
+            f"approval. Its accuracy is at {analytics}. {VALORY_TERMS}",
+            *_pin_hint(standing),
         ], False
     if facts.record is RecordStatus.UNAVAILABLE:
         return [RECORD_UNAVAILABLE], False
@@ -238,14 +242,14 @@ def _ending(  # pylint: disable=too-many-return-statements
         if rate <= accepted:
             return [
                 f"Approved at up to {accepted_text} per request.",
-                remove_hint,
-                *_pin_hint(address, standing),
+                REMOVE_HINT,
+                *_pin_hint(standing),
             ], False
         return [
             f"Approved at up to {accepted_text}; it now charges up to {price_text}, "
             "so your agent has stopped using it until you accept the new price.",
             accept_line(price_text, address),
-            remove_hint,
+            REMOVE_HINT,
         ], True
     return [
         f"Approving accepts up to {price_text} per request. If its operator raises "
