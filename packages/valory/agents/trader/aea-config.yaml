@@ -70,12 +70,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid7n5ks7eojxolzor6hg24za3ldaq2w27orufyuwuzl5udbzsddo4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib34ivyzhunsc4et3q3c5lzgsiyiak5hu4bhfancjikrmnznemk3a
 - valory/market_manager_abci:0.1.0:bafybeifydyzqnsozq3vwjvkw3dj3e5jliblxuy5sge6ssj44qjl3fekw7a
-- valory/decision_maker_abci:0.1.0:bafybeihlhxtzodyderyo4ngpeaxrxcyofkevqjd5fayev5mbxnxmwcsyjq
-- valory/trader_abci:0.1.0:bafybeicd7bfdeqjpubtoix5xrvxcjzxguvzwpomnjn6qckaabypdqlyaq4
+- valory/decision_maker_abci:0.1.0:bafybeigdjoxyl2zmz4awklq2kj2u4xcexfxx6ktcb4wwruxj24lwlfizy4
+- valory/trader_abci:0.1.0:bafybeiggw5drw5f7jgjmiymfhwgjaynet42fuyavf5bvitawol73ivw4e4
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeibwd3mc5stf5jk2uwnq2i6dl4pclluc4zqj2dklinp4zxqqa5fhey
+- valory/agent_topup_abci:0.1.0:bafybeicwayco2atwrmprzeifsmizfayljppqsdrgvesoe6cohevq3b7k3u
 - valory/check_stop_trading_abci:0.1.0:bafybeidzrtuukocfcdnyy5idvpj7pqrqjidcbhrwd7dcczgwxmb6amcxzu
 - valory/mech_interact_abci:0.1.0:bafybeid3wg6uzf7mwrv6fpi2pmnbfsgc4ekbgpvakmcvoqfuq6znztpfei
 - valory/chatui_abci:0.1.0:bafybeifexgh6zfksat6rvajilct32lxnaqx7nrko5lqclbqcrimfjig5de

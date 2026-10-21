@@ -83,7 +83,9 @@ class AgentTopUpBehaviour(BaseBehaviour):
             if self._is_check_due():
                 tx_hex = yield from self._prepare_topup_tx()
             if tx_hex is not None:
-                self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] += 1
+                self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] = (
+                    self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0) + 1
+                )
             payload = AgentTopUpPayload(
                 self.context.agent_address,
                 self.matching_round.auto_round_id(),
@@ -102,7 +104,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         )
         if last_submitter == self.matching_round.auto_round_id():
             return (
-                self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY]
+                self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0)
                 < MAX_TOPUP_TXS_PER_CHECK
             )
 
@@ -119,10 +121,19 @@ class AgentTopUpBehaviour(BaseBehaviour):
         """Prepare the next top-up Safe tx: the wxDAI unwrap when Agent Safe xDAI is short, otherwise the transfer."""
         chain = self.params.default_chain_id
         agent_address = self.context.agent_address
-        funds = self.skill_shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
-        topup = get_agent_topups(
-            self.skill_shared_state[GET_AGENT_TOPUP_METHOD_NAME], funds, agent_address
-        ).get(chain, NO_TOPUP)
+        try:
+            funds = self.skill_shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+            topup = get_agent_topups(
+                self.skill_shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+                funds,
+                agent_address,
+            ).get(chain, NO_TOPUP)
+        except Exception as exc:  # pylint: disable=broad-except
+            # The round starts every period: a failed read skips the top-up, never the period.
+            self.context.logger.warning(
+                f"Agent Signer top-up skipped: {type(exc).__name__}({exc})."
+            )
+            return None
         if topup.action != TopUpAction.MOVE:
             self.context.logger.info(
                 f"No Agent Signer top-up on {chain}: {topup.action.value}."
@@ -130,7 +141,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))
-        is_first_tx = self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 0
+        is_first_tx = self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0) == 0
         if chain == GNOSIS_CHAIN_NAME and safe_native < topup.move and is_first_tx:
             unwrap_amount = topup.move - safe_native
             self.context.logger.info(

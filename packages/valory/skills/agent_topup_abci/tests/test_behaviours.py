@@ -210,6 +210,27 @@ class TestGate:
         assert harness.run() is None
         harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_not_called()
 
+    def test_reentry_with_fresh_state_checks(self) -> None:
+        """A re-entry without an in-memory counter (e.g. after a restart) still checks."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER, 10 * ETHER),
+            tx_submitter=SUBMITTER,
+        )
+
+        assert harness.run() is None
+        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_called_once()
+
+    def test_failed_status_read_prepares_nothing(self) -> None:
+        """A failing status read skips the top-up instead of the period."""
+        harness = _Harness("polygon", funds_status("polygon", ETHER // 10, 10 * ETHER))
+        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].side_effect = RuntimeError(
+            "rpc down"
+        )
+
+        assert harness.run() is None
+        assert "rpc down" in harness.context.logger.warning.call_args[0][0]
+
 
 class TestNoMove:
     """Only a MOVE decision prepares a tx."""
