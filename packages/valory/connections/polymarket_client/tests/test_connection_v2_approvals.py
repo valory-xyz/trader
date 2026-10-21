@@ -26,6 +26,7 @@ signs against the CTF Exchange with EIP-712 domain version ``"2"``.
 """
 
 import importlib.metadata
+import random
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -72,6 +73,21 @@ MAX_UINT256 = 2**256 - 1
 APPROVE = "095ea7b3"  # approve(address,uint256)
 SET_APPROVAL_FOR_ALL = "a22cb465"  # setApprovalForAll(address,bool)
 SDK_VERSION = "1.2.1"
+RANDOM_SEED = 20260502
+RANDOM_CASES = 250
+
+# Connection address attributes, in the order the relayer batch uses them.
+ADDRESS_ATTRIBUTES = (
+    "collateral_address",
+    "ctf_address",
+    "ctf_exchange",
+    "neg_risk_ctf_exchange",
+    "neg_risk_adapter",
+    "ctf_collateral_adapter",
+    "neg_risk_ctf_collateral_adapter",
+    "position_manager",
+    "router",
+)
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _CONNECTION_YAML = _TESTS_DIR.parent / "connection.yaml"
@@ -153,6 +169,93 @@ def _existing_safe_calls() -> List[Tuple[str, str, str, int]]:
         (CTF, SET_APPROVAL_FOR_ALL, CTF_COLLATERAL_ADAPTER, 1),
         (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_CTF_COLLATERAL_ADAPTER, 1),
     ]
+
+
+def _random_address(rng: random.Random) -> str:
+    """Return a random checksum address.
+
+    :param rng: the seeded random generator.
+    :return: the address.
+    """
+    return to_checksum_address(f"0x{rng.getrandbits(160):040x}")
+
+
+def _random_addresses(rng: random.Random) -> Dict[str, str]:
+    """Return distinct random addresses for every connection address attribute.
+
+    :param rng: the seeded random generator.
+    :return: a mapping of attribute name to address.
+    """
+    out: Dict[str, str] = {}
+    for name in ADDRESS_ATTRIBUTES:
+        address = _random_address(rng)
+        while address in out.values() or address == SAFE:
+            address = _random_address(rng)
+        out[name] = address
+    return out
+
+
+def _safe_calls_for(a: Dict[str, str]) -> List[Tuple[str, str, str, int]]:
+    """Return the eight existing Safe approvals for the addresses ``a``.
+
+    :param a: the connection address attributes.
+    :return: the decoded calls, in relayer order.
+    """
+    pusd, ctf = a["collateral_address"], a["ctf_address"]
+    return [
+        (pusd, APPROVE, a["ctf_exchange"], MAX_UINT256),
+        (ctf, SET_APPROVAL_FOR_ALL, a["ctf_exchange"], 1),
+        (pusd, APPROVE, a["neg_risk_ctf_exchange"], MAX_UINT256),
+        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_ctf_exchange"], 1),
+        (pusd, APPROVE, a["neg_risk_adapter"], MAX_UINT256),
+        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_adapter"], 1),
+        (ctf, SET_APPROVAL_FOR_ALL, a["ctf_collateral_adapter"], 1),
+        (ctf, SET_APPROVAL_FOR_ALL, a["neg_risk_ctf_collateral_adapter"], 1),
+    ]
+
+
+def _check_on(conn: _Conn, a: Dict[str, str], router_approved: bool) -> Dict[str, Any]:
+    """Run ``_check_approval`` against the Safe approvals for addresses ``a``.
+
+    Only the approvals the Safe actually grants read as set: pUSD allowances
+    to the three spenders, CTF operator rights for the five CTF operators and,
+    if ``router_approved``, the Router as operator on the PositionManager.
+
+    :param conn: the connection.
+    :param a: the connection address attributes.
+    :param router_approved: whether the Router approval is on chain.
+    :return: the approval status.
+    """
+    granted = {
+        (token, operator)
+        for token, _, operator, _ in _safe_calls_for(a)
+        if token == a["ctf_address"]
+    }
+    if router_approved:
+        granted.add((a["position_manager"], a["router"]))
+    allowances = {
+        spender
+        for token, selector, spender, _ in _safe_calls_for(a)
+        if selector == APPROVE
+    }
+
+    def _allowance(token: str, owner: str, spender: str) -> int:
+        approved = (
+            to_checksum_address(token) == a["collateral_address"]
+            and owner == SAFE
+            and to_checksum_address(spender) in allowances
+        )
+        return MAX_UINT256 if approved else 0
+
+    def _is_approved_for_all(token: str, owner: str, operator: str) -> bool:
+        pair = (to_checksum_address(token), to_checksum_address(operator))
+        return owner == SAFE and pair in granted
+
+    conn._check_erc20_allowance = _allowance  # type: ignore[method-assign]
+    conn._check_erc1155_approval = _is_approved_for_all  # type: ignore[method-assign]
+    status, error = conn._check_approval()
+    assert error is None
+    return status
 
 
 class _Chain:
@@ -297,6 +400,64 @@ class TestSafeRouterApproval:
 
         assert getattr(conn, "position_manager", None) == POSITION_MANAGER
         assert getattr(conn, "router", None) == ROUTER
+
+        # Configured values win over the documented defaults.
+        rng = random.Random(RANDOM_SEED)  # nosec B311
+        position_manager = _random_address(rng)
+        router = _random_address(rng)
+        config["position_manager_address"] = position_manager
+        config["router_address"] = router
+        conn = object.__new__(_Conn)
+        conn.logger = MagicMock()
+        conn.configuration = MagicMock(config=config)
+        conn.crypto_store = MagicMock(private_keys={"ethereum": TEST_KEY})
+        with (
+            patch.object(
+                connection_module.BaseSyncConnection, "__init__", return_value=None
+            ),
+            patch.object(connection_module, "RelayClient"),
+            patch.object(connection_module, "RelayerProxyClient"),
+            patch.object(connection_module, "Web3"),
+            patch.object(_Conn, "_build_clob_client"),
+        ):
+            PolymarketClientConnection.__init__(conn)
+
+        assert to_checksum_address(conn.position_manager) == position_manager
+        assert to_checksum_address(conn.router) == router
+
+    def test_relayer_and_check_follow_configured_addresses_randomized(
+        self,
+    ) -> None:
+        """For random addresses the relayer batch and the check use them.
+
+        Fixed seed, 250 cases. The relayer batch decodes to the eight existing
+        Safe approvals followed by PositionManager ``setApprovalForAll(Router,
+        true)``, and ``_check_approval`` passes only once the Router operates
+        the Safe's PositionManager positions.
+        """
+        rng = random.Random(RANDOM_SEED + 1)  # nosec B311
+        for _ in range(RANDOM_CASES):
+            a = _random_addresses(rng)
+            conn = _make_conn()
+            for name, address in a.items():
+                setattr(conn, name, address)
+            result = MagicMock()
+            result.get_transaction.return_value = {"transactionID": "safe-tx"}
+            conn.relayer_client.execute.return_value = result
+
+            _, error = conn._set_approval()
+
+            assert error is None, a
+            txs = conn.relayer_client.execute.call_args.kwargs["transactions"]
+            calls = [_decode(t.to, t.data) for t in txs]
+            assert calls == _safe_calls_for(a) + [
+                (a["position_manager"], SET_APPROVAL_FOR_ALL, a["router"], 1)
+            ], a
+            assert all(t.value == "0" for t in txs), a
+
+            for router_approved in (False, True):
+                status = _check_on(conn, a, router_approved)
+                assert status["all_approvals_set"] is router_approved, a
 
 
 # ---------------------------------------------------------------------------
