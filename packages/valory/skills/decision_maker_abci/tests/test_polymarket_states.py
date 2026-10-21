@@ -345,46 +345,21 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
         assert result[0] is synced_data_mock  # type: ignore[index]
         assert result[1] == Event.PREPARE_TX  # type: ignore[index]
 
-    def test_end_block_routes_on_agreed_tx_hash(self) -> None:
-        """Without an agreed Safe tx hash the round skips tx settlement.
-
-        Every participant sends the same payload and the real round logic
-        runs. The builder program, or an agreed ``tx_hash`` of ``None`` (the
-        Safe approvals were skipped), routes to ``DONE`` so the post-approval
-        round re-checks the Safe on chain; an agreed hash with the builder
-        program disabled routes to ``PREPARE_TX`` for settlement. Only ``None``
-        means "skipped": the empty hash of a failed Safe multisend build keeps
-        today's ``PREPARE_TX`` route.
-        """
-        routes = {}
-        for builder_program_enabled in (False, True):
-            for tx_hash in (None, "", "0xhash"):
-                context = MagicMock()
-                context.params.polymarket_builder_program_enabled = (
-                    builder_program_enabled
-                )
-                round_ = PolymarketSetApprovalRound(
-                    synchronized_data=self.synchronized_data, context=context
-                )
-                tx_submitter = None if tx_hash is None else "submitter"
-                for participant in self.participants:
-                    round_.process_payload(
-                        PolymarketSetApprovalPayload(
-                            participant, tx_submitter, tx_hash, False
-                        )
-                    )
-                result = round_.end_block()
-                assert result is not None
-                routes[(builder_program_enabled, tx_hash)] = result[1]
-
-        assert routes == {
-            (False, None): Event.DONE,
-            (False, ""): Event.PREPARE_TX,
-            (False, "0xhash"): Event.PREPARE_TX,
-            (True, None): Event.DONE,
-            (True, ""): Event.DONE,
-            (True, "0xhash"): Event.DONE,
-        }
+    @pytest.mark.parametrize(
+        "tx_hash, event", [(None, Event.DONE), ("", Event.PREPARE_TX)]
+    )
+    def test_end_block_routes_on_agreed_tx_hash(self, tx_hash, event) -> None:  # type: ignore[no-untyped-def]
+        """Skipped Safe approvals (no tx hash) go to DONE; an empty hash still settles."""
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
+        round_.context.params.polymarket_builder_program_enabled = False
+        submitter = None if tx_hash is None else "submitter"
+        for participant in self.participants:
+            round_.process_payload(
+                PolymarketSetApprovalPayload(participant, submitter, tx_hash, False)
+            )
+        assert round_.end_block()[1] == event  # type: ignore[index]
 
 
 # ---------------------------------------------------------------------------

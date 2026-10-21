@@ -21,6 +21,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+import requests
 from eth_utils import to_checksum_address
 
 from packages.valory.connections.polymarket_client.connection import (
@@ -29,6 +31,7 @@ from packages.valory.connections.polymarket_client.connection import (
 )
 from packages.valory.connections.polymarket_client.relayer_proxy import (
     DW_FACTORY,
+    RelayerProxyClient,
     RelayerProxyError,
 )
 
@@ -245,6 +248,33 @@ class TestExecWalletBatch:
         with patch.object(_Conn, "_dw_nonce", return_value=0):
             resp, err = conn._exec_wallet_batch(transactions=[])
         assert err
+
+    @pytest.mark.parametrize("status", [400, 502])
+    def test_relayer_error_body_is_logged(self, status: int) -> None:
+        """A non-2xx relayer reply logs the first 500 characters of its body.
+
+        :param status: the HTTP status of the relayer reply.
+        """
+        conn = _make_conn()
+        conn.relayer_proxy = RelayerProxyClient(
+            base_url="https://proxy.example",
+            private_key=conn.connection_private_key,
+            chain_id=137,
+            logger=MagicMock(),
+        )
+        response = requests.Response()
+        response.status_code = status
+        response._content = b"x" * 600
+        with (
+            patch.object(_Conn, "_dw_nonce", return_value=0),
+            patch.object(requests, "request", return_value=response),
+        ):
+            conn._exec_wallet_batch(transactions=[], dw_address=DW)
+        logged = conn.logger.error.call_args.args[0]
+        assert logged.startswith(
+            "exec_wallet_batch failed: Relayer proxy POST exec_wallet_batch failed: "
+        )
+        assert logged.endswith(f" Error: None for url: None: {'x' * 500}")
 
     def test_no_dw_address_returns_clear_error(self) -> None:
         """Both arg and instance DW unset yields a clear error, not a TypeError."""

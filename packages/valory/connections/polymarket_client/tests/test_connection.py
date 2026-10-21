@@ -464,6 +464,24 @@ class TestPlaceBet:
         assert cached_dict["clob_version"] == "v2"
         assert cached_dict["timestamp"] == "1700000000000"
 
+    def test_v1_order_unchanged(self) -> None:
+        """A V1 market order still names its token id and no V3 position id.
+
+        The SDK signs a token-id order with the CLOB-reported domain version,
+        so the connection passes the order args and nothing else.
+        """
+        conn = _make_connection()
+        _arm_preflight(conn)
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        _, error = conn._place_bet(token_id="tok123", amount=10.0)  # nosec B106
+        assert error is None
+        (order_args,), kwargs = conn.client.create_market_order.call_args
+        assert kwargs == {}
+        assert order_args.token_id == "tok123"
+        assert getattr(order_args, "position_id", "absent") is None
+
     def test_place_bet_with_cached_v2_order(self) -> None:
         """Uses cached v2 signed order instead of creating a new one."""
         conn = _make_connection()
@@ -3056,6 +3074,58 @@ class TestSetApproval:
         # redeem path doesn't pull ERC-20 from the Safe.
         call_kwargs = conn.relayer_client.execute.call_args[1]
         assert len(call_kwargs["transactions"]) == 9
+
+    def test_safe_approves_router_for_v2_positions(self) -> None:
+        """The Safe lets the Router operate its PositionManager positions.
+
+        The relayer batch ends with PositionManager ``setApprovalForAll(Router,
+        true)``, and ``_check_approval`` reads that approval and reports
+        ``all_approvals_set: false`` until it is on chain.
+        """
+        conn = _make_connection()
+        conn._set_approval()
+        last = conn.relayer_client.execute.call_args[1]["transactions"][-1]
+        assert (last.to, last.data, last.value) == (
+            POSITION_MANAGER,
+            "0xa22cb465" + "0" * 24 + ROUTER[2:].lower() + "0" * 63 + "1",
+            "0",
+        )
+
+        conn._check_erc20_allowance = MagicMock(return_value=MAX_UINT256)
+        conn._check_erc1155_approval = MagicMock(
+            side_effect=lambda token, owner, operator: operator != ROUTER
+        )
+        result, _ = conn._check_approval()
+        assert result["all_approvals_set"] is False
+        assert result["position_manager_approvals"] == {"router": False}
+        conn._check_erc1155_approval.assert_any_call(
+            POSITION_MANAGER, SAFE_ADDRESS, ROUTER
+        )
+
+    def test_init_reads_router_approval_addresses(self) -> None:
+        """__init__ reads the PositionManager and Router from the config."""
+        overrides = {
+            "is_running_on_polymarket": True,
+            "safe_contract_addresses": {"polygon": SAFE_ADDRESS},
+            "position_manager_address": POSITION_MANAGER,
+            "router_address": ROUTER,
+        }
+        conn = object.__new__(_TestableConnection)
+        conn.logger = MagicMock()
+        conn.configuration = MagicMock()
+        conn.configuration.config.get.side_effect = lambda key, *default: (
+            overrides.get(key, default[0] if default else SAFE_ADDRESS)
+        )
+        with (
+            patch(f"{CONNECTION_MODULE}.BaseSyncConnection.__init__"),
+            patch(f"{CONNECTION_MODULE}.RelayClient"),
+            patch(f"{CONNECTION_MODULE}.RelayerProxyClient"),
+            patch(f"{CONNECTION_MODULE}.Web3"),
+            patch.object(_TestableConnection, "crypto_store"),
+            patch.object(_TestableConnection, "_build_clob_client"),
+        ):
+            PolymarketClientConnection.__init__(conn)
+        assert (conn.position_manager, conn.router) == (POSITION_MANAGER, ROUTER)
 
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""

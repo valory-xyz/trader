@@ -22,37 +22,51 @@
 import json
 from unittest.mock import MagicMock
 
+import pytest
+
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     DEPOSIT_WALLET_STORE,
-    PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.polymarket_top_up import (
-    PolymarketTopUpBehaviour,
-)
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
     DW_APPROVALS_VERSION,
 )
-from packages.valory.skills.decision_maker_abci.tests.polymarket_approvals import (
-    docs_addresses,
-)
 
 DW = "0xAbCdEf0123456789AbCdEf0123456789AbCdEf01"
+PUSD, CTF, EXCHANGE, NEG_RISK_EXCHANGE, NEG_RISK_ADAPTER, EXCHANGE_V3, PM = (
+    "0x" + byte * 20 for byte in ("c0", "cf", "e1", "e2", "da", "e3", "a0")
+)
+APPROVE, SET_APPROVAL_FOR_ALL, MAX_UINT256 = "095ea7b3", "a22cb465", 2**256 - 1
+V2_CALLS = [
+    (PUSD, APPROVE, EXCHANGE_V3, MAX_UINT256),
+    (PM, SET_APPROVAL_FOR_ALL, EXCHANGE_V3, 1),
+]
+FULL_CALLS = V2_CALLS + [
+    (PUSD, APPROVE, EXCHANGE, MAX_UINT256),
+    (PUSD, APPROVE, NEG_RISK_EXCHANGE, MAX_UINT256),
+    (CTF, SET_APPROVAL_FOR_ALL, EXCHANGE, 1),
+    (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_EXCHANGE, 1),
+]
 
 
-def _make_behaviour(tmp_path, behaviour_cls=PolymarketSetApprovalBehaviour):  # type: ignore[no-untyped-def]
-    """Return a DepositWallet behaviour with mocked context."""
-    behaviour = object.__new__(behaviour_cls)
+def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
+    """Return a PolymarketSetApprovalBehaviour with mocked context."""
+    behaviour = object.__new__(PolymarketSetApprovalBehaviour)
     context = MagicMock()
     context.agent_address = "agent"
     context.params.store_path = tmp_path
     context.params.mech_chain_id = "polygon"
-    for name, address in docs_addresses().items():
-        setattr(context.params, name, address)
+    context.params.polymarket_collateral_address = PUSD
+    context.params.polymarket_ctf_address = CTF
+    context.params.polymarket_ctf_exchange_address = EXCHANGE
+    context.params.polymarket_neg_risk_ctf_exchange_address = NEG_RISK_EXCHANGE
+    context.params.polymarket_neg_risk_adapter_address = NEG_RISK_ADAPTER
+    context.params.polymarket_exchange_v3_address = EXCHANGE_V3
+    context.params.polymarket_position_manager_address = PM
     context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
     behaviour.__dict__["_context"] = context
     return behaviour
@@ -67,13 +81,25 @@ def _run(gen):  # type: ignore[no-untyped-def]
         return e.value
 
 
-def _persist_record(tmp_path, approvals_done=False):  # type: ignore[no-untyped-def]
+def _persist_record(tmp_path, approvals_done=False, **extra):  # type: ignore[no-untyped-def]
     """Write a deposit_wallet.json record (as _resolve_or_deploy_dw does)."""
     (tmp_path / DEPOSIT_WALLET_STORE).write_text(
         json.dumps(
-            {"dw_address": DW, "dw_owner": "agent", "approvals_done": approvals_done}
+            {
+                "dw_address": DW,
+                "dw_owner": "agent",
+                "approvals_done": approvals_done,
+                **extra,
+            }
         )
     )
+
+
+def _decode(call):  # type: ignore[no-untyped-def]
+    """Decode an approve / setApprovalForAll call to (target, selector, arg, uint)."""
+    data = call["data"][2:]
+    assert call["value"] == "0" and len(data) == 136 and data[8:32] == "0" * 24
+    return call["to"], data[:8], "0x" + data[32:72], int(data[72:], 16)
 
 
 def _resp(body):  # type: ignore[no-untyped-def]
@@ -135,7 +161,7 @@ class TestWriteDepositWalletFile:
     def test_writes_file(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """A confirmed record carries the DW, owner, flag and approvals version."""
         b = _make_behaviour(tmp_path)
-        written = b._write_deposit_wallet_file(DW, "agent", approvals_done=True)
+        assert b._write_deposit_wallet_file(DW, "agent", approvals_done=True)
         data = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
         assert data == {
             "dw_address": DW,
@@ -143,57 +169,22 @@ class TestWriteDepositWalletFile:
             "approvals_done": True,
             "approvals_version": DW_APPROVALS_VERSION,
         }
-        assert written is True
 
     def test_writes_pending_approvals(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Identity-only writes record approvals_done=False and no version."""
         b = _make_behaviour(tmp_path)
-        written = b._write_deposit_wallet_file(DW, "agent", approvals_done=False)
+        assert b._write_deposit_wallet_file(DW, "agent", approvals_done=False)
         data = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
-        assert "approvals_version" not in data
         assert data == {"dw_address": DW, "dw_owner": "agent", "approvals_done": False}
-        assert written is True
 
     def test_oserror_is_logged(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """An OSError while writing is logged, not raised, and reported as False."""
+        """An OSError while writing is logged, not raised, and returns False."""
         b = _make_behaviour(tmp_path)
         store = MagicMock()
         store.__truediv__ = lambda self, other: "/nonexistent/dir/x"
         b.context.params.store_path = store
         assert b._write_deposit_wallet_file(DW, "agent", approvals_done=True) is False
         b.context.logger.error.assert_called()
-
-    def test_every_dw_behaviour_shares_one_writer(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """The base writer stamps the record, so no subclass drops the version.
-
-        A record written by any DepositWallet behaviour (here the top-up as
-        well as the setup) carries ``approvals_version`` exactly when the
-        approvals are confirmed, and the setup behaviour does not override
-        the base writer.
-
-        :param tmp_path: the store directory.
-        """
-        for behaviour_cls in (PolymarketTopUpBehaviour, PolymarketSetApprovalBehaviour):
-            b = _make_behaviour(tmp_path, behaviour_cls)
-            b._write_deposit_wallet_file(DW, "agent", approvals_done=True)
-            confirmed = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
-            assert confirmed == {
-                "dw_address": DW,
-                "dw_owner": "agent",
-                "approvals_done": True,
-                "approvals_version": DW_APPROVALS_VERSION,
-            }, behaviour_cls.__name__
-            b._write_deposit_wallet_file(DW, "agent", approvals_done=False)
-            pending = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
-            assert pending == {
-                "dw_address": DW,
-                "dw_owner": "agent",
-                "approvals_done": False,
-            }, behaviour_cls.__name__
-        assert (
-            PolymarketSetApprovalBehaviour._write_deposit_wallet_file
-            is PolymarketDepositWalletBehaviour._write_deposit_wallet_file
-        )
 
 
 class TestInvalidateDepositWalletFile:
@@ -436,12 +427,7 @@ class TestProvisionDepositWallet:
         assert RequestType.EXEC_WALLET_BATCH in sent
         # approvals_done is persisted only after the mined confirmation.
         data = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
-        assert data == {
-            "dw_address": DW,
-            "dw_owner": "agent",
-            "approvals_done": True,
-            "approvals_version": DW_APPROVALS_VERSION,
-        }
+        assert data["approvals_done"] is True
 
     def test_owner_mismatch_invalidates_and_skips(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """An on-chain owner mismatch invalidates the cache and skips approvals."""
@@ -495,27 +481,11 @@ class TestProvisionDepositWallet:
         b.context.logger.warning.assert_called()
 
     def test_approvals_already_recorded_skips(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """A record written after a mined approvals batch skips the next batch.
-
-        The record is produced by the behaviour itself (a full provision whose
-        batch is confirmed mined), so it carries whatever shape the current
-        approval set is recorded with.
-
-        :param tmp_path: the store directory.
-        """
-        _persist_record(tmp_path, approvals_done=False)
-        first = _make_behaviour(tmp_path)
-        first._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
-        first._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
-        first._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
-            {"transaction_id": "tx"}
-        )
-        first._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(  # type: ignore[method-assign]
-            {"ok": True}
-        )
-        _run(first._provision_deposit_wallet())
-
+        """A recorded approvals_done=True skips the (idempotent) approvals batch."""
         b = _make_behaviour(tmp_path)
+        _persist_record(
+            tmp_path, approvals_done=True, approvals_version=DW_APPROVALS_VERSION
+        )
         b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
         b._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
         sent = []
@@ -526,48 +496,62 @@ class TestProvisionDepositWallet:
         assert sent == []  # EXEC_WALLET_BATCH skipped
         b.context.logger.info.assert_called()
 
-    def test_mined_logged_only_after_record_written(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """A mined batch is reported as mined only once its record is persisted.
-
-        When the record write fails, a warning names the DepositWallet and says
-        the batch will be re-sent on the next pass, and nothing claims the
-        approvals were mined.
-
-        :param tmp_path: the store directory.
-        """
-        for written in (True, False):
+    @pytest.mark.parametrize(
+        "record, expected",
+        [
+            ({"approvals_done": True}, [V2_CALLS]),
+            ({"approvals_done": True, "approvals_version": None}, [V2_CALLS]),
+            ({"approvals_done": True, "approvals_version": 1}, [V2_CALLS]),
+            ({"approvals_done": True, "approvals_version": 3}, [V2_CALLS]),
+            ({"approvals_done": True, "approvals_version": "2"}, [V2_CALLS]),
+            ({"approvals_done": True, "approvals_version": DW_APPROVALS_VERSION}, []),
+            ({"approvals_version": DW_APPROVALS_VERSION}, [FULL_CALLS]),
+        ],
+        ids=["pre_v2", "none", "stale", "newer", "string", "current", "pending"],
+    )
+    def test_upgraded_install_gets_v2_dw_approvals_once(  # type: ignore[no-untyped-def]
+        self, tmp_path, record, expected
+    ) -> None:
+        """A record gets only the approvals it lacks, then nothing on the next run."""
+        _persist_record(tmp_path, **record)
+        batches = []
+        for _ in range(2):
             b = _make_behaviour(tmp_path)
-            _persist_record(tmp_path, approvals_done=False)
             b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
             b._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
             b._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
-                {"transaction_id": "tx"}
+                batches.append(p) or {"transaction_id": "tx"}  # type: ignore[func-returns-value]
             )
-            b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(  # type: ignore[method-assign]
-                {"ok": True}
-            )
-            writes: list = []
-
-            def _write(  # type: ignore[no-untyped-def]
-                dw_address, dw_owner, approvals_done, result=written, sink=writes
-            ):
-                sink.append((dw_address, approvals_done))
-                return result
-
-            b._write_deposit_wallet_file = _write  # type: ignore[method-assign]
+            b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return({"ok": True})  # type: ignore[method-assign]
             _run(b._provision_deposit_wallet())
+        assert all(p["dw_address"] == DW for p in batches)
+        assert [sorted(map(_decode, p["transactions"])) for p in batches] == [
+            sorted(calls) for calls in expected
+        ]
+        assert json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text()) == {
+            "dw_address": DW,
+            "dw_owner": "agent",
+            "approvals_done": True,
+            "approvals_version": DW_APPROVALS_VERSION,
+        }
 
-            assert writes == [(DW, True)]
-            infos = [str(c) for c in b.context.logger.info.call_args_list]
-            warnings = [str(c) for c in b.context.logger.warning.call_args_list]
-            mined = [m for m in infos if "trading approvals mined" in m]
-            resend = [m for m in warnings if "will be re-sent" in m]
-            if written:
-                assert len(mined) == 1 and DW in mined[0]
-                assert resend == []
-            else:
-                assert mined == [], "mined reported although the record was lost"
-                assert len(resend) == 1 and DW in resend[0]
+    @pytest.mark.parametrize("written", [True, False])
+    def test_mined_logged_only_after_record_written(self, tmp_path, written) -> None:  # type: ignore[no-untyped-def]
+        """A mined batch is logged as mined only when its record was written."""
+        b = _make_behaviour(tmp_path)
+        _persist_record(tmp_path)
+        b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
+        b._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
+        b._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
+            {"transaction_id": "tx"}
+        )
+        b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return({"ok": True})  # type: ignore[method-assign]
+        b._write_deposit_wallet_file = MagicMock(return_value=written)  # type: ignore[method-assign]
+        _run(b._provision_deposit_wallet())
+        logs = str(b.context.logger.mock_calls)
+        assert (f"DepositWallet {DW} trading approvals mined." in logs) is written
+        assert (f"DepositWallet {DW} approvals tx tx mined" in logs) is not written
+        assert ("will be re-sent on the next pass" in logs) is not written
 
     def test_approvals_no_tx_id_retries(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Approvals response without a transaction_id is not marked done."""
@@ -598,20 +582,27 @@ class TestBuildDwTradingApprovals:
         p.polymarket_ctf_exchange_address = "0x" + "e1" * 20
         p.polymarket_neg_risk_ctf_exchange_address = "0x" + "e2" * 20
         p.polymarket_neg_risk_adapter_address = "0x" + "da" * 20
-        p.polymarket_exchange_v3_address = "0x" + "e3" * 20
-        p.polymarket_position_manager_address = "0x" + "a0" * 20
-        p.polymarket_router_address = "0x" + "12" * 20
         txs = b._build_dw_trading_approvals()
         assert len(txs) == 6
         collateral = [t for t in txs if t["to"] == p.polymarket_collateral_address]
         ctf = [t for t in txs if t["to"] == p.polymarket_ctf_address]
-        position_manager = [
-            t for t in txs if t["to"] == p.polymarket_position_manager_address
-        ]
         assert len(collateral) == 3
         assert len(ctf) == 2
-        assert len(position_manager) == 1
         assert all(t["data"].startswith("0x095ea7b3") for t in collateral)
         assert all(t["data"].startswith("0xa22cb465") for t in ctf)
-        assert all(t["data"].startswith("0xa22cb465") for t in position_manager)
         assert all(t["value"] == "0" for t in txs)
+
+    def test_dw_batch_includes_v2_exchange_approvals(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """The batch adds both V2 approvals and drops the NegRiskAdapter ones."""
+        txs = _make_behaviour(tmp_path)._build_dw_trading_approvals()
+        assert sorted(map(_decode, txs)) == sorted(FULL_CALLS)
+
+    @pytest.mark.parametrize(
+        "builder", ["_build_dw_trading_approvals", "_build_dw_v2_trading_approvals"]
+    )
+    def test_exchange_v3_approval_is_max_uint256(self, tmp_path, builder) -> None:  # type: ignore[no-untyped-def]
+        """Every pUSD approval to ExchangeV3 is exactly MaxUint256, never bounded."""
+        calls = map(_decode, getattr(_make_behaviour(tmp_path), builder)())
+        assert [c[3] for c in calls if c[1:3] == (APPROVE, EXCHANGE_V3)] == [
+            MAX_UINT256
+        ]

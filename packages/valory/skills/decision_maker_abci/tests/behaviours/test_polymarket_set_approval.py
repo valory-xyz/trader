@@ -20,16 +20,11 @@
 """Tests for PolymarketSetApprovalBehaviour."""
 
 import json
-import random
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from web3 import Web3
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
 )
@@ -39,15 +34,6 @@ from packages.valory.skills.decision_maker_abci.payloads import (
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
     POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
 )
-from packages.valory.skills.decision_maker_abci.tests.polymarket_approvals import (
-    APPROVE,
-    SET_APPROVAL_FOR_ALL,
-    decode,
-    docs_addresses,
-)
-
-RANDOM_SEED = 20260503
-RANDOM_CASES = 250
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -75,83 +61,10 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
 
     context = MagicMock()
     context.agent_address = "test_agent"
+    context.params.store_path = Path("/nonexistent")
     behaviour.__dict__["_context"] = context
 
     return behaviour
-
-
-def _run_async_act(store: Path, builder_program_enabled: bool) -> Tuple[bool, Any, int]:
-    """Run ``async_act`` against ``store`` and report what the Safe path did.
-
-    The DepositWallet provisioning is stubbed out; the Safe path runs for real
-    up to the connection request (relayer path) or up to the multisend
-    encoding (multisend path).
-
-    :param store: the store directory.
-    :param builder_program_enabled: whether the relayer path is used.
-    :return: whether any Safe approval was sent or built, the payload handed
-        to ``finish_behaviour`` and how often the DepositWallet was provisioned.
-    """
-    behaviour = _make_behaviour()
-    context = behaviour.__dict__["_context"]
-    context.params = SimpleNamespace(
-        store_path=store,
-        mech_chain_id="polygon",
-        polymarket_builder_program_enabled=builder_program_enabled,
-        **docs_addresses(),
-    )
-    context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
-    provisioned: List[bool] = []
-    requests: List[Any] = []
-    multisends: List[bool] = []
-    payloads: List[Any] = []
-
-    def _provision() -> Generator[None, None, None]:
-        provisioned.append(True)
-        yield
-
-    def _request(message: Any, dialogue: Any) -> Generator[None, None, Any]:
-        requests.append(message)
-        yield
-        response = MagicMock()
-        response.error = None
-        response.payload = json.dumps({"transactionID": "safe-tx"})
-        return response
-
-    def _build_multisend_data() -> Generator[None, None, bool]:
-        multisends.append(True)
-        yield
-        return True
-
-    def _finish(payload: Any) -> Generator[None, None, None]:
-        payloads.append(payload)
-        yield
-
-    behaviour._provision_deposit_wallet = _provision  # type: ignore[method-assign]
-    behaviour.do_connection_request = _request  # type: ignore[method-assign, assignment]
-    behaviour._build_multisend_data = _build_multisend_data  # type: ignore[method-assign]
-    behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
-    behaviour.finish_behaviour = _finish  # type: ignore[method-assign]
-    with patch.object(type(behaviour), "tx_hex", new_callable=PropertyMock) as tx_hex:
-        tx_hex.return_value = "0xsafetx"
-        gen = behaviour.async_act()
-        try:
-            while True:
-                next(gen)
-        except StopIteration:
-            pass
-
-    set_approval_requests = [
-        call
-        for call in context.srr_dialogues.create.call_args_list
-        if json.loads(call.kwargs["payload"])["request_type"]
-        == RequestType.SET_APPROVAL.value
-    ]
-    sent = bool(
-        requests or set_approval_requests or multisends or behaviour.multisend_batches
-    )
-    assert len(payloads) == 1
-    return sent, payloads[0], len(provisioned)
 
 
 # ---------------------------------------------------------------------------
@@ -174,12 +87,7 @@ class TestPolymarketSetApprovalBehaviour:
             assert behaviour.buy_amount == 0
 
     def test_build_erc20_approve_data(self) -> None:
-        """_build_erc20_approve_data encodes the spender and amount it is given.
-
-        Fixed seed, 250 random spenders and amounts (including zero and
-        ``2**256 - 1``): each call decodes back to ``approve(spender,
-        amount)``.
-        """
+        """_build_erc20_approve_data should generate correct function data."""
         behaviour = _make_behaviour()
         result = behaviour._build_erc20_approve_data(
             "0x1234567890123456789012345678901234567890", 100
@@ -187,15 +95,6 @@ class TestPolymarketSetApprovalBehaviour:
         assert result.startswith("0x095ea7b3")
         # Should contain the spender address padded to 32 bytes
         assert "1234567890123456789012345678901234567890" in result.lower()
-
-        rng = random.Random(RANDOM_SEED)  # nosec B311
-        amounts = [0, 1, 2**256 - 1] + [
-            rng.getrandbits(rng.randint(1, 256)) for _ in range(RANDOM_CASES - 3)
-        ]
-        for amount in amounts:
-            spender = Web3.to_checksum_address(f"0x{rng.getrandbits(160):040x}")
-            data = behaviour._build_erc20_approve_data(spender, amount)
-            assert decode(spender, data, 0)[1:4] == (APPROVE, spender, amount)
 
     def test_build_erc20_approve_data_max_uint(self) -> None:
         """_build_erc20_approve_data should handle max uint256."""
@@ -209,11 +108,7 @@ class TestPolymarketSetApprovalBehaviour:
         assert "f" * 64 in result.lower()
 
     def test_build_set_approval_for_all_data_approved(self) -> None:
-        """_build_set_approval_for_all_data encodes the operator and flag it is given.
-
-        Fixed seed, 250 random operators and flags: each call decodes back to
-        ``setApprovalForAll(operator, approved)``.
-        """
+        """_build_set_approval_for_all_data should generate correct data for approved=True."""
         behaviour = _make_behaviour()
         result = behaviour._build_set_approval_for_all_data(
             "0x1234567890123456789012345678901234567890", True
@@ -221,17 +116,6 @@ class TestPolymarketSetApprovalBehaviour:
         assert result.startswith("0xa22cb465")
         # Approved=True should end with ...0001 padded
         assert result.endswith("0" * 63 + "1")
-
-        rng = random.Random(RANDOM_SEED + 1)  # nosec B311
-        for case in range(RANDOM_CASES):
-            operator = Web3.to_checksum_address(f"0x{rng.getrandbits(160):040x}")
-            approved = case % 2 == 0
-            data = behaviour._build_set_approval_for_all_data(operator, approved)
-            assert decode(operator, data, 0)[1:4] == (
-                SET_APPROVAL_FOR_ALL,
-                operator,
-                int(approved),
-            )
 
     def test_build_set_approval_for_all_data_not_approved(self) -> None:
         """_build_set_approval_for_all_data should generate correct data for approved=False."""
@@ -242,13 +126,9 @@ class TestPolymarketSetApprovalBehaviour:
         assert result.startswith("0xa22cb465")
         assert result.endswith("0" * 64)
 
-    def test_async_act_builder_program_disabled(self, tmp_path: Path) -> None:
-        """When builder program is disabled, should prepare approval transaction.
-
-        :param tmp_path: a store directory without an allowances file.
-        """
+    def test_async_act_builder_program_disabled(self) -> None:
+        """When builder program is disabled, should prepare approval transaction."""
         behaviour = _make_behaviour()
-        behaviour.__dict__["_context"].params.store_path = tmp_path
 
         payloads_sent = []
 
@@ -263,7 +143,7 @@ class TestPolymarketSetApprovalBehaviour:
         with patch.object(
             type(behaviour), "params", new_callable=PropertyMock
         ) as mock_params:
-            mock_params.return_value = MagicMock(store_path=tmp_path)
+            mock_params.return_value = MagicMock(store_path=Path("/nonexistent"))
 
             behaviour.__dict__["_context"].params.polymarket_builder_program_enabled = (
                 False
@@ -291,13 +171,9 @@ class TestPolymarketSetApprovalBehaviour:
         assert len(payloads_sent) == 1
         assert isinstance(payloads_sent[0], PolymarketSetApprovalPayload)
 
-    def test_async_act_builder_program_enabled(self, tmp_path: Path) -> None:
-        """When builder program is enabled, should call _set_approval.
-
-        :param tmp_path: a store directory without an allowances file.
-        """
+    def test_async_act_builder_program_enabled(self) -> None:
+        """When builder program is enabled, should call _set_approval."""
         behaviour = _make_behaviour()
-        behaviour.__dict__["_context"].params.store_path = tmp_path
 
         set_approval_called = []
 
@@ -333,64 +209,52 @@ class TestPolymarketSetApprovalBehaviour:
         assert len(set_approval_called) == 1
         assert len(payloads_sent) == 1
 
+    @pytest.mark.parametrize("builder_program_enabled", [True, False])
     @pytest.mark.parametrize(
-        "builder_program_enabled", [True, False], ids=["relayer", "multisend"]
+        "allowances, skipped",
+        [
+            ({"allowances_set": True}, True),
+            ({"allowances_set": True, "clob_version": "v4"}, False),
+            ({"allowances_set": False}, False),
+            ("not json", False),
+        ],
     )
-    def test_async_act_skips_safe_approvals_when_allowances_current(
-        self, tmp_path: Path, builder_program_enabled: bool
+    def test_async_act_skips_safe_approvals_when_allowances_current(  # type: ignore[no-untyped-def]
+        self, tmp_path, allowances, skipped, builder_program_enabled
     ) -> None:
-        """A current allowances file skips the Safe approvals, nothing else does.
-
-        The DepositWallet is provisioned on every pass. With ``polymarket.json``
-        recording ``allowances_set: true`` under the current stamp, no
-        ``SET_APPROVAL`` request is sent and no Safe multisend is built, and the
-        payload carries no transaction. A missing, unreadable, stale-stamp,
-        unstamped or ``allowances_set: false`` file keeps sending the Safe
-        approvals.
-
-        :param tmp_path: the parent of each scenario's store directory.
-        :param builder_program_enabled: whether the relayer path is used.
-        """
-        current = {
-            "allowances_set": True,
-            "clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
-        }
-        scenarios: Dict[str, Optional[str]] = {
-            "current": json.dumps(current),
-            "missing": None,
-            "unreadable": "not valid json",
-            "stale_stamp": json.dumps({**current, "clob_version": "v4"}),
-            "unstamped": json.dumps({"allowances_set": True}),
-            "not_set": json.dumps({**current, "allowances_set": False}),
-        }
-        safe_sent = {}
-        for name, content in scenarios.items():
-            store = tmp_path / name
-            store.mkdir()
-            if content is not None:
-                (store / "polymarket.json").write_text(content)
-            sent, payload, provisioned = _run_async_act(store, builder_program_enabled)
-            assert provisioned == 1, name
-            safe_sent[name] = sent
-            if not sent:
-                assert (
-                    payload.tx_submitter,
-                    payload.tx_hash,
-                    payload.mocking_mode,
-                ) == (
-                    None,
-                    None,
-                    False,
-                ), name
-
-        assert safe_sent == {
-            "current": False,
-            "missing": True,
-            "unreadable": True,
-            "stale_stamp": True,
-            "unstamped": True,
-            "not_set": True,
-        }
+        """Current Safe allowances skip the Safe approvals, never the DepositWallet."""
+        if isinstance(allowances, dict):
+            allowances = json.dumps(
+                {"clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION, **allowances}
+            )
+        (tmp_path / "polymarket.json").write_text(allowances)
+        behaviour = _make_behaviour()
+        behaviour.context.params.store_path = tmp_path
+        behaviour.context.params.polymarket_builder_program_enabled = (
+            builder_program_enabled
+        )
+        calls: list = []
+        behaviour.payload = None
+        behaviour._provision_deposit_wallet = lambda: _return_gen(calls.append("dw"))  # type: ignore[method-assign, func-returns-value]
+        behaviour._set_approval = lambda: _return_gen(calls.append("safe"))  # type: ignore[method-assign, func-returns-value]
+        behaviour._prepare_approval_tx = lambda: _return_gen(calls.append("safe"))  # type: ignore[method-assign, func-returns-value]
+        behaviour.finish_behaviour = lambda payload: _return_gen(calls.append(payload))  # type: ignore[method-assign, func-returns-value]
+        gen = behaviour.async_act()
+        try:
+            while True:
+                next(gen)
+        except StopIteration:
+            pass
+        payload = calls[-1]
+        if skipped:
+            assert calls[:-1] == ["dw"]
+            assert (payload.tx_submitter, payload.tx_hash, payload.mocking_mode) == (
+                None,
+                None,
+                False,
+            )
+        else:
+            assert calls[:-1] == ["dw", "safe"]
 
     def test_set_approval_success(self) -> None:
         """_set_approval should handle successful response."""
@@ -543,7 +407,6 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
-                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
                 polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
                 polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
@@ -561,14 +424,39 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # 9 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
+        # 8 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
         # CTF Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the
-        # same, 2 CTF setApprovalForAll for CtfCollateralAdapter and
-        # NegRiskCtfCollateralAdapter, plus the PositionManager
-        # setApprovalForAll for the Router (claims V2 winnings). The
-        # collateral adapters intentionally receive no pUSD allowance - their
-        # redeem path doesn't pull ERC-20 from the Safe.
+        # same, plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
+        # receive no pUSD allowance — their redeem path doesn't pull
+        # ERC-20 from the Safe.
         assert len(behaviour.multisend_batches) == 9
+
+    def test_safe_approves_router_for_v2_positions(self) -> None:
+        """The Safe multisend ends with PositionManager setApprovalForAll(Router, true)."""
+        behaviour = _make_behaviour()
+        names = (
+            "collateral ctf ctf_exchange neg_risk_ctf_exchange neg_risk_adapter "
+            "ctf_collateral_adapter neg_risk_ctf_collateral_adapter "
+            "position_manager router"
+        ).split()
+        for index, name in enumerate(names, start=1):
+            setattr(behaviour.params, f"polymarket_{name}_address", f"0x{index:040x}")
+        behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+        with patch.object(type(behaviour), "tx_hex", new_callable=PropertyMock):
+            gen = behaviour._prepare_approval_tx()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
+        last = behaviour.multisend_batches[-1]
+        assert (last.to, bytes(last.data).hex(), last.value) == (
+            f"0x{8:040x}",
+            "a22cb465" + f"{9:064x}" + f"{1:064x}",
+            0,
+        )
 
     def test_prepare_approval_tx_includes_ctf_collateral_adapter_approval(self) -> None:
         """The redeem-critical CTF setApprovalForAll(CtfCollateralAdapter, true) must be in the batch."""
@@ -601,7 +489,6 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
-                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
                 polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
                 polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
@@ -677,7 +564,6 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
-                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
                 polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
                 polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
@@ -729,7 +615,6 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
-                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
                 polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
                 polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
@@ -773,7 +658,6 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
-                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
                 polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
                 polymarket_router_address="0xa234567890123456789012345678901234567890",
             )

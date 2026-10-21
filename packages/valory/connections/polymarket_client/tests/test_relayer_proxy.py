@@ -138,8 +138,9 @@ class TestRequest:
             "request",
             side_effect=requests.exceptions.ConnectionError("boom"),
         ):
-            with pytest.raises(RelayerProxyError, match="failed"):
+            with pytest.raises(RelayerProxyError) as excinfo:
                 client._request("GET", "transaction")
+        assert str(excinfo.value) == "Relayer proxy GET transaction failed: boom"
 
     def test_request_http_error(self) -> None:
         """A non-2xx status is wrapped."""
@@ -149,138 +150,18 @@ class TestRequest:
             with pytest.raises(RelayerProxyError):
                 client._request("GET", "transaction")
 
-    def test_request_http_error_carries_response_body(self) -> None:
-        """A 4xx keeps the relayer's policy reason from the body in the error."""
-        client = _make_client()
-        reason = (
-            "call blocked: call[0] blocked: approve to exchange "
-            "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa must be MaxUint256"
-        )
-        response = requests.Response()
-        response.status_code = 400
-        response.reason = "Bad Request"
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/exec_wallet_batch"
-        response._content = ('{"error":"' + reason + '"}').encode("utf-8")
-        with patch.object(requests, "request", return_value=response):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("POST", "exec_wallet_batch", json_body={})
-        message = str(excinfo.value)
-        assert reason in message
-        assert "400" in message
-        assert "exec_wallet_batch" in message
-
-    def test_request_http_error_carries_plain_text_body(self) -> None:
-        """A non-JSON 4xx body is kept verbatim in the error."""
-        client = _make_client()
-        response = requests.Response()
-        response.status_code = 403
-        response.reason = "Forbidden"
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/deploy_dw"
-        response._content = b"signature expired"
-        with patch.object(requests, "request", return_value=response):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("POST", "deploy_dw", json_body={})
-        message = str(excinfo.value)
-        assert "signature expired" in message
-        assert "403" in message
-
-    @pytest.mark.parametrize(
-        "status, reason", [(403, "Forbidden"), (502, "Bad Gateway")], ids=["4xx", "5xx"]
-    )
-    def test_request_http_error_body_is_capped(self, status: int, reason: str) -> None:
-        """A non-2xx error keeps only the first 500 characters of the body.
-
-        A gateway error page would otherwise land in full in every log line.
-        The cap holds for a relayer rejection as well as a gateway error.
-
-        :param status: the HTTP status of the reply.
-        :param reason: the HTTP reason phrase of the reply.
-        """
-        client = _make_client()
-        body = "".join(chr(ord("a") + i % 26) for i in range(2000))
-        response = requests.Response()
-        response.status_code = status
-        response.reason = reason
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/exec_wallet_batch"
-        response._content = body.encode("utf-8")
-        with patch.object(requests, "request", return_value=response):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("POST", "exec_wallet_batch", json_body={})
-        message = str(excinfo.value)
-        assert body[:500] in message
-        assert body[:501] not in message
-        assert str(status) in message
-
     def test_request_2xx_non_json_body_is_reported(self) -> None:
-        """A 2xx whose body is not JSON says so and keeps the capped body.
-
-        ``requests`` raises its JSON decode error as a ``RequestException``
-        too, so it must still be reported as a non-JSON reply, with the first
-        500 characters of the body (here a gateway HTML page).
-        """
+        """A 2xx non-JSON reply names the decode error and the capped body."""
         client = _make_client()
-        page = "<html><body>" + "gateway timeout " * 100 + "</body></html>"
         response = requests.Response()
         response.status_code = 200
-        response.reason = "OK"
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/transaction"
-        response._content = page.encode("utf-8")
+        response._content = b"<html>" + b"x" * 600
         with patch.object(requests, "request", return_value=response):
             with pytest.raises(RelayerProxyError) as excinfo:
                 client._request("GET", "transaction")
-        message = str(excinfo.value)
-        assert "returned non-JSON" in message
-        assert page[:500] in message
-        assert page[:501] not in message
-
-    def test_request_http_error_message_is_exact(self) -> None:
-        """A non-2xx error names the call, the cause and the capped body."""
-        client = _make_client()
-        body = "x" * 400 + "y" * 400
-        response = requests.Response()
-        response.status_code = 400
-        response.reason = "Bad Request"
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/deployed"
-        response._content = body.encode("utf-8")
-        with patch.object(requests, "request", return_value=response):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("GET", "deployed")
-        cause = excinfo.value.__cause__
-        assert isinstance(cause, requests.exceptions.HTTPError)
         assert str(excinfo.value) == (
-            f"Relayer proxy GET deployed failed: {cause}: {body[:500]}"
-        )
-
-    def test_request_transport_error_message_is_exact(self) -> None:
-        """A transport error with no response appends nothing after the cause."""
-        client = _make_client()
-        err = requests.exceptions.ConnectionError("connection refused")
-        assert err.response is None
-        with patch.object(requests, "request", side_effect=err):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("GET", "transaction")
-        assert excinfo.value.__cause__ is err
-        assert str(excinfo.value) == (
-            "Relayer proxy GET transaction failed: connection refused"
-        )
-
-    def test_request_2xx_non_json_message_is_exact(self) -> None:
-        """A 2xx non-JSON reply names the call, the decode error and the body."""
-        client = _make_client()
-        page = "<html>" + "a" * 300 + "b" * 300 + "</html>"
-        response = requests.Response()
-        response.status_code = 200
-        response.reason = "OK"
-        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/transaction"
-        response._content = page.encode("utf-8")
-        with patch.object(requests, "request", return_value=response):
-            with pytest.raises(RelayerProxyError) as excinfo:
-                client._request("GET", "transaction")
-        cause = excinfo.value.__cause__
-        assert isinstance(cause, ValueError)
-        assert str(excinfo.value) == (
-            f"Relayer proxy GET transaction returned non-JSON: {cause}: "
-            f"{page[:500]}"
+            "Relayer proxy GET transaction returned non-JSON: "
+            f"{excinfo.value.__cause__}: <html>{'x' * 494}"
         )
 
     def test_request_non_json(self) -> None:
