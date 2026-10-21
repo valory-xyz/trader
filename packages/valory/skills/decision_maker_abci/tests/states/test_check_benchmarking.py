@@ -309,11 +309,12 @@ def _end_block_event(tmpdir: str) -> Enum:
         {"approvals_done": True},
         {"approvals_done": True, "approvals_version": None},
         {"approvals_done": True, "approvals_version": DW_APPROVALS_VERSION - 1},
+        {"approvals_done": True, "approvals_version": DW_APPROVALS_VERSION + 1},
         {"approvals_done": True, "approvals_version": str(DW_APPROVALS_VERSION)},
         {"approvals_done": False, "approvals_version": DW_APPROVALS_VERSION},
         {"approvals_done": "true", "approvals_version": DW_APPROVALS_VERSION},
     ],
-    ids=["pre_v2", "none", "stale", "string", "pending", "flag_string"],
+    ids=["pre_v2", "none", "stale", "newer", "string", "pending", "flag_string"],
 )
 def test_end_block_allowances_current_but_dw_approvals_not_current_reapproves(
     record: dict,

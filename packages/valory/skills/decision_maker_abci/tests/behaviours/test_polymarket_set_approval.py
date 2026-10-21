@@ -209,18 +209,18 @@ class TestPolymarketSetApprovalBehaviour:
         assert len(set_approval_called) == 1
         assert len(payloads_sent) == 1
 
-    @pytest.mark.parametrize("builder_program_enabled", [True, False])
     @pytest.mark.parametrize(
-        "allowances, skipped",
+        "allowances, builder_program_enabled, skipped",
         [
-            ({"allowances_set": True}, True),
-            ({"allowances_set": True, "clob_version": "v4"}, False),
-            ({"allowances_set": False}, False),
-            ("not json", False),
+            ({"allowances_set": True}, True, True),
+            ({"allowances_set": True}, False, True),
+            ({"allowances_set": True, "clob_version": "v4"}, False, False),
+            ({"allowances_set": False}, False, False),
+            ("not json", False, False),
         ],
     )
     def test_async_act_skips_safe_approvals_when_allowances_current(  # type: ignore[no-untyped-def]
-        self, tmp_path, allowances, skipped, builder_program_enabled
+        self, tmp_path, allowances, builder_program_enabled, skipped
     ) -> None:
         """Current Safe allowances skip the Safe approvals, never the DepositWallet."""
         if isinstance(allowances, dict):

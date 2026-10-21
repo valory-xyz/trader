@@ -455,9 +455,10 @@ class TestProvisionDepositWallet:
         b.context.logger.warning.assert_called()
 
     def test_approvals_not_mined(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """Approvals that never confirm mined are logged and deferred."""
+        """Unmined approvals leave a pre-V2 record as it was, so the gate re-enters."""
         b = _make_behaviour(tmp_path)
-        _persist_record(tmp_path)
+        _persist_record(tmp_path, approvals_done=True)
+        record = (tmp_path / DEPOSIT_WALLET_STORE).read_text()
         b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
         b._verify_dw_owner = lambda dw: (yield)  # type: ignore[method-assign]
         b._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
@@ -466,6 +467,7 @@ class TestProvisionDepositWallet:
         b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(None)  # type: ignore[method-assign]
         _run(b._provision_deposit_wallet())
         b.context.logger.warning.assert_called()
+        assert (tmp_path / DEPOSIT_WALLET_STORE).read_text() == record
 
     def test_owner_unverifiable_no_record_defers(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Owner unreadable AND no prior record → defer, no approvals attempted."""
@@ -548,10 +550,11 @@ class TestProvisionDepositWallet:
         b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return({"ok": True})  # type: ignore[method-assign]
         b._write_deposit_wallet_file = MagicMock(return_value=written)  # type: ignore[method-assign]
         _run(b._provision_deposit_wallet())
-        logs = str(b.context.logger.mock_calls)
-        assert (f"DepositWallet {DW} trading approvals mined." in logs) is written
-        assert (f"DepositWallet {DW} approvals tx tx mined" in logs) is not written
-        assert ("will be re-sent on the next pass" in logs) is not written
+        info = str(b.context.logger.info.call_args_list)
+        warning = str(b.context.logger.warning.call_args_list)
+        assert (f"DepositWallet {DW} trading approvals mined." in info) is written
+        assert (f"DepositWallet {DW} approvals tx tx mined" in warning) is not written
+        assert ("will be re-sent on the next pass" in warning) is not written
 
     def test_approvals_no_tx_id_retries(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Approvals response without a transaction_id is not marked done."""
