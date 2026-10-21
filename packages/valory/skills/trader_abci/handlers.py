@@ -55,6 +55,7 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
+from packages.valory.skills.agent_topup_abci.utils import get_agent_topups
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     MECH_PRE_DEPOSIT_EOA_SHORT,
@@ -71,7 +72,10 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
-from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
     FundRequirements,
@@ -736,16 +740,41 @@ class HttpHandler(BaseHttpHandler):
             if self.params.use_x402:
                 self._submit_x402_swap_if_idle()
 
+            funds_status = self._get_adjusted_funds_status()
+            self._apply_agent_topup(funds_status)
             self._send_ok_response(
-                http_msg,
-                http_dialogue,
-                self._get_adjusted_funds_status().get_response_body(),
+                http_msg, http_dialogue, funds_status.get_response_body()
             )
         except Exception as e:
             self.context.logger.error(f"Error handling funds status request: {e}")
             self._send_internal_server_error_response(
                 http_msg, http_dialogue, {"error": "Failed to fetch funds status"}
             )
+
+    def _apply_agent_topup(self, funds_status: FundRequirements) -> None:
+        """Report the native deficits left once the agent tops up its own Agent Signer.
+
+        The rule's deficits win over the Agent Safe deficit computed by
+        `_get_adjusted_funds_status`, whose `topup - balance` would drop the
+        Agent Signer shortfall from the Agent Safe request.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        """
+        agent_address = self.context.agent_address
+        topups = get_agent_topups(
+            self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+            funds_status,
+            agent_address,
+        )
+        for chain_name, topup in topups.items():
+            for address, account in funds_status[chain_name].accounts.items():
+                is_signer = address == agent_address
+                deficit = topup.signer_deficit if is_signer else topup.safe_deficit
+                if deficit is None:
+                    continue
+                for token in account.tokens.values():
+                    if token.is_native:
+                        token.deficit = deficit
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

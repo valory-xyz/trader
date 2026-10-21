@@ -48,6 +48,14 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_topup_abci.tests.helpers import (
+    AGENT,
+    ETHER,
+    NATIVE,
+    SAFE,
+    funds_status,
+    real_topup_rule,
+)
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -61,6 +69,9 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     GetHandlerTestCase,
+)
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
@@ -3097,6 +3108,85 @@ class TestHandleGetAgentInfoPreFSM:
 
         mock_send_error.assert_called_once()
         self.handler.context.logger.error.assert_called_once()
+
+
+class TestApplyAgentTopUp:
+    """`/funds-status` reports what is left once the agent tops up its own Agent Signer."""
+
+    @staticmethod
+    def _handler(chain: str) -> HttpHandler:
+        """A handler whose funds-manager rule is the real one."""
+        handler = _make_handler()
+        handler.context.agent_address = AGENT
+        handler.context.shared_state = {
+            GET_AGENT_TOPUP_METHOD_NAME: real_topup_rule(chain)
+        }
+        return handler
+
+    @staticmethod
+    def _native_deficit(status: FundRequirements, chain: str, address: str) -> Any:
+        """The native deficit reported for an account."""
+        return status[chain].accounts[address].tokens[NATIVE].deficit
+
+    def test_short_safe_asks_for_the_signer_shortfall_too(self) -> None:
+        """The rule's combined Agent Safe deficit replaces the adjusted one."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == (
+            19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+        )
+
+    def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
+        """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
+        handler = self._handler("gnosis")
+        status = funds_status(
+            "gnosis",
+            ETHER // 10,
+            ETHER // 4,
+            wxdai_balance=ETHER // 4,
+            track_wxdai=True,
+        )
+
+        handler._apply_agent_topup(status)
+
+        safe_tokens = status["gnosis"].accounts[SAFE].tokens
+        assert safe_tokens[NATIVE].deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+        assert safe_tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS].deficit == 0
+
+    def test_signer_alert_keeps_the_safe_deficit(self) -> None:
+        """Below min_tx_balance, the Agent Signer asks for its need, the Agent Safe as before."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 100, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert (
+            self._native_deficit(status, "polygon", AGENT) == 2 * ETHER - ETHER // 100
+        )
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_handler_responds_with_the_topped_up_status(self) -> None:
+        """The response body carries the deficits left after the top-up."""
+        handler = self._handler("gnosis")
+        handler.context.params.use_x402 = False
+        status = funds_status(
+            "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
+        )
+
+        with (
+            patch.object(handler, "_get_adjusted_funds_status", return_value=status),
+            patch.object(handler, "_send_ok_response") as mock_send,
+        ):
+            handler._handle_get_funds_status(MagicMock(), MagicMock())
+
+        body = mock_send.call_args.args[2]
+        assert body["gnosis"][AGENT][NATIVE]["deficit"] == "0"
 
 
 # ---------------------------------------------------------------------------
