@@ -47,7 +47,7 @@ fingerprint:
   handlers.py: bafybeiclcz4uz7xnmhipvdwpekmqvgliuprgwcyuzg2sredaaxaugdarpq
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeief36tkg24swnzd7djmrpc2p57w556kvz5dctuiqukvubpo5uq7vu
+  models.py: bafybeidq4xvum56zdvkvzuhz3veqyfce7f52ywxfbij4abdj4oyfl5sdei
   payloads.py: bafybeihgpzutj5narpx55plyrvtt3dmmbfuyhyb4km56vzkwghoebsufgq
   policy.py: bafybeigiczejrlln5jnumrjsowbzq5ibcavox56mfsyf2dfv7hvfdjow6i
   redeem_info.py: bafybeibkeer54i2td5bibpu2mvf6iblnxqaaevuaa7t575y2ygkwopiofe
@@ -137,7 +137,7 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeigufkrzqkn53ixe6o7ji3l533d4m6s3eubsr3dsgqlzzhu2coe3vi
-  tests/test_models.py: bafybeidycmxhozoftrw6fa5u2fkxdmz37ij6c4a6xtup34rbxkvbqpbbke
+  tests/test_models.py: bafybeighbdjmeowechcakrmtvtydf2tsagbsupwpv3dcyzaq5juqktliy4
   tests/test_payloads.py: bafybeidd3jnjhmdeawfpty6ugudu566fhhy6sioxcrbt7uabdkvghs7bpe
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m

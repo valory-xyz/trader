@@ -470,12 +470,20 @@ class TestSharedState:
         self.state.current_liquidity_amounts = [3000, 4000]
         assert self.state.liquidity_amounts["test_id"] == [3000, 4000]
 
-    def test_initialize_simulated_now_timestamps(self) -> None:
-        """Test _initialize_simulated_now_timestamps populates simulated_days."""
-        # Pin "now" to mid-January: the simulated days are built from local
-        # datetimes, so a window spanning a daylight-saving change would make
-        # one interval 23 or 25 hours long.
-        now_ts = 1768478400  # 2026-01-15T12:00:00Z
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="needs time.tzset")
+    @pytest.mark.parametrize(
+        "now_ts",
+        [
+            1768478400,  # 2026-01-15T12:00:00Z, no clock change in the window
+            1792756800,  # 2026-10-23T12:00:00Z, window crosses the UK clock change
+        ],
+    )
+    def test_initialize_simulated_now_timestamps(
+        self, now_ts: int, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Simulated days are exactly one day apart in any local timezone."""
+        monkeypatch.setenv("TZ", "Europe/London")
+        time.tzset()
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
@@ -485,18 +493,18 @@ class TestSharedState:
         mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
         bets = [mock_bet1, mock_bet2]
 
-        with patch(
-            "packages.valory.skills.decision_maker_abci.models.time.time",
-            return_value=float(now_ts),
-        ):
-            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        try:
+            with patch(
+                "packages.valory.skills.decision_maker_abci.models.time.time",
+                return_value=float(now_ts),
+            ):
+                self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        finally:
+            monkeypatch.undo()
+            time.tzset()
 
         assert self.state.simulated_days_idx == 0
-        assert len(self.state.simulated_days) > 0
-        # Each day is separated by one day interval
-        for i in range(1, len(self.state.simulated_days)):  # type: ignore[arg-type]
-            diff = self.state.simulated_days[i] - self.state.simulated_days[i - 1]
-            assert diff == 86400
+        assert self.state.simulated_days == [now_ts + i * 86400 for i in range(6)]
 
     def test_increase_one_day_simulation(self) -> None:
         """Test increase_one_day_simulation increments the index."""

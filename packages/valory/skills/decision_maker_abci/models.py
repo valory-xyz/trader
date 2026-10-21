@@ -22,7 +22,7 @@
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from string import Template
 from typing import (
     Any,
@@ -309,9 +309,10 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
 
         # Get current timestamp
         now_timestamp = int(time.time())
-        # Convert timestamps to datetime objects
-        max_date = datetime.fromtimestamp(max_timestamp)
-        current_date = datetime.fromtimestamp(now_timestamp)
+        # Convert timestamps to UTC datetime objects, so every simulated day is
+        # exactly 24 hours long regardless of the local clock changes
+        max_date = datetime.fromtimestamp(max_timestamp, tz=timezone.utc)
+        current_date = datetime.fromtimestamp(now_timestamp, tz=timezone.utc)
         self.context.logger.info(
             f"Simulating timestamps between {current_date} and {max_date}"
         )
