@@ -473,6 +473,31 @@ class TestMechCommands:
             ],
         ]
 
+    def test_undoing_the_removal_records_the_pin_again(self, chat: _Chat) -> None:
+        """An undo that pins the removed mech again writes that pin change too."""
+        mech = "0x" + "b" * 40
+        chat.handler._store_selected_mechs = MagicMock()  # type: ignore[method-assign]
+        chat.handler.shared_state.approved_mechs = [mech]
+        chat.handler.shared_state.approved_mech_rates = {mech: 1}
+        chat.handler.shared_state.chatui_config.selected_mechs = [mech]
+
+        chat.send(f"remove {mech}", "c-remove")
+        chat.handler.shared_state.chatui_config.selected_mechs = None
+        undone = chat.send("undo", "c-undo")
+
+        assert "and pinned it again" in chat.response(undone)[1]["reply"]["text"]
+        events = [line for line in chat.feed() if line["kind"] == "event"]
+        assert [event["fields"][1:] for event in events] == [
+            [
+                {"label": "Before", "value": mech},
+                {"label": "After", "value": "All mechs"},
+            ],
+            [
+                {"label": "Before", "value": "All mechs"},
+                {"label": "After", "value": mech},
+            ],
+        ]
+
 
 class TestConfirmFlow:
     """A config change from the chat is applied only after a typed confirm."""

@@ -48,12 +48,12 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
-- valory/decision_maker_abci:0.1.0:bafybeibj44sm3oqd2htwocfu6mo5wn7kzchauesrrejp23pyh26xobw4t4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigaurst4vcrxp755trrbnfzyaupovwc6v4etfbq65ipbqcqknit5u
+- valory/decision_maker_abci:0.1.0:bafybeid57epvj4tkr4iq5ojdbryrdxe46emhg6yoqmstelu6bqynkvinr4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifrzj2cmdn77amw3yxkszk6akham2o7krozoyakhfvmdzwnezze5i
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeidcgqe2mbgevhwnubofnobqo5xvhqj24gls3fs7gn7lbikrpk43nq
+- valory/check_stop_trading_abci:0.1.0:bafybeihopa2buonry5ryrhsxr2a5adfzs2bw4sedq7efc4i232hlnlwaua
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeibncte5hguqra74xsdez3fbuvadjkthdappqbvjt6l2udlrgpjyay
+- valory/chatui_abci:0.1.0:bafybeiea7ymnt4cyzbheu5ko7mlwzrlw5o42nqvvq2n7ca24djq4ne4774
 - valory/agent_performance_summary_abci:0.1.0:bafybeiber3axwwonu47iks66afla7quytbk5odv7e2db5bvup3ufoz6dne
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:

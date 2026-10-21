@@ -10,7 +10,7 @@ fingerprint:
   behaviours.py: bafybeiffmmczzfl6y2gkew53nwmagndw4wgudehi6wsmzbxpfzti6vqmye
   dialogues.py: bafybeietiqcwmx2rz7lgoiact3w2s3arojbuecqd4zdul6lvvyybqyh3xi
   fsm_specification.yaml: bafybeiccgohc7cchfsgdhennf2xpblwx36pak4ilm6kfrvsd4xyfbr3ydi
-  handlers.py: bafybeierezrgykyzq6xjfw6pqrk2opvaongs76dgg5ny67ewoe2osxadzm
+  handlers.py: bafybeiarxmonjydoiue4rwq5kpqqkgoqaew7yzvvb6fhr3mvnwnlav5tha
   mech_commands.py: bafybeigmaptelgf5bbinaoj53ixnaivf3lnli7za2pysfphsik4b6cmmfy
   mech_templates.py: bafybeieialavnpgtmtoigqarnnzrjymuho54wql7q3r5vm63r4ronrynwa
   models.py: bafybeidzy3c6rfwllxei5btf3phkyyuiifn6zoyerr2f2zy7g6ib6qt5pi
@@ -19,7 +19,7 @@ fingerprint:
   rounds.py: bafybeiaolqo6pyicruon3gka5hnktpoxnnjq5vbuk5aoxlxog26hitfimm
   tests/__init__.py: bafybeibcmtpezgft2gy3oerq4nvrbzws5222l6ldni5fq6bk7j25q3kmsm
   tests/test_behaviours.py: bafybeieormfvkdcrnuufbiokezjzubwephshwtjes3xjwuyeskrb3aclri
-  tests/test_chat.py: bafybeihqeyp7mcfmgrofu2hns6dxoo43bikpddhse643jsaswfxwthx3bq
+  tests/test_chat.py: bafybeibockkcrt4qvptzpefyhy6zyeqf6izsbflpnxhgy4mm5tejeqgmym
   tests/test_dialogues.py: bafybeib6fuyphg4fz52b5elpysdms25mtdy74ft7377kgneblrbztea7bm
   tests/test_handlers.py: bafybeidculm4u3xpri5sho3ykgjtk3kxd6nggiqspfdxn4563gk75sps34
   tests/test_mech_commands.py: bafybeicd7yeadxpdm5jxjr34xtkuetmyen7je5c4g5adijsapmsmtwiama

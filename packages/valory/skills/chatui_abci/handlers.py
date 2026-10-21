@@ -1308,7 +1308,9 @@ class HttpHandler(BaseHttpHandler):
         if removed.pinned:
             pins = self._pinned_mechs()
             if removed.address not in pins:
-                self._store_selected_mechs([*pins, removed.address])
+                repinned = [*pins, removed.address]
+                self._store_selected_mechs(repinned)
+                self._record_pins_changed(pins, repinned)
             again = " and pinned it again"
         price = self._approved_price(removed.address, removed.rate)
         ceiling = f"up to {price} per request" if price else "the price you accepted"
