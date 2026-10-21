@@ -9,13 +9,13 @@ fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
   connection.py: bafybeigbly7vjfldzozy7kt32dhprpz6sbukjreyqziq4ddpgx4amqzre4
-  relayer_proxy.py: bafybeigjyot23b3vm5jmuvfxkjj2feffgel4bhklq7l5ojhkpcfb3utyni
+  relayer_proxy.py: bafybeigzkzhw65dj3ezfonkgtzyzvaxcqkomc3lz4lpbq72agf6oc5nhqe
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
   tests/test_connection.py: bafybeic2nbtwtzffywugdiqqnciwsj4zshwaujavyj6n7ndzcwmkihhcua
   tests/test_connection_dw.py: bafybeibijqy36tpguxgznvo2dk25szigkif2fnqgc6qsad4gc2w5juhd3q
-  tests/test_connection_v2_approvals.py: bafybeide7zxpgqk2du6slkd637ukapvyxakxew4gbeptrfhw2wftjyf5gu
-  tests/test_relayer_proxy.py: bafybeig4zscs5pcv5mibytkfx4jesgkdqhwx7xn2vpj3amkydccdmbm5la
+  tests/test_connection_v2_approvals.py: bafybeicc53eq3zwopozrb5wtmp4oggolhb7vkhwb5vahq5xqyqcpaybe3i
+  tests/test_relayer_proxy.py: bafybeigrb3xjnndvknyjrihhebtr7orv6bwhj632lyhao2ikcnjilg6pfq
 fingerprint_ignore_patterns: []
 connections: []
 protocols:
