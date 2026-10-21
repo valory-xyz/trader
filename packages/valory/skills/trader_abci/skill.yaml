@@ -8,19 +8,19 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
-  behaviours.py: bafybeigz7mlskyhiusv7rhon7dalzyx7w5yd64nyyjy4bmz2mju72nm7jy
-  composition.py: bafybeifelwc7ugcvtffbnqkbtxpicgbvh7ih3hu4y7e5kju5uxj4ncmave
+  behaviours.py: bafybeigdyc5tl3cggwi2kjuygwawkp5fc2akqhp3gczumycavi44ej6r6i
+  composition.py: bafybeickiuhp7h65x3zbt3mrnz5hsxvmkrgy2ki65vbxafmqtx7lrzbjqu
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeig7fywd26sybd7edhrhnyeqcyo5rfi7hdhy75eiozakmft77xinsi
-  handlers.py: bafybeiausytnqsngbh7qlr5tzyzxmdp33e7cfo6kkgxnccbfvu3hecyyiq
-  models.py: bafybeidqxl26hxm7g3mk3j642hv5r62o27j35rqj5zec2pfo6ouoaozhty
+  fsm_specification.yaml: bafybeicpxmtygttwpc4eupbul6z6sbeafwcqjmgpu2hkrl5cx4i2435pbe
+  handlers.py: bafybeigyoikup7ysbtgqfmjqktgfeql6usn53dywlhootbljrtdynq3uee
+  models.py: bafybeiefga6y4rqanb3n4czpthj5pka62uhhwlthwjazul6mjkejf6xqcu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeiemy26ij7parlduqt6i2aibda2ww2easaghkxrkvhltiuborjzu5i
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeig36t6xlip4xyylis3n7t6wx45zftfpfk75fztlz3fgycrd3ad7na
+  tests/test_composition.py: bafybeiboyfyjt46ysgrdckg5ttrpce2hr6yvhlvy7m7sibsz5wu6tuoraq
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeihl373oleiibafei4qknvszuu4c7axc6nfvn35qp32trvd35n2cea
-  tests/test_models.py: bafybeiggexszitzz3kzctxbkj4whgoigrbjtztudde7xqhytad3qucvoyi
+  tests/test_handlers.py: bafybeihc3um7lkiqcmsofopflwry7dpx2hu7vxvwga54svvpmrkdj66xd4
+  tests/test_models.py: bafybeicypkna3ikkhfvxpirmzspyqdnml66m6yajo6r64r3eylhx4dmkum
   ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
   ui-build/omenstrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
@@ -60,15 +60,15 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeifydyzqnsozq3vwjvkw3dj3e5jliblxuy5sge6ssj44qjl3fekw7a
-- valory/decision_maker_abci:0.1.0:bafybeichnwc7suegrgxe2dgfqvl6iqkyjmqt34xtshejeyfmdbapvl7e7i
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeie4wnp76qp3vn7vtflwhl2xmkdlgwxly5lhdtbgvoe3d5qt4wayxy
+- valory/decision_maker_abci:0.1.0:bafybeihlhxtzodyderyo4ngpeaxrxcyofkevqjd5fayev5mbxnxmwcsyjq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid7n5ks7eojxolzor6hg24za3ldaq2w27orufyuwuzl5udbzsddo4
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybei0000000000000000000000000000000000000000000000000000
+- valory/agent_topup_abci:0.1.0:bafybeibwd3mc5stf5jk2uwnq2i6dl4pclluc4zqj2dklinp4zxqqa5fhey
 - valory/check_stop_trading_abci:0.1.0:bafybeidzrtuukocfcdnyy5idvpj7pqrqjidcbhrwd7dcczgwxmb6amcxzu
 - valory/mech_interact_abci:0.1.0:bafybeid3wg6uzf7mwrv6fpi2pmnbfsgc4ekbgpvakmcvoqfuq6znztpfei
 - valory/chatui_abci:0.1.0:bafybeifexgh6zfksat6rvajilct32lxnaqx7nrko5lqclbqcrimfjig5de
 - valory/agent_performance_summary_abci:0.1.0:bafybeiacwc4jn24337f3v7fq4374tby6e7ykqnqhhd2rwenqd7c7lf6scu
-- valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
+- valory/funds_manager:0.1.0:bafybeiebemhy7ytztwzuw34de5cbnc53mv6umajyyw6nwtfeimjbspgrce
 behaviours:
   main:
     args: {}

@@ -5,7 +5,26 @@ type: skill
 description: This skill moves native token from the Agent Safe to the Agent Signer.
 license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
-fingerprint: {}
+fingerprint:
+  README.md: bafybeibmdvzqvxtwiqzjwyejvxx7icxdhrkp4dmbmujrugfjwtm6njl66q
+  __init__.py: bafybeihbnh6gky3gc2pwj2cuzjufwaexn3bxmxdinchlvhx6ywodnh6zau
+  behaviours.py: bafybeifnfsejiwqtknnl6glupe56ycshnlzrtumqk6kyc6ay3z3rws3uu4
+  dialogues.py: bafybeiefsmka6bsnk2aajv2ndaz7dhpgxmh3g6lidadokpeyotnmlwy3e4
+  fsm_specification.yaml: bafybeih7tisjrxhzfmi2syyzusogjlusp6upoh76iies4vm2pvqc7gkfka
+  handlers.py: bafybeigcm4ntr3ezpcjzdixrvnynjpg7gxabjyvsgfq2icf6f7e35zra7u
+  models.py: bafybeihf3tmnoqn4mrio2barviuu5ozoj63refmqeh4maa3mxvby6ooj3i
+  payloads.py: bafybeidmu2h7msc6qstj3zff6l5pquoikevgw4restxc5y2kaypdn2e5lm
+  rounds.py: bafybeicj6ju5u5zr5epek22zozt4ec4ana2iv4i5j2ngopvhi3grwqkp6e
+  tests/__init__.py: bafybeia5xqbqsrbr3iflp3aonkqvipxnrl3hsrlzj2drs7gr5evfzzw5ze
+  tests/helpers.py: bafybeiefhua3pxcv6vvathpuos3uhbcewr2zq5pk7eyapl3zy6bolq325q
+  tests/test_behaviours.py: bafybeihjjm7tw7gcveuid2okuz2nnw3msxtsfa6c4d53asaxpin7kg2evi
+  tests/test_dialogues.py: bafybeiebzxxc2wzywe2apkv2sweiusguovsxllfrwtf3bgbtxrl7vvuqby
+  tests/test_handlers.py: bafybeiakcmtv4dbfhofjarbbk66b4tjsn7yniwjaxtwssdbhrbncdfeufa
+  tests/test_models.py: bafybeie22lw3thvftldzbs5cyljj2cdbjv5adavszu4hd2ucy4t6xecw5q
+  tests/test_payloads.py: bafybeibgmsenzgmoltnpttffzgvfuhvptvemrvucq4mj5rjv7jgvqgloqi
+  tests/test_rounds.py: bafybeihnrqvd3zv2w5txuocrxd4wpflz5anpoznkiecrcxbfp4zfjwpxby
+  tests/test_utils.py: bafybeid7d6naa3jq7wgncit66lealuudpae7a6icvnop4ec53se4s36u6y
+  utils.py: bafybeigtbehsnsdxybmmwurzfm7vyfj3kyhowowiguo3mq5d2bn62pdlam
 fingerprint_ignore_patterns: []
 connections: []
 contracts:
