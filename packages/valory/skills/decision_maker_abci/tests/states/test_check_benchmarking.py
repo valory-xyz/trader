@@ -21,8 +21,11 @@
 
 import json
 import tempfile
+from enum import Enum
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from typing import Any, List, Tuple
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from packages.valory.skills.abstract_round_abci.base import VotingRound
 from packages.valory.skills.decision_maker_abci.rounds import CheckBenchmarkingModeRound
@@ -264,19 +267,190 @@ def test_end_block_polymarket_stale_v2_allowances_file_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
-def test_clob_version_constant_is_v4() -> None:
-    """The CLOB-version stamp must be ``v4``.
+def test_clob_version_constant_is_v5() -> None:
+    """The CLOB-version stamp must be ``v5``.
 
-    Tying the constant down ensures the v3→v4 migration trigger lands; a
-    silent revert to ``v3`` would let stale persisted files short-circuit
-    the approval round and skip ``setApprovalForAll`` against the new
-    collateral-adapter addresses.
+    Tying the constant down ensures the v4→v5 migration trigger lands; a
+    silent revert to ``v4`` would let installs whose Safe approvals predate
+    Protocol V2 short-circuit the approval round and never grant the Router
+    ``setApprovalForAll`` on the PositionManager.
     """
     from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
         POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
     )
 
-    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v4"
+    assert POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION == "v5"
+
+
+def test_end_block_polymarket_stale_v4_allowances_file_reapproves() -> None:
+    """A v4 file must trigger re-approval so the Safe approves the Router.
+
+    A ``v4`` stamp was written before the Safe's PositionManager
+    ``setApprovalForAll(Router, true)`` existed, so even with a DepositWallet
+    recorded for the current agent EOA the round must re-enter SET_APPROVAL.
+    """
+    mock_context = MagicMock()
+    mock_context.params.is_running_on_polymarket = True
+    mock_context.agent_address = "0xAGENT"
+    mock_synced_data = MagicMock(spec=SynchronizedData)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_context.params.store_path = tmpdir
+        with open(Path(tmpdir) / "polymarket.json", "w") as f:
+            json.dump({"allowances_set": True, "clob_version": "v4"}, f)
+        _write_dw(
+            tmpdir,
+            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
+        )
+
+        round_instance = CheckBenchmarkingModeRound(
+            synchronized_data=mock_synced_data, context=mock_context
+        )
+        result = round_instance.end_block()
+
+    assert result is not None
+    _, event = result
+    assert event == Event.SET_APPROVAL
+
+
+# Polygon addresses from https://docs.polymarket.com/resources/contracts
+_POSITION_MANAGER = "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"
+_ROUTER = "0x12121212006e4CD160D18e3f00711DA5c3372600"
+_SAFE_ADDRESS_PARAMS = {
+    "polymarket_collateral_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+    "polymarket_ctf_address": "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
+    "polymarket_ctf_exchange_address": "0xE111180000d2663C0091e4f400237545B87B996B",
+    "polymarket_neg_risk_ctf_exchange_address": (
+        "0xe2222d279d744050d28e00520010520000310F59"
+    ),
+    "polymarket_neg_risk_adapter_address": (
+        "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
+    ),
+    "polymarket_ctf_collateral_adapter_address": (
+        "0xAdA100Db00Ca00073811820692005400218FcE1f"
+    ),
+    "polymarket_neg_risk_ctf_collateral_adapter_address": (
+        "0xadA2005600Dec949baf300f4C6120000bDB6eAab"
+    ),
+    "polymarket_exchange_v3_address": "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
+    "polymarket_position_manager_address": _POSITION_MANAGER,
+    "polymarket_router_address": _ROUTER,
+}
+
+
+def _drive(gen) -> Any:  # type: ignore[no-untyped-def]
+    """Drive a generator to completion and return its value."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration as e:
+        return e.value
+
+
+def _end_block_event(tmpdir: str) -> Enum:
+    """Run the check-benchmarking round on ``tmpdir`` and return its event."""
+    context = MagicMock()
+    context.params.is_running_on_polymarket = True
+    context.params.store_path = tmpdir
+    context.agent_address = "0xAGENT"
+    round_instance = CheckBenchmarkingModeRound(
+        synchronized_data=MagicMock(spec=SynchronizedData), context=context
+    )
+    result = round_instance.end_block()
+    assert result is not None
+    return result[1]
+
+
+def _safe_multisend_calls() -> List[Tuple[str, str]]:
+    """Build the Safe approval multisend and return ``(to, calldata hex)`` pairs."""
+    from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (  # noqa: WPS433
+        PolymarketSetApprovalBehaviour,
+    )
+
+    behaviour = object.__new__(PolymarketSetApprovalBehaviour)
+    behaviour.multisend_batches = []
+    behaviour.multisend_data = b""
+    behaviour._safe_tx_hash = ""
+    context = MagicMock()
+    context.params = SimpleNamespace(**_SAFE_ADDRESS_PARAMS)
+    behaviour.__dict__["_context"] = context
+
+    def _ok():  # type: ignore[no-untyped-def]
+        yield
+        return True
+
+    behaviour._build_multisend_data = _ok  # type: ignore[method-assign]
+    behaviour._build_multisend_safe_tx_hash = _ok  # type: ignore[method-assign]
+    with patch.object(
+        type(behaviour), "tx_hex", new_callable=PropertyMock
+    ) as mock_tx_hex:
+        mock_tx_hex.return_value = "0xsafetx"
+        _drive(behaviour._prepare_approval_tx())
+    return [(b.to, bytes(b.data).hex()) for b in behaviour.multisend_batches]
+
+
+def _post_check(tmpdir: str, all_approvals_set: bool) -> bool:
+    """Run the post-approval check against a connection reply; return the vote."""
+    from packages.valory.skills.decision_maker_abci.behaviours.polymarket_post_set_approval import (  # noqa: WPS433
+        PolymarketPostSetApprovalBehaviour,
+    )
+
+    behaviour = object.__new__(PolymarketPostSetApprovalBehaviour)
+    context = MagicMock()
+    context.agent_address = "0xAGENT"
+    context.params.store_path = Path(tmpdir)
+    context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
+    behaviour.__dict__["_context"] = context
+    response = MagicMock()
+    response.error = None
+    response.payload = json.dumps({"all_approvals_set": all_approvals_set})
+
+    def _reply(message, dialogue):  # type: ignore[no-untyped-def]
+        yield
+        return response
+
+    behaviour.do_connection_request = _reply  # type: ignore[method-assign, assignment]
+    _drive(behaviour._check_approval())
+    return behaviour.payload.vote
+
+
+def test_upgraded_install_gets_safe_router_approval_once() -> None:
+    """An upgraded install enters the approval round once, then skips it.
+
+    The install carries the pre-upgrade ``v4`` allowances stamp with every
+    existing Safe approval set and a DepositWallet recorded for the agent EOA.
+    After the upgrade the round is entered, the Safe multisend sends the
+    PositionManager ``setApprovalForAll(Router, true)``, and once the check
+    confirms it on chain the next period skips the approval round.
+    """
+    router_call = (
+        _POSITION_MANAGER,
+        "a22cb465" + "00" * 12 + _ROUTER[2:].lower() + "00" * 31 + "01",
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(Path(tmpdir) / "polymarket.json", "w") as f:
+            json.dump({"allowances_set": True, "clob_version": "v4"}, f)
+        _write_dw(
+            tmpdir,
+            {"dw_address": "0xDW", "dw_owner": "0xagent", "approvals_done": True},
+        )
+
+        # First period after the upgrade: the approval round is entered.
+        assert _end_block_event(tmpdir) == Event.SET_APPROVAL
+        calls = _safe_multisend_calls()
+        assert calls.count(router_call) == 1
+
+        # The Router approval is not on chain yet: the round is entered again.
+        assert _post_check(tmpdir, all_approvals_set=False) is False
+        assert _end_block_event(tmpdir) == Event.SET_APPROVAL
+
+        # Once on chain, the check passes and the next period skips the round.
+        assert _post_check(tmpdir, all_approvals_set=True) is True
+        with open(Path(tmpdir) / "polymarket.json") as f:
+            stamp = json.load(f)
+        assert stamp == {"allowances_set": True, "clob_version": "v5"}
+        assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
+        assert _end_block_event(tmpdir) == Event.BENCHMARKING_DISABLED
 
 
 def test_end_block_polymarket_stale_v3_allowances_file_reapproves() -> None:

@@ -20,10 +20,12 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
@@ -472,7 +474,10 @@ class TestSharedState:
 
     def test_initialize_simulated_now_timestamps(self) -> None:
         """Test _initialize_simulated_now_timestamps populates simulated_days."""
-        now_ts = int(time.time())
+        # Pin "now" to mid-January: the simulated days are built from local
+        # datetimes, so a window spanning a daylight-saving change would make
+        # one interval 23 or 25 hours long.
+        now_ts = 1768478400  # 2026-01-15T12:00:00Z
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
@@ -482,7 +487,11 @@ class TestSharedState:
         mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
         bets = [mock_bet1, mock_bet2]
 
-        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        with patch(
+            "packages.valory.skills.decision_maker_abci.models.time.time",
+            return_value=float(now_ts),
+        ):
+            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
         assert len(self.state.simulated_days) > 0
@@ -633,6 +642,9 @@ def _build_decision_maker_params_kwargs() -> dict:
         "polymarket_neg_risk_adapter_address": "0xnegadapt",
         "polymarket_ctf_collateral_adapter_address": "0xctfcoladapt",
         "polymarket_neg_risk_ctf_collateral_adapter_address": "0xnegctfcoladapt",
+        "polymarket_exchange_v3_address": "0xexchv3",
+        "polymarket_position_manager_address": "0xposmgr",
+        "polymarket_router_address": "0xrouter",
         "pol_threshold_for_swap": 1000,
         "slippages_for_swap": {"ETH": 0.01},
         "is_outcome_side_threshold_filter_enabled": False,
@@ -725,6 +737,51 @@ class TestDecisionMakerParams:
         assert params.exclude_neg_risk_markets is False
         assert params.polymarket_spread_min == 0.0
         assert params.polymarket_spread_max == 1.0
+
+    def test_full_init_reads_v2_address_params(self) -> None:
+        """The Protocol V2 ExchangeV3, PositionManager and Router addresses are read."""
+        kwargs = _build_decision_maker_params_kwargs()
+        with patch.object(
+            DecisionMakerParams.__mro__[1], "__init__", return_value=None
+        ):
+            params = DecisionMakerParams(**kwargs)
+        assert getattr(params, "polymarket_exchange_v3_address", None) == "0xexchv3"
+        assert (
+            getattr(params, "polymarket_position_manager_address", None) == "0xposmgr"
+        )
+        assert getattr(params, "polymarket_router_address", None) == "0xrouter"
+
+    @pytest.mark.parametrize(
+        "name, default",
+        [
+            (
+                "polymarket_exchange_v3_address",
+                "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
+            ),
+            (
+                "polymarket_position_manager_address",
+                "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF",
+            ),
+            (
+                "polymarket_router_address",
+                "0x12121212006e4CD160D18e3f00711DA5c3372600",
+            ),
+        ],
+    )
+    def test_skill_yaml_declares_v2_address_defaults(
+        self, name: str, default: str
+    ) -> None:
+        """The skill declares each V2 address param with the documented default.
+
+        Addresses from https://docs.polymarket.com/resources/contracts.
+
+        :param name: the param name.
+        :param default: the documented Polygon address.
+        """
+        skill_yaml = Path(__file__).parents[1] / "skill.yaml"
+        config = yaml.safe_load(skill_yaml.read_text(encoding="utf-8"))
+        args = config["models"]["params"]["args"]
+        assert args.get(name) == default
 
     def test_inverted_spread_band_raises(self) -> None:
         """polymarket_spread_min > polymarket_spread_max raises at init.

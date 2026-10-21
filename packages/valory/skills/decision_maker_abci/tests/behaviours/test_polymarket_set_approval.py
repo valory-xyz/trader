@@ -325,7 +325,7 @@ class TestPolymarketSetApprovalBehaviour:
         ctx.logger.error.assert_called()
 
     def test_prepare_approval_tx_success(self) -> None:
-        """_prepare_approval_tx should build 8 batches and return tx_hex on success."""
+        """_prepare_approval_tx should build 9 batches and return tx_hex on success."""
         behaviour = _make_behaviour()
         behaviour.multisend_batches = []
 
@@ -353,6 +353,9 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -368,13 +371,14 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # 8 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
+        # 9 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
         # CTF Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the
-        # same, plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
-        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
-        # receive no pUSD allowance — their redeem path doesn't pull
-        # ERC-20 from the Safe.
-        assert len(behaviour.multisend_batches) == 8
+        # same, 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter, plus the PositionManager
+        # setApprovalForAll for the Router (claims V2 winnings). The
+        # collateral adapters intentionally receive no pUSD allowance - their
+        # redeem path doesn't pull ERC-20 from the Safe.
+        assert len(behaviour.multisend_batches) == 9
 
     def test_prepare_approval_tx_includes_ctf_collateral_adapter_approval(self) -> None:
         """The redeem-critical CTF setApprovalForAll(CtfCollateralAdapter, true) must be in the batch."""
@@ -407,6 +411,9 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -480,6 +487,9 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address=ctf_collateral_adapter,
                 polymarket_neg_risk_ctf_collateral_adapter_address=neg_risk_ctf_collateral_adapter,
+                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
             with patch.object(
                 type(behaviour), "tx_hex", new_callable=PropertyMock
@@ -529,6 +539,9 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()
@@ -570,6 +583,9 @@ class TestPolymarketSetApprovalBehaviour:
                 polymarket_neg_risk_adapter_address="0x5234567890123456789012345678901234567890",
                 polymarket_ctf_collateral_adapter_address="0x6234567890123456789012345678901234567890",
                 polymarket_neg_risk_ctf_collateral_adapter_address="0x7234567890123456789012345678901234567890",
+                polymarket_exchange_v3_address="0x8234567890123456789012345678901234567890",
+                polymarket_position_manager_address="0x9234567890123456789012345678901234567890",
+                polymarket_router_address="0xa234567890123456789012345678901234567890",
             )
 
             gen = behaviour._prepare_approval_tx()

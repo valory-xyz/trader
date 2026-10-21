@@ -149,6 +149,41 @@ class TestRequest:
             with pytest.raises(RelayerProxyError):
                 client._request("GET", "transaction")
 
+    def test_request_http_error_carries_response_body(self) -> None:
+        """A 4xx keeps the relayer's policy reason from the body in the error."""
+        client = _make_client()
+        reason = (
+            "call blocked: call[0] blocked: approve to exchange "
+            "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa must be MaxUint256"
+        )
+        response = requests.Response()
+        response.status_code = 400
+        response.reason = "Bad Request"
+        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/exec_wallet_batch"
+        response._content = ('{"error":"' + reason + '"}').encode("utf-8")
+        with patch.object(requests, "request", return_value=response):
+            with pytest.raises(RelayerProxyError) as excinfo:
+                client._request("POST", "exec_wallet_batch", json_body={})
+        message = str(excinfo.value)
+        assert reason in message
+        assert "400" in message
+        assert "exec_wallet_batch" in message
+
+    def test_request_http_error_carries_plain_text_body(self) -> None:
+        """A non-JSON 4xx body is kept verbatim in the error."""
+        client = _make_client()
+        response = requests.Response()
+        response.status_code = 403
+        response.reason = "Forbidden"
+        response.url = f"{BASE_URL}{RELAYER_PATH_PREFIX}/deploy_dw"
+        response._content = b"signature expired"
+        with patch.object(requests, "request", return_value=response):
+            with pytest.raises(RelayerProxyError) as excinfo:
+                client._request("POST", "deploy_dw", json_body={})
+        message = str(excinfo.value)
+        assert "signature expired" in message
+        assert "403" in message
+
     def test_request_non_json(self) -> None:
         """A non-JSON body is wrapped."""
         client = _make_client()

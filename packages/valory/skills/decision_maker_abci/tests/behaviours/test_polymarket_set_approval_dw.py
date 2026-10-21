@@ -33,6 +33,24 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approv
 
 DW = "0xAbCdEf0123456789AbCdEf0123456789AbCdEf01"
 
+# Polygon addresses from https://docs.polymarket.com/resources/contracts
+ADDRESS_PARAMS = {
+    "polymarket_collateral_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+    "polymarket_ctf_address": "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
+    "polymarket_ctf_exchange_address": "0xE111180000d2663C0091e4f400237545B87B996B",
+    "polymarket_neg_risk_ctf_exchange_address": (
+        "0xe2222d279d744050d28e00520010520000310F59"
+    ),
+    "polymarket_neg_risk_adapter_address": (
+        "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
+    ),
+    "polymarket_exchange_v3_address": "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
+    "polymarket_position_manager_address": (
+        "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"
+    ),
+    "polymarket_router_address": "0x12121212006e4CD160D18e3f00711DA5c3372600",
+}
+
 
 def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
     """Return a PolymarketSetApprovalBehaviour with mocked context."""
@@ -41,6 +59,8 @@ def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
     context.agent_address = "agent"
     context.params.store_path = tmp_path
     context.params.mech_chain_id = "polygon"
+    for name, address in ADDRESS_PARAMS.items():
+        setattr(context.params, name, address)
     context.srr_dialogues.create.return_value = (MagicMock(), MagicMock())
     behaviour.__dict__["_context"] = context
     return behaviour
@@ -125,7 +145,8 @@ class TestWriteDepositWalletFile:
         b = _make_behaviour(tmp_path)
         b._write_deposit_wallet_file(DW, "agent", approvals_done=True)
         data = json.loads((tmp_path / DEPOSIT_WALLET_STORE).read_text())
-        assert data == {
+        # The record may carry more fields (e.g. an approvals version).
+        assert {k: data[k] for k in ("dw_address", "dw_owner", "approvals_done")} == {
             "dw_address": DW,
             "dw_owner": "agent",
             "approvals_done": True,
@@ -442,9 +463,27 @@ class TestProvisionDepositWallet:
         b.context.logger.warning.assert_called()
 
     def test_approvals_already_recorded_skips(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """A recorded approvals_done=True skips the (idempotent) approvals batch."""
+        """A record written after a mined approvals batch skips the next batch.
+
+        The record is produced by the behaviour itself (a full provision whose
+        batch is confirmed mined), so it carries whatever shape the current
+        approval set is recorded with.
+
+        :param tmp_path: the store directory.
+        """
+        _persist_record(tmp_path, approvals_done=False)
+        first = _make_behaviour(tmp_path)
+        first._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
+        first._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
+        first._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
+            {"transaction_id": "tx"}
+        )
+        first._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(  # type: ignore[method-assign]
+            {"ok": True}
+        )
+        _run(first._provision_deposit_wallet())
+
         b = _make_behaviour(tmp_path)
-        _persist_record(tmp_path, approvals_done=True)
         b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
         b._verify_dw_owner = lambda dw: _gen_return("agent")  # type: ignore[method-assign]
         sent = []
@@ -476,7 +515,7 @@ class TestBuildDwTradingApprovals:
     """Behaviour-side construction of the 6 DW trading-approval calls."""
 
     def test_builds_six_calls(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """3 pUSD approves on collateral + 3 setApprovalForAll on the CTF."""
+        """3 pUSD approves, 2 CTF and 1 PositionManager setApprovalForAll."""
         b = _make_behaviour(tmp_path)
         p = b.context.params
         p.polymarket_collateral_address = "0x" + "c0" * 20
@@ -484,12 +523,20 @@ class TestBuildDwTradingApprovals:
         p.polymarket_ctf_exchange_address = "0x" + "e1" * 20
         p.polymarket_neg_risk_ctf_exchange_address = "0x" + "e2" * 20
         p.polymarket_neg_risk_adapter_address = "0x" + "da" * 20
+        p.polymarket_exchange_v3_address = "0x" + "e3" * 20
+        p.polymarket_position_manager_address = "0x" + "a0" * 20
+        p.polymarket_router_address = "0x" + "12" * 20
         txs = b._build_dw_trading_approvals()
         assert len(txs) == 6
         collateral = [t for t in txs if t["to"] == p.polymarket_collateral_address]
         ctf = [t for t in txs if t["to"] == p.polymarket_ctf_address]
+        position_manager = [
+            t for t in txs if t["to"] == p.polymarket_position_manager_address
+        ]
         assert len(collateral) == 3
-        assert len(ctf) == 3
+        assert len(ctf) == 2
+        assert len(position_manager) == 1
         assert all(t["data"].startswith("0x095ea7b3") for t in collateral)
         assert all(t["data"].startswith("0xa22cb465") for t in ctf)
+        assert all(t["data"].startswith("0xa22cb465") for t in position_manager)
         assert all(t["value"] == "0" for t in txs)

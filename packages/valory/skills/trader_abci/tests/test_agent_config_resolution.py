@@ -241,3 +241,86 @@ def test_agent_config_does_not_override_headers() -> None:
         if isinstance(cfg.get("args"), dict) and "headers" in cfg["args"]
     ]
     assert not overriding, f"headers override reintroduced for: {overriding}"
+
+
+# Protocol V2 contract addresses from https://docs.polymarket.com/resources/contracts
+_V2_ADDRESS_PARAMS = [
+    (
+        "polymarket_exchange_v3_address",
+        "POLYMARKET_EXCHANGE_V3",
+        "0xe3333700cA9d93003F00f0F71f8515005F6c00Aa",
+    ),
+    (
+        "polymarket_position_manager_address",
+        "POLYMARKET_POSITION_MANAGER",
+        "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF",
+    ),
+    (
+        "polymarket_router_address",
+        "POLYMARKET_ROUTER",
+        "0x12121212006e4CD160D18e3f00711DA5c3372600",
+    ),
+]
+_V2_CONNECTION_ADDRESS_KEYS = [
+    (
+        "position_manager_address",
+        "POLYMARKET_POSITION_MANAGER",
+        "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF",
+    ),
+    (
+        "router_address",
+        "POLYMARKET_ROUTER",
+        "0x12121212006e4CD160D18e3f00711DA5c3372600",
+    ),
+]
+_OVERRIDE_ADDRESS = "0x00000000000000000000000000000000000000A1"
+
+
+@pytest.mark.parametrize("param, env_var, default", _V2_ADDRESS_PARAMS)
+def test_v2_address_params_resolve(param: str, env_var: str, default: str) -> None:
+    """Each V2 address param resolves to the docs default or its env override.
+
+    :param param: the ``trader_abci`` params arg name.
+    :param env_var: the env var that overrides it.
+    :param default: the documented Polygon address.
+    """
+    resolved = _override(_resolve({}), "trader_abci")["models"]["params"]["args"]
+    assert resolved.get(param) == default
+
+    overridden = _override(_resolve({env_var: _OVERRIDE_ADDRESS}), "trader_abci")
+    assert overridden["models"]["params"]["args"].get(param) == _OVERRIDE_ADDRESS
+
+
+@pytest.mark.parametrize("param, _env_var, default", _V2_ADDRESS_PARAMS)
+def test_trader_skill_declares_v2_address_defaults(
+    param: str, _env_var: str, default: str
+) -> None:
+    """``trader_abci/skill.yaml`` declares each V2 address param with its default.
+
+    :param param: the params arg name.
+    :param _env_var: unused.
+    :param default: the documented Polygon address.
+    """
+    docs = list(yaml_load_all(io.StringIO(SKILL_YAML_PATH.read_text(encoding="utf-8"))))
+    assert docs[0]["models"]["params"]["args"].get(param) == default
+
+
+@pytest.mark.parametrize("key, env_var, default", _V2_CONNECTION_ADDRESS_KEYS)
+def test_polymarket_client_router_approval_addresses_resolve(
+    key: str, env_var: str, default: str
+) -> None:
+    """The connection's PositionManager and Router follow the same env vars.
+
+    The Safe approves the Router on the PositionManager both from the skill
+    (multisend) and from the connection (relayer), so both must resolve the
+    same addresses.
+
+    :param key: the ``polymarket_client`` config key.
+    :param env_var: the env var that overrides it.
+    :param default: the documented Polygon address.
+    """
+    resolved = _override(_resolve({}), "polymarket_client")["config"]
+    assert resolved.get(key) == default
+
+    overridden = _override(_resolve({env_var: _OVERRIDE_ADDRESS}), "polymarket_client")
+    assert overridden["config"].get(key) == _OVERRIDE_ADDRESS
