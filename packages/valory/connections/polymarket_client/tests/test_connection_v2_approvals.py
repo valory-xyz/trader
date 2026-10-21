@@ -294,8 +294,9 @@ class TestSafeRouterApproval:
         The relayer batch keeps the eight existing Safe approvals in order and
         appends PositionManager ``setApprovalForAll(Router, true)`` as a plain
         call with no value. ``_check_approval`` reports ``all_approvals_set:
-        false`` until that approval is on chain. Checked for the documented
-        addresses and for a distinct set.
+        false`` until that approval is on chain, and reports the approval
+        itself under ``position_manager_approvals.router``. Checked for the
+        documented addresses and for a distinct set.
         """
         for a in (DOCS_ADDRESSES, DISTINCT_ADDRESSES):
             conn = _make_conn()
@@ -325,13 +326,20 @@ class TestSafeRouterApproval:
             for router_approved in (False, True):
                 status = _check_on(conn, a, router_approved)
                 assert status["all_approvals_set"] is router_approved, a
+                assert status["position_manager_approvals"] == {
+                    "router": router_approved
+                }, a
 
         pending = _Chain(router_approved=False)
-        assert _check_with(pending)["all_approvals_set"] is False
+        pending_status = _check_with(pending)
+        assert pending_status["all_approvals_set"] is False
+        assert pending_status["position_manager_approvals"] == {"router": False}
         assert (POSITION_MANAGER, SAFE, ROUTER) in pending.erc1155_reads
 
         mined = _Chain(router_approved=True)
-        assert _check_with(mined)["all_approvals_set"] is True
+        mined_status = _check_with(mined)
+        assert mined_status["all_approvals_set"] is True
+        assert mined_status["position_manager_approvals"] == {"router": True}
         assert (POSITION_MANAGER, SAFE, ROUTER) in mined.erc1155_reads
 
     def test_check_router_approval_on_position_manager_only(self) -> None:
