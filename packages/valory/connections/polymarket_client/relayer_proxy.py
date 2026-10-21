@@ -71,6 +71,8 @@ from eth_utils import keccak, to_checksum_address
 CHALLENGE_PREFIX = "wildcard-relayer:v2"
 PROXY_REQUEST_TIMEOUT = 30
 RELAYER_PATH_PREFIX = "/polymarket/relayer"
+# Longest response-body excerpt carried in a ``RelayerProxyError``.
+ERROR_BODY_MAX_CHARS = 500
 
 # Polymarket DepositWallet factory on Polygon. All relayer mutations target
 # the factory (which dispatches to the per-owner DW), never the DW directly.
@@ -211,16 +213,25 @@ class RelayerProxyClient:
                 timeout=PROXY_REQUEST_TIMEOUT,
             )
             response.raise_for_status()
-            return response.json()
         except requests.exceptions.RequestException as e:
-            # Keep the response body: a 4xx from the relayer carries the reason.
-            body = f": {e.response.text}" if e.response is not None else ""
+            # Keep the start of the response body: a 4xx from the relayer
+            # carries the reason.
+            body = (
+                f": {e.response.text[:ERROR_BODY_MAX_CHARS]}"
+                if e.response is not None
+                else ""
+            )
             raise RelayerProxyError(
                 f"Relayer proxy {method} {endpoint} failed: {e}{body}"
             ) from e
+        # Parsed outside the transport ``try``: the JSON decode error of
+        # ``requests`` is also a ``RequestException``.
+        try:
+            return response.json()
         except ValueError as e:
             raise RelayerProxyError(
-                f"Relayer proxy {method} {endpoint} returned non-JSON: {e}"
+                f"Relayer proxy {method} {endpoint} returned non-JSON: {e}: "
+                f"{response.text[:ERROR_BODY_MAX_CHARS]}"
             ) from e
 
     def deployed(self, address: str, wallet_type: str = "WALLET") -> bool:
