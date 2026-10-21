@@ -42,8 +42,10 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 # setApprovalForAll on the CTF). Bumped to "v4" when both collateral-adapter
 # addresses were swapped (deadline 2026-05-01 15:00 UTC); pre-existing v3
 # stamps must be invalidated so setApprovalForAll runs against the new
-# adapter addresses.
-POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v4"
+# adapter addresses. Bumped to "v5" when the Safe started approving the
+# Protocol V2 Router on the PositionManager; pre-existing v4 stamps must be
+# invalidated so upgraded installs send that approval.
+POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v5"
 
 
 class CheckBenchmarkingModeRound(VotingRound):

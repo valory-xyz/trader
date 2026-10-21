@@ -2042,6 +2042,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         - CTF for Neg Risk Adapter
         - CTF for CtfCollateralAdapter (redeem)
         - CTF for NegRiskCtfCollateralAdapter (redeem)
+        - PositionManager for Router (Protocol V2 redeem)
 
         :return: Tuple of (transaction_result, error_message)
         """
@@ -2127,6 +2128,15 @@ class PolymarketClientConnection(BaseSyncConnection):
                 value="0",
             )
 
+            # Protocol V2: the Router claims V2 winnings by operating the
+            # Safe's PositionManager positions.
+            position_manager_approve_router = SafeTransaction(
+                to=self.position_manager,
+                operation=OperationType.Call,
+                data=self._encode_set_approval_for_all(self.router, True),
+                value="0",
+            )
+
             # Execute all approval transactions together
             transactions = [
                 usdc_approve_ctf,
@@ -2137,6 +2147,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ctf_approve_adapter,
                 ctf_approve_collateral_adapter,
                 ctf_approve_neg_risk_collateral_adapter,
+                position_manager_approve_router,
             ]
 
             self.logger.info("Executing all approval transactions...")
@@ -2201,6 +2212,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         - USDC allowances for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
         - CTF approvals for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter,
           CtfCollateralAdapter, NegRiskCtfCollateralAdapter
+        - PositionManager approval for Router
 
         :return: Tuple of (approval_status_dict, error_message)
         """
@@ -2238,6 +2250,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 self.safe_address,
                 self.neg_risk_ctf_collateral_adapter,
             )
+            position_manager_router_approved = self._check_erc1155_approval(
+                self.position_manager, self.safe_address, self.router
+            )
 
             # Build response
             approval_status = {
@@ -2256,6 +2271,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ctf_neg_risk_collateral_adapter_approved
                     ),
                 },
+                "position_manager_approvals": {
+                    "router": position_manager_router_approved,
+                },
                 "all_approvals_set": all(
                     [
                         usdc_ctf_exchange_allowance > 0,
@@ -2266,6 +2284,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ctf_adapter_approved,
                         ctf_collateral_adapter_approved,
                         ctf_neg_risk_collateral_adapter_approved,
+                        position_manager_router_approved,
                     ]
                 ),
             }

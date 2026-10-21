@@ -396,10 +396,13 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         neg_risk_ctf_collateral_adapter_address = (
             self.params.polymarket_neg_risk_ctf_collateral_adapter_address
         )
+        position_manager_address = self.params.polymarket_position_manager_address
+        router_address = self.params.polymarket_router_address
 
         # Build approval transactions and add to multisend_batches (must match
         # polymarket_client _check_approval: 3 collateral allowances + 5 CTF
-        # setApprovalForAll; 8 entries total). The collateral adapters
+        # setApprovalForAll + 1 PositionManager setApprovalForAll; 9 entries
+        # total). The collateral adapters
         # intentionally receive only ERC-1155 operator rights — their redeem
         # path doesn't pull ERC-20 from the Safe, so no pUSD allowance.
         # 1. Collateral approve for CTF Exchange
@@ -491,6 +494,15 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             value=0,
         )
         self.multisend_batches.append(ctf_approve_neg_risk_collateral_adapter_batch)
+
+        # 9. PositionManager setApprovalForAll for the Router (Protocol V2:
+        # lets the Router claim the Safe's V2 winnings).
+        position_manager_approve_router_batch = MultisendBatch(
+            to=position_manager_address,
+            data=HexBytes(self._build_set_approval_for_all_data(router_address, True)),
+            value=0,
+        )
+        self.multisend_batches.append(position_manager_approve_router_batch)
 
         # Build the multisend transaction directly (no balance check needed for approvals)
         success = yield from self._build_multisend_data()
