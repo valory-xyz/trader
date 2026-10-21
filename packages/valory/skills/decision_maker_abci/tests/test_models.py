@@ -472,7 +472,10 @@ class TestSharedState:
 
     def test_initialize_simulated_now_timestamps(self) -> None:
         """Test _initialize_simulated_now_timestamps populates simulated_days."""
-        now_ts = int(time.time())
+        # Pin "now" to mid-January: the simulated days are built from local
+        # datetimes, so a window spanning a daylight-saving change would make
+        # one interval 23 or 25 hours long.
+        now_ts = 1768478400  # 2026-01-15T12:00:00Z
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
@@ -482,7 +485,11 @@ class TestSharedState:
         mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
         bets = [mock_bet1, mock_bet2]
 
-        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        with patch(
+            "packages.valory.skills.decision_maker_abci.models.time.time",
+            return_value=float(now_ts),
+        ):
+            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
         assert len(self.state.simulated_days) > 0
