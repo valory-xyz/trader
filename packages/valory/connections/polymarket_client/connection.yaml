@@ -54,7 +54,7 @@ dependencies:
   eth-utils:
     version: ==5.3.0
   py_clob_client_v2:
-    version: ==1.0.1
+    version: ==1.2.1
   py-order-utils:
     version: ==0.3.2
   py-builder-relayer-client:
