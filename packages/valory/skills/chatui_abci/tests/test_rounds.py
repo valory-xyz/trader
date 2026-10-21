@@ -20,7 +20,7 @@
 """Tests for the rounds module of the chatui_abci skill."""
 
 import json
-from typing import Any, Tuple, cast
+from typing import Any, Dict, Tuple, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -110,6 +110,32 @@ class TestSynchronizedData:
             db=AbciAppDB(setup_data={"mechs_info": [json.dumps(mechs_info)]})
         )
         assert data.mech_payment_types == {"0xabc": "0xba69"}
+
+    @pytest.mark.parametrize(
+        "setup, loaded",
+        [
+            ({}, False),
+            ({"mechs_info": [None]}, False),
+            ({"mechs_info": ["not-json"]}, False),
+            ({"mechs_info": [json.dumps({"address": "0xabc"})]}, False),
+            ({"mechs_info": [json.dumps([])]}, True),
+            ({"mechs_info": [json.dumps([{"address": "0xabc"}])]}, True),
+        ],
+        ids=[
+            "missing",
+            "none",
+            "unparseable",
+            "not_a_list",
+            "written_empty",
+            "written",
+        ],
+    )
+    def test_mechs_info_loaded_only_once_written_this_period(
+        self, setup: Dict[str, Any], loaded: bool
+    ) -> None:
+        """A missing key is a period not discovered yet; an empty list written is a discovery that found none."""
+        data = SynchronizedData(db=AbciAppDB(setup_data=setup))
+        assert data.mechs_info_loaded is loaded
 
 
 class TestFinishedChatuiLoadRound:

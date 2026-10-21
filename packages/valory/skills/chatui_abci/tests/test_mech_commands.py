@@ -271,19 +271,13 @@ def test_parse_undo_reads_only_a_whole_message_undo(text: str, expected: bool) -
         ({"intent": "undo"}, "put it back", MECH),
         ({"intent": "undo", "address": MECH}, f"put back {MECH}", MECH),
         ({"intent": "undo", "address": OTHER}, f"put back {OTHER}", None),
-        ({"intent": "undo", "position": 2}, "put back the second one", None),
-        (
-            {"intent": "undo", "address": MECH, "position": 2},
-            f"put back the second one, {MECH}",
-            None,
-        ),
+        ({"intent": "undo", "address": OTHER}, "put it back", None),
     ],
     ids=[
         "no_reference",
         "the_removed_mech_by_address",
         "another_mech_by_address",
-        "another_mech_by_position",
-        "references_disagree",
+        "address_not_in_message",
     ],
 )
 def test_an_undo_refers_to_the_mech_just_removed(
@@ -301,4 +295,17 @@ def test_an_undo_with_nothing_removed_has_no_mech() -> None:
     assert resolve_intent(reply, f"put back {MECH}", None, LAST_LIST) == (
         MechIntent.UNDO,
         None,
+    )
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [{"intent": "undo", "last_shown": True}, {"intent": "undo", "position": 1}],
+    ids=["last_shown", "position"],
+)
+def test_an_undo_ignores_references_to_the_reply_before(reply: Any) -> None:
+    """The reply before an undo is the removal, so neither the mech just shown nor a list position counts."""
+    assert resolve_intent(reply, "put it back", OTHER, LAST_LIST, MECH) == (
+        MechIntent.UNDO,
+        MECH,
     )

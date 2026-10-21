@@ -139,7 +139,8 @@ def test_a_price_at_the_cap_is_approvable() -> None:
             _standing(valory=True),
             {},
             [
-                "This is a Valory mech the agent already uses; its accuracy is at "
+                "This is a Valory mech the agent already uses, so it needs no "
+                "approval. Its accuracy is at "
                 "https://mech-analytics-api.autonolas.tech/v1/metrics/mech/100/"
                 f"{MECH}. {VALORY_TERMS}"
             ],

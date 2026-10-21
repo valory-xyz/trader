@@ -209,8 +209,8 @@ def _ending(  # pylint: disable=too-many-return-statements
     if standing.valory:
         analytics = ANALYTICS_MECH_URL.format(chain_id=facts.chain_id, address=address)
         return [
-            "This is a Valory mech the agent already uses; its accuracy is at "
-            f"{analytics}. {VALORY_TERMS}",
+            "This is a Valory mech the agent already uses, so it needs no "
+            f"approval. Its accuracy is at {analytics}. {VALORY_TERMS}",
             *_pin_hint(standing),
         ], False
     if facts.record is RecordStatus.UNAVAILABLE:

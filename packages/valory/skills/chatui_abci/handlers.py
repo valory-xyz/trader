@@ -32,6 +32,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    FrozenSet,
     Iterable,
     List,
     Optional,
@@ -216,6 +217,11 @@ WHICH_MECH = (
     "I couldn't tell which mech you mean. If you meant something else, ask again "
     "in other words."
 )
+VALORY_NOT_REMOVABLE = (
+    "{address} is a Valory mech your agent uses by default, so there is no "
+    "approval to remove. To keep requests off it, pin the mechs you want; mech "
+    "requests then go only to your pinned mechs."
+)
 NEXT_STEP = (
     "Send a mech's address to see its report, or ask which mechs your agent can use."
 )
@@ -386,12 +392,18 @@ class HttpHandler(BaseHttpHandler):
             self._send_mech_reply(http_msg, http_dialogue, ASK_ONE_AT_A_TIME)
             return
 
-        available_tools = self._get_available_tools(http_msg, http_dialogue)
-        if available_tools is None:
+        tools = self._get_available_tools(http_msg, http_dialogue)
+        if tools is None:
+            # Nothing was answered, so a retry still refers to the reply before.
+            self.shared_state.last_shown_mech = last_shown
+            self.shared_state.last_mech_list = last_list
+            self.shared_state.last_removed = last_removed
             return
+        available_tools, valory_tools = tools
         self._send_chatui_prompt(
             user_prompt,
             available_tools,
+            valory_tools,
             http_msg,
             http_dialogue,
             last_shown,
@@ -619,7 +631,7 @@ class HttpHandler(BaseHttpHandler):
             return f"{address}, up to {price} per request"
         return f"{address} (send its address to see its price)"
 
-    def _list_entry(self, address: str) -> str:
+    def _list_entry(self, address: str, payment_types: Dict[str, str]) -> str:
         """One listed mech: approved at its accepted price, or Valory with its payment method."""
         rate = self.shared_state.approved_mech_rates.get(address)
         if rate is not None:
@@ -630,7 +642,7 @@ class HttpHandler(BaseHttpHandler):
                 else "approved; ask about it to see its price"
             )
         else:
-            kind = self.synchronized_data.mech_payment_types.get(address)
+            kind = payment_types.get(address)
             chain_id = chain_id_of(str(self.context.params.mech_chain_id))
             terms = (
                 "Valory"
@@ -643,7 +655,11 @@ class HttpHandler(BaseHttpHandler):
     def _mech_list(self) -> str:
         """Number the mechs the agent may use, Valory then approved, and keep the list."""
         approved = self.shared_state.approved_mechs
-        valory = sorted(self._get_available_valid_mechs() - set(approved))
+        discovered, payment_types = self._discovered_mechs()
+        valid_mechs = self.context.params.valid_mechs
+        valory = sorted(
+            mech for mech in discovered if mech in valid_mechs and mech not in approved
+        )
         mechs = [*valory, *approved]
         self.shared_state.last_mech_list = mechs
         if not mechs:
@@ -652,7 +668,7 @@ class HttpHandler(BaseHttpHandler):
                 "its report."
             )
         entries = "<br>".join(
-            f"{number}. {self._list_entry(address)}"
+            f"{number}. {self._list_entry(address, payment_types)}"
             for number, address in enumerate(mechs, start=1)
         )
         return PARAGRAPH_BREAK.join(
@@ -669,6 +685,8 @@ class HttpHandler(BaseHttpHandler):
     def _remove_mech(self, address: str) -> str:
         """Remove an approved mech, or say there is nothing to remove."""
         if address not in self.shared_state.approved_mech_rates:
+            if address in self.context.params.valid_mechs:
+                return VALORY_NOT_REMOVABLE.format(address=address)
             return (
                 f"{address} is not approved, so there is nothing to remove. {NEXT_STEP}"
             )
@@ -760,6 +778,7 @@ class HttpHandler(BaseHttpHandler):
         self,
         user_prompt: str,
         available_tools: Any,
+        valory_tools: Set[str],
         http_msg: HttpMessage,
         http_dialogue: HttpDialogue,
         last_shown: Optional[str] = None,
@@ -770,6 +789,7 @@ class HttpHandler(BaseHttpHandler):
 
         :param user_prompt: the user's message.
         :param available_tools: the tools the user may pin.
+        :param valory_tools: the tool names a Valory mech serves, the only ones listed.
         :param http_msg: the HttpMessage instance
         :param http_dialogue: the HttpDialogue instance
         :param last_shown: the mech whose report was the reply before this message
@@ -778,7 +798,6 @@ class HttpHandler(BaseHttpHandler):
         """
         available_mechs = self._get_available_valid_mechs()
         current_trading_strategy = self.shared_state.chatui_config.trading_strategy
-        valory_tools = self._valory_tool_names()
         current_allowed_tools_raw = self.shared_state.chatui_config.allowed_tools
         current_allowed_tools = (
             _tools_for_prompt(current_allowed_tools_raw, valory_tools)
@@ -904,13 +923,22 @@ class HttpHandler(BaseHttpHandler):
         )
         self._send_message(request_srr_message, srr_dialogue, callback, callback_kwargs)
 
+    def _discovered_mechs(self) -> Tuple[FrozenSet[str], Dict[str, str]]:
+        """The discovered mechs and their payment types, kept from the last period until a new one writes them."""
+        data = self.synchronized_data
+        if data.mechs_info_loaded:
+            self.shared_state.discovered_mechs = (
+                frozenset(data.available_valid_mechs),
+                data.mech_payment_types,
+            )
+        mechs, payment_types = self.shared_state.discovered_mechs
+        return mechs, dict(payment_types)
+
     def _get_available_valid_mechs(self) -> Set[str]:
         """Return the mechs the user may pin: discovered Valory mechs and approved mechs."""
         valid_mechs = self.context.params.valid_mechs
         discovered = {
-            mech
-            for mech in self.synchronized_data.available_valid_mechs
-            if mech in valid_mechs
+            mech for mech in self._discovered_mechs()[0] if mech in valid_mechs
         }
         return discovered | set(self.shared_state.approved_mechs)
 
@@ -951,10 +979,10 @@ class HttpHandler(BaseHttpHandler):
 
     def _get_available_tools(
         self, http_msg: HttpMessage, http_dialogue: HttpDialogue
-    ) -> Optional[Set[str]]:
-        """Get available mech tools, handle errors if not available."""
+    ) -> Optional[Tuple[Set[str], Set[str]]]:
+        """Get the available mech tools and the tool names a Valory mech serves; answer 425 while either is not loaded."""
         try:
-            return self._available_tools()
+            return self._available_tools(), self._valory_tool_names()
         except (TypeError, AttributeError) as e:
             self.context.logger.error(
                 f"Error retrieving data: {e}. Mostly due to the skill not being started yet."
