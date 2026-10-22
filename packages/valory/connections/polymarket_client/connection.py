@@ -1491,7 +1491,8 @@ class PolymarketClientConnection(BaseSyncConnection):
                 )
                 response.raise_for_status()
                 for row in response.json()["data"]:
-                    self._token_modules[str(row["token_id"])] = row["module"]
+                    if isinstance(row["module"], str):  # else counted as missing
+                        self._token_modules[str(row["token_id"])] = row["module"]
             except (requests.exceptions.RequestException, ValueError, KeyError) as e:
                 error_msg = f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}"
                 self.logger.error(error_msg)
@@ -1567,10 +1568,10 @@ class PolymarketClientConnection(BaseSyncConnection):
         positions, error = self._select_positions(
             rows or [], redeemable, params["user"]
         )
-        self.logger.info(
-            f"Fetched {len(positions or [])} positions for {params['user']}"
-        )
-        return positions, error
+        if error:
+            return None, error
+        self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
+        return positions, None
 
     def _fetch_all_positions(
         self,
