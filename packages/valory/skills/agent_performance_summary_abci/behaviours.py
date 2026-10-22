@@ -499,11 +499,19 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return None
 
-            # Extract titles from positions
+            # Extract titles from positions. The connection marks a V2 row with
+            # its PositionManager balance; a redeemable V2 row with no value
+            # lost and is never claimed, so it is not open.
             titles = {
                 p.get("title", "")
                 for p in positions
-                if isinstance(p, dict) and p.get("title", "")
+                if isinstance(p, dict)
+                and p.get("title", "")
+                and not (
+                    "positionManagerBalance" in p
+                    and p.get("redeemable")
+                    and not p.get("currentValue")
+                )
             }
 
             self.context.logger.info(
