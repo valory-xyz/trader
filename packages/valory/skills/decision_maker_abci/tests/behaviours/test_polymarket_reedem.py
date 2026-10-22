@@ -29,20 +29,7 @@ from eth_abi import encode as abi_encode
 from eth_utils import to_checksum_address  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 
-from packages.valory.connections.polymarket_client.tests.test_connection import (
-    COLLATERAL_ADDRESS,
-    CTF_COLLATERAL_ADAPTER,
-    ONCHAIN_BALANCE,
-    ROUTER,
-    V1_LOSE,
-    V1_WIN,
-    V2_LOSE,
-    V2_PARAMS,
-    V2_WIN,
-    _safe_world,
-    _selector,
-    _wire,
-)
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
@@ -1710,7 +1697,7 @@ class TestAsyncAct:
 
 
 def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ignore[no-untyped-def]
-    """Run one redeem period against ``conn``; return its payload and the Safe's (target, calldata) claims."""
+    """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
     behaviour = _make_behaviour()
     behaviour._policy = policy or _make_policy()
     behaviour._utilized_tools = dict(utilized_tools or {})
@@ -1719,7 +1706,7 @@ def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ig
     behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
     behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
     behaviour.context.params = MagicMock(
-        polymarket_builder_program_enabled=builder, **V2_PARAMS
+        polymarket_builder_program_enabled=builder, **pm.V2_PARAMS
     )
     payloads: list = []
 
@@ -1728,7 +1715,7 @@ def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ig
         yield
 
     behaviour.finish_behaviour = finish  # type: ignore[method-assign]
-    _wire(behaviour, conn)
+    pm._wire(behaviour, conn)
     conn.relayer_client.execute.reset_mock()
     with patch.multiple(
         PolymarketRedeemBehaviour,
@@ -1739,57 +1726,64 @@ def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ig
     txs = list(behaviour.multisend_batches)
     for call in conn.relayer_client.execute.call_args_list:
         txs += call.kwargs.get("transactions") or call.args[0]
-    claims = [(to_checksum_address(tx.to), bytes(HexBytes(tx.data))) for tx in txs]
-    return payloads[0], claims
+    # (target, calldata, operation: 0 is a plain call, value)
+    return payloads[0], [
+        (to_checksum_address(t.to), HexBytes(t.data), t.operation.value, int(t.value))
+        for t in txs
+    ]
 
 
 def _v1_claim(row):  # type: ignore[no-untyped-def]
     """Return the collateral-adapter claim the V1 flow builds for a standard-market row."""
     condition_id = bytes.fromhex(row["condition_id"][2:])
-    args = [COLLATERAL_ADDRESS, bytes(32), condition_id, [1 << row["outcome_index"]]]
+    args = [pm.COLLATERAL_ADDRESS, bytes(32), condition_id, [1 << row["outcome_index"]]]
     types = ["address", "bytes32", "bytes32", "uint256[]"]
-    data = _selector(f"redeemPositions({','.join(types)})") + abi_encode(types, args)
-    return CTF_COLLATERAL_ADAPTER, data
+    data = pm._selector(f"redeemPositions({','.join(types)})") + abi_encode(types, args)
+    return pm.CTF_COLLATERAL_ADAPTER, data, 0, 0
 
 
 def _router_claim(row):  # type: ignore[no-untyped-def]
     """Return the Router claim of a row's whole balance; bytes31 drops the zero pad byte of the Data API ID."""
     condition_id = bytes.fromhex(row["condition_id"][2:])
     assert len(condition_id) == 32 and condition_id[31] == 0
-    amount = ONCHAIN_BALANCE[row["token_id"]]
+    amount = pm.ONCHAIN_BALANCE[row["token_id"]]
     args = [condition_id[:31], row["outcome_index"], amount]
     types = ["bytes31", "uint256", "uint256"]
-    return ROUTER, _selector(f"redeem({','.join(types)})") + abi_encode(types, args)
+    data = pm._selector(f"redeem({','.join(types)})") + abi_encode(types, args)
+    return pm.ROUTER, data, 0, 0
 
 
 @pytest.mark.parametrize("builder", [False, True])
 def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-untyped-def]
-    """The Safe claims a winning V2 row through the Router and its V1 rows as before."""
-    with _safe_world(V2_WIN, V1_WIN, V1_LOSE, V2_LOSE) as conn:
+    """The Safe claims winning V2 rows through the Router and its V1 rows as before."""
+    rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.V1_LOSE, pm.V2_LOSE)
+    with pm._safe_world(*rows) as conn:
         payload, claims = _redeem_period(conn, builder)
     assert payload.event == ("done" if builder else "prepare_tx")
-    expected = [_router_claim(V2_WIN), _v1_claim(V1_WIN), _v1_claim(V1_LOSE)]
+    v2_claims = [_router_claim(pm.V2_WIN), _router_claim(pm.V2_WIN0)]
+    expected = v2_claims + [_v1_claim(pm.V1_WIN), _v1_claim(pm.V1_LOSE)]
     assert sorted(claims) == sorted(expected)
 
 
 @pytest.mark.parametrize("builder", [False, True])
 def test_v2_position_losing_row_not_claimed(builder) -> None:  # type: ignore[no-untyped-def]
-    """A redeemable V2 row with no value builds no claim; a losing V1 row still does."""
-    with _safe_world(V2_LOSE, V1_LOSE) as conn:
+    """A redeemable V2 row with no value builds no claim; losing V1 rows still do."""
+    with pm._safe_world(pm.V2_LOSE, pm.V1_LOSE, pm.V1_00_LOSE) as conn:
         _, claims = _redeem_period(conn, builder)
-    assert claims == [_v1_claim(V1_LOSE)]
+    assert sorted(claims) == sorted(map(_v1_claim, (pm.V1_LOSE, pm.V1_00_LOSE)))
 
 
 def test_v2_position_accuracy_updated_once() -> None:
     """A resolved V2 bet updates its tool once, as a win or a loss, over two periods."""
-    for row, won in ((V2_WIN, True), (V2_LOSE, False)):
+    for row, won in ((pm.V2_WIN, True), (pm.V2_LOSE, False)):
         policy, expected = _make_policy(), _make_policy()
         expected.update_accuracy_store("tool1", winning=won)
         tools = {row["condition_id"]: "tool1"}
-        with _safe_world(row) as conn:
+        with pm._safe_world(row) as conn:
             for _ in range(2):  # the Data API still lists the row next period
                 payload, claims = _redeem_period(conn, False, tools, policy)
                 tools = json.loads(payload.utilized_tools)
                 assert policy.accuracy_store == expected.accuracy_store
-                if not won:  # nothing to claim, so no transaction
+                if not won:  # nothing to claim: no transaction to settle
                     assert (claims, payload.tx_hash) == ([], None)
+                    assert payload.event in ("no_redeeming", "done")
