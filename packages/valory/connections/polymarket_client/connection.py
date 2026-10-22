@@ -1475,7 +1475,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         try:
             condition_id = int(row["condition_id"], 16)
             return int(row["token_id"]) == condition_id + int(row["outcome_index"])
-        except (KeyError, TypeError, ValueError):  # pragma: no cover - malformed row
+        except (KeyError, TypeError, ValueError):
             return False
 
     def _select_positions(
