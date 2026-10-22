@@ -22,6 +22,7 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from eth_abi import encode as abi_encode
 from eth_utils import to_checksum_address  # type: ignore[import-not-found]
 from hexbytes import HexBytes
@@ -247,21 +248,24 @@ def _top_up(tmp_path, conn):  # type: ignore[no-untyped-def]
         behaviour.synchronized_data.safe_contract_address = pm.V2_SAFE
         assert _drive(behaviour).event == Event.PREPARE_TX.value
     for batch in behaviour.multisend_batches:
+        assert batch.value == 0
         pm._apply_transfer(conn.balances, pm.V2_SAFE, batch.to, batch.data)
     return behaviour.multisend_batches
 
 
-def test_v2_position_detected_from_row(tmp_path) -> None:  # type: ignore[no-untyped-def]
+@pytest.mark.parametrize("v1_rows", [(pm.V1_OPEN, pm.V1_00), ()])
+def test_v2_position_detected_from_row(tmp_path, v1_rows) -> None:  # type: ignore[no-untyped-def]
     """Each Safe row moves on its own ledger with no bet record; V1 rows that look like V2 stay V1."""
-    rows, dw = (pm.V2_OPEN, pm.V1_OPEN, pm.V1_00), to_checksum_address(DW)
-    v1_ids = [int(pm.V1_OPEN["token_id"]), int(pm.V1_00["token_id"])]
+    rows, dw = (pm.V2_OPEN, *v1_rows), to_checksum_address(DW)
+    v1_ids = [int(row["token_id"]) for row in v1_rows]
     types = ["address", "address", "uint256[]", "uint256[]", "bytes"]
     v1_batch = pm._selector(f"safeBatchTransferFrom({','.join(types)})") + abi_encode(
-        types, [pm.V2_SAFE, dw, v1_ids, [5000000, 5000000], b""]
+        types, [pm.V2_SAFE, dw, v1_ids, [5000000] * len(v1_ids), b""]
     )
     with pm._safe_world(*rows) as conn:
         batches = _top_up(tmp_path, conn)
-    assert [bytes(HexBytes(b.data)) for b in batches if b.to == CTF] == [v1_batch]
+    v1_batches = [bytes(HexBytes(b.data)) for b in batches if b.to == CTF]
+    assert v1_batches == ([v1_batch] if v1_rows else [])
     assert pm._held(conn.balances) == pm._ledger(dw, *rows)
 
 
