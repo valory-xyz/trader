@@ -22,9 +22,28 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from eth_abi import encode as abi_encode
+from eth_utils import to_checksum_address  # type: ignore[import-not-found]
+from hexbytes import HexBytes
+
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.tests.test_connection import (
+    V1_OPEN,
+    V2_OPEN,
+    V2_PARAMS,
+    V2_SAFE,
+    _apply_transfer,
+    _held,
+    _ledger,
+    _safe_world,
+    _selector,
+    _wire,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     DEPOSIT_WALLET_STORE,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
+    PolymarketWithdrawBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw_top_up import (
     CTF_DECIMAL_FACTOR,
@@ -222,3 +241,60 @@ class TestPolymarketWithdrawTopUpBehaviour:
     def test_amount_scaling(self) -> None:
         """CTF_DECIMAL_FACTOR scales human shares to 6-decimal base units."""
         assert CTF_DECIMAL_FACTOR == 10**6
+
+
+def _top_up(tmp_path, conn):  # type: ignore[no-untyped-def]
+    """Run the withdrawal top-up of ``V2_SAFE`` against ``conn`` and apply its batches."""
+    behaviour = _make_behaviour(tmp_path)
+    behaviour.context.params.configure_mock(**V2_PARAMS)
+    behaviour._build_multisend_data = lambda: _ok()  # type: ignore[method-assign]
+    behaviour._build_multisend_safe_tx_hash = lambda: _ok()  # type: ignore[method-assign]
+    _wire(behaviour, conn)
+    with patch.multiple(
+        PolymarketWithdrawTopUpBehaviour,
+        synchronized_data=PropertyMock(return_value=_synced(DW)),
+        tx_hex=PropertyMock(return_value="0xsafehash"),
+    ):
+        behaviour.synchronized_data.safe_contract_address = V2_SAFE
+        assert _drive(behaviour).event == Event.PREPARE_TX.value
+    for batch in behaviour.multisend_batches:
+        _apply_transfer(conn.balances, V2_SAFE, batch.to, batch.data)
+    return behaviour.multisend_batches
+
+
+def test_v2_position_detected_from_row(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Each Safe row moves on its own ledger with no bet record; a V1 id with a V2 module byte stays V1."""
+    dw, v1_id = to_checksum_address(DW), int(V1_OPEN["token_id"])
+    types = ["address", "address", "uint256[]", "uint256[]", "bytes"]
+    v1_batch = _selector(f"safeBatchTransferFrom({','.join(types)})") + abi_encode(
+        types, [V2_SAFE, dw, [v1_id], [5000000], b""]
+    )
+    with _safe_world(V2_OPEN, V1_OPEN) as conn:
+        batches = _top_up(tmp_path, conn)
+    assert [bytes(HexBytes(b.data)) for b in batches if b.to == CTF] == [v1_batch]
+    assert _held(conn.balances) == _ledger(dw, V2_OPEN, V1_OPEN)
+
+
+def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """V2 positions move to the DW, sell by position ID, and the unsold return to the Safe."""
+    sells = []
+
+    def sell(token_id, amount, **_):  # type: ignore[no-untyped-def]
+        sells.append((token_id, amount))
+        return {"status": "unmatched", "filled_shares": 0.0}
+
+    with _safe_world(V2_OPEN, V1_OPEN) as conn:
+        _top_up(tmp_path, conn)
+        conn.pages[to_checksum_address(DW)] = conn.pages.pop(V2_SAFE)
+        withdraw = object.__new__(PolymarketWithdrawBehaviour)
+        withdraw.__dict__["_context"] = MagicMock(agent_address="agent")
+        withdraw.context.params.store_path = tmp_path
+        withdraw.context.params.withdrawal_max_fak_attempts = 1
+        withdraw.finish_behaviour = lambda payload: _ok()  # type: ignore[method-assign]
+        _wire(withdraw, conn, sell_position=sell)
+        list(withdraw.async_act())
+    for (dw, _, txs), _ in conn.relayer_proxy.exec_wallet_batch.call_args_list:
+        for tx in txs:
+            _apply_transfer(conn.balances, dw, tx["target"], tx["data"])
+    assert sells == [(V2_OPEN["token_id"], 10.0), (V1_OPEN["token_id"], 5.0)]
+    assert _held(conn.balances) == _ledger(V2_SAFE, V2_OPEN, V1_OPEN)

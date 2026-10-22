@@ -20,11 +20,16 @@
 """Tests for the polymarket_client connection."""
 
 import json
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from eth_abi import decode as abi_decode
+from eth_utils import keccak, to_checksum_address
+from hexbytes import HexBytes
+from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
     DATA_API_POSITIONS_URL,
@@ -2356,6 +2361,198 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
     :return: the params sent
     """
     return mock_get.call_args_list[call_index][1]["params"]
+
+
+# ---------------------------------------------------------------------------
+# Protocol V2 positions: real rows, a fake chain and a fake Data API
+# ---------------------------------------------------------------------------
+
+# Real Data API /v2/positions rows, trimmed to the fields the code reads. A
+# Safe holding both sides of a resolved Protocol V2 neg-risk market (Gamma
+# version v2, "No" won:
+# https://gamma-api.polymarket.com/markets/5929023) next to its V1 rows:
+# https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
+V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
+{"token_id": "50122824272784274265949198122337312072892569991370352556120170615749327480792", "condition_id": "0x2e7749c534f9ac6576d6d58c33e0d598fcd8a99b37ae8be4b34e27b83578ebca", "outcome_index": 1, "current_size": 1.0416, "current_value": 1.0416, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:45AM-11:50AM ET"},
+{"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
+]""")
+# Open rows of another wallet: a Protocol V2 binary market
+# (https://gamma-api.polymarket.com/markets/6027078) and a V1 market whose token
+# id's top byte is 0x01 (https://gamma-api.polymarket.com/markets/3249953):
+# https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
+V2_OPEN, V1_OPEN = json.loads("""[
+{"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
+{"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"}
+]""")
+V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
+# The decision-maker params naming the contracts above.
+V2_PARAMS = dict(
+    polymarket_collateral_address=COLLATERAL_ADDRESS,
+    polymarket_ctf_address=CTF_ADDRESS,
+    polymarket_ctf_collateral_adapter_address=CTF_COLLATERAL_ADAPTER,
+    polymarket_neg_risk_ctf_collateral_adapter_address=NEG_RISK_CTF_COLLATERAL_ADAPTER,
+    polymarket_position_manager_address=POSITION_MANAGER,
+    polymarket_router_address=ROUTER,
+)
+V2_DW = to_checksum_address(DW_ADDRESS)
+V2_TOKEN_IDS = {V2_WIN["token_id"], V2_LOSE["token_id"], V2_OPEN["token_id"]}
+# The holders' balanceOf on PositionManager (V2) or the CTF (V1) at fetch time;
+# the Data API rounds sizes to four decimals.
+ONCHAIN_BALANCE = {
+    row["token_id"]: balance
+    for row, balance in zip(
+        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN),
+        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000),
+    )
+}
+
+
+def _selector(signature: str) -> bytes:
+    """Return the 4-byte selector of a function signature."""
+    return keccak(text=signature)[:4]
+
+
+def _ledger(holder: str, *rows: dict) -> Dict[tuple, int]:
+    """Give ``holder`` each row's on-chain balance on the row's ledger."""
+    return {
+        (
+            POSITION_MANAGER if row["token_id"] in V2_TOKEN_IDS else CTF_ADDRESS,
+            holder,
+            int(row["token_id"]),
+        ): ONCHAIN_BALANCE[row["token_id"]]
+        for row in rows
+    }
+
+
+def _fake_chain(balances: Dict[tuple, int]) -> MagicMock:
+    """Build a w3 stand-in answering balance and nonce reads from ``balances``."""
+    w3 = MagicMock(keccak=Web3.keccak, to_checksum_address=to_checksum_address)
+
+    def call(tx: dict, *_: Any) -> bytes:
+        data, token = HexBytes(tx["data"]), to_checksum_address(tx["to"])
+        if data[:4] == _selector("balanceOf(address,uint256)"):
+            owner, token_id = abi_decode(["address", "uint256"], data[4:])
+            key: tuple = (token, to_checksum_address(owner), token_id)
+        elif data[:4] == _selector("balanceOf(address)"):
+            key = (token, to_checksum_address(abi_decode(["address"], data[4:])[0]))
+        else:
+            assert data[:4] == _selector("nonce()"), f"unexpected eth_call {tx}"
+            key = ()
+        return balances.get(key, 0).to_bytes(32, "big")
+
+    w3.eth.call.side_effect = call
+    return w3
+
+
+TRANSFER_ARGS = {  # selector: argument types
+    _selector(signature): signature[signature.index("(") + 1 : -1].split(",")
+    for signature in (
+        "transfer(address,uint256)",
+        "safeTransferFrom(address,address,uint256,uint256,bytes)",
+        "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)",
+    )
+}
+
+
+def _apply_transfer(
+    balances: Dict[tuple, int], sender: str, token: str, data: Any
+) -> None:
+    """Apply an ERC-20 or ERC-1155 transfer call made by ``sender`` to ``balances``."""
+    data, token, sender = (
+        HexBytes(data),
+        to_checksum_address(token),
+        to_checksum_address(sender),
+    )
+    assert bytes(data[:4]) in TRANSFER_ARGS, f"unexpected call to {token}"
+    args = abi_decode(TRANSFER_ARGS[bytes(data[:4])], data[4:])
+    if len(args) == 2:  # ERC-20: balances keyed by (token, holder)
+        src, to, moves = sender, args[0], [((), args[1])]
+    else:  # ERC-1155: balances keyed by (token, holder, id)
+        src, to, ids, amounts = args[:4]
+        batch = isinstance(ids, tuple)
+        moves = [
+            ((i,), a) for i, a in (zip(ids, amounts) if batch else [(ids, amounts)])
+        ]
+    assert to_checksum_address(src) == sender, "moves only the sender's own tokens"
+    for token_id, amount in moves:
+        src_key = (token, sender, *token_id)
+        dst_key = (token, to_checksum_address(to), *token_id)
+        assert 0 < amount <= balances.get(src_key, 0), f"{amount} exceeds {src_key}"
+        balances[src_key] -= amount
+        balances[dst_key] = balances.get(dst_key, 0) + amount
+
+
+def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
+    """Drop the empty balances."""
+    return {key: value for key, value in balances.items() if value}
+
+
+@contextmanager
+def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
+    """Yield a ``V2_SAFE`` connection reading ``pages`` from the Data API and ``balances`` from the chain."""
+    conn = _make_connection()
+    conn.dw_address, conn.w3 = V2_DW, _fake_chain(balances)
+    conn.pages, conn.balances = pages, balances
+    conn.configuration.config.get.side_effect = lambda key, *_, **__: (
+        {"polygon": V2_SAFE} if key == "safe_contract_addresses" else None
+    )
+    conn.relayer_client.execute.return_value.get_transaction.return_value = {}
+    conn.relayer_proxy.exec_wallet_batch.return_value = "0xbatch"
+
+    def get(url: str, params: dict, **_: Any) -> MagicMock:
+        assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
+        rows = pages.get(to_checksum_address(params["user"]), [])
+        redeemable_only = params.get("status") == "REDEEMABLE"
+        return _v2_response([r for r in rows if r["redeemable"] or not redeemable_only])
+
+    with patch("requests.get", side_effect=get):
+        yield conn
+
+
+def _safe_world(*rows: dict) -> Any:
+    """Return a ``_v2_world`` whose Safe holds ``rows``."""
+    return _v2_world({V2_SAFE: list(rows)}, _ledger(V2_SAFE, *rows))
+
+
+def _wire(behaviour: Any, conn: Any, **overrides: Any) -> None:
+    """Answer the behaviour's Polymarket requests with ``conn``, or an override per request type."""
+
+    def send(request: dict, none_on_error: bool = False) -> Generator:
+        handler = overrides.get(request["request_type"])
+        if handler:
+            response, error = handler(**request["params"]), None
+        else:
+            response, error = conn._route_request(json.loads(json.dumps(request)))
+        yield
+        return None if error and none_on_error else json.loads(json.dumps(response))
+
+    behaviour.send_polymarket_connection_request = send
+    behaviour._send_polymarket_request = lambda kind, params: send(
+        {"request_type": kind.value, "params": params}, none_on_error=True
+    )
+
+
+def test_v2_position_custody_swept_to_safe() -> None:
+    """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares as before."""
+    pusd = {(COLLATERAL_ADDRESS, V2_DW): 2500000}
+    balances = {**_ledger(V2_DW, V2_WIN, V2_OPEN, V1_OPEN), **pusd}
+    token_ids = [int(row["token_id"]) for row in (V1_OPEN, V2_WIN, V2_OPEN)]
+    with _v2_world({}, balances) as conn:
+        response, error = conn._sweep_dw(dw_address=V2_DW, token_ids=token_ids)
+        dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
+        pusd_call = conn._encode_erc20_transfer(V2_SAFE, 2500000)
+        v1_call = conn._encode_erc1155_safe_transfer(
+            V2_DW, V2_SAFE, int(V1_OPEN["token_id"]), 5000000
+        )
+    assert (error, response["swept"], dw) == (None, True, V2_DW)
+    assert {"target": COLLATERAL_ADDRESS, "data": pusd_call} in calls
+    assert {"target": CTF_ADDRESS, "data": v1_call} in calls
+    for call in calls:
+        _apply_transfer(balances, V2_DW, call["target"], call["data"])
+    pusd = {(COLLATERAL_ADDRESS, V2_SAFE): 2500000}
+    assert _held(balances) == {**_ledger(V2_SAFE, V2_WIN, V2_OPEN, V1_OPEN), **pusd}
 
 
 class TestBoolParam:

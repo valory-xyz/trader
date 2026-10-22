@@ -32,6 +32,14 @@ import pytest
 from requests import ConnectionError as RequestsConnectionError
 from requests import Timeout as RequestsTimeout
 
+from packages.valory.connections.polymarket_client.tests.test_connection import (
+    V1_LOSE,
+    V1_OPEN,
+    V2_LOSE,
+    V2_OPEN,
+    _safe_world,
+    _wire,
+)
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
@@ -9693,3 +9701,16 @@ class TestAsyncActLeaderboard:
                 pass  # pragma: no cover
         step.assert_called()
         assert finish.call_args[0][0].vote is True
+
+
+def test_v2_position_in_locked_funds_and_summary() -> None:
+    """Open positions include the Safe's V2 positions, not a V2 row with nothing to claim."""
+    b = _make_fetch_behaviour()
+    ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+    with _safe_world(V2_OPEN, V2_LOSE, V1_OPEN, V1_LOSE) as conn:
+        with _patch_context(b, ctx, synced_data)[0]:
+            _wire(b, conn)
+            gen = b._fetch_polymarket_open_position_titles()
+            next(gen)  # the positions request
+            titles = _drive_gen(gen)
+    assert titles == {V2_OPEN["title"], V1_OPEN["title"], V1_LOSE["title"]}
