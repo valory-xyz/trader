@@ -44,6 +44,12 @@ from packages.valory.skills.decision_maker_abci.models import (
     extract_keys_from_template,
 )
 from packages.valory.skills.decision_maker_abci.policy import EGreedyPolicy
+from packages.valory.skills.decision_maker_abci.redeem_info import (
+    Condition,
+    FPMM,
+    Question,
+    Trade,
+)
 
 
 class TestPromptTemplate:
@@ -143,6 +149,51 @@ class TestRedeemingProgress:
         assert progress.answered == []
         assert progress.claiming_condition_ids == []
         assert progress.claimed_condition_ids == []
+
+    @staticmethod
+    def _trade(condition_byte: bytes, title: str, answer: str) -> Trade:
+        """Return a trade on a binary market with the given answer."""
+        return Trade(
+            fpmm=FPMM(
+                answerFinalizedTimestamp=1000,
+                collateralToken="0xtoken",
+                condition=Condition(
+                    id=HexBytes(condition_byte * 32), outcomeSlotCount=2
+                ),
+                creator="0xcreator",
+                creationTimestamp=900,
+                currentAnswer=answer,
+                question=Question(id=condition_byte * 32, data=f"{title}\u241fYes"),
+                templateId=2,
+            ),
+            outcomeIndex=0,
+            outcomeTokenMarginalPrice=0.5,
+            outcomeTokensTraded=10,
+            transactionHash="0xhash",
+        )
+
+    def test_claiming_payouts(self) -> None:
+        """Each market being claimed pays its claimable amount; an invalid one an equal share."""
+        won = self._trade(b"\x01", "Won market", "0x" + "0" * 64)
+        invalid = self._trade(b"\x02", "Invalid market", "0x" + "f" * 64)
+        not_claiming = self._trade(b"\x03", "Later", "0x" + "0" * 64)
+        progress = RedeemingProgress(
+            trades={won, invalid, not_claiming},
+            claimable_amounts={
+                won.fpmm.condition.id: 3 * 10**18,
+                invalid.fpmm.condition.id: 4 * 10**18,
+                not_claiming.fpmm.condition.id: 10**18,
+            },
+            claiming_condition_ids=[
+                won.fpmm.condition.id.to_0x_hex(),
+                invalid.fpmm.condition.id.to_0x_hex(),
+            ],
+        )
+
+        assert sorted(progress.claiming_payouts) == [
+            ("Invalid market", 2 * 10**18),
+            ("Won market", 3 * 10**18),
+        ]
 
     def test_check_finished_not_started(self) -> None:
         """Test check_finished when check has not started."""

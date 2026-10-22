@@ -45,6 +45,14 @@ from packages.valory.skills.abstract_round_abci.behaviours import (
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
     BetPayoutChecker,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    field,
+    format_amount,
+    format_date,
+    market_url,
+    record_event,
+)
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_predictions_helper import (
     PredictionsFetcher as BasePredictionsFetcher,
 )
@@ -105,6 +113,9 @@ from packages.valory.skills.agent_performance_summary_abci.rounds import (
     UpdateAchievementsRound,
 )
 
+RESOLVED_STATUSES = frozenset(
+    {BetStatus.WON.value, BetStatus.LOST.value, BetStatus.INVALID.value}
+)
 DEFAULT_MECH_FEE = 1e16  # Fixed fee per mech request, scaled to 18 decimals (0.01 when divided by 1e18)
 _ZERO_ADDRESS = (
     "0x" + "0" * 40
@@ -2929,6 +2940,75 @@ class FetchPerformanceSummaryBehaviour(
             agent_performance_summary.timestamp = existing_data.timestamp
 
         self.shared_state.overwrite_performance_summary(agent_performance_summary)
+        self._record_resolved_markets(
+            existing_data.prediction_history,
+            agent_performance_summary.prediction_history,
+        )
+
+    def _record_resolved_markets(
+        self,
+        previous: Optional[PredictionHistory],
+        current: Optional[PredictionHistory],
+    ) -> None:
+        """Write a ``Market resolved`` card for each prediction that has left pending.
+
+        :param previous: the history saved before this refresh.
+        :param current: the history just saved.
+        """
+        if previous is None or current is None:
+            return
+        was_pending = {
+            item.get("id")
+            for item in previous.items
+            if isinstance(item, dict) and item.get("status") == BetStatus.PENDING.value
+        }
+        resolved = [
+            item
+            for item in current.items
+            if isinstance(item, dict)
+            and item.get("id") in was_pending
+            and item.get("status") in RESOLVED_STATUSES
+        ]
+        if not resolved:
+            return
+        is_polymarket = self.params.is_running_on_polymarket
+        slugs = self._polymarket_slugs() if is_polymarket else {}
+        for item in resolved:
+            try:
+                market = item["market"]
+                opened_ts = _parse_iso_timestamp(item.get("created_at"))
+                opened = format_date(opened_ts) if opened_ts is not None else "Unknown"
+                url = (
+                    market_url(True, None, slugs.get(market.get("condition_id")))
+                    if is_polymarket
+                    else market.get("external_url")
+                )
+                fields = [
+                    field("Market", market["title"], url),
+                    field("Result", item["status"].capitalize()),
+                    field(
+                        "Amount traded",
+                        format_amount(float(item["bet_amount"]), is_polymarket),
+                    ),
+                    field("Opened", opened),
+                ]
+            except (AttributeError, KeyError, TypeError, ValueError) as e:
+                self.context.logger.warning(
+                    f"Not writing a resolved market for malformed prediction "
+                    f"{item.get('id')!r}: {e!r}"
+                )
+                continue
+            record_event(
+                self.params.store_path,
+                EventType.MARKET_RESOLVED,
+                fields,
+                self.context.logger,
+            )
+
+    def _polymarket_slugs(self) -> Dict[str, str]:
+        """Return the slug of each known Polymarket market by its condition id."""
+        fetcher = PolymarketPredictionsFetcher(self.context, self.context.logger)
+        return fetcher.load_market_slugs(str(self.params.store_path))
 
     @staticmethod
     def _is_leaderboard_refresh_due(last_attempt_at: Optional[int], now: int) -> bool:

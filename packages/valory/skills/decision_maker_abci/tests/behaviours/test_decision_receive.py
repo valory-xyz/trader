@@ -27,6 +27,12 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_NO_MECH_RESPONSE,
+    SKIP_NO_TRADE,
+    SKIP_REBET_NOT_ALLOWED,
+    SKIP_SPREAD,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
@@ -913,9 +919,10 @@ class TestIsProfitable:
 
     def test_strategy_returns_zero(self) -> None:
         """Strategy returns bet_amount=0 -> not profitable."""
-        behaviour, pred, _ = self._setup_behaviour(
+        behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None
         )
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
@@ -923,6 +930,7 @@ class TestIsProfitable:
         assert is_profitable is False
         assert bet_amount == 0
         assert strategy_vote is None
+        record_skip.assert_called_once_with(bet, SKIP_NO_TRADE)
 
     def test_strategy_returns_none_vote(self) -> None:
         """Strategy returns vote=None -> not profitable."""
@@ -1090,16 +1098,18 @@ class TestIsProfitable:
 
     def test_rebet_rejected(self) -> None:
         """Strategy approves bet but rebet_allowed returns False."""
-        behaviour, pred, _ = self._setup_behaviour(
+        behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=500, strategy_vote=0
         )
         # Override rebet_allowed to return False
         patch.object(behaviour, "rebet_allowed", return_value=False).start()
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
         is_profitable, bet_amount, _ = result
         assert is_profitable is False
+        record_skip.assert_called_once_with(bet, SKIP_REBET_NOT_ALLOWED)
 
     def test_clob_no_outcome_token_ids(self) -> None:
         """CLOB path with outcome_token_ids=None skips orderbook fetch."""
@@ -1233,6 +1243,7 @@ class TestIsProfitable:
         behaviour, pred = self._setup_clob_with_book(
             ob, spread_min=0.02, spread_max=0.05
         )
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
         result = self._run_is_profitable(behaviour, pred)
         patch.stopall()
 
@@ -1240,6 +1251,8 @@ class TestIsProfitable:
         assert is_profitable is False
         assert bet_amount == 0
         assert strategy_vote is None
+        record_skip.assert_called_once()
+        assert record_skip.call_args.args[1] == SKIP_SPREAD
 
     def test_spread_gate_inside_band_passes(self) -> None:
         """Spread inside band -> bet accepted."""
@@ -1845,9 +1858,13 @@ class TestAsyncAct:
 
         assert result is None
 
-    def test_prediction_response_none(self) -> None:
-        """Should handle None prediction_response gracefully."""
+    @pytest.mark.parametrize("selling_review", [False, True])
+    def test_prediction_response_none(self, selling_review: bool) -> None:
+        """Should handle None prediction_response; a sell review skips no market."""
         behaviour = _make_behaviour()
+        skipped_bet = MagicMock()
+        behaviour.get_active_sampled_bet = MagicMock(return_value=skipped_bet)  # type: ignore[method-assign]
+        behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
         behaviour._store_all = MagicMock()  # type: ignore[method-assign]
 
         def mock_setup(*args: Any, **kwargs: Any) -> Generator:
@@ -1875,12 +1892,24 @@ class TestAsyncAct:
                     ) as mock_bm:
                         mock_bm.return_value = MagicMock(enabled=False)
                         with patch.object(
-                            behaviour, "finish_behaviour", side_effect=mock_finish
+                            type(behaviour),
+                            "review_bets_for_selling_mode",
+                            new_callable=PropertyMock,
+                            return_value=selling_review,
                         ):
-                            gen = behaviour.async_act()
-                            self._run_generator(gen)
+                            with patch.object(
+                                behaviour, "finish_behaviour", side_effect=mock_finish
+                            ):
+                                gen = behaviour.async_act()
+                                self._run_generator(gen)
 
         behaviour._store_all.assert_called_once()  # type: ignore[union-attr]
+        if selling_review:
+            behaviour._record_market_skipped.assert_not_called()  # type: ignore[attr-defined]
+        else:
+            behaviour._record_market_skipped.assert_called_once_with(  # type: ignore[attr-defined]
+                skipped_bet, SKIP_NO_MECH_RESPONSE
+            )
 
     def test_prediction_with_vote_not_selling_profitable(self) -> None:
         """Should process profitable bet when not in selling mode."""

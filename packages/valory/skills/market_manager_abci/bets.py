@@ -187,6 +187,8 @@ class Bet:
     # Polymarket-only long-form market description (resolution rules). Omen bets
     # leave this None. Sent to the mech via `to_request_context`.
     description: Optional[str] = None
+    # Polymarket-only market slug, which its public page URL is built from.
+    slug: Optional[str] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -408,6 +410,7 @@ class Bet:
         # Resolution rules can be edited on Polymarket's side after discovery;
         # refresh so already-queued bets carry the latest description.
         self.description = bet.description
+        self.slug = bet.slug
 
     def set_processed_sell_check(self, processed_time: int) -> None:
         """Set the processed sell check."""

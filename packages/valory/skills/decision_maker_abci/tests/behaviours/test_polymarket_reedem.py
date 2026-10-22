@@ -25,6 +25,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 from eth_abi import decode as abi_decode
 
+from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
     DEFAULT_TO_BLOCK,
@@ -290,8 +291,8 @@ class TestFetchRedeemablePositions:
         "connection_response",
         [{"error": "Error fetching positions: 503"}, None, "garbled"],
     )
-    def test_failed_read_yields_no_positions(self, connection_response) -> None:  # type: ignore[no-untyped-def]
-        """A failed read is no positions to redeem, never a non-list."""
+    def test_failed_read_returns_none(self, connection_response) -> None:  # type: ignore[no-untyped-def]
+        """A failed read returns None, never a non-list."""
         behaviour = _make_behaviour()
         behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
             connection_response
@@ -305,7 +306,7 @@ class TestFetchRedeemablePositions:
         except StopIteration as e:
             result = e.value
 
-        assert result == []
+        assert result is None
         behaviour.context.logger.error.assert_called_once()
 
 
@@ -527,6 +528,198 @@ class TestBuildRedeemPositionsData:
 
 # ---------------------------------------------------------------------------
 # Tests for redeem_via_builder
+
+
+def _position(condition_id: str, size: float, cur_price: object, **extra: object) -> dict:  # type: ignore[type-arg]
+    """Return a redeemable position as the Polymarket API lists it."""
+    return {
+        "conditionId": condition_id,
+        "outcomeIndex": 0,
+        "outcome": "Yes",
+        "size": size,
+        "curPrice": cur_price,
+        "negativeRisk": False,
+        **extra,
+    }
+
+
+def _run(gen):  # type: ignore[no-untyped-def]
+    """Exhaust a generator and return its value."""
+    try:
+        while True:
+            next(gen)
+    except StopIteration as e:
+        return e.value
+
+
+class TestPayoutsByMarket:
+    """One payout card per market from the redeemed positions."""
+
+    def test_sums_positions_of_a_market_and_drops_losers(self) -> None:
+        """Both sides of an invalid market add up; a losing or unpriced one pays nothing."""
+        positions = [
+            _position("0xa", 10, 0.5, title="Invalid?", slug="invalid"),
+            _position("0xa", 4, "0.5", title="Invalid?", slug="invalid"),
+            _position("0xb", 3, 1, title="Won?"),
+            _position("0xc", 5, 0, title="Lost?"),
+            _position("0xd", 5, None, title="Unpriced?"),
+            {"conditionId": "0xe", "size": 1},
+            _position("0xf", 2, 1),
+        ]
+
+        behaviour = _make_behaviour()
+
+        assert behaviour._payouts_by_market(positions) == [
+            [
+                {
+                    "label": "Market",
+                    "value": "Invalid?",
+                    "url": "https://polymarket.com/market/invalid",
+                },
+                {"label": "Amount", "value": "$7.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "Won?"},
+                {"label": "Amount", "value": "$3.00 pUSD"},
+            ],
+            [
+                {"label": "Market", "value": "0xf"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        ]
+        warnings = [c.args[0] for c in behaviour.context.logger.warning.call_args_list]
+        assert len(warnings) == 2
+        assert "'0xd'" in warnings[0]
+        assert "'0xe'" in warnings[1]
+
+    def test_builder_keeps_only_redeemed_positions_pending(self) -> None:
+        """The builder path writes no card yet; it keeps each redeem the relayer took."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.state.polymarket_builder_redeems_pending = {}
+        # The connection sends the relayer's transaction list, an error dict on a
+        # failed redeem, or null when it gives no response at all.
+        results = {
+            "0xok": [{"transactionHash": "0x1"}],
+            "0xfail": {"error": "Relayer client not initialized."},
+            "0xnone": None,
+        }
+
+        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
+            yield
+            return results[condition_id]
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        positions = [
+            _position("0xok", 2, 1, title="Paid?"),
+            _position("0xfail", 2, 1, title="Failed?"),
+            _position("0xnone", 2, 1, title="No response?"),
+        ]
+
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+            _run(behaviour._redeem_via_builder(positions))
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xok": [positions[0]]
+        }
+
+    def test_a_resent_builder_redeem_replaces_the_pending_one(self) -> None:
+        """Redeeming a market again keeps one pending entry for it, not two."""
+        behaviour = _make_behaviour()
+        first = _position("0xa", 2, 1, title="Paid?")
+        resent = _position("0xa", 3, 1, title="Paid?")
+        other = _position("0xb", 1, 1, title="Other?")
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": [first],
+            "0xb": [other],
+        }
+
+        def mock_redeem(condition_id, outcome_index, collateral_token, is_neg_risk=False):  # type: ignore[no-untyped-def]
+            yield
+            return [{"transactionHash": "0x1"}]
+
+        behaviour._redeem_position = mock_redeem  # type: ignore[method-assign]
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(polymarket_collateral_address="0xusdc")
+            _run(behaviour._redeem_via_builder([resent]))
+
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xa": [resent],
+            "0xb": [other],
+        }
+
+    def test_a_builder_redeem_is_recorded_once_no_longer_redeemable(self) -> None:
+        """A pending market gets its card when the API stops listing it, and only then."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        landed = [
+            _position("0xa", 2, 1, title="Landed?"),
+            _position("0xa", 1, 0, title="Landed?"),
+        ]
+        waiting = [_position("0xb", 5, 1, title="Waiting?")]
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": landed,
+            "0xb": waiting,
+        }
+
+        behaviour._record_settled_builder_redeems(
+            [_position("0xb", 5, 1), _position("0xc", 1, 1)]
+        )
+
+        behaviour._record_feed_event.assert_called_once_with(  # type: ignore[attr-defined]
+            EventType.PAYOUT_COLLECTED,
+            [
+                {"label": "Market", "value": "Landed?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        )
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {
+            "0xb": waiting
+        }
+
+        behaviour._record_settled_builder_redeems([_position("0xb", 5, 1)])
+
+        behaviour._record_feed_event.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_safe_tx_keeps_the_cards_for_its_settlement(self) -> None:
+        """The Safe tx path keeps the cards on shared state instead of writing them."""
+        behaviour = _make_behaviour()
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+        positions = [
+            {"conditionId": None, "outcomeIndex": 0, "size": 9, "curPrice": 1},
+            _position("0x" + "ab" * 32, 2, 1, title="Paid?"),
+        ]
+
+        with (
+            patch.object(
+                type(behaviour), "params", new_callable=PropertyMock
+            ) as mock_params,
+            patch.object(
+                type(behaviour), "tx_hex", new_callable=PropertyMock
+            ) as mock_tx,
+        ):
+            mock_params.return_value = MagicMock(
+                polymarket_collateral_address="0x" + "12" * 20,
+                polymarket_ctf_collateral_adapter_address="0x" + "34" * 20,
+            )
+            mock_tx.return_value = "0xfinalHash"
+            assert _run(behaviour._prepare_redeem_tx(positions)) == "0xfinalHash"
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_payouts_to_record == [
+            [
+                {"label": "Market", "value": "Paid?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ]
+        ]
 
 
 class TestRedeemViaBuilder:
@@ -1229,6 +1422,38 @@ class TestAsyncAct:
         assert isinstance(payload, PolymarketRedeemPayload)
         assert payload.event == "no_redeeming"
 
+    def test_async_act_with_nothing_left_to_redeem_settles_the_pending(self) -> None:
+        """An empty redeemable list records the pending builder redeems and drops a stale Safe build."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        behaviour.context.state.polymarket_builder_redeems_pending = {
+            "0xa": [_position("0xa", 2, 1, title="Landed?")]
+        }
+        behaviour.context.state.polymarket_payouts_to_record = [
+            [{"label": "Market", "value": "Stale?"}]
+        ]
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour._fetch_redeemable_positions = lambda: _return_gen([])  # type: ignore[method-assign]
+        behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            _run(behaviour.async_act())
+
+        behaviour._record_feed_event.assert_called_once_with(  # type: ignore[attr-defined]
+            EventType.PAYOUT_COLLECTED,
+            [
+                {"label": "Market", "value": "Landed?"},
+                {"label": "Amount", "value": "$2.00 pUSD"},
+            ],
+        )
+        assert behaviour.context.state.polymarket_builder_redeems_pending == {}
+        assert behaviour.context.state.polymarket_payouts_to_record == []
+
     def test_async_act_failed_positions_read_ends_round_without_redeeming(
         self,
     ) -> None:
@@ -1258,6 +1483,29 @@ class TestAsyncAct:
 
         assert [p.event for p in payloads_sent] == ["no_redeeming"]
         assert behaviour._utilized_tools == {"cond1": "tool1"}
+
+    def test_async_act_failed_positions_read_keeps_the_pending(self) -> None:
+        """A failed positions read writes no payout card and keeps the pending builder redeems."""
+        behaviour = _make_behaviour()
+        behaviour._policy = _make_policy()
+        behaviour._mech_tools = {"tool1"}
+        behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+        pending = {"0xa": [_position("0xa", 2, 1, title="Landed?")]}
+        behaviour.context.state.polymarket_builder_redeems_pending = pending
+        behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
+            {"error": "Error fetching positions: 503"}
+        )
+        behaviour.finish_behaviour = lambda payload: _noop_gen()  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "synchronized_data", new_callable=PropertyMock
+        ) as mock_sd:
+            mock_sd.return_value = MagicMock(is_policy_set=True)
+            _run(behaviour.async_act())
+
+        behaviour._record_feed_event.assert_not_called()  # type: ignore[attr-defined]
+        assert behaviour.context.state.polymarket_builder_redeems_pending == pending
 
     def test_async_act_setup_fails(self) -> None:
         """Should return early when _setup_policy_and_tools fails."""

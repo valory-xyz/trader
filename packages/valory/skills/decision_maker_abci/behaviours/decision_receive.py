@@ -27,6 +27,12 @@ from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    SKIP_NO_MECH_RESPONSE,
+    SKIP_NO_TRADE,
+    SKIP_REBET_NOT_ALLOWED,
+    SKIP_SPREAD,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -521,6 +527,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
+            self._record_market_skipped(bet, SKIP_NO_TRADE)
             return False, 0, None
 
         # Optional spread gate (Polymarket / CLOB only): skip the bet when the
@@ -558,6 +565,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                             f"Spread gate: {spread:.4f} outside "
                             f"[{lo}, {hi}] — skipping bet."
                         )
+                        self._record_market_skipped(bet, SKIP_SPREAD)
                         return False, 0, None
             elif not band_is_default:
                 self.context.logger.warning(
@@ -582,6 +590,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             is_profitable = self.rebet_allowed(
                 prediction_response, expected_profit, strategy_vote
             )
+            if not is_profitable:
+                self._record_market_skipped(bet, SKIP_REBET_NOT_ALLOWED)
 
         if self.benchmarking_mode.enabled:
             if is_profitable:
@@ -681,6 +691,10 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 return None
 
             prediction_response = self._get_decision()
+            if prediction_response is None and not self.review_bets_for_selling_mode:
+                self._record_market_skipped(
+                    self.get_active_sampled_bet(), SKIP_NO_MECH_RESPONSE
+                )
             is_profitable = None
             bet_amount = None
             next_mock_data_row = None

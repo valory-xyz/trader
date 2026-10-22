@@ -19,12 +19,15 @@
 
 """Tests for tx_settlement_multiplexer_abci behaviours."""
 
-from typing import Any, Generator
+import json
+from pathlib import Path
+from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
 from packages.valory.skills.abstract_round_abci.behaviours import BaseBehaviour
+from packages.valory.skills.agent_performance_summary_abci.feed import FEED_FILE
 from packages.valory.skills.decision_maker_abci.models import RedeemingProgress
 from packages.valory.skills.tx_settlement_multiplexer_abci.behaviours import (
     PostTxSettlementBehaviour,
@@ -724,6 +727,77 @@ class TestOnRedeemRoundTxSettled:
             assert isinstance(new_progress, RedeemingProgress)
             assert new_progress.claimed_condition_ids == []
             assert new_progress.claiming_condition_ids == []
+
+
+class TestPayoutsWrittenOnSettlement:
+    """``Collected a payout`` cards written once a redeem tx settles."""
+
+    @staticmethod
+    def _settle(
+        handler_name: str, shared_state: MagicMock, store_path: Path
+    ) -> List[Dict[str, Any]]:
+        """Run a settlement handler and return the feed's lines."""
+        behaviour = object.__new__(PostTxSettlementBehaviour)  # type: ignore[type-abstract]
+        context = MagicMock()
+        context.params.store_path = store_path
+        with (
+            patch.object(
+                type(behaviour),
+                "context",
+                new_callable=PropertyMock,
+                return_value=context,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=shared_state,
+            ),
+        ):
+            getattr(behaviour, handler_name)()
+        path = store_path / FEED_FILE
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in path.read_text().splitlines()]
+
+    def test_omen_redeem_writes_one_card_per_claimed_market(
+        self, tmp_path: Path
+    ) -> None:
+        """Each market claimed by the settled tx gets a card, in xDAI."""
+        progress = MagicMock(
+            claiming_payouts=[("Will it rain?", 3 * 10**18), ("Will it snow?", 10**17)],
+            claimed_condition_ids=[],
+            claiming_condition_ids=[],
+        )
+        shared_state = MagicMock(redeeming_progress=progress)
+
+        lines = self._settle("_on_redeem_round_tx_settled", shared_state, tmp_path)
+
+        assert [line["type"] for line in lines] == ["payout_collected"] * 2
+        assert [line["fields"] for line in lines] == [
+            [
+                {"label": "Market", "value": "Will it rain?"},
+                {"label": "Amount", "value": "3.00 xDAI"},
+            ],
+            [
+                {"label": "Market", "value": "Will it snow?"},
+                {"label": "Amount", "value": "0.10 xDAI"},
+            ],
+        ]
+        assert isinstance(shared_state.redeeming_progress, RedeemingProgress)
+
+    def test_polymarket_redeem_writes_the_cards_once(self, tmp_path: Path) -> None:
+        """The cards kept for the settled Polymarket redeem tx are written, then dropped."""
+        fields = [{"label": "Market", "value": "m"}, {"label": "Amount", "value": "a"}]
+        shared_state = MagicMock(polymarket_payouts_to_record=[fields])
+
+        handler = "_on_polymarket_redeem_round_tx_settled"
+        first = self._settle(handler, shared_state, tmp_path)
+        second = self._settle(handler, shared_state, tmp_path)
+
+        assert [line["fields"] for line in first] == [fields]
+        assert len(second) == 1
+        assert shared_state.polymarket_payouts_to_record == []
 
 
 class TestOnTxSettled:

@@ -19,32 +19,20 @@ fingerprint:
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeig36t6xlip4xyylis3n7t6wx45zftfpfk75fztlz3fgycrd3ad7na
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeihl373oleiibafei4qknvszuu4c7axc6nfvn35qp32trvd35n2cea
+  tests/test_handlers.py: bafybeib4k5sgchwijvdbictl3rahqlqdga6vjdpsw6qgrbfgd3g3nyx2la
   tests/test_models.py: bafybeiggexszitzz3kzctxbkj4whgoigrbjtztudde7xqhytad3qucvoyi
   ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
-  ui-build/omenstrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/omenstrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
-  ui-build/omenstrat/assets/index-BmmoFnZg.js: bafybeiefd6timv623kyg7l7psbtupoqzetula3gwnf5y4zljsh5myr2gy4
-  ui-build/omenstrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
-  ui-build/omenstrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
-  ui-build/omenstrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
-  ui-build/omenstrat/assets/polystrat-chat-DlTWIQ8U.png: bafybeihz3bue6cuvvfadkzcjzhim5atgrgeew6pmzy6ignkjvkymofjfeu
+  ui-build/omenstrat/assets/index-AywEqBn-.js: bafybeiduecfhcwxl57hnqyyqs4be7ehhvqbfcex6doq3ba3rfvjfeqrqc4
   ui-build/omenstrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/omenstrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/omenstrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/omenstrat/index.html: bafybeigllq5sbtf7r2q2amipweix26fiiepqbthcesu4ngugl4oxuo22ti
+  ui-build/omenstrat/index.html: bafybeieu5uupin3mcqfdm4zmdhp2uo5jephjgk4m26not3d36m3zzu5cxy
   ui-build/polystrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
-  ui-build/polystrat/assets/agentsfun-chat-CQO2MvlO.png: bafybeibm5nhmhfa54gimrsjt7pupvw3bkg2ayr6nul5o5krlj67ivh26oy
-  ui-build/polystrat/assets/basius-chat-BiDLb6xE.png: bafybeic2ujg6kdkhdpbcg43kouti5xaf7dpg7sfwdrugl4whw5epspkpcy
-  ui-build/polystrat/assets/index-E8EuSotK.js: bafybeiend7hxj5wyj4e53wg5obv7w6qnnvi2ihjik4fdpljrh2orf5rkna
-  ui-build/polystrat/assets/modius-chat-DP0cU_AO.png: bafybeigpfxxcza7y3r4v7qh5ymmjbh2dsofxqgdt2fdwdhe7ffr76xg3te
-  ui-build/polystrat/assets/omenstrat-chat-C3wR6Eyq.png: bafybeifz5fhtwnitqld2mcwoduxm7cjr2bsxiicav62zfw2ugng6tg4hc4
-  ui-build/polystrat/assets/optimus-chat-D2Oor3H8.png: bafybeiessqtxhcnh7ll34sw7ihg7ijbhcp4hbyngm4lqgx6sjppjuyaja4
-  ui-build/polystrat/assets/polystrat-chat-DlTWIQ8U.png: bafybeihz3bue6cuvvfadkzcjzhim5atgrgeew6pmzy6ignkjvkymofjfeu
+  ui-build/polystrat/assets/index-BAgJ4-xc.js: bafybeibumiiujxs62cftat5rpwjjmprv2y5aswqurby5p54q6r2opwse5a
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeifytthw6o6fbhdmi6zif5niivxw2huf6ej7esxxij6ra5il7ykmae
+  ui-build/polystrat/index.html: bafybeicot7shxlctw5qel47xieerqpcnurhgljtwigorsdbdgr6obj3fb4
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
@@ -59,14 +47,14 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeifydyzqnsozq3vwjvkw3dj3e5jliblxuy5sge6ssj44qjl3fekw7a
-- valory/decision_maker_abci:0.1.0:bafybeifk54nfbr6dktwiai6utqvc7aj42aklbiy7km6dbm7kfdy3zdoztu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeih3csanzzcpi5ipvfrn5wwey642omatdkst2tie3aqpam3fp3cdea
+- valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
+- valory/decision_maker_abci:0.1.0:bafybeigx5csw7ngtkyqdoapcgdyt334ljo6p3ffbwquvg6h2eszxpg4pjy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicpkoa2fct4khvj5vwfietexnwaikkfbuz5x4nu3mrqcibrlnmcoq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeih4nokke7mchejjsesu2zeczvrr23z32d3snzi6enx6l6rqkmr4ji
+- valory/check_stop_trading_abci:0.1.0:bafybeihopa2buonry5ryrhsxr2a5adfzs2bw4sedq7efc4i232hlnlwaua
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiciwbrczq2ais5tmbinuf46pdkgw7xyuhrmqifkbugdgj4n2l3tw4
-- valory/agent_performance_summary_abci:0.1.0:bafybeiacwc4jn24337f3v7fq4374tby6e7ykqnqhhd2rwenqd7c7lf6scu
+- valory/chatui_abci:0.1.0:bafybeiea7ymnt4cyzbheu5ko7mlwzrlw5o42nqvvq2n7ca24djq4ne4774
+- valory/agent_performance_summary_abci:0.1.0:bafybeiber3axwwonu47iks66afla7quytbk5odv7e2db5bvup3ufoz6dne
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 behaviours:
   main:
