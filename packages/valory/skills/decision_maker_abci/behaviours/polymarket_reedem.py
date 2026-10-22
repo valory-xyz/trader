@@ -20,13 +20,20 @@
 """This module contains the redeeming state of the decision-making abci app."""
 
 import json
-from typing import Generator, Optional, cast
+from typing import Any, Dict, Generator, List, Optional, Union, cast
 
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    Field,
+    field,
+    format_amount,
+    market_url,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
@@ -105,11 +112,77 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                     f"Tool {tool!r} not found in accuracy store; skipping."
                 )
 
-    def _fetch_redeemable_positions(self) -> Generator[None, None, list]:
+    def _payouts_by_market(self, positions: list) -> List[List[Field]]:
+        """Build one payout card per market from the positions redeemed.
+
+        A position pays its size times its resolved price: 1 for the winning
+        outcome, 0 for the losing one and an equal share on an invalid market.
+
+        :param positions: position dicts from the Polymarket API.
+        :return: the cards' fields, one list per market that paid out.
+        """
+        markets: Dict[Any, Dict[str, Any]] = {}
+        for position in positions:
+            try:
+                amount = float(position.get("size", 0)) * float(position["curPrice"])
+            except (KeyError, TypeError, ValueError):
+                self.context.logger.warning(
+                    f"No valid size or curPrice for condition_id "
+                    f"{position.get('conditionId')!r}; leaving it out of the payout card."
+                )
+                continue
+            if amount <= 0:
+                continue
+            market = markets.setdefault(
+                position.get("conditionId"),
+                {
+                    "title": str(position.get("title") or position.get("conditionId")),
+                    "slug": position.get("slug"),
+                    "amount": 0.0,
+                },
+            )
+            market["amount"] += amount
+        return [
+            [
+                field(
+                    "Market", market["title"], market_url(True, None, market["slug"])
+                ),
+                field("Amount", format_amount(market["amount"], True)),
+            ]
+            for market in markets.values()
+        ]
+
+    def _record_settled_builder_redeems(self, redeemable_positions: list) -> None:
+        """Write the payout cards of the builder redeems that have landed.
+
+        The relayer only accepts a redeem, so a position counts as paid once the
+        positions API no longer lists it as redeemable.
+
+        :param redeemable_positions: the positions the API lists as redeemable.
+        """
+        still_redeemable = {
+            position.get("conditionId") for position in redeemable_positions
+        }
+        pending = self.shared_state.polymarket_builder_redeems_pending
+        settled = [
+            position
+            for condition_id, positions in pending.items()
+            if condition_id not in still_redeemable
+            for position in positions
+        ]
+        self.shared_state.polymarket_builder_redeems_pending = {
+            condition_id: positions
+            for condition_id, positions in pending.items()
+            if condition_id in still_redeemable
+        }
+        for fields in self._payouts_by_market(settled):
+            self._record_feed_event(EventType.PAYOUT_COLLECTED, fields)
+
+    def _fetch_redeemable_positions(self) -> Generator[None, None, Optional[list]]:
         """Fetch redeemable positions from Polymarket.
 
         :yield: framework yields between dispatch and the connection response.
-        :return: the redeemable positions, or an empty list if the read failed.
+        :return: the redeemable positions, or None if the read failed.
         """
         # Prepare payload data
         polymarket_bet_payload = {
@@ -126,7 +199,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             self.context.logger.error(
                 f"Redeemable positions fetch failed: {redeemable_positions}"
             )
-            return []
+            return None
 
         return redeemable_positions
 
@@ -136,14 +209,15 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         outcome_index: int,
         collateral_token: str,
         is_neg_risk: bool = False,
-    ) -> Generator[None, None, dict]:
+    ) -> Generator[None, None, Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]]:
         """Redeem a single position.
 
         :param condition_id: The condition ID for the position
         :param outcome_index: The outcome index (0 for Yes, 1 for No typically)
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :return: Redemption result
+        :return: the relayer's transactions for the redeem, an error dict if the
+            request failed, or None if the connection gave no response
         :yield: None
         """
         # The deployed Polymarket collateral adapters ignore the uint256[]
@@ -200,7 +274,8 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             current_mech_tools = json.dumps(list(self.mech_tools))
 
             # Fetch redeemable positions once for both flows
-            redeemable_positions = yield from self._fetch_redeemable_positions()
+            fetched_positions = yield from self._fetch_redeemable_positions()
+            redeemable_positions = fetched_positions or []
             self.context.logger.info(
                 f"Fetched {len(redeemable_positions)} redeemable positions"
             )
@@ -211,6 +286,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # update is always called with winning=True.  This mirrors
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
+            self.shared_state.polymarket_payouts_to_record = []
+            # A failed read says nothing about whether the pending redeems landed.
+            if fetched_positions is not None:
+                self._record_settled_builder_redeems(redeemable_positions)
 
             # Re-serialise policy and utilized_tools *after* the accuracy-store update
             # so that the updated values are carried in the payload.
@@ -274,7 +353,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
     ) -> Generator:
         """Redeem positions via builder flow (connection request)."""
 
-        # Redeem each position
+        redeemed: Dict[str, List[Dict[str, Any]]] = {}
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
             outcome_index = position.get("outcomeIndex")
@@ -302,6 +381,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             )
 
             self.context.logger.info(f"Redemption result for {condition_id}: {result}")
+            if result is not None and not (
+                isinstance(result, dict) and result.get("error")
+            ):
+                redeemed.setdefault(condition_id, []).append(position)
+
+        # A resend for the same market replaces its pending positions.
+        self.shared_state.polymarket_builder_redeems_pending.update(redeemed)
 
         self.payload = PolymarketRedeemPayload(
             sender=self.context.agent_address,
@@ -322,6 +408,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             self.context.logger.info("No redeemable positions found")
             return ""
 
+        included: list = []
         # Build redemption transactions and add to multisend_batches
         for position in redeemable_positions:
             condition_id = position.get("conditionId")
@@ -367,6 +454,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 value=0,
             )
             self.multisend_batches.append(redeem_batch)
+            included.append(position)
 
         # Build the multisend transaction
         success = yield from self._build_multisend_data()
@@ -379,6 +467,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             self.context.logger.error("Failed to build safe tx hash for redemptions")
             return ""
 
+        # Written by the tx settlement once this tx lands, not before.
+        self.shared_state.polymarket_payouts_to_record = self._payouts_by_market(
+            included
+        )
         return self.tx_hex
 
     def _build_redeem_positions_data(
