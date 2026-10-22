@@ -31,7 +31,6 @@ from packages.valory.skills.agent_topup_abci.behaviours import (
     AgentTopUpBehaviour,
     LAST_TOPUP_CHECK_KEY,
     TOPUP_CHECK_INTERVAL_SECONDS,
-    TOPUP_TXS_THIS_CHECK_KEY,
 )
 from packages.valory.skills.agent_topup_abci.payloads import AgentTopUpPayload
 from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
@@ -61,6 +60,8 @@ SUBMITTER = AgentTopUpRound.auto_round_id()
 SAFE_TX_HASH = "0x" + "ab" * 32
 WITHDRAW_DATA = bytes.fromhex("2e1a7d4d" + "00" * 32)
 
+SIGNER_SETTLEMENT_THRESHOLD = ETHER // 100
+
 STATE = ContractApiMessage.Performative.STATE
 ERROR = ContractApiMessage.Performative.ERROR
 
@@ -80,26 +81,32 @@ def _response(performative: Any, body: Optional[Dict] = None) -> MagicMock:
 class _Harness:
     """Runs AgentTopUpBehaviour against a funds status and a contract API stub."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         chain: str,
         funds: FundRequirements,
         shared_state: Optional[Dict[str, Any]] = None,
         tx_submitter: Optional[str] = None,
         settled_to: str = AGENT,
+        settled_tx: Optional[str] = None,
         responses: Optional[List[MagicMock]] = None,
+        retry: bool = False,
     ) -> None:
         """Set up the behaviour's context."""
-        self.shared_state: Dict[str, Any] = dict(shared_state or {})
+        self.shared_state: Dict[str, Any] = shared_state if shared_state else {}
         self.shared_state[GET_FUNDS_STATUS_METHOD_NAME] = MagicMock(return_value=funds)
         self.shared_state[GET_AGENT_TOPUP_METHOD_NAME] = real_topup_rule(chain)
         setup: Dict[str, Any] = {"safe_contract_address": SAFE}
         if tx_submitter is not None:
             setup["tx_submitter"] = tx_submitter
-            setup["most_voted_tx_hash"] = _settled_tx(settled_to)
+            setup["most_voted_tx_hash"] = settled_tx or _settled_tx(settled_to)
 
         self.context = MagicMock(agent_address=AGENT, shared_state=self.shared_state)
         self.context.params.default_chain_id = chain
+        self.context.params.agent_balance_threshold = SIGNER_SETTLEMENT_THRESHOLD
+        self.context.state.round_sequence.last_round_id = (
+            SUBMITTER if retry else "previous_round"
+        )
         self.context.state.synchronized_data.db = AbciAppDB(
             setup_data=AbciAppDB.data_to_lists(setup)
         )
@@ -145,7 +152,7 @@ class _Harness:
                 pass
 
         [payload] = self.sent
-        assert payload.tx_submitter == SUBMITTER
+        assert payload.tx_submitter == (None if payload.tx_hash is None else SUBMITTER)
         return payload.tx_hash
 
 
@@ -158,14 +165,14 @@ def _decode(tx_hex: str) -> Dict[str, Any]:
 
 
 class TestGate:
-    """The check runs once an hour, plus the re-entries after a settled top-up tx."""
+    """A check runs on start, then once an hour; settled top-up txs and retries re-enter it."""
 
     def test_recent_check_skips(self) -> None:
         """Within the hour, a fresh visit reads nothing."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER // 10, 10 * ETHER),
-            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 0},
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60},
         )
 
         assert harness.run() is None
@@ -174,18 +181,12 @@ class TestGate:
 
     @pytest.mark.parametrize(
         "shared_state",
-        [
-            {},
-            {
-                LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS,
-                TOPUP_TXS_THIS_CHECK_KEY: 2,
-            },
-        ],
+        [{}, {LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS}],
     )
     def test_opens_on_start_and_after_an_hour(
         self, shared_state: Dict[str, Any]
     ) -> None:
-        """The gate opens on start and an hour later, and resets the tx counter."""
+        """The gate opens on start and an hour later."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER, 10 * ETHER),
@@ -195,42 +196,23 @@ class TestGate:
         assert harness.run() is None
         harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_called_once()
         assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 0
 
-    def test_reentry_skips_the_gate(self) -> None:
-        """After a settled top-up tx, the round checks again within the hour."""
-        harness = _Harness(
-            "polygon",
-            funds_status("polygon", ETHER, 10 * ETHER),
-            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 1},
-            tx_submitter=SUBMITTER,
-        )
-
-        assert harness.run() is None
-        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_called_once()
-
-    def test_reentry_stops_after_two_txs(self) -> None:
-        """No more than two top-up txs per check."""
+    def test_retry_repeats_the_check(self) -> None:
+        """A visit that ended in no majority is retried, though it already closed the gate."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER // 10, 10 * ETHER),
-            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 2},
-            tx_submitter=SUBMITTER,
+            responses=[
+                _response(STATE, {"tx_hash": SAFE_TX_HASH}),
+                _response(STATE, {"tx_hash": SAFE_TX_HASH}),
+            ],
         )
+        first = harness.run()
+        harness.sent.clear()
+        harness.context.state.round_sequence.last_round_id = SUBMITTER
 
-        assert harness.run() is None
-        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_not_called()
-
-    def test_reentry_with_fresh_state_checks(self) -> None:
-        """A re-entry without an in-memory counter (e.g. after a restart) still checks."""
-        harness = _Harness(
-            "polygon",
-            funds_status("polygon", ETHER, 10 * ETHER),
-            tx_submitter=SUBMITTER,
-        )
-
-        assert harness.run() is None
-        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_called_once()
+        assert first is not None
+        assert harness.run() == first
 
     def test_failed_status_read_prepares_nothing(self) -> None:
         """A failing status read skips the top-up instead of the period."""
@@ -264,7 +246,6 @@ class TestNoMove:
 
         assert harness.run() is None
         assert not harness.contract_calls
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 0
 
 
 class TestTransfer:
@@ -291,17 +272,25 @@ class TestTransfer:
         assert call["contract_address"] == SAFE
         assert call["contract_callable"] == "get_raw_safe_transaction_hash"
         assert call["chain_id"] == "polygon"
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 1
 
-    def test_moves_to_a_signer_below_the_settlement_balance_threshold(self) -> None:
-        """With no `min_tx_balance`, a nearly empty Agent Signer is still topped up."""
+    @pytest.mark.parametrize(
+        "signer_balance, tops_up",
+        [
+            (SIGNER_SETTLEMENT_THRESHOLD - 1, False),
+            (SIGNER_SETTLEMENT_THRESHOLD, True),
+        ],
+    )
+    def test_skips_a_signer_below_the_settlement_balance_threshold(
+        self, signer_balance: int, tops_up: bool
+    ) -> None:
+        """The tx settlement would wait for a refill below `agent_balance_threshold`."""
         harness = _Harness(
             "polygon",
-            funds_status("polygon", ETHER // 100, 10 * ETHER),
+            funds_status("polygon", signer_balance, 10 * ETHER),
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
 
-        assert _decode(harness.run() or "")["ether_value"] == 2 * ETHER - ETHER // 100
+        assert (harness.run() is not None) is tops_up
 
     def test_moves_all_of_a_short_safe(self) -> None:
         """An Agent Safe holding less than required sends all it holds."""
@@ -322,7 +311,18 @@ class TestTransfer:
         )
 
         assert harness.run() is None
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 0
+
+    def test_settled_transfer_ends_the_check(self) -> None:
+        """No further tx follows a settled transfer, even if the Agent Signer is still short."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 10 * ETHER),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60},
+            tx_submitter=SUBMITTER,
+        )
+
+        assert harness.run() is None
+        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].assert_not_called()
 
 
 class TestGnosisUnwrap:
@@ -352,14 +352,18 @@ class TestGnosisUnwrap:
         assert tx["to_address"] == WXDAI_ADDRESS
         assert tx["ether_value"] == 0
         assert tx["data"] == WITHDRAW_DATA
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 1
 
-    def test_transfers_when_xdai_covers_the_move(self) -> None:
-        """Enough Agent Safe xDAI goes straight to the transfer."""
+    @pytest.mark.parametrize("extra_xdai", [0, ETHER])
+    def test_transfers_when_xdai_covers_the_move(self, extra_xdai: int) -> None:
+        """Agent Safe xDAI that covers the move, exactly or more, goes straight to the transfer."""
         harness = _Harness(
             "gnosis",
             funds_status(
-                "gnosis", ETHER // 10, 5 * ETHER, wxdai_balance=ETHER, track_wxdai=True
+                "gnosis",
+                ETHER // 10,
+                19 * ETHER // 10 + extra_xdai,
+                wxdai_balance=ETHER,
+                track_wxdai=True,
             ),
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
@@ -369,7 +373,10 @@ class TestGnosisUnwrap:
         assert tx["to_address"] == AGENT
         assert tx["ether_value"] == 19 * ETHER // 10
 
-    def test_transfers_the_unwrapped_xdai_after_an_unwrap(self) -> None:
+    @pytest.mark.parametrize("shared_state", [{LAST_TOPUP_CHECK_KEY: NOW - 60}, {}])
+    def test_transfers_the_unwrapped_xdai_after_an_unwrap(
+        self, shared_state: Dict[str, Any]
+    ) -> None:
         """After the unwrap, the Agent Signer's gas makes the need exceed the xDAI: move the xDAI."""
         gas = 10**15
         unwrapped = 19 * ETHER // 10 - ETHER
@@ -382,7 +389,7 @@ class TestGnosisUnwrap:
                 wxdai_balance=5 * ETHER - unwrapped,
                 track_wxdai=True,
             ),
-            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 1},
+            shared_state=shared_state,
             tx_submitter=SUBMITTER,
             settled_to=WXDAI_ADDRESS,
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
@@ -392,7 +399,6 @@ class TestGnosisUnwrap:
 
         assert tx["to_address"] == AGENT
         assert tx["ether_value"] == ETHER + unwrapped
-        assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 2
 
     def test_no_xdai_after_an_unwrap_prepares_nothing(self) -> None:
         """A second unwrap is never prepared in the same check."""
@@ -401,7 +407,7 @@ class TestGnosisUnwrap:
             funds_status(
                 "gnosis", ETHER // 10, 0, wxdai_balance=5 * ETHER, track_wxdai=True
             ),
-            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 1},
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60},
             tx_submitter=SUBMITTER,
             settled_to=WXDAI_ADDRESS,
         )
@@ -422,6 +428,50 @@ class TestGnosisUnwrap:
         assert harness.run() is None
         assert len(harness.contract_calls) == 1
 
+    def test_unwrap_then_transfer_then_success(self) -> None:
+        """Each visit acts on the tx the previous one settled, ending in a succeeded top-up."""
+        unwrap = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
+            ),
+            responses=[
+                _response(STATE, {"data": WITHDRAW_DATA}),
+                _response(STATE, {"tx_hash": SAFE_TX_HASH}),
+            ],
+        )
+        unwrap_tx = unwrap.run()
+        transfer = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis",
+                ETHER // 10,
+                19 * ETHER // 10,
+                wxdai_balance=4 * ETHER,
+                track_wxdai=True,
+            ),
+            shared_state=unwrap.shared_state,
+            tx_submitter=SUBMITTER,
+            settled_tx=unwrap_tx,
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+        transfer_tx = transfer.run()
+        done = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis", 2 * ETHER, 0, wxdai_balance=4 * ETHER, track_wxdai=True
+            ),
+            shared_state=transfer.shared_state,
+            tx_submitter=SUBMITTER,
+            settled_tx=transfer_tx,
+        )
+
+        assert _decode(unwrap_tx or "")["to_address"] == WXDAI_ADDRESS
+        assert _decode(transfer_tx or "")["to_address"] == AGENT
+        assert transfer.shared_state[TOPUP_SUCCEEDED_KEY] is False
+        assert done.run() is None
+        assert done.shared_state[TOPUP_SUCCEEDED_KEY] is True
+
 
 class TestTopUpSucceeded:
     """`/funds-status` may report the top-up deficits only once a transfer has settled."""
@@ -431,11 +481,7 @@ class TestTopUpSucceeded:
         harness = _Harness(
             "polygon",
             funds_status("polygon", 2 * ETHER, 8 * ETHER),
-            shared_state={
-                LAST_TOPUP_CHECK_KEY: NOW - 60,
-                TOPUP_TXS_THIS_CHECK_KEY: 1,
-                TOPUP_SUCCEEDED_KEY: False,
-            },
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_SUCCEEDED_KEY: False},
             tx_submitter=SUBMITTER,
         )
 
@@ -449,11 +495,7 @@ class TestTopUpSucceeded:
             funds_status(
                 "gnosis", ETHER // 10, 0, wxdai_balance=5 * ETHER, track_wxdai=True
             ),
-            shared_state={
-                LAST_TOPUP_CHECK_KEY: NOW - 60,
-                TOPUP_TXS_THIS_CHECK_KEY: 1,
-                TOPUP_SUCCEEDED_KEY: False,
-            },
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_SUCCEEDED_KEY: False},
             tx_submitter=SUBMITTER,
             settled_to=WXDAI_ADDRESS,
         )
@@ -461,24 +503,40 @@ class TestTopUpSucceeded:
         assert harness.run() is None
         assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
 
-    def test_new_topup_tx_clears_the_success(self) -> None:
-        """Until the next top-up tx settles, an earlier success no longer counts."""
+    @pytest.mark.parametrize(
+        "signer_balance",
+        [ETHER // 10, ETHER],  # a top-up tx is prepared / nothing is due
+    )
+    def test_new_check_clears_the_success(self, signer_balance: int) -> None:
+        """Until a transfer of the new check settles, an earlier success no longer counts."""
         harness = _Harness(
             "polygon",
-            funds_status("polygon", ETHER // 10, 10 * ETHER),
+            funds_status("polygon", signer_balance, 10 * ETHER),
             shared_state={TOPUP_SUCCEEDED_KEY: True},
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
 
-        assert harness.run() is not None
+        harness.run()
         assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
 
-    def test_no_topup_tx_keeps_the_success(self) -> None:
-        """A check that sends nothing leaves the last outcome as it was."""
+    def test_failed_read_clears_the_success(self) -> None:
+        """A check that cannot read the status does not keep an earlier success."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER, 10 * ETHER),
             shared_state={TOPUP_SUCCEEDED_KEY: True},
+        )
+        harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].side_effect = RuntimeError
+
+        assert harness.run() is None
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
+
+    def test_success_stands_between_checks(self) -> None:
+        """Within the hour, the last outcome is kept."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 10 * ETHER),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_SUCCEEDED_KEY: True},
         )
 
         assert harness.run() is None

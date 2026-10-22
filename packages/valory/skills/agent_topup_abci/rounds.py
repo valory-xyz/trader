@@ -33,7 +33,6 @@ from packages.valory.skills.abstract_round_abci.base import (
     CollectionRound,
     DegenerateRound,
     DeserializedCollection,
-    NONE_EVENT_ATTRIBUTE,
     get_name,
 )
 from packages.valory.skills.agent_topup_abci.payloads import AgentTopUpPayload
@@ -74,6 +73,8 @@ class AgentTopUpRound(CollectSameUntilThresholdRound):
 
     payload_class = AgentTopUpPayload
     done_event: Enum = Event.DONE
+    # a visit that sends no tx votes all `None`, leaving `tx_submitter` as it was
+    none_event: Enum = Event.DONE
     no_majority_event: Enum = Event.NO_MAJORITY
     selection_key = (
         get_name(SynchronizedData.tx_submitter),
@@ -81,12 +82,6 @@ class AgentTopUpRound(CollectSameUntilThresholdRound):
     )
     collection_key = get_name(SynchronizedData.participant_to_topup)
     synchronized_data_class = SynchronizedData
-    # the none event is not required because the `tx_submitter` of the payload is never `None`
-    extended_requirements = tuple(
-        attribute
-        for attribute in CollectSameUntilThresholdRound.required_class_attributes
-        if attribute != NONE_EVENT_ATTRIBUTE
-    )
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
@@ -95,9 +90,25 @@ class AgentTopUpRound(CollectSameUntilThresholdRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        if event == Event.DONE and synced_data.most_voted_tx_hash is not None:
+        if event != Event.DONE:
+            return res
+
+        _, tx_hash = self.most_voted_payload_values
+        if tx_hash is not None:
             return synced_data, Event.PREPARE_TX
 
+        last_submitter = synced_data.db.get(
+            get_name(SynchronizedData.tx_submitter), None
+        )
+        if last_submitter == self.auto_round_id():
+            # The check is over, so a later failure in this period is not a top-up one.
+            return (
+                synced_data.update(
+                    synchronized_data_class=SynchronizedData,
+                    tx_submitter=FinishedAgentTopUpRound.auto_round_id(),
+                ),
+                Event.DONE,
+            )
         return res
 
 

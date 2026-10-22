@@ -30,6 +30,7 @@ from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.base import get_name
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.behaviours import AbstractRoundBehaviour
+from packages.valory.skills.agent_topup_abci.models import Params
 from packages.valory.skills.agent_topup_abci.payloads import AgentTopUpPayload
 from packages.valory.skills.agent_topup_abci.rounds import (
     AgentTopUpAbciApp,
@@ -54,11 +55,7 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 )
 
 LAST_TOPUP_CHECK_KEY = "last_topup_check"
-TOPUP_TXS_THIS_CHECK_KEY = "agent_topup_txs_this_check"
 TOPUP_CHECK_INTERVAL_SECONDS = 60 * 60
-# An unwrap, then the transfer it funds.
-MAX_TOPUP_TXS_PER_CHECK = 2
-# setting the safe gas to 0 means that all available gas will be used
 SAFE_GAS = 0
 
 
@@ -73,6 +70,11 @@ class AgentTopUpBehaviour(BaseBehaviour):
         return SynchronizedData(super().synchronized_data.db)
 
     @property
+    def params(self) -> Params:
+        """Return the params."""
+        return cast(Params, super().params)
+
+    @property
     def skill_shared_state(self) -> Dict[str, Any]:
         """Return the state shared across the agent's skills."""
         return self.context.shared_state
@@ -80,18 +82,12 @@ class AgentTopUpBehaviour(BaseBehaviour):
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            tx_hex = None
-            if self._is_check_due():
-                tx_hex = yield from self._prepare_topup_tx()
+            tx_hex = yield from self._get_topup_tx()
+            tx_submitter = None
             if tx_hex is not None:
-                self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] = (
-                    self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0) + 1
-                )
-                self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = False
+                tx_submitter = self.matching_round.auto_round_id()
             payload = AgentTopUpPayload(
-                self.context.agent_address,
-                self.matching_round.auto_round_id(),
-                tx_hex,
+                self.context.agent_address, tx_submitter, tx_hex
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():
@@ -99,34 +95,48 @@ class AgentTopUpBehaviour(BaseBehaviour):
             yield from self.wait_until_round_end()
             self.set_done()
 
-    def _is_check_due(self) -> bool:
-        """Whether this visit checks the Agent Signer: once an hour, plus the re-entries after a settled top-up tx."""
+    def _get_topup_tx(self) -> Generator[None, None, Optional[str]]:
+        """Prepare the top-up tx this visit sends, if any."""
+        settled_to = self._get_settled_topup_to()
+        if settled_to == self.context.agent_address:
+            self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = True
+            return None
+        if settled_to == WXDAI_ADDRESS:
+            # An unwrap is followed by the transfer it funds, never by a second unwrap.
+            return (yield from self._prepare_topup_tx(allow_unwrap=False))
+        if not self._is_retry() and not self._is_check_due():
+            return None
+        return (yield from self._prepare_topup_tx(allow_unwrap=True))
+
+    def _get_settled_topup_to(self) -> Optional[str]:
+        """Return the recipient of the top-up tx that settled just before this visit, if any."""
         last_submitter = self.synchronized_data.db.get(
             get_name(SynchronizedData.tx_submitter), None
         )
-        if last_submitter == self.matching_round.auto_round_id():
-            self._record_settled_transfer()
-            return (
-                self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0)
-                < MAX_TOPUP_TXS_PER_CHECK
-            )
+        if last_submitter != self.matching_round.auto_round_id():
+            return None
+        tx = skill_input_hex_to_payload(self.synchronized_data.most_voted_tx_hash)
+        return tx["to_address"]
 
+    def _is_retry(self) -> bool:
+        """Whether this visit repeats one that ended in no majority or a timeout."""
+        last_round_id = self.context.state.round_sequence.last_round_id
+        return last_round_id == self.matching_round.auto_round_id()
+
+    def _is_check_due(self) -> bool:
+        """Whether a new check starts: on start, then once an hour."""
         now = int(time.time())
         last_check = self.skill_shared_state.get(LAST_TOPUP_CHECK_KEY)
         if last_check is not None and now - last_check < TOPUP_CHECK_INTERVAL_SECONDS:
             return False
 
         self.skill_shared_state[LAST_TOPUP_CHECK_KEY] = now
-        self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] = 0
+        self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = False
         return True
 
-    def _record_settled_transfer(self) -> None:
-        """Mark the top-up as succeeded when the tx that just settled was the transfer, not the unwrap."""
-        tx = skill_input_hex_to_payload(self.synchronized_data.most_voted_tx_hash)
-        if tx["to_address"] == self.context.agent_address:
-            self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = True
-
-    def _prepare_topup_tx(self) -> Generator[None, None, Optional[str]]:
+    def _prepare_topup_tx(
+        self, allow_unwrap: bool
+    ) -> Generator[None, None, Optional[str]]:
         """Prepare the next top-up Safe tx: the wxDAI unwrap when Agent Safe xDAI is short, otherwise the transfer."""
         chain = self.params.default_chain_id
         agent_address = self.context.agent_address
@@ -136,6 +146,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 self.skill_shared_state[GET_AGENT_TOPUP_METHOD_NAME],
                 funds,
                 agent_address,
+                self.params.agent_balance_threshold,
             ).get(chain, NO_TOPUP)
         except Exception as exc:  # pylint: disable=broad-except
             # The round starts every period: a failed read skips the top-up, never the period.
@@ -148,8 +159,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))
-        is_first_tx = self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0) == 0
-        if chain == GNOSIS_CHAIN_NAME and safe_native < topup.move and is_first_tx:
+        if allow_unwrap and chain == GNOSIS_CHAIN_NAME and safe_native < topup.move:
             unwrap_amount = topup.move - safe_native
             self.context.logger.info(
                 f"Unwrapping {unwrap_amount} wxDAI in the Agent Safe."

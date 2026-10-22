@@ -29,5 +29,5 @@ from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 class AgentTopUpPayload(BaseTxPayload):
     """A transaction payload carrying the prepared top-up Safe tx, if any."""
 
-    tx_submitter: str
+    tx_submitter: Optional[str]
     tx_hash: Optional[str]
