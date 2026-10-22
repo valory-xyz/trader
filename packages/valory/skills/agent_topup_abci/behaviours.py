@@ -47,7 +47,6 @@ from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
     GET_FUNDS_STATUS_METHOD_NAME,
 )
-from packages.valory.skills.funds_manager.models import TopUpAction
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -134,10 +133,8 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 f"Agent Signer top-up skipped: {type(exc).__name__}({exc})."
             )
             return None
-        if topup.action != TopUpAction.MOVE:
-            self.context.logger.info(
-                f"No Agent Signer top-up on {chain}: {topup.action.value}."
-            )
+        if topup.move == 0:
+            self.context.logger.info(f"No Agent Signer top-up on {chain}.")
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))

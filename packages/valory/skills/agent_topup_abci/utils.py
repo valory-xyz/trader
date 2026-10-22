@@ -25,15 +25,12 @@ from packages.valory.skills.funds_manager.models import (
     AgentTopUp,
     FundRequirements,
     TokenRequirement,
-    TopUpAction,
 )
 
 GNOSIS_CHAIN_NAME = "gnosis"
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 
-NO_TOPUP = AgentTopUp(
-    action=TopUpAction.NONE, move=0, signer_deficit=None, safe_deficit=None
-)
+NO_TOPUP = AgentTopUp(move=0, signer_deficit=None, safe_deficit=None)
 
 GetAgentTopUp = Callable[..., Dict[str, AgentTopUp]]
 

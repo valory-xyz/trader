@@ -37,7 +37,6 @@ from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
     ChainRequirements,
     FundRequirements,
-    TopUpAction,
 )
 
 
@@ -52,9 +51,8 @@ class TestGetAgentTopUps:
 
         topup = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT)["gnosis"]
 
-        assert topup.action == TopUpAction.MOVE
         assert topup.move == 19 * ETHER // 10
-        assert topup.safe_deficit is None
+        assert topup.safe_deficit == 0
 
     def test_unread_wxdai_moves_nothing(self) -> None:
         """An unknown wxDAI balance never moves funds on Gnosis."""
@@ -81,7 +79,6 @@ class TestGetAgentTopUps:
 
         topup = get_agent_topups(real_topup_rule("polygon"), funds, AGENT)["polygon"]
 
-        assert topup.action == TopUpAction.MOVE
         assert topup.move == ETHER // 2
         assert topup.signer_deficit == 0
         assert topup.safe_deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER

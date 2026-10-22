@@ -233,21 +233,20 @@ class TestGate:
 
 
 class TestNoMove:
-    """Only a MOVE decision prepares a tx."""
+    """Only a non-zero move prepares a tx."""
 
     @pytest.mark.parametrize(
         "signer_balance, safe_balance",
         [
-            (ETHER, 10 * ETHER),  # NONE: the Agent Signer is above its threshold
-            (ETHER // 100, 10 * ETHER),  # SIGNER_ALERT: below min_tx_balance
-            (ETHER // 10, 0),  # SAFE_ALERT: the Agent Safe is empty
-            (None, 10 * ETHER),  # NONE: unread balance
+            (ETHER, 10 * ETHER),  # the Agent Signer is above its threshold
+            (ETHER // 10, 0),  # the Agent Safe is empty
+            (None, 10 * ETHER),  # unread balance
         ],
     )
     def test_no_tx(
         self, signer_balance: Optional[int], safe_balance: Optional[int]
     ) -> None:
-        """Alerts and nothing-due end the check without a tx."""
+        """A zero move ends the check without a tx."""
         harness = _Harness(
             "polygon", funds_status("polygon", signer_balance, safe_balance)
         )
@@ -282,6 +281,16 @@ class TestTransfer:
         assert call["contract_callable"] == "get_raw_safe_transaction_hash"
         assert call["chain_id"] == "polygon"
         assert harness.shared_state[TOPUP_TXS_THIS_CHECK_KEY] == 1
+
+    def test_moves_to_a_signer_below_the_settlement_balance_threshold(self) -> None:
+        """With no `min_tx_balance`, a nearly empty Agent Signer is still topped up."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 100, 10 * ETHER),
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert _decode(harness.run() or "")["ether_value"] == 2 * ETHER - ETHER // 100
 
     def test_moves_all_of_a_short_safe(self) -> None:
         """An Agent Safe holding less than required sends all it holds."""
@@ -399,3 +408,4 @@ class TestGnosisUnwrap:
 
         assert harness.run() is None
         assert len(harness.contract_calls) == 1
+

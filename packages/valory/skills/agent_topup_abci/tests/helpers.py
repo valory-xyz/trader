@@ -37,12 +37,7 @@ NATIVE = "0x0000000000000000000000000000000000000000"
 ETHER = 10**18
 
 
-def native(
-    balance: Optional[int],
-    topup: int,
-    threshold: int,
-    min_tx_balance: Optional[int] = None,
-) -> TokenRequirement:
+def native(balance: Optional[int], topup: int, threshold: int) -> TokenRequirement:
     """A native token entry as `get_funds_status()` returns it."""
     deficit = None
     if balance is not None:
@@ -51,7 +46,6 @@ def native(
         topup=topup,
         threshold=threshold,
         is_native=True,
-        min_tx_balance=min_tx_balance,
         balance=balance,
         deficit=deficit,
         decimals=18,
@@ -73,7 +67,7 @@ def funds_status(
         safe_tokens[WXDAI_ADDRESS] = TokenRequirement(
             topup=0, threshold=0, is_native=False, balance=wxdai_balance, deficit=0
         )
-    signer = native(signer_balance, 2 * ETHER, 21 * ETHER // 100, ETHER // 50)
+    signer = native(signer_balance, 2 * ETHER, 21 * ETHER // 100)
     return FundRequirements(
         {
             chain: ChainRequirements(
