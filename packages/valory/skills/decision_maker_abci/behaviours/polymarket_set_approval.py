@@ -73,9 +73,9 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             # CLOB v2: provision the DepositWallet and set its trading approvals
             # (pUSD allowance + operator rights to the V2 Exchange,
-            # NegRiskCTFExchange and Protocol V2 ExchangeV3) via the relayer
-            # proxy. The Safe keeps its own trading and redemption approvals,
-            # built below.
+            # NegRiskCTFExchange, NegRiskAdapter and Protocol V2 ExchangeV3)
+            # via the relayer proxy. The Safe keeps its own trading and
+            # redemption approvals, built below.
             yield from self._provision_deposit_wallet()
 
             if self._safe_allowances_current():
@@ -580,12 +580,14 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
     def _build_dw_trading_approvals(self) -> list:
         """Build the full DepositWallet trading-approval batch.
 
-        pUSD allowance + CTF operator rights to the V2 Exchange and
-        NegRiskCTFExchange, plus the Protocol V2 approvals from
-        ``_build_dw_v2_trading_approvals``. The redemption-adapter approvals
-        are excluded: redemption is executed by the Safe, never the
-        DepositWallet. The connection's ``EXEC_WALLET_BATCH`` is a generic
-        relay, so the calls are constructed here rather than connection-side.
+        pUSD allowance + CTF operator rights to the V2 Exchange,
+        NegRiskCTFExchange and NegRiskAdapter, plus the Protocol V2 approvals
+        from ``_build_dw_v2_trading_approvals``. The NegRiskAdapter approvals
+        stay because Polymarket's CLOB still checks them on orders in
+        negative-risk markets. The redemption-adapter approvals are excluded:
+        redemption is executed by the Safe, never the DepositWallet. The
+        connection's ``EXEC_WALLET_BATCH`` is a generic relay, so the calls are
+        constructed here rather than connection-side.
 
         :return: list of ``{"to", "data", "value"}`` calls for EXEC_WALLET_BATCH.
         """
@@ -594,6 +596,7 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         spenders = (
             self.params.polymarket_ctf_exchange_address,
             self.params.polymarket_neg_risk_ctf_exchange_address,
+            self.params.polymarket_neg_risk_adapter_address,
         )
         txs = [
             {
