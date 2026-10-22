@@ -31,6 +31,7 @@ from packages.valory.skills.chatui_abci.models import (
     WITHDRAWAL_STATE_ERRORED,
     WITHDRAWAL_STATE_SELLING,
 )
+from packages.valory.skills.decision_maker_abci.behaviours.base import V2_BALANCE_KEY
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     PolymarketDepositWalletBehaviour,
 )
@@ -851,6 +852,21 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
                 f"(fetch failed: {error})"
             )
             return
+        # V2 positions are held in the Safe, so count its open V2 rows too. With
+        # no DepositWallet the read above was already the Safe's.
+        safe_positions = yield from self.send_polymarket_connection_request(
+            {
+                "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                "params": {"redeemable": False},
+            }
+        )
+        if isinstance(safe_positions, list):
+            assets = {p.get("asset") for p in positions}
+            positions += [
+                p
+                for p in safe_positions
+                if V2_BALANCE_KEY in p and p.get("asset") not in assets
+            ]
         try:
             locked = round(
                 sum(
