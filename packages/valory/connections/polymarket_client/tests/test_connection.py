@@ -2379,13 +2379,22 @@ V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
 ]""")
 # Open rows of another wallet: a Protocol V2 binary market
-# (https://gamma-api.polymarket.com/markets/6027078) and a V1 market whose token
-# id's top byte is 0x01 (https://gamma-api.polymarket.com/markets/3249953):
+# (https://gamma-api.polymarket.com/markets/6027078), a V1 market whose token
+# id's top byte is 0x01 (https://gamma-api.polymarket.com/markets/3249953) and
+# a V1 market whose condition ID ends in a zero byte
+# (https://gamma-api.polymarket.com/markets/6029765):
 # https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
-V2_OPEN, V1_OPEN = json.loads("""[
+# Then a winning "Yes" row of a Protocol V2 binary market
+# (https://gamma-api.polymarket.com/markets/5739531):
+# https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
+V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
 {"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
-{"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"}
+{"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"},
+{"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
+{"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
 ]""")
+# The Bucks row once its market resolved against it.
+V1_00_LOSE = {**V1_00, "redeemable": True, "current_value": 0.0, "current_price": 0.0}
 V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
 # The decision-maker params naming the contracts above.
 V2_PARAMS = dict(
@@ -2397,14 +2406,14 @@ V2_PARAMS = dict(
     polymarket_router_address=ROUTER,
 )
 V2_DW = to_checksum_address(DW_ADDRESS)
-V2_TOKEN_IDS = {V2_WIN["token_id"], V2_LOSE["token_id"], V2_OPEN["token_id"]}
+V2_TOKEN_IDS = {row["token_id"] for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0)}
 # The holders' balanceOf on PositionManager (V2) or the CTF (V1) at fetch time;
 # the Data API rounds sizes to four decimals.
 ONCHAIN_BALANCE = {
     row["token_id"]: balance
     for row, balance in zip(
-        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN),
-        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000),
+        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0),
+        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000, 5000000, 2094720),
     )
 }
 
@@ -2516,15 +2525,11 @@ def _safe_world(*rows: dict) -> Any:
     return _v2_world({V2_SAFE: list(rows)}, _ledger(V2_SAFE, *rows))
 
 
-def _wire(behaviour: Any, conn: Any, **overrides: Any) -> None:
-    """Answer the behaviour's Polymarket requests with ``conn``, or an override per request type."""
+def _wire(behaviour: Any, conn: Any) -> None:
+    """Answer the behaviour's Polymarket requests with ``conn``."""
 
     def send(request: dict, none_on_error: bool = False) -> Generator:
-        handler = overrides.get(request["request_type"])
-        if handler:
-            response, error = handler(**request["params"]), None
-        else:
-            response, error = conn._route_request(json.loads(json.dumps(request)))
+        response, error = conn._route_request(json.loads(json.dumps(request)))
         yield
         return None if error and none_on_error else json.loads(json.dumps(response))
 

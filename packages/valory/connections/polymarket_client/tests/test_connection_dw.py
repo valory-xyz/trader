@@ -65,6 +65,7 @@ def _make_conn() -> _Conn:
     conn.ctf_exchange = EXCH
     conn.neg_risk_ctf_exchange = NRX
     conn.neg_risk_adapter = NRA
+    conn.position_manager = "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"
     conn.w3 = MagicMock()
     conn.client = MagicMock()
     configuration_mock = MagicMock()

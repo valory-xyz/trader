@@ -27,15 +27,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
-from packages.valory.connections.polymarket_client.tests.test_connection import (
-    V1_OPEN,
-    V2_DW,
-    V2_LOSE,
-    V2_OPEN,
-    V2_SAFE,
-    _v2_world,
-    _wire,
-)
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.abstract_round_abci.base import (
     BaseTxPayload,
     CollectSameUntilThresholdRound,
@@ -3524,12 +3516,13 @@ def test_v2_position_in_locked_funds_and_summary(tmp_path: Path) -> None:
     """The locked-funds snapshot counts the Safe's open V2 positions next to the DW's."""
     behaviour = _make_behaviour(tmp_path)
     (tmp_path / "deposit_wallet.json").write_text(
-        json.dumps({"dw_address": V2_DW, "dw_owner": "agent_x"})
+        json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
     )
-    with _v2_world({V2_SAFE: [V2_OPEN, V2_LOSE], V2_DW: [V1_OPEN]}, {}) as conn:
-        _wire(behaviour, conn)
+    safe = [pm.V2_OPEN, pm.V2_LOSE, pm.V1_00]  # Safe V1 rows were never counted
+    with pm._v2_world({pm.V2_SAFE: safe, pm.V2_DW: [pm.V1_OPEN]}, {}) as conn:
+        pm._wire(behaviour, conn)
         list(behaviour._snapshot_locked_funds())
-    locked = round(V2_OPEN["entry_cost_usdc"] + V1_OPEN["entry_cost_usdc"], 2)
+    locked = round(pm.V2_OPEN["entry_cost_usdc"] + pm.V1_OPEN["entry_cost_usdc"], 2)
     behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
         locked
     )
