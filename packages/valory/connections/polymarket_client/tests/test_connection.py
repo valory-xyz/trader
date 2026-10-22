@@ -43,6 +43,7 @@ from packages.valory.connections.polymarket_client.connection import (
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
     SrrDialogues,
+    V2_BALANCE_KEY,
     _bool_param,
     _validate_builder_code,
 )
@@ -2363,14 +2364,8 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
     return mock_get.call_args_list[call_index][1]["params"]
 
 
-# ---------------------------------------------------------------------------
-# Protocol V2 positions: real rows, a fake chain and a fake Data API
-# ---------------------------------------------------------------------------
-
-# Real Data API /v2/positions rows, trimmed to the fields the code reads. A
-# Safe holding both sides of a resolved Protocol V2 neg-risk market (Gamma
-# version v2, "No" won:
-# https://gamma-api.polymarket.com/markets/5929023) next to its V1 rows:
+# Real Data API /v2/positions rows, trimmed to the fields the code reads: a Safe
+# holding both sides of a resolved V2 neg-risk market ("No" won) and its V1 rows.
 # https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
 V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
@@ -2378,14 +2373,9 @@ V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
 {"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
 ]""")
-# Open rows of another wallet: a Protocol V2 binary market
-# (https://gamma-api.polymarket.com/markets/6027078), a V1 market whose token
-# id's top byte is 0x01 (https://gamma-api.polymarket.com/markets/3249953) and
-# a V1 market whose condition ID ends in a zero byte
-# (https://gamma-api.polymarket.com/markets/6029765):
+# Open V2 binary, V1 (token ID top byte 0x01) and V1 (condition ID ending in a
+# zero byte) rows of a wallet, then a winning "Yes" V2 binary row of another.
 # https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
-# Then a winning "Yes" row of a Protocol V2 binary market
-# (https://gamma-api.polymarket.com/markets/5739531):
 # https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
 V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
 {"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
@@ -2393,8 +2383,6 @@ V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
 {"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
 {"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
 ]""")
-# The Bucks row once its market resolved against it.
-V1_00_LOSE = {**V1_00, "redeemable": True, "current_value": 0.0, "current_price": 0.0}
 V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
 # The decision-maker params naming the contracts above.
 V2_PARAMS = dict(
@@ -2541,8 +2529,10 @@ def _wire(behaviour: Any, conn: Any) -> None:
 
 def test_v2_position_custody_swept_to_safe() -> None:
     """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares as before."""
-    pusd = {(COLLATERAL_ADDRESS, V2_DW): 2500000}
-    balances = {**_ledger(V2_DW, V2_WIN, V2_OPEN, V1_OPEN), **pusd}
+    dust = (POSITION_MANAGER, V2_DW, int(V2_WIN["token_id"]))  # one base unit moves too
+    pusd = (COLLATERAL_ADDRESS, V2_DW)
+    balances = {**_ledger(V2_DW, V2_OPEN, V1_OPEN), dust: 1, pusd: 2500000}
+    swept = {(key[0], V2_SAFE, *key[2:]): value for key, value in balances.items()}
     token_ids = [int(row["token_id"]) for row in (V1_OPEN, V2_WIN, V2_OPEN)]
     with _v2_world({}, balances) as conn:
         response, error = conn._sweep_dw(dw_address=V2_DW, token_ids=token_ids)
@@ -2556,8 +2546,15 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert {"target": CTF_ADDRESS, "data": v1_call} in calls
     for call in calls:
         _apply_transfer(balances, V2_DW, call["target"], call["data"])
-    pusd = {(COLLATERAL_ADDRESS, V2_SAFE): 2500000}
-    assert _held(balances) == {**_ledger(V2_SAFE, V2_WIN, V2_OPEN, V1_OPEN), **pusd}
+    assert _held(balances) == swept
+
+
+@pytest.mark.parametrize("malformed", [{"condition_id": ""}, {"outcome_index": None}])
+def test_v2_position_malformed_row_read_as_v1(malformed: dict) -> None:
+    """A positions row that can't be decoded as a V2 position is still read, as V1."""
+    with _safe_world({**V2_WIN, **malformed}) as conn:
+        positions, error = conn._fetch_all_positions()
+    assert error is None and [V2_BALANCE_KEY in p for p in positions] == [False]
 
 
 class TestBoolParam:

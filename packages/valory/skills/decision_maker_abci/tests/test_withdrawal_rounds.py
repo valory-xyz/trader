@@ -3512,17 +3512,22 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
         )
 
 
-def test_v2_position_in_locked_funds_and_summary(tmp_path: Path) -> None:
-    """The locked-funds snapshot counts the Safe's open V2 positions next to the DW's."""
+@pytest.mark.parametrize("dw_rows", [[pm.V1_OPEN], []])
+def test_v2_position_in_locked_funds_and_summary(tmp_path: Path, dw_rows: list) -> None:
+    """The snapshot counts the Safe's open V2 positions next to the DW's, each once."""
     behaviour = _make_behaviour(tmp_path)
-    (tmp_path / "deposit_wallet.json").write_text(
-        json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
-    )
-    safe = [pm.V2_OPEN, pm.V2_LOSE, pm.V1_00]  # Safe V1 rows were never counted
-    with pm._v2_world({pm.V2_SAFE: safe, pm.V2_DW: [pm.V1_OPEN]}, {}) as conn:
+    if dw_rows:  # with no DepositWallet the snapshot reads the Safe alone
+        (tmp_path / "deposit_wallet.json").write_text(
+            json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
+        )
+    safe = [pm.V2_OPEN, pm.V2_LOSE] + [pm.V1_00] * len(dw_rows)  # Safe V1: uncounted
+    with pm._v2_world({pm.V2_SAFE: safe, pm.V2_DW: dw_rows}, {}) as conn:
+        conn._route_request = MagicMock(wraps=conn._route_request)
         pm._wire(behaviour, conn)
         list(behaviour._snapshot_locked_funds())
-    locked = round(pm.V2_OPEN["entry_cost_usdc"] + pm.V1_OPEN["entry_cost_usdc"], 2)
+    reads = [call.args[0].get("params") for call in conn._route_request.call_args_list]
+    assert {"redeemable": False} in reads  # the Safe's unredeemable positions
+    locked = round(sum(row["entry_cost_usdc"] for row in [pm.V2_OPEN, *dw_rows]), 2)
     behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
         locked
     )

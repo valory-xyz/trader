@@ -1692,10 +1692,6 @@ class TestAsyncAct:
         assert payloads_sent[0].event == "prepare_tx"
 
 
-# ---------------------------------------------------------------------------
-# Protocol V2 claims and tool accuracy, answered by the connection
-
-
 def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ignore[no-untyped-def]
     """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
     behaviour = _make_behaviour()
@@ -1726,7 +1722,6 @@ def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ig
     txs = list(behaviour.multisend_batches)
     for call in conn.relayer_client.execute.call_args_list:
         txs += call.kwargs.get("transactions") or call.args[0]
-    # (target, calldata, operation: 0 is a plain call, value)
     return payloads[0], [
         (to_checksum_address(t.to), HexBytes(t.data), t.operation.value, int(t.value))
         for t in txs
@@ -1745,7 +1740,6 @@ def _v1_claim(row):  # type: ignore[no-untyped-def]
 def _router_claim(row):  # type: ignore[no-untyped-def]
     """Return the Router claim of a row's whole balance; bytes31 drops the zero pad byte of the Data API ID."""
     condition_id = bytes.fromhex(row["condition_id"][2:])
-    assert len(condition_id) == 32 and condition_id[31] == 0
     amount = pm.ONCHAIN_BALANCE[row["token_id"]]
     args = [condition_id[:31], row["outcome_index"], amount]
     types = ["bytes31", "uint256", "uint256"]
@@ -1767,10 +1761,11 @@ def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-u
 
 @pytest.mark.parametrize("builder", [False, True])
 def test_v2_position_losing_row_not_claimed(builder) -> None:  # type: ignore[no-untyped-def]
-    """A redeemable V2 row with no value builds no claim; losing V1 rows still do."""
-    with pm._safe_world(pm.V2_LOSE, pm.V1_LOSE, pm.V1_00_LOSE) as conn:
+    """No claim for a V2 row with no value, nor for a winning one the Safe no longer holds."""
+    rows, held = [pm.V2_LOSE, pm.V2_WIN0, pm.V1_LOSE], (pm.V2_LOSE, pm.V1_LOSE)
+    with pm._v2_world({pm.V2_SAFE: rows}, pm._ledger(pm.V2_SAFE, *held)) as conn:
         _, claims = _redeem_period(conn, builder)
-    assert sorted(claims) == sorted(map(_v1_claim, (pm.V1_LOSE, pm.V1_00_LOSE)))
+    assert claims == [_v1_claim(pm.V1_LOSE)]
 
 
 def test_v2_position_accuracy_updated_once() -> None:
@@ -1784,6 +1779,5 @@ def test_v2_position_accuracy_updated_once() -> None:
                 payload, claims = _redeem_period(conn, False, tools, policy)
                 tools = json.loads(payload.utilized_tools)
                 assert policy.accuracy_store == expected.accuracy_store
-                if not won:  # nothing to claim: no transaction to settle
-                    assert (claims, payload.tx_hash) == ([], None)
-                    assert payload.event in ("no_redeeming", "done")
+                # A loss leaves nothing to claim and no transaction to settle.
+                assert won or (claims, payload.event) == ([], "no_redeeming")
