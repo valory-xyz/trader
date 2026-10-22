@@ -23,6 +23,7 @@ import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qsl, urlsplit
 
 import pytest
 import requests
@@ -32,6 +33,7 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
+    DATA_API_BASE_URL,
     DATA_API_POSITIONS_URL,
     DATA_API_TRADES_URL,
     GAMMA_API_BASE_URL,
@@ -2394,14 +2396,32 @@ V2_PARAMS = dict(
     polymarket_router_address=ROUTER,
 )
 V2_DW = to_checksum_address(DW_ADDRESS)
-V2_TOKEN_IDS = {row["token_id"] for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0)}
+# Derived from /v2/tokens, as the spec says a positions row carries it: the V2
+# "Yes" token of a market carried over from V1, whose rows keep the legacy CTF
+# condition ID (https://gamma-api.polymarket.com/markets/559651). No wallet
+# holds it: the size is a round test value.
+XI = json.loads(
+    '{"token_id": "895257453734540292493143124621755605615887197499956109032745153687078305792", "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcome_index": 0, "current_size": 1.0, "redeemable": false, "negative_risk": false, "title": "Xi Jinping out before 2027?"}'
+)
+XI_WON = {**XI, "redeemable": True, "current_value": 1.0}  # as if it resolved Yes
+# Each fixture token's `module` in /v2/tokens: v1_ctf is V1, any other is V2.
+# https://data-api.polymarket.com/v2/tokens?token_id=<the fixture token IDs>
+TOKEN_MODULES = {
+    row["token_id"]: module
+    for row, module in zip(
+        (V2_WIN, V1_WIN, V1_LOSE, V2_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        "neg_risk v1_ctf v1_ctf neg_risk binary v1_ctf v1_ctf binary binary".split(),
+    )
+}
+V2_TOKEN_IDS = {token for token, module in TOKEN_MODULES.items() if module != "v1_ctf"}
 # The holders' balanceOf on PositionManager (V2) or the CTF (V1) at fetch time;
 # the Data API rounds sizes to four decimals.
 ONCHAIN_BALANCE = {
     row["token_id"]: balance
     for row, balance in zip(
-        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0),
-        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000, 5000000, 2094720),
+        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000, 5000000, 2094720)
+        + (10**6,),
     )
 }
 
@@ -2486,6 +2506,36 @@ def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
     return {key: value for key, value in balances.items() if value}
 
 
+def _token_ids(url: str, params: Optional[dict]) -> list:
+    """Return the token IDs a /v2/tokens read asks for."""
+    query = {**dict(parse_qsl(urlsplit(url).query)), **(params or {})}
+    ids = query.get("token_id") or query.get("token_ids")
+    return [str(i) for i in ids] if isinstance(ids, list) else str(ids).split(",")
+
+
+def _tokens_response(ids: list, modules: dict, down: bool = False) -> MagicMock:
+    """Answer a /v2/tokens read with each known token's module, or fail it."""
+    response = MagicMock()
+    if down:
+        response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
+    rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
+    response.json.return_value = {"data": rows}
+    return response
+
+
+def _positions_get(*pages: MagicMock) -> Any:
+    """Serve positions pages in turn (the last one repeats) and V1 tokens' modules."""
+    queue = list(pages)
+
+    def get(url: str, params: Optional[dict] = None, **_: Any) -> MagicMock:
+        if url.startswith(f"{DATA_API_BASE_URL}/v2/tokens"):
+            ids = _token_ids(url, params)
+            return _tokens_response(ids, dict.fromkeys(ids, "v1_ctf"))
+        return queue.pop(0) if len(queue) > 1 else queue[0]
+
+    return get
+
+
 @contextmanager
 def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
     """Yield a ``V2_SAFE`` connection reading ``pages`` from the Data API and ``balances`` from the chain."""
@@ -2498,7 +2548,13 @@ def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
     conn.relayer_client.execute.return_value.get_transaction.return_value = {}
     conn.relayer_proxy.exec_wallet_batch.return_value = "0xbatch"
 
+    conn.token_lookups, conn.tokens_down = [], False
+
     def get(url: str, params: dict, **_: Any) -> MagicMock:
+        if urlsplit(url).path == "/v2/tokens":
+            ids = _token_ids(url, params)
+            conn.token_lookups += ids
+            return _tokens_response(ids, TOKEN_MODULES, conn.tokens_down)
         assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
         rows = pages.get(to_checksum_address(params["user"]), [])
         redeemable_only = params.get("status") == "REDEEMABLE"
@@ -2549,12 +2605,21 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert _held(balances) == swept
 
 
-@pytest.mark.parametrize("malformed", [{"condition_id": ""}, {"outcome_index": None}])
-def test_v2_position_malformed_row_read_as_v1(malformed: dict) -> None:
-    """A positions row that can't be decoded as a V2 position is still read, as V1."""
-    with _safe_world({**V2_WIN, **malformed}) as conn:
-        positions, error = conn._fetch_all_positions()
-    assert error is None and [V2_BALANCE_KEY in p for p in positions] == [False]
+@pytest.mark.parametrize("tokens_down", [False, True])
+def test_v2_position_detected_by_token_module(tokens_down: bool) -> None:
+    """Rows are classed by their token's /v2/tokens module, looked up once; a failed lookup fails the read."""
+    rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = tokens_down
+        reads = [conn._fetch_all_positions() for _ in range(2)]
+    if tokens_down:
+        assert [positions for positions, _ in reads] == [None, None]
+        assert all(error for _, error in reads)
+        return
+    assert [[V2_BALANCE_KEY in p for p in positions] for positions, _ in reads] == [
+        [True, False, True]
+    ] * 2
+    assert sorted(conn.token_lookups) == sorted(row["token_id"] for row in rows)
 
 
 class TestBoolParam:
@@ -2691,7 +2756,10 @@ class TestPositionsReads:
     def test_maps_v2_fields_to_the_names_callers_read(self) -> None:
         """Each field a skill reads arrives under its v1 name with its value."""
         conn = _make_connection()
-        with patch("requests.get", return_value=_v2_response([_v2_position_row(True)])):
+        with patch(
+            "requests.get",
+            side_effect=_positions_get(_v2_response([_v2_position_row(True)])),
+        ):
             positions, error = conn._fetch_all_positions()
         assert error is None
         assert positions == [
@@ -2716,7 +2784,7 @@ class TestPositionsReads:
         conn = _make_connection()
         with patch("requests.get", return_value=_v2_response([])) as mock_get:
             conn._fetch_all_positions(size_threshold=5)
-        assert mock_get.call_args[0][0] == DATA_API_POSITIONS_URL
+        assert mock_get.call_args_list[0][0][0] == DATA_API_POSITIONS_URL
         assert _sent_params(mock_get) == {
             "user": SAFE_ADDRESS,
             "limit": 100,
@@ -2754,7 +2822,9 @@ class TestPositionsReads:
         """
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows)) as mock_get:
+        with patch(
+            "requests.get", side_effect=_positions_get(_v2_response(rows))
+        ) as mock_get:
             positions, _ = conn._fetch_all_positions(redeemable=redeemable)
         assert _sent_params(mock_get).get("status") == expected_status
         assert _sent_params(mock_get).get("include_archived") == expected_archived
@@ -2780,7 +2850,7 @@ class TestPositionsReads:
             _v2_response([_v2_position_row(token_id="1")], SAMPLE_CURSOR),
             _v2_response([_v2_position_row(token_id="2")]),
         ]
-        with patch("requests.get", side_effect=responses):
+        with patch("requests.get", side_effect=_positions_get(*responses)):
             positions, error = conn._fetch_all_positions()
         assert error is None
         assert [p["asset"] for p in positions] == ["1", "2"]
@@ -2789,10 +2859,13 @@ class TestPositionsReads:
         """A single-page read sends no cursor, stops there and selects rows the same way."""
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows, "next")) as mock_get:
+        page = _v2_response(rows, "next")
+        with patch("requests.get", side_effect=_positions_get(page)) as mock_get:
             positions, error = conn._get_positions(redeemable=False)
         assert error is None
-        assert mock_get.call_count == 1
+        assert [c.args[0] for c in mock_get.call_args_list].count(
+            DATA_API_POSITIONS_URL
+        ) == 1
         assert "cursor" not in _sent_params(mock_get)
         assert [p["redeemable"] for p in positions] == [False]
 

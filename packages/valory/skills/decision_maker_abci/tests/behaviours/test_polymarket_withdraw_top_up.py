@@ -255,8 +255,8 @@ def _top_up(tmp_path, conn):  # type: ignore[no-untyped-def]
 
 @pytest.mark.parametrize("v1_rows", [(pm.V1_OPEN, pm.V1_00), ()])
 def test_v2_position_detected_from_row(tmp_path, v1_rows) -> None:  # type: ignore[no-untyped-def]
-    """Each Safe row moves on its own ledger with no bet record; V1 rows that look like V2 stay V1."""
-    rows, dw = (pm.V2_OPEN, *v1_rows), to_checksum_address(DW)
+    """Each Safe row moves on its token module's ledger, whatever its condition ID, with no bet record."""
+    rows, dw = (pm.V2_OPEN, pm.XI, *v1_rows), to_checksum_address(DW)
     v1_ids = [int(row["token_id"]) for row in v1_rows]
     types = ["address", "address", "uint256[]", "uint256[]", "bytes"]
     v1_batch = pm._selector(f"safeBatchTransferFrom({','.join(types)})") + abi_encode(
