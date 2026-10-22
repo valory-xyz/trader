@@ -235,19 +235,17 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         # choice that documents agent intent; it does not limit on-chain work.
         index_sets = [1 << outcome_index]
 
-        polymarket_redeem_payload: Dict[str, Any] = {
+        polymarket_redeem_payload = {
             "request_type": RequestType.REDEEM_POSITIONS.value,
             "params": {
                 "condition_id": condition_id,
                 "index_sets": index_sets,
                 "collateral_token": collateral_token,
                 "is_neg_risk": is_neg_risk,
+                "outcome_index": outcome_index,
+                "amount": amount,
             },
         }
-        if amount is not None:
-            polymarket_redeem_payload["params"].update(
-                outcome_index=outcome_index, amount=amount
-            )
 
         redeem_result = yield from self.send_polymarket_connection_request(
             polymarket_redeem_payload
