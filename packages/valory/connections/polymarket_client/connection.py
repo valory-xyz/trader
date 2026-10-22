@@ -26,6 +26,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from itertools import product
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, cast
 
 import requests
@@ -108,6 +109,8 @@ TRADE_FIELDS_V2_TO_V1 = {
     "outcome_index": "outcomeIndex",
     "transaction_hash": "transactionHash",
 }
+# Set on a Protocol V2 positions row: the holder's PositionManager balance.
+V2_BALANCE_KEY = "positionManagerBalance"
 # Gamma market `version` the agent can trade; other versions use different contracts.
 SUPPORTED_MARKET_VERSION = "v1"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
@@ -1459,22 +1462,43 @@ class PolymarketClientConnection(BaseSyncConnection):
             params["include_archived"] = "true"
         return params
 
+    @staticmethod
+    def _is_v2_position(row: Dict[str, Any]) -> bool:
+        """Tell a Protocol V2 position from its Data API row.
+
+        A V2 position ID is the 31-byte condition ID followed by the outcome
+        index byte; the Data API pads that condition ID with a zero byte.
+
+        :param row: a snake_case positions row from Data API v2
+        :return: whether the row is a V2 position
+        """
+        condition_id = int(row["condition_id"], 16)
+        return int(row["token_id"]) == condition_id + int(row["outcome_index"])
+
     def _select_positions(
         self,
         rows: List[Dict[str, Any]],
         redeemable: Optional[bool],
+        holder: str,
     ) -> List[Dict[str, Any]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
 
         v2 has no status for "not redeemable", and its default status returns
         settled rows alongside open ones, so the ``redeemable`` filter is
-        applied here on the row flag.
+        applied here on the row flag. A V2 row also gets the holder's exact
+        PositionManager balance, since the Data API rounds sizes.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
+        :param holder: the address holding the positions
         :return: the selected positions, keyed by v1 names
         """
         positions = [self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1) for row in rows]
+        for row, position in zip(rows, positions):
+            if self._is_v2_position(row):
+                position[V2_BALANCE_KEY] = self._erc1155_balance_of(
+                    self.position_manager, holder, int(row["token_id"])
+                )
         if redeemable is None:
             return positions
         return [p for p in positions if bool(p.get("redeemable")) is redeemable]
@@ -1509,7 +1533,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable)
+        positions = self._select_positions(rows or [], redeemable, params["user"])
         self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
         return positions, None
 
@@ -1544,7 +1568,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable)
+        positions = self._select_positions(rows or [], redeemable, params["user"])
         self.logger.info(
             f"Fetched total of {len(positions)} positions for {params['user']}"
         )
@@ -1892,7 +1916,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Sweep the DepositWallet's pUSD AND CTF positions back to the Safe.
 
         "Transfer whatever's there": reads the DW's current pUSD balance and the
-        CTF balance for each supplied ``token_ids`` (the bet's outcome tokens),
+        CTF and PositionManager balances for each supplied ``token_ids``,
         then relays a single ``execute`` batch moving every non-zero balance
         DW→Safe through the relayer proxy. The Safe is the canonical store of
         persistent assets, so the bought CTF position must not linger in the
@@ -1926,14 +1950,16 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ),
                     }
                 )
-            for token_id in token_ids or []:
-                ctf_balance = self._erc1155_balance_of(self.ctf_address, dw, token_id)
-                if ctf_balance > 0:
+            # A V1 position is on the CTF and a V2 one on PositionManager.
+            ledgers = (self.ctf_address, self.position_manager)
+            for ledger, token_id in product(ledgers, token_ids or []):
+                balance = self._erc1155_balance_of(ledger, dw, token_id)
+                if balance > 0:
                     calls.append(
                         {
-                            "target": self.ctf_address,
+                            "target": ledger,
                             "data": self._encode_erc1155_safe_transfer(
-                                dw, self.safe_address, token_id, ctf_balance
+                                dw, self.safe_address, token_id, balance
                             ),
                         }
                     )

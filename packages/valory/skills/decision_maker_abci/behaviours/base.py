@@ -103,6 +103,9 @@ WXDAI = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 USDC_E_POLYGON = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
 USDC_POLYGON = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 PUSD_POLYGON = "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB"  # Polymarket v2 collateral
+# The polymarket_client connection sets this on a Protocol V2 positions row:
+# the holder's exact PositionManager balance, in base units.
+V2_BALANCE_KEY = "positionManagerBalance"
 BET_AMOUNT_FIELD = "bet_amount"
 SUPPORTED_STRATEGY_LOG_LEVELS = ("info", "warning", "error")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
