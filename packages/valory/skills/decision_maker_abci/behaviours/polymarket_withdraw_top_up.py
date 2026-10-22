@@ -27,7 +27,10 @@ from hexbytes import HexBytes
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    MultisendBatch,
+    V2_BALANCE_KEY,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     PolymarketDepositWalletBehaviour,
 )
@@ -70,12 +73,12 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
 
     def _fetch_sellable(
         self,
-    ) -> Generator[None, None, Optional[List[Tuple[int, int]]]]:
-        """Fetch unredeemable positions and return ``(token_id, amount)`` pairs.
+    ) -> Generator[None, None, Optional[List[Tuple[str, int, int]]]]:
+        """Fetch unredeemable positions and return ``(ledger, token_id, amount)``.
 
         :yield: framework yields between dispatch and the connection response.
-        :return: list of ``(token_id_int, amount_base_units)`` for sellable
-            positions, or ``None`` on a fetch error.
+        :return: list of ``(ledger, token_id_int, amount_base_units)`` for sellable
+            positions (V1 on the CTF, V2 on PositionManager), or ``None`` on error.
         """
         # Query the Safe (the connection default): this runs BEFORE the top-up
         # moves anything, so the sellable CTF is still held by the Safe. (The
@@ -88,7 +91,7 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         if response is None or isinstance(response, dict):
             return None
 
-        sellable: List[Tuple[int, int]] = []
+        sellable: List[Tuple[str, int, int]] = []
         for position in response:
             asset = position.get("asset")
             try:
@@ -97,7 +100,12 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
                 continue
             if not asset or size <= DUST_EPSILON:
                 continue
-            sellable.append((int(asset), int(round(size * CTF_DECIMAL_FACTOR))))
+            amount = int(round(size * CTF_DECIMAL_FACTOR))
+            ledger = self.params.polymarket_ctf_address
+            if V2_BALANCE_KEY in position:
+                ledger = self.params.polymarket_position_manager_address
+                amount = position[V2_BALANCE_KEY]
+            sellable.append((ledger, int(asset), amount))
         return sellable
 
     def _build_safe_batch_transfer_data(
@@ -153,22 +161,27 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
             self._set_payload(Event.WITHDRAWAL_DONE, None)
             return
 
-        token_ids = [t for t, _ in sellable]
-        amounts = [a for _, a in sellable]
-        self.multisend_batches.append(
-            MultisendBatch(
-                to=self.params.polymarket_ctf_address,
-                data=HexBytes(
-                    self._build_safe_batch_transfer_data(
-                        self.synchronized_data.safe_contract_address,
-                        dw_address,
-                        token_ids,
-                        amounts,
-                    )
-                ),
-                value=0,
+        for ledger in (
+            self.params.polymarket_ctf_address,
+            self.params.polymarket_position_manager_address,
+        ):
+            moves = [(t, a) for to, t, a in sellable if to == ledger]
+            if not moves:
+                continue
+            self.multisend_batches.append(
+                MultisendBatch(
+                    to=ledger,
+                    data=HexBytes(
+                        self._build_safe_batch_transfer_data(
+                            self.synchronized_data.safe_contract_address,
+                            dw_address,
+                            [t for t, _ in moves],
+                            [a for _, a in moves],
+                        )
+                    ),
+                    value=0,
+                )
             )
-        )
         if not (yield from self._build_multisend_data()):
             self.context.logger.error("Failed to build withdrawal top-up multisend.")
             self._set_payload(Event.NONE, None)
