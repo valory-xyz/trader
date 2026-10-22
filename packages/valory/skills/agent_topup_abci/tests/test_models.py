@@ -19,9 +19,10 @@
 
 """Tests for the models of the agent top-up skill."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from packages.valory.skills.agent_topup_abci.models import SharedState
+from packages.valory.skills.abstract_round_abci.models import BaseParams
+from packages.valory.skills.agent_topup_abci.models import Params, SharedState
 from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpAbciApp
 
 
@@ -30,3 +31,11 @@ def test_shared_state_runs_the_agent_topup_app() -> None:
     shared_state = SharedState(name="state", skill_context=MagicMock())
 
     assert shared_state.abci_app_cls is AgentTopUpAbciApp
+
+
+def test_params_read_the_agent_balance_threshold() -> None:
+    """The top-up reads the Agent Signer balance the tx settlement requires."""
+    with patch.object(BaseParams, "__init__", return_value=None):
+        params = Params(skill_context=MagicMock(), agent_balance_threshold=1000)
+
+    assert params.agent_balance_threshold == 1000

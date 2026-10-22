@@ -32,12 +32,15 @@ from packages.valory.skills.agent_topup_abci.utils import (
     NO_TOPUP,
     get_agent_topups,
     get_safe_native_balance,
+    get_signer_native_deficit,
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
     ChainRequirements,
     FundRequirements,
 )
+
+MIN = ETHER // 100
 
 
 class TestGetAgentTopUps:
@@ -49,7 +52,7 @@ class TestGetAgentTopUps:
             "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
         )
 
-        topup = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT)["gnosis"]
+        topup = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT, MIN)["gnosis"]
 
         assert topup.move == 19 * ETHER // 10
         assert topup.safe_deficit == 0
@@ -60,7 +63,7 @@ class TestGetAgentTopUps:
             "gnosis", ETHER // 10, 5 * ETHER, wxdai_balance=None, track_wxdai=True
         )
 
-        topups = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT)
+        topups = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT, MIN)
 
         assert topups["gnosis"] == NO_TOPUP
 
@@ -69,7 +72,7 @@ class TestGetAgentTopUps:
         rule = MagicMock(return_value={})
         funds = funds_status("polygon", ETHER // 10, ETHER)
 
-        get_agent_topups(rule, funds, AGENT)
+        get_agent_topups(rule, funds, AGENT, MIN)
 
         rule.assert_called_once_with(funds, safe_native_extra={})
 
@@ -77,11 +80,51 @@ class TestGetAgentTopUps:
         """A short Agent Safe asks for the Agent Signer shortfall plus its own topup."""
         funds = funds_status("polygon", ETHER // 10, ETHER // 2)
 
-        topup = get_agent_topups(real_topup_rule("polygon"), funds, AGENT)["polygon"]
+        topup = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)[
+            "polygon"
+        ]
 
         assert topup.move == ETHER // 2
         assert topup.signer_deficit == 0
         assert topup.safe_deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+
+    def test_signer_below_the_minimum_moves_nothing(self) -> None:
+        """Below `min_signer_balance`, the deficits are reported as read."""
+        funds = funds_status("polygon", MIN - 1, 10 * ETHER)
+
+        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)
+
+        assert topups["polygon"] == NO_TOPUP
+
+    def test_signer_at_the_minimum_is_topped_up(self) -> None:
+        """At `min_signer_balance`, the Agent Signer is topped up."""
+        funds = funds_status("polygon", MIN, 10 * ETHER)
+
+        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)
+
+        assert topups["polygon"].move == 2 * ETHER - MIN
+
+
+class TestGetSignerNativeDeficit:
+    """Tests for get_signer_native_deficit."""
+
+    def test_returns_the_signer_native_deficit(self) -> None:
+        """The Agent Signer native deficit is read from the status."""
+        funds = funds_status("gnosis", ETHER // 10, 3 * ETHER)
+
+        assert get_signer_native_deficit(funds, "gnosis", AGENT) == 19 * ETHER // 10
+
+    def test_status_without_signer(self) -> None:
+        """A status with the Agent Safe only has no Agent Signer deficit."""
+        funds = FundRequirements(
+            {
+                "gnosis": ChainRequirements(
+                    accounts={SAFE: AccountRequirements(tokens={})}
+                )
+            }
+        )
+
+        assert get_signer_native_deficit(funds, "gnosis", AGENT) is None
 
 
 class TestGetSafeNativeBalance:

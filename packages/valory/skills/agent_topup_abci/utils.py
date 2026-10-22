@@ -41,22 +41,35 @@ def get_safe_native_balance(
     funds: FundRequirements, chain_name: str, agent_address: str
 ) -> Optional[int]:
     """Return the Agent Safe native balance read on a chain, if any."""
-    tokens = _get_safe_tokens(funds, chain_name, agent_address).values()
-    native = next((token for token in tokens if token.is_native), None)
+    native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=False))
     return None if native is None else native.balance
 
 
+def get_signer_native_deficit(
+    funds: FundRequirements, chain_name: str, agent_address: str
+) -> Optional[int]:
+    """Return the Agent Signer native deficit read on a chain, if any."""
+    native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=True))
+    return None if native is None else native.deficit
+
+
 def get_agent_topups(
-    get_agent_topup: GetAgentTopUp, funds: FundRequirements, agent_address: str
+    get_agent_topup: GetAgentTopUp,
+    funds: FundRequirements,
+    agent_address: str,
+    min_signer_balance: int,
 ) -> Dict[str, AgentTopUp]:
     """Apply the funds-manager top-up rule, counting Agent Safe wxDAI as native on Gnosis.
 
     :param get_agent_topup: the funds-manager `get_agent_topup` rule.
     :param funds: the status returned by funds-manager `get_funds_status()`.
     :param agent_address: the Agent Signer address.
+    :param min_signer_balance: the Agent Signer balance below which nothing is moved.
     :return: the top-up decision per chain.
     """
-    wxdai = _get_safe_tokens(funds, GNOSIS_CHAIN_NAME, agent_address).get(WXDAI_ADDRESS)
+    wxdai = _get_tokens(funds, GNOSIS_CHAIN_NAME, agent_address, is_signer=False).get(
+        WXDAI_ADDRESS
+    )
     safe_native_extra = {}
     if wxdai is not None and wxdai.balance is not None:
         safe_native_extra[GNOSIS_CHAIN_NAME] = wxdai.balance
@@ -65,17 +78,29 @@ def get_agent_topups(
     if wxdai is not None and wxdai.balance is None:
         # An unread balance never moves funds.
         topups[GNOSIS_CHAIN_NAME] = NO_TOPUP
+    for chain_name in topups:
+        signer = _get_native(
+            _get_tokens(funds, chain_name, agent_address, is_signer=True)
+        )
+        if signer is not None and (signer.balance or 0) < min_signer_balance:
+            # The tx settlement would wait for a refill before sending the top-up.
+            topups[chain_name] = NO_TOPUP
     return topups
 
 
-def _get_safe_tokens(
-    funds: FundRequirements, chain_name: str, agent_address: str
+def _get_tokens(
+    funds: FundRequirements, chain_name: str, agent_address: str, is_signer: bool
 ) -> Dict[str, TokenRequirement]:
-    """Return the Agent Safe token requirements on a chain, keyed by token address."""
+    """Return the Agent Signer or Agent Safe token requirements on a chain, keyed by token address."""
     if chain_name not in funds:
         return {}
     # funds-manager tracks two accounts per chain: the Agent Signer and the Agent Safe.
     for address, account in funds[chain_name].accounts.items():
-        if address != agent_address:
+        if (address == agent_address) == is_signer:
             return account.tokens
     return {}
+
+
+def _get_native(tokens: Dict[str, TokenRequirement]) -> Optional[TokenRequirement]:
+    """Return the native token requirement, if tracked."""
+    return next((token for token in tokens.values() if token.is_native), None)

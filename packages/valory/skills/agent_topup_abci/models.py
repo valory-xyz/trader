@@ -19,6 +19,8 @@
 
 """Models for the agent top-up ABCI application."""
 
+from typing import Any
+
 from packages.valory.skills.abstract_round_abci.models import (
     BaseParams,
 )
@@ -33,7 +35,18 @@ from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpAbciApp
 
 Requests = BaseRequests
 BenchmarkTool = BaseBenchmarkTool
-Params = BaseParams
+
+
+class Params(BaseParams):
+    """The agent top-up parameters."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the parameters' object."""
+        # Below it, the tx settlement waits for the Agent Signer to be refilled.
+        self.agent_balance_threshold: int = self._ensure(
+            "agent_balance_threshold", kwargs, int
+        )
+        super().__init__(*args, **kwargs)
 
 
 class SharedState(BaseSharedState):
