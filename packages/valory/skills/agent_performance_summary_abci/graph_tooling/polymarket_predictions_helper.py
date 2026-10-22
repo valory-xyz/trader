@@ -778,6 +778,14 @@ class PolymarketPredictionsFetcher(
             self.logger.error(f"Error loading multi_bets.json: {e}")
             return []
 
+    def load_market_slugs(self, store_path: str) -> Dict[str, str]:
+        """Return the slug of each market in multi_bets.json by its condition id."""
+        return {
+            bet["condition_id"]: bet["slug"]
+            for bet in self._load_multi_bets_data(store_path)
+            if isinstance(bet, dict) and bet.get("condition_id") and bet.get("slug")
+        }
+
     def _load_agent_performance_data(self, store_path: str) -> Dict:
         """Load data from agent_performance.json file."""
         try:

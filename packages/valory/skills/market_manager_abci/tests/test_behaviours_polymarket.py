@@ -2053,6 +2053,19 @@ class TestFetchMarketsFromPolymarket:
             bet_dict["description"] == "This market resolves YES if the event occurs."
         )
 
+    def test_valid_market_reads_slug(self) -> None:
+        """Test that the Gamma slug is kept, so the market's page can be linked."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(slug="will-tesla-stock-go-up")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type, method-assign]
+
+        assert result is not None
+        assert result[0]["slug"] == "will-tesla-stock-go-up"  # type: ignore[index]
+
     def test_valid_market_missing_description_is_none(self) -> None:
         """Test that a market without a description yields description=None in bet_dict."""
         behaviour = self._setup_behaviour()

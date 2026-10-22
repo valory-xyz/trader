@@ -737,6 +737,13 @@ class TestBetUpdateMarketInfo:
         existing.update_market_info(incoming)
         assert existing.description == "new resolution rules"
 
+    def test_update_market_info_refreshes_slug(self) -> None:
+        """update_market_info gives already-queued bets the slug of the latest fetch."""
+        existing = _make_bet(id="b1")
+        incoming = _make_bet(id="b1", slug="will-it-rain")
+        existing.update_market_info(incoming)
+        assert existing.slug == "will-it-rain"
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""
