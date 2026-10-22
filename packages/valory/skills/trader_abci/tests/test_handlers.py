@@ -3145,6 +3145,8 @@ class TestApplyAgentTopUp:
         }
         if topup_succeeded is not None:
             handler.context.shared_state[TOPUP_SUCCEEDED_KEY] = topup_succeeded
+        handler.context.params.agent_balance_threshold = ETHER // 100
+        handler.context.params.is_running_on_polymarket = chain == "polygon"
         return handler
 
     @staticmethod
@@ -3206,6 +3208,62 @@ class TestApplyAgentTopUp:
 
         assert self._native_deficit(status, "polygon", AGENT) == 0
         assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    @pytest.mark.parametrize("safe_balance", [19 * ETHER // 10, 10 * ETHER])
+    def test_polygon_pol_covering_the_move_keeps_the_usdc_adjusted_safe_deficit(
+        self, safe_balance: int
+    ) -> None:
+        """The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, safe_balance)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_gnosis_reports_the_rule_safe_deficit_even_when_xdai_covers_the_move(
+        self,
+    ) -> None:
+        """Only Polygon keeps the adjusted Agent Safe deficit: Gnosis passes wxDAI to the rule."""
+        handler = self._handler("gnosis")
+        status = funds_status("gnosis", ETHER // 10, 2 * ETHER)
+        status["gnosis"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", SAFE) == (
+            10 * ETHER - (2 * ETHER - 19 * ETHER // 10)
+        )
+
+    def test_signer_below_the_settlement_threshold_keeps_the_deficits_read(
+        self,
+    ) -> None:
+        """No top-up is sent below `agent_balance_threshold`, so the Agent Signer alert shows."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 200, 10 * ETHER)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert (
+            self._native_deficit(status, "polygon", AGENT) == 2 * ETHER - ETHER // 200
+        )
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_failing_rule_keeps_the_deficits_read(self) -> None:
+        """A failing top-up rule never fails `/funds-status`."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME] = MagicMock(
+            side_effect=ValueError("bad status")
+        )
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert "bad status" in handler.context.logger.warning.call_args[0][0]
 
     def test_handler_responds_with_the_topped_up_status(self) -> None:
         """The response body carries the deficits left after the top-up."""

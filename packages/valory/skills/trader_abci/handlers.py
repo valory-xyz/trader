@@ -58,6 +58,8 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 from packages.valory.skills.agent_topup_abci.utils import (
     TOPUP_SUCCEEDED_KEY,
     get_agent_topups,
+    get_safe_native_balance,
+    get_signer_native_deficit,
 )
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
@@ -755,33 +757,50 @@ class HttpHandler(BaseHttpHandler):
             )
 
     def _apply_agent_topup(self, funds_status: FundRequirements) -> None:
-        """Report the native deficits left once the agent tops up its own Agent Signer.
-
-        The rule's deficits win over the Agent Safe deficit computed by
-        `_get_adjusted_funds_status`, whose `topup - balance` would drop the
-        Agent Signer shortfall from the Agent Safe request. They assume the
-        top-up succeeds, so they apply only once one has: a top-up that keeps
-        failing still shows as a deficit to fund.
+        """Report the native deficits of funds-manager `get_agent_topup`, once a top-up has succeeded.
 
         :param funds_status: the adjusted funds status; updated in place.
         """
         if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, False):
             return
         agent_address = self.context.agent_address
-        topups = get_agent_topups(
-            self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
-            funds_status,
-            agent_address,
-        )
+        try:
+            topups = get_agent_topups(
+                self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+                funds_status,
+                agent_address,
+                self.params.agent_balance_threshold,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Keeping the deficits read: {type(exc).__name__}({exc})."
+            )
+            return
         for chain_name, topup in topups.items():
+            # The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot.
+            keep_safe_deficit = (
+                self.params.is_running_on_polymarket
+                and self._safe_native_covers_the_move(funds_status, chain_name)
+            )
             for address, account in funds_status[chain_name].accounts.items():
-                is_signer = address == agent_address
-                deficit = topup.signer_deficit if is_signer else topup.safe_deficit
+                if address == agent_address:
+                    deficit = topup.signer_deficit
+                else:
+                    deficit = None if keep_safe_deficit else topup.safe_deficit
                 if deficit is None:
                     continue
                 for token in account.tokens.values():
                     if token.is_native:
                         token.deficit = deficit
+
+    def _safe_native_covers_the_move(
+        self, funds_status: FundRequirements, chain_name: str
+    ) -> bool:
+        """Whether the Agent Safe native balance alone covers the Agent Signer need."""
+        agent_address = self.context.agent_address
+        need = get_signer_native_deficit(funds_status, chain_name, agent_address)
+        safe_native = get_safe_native_balance(funds_status, chain_name, agent_address)
+        return need is not None and safe_native is not None and safe_native >= need
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

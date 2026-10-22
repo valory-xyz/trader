@@ -188,9 +188,6 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 )
 
 abci_app_transition_mapping: AbciAppTransitionMapping = {
-    # Every period starts with the Agent Signer top-up check. Its txs settle
-    # through the multiplexer and re-enter the round, which prepares the next
-    # one (unwrap, then transfer) or finishes the check.
     FinishedRegistrationRound: AgentTopUpRound,
     AgentTopUpTxPreparedRound: PreTxSettlementRound,
     FinishedAgentTopUpTxRound: AgentTopUpRound,
