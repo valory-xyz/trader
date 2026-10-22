@@ -1643,6 +1643,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         index_sets: list[int],
         collateral_token: str,
         is_neg_risk: bool = False,
+        outcome_index: Optional[int] = None,
+        amount: Optional[int] = None,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
 
@@ -1650,6 +1652,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
+        :param outcome_index: the outcome index of a Protocol V2 position
+        :param amount: the Protocol V2 position amount to claim; None claims V1
         :return: Tuple of (transaction_result, error_message)
         """
         try:
@@ -1680,7 +1684,16 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
             calldata = selector + encoded_args
 
-            if is_neg_risk:
+            if amount is not None:
+                # A V2 claim goes to the Router, which takes a bytes31 condition ID.
+                selector = keccak(text="redeem(bytes31,uint256,uint256)")[:4]
+                calldata = selector + encode(
+                    ["bytes31", "uint256", "uint256"],
+                    [condition_id_bytes[:31], outcome_index, amount],
+                )
+                target_address = self.router
+                market_type = "Protocol V2 (via Router)"
+            elif is_neg_risk:
                 target_address = self.neg_risk_ctf_collateral_adapter
                 market_type = "negative risk (via NegRiskCtfCollateralAdapter)"
             else:

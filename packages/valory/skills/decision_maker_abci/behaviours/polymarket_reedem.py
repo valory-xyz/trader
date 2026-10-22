@@ -22,6 +22,8 @@
 import json
 from typing import Any, Dict, Generator, List, Optional, Union, cast
 
+from eth_abi import encode
+from eth_utils import keccak  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
@@ -34,7 +36,10 @@ from packages.valory.skills.agent_performance_summary_abci.feed import (
     format_amount,
     market_url,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
+from packages.valory.skills.decision_maker_abci.behaviours.base import (
+    MultisendBatch,
+    V2_BALANCE_KEY,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -49,6 +54,8 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
+ROUTER_REDEEM_TYPES = ["bytes31", "uint256", "uint256"]
+ROUTER_REDEEM_SELECTOR = keccak(text=f"redeem({','.join(ROUTER_REDEEM_TYPES)})")[:4]
 
 
 class PolymarketRedeemBehaviour(StorageManagerBehaviour):
@@ -209,6 +216,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         outcome_index: int,
         collateral_token: str,
         is_neg_risk: bool = False,
+        amount: Optional[int] = None,
     ) -> Generator[None, None, Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]]:
         """Redeem a single position.
 
@@ -216,6 +224,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         :param outcome_index: The outcome index (0 for Yes, 1 for No typically)
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
+        :param amount: the amount of a Protocol V2 position; None for V1
         :return: the relayer's transactions for the redeem, an error dict if the
             request failed, or None if the connection gave no response
         :yield: None
@@ -226,7 +235,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         # choice that documents agent intent; it does not limit on-chain work.
         index_sets = [1 << outcome_index]
 
-        polymarket_redeem_payload = {
+        polymarket_redeem_payload: Dict[str, Any] = {
             "request_type": RequestType.REDEEM_POSITIONS.value,
             "params": {
                 "condition_id": condition_id,
@@ -235,6 +244,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 "is_neg_risk": is_neg_risk,
             },
         }
+        if amount is not None:
+            polymarket_redeem_payload["params"].update(
+                outcome_index=outcome_index, amount=amount
+            )
 
         redeem_result = yield from self.send_polymarket_connection_request(
             polymarket_redeem_payload
@@ -286,6 +299,14 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # update is always called with winning=True.  This mirrors
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
+            # The losing side of a resolved V2 market is redeemable too, but has
+            # nothing to claim. V1 positions are all claimed, as before.
+            redeemable_positions = [
+                p
+                for p in redeemable_positions
+                if V2_BALANCE_KEY not in p
+                or (p.get("currentValue") and p[V2_BALANCE_KEY])
+            ]
             self.shared_state.polymarket_payouts_to_record = []
             # A failed read says nothing about whether the pending redeems landed.
             if fetched_positions is not None:
@@ -373,11 +394,18 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 f"Redeeming {market_type} position: {condition_id} - {outcome} (size: {size})"
             )
 
+            # A V2 position also passes its amount, to claim through the Router.
+            v2 = (
+                {"amount": position[V2_BALANCE_KEY]}
+                if V2_BALANCE_KEY in position
+                else {}
+            )
             result = yield from self._redeem_position(
                 condition_id=condition_id,
                 outcome_index=outcome_index,
                 collateral_token=self.params.polymarket_collateral_address,
                 is_neg_risk=is_neg_risk,
+                **v2,
             )
 
             self.context.logger.info(f"Redemption result for {condition_id}: {result}")
@@ -440,7 +468,16 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 condition_id=condition_id,
                 index_sets=[1 << outcome_index],
             )
-            if is_neg_risk:
+            if V2_BALANCE_KEY in position:
+                # A V2 claim goes to the Router, which takes a bytes31 condition
+                # ID: the Data API's zero pad byte drops.
+                cid = bytes.fromhex(condition_id.removeprefix("0x"))[:31]
+                args = [cid, outcome_index, position[V2_BALANCE_KEY]]
+                redeem_data = (
+                    ROUTER_REDEEM_SELECTOR + encode(ROUTER_REDEEM_TYPES, args)
+                ).hex()
+                target_address = self.params.polymarket_router_address
+            elif is_neg_risk:
                 target_address = (
                     self.params.polymarket_neg_risk_ctf_collateral_adapter_address
                 )
