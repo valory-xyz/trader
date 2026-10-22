@@ -3175,6 +3175,17 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
         assert self._native_deficit(status, "polygon", SAFE) == 7
 
+    def test_nothing_due_keeps_the_deficits_read(self) -> None:
+        """With the Agent Signer above its threshold, the adjusted deficits stand."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
     def test_handler_responds_with_the_topped_up_status(self) -> None:
         """The response body carries the deficits left after the top-up."""
         handler = self._handler("gnosis")
