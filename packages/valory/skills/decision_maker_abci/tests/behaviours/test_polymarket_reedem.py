@@ -1738,10 +1738,10 @@ def _v1_claim(row):  # type: ignore[no-untyped-def]
 
 
 def _router_claim(row):  # type: ignore[no-untyped-def]
-    """Return the Router claim of a row's whole balance; bytes31 drops the zero pad byte of the Data API ID."""
-    condition_id = bytes.fromhex(row["condition_id"][2:])
+    """Return the Router claim of a row's whole balance, addressed by its position ID."""
+    position_id = int(row["token_id"])  # bytes31 condition ID, then the outcome byte
     amount = pm.ONCHAIN_BALANCE[row["token_id"]]
-    args = [condition_id[:31], row["outcome_index"], amount]
+    args = [(position_id >> 8).to_bytes(31, "big"), position_id & 0xFF, amount]
     types = ["bytes31", "uint256", "uint256"]
     data = pm._selector(f"redeem({','.join(types)})") + abi_encode(types, args)
     return pm.ROUTER, data, 0, 0
@@ -1750,11 +1750,11 @@ def _router_claim(row):  # type: ignore[no-untyped-def]
 @pytest.mark.parametrize("builder", [False, True])
 def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-untyped-def]
     """The Safe claims winning V2 rows through the Router and its V1 rows as before."""
-    rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.V1_LOSE, pm.V2_LOSE)
+    rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.XI_WON, pm.V1_LOSE, pm.V2_LOSE)
     with pm._safe_world(*rows) as conn:
         payload, claims = _redeem_period(conn, builder)
     assert payload.event == ("done" if builder else "prepare_tx")
-    v2_claims = [_router_claim(pm.V2_WIN), _router_claim(pm.V2_WIN0)]
+    v2_claims = [_router_claim(row) for row in (pm.V2_WIN, pm.V2_WIN0, pm.XI_WON)]
     expected = v2_claims + [_v1_claim(pm.V1_WIN), _v1_claim(pm.V1_LOSE)]
     assert sorted(claims) == sorted(expected)
 
