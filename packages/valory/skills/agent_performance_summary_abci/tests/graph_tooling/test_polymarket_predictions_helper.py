@@ -22,6 +22,7 @@
 import json
 import os
 import tempfile
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
 
@@ -1212,6 +1213,22 @@ class TestLoadMultiBetsData:
         result = fetcher._load_multi_bets_data("/nonexistent/path")
 
         assert result == []
+
+
+class TestLoadMarketSlugs:
+    """Tests for load_market_slugs."""
+
+    def test_only_markets_with_both_ids_are_kept(self, tmp_path: Path) -> None:
+        """Entries without a condition id or a slug, or not objects, are skipped."""
+        data = [
+            {"condition_id": "0x1", "slug": "first"},
+            {"condition_id": "0x2"},
+            {"slug": "orphan"},
+            "not a market",
+        ]
+        (tmp_path / "multi_bets.json").write_text(json.dumps(data))
+
+        assert _make_fetcher().load_market_slugs(str(tmp_path)) == {"0x1": "first"}
 
 
 # ---------------------------------------------------------------------------

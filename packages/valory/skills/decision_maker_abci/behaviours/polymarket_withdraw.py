@@ -750,6 +750,12 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         store["withdrawal_state"] = state
         self._write_store(store)
         self.context.logger.info(f"withdrawal: state -> {state}")
+        if state in (WITHDRAWAL_STATE_COMPLETE, WITHDRAWAL_STATE_ERRORED):
+            self._record_positions_sold(
+                store.get("withdrawal_fills") or [],
+                store.get("withdrawal_errors") or [],
+                state == WITHDRAWAL_STATE_COMPLETE,
+            )
 
     def _reset_session_records(self) -> None:
         """Clear ``withdrawal_fills`` and ``withdrawal_errors`` on disk."""

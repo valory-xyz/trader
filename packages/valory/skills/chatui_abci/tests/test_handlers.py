@@ -106,6 +106,9 @@ class _TestableHttpHandler(HttpHandler):
     _store_chatui_param_to_json: Any = None  # type: ignore[assignment]
     _send_ok_response: Any = None  # type: ignore[assignment]
     _send_http_response: Any = None  # type: ignore[assignment]
+    # Built with ``object.__new__``, so ``__init__`` never sets it; these
+    # tests send no chat requests.
+    _chat_turns: Dict[Any, Any] = {}
 
 
 # ---------------------------------------------------------------------------

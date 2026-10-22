@@ -49,6 +49,19 @@ from packages.valory.skills.abstract_round_abci.behaviour_utils import TimeoutEx
 from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
     record_trade,
 )
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    EventType,
+    Field,
+)
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    field as feed_field,
+)
+from packages.valory.skills.agent_performance_summary_abci.feed import (
+    format_amount,
+    format_percent,
+    market_url,
+    record_event,
+)
 from packages.valory.skills.decision_maker_abci.io_.loader import ComponentPackageLoader
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
@@ -97,6 +110,13 @@ NEW_LINE = "\n"
 QUOTE = '"'
 TWO_QUOTES = '""'
 INIT_LIQUIDITY_INFO = LiquidityInfo()
+
+# Why the agent skipped a market, as the feed shows it.
+SKIP_NO_MECH_RESPONSE = "The AI mech gave no usable prediction"
+SKIP_NO_TRADE = "The trading strategy found no trade worth placing"
+SKIP_SPREAD = "The market's price spread is outside the allowed range"
+SKIP_REBET_NOT_ALLOWED = "The conditions to trade this market again are not met"
+SKIP_ORDER_IMPOSSIBLE = "The order can't be placed on this market"
 
 
 class TradingOperation(str, Enum):
@@ -481,6 +501,122 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service
         self.store_bets()
+
+        if record_ledger:
+            self._record_trade_placed(sampled_bet)
+
+    def _market_field(self, bet: Bet) -> Field:
+        """Build an event card's market field, linked to the market's page."""
+        url = market_url(self.params.is_running_on_polymarket, bet.id, bet.slug)
+        return feed_field("Market", bet.title, url)
+
+    def _format_collateral(self, amount: int) -> str:
+        """Format an amount of the collateral token, given in its smallest unit."""
+        return format_amount(
+            self.convert_to_native(amount), self.params.is_running_on_polymarket
+        )
+
+    def _record_feed_event(self, event_type: EventType, fields: List[Field]) -> None:
+        """Append an event to the feed; benchmarking runs trade nothing real."""
+        if self.benchmarking_mode.enabled:
+            return
+        record_event(self.params.store_path, event_type, fields, self.context.logger)
+
+    def _record_market_skipped(self, bet: Bet, reason: str) -> None:
+        """Tell the feed that the agent decided not to trade a market, and why."""
+        self._record_feed_event(
+            EventType.MARKET_SKIPPED,
+            [self._market_field(bet), feed_field("Reason", reason)],
+        )
+
+    @staticmethod
+    def _swept_position(record: Dict[str, Any]) -> Optional[Tuple[Any, ...]]:
+        """Return the position a sweep's fill or error is for; None for a whole-sweep error.
+
+        :param record: a fill or error the withdrawal sweep stored.
+        :return: Omen's market and outcome, else Polymarket's token id.
+        """
+        if record.get("fpmm"):
+            return (str(record["fpmm"]).lower(), record.get("outcome_index"))
+        if record.get("token_id"):
+            return (record["token_id"],)
+        return None
+
+    def _record_positions_sold(
+        self,
+        fills: List[Dict[str, Any]],
+        errors: List[Dict[str, Any]],
+        complete: bool,
+    ) -> None:
+        """Tell the feed how the withdrawal's sell-off went, once per withdrawal.
+
+        A position counts once, and as sold if any retry sold it.
+
+        :param fills: the sweep's fills.
+        :param errors: the sweep's errors.
+        :param complete: whether the sweep ended without errors.
+        """
+        if self.shared_state.positions_sold_recorded:
+            return
+        if not complete and not fills:
+            # An errored sweep that sold nothing is retried the next cycle,
+            # so leave the card to the sweep that does the selling.
+            return
+        try:
+            sold = {self._swept_position(fill) for fill in fills}
+            unsold = {self._swept_position(error) for error in errors} - sold
+            unsold.discard(None)
+            received = sum(
+                float(fill.get("shares_sold") or 0) * float(fill.get("fill_price") or 0)
+                for fill in fills
+            )
+        except (AttributeError, TypeError, ValueError) as e:
+            self.context.logger.error(f"Could not read the withdrawal's result: {e}")
+            return
+        self.shared_state.positions_sold_recorded = True
+        self._record_feed_event(
+            EventType.POSITIONS_SOLD,
+            [
+                feed_field("Positions sold", str(len(sold))),
+                feed_field(
+                    "Amount received",
+                    format_amount(received, self.params.is_running_on_polymarket),
+                ),
+                feed_field("Positions that couldn't be sold", str(len(unsold))),
+            ],
+        )
+
+    def _record_trade_placed(self, bet: Bet) -> None:
+        """Tell the feed about the trade just placed on the bet's market."""
+        try:
+            amount = self.synchronized_data.bet_amount
+            vote = self.synchronized_data.vote
+            prediction = bet.get_outcome(vote) if vote is not None else "Unknown"
+            fields = [
+                self._market_field(bet),
+                feed_field("Prediction", prediction),
+                feed_field("Amount", self._format_collateral(amount)),
+                feed_field(
+                    "AI confidence", format_percent(self.synchronized_data.confidence)
+                ),
+                feed_field(
+                    "Potential payout", self._potential_payout(bet, amount, vote)
+                ),
+            ]
+        except (IndexError, TypeError, ValueError) as e:
+            self.context.logger.error(
+                f"Could not build the trade_placed event for bet {bet.id}: {e}"
+            )
+            return
+        self._record_feed_event(EventType.TRADE_PLACED, fields)
+
+    def _potential_payout(self, bet: Bet, amount: int, vote: Optional[int]) -> str:
+        """Format what the trade pays if its prediction is right, at the market price."""
+        prices = bet.outcomeTokenMarginalPrices
+        if vote is None or not 0 <= vote < len(prices) or not prices[vote] > 0:
+            return "Unknown"
+        # Each winning share pays one collateral token.
+        return self._format_collateral(int(amount / prices[vote]))
 
     def update_sell_transaction_information(self) -> None:
         """Get whether the bet's invested amount should be updated."""
