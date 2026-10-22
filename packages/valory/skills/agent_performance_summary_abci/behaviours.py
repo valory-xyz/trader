@@ -499,9 +499,8 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return None
 
-            # Extract titles from positions. The connection marks a V2 row with
-            # its PositionManager balance; a redeemable V2 row with no value
-            # lost and is never claimed, so it is not open.
+            # Extract titles from positions. A redeemable V2 row (marked with its
+            # PositionManager balance) with no value lost and is never claimed.
             titles = {
                 p.get("title", "")
                 for p in positions
