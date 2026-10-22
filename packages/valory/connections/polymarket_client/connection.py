@@ -26,6 +26,7 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from functools import cached_property
 from itertools import product
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, cast
 
@@ -63,6 +64,9 @@ PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
 DATA_API_POSITIONS_URL = f"{DATA_API_BASE_URL}/v2/positions"
 DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
+# Token reference facts, such as the contract module that issued a token.
+DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
+DATA_API_TOKENS_LIMIT = 50
 DATA_API_PAGE_LIMIT = 100
 # A paginated Data API read needing more pages than this is reported as failed.
 DATA_API_MAX_PAGES = 200
@@ -1462,51 +1466,73 @@ class PolymarketClientConnection(BaseSyncConnection):
             params["include_archived"] = "true"
         return params
 
-    @staticmethod
-    def _is_v2_position(row: Dict[str, Any]) -> bool:
-        """Tell a Protocol V2 position from its Data API row.
+    @cached_property
+    def _token_modules(self) -> Dict[str, str]:
+        """Return the cached contract module of each token looked up so far."""
+        return {}
 
-        A V2 position ID is the 31-byte condition ID followed by the outcome
-        index byte; the Data API pads that condition ID with a zero byte.
+    def _read_token_modules(self, token_ids: List[str]) -> Optional[str]:
+        """Look up the module of the tokens not yet known, in batches.
 
-        :param row: a snake_case positions row from Data API v2
-        :return: whether the row is a V2 position
+        A token's module never changes, so it is cached. ``v1_ctf`` is a V1
+        token; any other module is a Protocol V2 one.
+
+        :param token_ids: the token ids to classify
+        :return: an error message unless every token's module is known
         """
-        try:
-            condition_id = int(row["condition_id"], 16)
-            return int(row["token_id"]) == condition_id + int(row["outcome_index"])
-        except (KeyError, TypeError, ValueError):
-            return False
+        unknown = sorted({t for t in token_ids if t not in self._token_modules})
+        for start in range(0, len(unknown), DATA_API_TOKENS_LIMIT):
+            batch = unknown[start : start + DATA_API_TOKENS_LIMIT]
+            try:
+                response = requests.get(
+                    DATA_API_TOKENS_URL,
+                    params={"token_id": ",".join(batch)},
+                    timeout=API_REQUEST_TIMEOUT,
+                )
+                response.raise_for_status()
+                for row in response.json()["data"]:
+                    self._token_modules[str(row["token_id"])] = row["module"]
+            except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+                error_msg = f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}"
+                self.logger.error(error_msg)
+                return error_msg
+        missing = [t for t in token_ids if t not in self._token_modules]
+        return (
+            f"Unknown tokens in {DATA_API_TOKENS_URL}: {missing}" if missing else None
+        )
 
     def _select_positions(
         self,
         rows: List[Dict[str, Any]],
         redeemable: Optional[bool],
         holder: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
 
         v2 has no status for "not redeemable", and its default status returns
         settled rows alongside open ones, so the ``redeemable`` filter is
-        applied here on the row flag. A V2 row also gets the holder's exact
-        PositionManager balance, since the Data API rounds sizes.
+        applied here on the row flag. A V2 row, by its token's module, also
+        gets the holder's exact PositionManager balance: the Data API rounds sizes.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
         :param holder: the address holding the positions
-        :return: the selected positions, keyed by v1 names
+        :return: Tuple of (the selected positions keyed by v1 names, error_message)
         """
         selected = [
             (row, self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1))
             for row in rows
             if redeemable is None or bool(row.get("redeemable")) is redeemable
         ]
+        error = self._read_token_modules([row["token_id"] for row, _ in selected])
+        if error:
+            return None, error
         for row, position in selected:
-            if self._is_v2_position(row):
+            if self._token_modules[row["token_id"]] != "v1_ctf":
                 position[V2_BALANCE_KEY] = self._erc1155_balance_of(
                     self.position_manager, holder, int(row["token_id"])
                 )
-        return [position for _, position in selected]
+        return [position for _, position in selected], None
 
     def _get_positions(
         self,
@@ -1538,9 +1564,13 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable, params["user"])
-        self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
-        return positions, None
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        self.logger.info(
+            f"Fetched {len(positions or [])} positions for {params['user']}"
+        )
+        return positions, error
 
     def _fetch_all_positions(
         self,
@@ -1573,7 +1603,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable, params["user"])
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        if error:
+            return None, error
         self.logger.info(
             f"Fetched total of {len(positions)} positions for {params['user']}"
         )
@@ -1648,7 +1682,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         index_sets: list[int],
         collateral_token: str,
         is_neg_risk: bool = False,
-        outcome_index: Optional[int] = None,
+        position_id: Optional[str] = None,
         amount: Optional[int] = None,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
@@ -1657,7 +1691,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
-        :param outcome_index: the outcome index of a Protocol V2 position
+        :param position_id: the Protocol V2 position id to claim
         :param amount: the Protocol V2 position amount to claim; None claims V1
         :return: Tuple of (transaction_result, error_message)
         """
@@ -1690,11 +1724,13 @@ class PolymarketClientConnection(BaseSyncConnection):
             calldata = selector + encoded_args
 
             if amount is not None:
-                # A V2 claim goes to the Router, which takes a bytes31 condition ID.
+                # A V2 claim goes to the Router. The position id is the bytes31
+                # condition id followed by the outcome index byte.
                 selector = keccak(text="redeem(bytes31,uint256,uint256)")[:4]
+                v2_id = int(str(position_id))
                 calldata = selector + encode(
                     ["bytes31", "uint256", "uint256"],
-                    [condition_id_bytes[:31], outcome_index, amount],
+                    [(v2_id >> 8).to_bytes(31, "big"), v2_id & 0xFF, amount],
                 )
                 target_address = self.router
                 market_type = "Protocol V2 (via Router)"
