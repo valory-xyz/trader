@@ -23,7 +23,7 @@ import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import urlsplit
 
 import pytest
 import requests
@@ -2506,31 +2506,24 @@ def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
     return {key: value for key, value in balances.items() if value}
 
 
-def _token_ids(url: str, params: Optional[dict]) -> list:
-    """Return the token IDs a /v2/tokens read asks for."""
-    query = {**dict(parse_qsl(urlsplit(url).query)), **(params or {})}
-    ids = query.get("token_id") or query.get("token_ids")
-    return [str(i) for i in ids] if isinstance(ids, list) else str(ids).split(",")
-
-
 def _tokens_response(ids: list, modules: dict, down: bool = False) -> MagicMock:
     """Answer a /v2/tokens read with each known token's module, or fail it."""
     response = MagicMock()
     if down:
         response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
-    rows = [{"token_id": i, "module": modules[i]} for i in ids if modules.get(i)]
+    rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
     response.json.return_value = {"data": rows}
     return response
 
 
-def _positions_get(*pages: MagicMock) -> Any:
+def _positions_get(*pages: MagicMock, down: bool = False) -> Any:
     """Serve positions pages in turn (the last one repeats) and V1 tokens' modules."""
     queue = list(pages)
 
     def get(url: str, params: Optional[dict] = None, **_: Any) -> MagicMock:
         if url.startswith(f"{DATA_API_BASE_URL}/v2/tokens"):
-            ids = _token_ids(url, params)
-            return _tokens_response(ids, dict.fromkeys(ids, "v1_ctf"))
+            ids = params["token_id"].split(",")  # type: ignore[index]
+            return _tokens_response(ids, dict.fromkeys(ids, "v1_ctf"), down)
         return queue.pop(0) if len(queue) > 1 else queue[0]
 
     return get
@@ -2552,7 +2545,7 @@ def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
 
     def get(url: str, params: dict, **_: Any) -> MagicMock:
         if urlsplit(url).path == "/v2/tokens":
-            ids = _token_ids(url, params)
+            ids = params["token_id"].split(",")
             conn.token_lookups.append(sorted(ids))
             return _tokens_response(ids, conn.modules, conn.tokens_down)
         assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
@@ -2605,18 +2598,22 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert _held(balances) == swept
 
 
-@pytest.mark.parametrize("lookup", ["ok", "down", "unknown"])
+@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null"])
 def test_v2_position_detected_by_token_module(lookup: str) -> None:
     """Rows are classed by their token's /v2/tokens module, looked up once in one batch; a failed or partial lookup fails the read."""
     rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
     with _safe_world(*rows) as conn:
         conn.tokens_down = lookup == "down"
+        conn.modules = dict(TOKEN_MODULES)
         if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
-            conn.modules = {**TOKEN_MODULES, XI["token_id"]: None}
+            del conn.modules[XI["token_id"]]
+        if lookup == "null":  # a row with no module is as good as missing
+            conn.modules[XI["token_id"]] = None
         reads = [conn._fetch_all_positions() for _ in range(2)]
     if lookup != "ok":
         assert [positions for positions, _ in reads] == [None, None]
         assert all(error for _, error in reads)
+        assert len(conn.token_lookups) == 2 and XI["token_id"] in conn.token_lookups[1]
         return
     assert [[V2_BALANCE_KEY in p for p in positions] for positions, _ in reads] == [
         [True, False, True]
@@ -2845,25 +2842,36 @@ class TestPositionsReads:
             conn._fetch_all_positions(address=address)
         assert _sent_params(mock_get)["user"] == expected_user
 
-    def test_fetch_all_reads_every_page(self) -> None:
-        """Positions on later pages are not dropped."""
+    @pytest.mark.parametrize("first_page", [1, 51])
+    def test_fetch_all_reads_every_page(self, first_page: int) -> None:
+        """Positions on later pages are not dropped; tokens are looked up 50 at a time."""
         conn = _make_connection()
-        responses = [
-            _v2_response([_v2_position_row(token_id="1")], SAMPLE_CURSOR),
-            _v2_response([_v2_position_row(token_id="2")]),
-        ]
-        with patch("requests.get", side_effect=_positions_get(*responses)):
+        ids = [str(i) for i in range(first_page + 1)]  # synthetic V1 token ids
+        rows = [_v2_position_row(token_id=i) for i in ids]
+        responses = [_v2_response(rows[:-1], SAMPLE_CURSOR), _v2_response(rows[-1:])]
+        with patch("requests.get", side_effect=_positions_get(*responses)) as get:
             positions, error = conn._fetch_all_positions()
         assert error is None
-        assert [p["asset"] for p in positions] == ["1", "2"]
+        assert [p["asset"] for p in positions] == ids
+        calls = [c for c in get.call_args_list if c[0][0] != DATA_API_POSITIONS_URL]
+        lookups = [c[1]["params"]["token_id"].split(",") for c in calls]
+        assert len(lookups) == -(-len(ids) // 50) and max(map(len, lookups)) <= 50
+        assert sorted(sum(lookups, [])) == sorted(ids)
 
-    def test_get_positions_reads_only_the_first_page(self) -> None:
+    @pytest.mark.parametrize("down", [False, True])
+    def test_get_positions_reads_only_the_first_page(self, down: bool) -> None:
         """A single-page read sends no cursor, stops there and selects rows the same way."""
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
         page = _v2_response(rows, "next")
-        with patch("requests.get", side_effect=_positions_get(page)) as mock_get:
+        with patch(
+            "requests.get", side_effect=_positions_get(page, down=down)
+        ) as mock_get:
             positions, error = conn._get_positions(redeemable=False)
+        if down:  # a failed token lookup fails the read, without a success log
+            assert positions is None and error
+            assert "Fetched" not in str(conn.logger.info.call_args_list)
+            return
         assert error is None
         assert [c.args[0] for c in mock_get.call_args_list].count(
             DATA_API_POSITIONS_URL
