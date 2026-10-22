@@ -45,12 +45,14 @@ V2_CALLS = [
     (PUSD, APPROVE, EXCHANGE_V3, MAX_UINT256),
     (PM, SET_APPROVAL_FOR_ALL, EXCHANGE_V3, 1),
 ]
-FULL_CALLS = V2_CALLS + [
+FULL_CALLS = [
     (PUSD, APPROVE, EXCHANGE, MAX_UINT256),
     (PUSD, APPROVE, NEG_RISK_EXCHANGE, MAX_UINT256),
+    (PUSD, APPROVE, NEG_RISK_ADAPTER, MAX_UINT256),
     (CTF, SET_APPROVAL_FOR_ALL, EXCHANGE, 1),
     (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_EXCHANGE, 1),
-]
+    (CTF, SET_APPROVAL_FOR_ALL, NEG_RISK_ADAPTER, 1),
+] + V2_CALLS
 
 
 def _make_behaviour(tmp_path):  # type: ignore[no-untyped-def]
@@ -574,10 +576,10 @@ class TestProvisionDepositWallet:
 
 
 class TestBuildDwTradingApprovals:
-    """Behaviour-side construction of the 6 DW trading-approval calls."""
+    """Behaviour-side construction of the 8 DW trading-approval calls."""
 
-    def test_builds_six_calls(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """3 pUSD approves, 2 CTF and 1 PositionManager setApprovalForAll."""
+    def test_builds_eight_calls(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """4 pUSD approves, 3 CTF and 1 PositionManager setApprovalForAll."""
         b = _make_behaviour(tmp_path)
         p = b.context.params
         p.polymarket_collateral_address = "0x" + "c0" * 20
@@ -586,19 +588,19 @@ class TestBuildDwTradingApprovals:
         p.polymarket_neg_risk_ctf_exchange_address = "0x" + "e2" * 20
         p.polymarket_neg_risk_adapter_address = "0x" + "da" * 20
         txs = b._build_dw_trading_approvals()
-        assert len(txs) == 6
+        assert len(txs) == 8
         collateral = [t for t in txs if t["to"] == p.polymarket_collateral_address]
         ctf = [t for t in txs if t["to"] == p.polymarket_ctf_address]
-        assert len(collateral) == 3
-        assert len(ctf) == 2
+        assert len(collateral) == 4
+        assert len(ctf) == 3
         assert all(t["data"].startswith("0x095ea7b3") for t in collateral)
         assert all(t["data"].startswith("0xa22cb465") for t in ctf)
         assert all(t["value"] == "0" for t in txs)
 
     def test_dw_batch_includes_v2_exchange_approvals(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """The batch adds both V2 approvals and drops the NegRiskAdapter ones."""
+        """The batch approves both exchanges and the NegRiskAdapter, then V2."""
         txs = _make_behaviour(tmp_path)._build_dw_trading_approvals()
-        assert sorted(map(_decode, txs)) == sorted(FULL_CALLS)
+        assert list(map(_decode, txs)) == FULL_CALLS
 
     @pytest.mark.parametrize(
         "builder", ["_build_dw_trading_approvals", "_build_dw_v2_trading_approvals"]
