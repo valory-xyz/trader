@@ -1472,8 +1472,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param row: a snake_case positions row from Data API v2
         :return: whether the row is a V2 position
         """
-        condition_id = int(row["condition_id"], 16)
-        return int(row["token_id"]) == condition_id + int(row["outcome_index"])
+        try:
+            condition_id = int(row["condition_id"], 16)
+            return int(row["token_id"]) == condition_id + int(row["outcome_index"])
+        except (KeyError, TypeError, ValueError):  # pragma: no cover - malformed row
+            return False
 
     def _select_positions(
         self,
@@ -1493,15 +1496,17 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param holder: the address holding the positions
         :return: the selected positions, keyed by v1 names
         """
-        positions = [self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1) for row in rows]
-        for row, position in zip(rows, positions):
+        selected = [
+            (row, self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1))
+            for row in rows
+            if redeemable is None or bool(row.get("redeemable")) is redeemable
+        ]
+        for row, position in selected:
             if self._is_v2_position(row):
                 position[V2_BALANCE_KEY] = self._erc1155_balance_of(
                     self.position_manager, holder, int(row["token_id"])
                 )
-        if redeemable is None:
-            return positions
-        return [p for p in positions if bool(p.get("redeemable")) is redeemable]
+        return [position for _, position in selected]
 
     def _get_positions(
         self,
