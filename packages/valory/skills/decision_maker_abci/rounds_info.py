@@ -26,9 +26,10 @@ import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
 ROUNDS_INFO = {
+    # Reuses the copy of the round it now precedes, so Pearl shows no new text.
     "agent_top_up_round": {
-        "name": "Topping up the agent signer",
-        "description": "Moves native token from the agent safe to the agent signer when the signer runs low on gas.",
+        "name": "Fetching agent performance data",
+        "description": "Retrieves the latest performance statistics for the agent.",
         "transitions": {},
     },
     "benchmarking_randomness_round": {
