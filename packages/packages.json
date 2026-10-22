@@ -10,16 +10,16 @@
         "contract/valory/mech_prepaid_reader/0.1.0": "bafybeiaitnqi4kc2wiltj3k6a3iujxritwkh5w2a2xoff7dosoqy7p3sou",
         "connection/valory/polymarket_client/0.1.0": "bafybeiecstc73bjiqphlg5h5rarkl3mcs3dbgpkpnlkqdrrsnnemaxlr7a",
         "skill/valory/market_manager_abci/0.1.0": "bafybeiho3efgdc27yyw6tqbs2raqanyab2aewgbynxfdin5mn7nbio4frq",
-        "skill/valory/decision_maker_abci/0.1.0": "bafybeibhbkmiyl7xesmbh4msa72h54gpbhqgaj5cpnmnu6rhmwjqgjpwvq",
-        "skill/valory/trader_abci/0.1.0": "bafybeigfgp5qusxjohaou457uk6ndojozd7ucozqbzsu43dnejatk74ucu",
-        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeidn3zd3o6vyjxo2a2igkoycknjogfrj2ye3reehuyho6wwbamkcc4",
+        "skill/valory/decision_maker_abci/0.1.0": "bafybeicedai3crq625on74lx4ovgyw6afgnncvhxbbcrqbcxftsi566udq",
+        "skill/valory/trader_abci/0.1.0": "bafybeihq7yhtspw436s2ztbvcb3e25ynbr45n7ikfqxspaz6u6orqazhua",
+        "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeiberztbdpdpnb2huccvs4m2kzcdba3ht3533l4tzak7gapxtp3jle",
         "skill/valory/staking_abci/0.1.0": "bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeic7njszwbnm2rib2ftfkfqkukeuhmpclua4gq3ljkfbsmobdkktz4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeifmcqevoepjnv3dwy4qnobu2enjlxrfjqjfnzepggimzxrahnmyre",
         "skill/valory/chatui_abci/0.1.0": "bafybeihymwcgc7te3ytzbuiaepoqtongvdap3st423w2iw5d2f7dwuefzm",
-        "agent/valory/trader/0.1.0": "bafybeibmey7xeg4ekc7mw2wtiviyovmcthaym5doarg77hwgubdgdtnedq",
-        "service/valory/trader_pearl/0.1.0": "bafybeidmy7wuhdjc7clgapwj42s6chyrkrerwhgrl5puot4sve3gdukobi",
-        "service/valory/polymarket_trader/0.1.0": "bafybeihclhxygicf27djhhuflter5t4qafx6ydrdpq5u4ms7b5yfddpby4"
+        "agent/valory/trader/0.1.0": "bafybeiarc5juchdez66o2tq6wfgfxdlt3tdf3iczvcysxupcfqv7q6al7y",
+        "service/valory/trader_pearl/0.1.0": "bafybeigdbrme6mqlkma7mkk5siekwyeurfsydtezrcxk5gdcmb435g5kqu",
+        "service/valory/polymarket_trader/0.1.0": "bafybeidkie5o26lm77irqs4tjhy7kfjtew2xcymaocqrz3ocyg6hviyr7e"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
