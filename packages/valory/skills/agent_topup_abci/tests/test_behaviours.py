@@ -42,13 +42,17 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     funds_status,
     real_topup_rule,
 )
-from packages.valory.skills.agent_topup_abci.utils import WXDAI_ADDRESS
+from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_SUCCEEDED_KEY,
+    WXDAI_ADDRESS,
+)
 from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
     GET_FUNDS_STATUS_METHOD_NAME,
 )
 from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
+    hash_payload_to_hex,
     skill_input_hex_to_payload,
 )
 
@@ -59,6 +63,11 @@ WITHDRAW_DATA = bytes.fromhex("2e1a7d4d" + "00" * 32)
 
 STATE = ContractApiMessage.Performative.STATE
 ERROR = ContractApiMessage.Performative.ERROR
+
+
+def _settled_tx(to_address: str) -> str:
+    """The tx settlement hex of a settled top-up tx sent to `to_address`."""
+    return hash_payload_to_hex(SAFE_TX_HASH[2:], 0, 0, to_address, b"")
 
 
 def _response(performative: Any, body: Optional[Dict] = None) -> MagicMock:
@@ -77,6 +86,7 @@ class _Harness:
         funds: FundRequirements,
         shared_state: Optional[Dict[str, Any]] = None,
         tx_submitter: Optional[str] = None,
+        settled_to: str = AGENT,
         responses: Optional[List[MagicMock]] = None,
     ) -> None:
         """Set up the behaviour's context."""
@@ -86,6 +96,7 @@ class _Harness:
         setup: Dict[str, Any] = {"safe_contract_address": SAFE}
         if tx_submitter is not None:
             setup["tx_submitter"] = tx_submitter
+            setup["most_voted_tx_hash"] = _settled_tx(settled_to)
 
         self.context = MagicMock(agent_address=AGENT, shared_state=self.shared_state)
         self.context.params.default_chain_id = chain
@@ -373,6 +384,7 @@ class TestGnosisUnwrap:
             ),
             shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 1},
             tx_submitter=SUBMITTER,
+            settled_to=WXDAI_ADDRESS,
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
 
@@ -391,6 +403,7 @@ class TestGnosisUnwrap:
             ),
             shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_TXS_THIS_CHECK_KEY: 1},
             tx_submitter=SUBMITTER,
+            settled_to=WXDAI_ADDRESS,
         )
 
         assert harness.run() is None
@@ -409,3 +422,64 @@ class TestGnosisUnwrap:
         assert harness.run() is None
         assert len(harness.contract_calls) == 1
 
+
+class TestTopUpSucceeded:
+    """`/funds-status` may report the top-up deficits only once a transfer has settled."""
+
+    def test_settled_transfer_succeeds(self) -> None:
+        """A settled transfer to the Agent Signer marks the top-up as succeeded."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", 2 * ETHER, 8 * ETHER),
+            shared_state={
+                LAST_TOPUP_CHECK_KEY: NOW - 60,
+                TOPUP_TXS_THIS_CHECK_KEY: 1,
+                TOPUP_SUCCEEDED_KEY: False,
+            },
+            tx_submitter=SUBMITTER,
+        )
+
+        assert harness.run() is None
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is True
+
+    def test_settled_unwrap_is_not_a_success(self) -> None:
+        """A settled wxDAI unwrap moves nothing to the Agent Signer yet."""
+        harness = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis", ETHER // 10, 0, wxdai_balance=5 * ETHER, track_wxdai=True
+            ),
+            shared_state={
+                LAST_TOPUP_CHECK_KEY: NOW - 60,
+                TOPUP_TXS_THIS_CHECK_KEY: 1,
+                TOPUP_SUCCEEDED_KEY: False,
+            },
+            tx_submitter=SUBMITTER,
+            settled_to=WXDAI_ADDRESS,
+        )
+
+        assert harness.run() is None
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
+
+    def test_new_topup_tx_clears_the_success(self) -> None:
+        """Until the next top-up tx settles, an earlier success no longer counts."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 10 * ETHER),
+            shared_state={TOPUP_SUCCEEDED_KEY: True},
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert harness.run() is not None
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
+
+    def test_no_topup_tx_keeps_the_success(self) -> None:
+        """A check that sends nothing leaves the last outcome as it was."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER, 10 * ETHER),
+            shared_state={TOPUP_SUCCEEDED_KEY: True},
+        )
+
+        assert harness.run() is None
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is True

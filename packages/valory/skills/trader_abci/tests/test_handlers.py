@@ -56,6 +56,7 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     funds_status,
     real_topup_rule,
 )
+from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -3114,13 +3115,15 @@ class TestApplyAgentTopUp:
     """`/funds-status` reports what is left once the agent tops up its own Agent Signer."""
 
     @staticmethod
-    def _handler(chain: str) -> HttpHandler:
+    def _handler(chain: str, topup_succeeded: Optional[bool] = True) -> HttpHandler:
         """A handler whose funds-manager rule is the real one."""
         handler = _make_handler()
         handler.context.agent_address = AGENT
         handler.context.shared_state = {
             GET_AGENT_TOPUP_METHOD_NAME: real_topup_rule(chain)
         }
+        if topup_succeeded is not None:
+            handler.context.shared_state[TOPUP_SUCCEEDED_KEY] = topup_succeeded
         return handler
 
     @staticmethod
@@ -3158,17 +3161,18 @@ class TestApplyAgentTopUp:
         assert safe_tokens[NATIVE].deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
         assert safe_tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS].deficit == 0
 
-    def test_signer_alert_keeps_the_safe_deficit(self) -> None:
-        """Below min_tx_balance, the Agent Signer asks for its need, the Agent Safe as before."""
-        handler = self._handler("polygon")
-        status = funds_status("polygon", ETHER // 100, ETHER // 2)
+    @pytest.mark.parametrize("topup_succeeded", [None, False])
+    def test_without_a_succeeded_topup_keeps_the_deficits_read(
+        self, topup_succeeded: Optional[bool]
+    ) -> None:
+        """Before a top-up has succeeded, or after one failed, the Agent Signer deficit is not reported as 0."""
+        handler = self._handler("polygon", topup_succeeded)
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
         status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
 
         handler._apply_agent_topup(status)
 
-        assert (
-            self._native_deficit(status, "polygon", AGENT) == 2 * ETHER - ETHER // 100
-        )
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
         assert self._native_deficit(status, "polygon", SAFE) == 7
 
     def test_handler_responds_with_the_topped_up_status(self) -> None:

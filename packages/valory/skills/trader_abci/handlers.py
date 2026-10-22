@@ -55,7 +55,10 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
-from packages.valory.skills.agent_topup_abci.utils import get_agent_topups
+from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_SUCCEEDED_KEY,
+    get_agent_topups,
+)
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     MECH_PRE_DEPOSIT_EOA_SHORT,
@@ -756,10 +759,14 @@ class HttpHandler(BaseHttpHandler):
 
         The rule's deficits win over the Agent Safe deficit computed by
         `_get_adjusted_funds_status`, whose `topup - balance` would drop the
-        Agent Signer shortfall from the Agent Safe request.
+        Agent Signer shortfall from the Agent Safe request. They assume the
+        top-up succeeds, so they apply only once one has: a top-up that keeps
+        failing still shows as a deficit to fund.
 
         :param funds_status: the adjusted funds status; updated in place.
         """
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, False):
+            return
         agent_address = self.context.agent_address
         topups = get_agent_topups(
             self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],

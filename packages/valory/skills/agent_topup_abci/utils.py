@@ -29,6 +29,8 @@ from packages.valory.skills.funds_manager.models import (
 
 GNOSIS_CHAIN_NAME = "gnosis"
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
+# Whether the latest top-up tx was a settled transfer to the Agent Signer.
+TOPUP_SUCCEEDED_KEY = "agent_topup_succeeded"
 
 NO_TOPUP = AgentTopUp(move=0, signer_deficit=None, safe_deficit=None)
 

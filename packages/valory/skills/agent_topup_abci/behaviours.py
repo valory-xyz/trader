@@ -39,6 +39,7 @@ from packages.valory.skills.agent_topup_abci.rounds import (
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
     NO_TOPUP,
+    TOPUP_SUCCEEDED_KEY,
     WXDAI_ADDRESS,
     get_agent_topups,
     get_safe_native_balance,
@@ -49,6 +50,7 @@ from packages.valory.skills.funds_manager.behaviours import (
 )
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
+    skill_input_hex_to_payload,
 )
 
 LAST_TOPUP_CHECK_KEY = "last_topup_check"
@@ -85,6 +87,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] = (
                     self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0) + 1
                 )
+                self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = False
             payload = AgentTopUpPayload(
                 self.context.agent_address,
                 self.matching_round.auto_round_id(),
@@ -102,6 +105,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
             get_name(SynchronizedData.tx_submitter), None
         )
         if last_submitter == self.matching_round.auto_round_id():
+            self._record_settled_transfer()
             return (
                 self.skill_shared_state.get(TOPUP_TXS_THIS_CHECK_KEY, 0)
                 < MAX_TOPUP_TXS_PER_CHECK
@@ -115,6 +119,12 @@ class AgentTopUpBehaviour(BaseBehaviour):
         self.skill_shared_state[LAST_TOPUP_CHECK_KEY] = now
         self.skill_shared_state[TOPUP_TXS_THIS_CHECK_KEY] = 0
         return True
+
+    def _record_settled_transfer(self) -> None:
+        """Mark the top-up as succeeded when the tx that just settled was the transfer, not the unwrap."""
+        tx = skill_input_hex_to_payload(self.synchronized_data.most_voted_tx_hash)
+        if tx["to_address"] == self.context.agent_address:
+            self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = True
 
     def _prepare_topup_tx(self) -> Generator[None, None, Optional[str]]:
         """Prepare the next top-up Safe tx: the wxDAI unwrap when Agent Safe xDAI is short, otherwise the transfer."""
