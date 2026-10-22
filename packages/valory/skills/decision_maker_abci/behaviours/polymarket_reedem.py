@@ -217,6 +217,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         collateral_token: str,
         is_neg_risk: bool = False,
         amount: Optional[int] = None,
+        position_id: Optional[str] = None,
     ) -> Generator[None, None, Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]]:
         """Redeem a single position.
 
@@ -225,6 +226,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
         :param amount: the amount of a Protocol V2 position; None for V1
+        :param position_id: the id of a Protocol V2 position; None for V1
         :return: the relayer's transactions for the redeem, an error dict if the
             request failed, or None if the connection gave no response
         :yield: None
@@ -242,7 +244,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 "index_sets": index_sets,
                 "collateral_token": collateral_token,
                 "is_neg_risk": is_neg_risk,
-                "outcome_index": outcome_index,
+                "position_id": position_id,
                 "amount": amount,
             },
         }
@@ -392,12 +394,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 f"Redeeming {market_type} position: {condition_id} - {outcome} (size: {size})"
             )
 
-            # A V2 position also passes its amount, to claim through the Router.
-            v2 = (
-                {"amount": position[V2_BALANCE_KEY]}
-                if V2_BALANCE_KEY in position
-                else {}
-            )
+            # A V2 position also passes its id and amount, to claim through the Router.
+            v2: dict = {}
+            if V2_BALANCE_KEY in position:
+                v2 = {
+                    "amount": position[V2_BALANCE_KEY],
+                    "position_id": position["asset"],
+                }
             result = yield from self._redeem_position(
                 condition_id=condition_id,
                 outcome_index=outcome_index,
@@ -467,10 +470,11 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 index_sets=[1 << outcome_index],
             )
             if V2_BALANCE_KEY in position:
-                # A V2 claim goes to the Router, which takes a bytes31 condition
-                # ID: the Data API's zero pad byte drops.
-                cid = bytes.fromhex(condition_id.removeprefix("0x"))[:31]
-                args = [cid, outcome_index, position[V2_BALANCE_KEY]]
+                # A V2 claim goes to the Router. The position id is the bytes31
+                # condition id followed by the outcome index byte.
+                v2_id = int(position["asset"])
+                cid = (v2_id >> 8).to_bytes(31, "big")
+                args = [cid, v2_id & 0xFF, position[V2_BALANCE_KEY]]
                 redeem_data = (
                     ROUTER_REDEEM_SELECTOR + encode(ROUTER_REDEEM_TYPES, args)
                 ).hex()
