@@ -2518,7 +2518,7 @@ def _tokens_response(ids: list, modules: dict, down: bool = False) -> MagicMock:
     response = MagicMock()
     if down:
         response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
-    rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
+    rows = [{"token_id": i, "module": modules[i]} for i in ids if modules.get(i)]
     response.json.return_value = {"data": rows}
     return response
 
@@ -2548,13 +2548,13 @@ def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
     conn.relayer_client.execute.return_value.get_transaction.return_value = {}
     conn.relayer_proxy.exec_wallet_batch.return_value = "0xbatch"
 
-    conn.token_lookups, conn.tokens_down = [], False
+    conn.token_lookups, conn.tokens_down, conn.modules = [], False, TOKEN_MODULES
 
     def get(url: str, params: dict, **_: Any) -> MagicMock:
         if urlsplit(url).path == "/v2/tokens":
             ids = _token_ids(url, params)
-            conn.token_lookups += ids
-            return _tokens_response(ids, TOKEN_MODULES, conn.tokens_down)
+            conn.token_lookups.append(sorted(ids))
+            return _tokens_response(ids, conn.modules, conn.tokens_down)
         assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
         rows = pages.get(to_checksum_address(params["user"]), [])
         redeemable_only = params.get("status") == "REDEEMABLE"
@@ -2605,21 +2605,23 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert _held(balances) == swept
 
 
-@pytest.mark.parametrize("tokens_down", [False, True])
-def test_v2_position_detected_by_token_module(tokens_down: bool) -> None:
-    """Rows are classed by their token's /v2/tokens module, looked up once; a failed lookup fails the read."""
+@pytest.mark.parametrize("lookup", ["ok", "down", "unknown"])
+def test_v2_position_detected_by_token_module(lookup: str) -> None:
+    """Rows are classed by their token's /v2/tokens module, looked up once in one batch; a failed or partial lookup fails the read."""
     rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
     with _safe_world(*rows) as conn:
-        conn.tokens_down = tokens_down
+        conn.tokens_down = lookup == "down"
+        if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
+            conn.modules = {**TOKEN_MODULES, XI["token_id"]: None}
         reads = [conn._fetch_all_positions() for _ in range(2)]
-    if tokens_down:
+    if lookup != "ok":
         assert [positions for positions, _ in reads] == [None, None]
         assert all(error for _, error in reads)
         return
     assert [[V2_BALANCE_KEY in p for p in positions] for positions, _ in reads] == [
         [True, False, True]
     ] * 2
-    assert sorted(conn.token_lookups) == sorted(row["token_id"] for row in rows)
+    assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
 
 
 class TestBoolParam:
