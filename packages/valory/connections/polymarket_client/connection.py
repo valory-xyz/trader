@@ -1537,7 +1537,12 @@ class PolymarketClientConnection(BaseSyncConnection):
                 for row in response.json()["data"]:
                     if row["module"] in (V1_MODULE, *V2_MODULES):  # else missing
                         self._token_modules[str(row["token_id"])] = row["module"]
-            except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+            except (
+                requests.exceptions.RequestException,
+                ValueError,
+                KeyError,
+                TypeError,
+            ) as e:
                 self.logger.error(f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}")
                 return
 
