@@ -52,7 +52,9 @@ class TestGetAgentTopUps:
             "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
         )
 
-        topup = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT, MIN)["gnosis"]
+        topup = get_agent_topups(
+            real_topup_rule("gnosis"), funds, AGENT, MIN, MagicMock()
+        )["gnosis"]
 
         assert topup.move == 19 * ETHER // 10
         assert topup.safe_deficit == 0
@@ -63,7 +65,9 @@ class TestGetAgentTopUps:
             "gnosis", ETHER // 10, 5 * ETHER, wxdai_balance=None, track_wxdai=True
         )
 
-        topups = get_agent_topups(real_topup_rule("gnosis"), funds, AGENT, MIN)
+        topups = get_agent_topups(
+            real_topup_rule("gnosis"), funds, AGENT, MIN, MagicMock()
+        )
 
         assert topups["gnosis"] == NO_TOPUP
 
@@ -72,7 +76,7 @@ class TestGetAgentTopUps:
         rule = MagicMock(return_value={})
         funds = funds_status("polygon", ETHER // 10, ETHER)
 
-        get_agent_topups(rule, funds, AGENT, MIN)
+        get_agent_topups(rule, funds, AGENT, MIN, MagicMock())
 
         rule.assert_called_once_with(funds, safe_native_extra={})
 
@@ -80,9 +84,9 @@ class TestGetAgentTopUps:
         """A short Agent Safe asks for the Agent Signer shortfall plus its own topup."""
         funds = funds_status("polygon", ETHER // 10, ETHER // 2)
 
-        topup = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)[
-            "polygon"
-        ]
+        topup = get_agent_topups(
+            real_topup_rule("polygon"), funds, AGENT, MIN, MagicMock()
+        )["polygon"]
 
         assert topup.move == ETHER // 2
         assert topup.signer_deficit == 0
@@ -91,16 +95,30 @@ class TestGetAgentTopUps:
     def test_signer_below_the_minimum_moves_nothing(self) -> None:
         """Below `min_signer_balance`, the deficits are reported as read."""
         funds = funds_status("polygon", MIN - 1, 10 * ETHER)
+        logger = MagicMock()
 
-        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)
+        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN, logger)
 
         assert topups["polygon"] == NO_TOPUP
+        logger.warning.assert_not_called()
+
+    def test_unread_signer_balance_moves_nothing_and_warns(self) -> None:
+        """An unknown Agent Signer balance never moves funds, and says why."""
+        funds = funds_status("polygon", None, 10 * ETHER)
+        logger = MagicMock()
+
+        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN, logger)
+
+        assert topups["polygon"] == NO_TOPUP
+        logger.warning.assert_called_once()
 
     def test_signer_at_the_minimum_is_topped_up(self) -> None:
         """At `min_signer_balance`, the Agent Signer is topped up."""
         funds = funds_status("polygon", MIN, 10 * ETHER)
 
-        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN)
+        topups = get_agent_topups(
+            real_topup_rule("polygon"), funds, AGENT, MIN, MagicMock()
+        )
 
         assert topups["polygon"].move == 2 * ETHER - MIN
 

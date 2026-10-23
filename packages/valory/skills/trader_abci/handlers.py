@@ -770,6 +770,7 @@ class HttpHandler(BaseHttpHandler):
                 funds_status,
                 agent_address,
                 self.params.agent_balance_threshold,
+                self.context.logger,
             )
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(

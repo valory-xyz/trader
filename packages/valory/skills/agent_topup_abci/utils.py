@@ -19,6 +19,7 @@
 
 """Helpers shared by the top-up round and the `/funds-status` handler."""
 
+from logging import Logger
 from typing import Callable, Dict, Optional
 
 from packages.valory.skills.funds_manager.models import (
@@ -58,6 +59,7 @@ def get_agent_topups(
     funds: FundRequirements,
     agent_address: str,
     min_signer_balance: int,
+    logger: Logger,
 ) -> Dict[str, AgentTopUp]:
     """Apply the funds-manager top-up rule, counting Agent Safe wxDAI as native on Gnosis.
 
@@ -65,6 +67,7 @@ def get_agent_topups(
     :param funds: the status returned by funds-manager `get_funds_status()`.
     :param agent_address: the Agent Signer address.
     :param min_signer_balance: the Agent Signer balance below which nothing is moved.
+    :param logger: the logger.
     :return: the top-up decision per chain.
     """
     wxdai = _get_tokens(funds, GNOSIS_CHAIN_NAME, agent_address, is_signer=False).get(
@@ -82,7 +85,14 @@ def get_agent_topups(
         signer = _get_native(
             _get_tokens(funds, chain_name, agent_address, is_signer=True)
         )
-        if signer is not None and (signer.balance or 0) < min_signer_balance:
+        if signer is None:
+            continue
+        if signer.balance is None:
+            logger.warning(
+                f"Agent Signer top-up skipped on {chain_name}: its balance was not read."
+            )
+            topups[chain_name] = NO_TOPUP
+        elif signer.balance < min_signer_balance:
             # The tx settlement would wait for a refill before sending the top-up.
             topups[chain_name] = NO_TOPUP
     return topups

@@ -147,6 +147,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 funds,
                 agent_address,
                 self.params.agent_balance_threshold,
+                self.context.logger,
             ).get(chain, NO_TOPUP)
         except Exception as exc:  # pylint: disable=broad-except
             # The round starts every period: a failed read skips the top-up, never the period.
