@@ -71,17 +71,12 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # CLOB v2: provision the DepositWallet and set its trading approvals
-            # (pUSD allowance + operator rights to the V2 Exchange,
-            # NegRiskCTFExchange, NegRiskAdapter and Protocol V2 ExchangeV3)
-            # via the relayer proxy. The Safe keeps its own trading and
-            # redemption approvals, built below.
+            # CLOB v2: provision the DepositWallet and its trading approvals.
             yield from self._provision_deposit_wallet()
 
             if self._safe_allowances_current():
-                # Only the DepositWallet needed this pass. No Safe tx is sent;
-                # the round routes to the post-approval check, which re-reads
-                # the Safe approvals on chain.
+                # Keep mocking_mode=False: an all-None payload makes the round
+                # emit NONE, which maps to ImpossibleRound.
                 self.context.logger.info(
                     "Safe allowances already recorded under the current "
                     "version - skipping the Safe approvals."
@@ -256,7 +251,8 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
                     "recorded; skipping re-approval."
                 )
                 return
-            # Recorded before Protocol V2: only the V2 approvals are missing.
+            # Recorded under another version: re-send only the Protocol V2 calls,
+            # the V1 set is already mined.
             transactions = self._build_dw_v2_trading_approvals()
         else:
             transactions = self._build_dw_trading_approvals()
@@ -583,12 +579,11 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
 
         pUSD allowance + CTF operator rights to the V2 Exchange,
         NegRiskCTFExchange and NegRiskAdapter, plus the Protocol V2 approvals
-        from ``_build_dw_v2_trading_approvals``. The NegRiskAdapter approvals
-        stay because Polymarket's CLOB still checks them on orders in
-        negative-risk markets. The redemption-adapter approvals are excluded:
-        redemption is executed by the Safe, never the DepositWallet. The
-        connection's ``EXEC_WALLET_BATCH`` is a generic relay, so the calls are
-        constructed here rather than connection-side.
+        from ``_build_dw_v2_trading_approvals``. The CLOB checks the
+        NegRiskAdapter approvals on negative-risk orders. The redemption-adapter
+        approvals are excluded: redemption is executed by the Safe, never the
+        DepositWallet. The connection's ``EXEC_WALLET_BATCH`` is a generic
+        relay, so the calls are constructed here rather than connection-side.
 
         :return: list of ``{"to", "data", "value"}`` calls for EXEC_WALLET_BATCH.
         """

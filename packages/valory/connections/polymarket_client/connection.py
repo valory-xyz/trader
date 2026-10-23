@@ -2128,8 +2128,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 value="0",
             )
 
-            # Protocol V2: the Router claims V2 winnings by operating the
-            # Safe's PositionManager positions.
             position_manager_approve_router = SafeTransaction(
                 to=self.position_manager,
                 operation=OperationType.Call,

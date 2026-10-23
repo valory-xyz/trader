@@ -38,7 +38,8 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 # Bump when the Safe approval set changes; older stamps re-enter the approval round.
 POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION = "v5"
 
-# Bump when the DepositWallet approval set changes.
+# Bump when the DepositWallet approval set changes, and revisit the re-send
+# branch in ``_provision_deposit_wallet`` that adds only the Protocol V2 calls.
 DW_APPROVALS_VERSION = 2
 
 
@@ -73,14 +74,6 @@ class CheckBenchmarkingModeRound(VotingRound):
                         allowances_set
                         and file_version == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
                     ):
-                        # Allowances are current, but setup may still be
-                        # required: skipping is only safe when a DepositWallet
-                        # is recorded under the current agent EOA with its
-                        # current trading approvals. A missing DW (fresh /
-                        # grandfathered service), an owner mismatch (agent EOA
-                        # rotation) or approvals not recorded under the current
-                        # version re-enters SET_APPROVAL to (re)provision and
-                        # (re)approve it.
                         if self._deposit_wallet_ready():
                             self.context.logger.info(
                                 "Polymarket allowances set and DepositWallet "

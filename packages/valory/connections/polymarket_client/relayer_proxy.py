@@ -71,7 +71,6 @@ from eth_utils import keccak, to_checksum_address
 CHALLENGE_PREFIX = "wildcard-relayer:v2"
 PROXY_REQUEST_TIMEOUT = 30
 RELAYER_PATH_PREFIX = "/polymarket/relayer"
-# Longest response-body excerpt carried in a ``RelayerProxyError``.
 ERROR_BODY_MAX_CHARS = 500
 
 # Polymarket DepositWallet factory on Polygon. All relayer mutations target
