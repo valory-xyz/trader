@@ -519,7 +519,14 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     # Parse JSON fields from response
                     outcomes = json.loads(market.get("outcomes", "[]"))
                     outcome_prices = json.loads(market.get("outcomePrices", "[]"))
-                    clob_token_ids = json.loads(market.get("clobTokenIds", "[]"))
+                    version = market.get("version")
+                    if version not in ("v1", "v2"):
+                        raise ValueError(f"Unsupported market version {version!r}")
+                    clob_token_ids = (
+                        market.get("positionIds")
+                        if version == "v2"
+                        else json.loads(market.get("clobTokenIds", "[]"))
+                    )
 
                     # Validate that we have the required data
                     if not outcomes or not outcome_prices or not clob_token_ids:
@@ -616,6 +623,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
                         "poly_tags": list(market.get("_poly_tags", []) or []),
+                        "market_version": version,
                     }
 
                     # Debug: Log category for first few bets
