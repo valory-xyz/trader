@@ -86,6 +86,7 @@ class Event(Enum):
     SET_APPROVAL = "set_approval"
     PREPARE_TX = "prepare_tx"
     WITHDRAWAL_DONE = "withdrawal_done"
+    AGENT_TOPUP_FAILED = "agent_topup_failed"
 
 
 class SynchronizedData(

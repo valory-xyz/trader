@@ -55,6 +55,18 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
+from packages.valory.skills.agent_topup_abci.utils import (
+    GNOSIS_CHAIN_NAME,
+    TOPUP_SUCCEEDED_KEY,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    WXDAI_ADDRESS as GNOSIS_WRAPPED_NATIVE_ADDRESS,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    get_agent_topups,
+    get_safe_native_balance,
+    get_signer_native_deficit,
+)
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
     MECH_PRE_DEPOSIT_EOA_SHORT,
@@ -71,7 +83,10 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 from packages.valory.skills.decision_maker_abci.handlers import (
     IpfsHandler as BaseIpfsHandler,
 )
-from packages.valory.skills.funds_manager.behaviours import GET_FUNDS_STATUS_METHOD_NAME
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
     FundRequirements,
@@ -99,12 +114,10 @@ OMENSTRAT_UI_SUBDIR = "omenstrat"
 POLYSTRAT_UI_SUBDIR = "polystrat"
 
 # Gnosis Chain Configuration
-GNOSIS_CHAIN_NAME = "gnosis"
 GNOSIS_CHAIN_ID = 100
 GNOSIS_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
 )
-GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GNOSIS_USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 
 # Polygon Chain Configuration
@@ -736,16 +749,64 @@ class HttpHandler(BaseHttpHandler):
             if self.params.use_x402:
                 self._submit_x402_swap_if_idle()
 
+            funds_status = self._get_adjusted_funds_status()
+            self._apply_agent_topup(funds_status)
             self._send_ok_response(
-                http_msg,
-                http_dialogue,
-                self._get_adjusted_funds_status().get_response_body(),
+                http_msg, http_dialogue, funds_status.get_response_body()
             )
         except Exception as e:
             self.context.logger.error(f"Error handling funds status request: {e}")
             self._send_internal_server_error_response(
                 http_msg, http_dialogue, {"error": "Failed to fetch funds status"}
             )
+
+    def _apply_agent_topup(self, funds_status: FundRequirements) -> None:
+        """Report the native deficits of funds-manager `get_agent_topup`, once a top-up has succeeded.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        """
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, False):
+            return
+        agent_address = self.context.agent_address
+        try:
+            topups = get_agent_topups(
+                self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+                funds_status,
+                agent_address,
+                self.params.agent_balance_threshold,
+                self.context.logger,
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"Keeping the deficits read: {type(exc).__name__}({exc}).",
+                exc_info=True,
+            )
+            return
+        for chain_name, topup in topups.items():
+            # The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot.
+            keep_safe_deficit = (
+                self.params.is_running_on_polymarket
+                and self._safe_native_covers_the_move(funds_status, chain_name)
+            )
+            for address, account in funds_status[chain_name].accounts.items():
+                if address == agent_address:
+                    deficit = topup.signer_deficit
+                else:
+                    deficit = None if keep_safe_deficit else topup.safe_deficit
+                if deficit is None:
+                    continue
+                for token in account.tokens.values():
+                    if token.is_native:
+                        token.deficit = deficit
+
+    def _safe_native_covers_the_move(
+        self, funds_status: FundRequirements, chain_name: str
+    ) -> bool:
+        """Whether the Agent Safe native balance alone covers the Agent Signer need."""
+        agent_address = self.context.agent_address
+        need = get_signer_native_deficit(funds_status, chain_name, agent_address)
+        safe_native = get_safe_native_balance(funds_status, chain_name, agent_address)
+        return need is not None and safe_native is not None and safe_native >= need
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

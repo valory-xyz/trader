@@ -852,6 +852,23 @@ class TestPolymarketLabelOverrides:
         assert "polymarket_swap_usdc_round" not in handler.rounds_info
 
 
+@pytest.mark.parametrize("is_running_on_polymarket", [True, False])
+def test_agent_top_up_round_shows_no_new_copy(is_running_on_polymarket: bool) -> None:
+    """The top-up round reuses the copy of the round it precedes."""
+    context = MagicMock()
+    context.params.service_endpoint = "http://localhost:8080/path"
+    context.params.is_running_on_polymarket = is_running_on_polymarket
+    handler = HttpHandler(name="", skill_context=context)
+    handler.setup()
+
+    top_up = handler.rounds_info["agent_top_up_round"]
+    next_round = handler.rounds_info["fetch_performance_data_round"]
+    assert (top_up["name"], top_up["description"]) == (
+        next_round["name"],
+        next_round["description"],
+    )
+
+
 ROUND_TIMEOUT_SECONDS = 350.0
 
 
