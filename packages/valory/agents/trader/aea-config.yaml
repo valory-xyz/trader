@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeia47cioj33desaycey2p23rf5uj7dkb5lt5rmaaromd4aavmxlywy
+- valory/polymarket_client:0.1.0:bafybeicjk3kau72x2a3nt6utqmc5brv6puvxddtrlsi2geaez55lv5j5sy
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib4q7vrx4y7fppzhcpabq5bppy4hjwmzqmqrfo3dsp6hqwjzkykei
-- valory/market_manager_abci:0.1.0:bafybeiekce3mm7ysg7w7xi33mwakna3dm2j677fh6ovq2tbahr5f57grse
-- valory/decision_maker_abci:0.1.0:bafybeibg555cb4nfxwwkurbh7s4zk3ecg4osm3s7p6wou4cb5bti5b4kqu
-- valory/trader_abci:0.1.0:bafybeieep5k5jviz6qo5t7yna6vth7rfn7ldmkh3xtliue6kixsoxadsf4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiehuucr2titc2v5jb2f3iqsv7mfsdwk6udes5pbqbyft4aa5qssi4
+- valory/market_manager_abci:0.1.0:bafybeid7plspjk2iduegzjoaijn4q2cac4jjbgfqbk6vnnm4fofafp44d4
+- valory/decision_maker_abci:0.1.0:bafybeidqlp3dgftxznoj6ybwuch5njgi5uslt3nom4vm7v5ufb3i7hv7wa
+- valory/trader_abci:0.1.0:bafybeiddsoqnujmkuhlcifnxi3dkzhmiw3wznxag7rwdqoqzxsvbzihrxy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeig5jjqiixdmezavynqfepegnfcyjrvxwqbigmf3tani6t4btdrmqm
+- valory/check_stop_trading_abci:0.1.0:bafybeicq2qlq64vv5bwipsmgl37mtwq5lluerxgy4cshms7i4goasgumle
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeigozsx3t4tfqxecib3s7lajoxhufivufjhvatyi6ng4ykqnjie3z4
-- valory/agent_performance_summary_abci:0.1.0:bafybeiacgcw4ix2fu3vkfgwjiakcfelqovtvx6xq7airuzrhfduntncplu
+- valory/chatui_abci:0.1.0:bafybeidzzdrg5jhnauti5argw6i4kg4fmuiymtkm7nbydkaj7wfczp5twe
+- valory/agent_performance_summary_abci:0.1.0:bafybeihuwqiu34m3kpttmo6xkyblxvzctl7zflastijdwcaiybxkb7x25y
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
