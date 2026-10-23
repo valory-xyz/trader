@@ -2406,7 +2406,7 @@ XI = json.loads(
     '{"token_id": "895257453734540292493143124621755605615887197499956109032745153687078305792", "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcome_index": 0, "current_size": 1.0, "redeemable": false, "negative_risk": false, "title": "Xi Jinping out before 2027?"}'
 )
 XI_WON = {**XI, "redeemable": True, "current_value": 1.0}  # as if it resolved Yes
-# Each fixture token's `module` in /v2/tokens: v1_ctf is V1, any other is V2.
+# Each fixture token's `module` in /v2/tokens: v1_ctf is V1, binary and neg_risk V2.
 # https://data-api.polymarket.com/v2/tokens?token_id=<the fixture token IDs>
 TOKEN_MODULES = {
     row["token_id"]: module
@@ -2605,7 +2605,7 @@ def test_v2_position_custody_swept_to_safe() -> None:
 
 
 @pytest.mark.parametrize("held", [V2_WIN, XI])
-@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null"])
+@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null", "", "directional"])
 def test_v2_position_detected_by_token_module(lookup: str, held: dict) -> None:
     """Rows are classed by their token's /v2/tokens module, looked up once in one batch; an unknown possible-V2 row fails the read and is looked up again."""
     rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
@@ -2614,8 +2614,9 @@ def test_v2_position_detected_by_token_module(lookup: str, held: dict) -> None:
         conn.modules = dict(TOKEN_MODULES)
         if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
             del conn.modules[held["token_id"]]
-        if lookup == "null":  # a row with no module is as good as missing
-            conn.modules[held["token_id"]] = None
+        if lookup not in ("ok", "down", "unknown"):
+            # no module, or one with no documented V2 module ID, is as good as missing
+            conn.modules[held["token_id"]] = None if lookup == "null" else lookup
         reads = [conn._fetch_all_positions() for _ in range(2)]
     if lookup != "ok":
         assert [positions for positions, _ in reads] == [None, None]
@@ -2643,6 +2644,33 @@ V1_ROWS = (V1_WIN, V1_LOSE, V1_OPEN, V1_00)  # V1_OPEN's token ID top byte is 0x
 def test_v2_layout_never_matches_a_v1_token(row: dict, possible_v2: bool) -> None:
     """A row could be V2 when its position ID's top byte is a V2 module and its low byte its outcome index."""
     assert PolymarketClientConnection._could_be_v2(row) is possible_v2
+
+
+@pytest.mark.parametrize("module", ["binary", "", "directional"])
+def test_v2_module_must_fit_the_position_id(module: str) -> None:
+    """A V1-layout row named a V2 module fails the read; with an undocumented module it reads as V1."""
+    with _safe_world(V1_WIN, V2_WIN) as conn:
+        conn.modules = {**TOKEN_MODULES, V1_WIN["token_id"]: module}
+        positions, error = conn._fetch_all_positions()
+    if module == "binary":
+        assert positions is None and V1_WIN["token_id"] in error
+        return
+    assert error is None
+    assert [V2_BALANCE_KEY in p for p in positions] == [False, True]
+
+
+def test_v2_rows_without_a_token_id_read_as_v1() -> None:
+    """Rows with no token ID skip the module lookup and read as V1, next to a V2 row."""
+    no_id = {k: v for k, v in V1_WIN.items() if k != "token_id"}
+    rows = [V2_WIN, no_id, {**V1_LOSE, "token_id": None}]
+    with _v2_world({V2_SAFE: rows}, _ledger(V2_SAFE, V2_WIN)) as conn:
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.token_lookups == [[V2_WIN["token_id"]]]
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        None,
+    ]
 
 
 def test_v2_token_outage_leaves_v1_rows_as_before() -> None:
@@ -2909,8 +2937,8 @@ class TestPositionsReads:
             conn._fetch_all_positions(address=address)
         assert _sent_params(mock_get)["user"] == expected_user
 
-    @pytest.mark.parametrize("first_page", [1, 51])
-    def test_fetch_all_reads_every_page(self, first_page: int) -> None:
+    @pytest.mark.parametrize("first_page,batches", [(1, [2]), (51, [2, 50])])
+    def test_fetch_all_reads_every_page(self, first_page: int, batches: list) -> None:
         """Positions on later pages are not dropped; tokens are looked up 50 at a time."""
         conn = _make_connection()
         ids = [str(i) for i in range(first_page + 1)]  # synthetic V1 token ids
@@ -2922,7 +2950,7 @@ class TestPositionsReads:
         assert [p["asset"] for p in positions] == ids
         calls = [c for c in get.call_args_list if c[0][0] != DATA_API_POSITIONS_URL]
         lookups = [c[1]["params"]["token_id"].split(",") for c in calls]
-        assert len(lookups) == -(-len(ids) // 50) and max(map(len, lookups)) <= 50
+        assert sorted(map(len, lookups)) == batches
         assert sorted(sum(lookups, [])) == sorted(ids)
 
     @pytest.mark.parametrize("lookup", ["up", "down", "v2_down"])

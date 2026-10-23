@@ -9697,14 +9697,17 @@ class TestAsyncActLeaderboard:
 
 
 def test_v2_position_in_locked_funds_and_summary() -> None:
-    """Open positions include the Safe's V2 positions, not a V2 row with nothing to claim."""
+    """Open positions include the Safe's V2 positions, not a settled V2 row with nothing to claim."""
     b = _make_fetch_behaviour()
     ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
-    rows = (pm.V2_OPEN, pm.V2_WIN0, pm.V2_LOSE, pm.V1_OPEN, pm.V1_LOSE)
+    v2_open = {**pm.V2_OPEN, "current_value": 0.0}  # unsettled, so still open
+    rows = (v2_open, pm.V2_WIN0, pm.V2_WIN, pm.V2_LOSE, pm.V1_OPEN, pm.V1_LOSE)
     with pm._safe_world(*rows) as conn:
+        del conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))]
         with _patch_context(b, ctx, synced_data)[0]:
             pm._wire(b, conn)
             gen = b._fetch_polymarket_open_position_titles()
             next(gen)  # the positions request
             titles = _drive_gen(gen)
-    assert titles == {row["title"] for row in rows if row is not pm.V2_LOSE}
+    claimed = (pm.V2_WIN, pm.V2_LOSE)  # V2_WIN has no balance left to claim
+    assert titles == {row["title"] for row in rows if row not in claimed}
