@@ -92,9 +92,21 @@ class TestGetAgentTopUps:
         assert topup.signer_deficit == 0
         assert topup.safe_deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
 
-    def test_signer_below_the_minimum_moves_nothing(self) -> None:
-        """Below `min_signer_balance`, the deficits are reported as read."""
+    def test_signer_below_the_minimum_moves_nothing_and_warns(self) -> None:
+        """Below `min_signer_balance`, the deficits are reported as read, and the stall is logged."""
         funds = funds_status("polygon", MIN - 1, 10 * ETHER)
+        logger = MagicMock()
+
+        topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN, logger)
+
+        assert topups["polygon"] == NO_TOPUP
+        assert "below the" in logger.warning.call_args[0][0]
+
+    def test_signer_below_the_minimum_with_nothing_to_move_does_not_warn(
+        self,
+    ) -> None:
+        """An empty Agent Safe could not top up anyway, so the minimum stalls nothing."""
+        funds = funds_status("polygon", MIN - 1, 0)
         logger = MagicMock()
 
         topups = get_agent_topups(real_topup_rule("polygon"), funds, AGENT, MIN, logger)

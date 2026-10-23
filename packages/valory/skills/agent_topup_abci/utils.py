@@ -30,7 +30,7 @@ from packages.valory.skills.funds_manager.models import (
 
 GNOSIS_CHAIN_NAME = "gnosis"
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-# Whether the latest top-up tx was a settled transfer to the Agent Signer.
+# Set when a top-up transfer settles, cleared when a top-up fails.
 TOPUP_SUCCEEDED_KEY = "agent_topup_succeeded"
 
 NO_TOPUP = AgentTopUp(move=0, signer_deficit=None, safe_deficit=None)
@@ -94,6 +94,12 @@ def get_agent_topups(
             topups[chain_name] = NO_TOPUP
         elif signer.balance < min_signer_balance:
             # The tx settlement would wait for a refill before sending the top-up.
+            if topups[chain_name].move > 0:
+                logger.warning(
+                    f"Agent Signer top-up skipped on {chain_name}: its balance "
+                    f"{signer.balance} wei is below the {min_signer_balance} wei "
+                    "the tx settlement needs."
+                )
             topups[chain_name] = NO_TOPUP
     return topups
 
