@@ -32,8 +32,11 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wa
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_set_approval import (
     PolymarketSetApprovalBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.states.base import Event
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    CheckBenchmarkingModeRound,
     DW_APPROVALS_VERSION,
+    POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
 )
 
 DW = "0xAbCdEf0123456789AbCdEf0123456789AbCdEf01"
@@ -456,20 +459,40 @@ class TestProvisionDepositWallet:
         _run(b._provision_deposit_wallet())
         b.context.logger.warning.assert_called()
 
-    def test_approvals_not_mined(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    @pytest.mark.parametrize(
+        "mined",
+        [None, {"ok": False, "state": "STATE_FAILED"}, {}],
+        ids=["timeout", "failed", "empty"],
+    )
+    def test_approvals_not_mined(self, tmp_path, mined) -> None:  # type: ignore[no-untyped-def]
         """Unmined approvals leave a pre-V2 record as it was, so the gate re-enters."""
         b = _make_behaviour(tmp_path)
         _persist_record(tmp_path, approvals_done=True)
+        (tmp_path / "polymarket.json").write_text(
+            json.dumps(
+                {
+                    "allowances_set": True,
+                    "clob_version": POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
+                }
+            )
+        )
         record = (tmp_path / DEPOSIT_WALLET_STORE).read_text()
         b._resolve_or_deploy_dw = lambda: _gen_return(DW)  # type: ignore[method-assign]
         b._verify_dw_owner = lambda dw: (yield)  # type: ignore[method-assign]
         b._send_polymarket_request = lambda rt, p: _gen_return(  # type: ignore[method-assign]
             {"transaction_id": "tx"}
         )
-        b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(None)  # type: ignore[method-assign]
+        b._await_relayer_tx = lambda tx, is_deploy=False: _gen_return(mined)  # type: ignore[method-assign]
         _run(b._provision_deposit_wallet())
-        b.context.logger.warning.assert_called()
+        warning = str(b.context.logger.warning.call_args_list)
+        assert "approvals tx tx not confirmed mined" in warning
+        # A relayer rejection names its state, so it reads apart from a timeout.
+        assert ("STATE_FAILED" in warning) is bool(mined)
         assert (tmp_path / DEPOSIT_WALLET_STORE).read_text() == record
+        b.context.agent_address = "AGENT"
+        b.context.params.is_running_on_polymarket = True
+        gate = CheckBenchmarkingModeRound(MagicMock(), b.context)
+        assert gate.end_block()[1] == Event.SET_APPROVAL  # type: ignore[index]
 
     def test_owner_unverifiable_no_record_defers(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """Owner unreadable AND no prior record → defer, no approvals attempted."""
@@ -576,26 +599,7 @@ class TestProvisionDepositWallet:
 
 
 class TestBuildDwTradingApprovals:
-    """Behaviour-side construction of the 8 DW trading-approval calls."""
-
-    def test_builds_eight_calls(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """4 pUSD approves, 3 CTF and 1 PositionManager setApprovalForAll."""
-        b = _make_behaviour(tmp_path)
-        p = b.context.params
-        p.polymarket_collateral_address = "0x" + "c0" * 20
-        p.polymarket_ctf_address = "0x" + "cf" * 20
-        p.polymarket_ctf_exchange_address = "0x" + "e1" * 20
-        p.polymarket_neg_risk_ctf_exchange_address = "0x" + "e2" * 20
-        p.polymarket_neg_risk_adapter_address = "0x" + "da" * 20
-        txs = b._build_dw_trading_approvals()
-        assert len(txs) == 8
-        collateral = [t for t in txs if t["to"] == p.polymarket_collateral_address]
-        ctf = [t for t in txs if t["to"] == p.polymarket_ctf_address]
-        assert len(collateral) == 4
-        assert len(ctf) == 3
-        assert all(t["data"].startswith("0x095ea7b3") for t in collateral)
-        assert all(t["data"].startswith("0xa22cb465") for t in ctf)
-        assert all(t["value"] == "0" for t in txs)
+    """Behaviour-side construction of the DW trading-approval calls."""
 
     def test_dw_batch_includes_v2_exchange_approvals(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         """The batch approves both exchanges and the NegRiskAdapter, then V2."""

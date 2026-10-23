@@ -424,12 +424,13 @@ class TestPolymarketSetApprovalBehaviour:
                     result = e.value
 
         assert result == "0xfinalHash"
-        # 8 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
+        # 9 batches: 3 collateral approves for the v2 CTF Exchange + NegRisk
         # CTF Exchange + NegRisk Adapter, 3 CTF setApprovalForAll for the
-        # same, plus 2 CTF setApprovalForAll for CtfCollateralAdapter and
-        # NegRiskCtfCollateralAdapter. The collateral adapters intentionally
-        # receive no pUSD allowance — their redeem path doesn't pull
-        # ERC-20 from the Safe.
+        # same, 2 CTF setApprovalForAll for CtfCollateralAdapter and
+        # NegRiskCtfCollateralAdapter, plus the PositionManager
+        # setApprovalForAll for the Router. The collateral adapters
+        # intentionally receive no pUSD allowance - their redeem path doesn't
+        # pull ERC-20 from the Safe.
         assert len(behaviour.multisend_batches) == 9
 
     def test_safe_approves_router_for_v2_positions(self) -> None:

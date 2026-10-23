@@ -142,55 +142,6 @@ def test_end_block_allowances_current_but_no_dw_reapproves() -> None:
     assert event == Event.SET_APPROVAL
 
 
-def test_end_block_allowances_current_but_dw_owner_mismatch_reapproves() -> None:
-    """Allowances current but a DW owned by a different EOA re-enters setup.
-
-    Covers mnemonic-recovery rotation: the recorded ``dw_owner`` no longer
-    matches the agent EOA, so the DW must be re-provisioned under the new
-    EOA.
-    """
-    mock_context = MagicMock()
-    mock_context.params.is_running_on_polymarket = True
-    mock_context.agent_address = "0xAGENT"
-    mock_synced_data = MagicMock(spec=SynchronizedData)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        mock_context.params.store_path = tmpdir
-        _current_allowances(tmpdir)
-        _write_dw(tmpdir, {"dw_address": "0xDW", "dw_owner": "0xOLD"})
-
-        round_instance = CheckBenchmarkingModeRound(
-            synchronized_data=mock_synced_data, context=mock_context
-        )
-        result = round_instance.end_block()
-
-    assert result is not None
-    _, event = result
-    assert event == Event.SET_APPROVAL
-
-
-def test_end_block_allowances_current_but_dw_no_address_reapproves() -> None:
-    """A DW record without an address is treated as not-ready (re-enters setup)."""
-    mock_context = MagicMock()
-    mock_context.params.is_running_on_polymarket = True
-    mock_context.agent_address = "0xAGENT"
-    mock_synced_data = MagicMock(spec=SynchronizedData)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        mock_context.params.store_path = tmpdir
-        _current_allowances(tmpdir)
-        _write_dw(tmpdir, {"dw_owner": "0xAGENT"})  # no dw_address
-
-        round_instance = CheckBenchmarkingModeRound(
-            synchronized_data=mock_synced_data, context=mock_context
-        )
-        result = round_instance.end_block()
-
-    assert result is not None
-    _, event = result
-    assert event == Event.SET_APPROVAL
-
-
 def test_end_block_allowances_current_but_dw_invalid_json_reapproves() -> None:
     """A malformed ``deposit_wallet.json`` is treated as not-ready."""
     mock_context = MagicMock()
@@ -303,29 +254,51 @@ def _end_block_event(tmpdir: str) -> Enum:
     return round_.end_block()[1]  # type: ignore[index]
 
 
-@pytest.mark.parametrize(
-    "record",
-    [
-        {"approvals_done": True},
-        {"approvals_done": True, "approvals_version": None},
-        {"approvals_done": True, "approvals_version": DW_APPROVALS_VERSION - 1},
-        {"approvals_done": True, "approvals_version": DW_APPROVALS_VERSION + 1},
-        {"approvals_done": True, "approvals_version": str(DW_APPROVALS_VERSION)},
-        {"approvals_done": False, "approvals_version": DW_APPROVALS_VERSION},
-        {"approvals_done": "true", "approvals_version": DW_APPROVALS_VERSION},
-    ],
-    ids=["pre_v2", "none", "stale", "newer", "string", "pending", "flag_string"],
-)
-def test_end_block_allowances_current_but_dw_approvals_not_current_reapproves(
-    record: dict,
-) -> None:
-    """Current Safe allowances re-enter setup until the DW approvals are current.
+_MISSING = object()
 
-    :param record: the approvals fields of the persisted DepositWallet record.
+
+@pytest.mark.parametrize(
+    "key, value",
+    [
+        ("dw_address", _MISSING),
+        ("dw_owner", "0xOLD"),
+        ("approvals_version", _MISSING),
+        ("approvals_version", None),
+        ("approvals_version", DW_APPROVALS_VERSION - 1),
+        ("approvals_version", DW_APPROVALS_VERSION + 1),
+        ("approvals_version", str(DW_APPROVALS_VERSION)),
+        ("approvals_done", False),
+        ("approvals_done", "true"),
+    ],
+    ids=[
+        "no_address",
+        "owner_mismatch",
+        "pre_v2",
+        "none",
+        "stale",
+        "newer",
+        "string",
+        "pending",
+        "flag_string",
+    ],
+)
+def test_end_block_allowances_current_but_dw_not_ready_reapproves(
+    key: str, value: object
+) -> None:
+    """Current Safe allowances re-enter setup unless every DW condition holds.
+
+    Each case breaks one condition of an otherwise current record, so each
+    condition of the gate is pinned on its own.
+
+    :param key: the DepositWallet record field to change.
+    :param value: its new value, or ``_MISSING`` to drop the field.
     """
+    record = {**_CURRENT_DW_RECORD, key: value}
+    if value is _MISSING:
+        del record[key]
     with tempfile.TemporaryDirectory() as tmpdir:
         _current_allowances(tmpdir)
-        _write_dw(tmpdir, {"dw_address": "0xDW", "dw_owner": "0xagent", **record})
+        _write_dw(tmpdir, record)
         assert _end_block_event(tmpdir) == Event.SET_APPROVAL
 
 

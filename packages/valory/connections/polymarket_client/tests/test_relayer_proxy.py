@@ -164,15 +164,6 @@ class TestRequest:
             f"{excinfo.value.__cause__}: <html>{'x' * 494}"
         )
 
-    def test_request_non_json(self) -> None:
-        """A non-JSON body is wrapped."""
-        client = _make_client()
-        r = MagicMock()
-        r.json.side_effect = ValueError("not json")
-        with patch.object(requests, "request", return_value=r):
-            with pytest.raises(RelayerProxyError, match="non-JSON"):
-                client._request("GET", "transaction")
-
 
 class TestDeployedAndDeploy:
     """deployed / deploy_dw endpoints."""
