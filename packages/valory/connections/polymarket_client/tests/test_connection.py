@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 import pytest
 import requests
 from eth_abi import decode as abi_decode
+from eth_abi import encode as abi_encode
 from eth_utils import keccak, to_checksum_address
 from hexbytes import HexBytes
 from web3 import Web3
@@ -2449,6 +2450,10 @@ def _fake_chain(balances: Dict[tuple, int]) -> MagicMock:
 
     def call(tx: dict, *_: Any) -> bytes:
         data, token = HexBytes(tx["data"]), to_checksum_address(tx["to"])
+        if data[:4] == _selector("balanceOfBatch(address[],uint256[])"):
+            owners, ids = abi_decode(["address[]", "uint256[]"], data[4:])
+            keys = [(token, to_checksum_address(o), i) for o, i in zip(owners, ids)]
+            return abi_encode(["uint256[]"], [[balances.get(k, 0) for k in keys]])
         if data[:4] == _selector("balanceOf(address,uint256)"):
             owner, token_id = abi_decode(["address", "uint256"], data[4:])
             key: tuple = (token, to_checksum_address(owner), token_id)
@@ -2615,9 +2620,11 @@ def test_v2_position_detected_by_token_module(lookup: str) -> None:
         assert all(error for _, error in reads)
         assert len(conn.token_lookups) == 2 and XI["token_id"] in conn.token_lookups[1]
         return
-    assert [[V2_BALANCE_KEY in p for p in positions] for positions, _ in reads] == [
-        [True, False, True]
-    ] * 2
+    v2_balances = [
+        ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in rows
+    ]
+    assert [[p.get(V2_BALANCE_KEY) for p in ps] for ps, _ in reads] == [v2_balances] * 2
+    assert conn.w3.eth.call.call_count == len(reads)  # one balance read per read
     assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
 
 
