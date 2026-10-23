@@ -72,8 +72,7 @@ class AgentTopUpRound(CollectSameUntilThresholdRound):
     """A round that prepares the next Agent Safe to Agent Signer top-up tx, if one is due."""
 
     payload_class = AgentTopUpPayload
-    done_event: Enum = Event.DONE
-    # a visit that sends no tx votes all `None`, leaving `tx_submitter` as it was
+    done_event: Enum = Event.PREPARE_TX
     none_event: Enum = Event.DONE
     no_majority_event: Enum = Event.NO_MAJORITY
     selection_key = (
@@ -90,17 +89,10 @@ class AgentTopUpRound(CollectSameUntilThresholdRound):
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
-        if event != Event.DONE:
-            return res
-
-        _, tx_hash = self.most_voted_payload_values
-        if tx_hash is not None:
-            return synced_data, Event.PREPARE_TX
-
         last_submitter = synced_data.db.get(
             get_name(SynchronizedData.tx_submitter), None
         )
-        if last_submitter == self.auto_round_id():
+        if event == Event.DONE and last_submitter == self.auto_round_id():
             # The check is over, so a later failure in this period is not a top-up one.
             return (
                 synced_data.update(
