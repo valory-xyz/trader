@@ -36,7 +36,7 @@ from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
-from eth_abi import encode
+from eth_abi import decode, encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
@@ -67,6 +67,8 @@ DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
 # Token reference facts, such as the contract module that issued a token.
 DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
 DATA_API_TOKENS_LIMIT = 50
+# ERC-1155 balanceOfBatch ids per eth_call.
+BALANCE_BATCH_LIMIT = 500
 DATA_API_PAGE_LIMIT = 100
 # A paginated Data API read needing more pages than this is reported as failed.
 DATA_API_MAX_PAGES = 200
@@ -1528,11 +1530,16 @@ class PolymarketClientConnection(BaseSyncConnection):
         error = self._read_token_modules([row["token_id"] for row, _ in selected])
         if error:
             return None, error
-        for row, position in selected:
-            if self._token_modules[row["token_id"]] != "v1_ctf":
-                position[V2_BALANCE_KEY] = self._erc1155_balance_of(
-                    self.position_manager, holder, int(row["token_id"])
-                )
+        v2 = [
+            (r, p)
+            for r, p in selected
+            if self._token_modules[r["token_id"]] != "v1_ctf"
+        ]
+        balances = self._erc1155_balance_of_batch(
+            self.position_manager, holder, [int(r["token_id"]) for r, _ in v2]
+        )
+        for (_, position), balance in zip(v2, balances):
+            position[V2_BALANCE_KEY] = balance
         return [position for _, position in selected], None
 
     def _get_positions(
@@ -1818,6 +1825,28 @@ class PolymarketClientConnection(BaseSyncConnection):
             {"to": self.w3.to_checksum_address(token_address), "data": data}
         )
         return int.from_bytes(result, byteorder="big")
+
+    def _erc1155_balance_of_batch(
+        self, token_address: str, owner: str, token_ids: List[int]
+    ) -> List[int]:
+        """Read an owner's ERC1155 balances for many token ids via ``balanceOfBatch``.
+
+        :param token_address: the ERC1155 token (PositionManager or the CTF).
+        :param owner: the holder address.
+        :param token_ids: the position token ids, read in chunks.
+        :return: the balances in base units, in ``token_ids`` order.
+        """
+        selector = self.w3.keccak(text="balanceOfBatch(address[],uint256[])")[:4].hex()
+        balances: List[int] = []
+        for start in range(0, len(token_ids), BALANCE_BATCH_LIMIT):
+            ids = token_ids[start : start + BALANCE_BATCH_LIMIT]
+            owners = [to_checksum_address(owner)] * len(ids)
+            data = selector + encode(["address[]", "uint256[]"], [owners, ids]).hex()
+            result = self.w3.eth.call(
+                {"to": self.w3.to_checksum_address(token_address), "data": data}
+            )
+            balances.extend(decode(["uint256[]"], bytes(result))[0])
+        return balances
 
     def _encode_erc1155_safe_transfer(
         self, from_addr: str, to: str, token_id: int, amount: int
