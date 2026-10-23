@@ -83,7 +83,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
 EXPECTED_TRANSITION_MAPPING_LENGTH = 65
 
 # Agent Signer top-up at period start: each settled tx re-enters the round,
-# and the check ends, finished or failed, where the period used to start.
+# and the check ends, finished or failed, at `FetchPerformanceDataRound`.
 AGENT_TOPUP_TRANSITIONS = {
     FinishedRegistrationRound: AgentTopUpRound,
     FinishedResetAndPauseRound: AgentTopUpRound,
