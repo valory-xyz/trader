@@ -20,7 +20,7 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -50,6 +50,20 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
     Question,
     Trade,
 )
+
+
+@pytest.fixture
+def london_tz(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """Run the test with the local timezone set to Europe/London.
+
+    :param monkeypatch: the pytest monkeypatch fixture.
+    :yield: nothing; the timezone is restored afterwards.
+    """
+    monkeypatch.setenv("TZ", "Europe/London")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
 
 
 class TestPromptTemplate:
@@ -528,13 +542,11 @@ class TestSharedState:
             1768478400,  # 2026-01-15T12:00:00Z, no clock change in the window
             1792756800,  # 2026-10-23T12:00:00Z, window crosses the UK clock change
         ],
+        ids=["january", "october_dst"],
     )
-    def test_initialize_simulated_now_timestamps(
-        self, now_ts: int, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    @pytest.mark.usefixtures("london_tz")
+    def test_initialize_simulated_now_timestamps(self, now_ts: int) -> None:
         """Simulated days are exactly one day apart in any local timezone."""
-        monkeypatch.setenv("TZ", "Europe/London")
-        time.tzset()
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
@@ -544,15 +556,11 @@ class TestSharedState:
         mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
         bets = [mock_bet1, mock_bet2]
 
-        try:
-            with patch(
-                "packages.valory.skills.decision_maker_abci.models.time.time",
-                return_value=float(now_ts),
-            ):
-                self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
-        finally:
-            monkeypatch.undo()
-            time.tzset()
+        with patch(
+            "packages.valory.skills.decision_maker_abci.models.time.time",
+            return_value=float(now_ts),
+        ):
+            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
         assert self.state.simulated_days == [now_ts + i * 86400 for i in range(6)]
