@@ -18,7 +18,7 @@ fingerprint:
   behaviours/check_benchmarking.py: bafybeiao2lyj7apezkqrpgsyzb3dwvrdgsrgtprf6iuhsmlsufvxfl5bci
   behaviours/decision_receive.py: bafybeib3hfl552jepyspifffjo7uzqfrenv6g3ouxgb6r7rrganr6irzru
   behaviours/decision_request.py: bafybeicqygaiieqnjgawlrm7qo65sgncpuujw2zolmgvjjupnchtoua35q
-  behaviours/handle_failed_tx.py: bafybeifqpndbjz27gsduznsrsnft3iqcw6nyekrxirglgpszzqvpheh65m
+  behaviours/handle_failed_tx.py: bafybeic7nenqq2ll4mrvq5k7fcpdraz42dlmrf53ya7vggxqta3dindobu
   behaviours/omen_withdraw.py: bafybeih4arci2rhhz7xxolz3xrym4pdg5uho7623ytbw2zuph23dvg3afq
   behaviours/omen_withdrawal_store.py: bafybeie3b6pyz5akthcbfoeds3blbs5asupl3fwqdnqdtn3jpxekzvjywe
   behaviours/polymarket_bet_placement.py: bafybeiet7tguyimxofj7lp5nb6ipmtas4o6jeahzkhz5guh5tcymhxlbba
@@ -93,7 +93,7 @@ fingerprint:
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
   tests/behaviours/test_decision_receive.py: bafybeiczf3geg4l2x4zjd4uc6xvchlw6oj54lu7o2vjulfnbstjqcttzoq
   tests/behaviours/test_decision_request.py: bafybeiacd7ji65apfapxongatdljsne6kl3q3sgmzgkgihtevgz5hfppky
-  tests/behaviours/test_handle_failed_tx.py: bafybeiane4rzyxgcc33gjhncioiwibjaebwz5btuvwltj7pzthe7jbf7ru
+  tests/behaviours/test_handle_failed_tx.py: bafybeibejwondwq5cbewtrobgpopydfroz7pk7uf456wumofdo4ehmbgba
   tests/behaviours/test_omen_withdrawal_store.py: bafybeideljsqwfekjexwrq3mq36fv7gh4qonsuuh22k3frypt7fvifrqz4
   tests/behaviours/test_polymarket_bet_placement.py: bafybeiazc2f2nnaazwdglgqzsncrkihstnl4mj4rzi53mkth6hkwsnb3ce
   tests/behaviours/test_polymarket_dw_behaviours_extra.py: bafybeihgndegqjnrnrbpm767jfm6facokhrb5dncpzqlwqcodyjdelnvoi
@@ -183,7 +183,7 @@ skills:
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeiber3axwwonu47iks66afla7quytbk5odv7e2db5bvup3ufoz6dne
 - valory/chatui_abci:0.1.0:bafybeiea7ymnt4cyzbheu5ko7mlwzrlw5o42nqvvq2n7ca24djq4ne4774
-- valory/agent_topup_abci:0.1.0:bafybeibwr67yvtedek5xyqfwg5qis6alr2zjphlp4tuqty2khoapb6hili
+- valory/agent_topup_abci:0.1.0:bafybeieektzw4mru46dpvyqnqr6nfqj6enojvnnf2nva2whyxkgyldxc24
 behaviours:
   main:
     args: {}
