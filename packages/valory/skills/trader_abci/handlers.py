@@ -56,7 +56,13 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
     DEFAULT_HEADER,
 )
 from packages.valory.skills.agent_topup_abci.utils import (
+    GNOSIS_CHAIN_NAME,
     TOPUP_SUCCEEDED_KEY,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
+    WXDAI_ADDRESS as GNOSIS_WRAPPED_NATIVE_ADDRESS,
+)
+from packages.valory.skills.agent_topup_abci.utils import (
     get_agent_topups,
     get_safe_native_balance,
     get_signer_native_deficit,
@@ -108,12 +114,10 @@ OMENSTRAT_UI_SUBDIR = "omenstrat"
 POLYSTRAT_UI_SUBDIR = "polystrat"
 
 # Gnosis Chain Configuration
-GNOSIS_CHAIN_NAME = "gnosis"
 GNOSIS_CHAIN_ID = 100
 GNOSIS_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
 )
-GNOSIS_WRAPPED_NATIVE_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 GNOSIS_USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 
 # Polygon Chain Configuration
