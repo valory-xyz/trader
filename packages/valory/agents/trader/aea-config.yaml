@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeiecstc73bjiqphlg5h5rarkl3mcs3dbgpkpnlkqdrrsnnemaxlr7a
+- valory/polymarket_client:0.1.0:bafybeickfz4dggcczmygjwwj6fupfocfzjy7ycbsm5xhyp76liqxvzfvnq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidu23nheimmy733xo2qggzemrnlul7k75fizsm3jt6zc5ha3bkvgu
-- valory/market_manager_abci:0.1.0:bafybeih6sxshbgawctqvf7tjdiupnzpzb25grbyxrkwvjiugfeoljbt5yu
-- valory/decision_maker_abci:0.1.0:bafybeihrn2r2frkwbiaergcvwe5ivabvfw53fem74l6y3hxcwvnsnwiqy4
-- valory/trader_abci:0.1.0:bafybeieylwavc6yb2yvkt6jov7ijbcdhahxwhtqnpxt6rgueixmnrupsta
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihp63pgjxqz6gvwk2pd5ltkweuq22udmzodhchnrrqiiie4xmom5q
+- valory/market_manager_abci:0.1.0:bafybeigpc3nsvexvhlxkgjdar4ky53oy6itj7vpb66qjoo3tmhktpdgwpy
+- valory/decision_maker_abci:0.1.0:bafybeienvixf2znxzverxyv3nilzrnhvc6ojbtgyzg5l7jjeyjs6sdxybe
+- valory/trader_abci:0.1.0:bafybeifwfpx6sh3tneffysa3y5o2dtac2j33cnuunk52kruvh4vgawyooe
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeiebo6hatlelbsi7o464vtj2acxb55d5gfg5imuo3feggauj7ebpye
+- valory/check_stop_trading_abci:0.1.0:bafybeicxt7obaaqzpaaajx62d7qvw7kwwhxzzqjhyee7ypffqa225l6xbi
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeicwlgumazvxmlzj3ao2karzxkhwrx5et6qiwyhzfpeza7ve33ilke
-- valory/agent_performance_summary_abci:0.1.0:bafybeifg2j7dcb5gpdw4vdt5nz25d24yfjw4p5ee4uvpcrkkurhnmciaj4
+- valory/chatui_abci:0.1.0:bafybeibobbjfg4jhcsixpgijjshewoud4lhdzlg5es3ui2akz2p6lsxqmi
+- valory/agent_performance_summary_abci:0.1.0:bafybeiboyks7qbfexqf5emduucafz4634k46j7d5it4ubx4ksg5pr667uu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
