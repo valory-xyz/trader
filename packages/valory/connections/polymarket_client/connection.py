@@ -67,6 +67,11 @@ DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
 # Token reference facts, such as the contract module that issued a token.
 DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
 DATA_API_TOKENS_LIMIT = 50
+# Protocol V2 position ID layout, from "Decode Polymarket Protocol V2 Position
+# IDs" on https://docs.polymarket.com/resources/onchain-position-data:
+# [moduleId 8 | baseHash 128 | arity 16 | reserved 64 | resolutionChain 16 |
+#  conditionIndex 16 | outcomeIndex 8]. Module IDs: Binary, NegRisk, Combinatorial.
+V2_MODULE_IDS = (1, 2, 3)
 # ERC-1155 balanceOfBatch ids per eth_call.
 BALANCE_BATCH_LIMIT = 500
 DATA_API_PAGE_LIMIT = 100
@@ -1503,19 +1508,22 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _could_be_v2(row: Dict[str, Any]) -> bool:
         """Tell whether a row's position ID fits the Protocol V2 layout.
 
-        A V2 position ID is the bytes31 condition ID followed by the outcome
-        index byte, so it equals the row's right-padded condition ID plus the
-        outcome index. A V1 position ID is a hash and never matches.
+        A V2 position ID's top byte is a V2 module ID and its low byte is the
+        outcome index. A row whose outcome index can't be read fits.
 
         :param row: a positions row from Data API v2
         :return: whether the row could be a V2 position
         """
         try:
-            return int(row["token_id"]) == int(row["condition_id"], 16) + int(
-                row["outcome_index"]
-            )
+            token_id = int(row["token_id"])
         except (KeyError, TypeError, ValueError):
             return False
+        if token_id >> 248 not in V2_MODULE_IDS:
+            return False
+        try:
+            return token_id & 0xFF == int(row["outcome_index"])
+        except (KeyError, TypeError, ValueError):
+            return True
 
     def _select_positions(
         self,
