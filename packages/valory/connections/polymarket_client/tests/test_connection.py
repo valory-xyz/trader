@@ -19,6 +19,7 @@
 
 """Tests for the polymarket_client connection."""
 
+import dataclasses
 import json
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, Optional
@@ -34,6 +35,7 @@ from hexbytes import HexBytes
 from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
+    API_REQUEST_TIMEOUT,
     DATA_API_BASE_URL,
     DATA_API_POSITIONS_URL,
     DATA_API_TRADES_URL,
@@ -954,6 +956,12 @@ class TestBuySizing:
 class TestSellPosition:
     """Tests for _sell_position (phase 2 of withdrawal mode)."""
 
+    @pytest.fixture(autouse=True)
+    def _no_v2_market(self) -> Generator[None, None, None]:
+        """Answer the sell's Gamma version lookup offline, with a V1 market."""
+        with patch("requests.get", **{"return_value.json.return_value": [GAMMA_V1]}):
+            yield
+
     @staticmethod
     def _make_signed_order_v2() -> "object":
         """Build a real SignedOrderV2 with side=SELL for serialization round-trips."""
@@ -1612,6 +1620,16 @@ class TestRequestWithRetries:
 # _filter_tradeable_markets
 # ---------------------------------------------------------------------------
 
+# Real Gamma rows trimmed to the fields the filter reads: a V1 market whose row
+# also carries V2 positionIds, a binary V2 market and a neg-risk V2 market.
+# https://gamma-api.polymarket.com/markets/559651
+# https://gamma-api.polymarket.com/events/keyset?version=v2 (6015109, 6015111)
+GAMMA_V1, GAMMA_V2, GAMMA_V2_NEG_RISK = json.loads(r"""[
+{"id": "559651", "active": true, "negRisk": false, "version": "v1", "outcomePrices": "[\"0.0265\", \"0.9735\"]", "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]", "positionIds": ["895257453734540292493143124621755605615887197499956109032745153687078305792", "895257453734540292493143124621755605615887197499956109032745153687078305793"]},
+{"id": "6015109", "active": true, "negRisk": false, "version": "v2", "outcomePrices": "[\"0.525\", \"0.475\"]", "clobTokenIds": "[\"712069342982939259021323770019514721134145408933508924027915981665668694016\", \"712069342982939259021323770019514721134145408933508924027915981665668694017\"]", "positionIds": ["712069342982939259021323770019514721134145408933508924027915981665668694016", "712069342982939259021323770019514721134145408933508924027915981665668694017"]},
+{"id": "6015111", "active": true, "negRisk": true, "version": "v2", "outcomePrices": "[\"0.5\", \"0.525\"]", "clobTokenIds": "[\"1325353424987440299227997884811379130217952539907057621693281548675181445120\", \"1325353424987440299227997884811379130217952539907057621693281548675181445121\"]", "positionIds": ["1325353424987440299227997884811379130217952539907057621693281548675181445120", "1325353424987440299227997884811379130217952539907057621693281548675181445121"]}
+]""")
+
 
 class TestFilterTradeableMarkets:
     """Tests for _filter_tradeable_markets.
@@ -1750,7 +1768,7 @@ class TestFilterTradeableMarkets:
     def test_keeps_only_supported_market_version(
         self, version: Optional[str], kept: bool
     ) -> None:
-        """Only Gamma `version` v1 markets are tradeable; missing or other versions drop."""
+        """A market with clobTokenIds and no positionIds trades only as v1; other versions drop."""
         conn = _make_connection()
         market = {
             "id": "m1",
@@ -1762,6 +1780,37 @@ class TestFilterTradeableMarkets:
             market["version"] = version
         result = conn._filter_tradeable_markets([market])
         assert [m["id"] for m in result] == (["m1"] if kept else [])
+
+    def test_market_version_selects_trading_ids(self) -> None:
+        """A v2 market trades by its decimal positionIds and a v1 market by its clobTokenIds; other versions drop."""
+        conn = _make_connection()
+        t = GAMMA_V2["positionIds"][0]
+        markets = [
+            GAMMA_V1,  # its positionIds don't make it a v2 market
+            {**GAMMA_V2, "clobTokenIds": None},
+            {**GAMMA_V1, "id": "v1-no-clob-token-ids", "clobTokenIds": "[]"},
+            *({**GAMMA_V2, "version": v} for v in (None, "V2", "v2\n", "v3")),
+            *(  # positionIds missing, hex, a number, non-ASCII decimal digits
+                {**GAMMA_V2, "positionIds": p}
+                for p in (None, [hex(int(t))], [int(t)], [t.replace("7", "\u0667")])
+            ),
+            {**GAMMA_V2, "positionIds": ["1" * 5000]},  # longer than a uint256
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["559651", "6015109"]
+
+    def test_market_version_unsupported_never_reaches_order(self) -> None:
+        """Only v1 and binary v2 markets leave the connection, so a neg-risk or combinatorial V2 market is never sampled, even without negRisk, by its positionIds' module (positionId >> 248: 1 binary, 2 neg-risk, 3 combinatorial); sampling judges a V1 neg-risk one."""
+        ids = GAMMA_V2["positionIds"]
+        combo = dict(
+            GAMMA_V2, id="3", positionIds=[ids[0], str(int(ids[1]) | 3 << 248)]
+        )
+        markets = [{**GAMMA_V1, "negRisk": True}, GAMMA_V2_NEG_RISK] + [
+            {k: v for k, v in m.items() if k != "negRisk"}  # Gamma usually omits it
+            for m in (GAMMA_V2, GAMMA_V2_NEG_RISK, combo)
+        ]
+        result = _make_connection()._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["559651", "6015109"]
 
 
 # ---------------------------------------------------------------------------
@@ -2127,6 +2176,7 @@ class TestFetchMarketsByTagSlug:
             side_effect=[
                 ({"events": page1, "next_cursor": "cursor-1"}, None),
                 ({"events": page2}, None),
+                ({"events": []}, None),  # the other market version
             ]
         )
 
@@ -2211,6 +2261,57 @@ class TestFetchMarketsByTagSlug:
         assert error is None
         assert len(result) == 1
         assert result[0]["id"] == "m1"
+
+    @pytest.mark.parametrize("v2_up", [True, False])
+    def test_market_version_discovery_includes_v2(self, v2_up: bool) -> None:
+        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; a V2 read gets one try, so a slow or failed one can't delay or drop the V1 markets."""
+        from packages.valory.connections.polymarket_client.connection import (
+            MAX_API_RETRIES,
+        )
+
+        tagged = [{"slug": "weather"}]
+        pages = {  # (version, cursor) -> page; Gamma serves V1 unless asked for v2
+            ("", ""): {
+                "events": [{"tags": tagged, "markets": [{"id": "1"}]}],
+                "next_cursor": "c",
+            },
+            ("", "c"): {"events": [{"tags": [], "markets": [{"id": "2"}]}]},
+            ("v2", ""): {
+                "events": [{"tags": tagged, "markets": [{"id": "1"}, {"id": "3"}]}],
+                "next_cursor": "c",
+            },
+            ("v2", "c"): {"events": [{"tags": tagged, "markets": [{"id": "4"}]}]},
+        }
+
+        def read(url: str, params: Dict, max_retries: int = 0) -> Any:
+            key = (params.get("version", ""), params.get("after_cursor", ""))
+            return (None, "Gamma down") if key[0] and not v2_up else (pages[key], None)
+
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(side_effect=read)
+
+        result, error = conn._fetch_markets_by_tag_slug("weather", "start", "end")
+
+        assert error is None
+        assert sorted((m["id"], m["_poly_tags"]) for m in result) == [
+            ("1", ["weather"]),
+            ("2", []),
+            *([("3", ["weather"]), ("4", ["weather"])] if v2_up else []),
+        ]
+        calls = conn._request_with_retries.call_args_list
+        assert {c.args[0] for c in calls} == {f"{GAMMA_API_BASE_URL}/events/keyset"}
+        sent = [dict(c.kwargs["params"]) for c in calls]
+        tries = [c.kwargs.get("max_retries", MAX_API_RETRIES) for c in calls]
+        assert sorted(
+            (p.pop("version", ""), p.pop("after_cursor", ""), n)
+            for p, n in zip(sent, tries)
+        ) == [
+            ("", "", MAX_API_RETRIES),
+            ("", "c", MAX_API_RETRIES),
+            ("v2", "", 1),
+            *([("v2", "c", 1)] if v2_up else []),
+        ]
+        assert all(p == sent[0] for p in sent)  # same tag, window and limit
 
 
 # ---------------------------------------------------------------------------
@@ -2686,6 +2787,84 @@ def test_v2_position_balances_read_in_chunks() -> None:
         None,
         ONCHAIN_BALANCE[XI["token_id"]],
     ]
+
+
+@pytest.mark.parametrize(
+    "bet,module,gamma,asset",
+    [  # a buy's bet, the token's cached module, Gamma's answers to a sell's lookups
+        # by version, in order (None: a buy), and the order's field (None: no order)
+        ({"market_version": "v1"}, "binary", None, "token_id"),
+        ({"market_version": "v2"}, "v1_ctf", None, "position_id"),
+        ({}, "binary", None, "token_id"),  # a bet stored by the current release
+        ({}, "binary", {"v1": [GAMMA_V1]}, "token_id"),
+        ({}, "v1_ctf", {"v1": [], "v2": [GAMMA_V2]}, "position_id"),
+        ({}, "binary", {"v1": [], "v2": []}, None),
+        ({}, "binary", {"v1": requests.RequestException(), "v2": []}, None),
+        ({}, "v1_ctf", {"v1": [], "v2": requests.RequestException()}, None),
+        ({}, "binary", {v: [dict(GAMMA_V2, version="v3")] for v in ("v1", "v2")}, None),
+    ],
+)
+def test_market_version_v2_order_uses_position_id(
+    bet: Dict, module: str, gamma: Optional[Dict], asset: Optional[str]
+) -> None:
+    """A buy names its token by position ID for a v2 market and by token ID otherwise; a sell asks Gamma for the token's v1 market, then its v2 one, never using its cached /v2/tokens module, and is skipped when neither is found."""
+    token = GAMMA_V2["positionIds"][0]
+
+    def get(*_: Any, params: Dict[str, str], **__: Any) -> MagicMock:
+        return MagicMock(**{"json.side_effect": [gamma[params["version"]]]})
+
+    conn = _make_connection()
+    _arm_preflight(conn)
+    conn._token_modules[token] = module
+    conn.client.create_market_order.return_value = TestPlaceBet._make_signed_order_v2()
+    conn.client.post_order.return_value = {"status": "matched", "orderID": "o-1"}
+    place = conn._place_bet if gamma is None else conn._sell_position
+    with patch("requests.get", side_effect=get) as gamma_get:
+        response, error = place(token, 10.0, **bet)
+    assert gamma_get.call_args_list == [  # one try each
+        (
+            (f"{GAMMA_API_BASE_URL}/markets",),
+            {
+                "params": {"clob_token_ids": token, "version": version},
+                "timeout": API_REQUEST_TIMEOUT,
+            },
+        )
+        for version in gamma or []
+    ]
+    if asset is None:
+        assert error and response["error"] == error
+        assert not conn.client.mock_calls  # nothing signed or posted
+        return
+    assert not error
+    (order_args,), _ = conn.client.create_market_order.call_args
+    assert getattr(order_args, asset) == token
+    assert {order_args.token_id, order_args.position_id} == {token, None}
+
+
+def test_market_version_signed_order_cache_keyed_by_exchange() -> None:
+    """An order the current release cached replays for a v1 bet but is re-signed by position ID for a v2 bet, whose new order replays on retry and is never replayed for a v1 bet."""
+    token = V2_OPEN["token_id"]
+    order = TestPlaceBet._make_signed_order_v2()  # on "tok", a V1 token
+    # The JSON the current release caches for this order, and for one on the V2 token
+    v1_cached = dict(dataclasses.asdict(order), side=0, signatureType=2)
+    v1_cached["clob_version"] = "v2"
+    stale = json.dumps({**v1_cached, "tokenId": token})
+    fresh = dataclasses.replace(order, tokenId=token, salt="2")
+    conn = _make_connection()
+    _arm_preflight(conn)
+    conn.client.create_market_order.return_value = fresh
+    conn.client.post_order.return_value = {"status": "matched"}
+    with patch("requests.get"):
+        conn._place_bet("tok", 10.0, json.dumps(v1_cached))  # a bet with no version
+        first, _ = conn._place_bet(token, 10.0, stale, market_version="v2")
+        for version in ("v2", "v1"):
+            conn._place_bet(
+                token, 10.0, first["signed_order_json"], market_version=version
+            )
+    args = [c.args[0] for c in conn.client.create_market_order.call_args_list]
+    assert [(a.token_id, a.position_id) for a in args] == [(None, token), (token, None)]
+    posted = [c.args[0] for c in conn.client.post_order.call_args_list]
+    assert posted == [order, fresh, fresh, fresh]
 
 
 class TestBoolParam:

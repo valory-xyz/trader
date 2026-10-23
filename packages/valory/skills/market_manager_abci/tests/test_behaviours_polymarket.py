@@ -124,6 +124,7 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
         outcomes=json.dumps(["Yes", "No"]),
         outcomePrices=json.dumps(["0.6", "0.4"]),
         clobTokenIds=json.dumps(["token1", "token2"]),
+        version="v1",
         endDate="2030-01-01T00:00:00Z",
         liquidity="1000.0",
         closed=False,
@@ -132,6 +133,16 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
     )
     defaults.update(overrides)
     return defaults
+
+
+# Real Gamma rows trimmed to the fields the behaviour reads: a V1 market whose
+# row also carries V2 positionIds, and a binary V2 market, read by positionIds.
+# https://gamma-api.polymarket.com/markets/559651
+# https://gamma-api.polymarket.com/events/keyset?version=v2 (6015109)
+GAMMA_V1, GAMMA_V2 = json.loads(r"""[
+{"id": "559651", "question": "Xi Jinping out before 2027?", "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.0265\", \"0.9735\"]", "endDate": "2027-01-01T04:59:00Z", "version": "v1", "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]", "positionIds": ["895257453734540292493143124621755605615887197499956109032745153687078305792", "895257453734540292493143124621755605615887197499956109032745153687078305793"]},
+{"id": "6015109", "question": "Will Central Park record at least 0.01 inches of precipitation on October 22, 2026?", "conditionId": "0x01930457ddf921a30b0d8aabfa2ef601f0000000000000000000000000000000", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.525\", \"0.475\"]", "endDate": "2026-10-23T16:00:00Z", "version": "v2", "positionIds": ["712069342982939259021323770019514721134145408933508924027915981665668694016", "712069342982939259021323770019514721134145408933508924027915981665668694017"]}
+]""")
 
 
 # ===========================================================================
@@ -1766,6 +1777,32 @@ class TestFetchMarketsFromPolymarket:
 
         # one yield from the connection request, one from the parse loop boundary
         assert yields >= 1
+
+    def test_market_version_selects_trading_ids(self) -> None:
+        """Outcome tokens are a v2 market's positionIds in order and a v1 market's clobTokenIds, and each bet records its version; other versions make no bet."""
+        behaviour = self._setup_behaviour()
+        v2 = _make_valid_market(**GAMMA_V2)  # the default clobTokenIds must be ignored
+        markets = [
+            _make_valid_market(**GAMMA_V1),
+            {**v2, "clobTokenIds": None},  # read by its positionIds alone
+            {**v2, "id": "v2-no-position-ids", "positionIds": None},
+            *(
+                {**v2, "id": f"version-{v}", "version": v}
+                for v in (None, "V2", "v2\n", "v3")
+            ),
+        ]
+        behaviour.send_polymarket_connection_request = _return_gen(  # type: ignore[method-assign]
+            {"weather": markets}
+        )
+
+        gen = behaviour._fetch_markets_from_polymarket()
+        result = _exhaust_gen(gen)  # type: ignore[arg-type]
+
+        assert {bet["id"]: bet["outcome_token_ids"] for bet in result} == {
+            "559651": dict(zip(["Yes", "No"], json.loads(GAMMA_V1["clobTokenIds"]))),
+            "6015109": dict(zip(["Yes", "No"], GAMMA_V2["positionIds"])),
+        }
+        assert [bet.get("market_version") for bet in result] == ["v1", "v2"]
 
     def test_market_missing_outcomes(self) -> None:
         """Test market with empty outcomes is skipped."""
