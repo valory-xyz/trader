@@ -2608,22 +2608,23 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert _held(balances) == swept
 
 
+@pytest.mark.parametrize("held", [V2_WIN, XI])
 @pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null"])
-def test_v2_position_detected_by_token_module(lookup: str) -> None:
+def test_v2_position_detected_by_token_module(lookup: str, held: dict) -> None:
     """Rows are classed by their token's /v2/tokens module, looked up once in one batch; an unknown possible-V2 row fails the read and is looked up again."""
     rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
     with _safe_world(*rows) as conn:
         conn.tokens_down = lookup == "down"
         conn.modules = dict(TOKEN_MODULES)
         if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
-            del conn.modules[V2_WIN["token_id"]]
+            del conn.modules[held["token_id"]]
         if lookup == "null":  # a row with no module is as good as missing
-            conn.modules[V2_WIN["token_id"]] = None
+            conn.modules[held["token_id"]] = None
         reads = [conn._fetch_all_positions() for _ in range(2)]
     if lookup != "ok":
         assert [positions for positions, _ in reads] == [None, None]
-        assert all(V2_WIN["token_id"] in error for _, error in reads)
-        assert V2_WIN["token_id"] in conn.token_lookups[1]  # unknowns not cached
+        assert all(held["token_id"] in error for _, error in reads)
+        assert held["token_id"] in conn.token_lookups[1]  # unknowns not cached
         return
     v2_balances = [
         ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in rows
@@ -2639,37 +2640,27 @@ V1_ROWS = (V1_WIN, V1_LOSE, V1_OPEN, V1_00)  # V1_OPEN's token ID top byte is 0x
 @pytest.mark.parametrize(
     "row,possible_v2",
     [(row, False) for row in V1_ROWS]
-    + [(row, True) for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0)],
+    + [(row, True) for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0, XI)]
+    + [({**V2_OPEN, "outcome_index": None}, True)]
+    + [({**V2_OPEN, "token_id": None}, False), ({**V2_OPEN, "token_id": "x"}, False)],
 )
 def test_v2_layout_never_matches_a_v1_token(row: dict, possible_v2: bool) -> None:
-    """Only a position ID equal to its row's condition ID plus outcome index could be V2."""
+    """A row could be V2 when its position ID's top byte is a V2 module and its low byte its outcome index."""
     assert PolymarketClientConnection._could_be_v2(row) is possible_v2
 
 
 def test_v2_token_outage_leaves_v1_rows_as_before() -> None:
-    """With /v2/tokens down, V1-only positions are read as V1 rows with no balance read."""
-    with _safe_world(*V1_ROWS) as conn:
+    """With /v2/tokens down, V1-only positions, malformed ones too, are read as V1 rows with no balance read."""
+    rows = (
+        *V1_ROWS,
+        {**V1_WIN, "outcome_index": None},
+        {**V1_LOSE, "condition_id": None},
+    )
+    with _safe_world(*rows) as conn:
         conn.tokens_down = True
         positions, error = conn._fetch_all_positions()
     assert error is None and conn.w3.eth.call.call_count == 0
-    assert positions == [
-        conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in V1_ROWS
-    ]
-
-
-@pytest.mark.parametrize(
-    "field,value",
-    [("condition_id", None), ("condition_id", "0xzz"), ("outcome_index", None)],
-)
-def test_v2_token_outage_malformed_row_stays_v1(field: str, value: Any) -> None:
-    """With /v2/tokens down, a row whose layout can't be checked is read as V1 without failing the read."""
-    row = {**V2_OPEN, field: value}
-    with _safe_world(row, V1_WIN) as conn:
-        conn.tokens_down = True
-        positions, error = conn._fetch_all_positions()
-    assert error is None
-    assert [p["asset"] for p in positions] == [row["token_id"], V1_WIN["token_id"]]
-    assert all(V2_BALANCE_KEY not in p for p in positions)
+    assert positions == [conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in rows]
 
 
 def test_v2_position_short_balance_answer_fails_read() -> None:
@@ -2942,13 +2933,10 @@ class TestPositionsReads:
     def test_get_positions_reads_only_the_first_page(self, lookup: str) -> None:
         """A single-page read sends no cursor, stops there and selects rows the same way; an unknown possible-V2 row fails it."""
         conn = _make_connection()
-        v2_condition = SAMPLE_CONDITION_ID[:-2] + "00"  # right-padded bytes31
-        v2_id = str(int(v2_condition, 16) + 1)
+        v2_id = V2_OPEN["token_id"]
         open_row = _v2_position_row(False)
         if lookup == "v2_down":
-            open_row = _v2_position_row(
-                False, token_id=v2_id, condition_id=v2_condition
-            )
+            open_row = _v2_position_row(False, token_id=v2_id, outcome_index=1)
         page = _v2_response([_v2_position_row(True), open_row], "next")
         with patch(
             "requests.get", side_effect=_positions_get(page, down=lookup != "up")
