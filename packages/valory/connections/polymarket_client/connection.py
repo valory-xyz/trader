@@ -1538,7 +1538,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         balances = self._erc1155_balance_of_batch(
             self.position_manager, holder, [int(r["token_id"]) for r, _ in v2]
         )
-        for (_, position), balance in zip(v2, balances):
+        for (_, position), balance in zip(v2, balances, strict=True):
             position[V2_BALANCE_KEY] = balance
         return [position for _, position in selected], None
 
