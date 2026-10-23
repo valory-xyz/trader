@@ -30,6 +30,9 @@ from urllib.parse import urlencode
 
 import requests
 
+from packages.valory.connections.polymarket_client.connection import (
+    is_unclaimable_v2,
+)
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.mech_prepaid_reader.contract import (
@@ -499,18 +502,14 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return None
 
-            # Extract titles from positions. A redeemable V2 row with no value is
-            # a lost position that is never claimed, so it is not open.
+            # Extract titles from positions. A settled V2 row with nothing to
+            # claim is never claimed, so it is not open.
             titles = {
                 p.get("title", "")
                 for p in positions
                 if isinstance(p, dict)
                 and p.get("title", "")
-                and not (
-                    "positionManagerBalance" in p
-                    and p.get("redeemable")
-                    and not p.get("currentValue")
-                )
+                and not is_unclaimable_v2(p)
             }
 
             self.context.logger.info(

@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
+from packages.valory.connections.polymarket_client.connection import V2_BALANCE_KEY
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
@@ -31,7 +32,6 @@ from packages.valory.skills.chatui_abci.models import (
     WITHDRAWAL_STATE_ERRORED,
     WITHDRAWAL_STATE_SELLING,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.base import V2_BALANCE_KEY
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     PolymarketDepositWalletBehaviour,
 )
@@ -854,24 +854,25 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             return
         # V2 positions are held in the Safe, so count its open V2 rows too. With
         # no DepositWallet the read above was already the Safe's.
-        safe_positions = yield from self.send_polymarket_connection_request(
-            {
-                "request_type": RequestType.FETCH_ALL_POSITIONS.value,
-                "params": {"redeemable": False},
-            }
-        )
-        if isinstance(safe_positions, list):
+        if self._resolve_deposit_wallet():
+            safe_positions = yield from self.send_polymarket_connection_request(
+                {
+                    "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                    "params": {"redeemable": False},
+                }
+            )
+            if not isinstance(safe_positions, list):
+                self.context.logger.warning(
+                    f"withdrawal: skipping locked-funds snapshot "
+                    f"(Safe fetch failed: {safe_positions})"
+                )
+                return
             assets = {p.get("asset") for p in positions}
             positions += [
                 p
                 for p in safe_positions
                 if V2_BALANCE_KEY in p and p.get("asset") not in assets
             ]
-        else:
-            self.context.logger.warning(
-                f"withdrawal: locked-funds snapshot leaves out the Safe's V2 "
-                f"positions (fetch failed: {safe_positions})"
-            )
         try:
             locked = round(
                 sum(
