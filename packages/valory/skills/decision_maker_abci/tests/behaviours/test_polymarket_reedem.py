@@ -1692,9 +1692,11 @@ class TestAsyncAct:
         assert payloads_sent[0].event == "prepare_tx"
 
 
-def _redeem_period(conn, builder, utilized_tools=None, policy=None):  # type: ignore[no-untyped-def]
+def _redeem_period(conn, builder, utilized_tools=None, policy=None, state=None):  # type: ignore[no-untyped-def]
     """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
     behaviour = _make_behaviour()
+    if state is not None:  # shared state kept across periods
+        behaviour.context.state = state
     behaviour._policy = policy or _make_policy()
     behaviour._utilized_tools = dict(utilized_tools or {})
     behaviour._mech_tools = {"tool1"}
@@ -1781,3 +1783,24 @@ def test_v2_position_accuracy_updated_once() -> None:
                 assert policy.accuracy_store == expected.accuracy_store
                 # A loss leaves nothing to claim and no transaction to settle.
                 assert won or (claims, payload.event) == ([], "no_redeeming")
+
+
+def test_v2_position_claim_payout_recorded_once_landed() -> None:
+    """With the builder relayer, a Safe holding both sides gets the winner's payout card once its claim lands."""
+    state = MagicMock(polymarket_builder_redeems_pending={})
+    with (
+        pm._safe_world(pm.V2_WIN, pm.V2_LOSE) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        _redeem_period(conn, True, state=state)
+        assert list(state.polymarket_builder_redeems_pending) == [
+            pm.V2_WIN["condition_id"]
+        ]
+        # The claim lands: the winner leaves the read, the losing side stays.
+        conn.pages[pm.V2_SAFE] = [pm.V2_LOSE]
+        conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))] = 0
+        for _ in range(2):
+            _redeem_period(conn, True, state=state)
+    assert feed.call_count == 1 and feed.call_args.args[0] == EventType.PAYOUT_COLLECTED
+    assert feed.call_args.args[1][0]["value"] == pm.V2_WIN["title"]
+    assert state.polymarket_builder_redeems_pending == {}
