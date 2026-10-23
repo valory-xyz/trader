@@ -20,7 +20,7 @@
 """This module contains the behaviours for the agent top-up skill."""
 
 import time
-from typing import Any, Dict, Generator, Optional, Set, Type, cast
+from typing import Generator, Optional, Set, Type, cast
 
 from hexbytes import HexBytes
 
@@ -74,11 +74,6 @@ class AgentTopUpBehaviour(BaseBehaviour):
         """Return the params."""
         return cast(Params, super().params)
 
-    @property
-    def skill_shared_state(self) -> Dict[str, Any]:
-        """Return the state shared across the agent's skills."""
-        return self.context.shared_state
-
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -99,7 +94,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         """Prepare the top-up tx this visit sends, if any."""
         settled_to = self._get_settled_topup_to()
         if settled_to == self.context.agent_address:
-            self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = True
+            self.context.shared_state[TOPUP_SUCCEEDED_KEY] = True
             return None
         if settled_to == WXDAI_ADDRESS:
             # An unwrap is followed by the transfer it funds, never by a second unwrap.
@@ -124,15 +119,20 @@ class AgentTopUpBehaviour(BaseBehaviour):
         return last_round_id == self.matching_round.auto_round_id()
 
     def _is_check_due(self) -> bool:
-        """Whether a new check starts: on start, then once an hour."""
-        now = int(time.time())
-        last_check = self.skill_shared_state.get(LAST_TOPUP_CHECK_KEY)
-        if last_check is not None and now - last_check < TOPUP_CHECK_INTERVAL_SECONDS:
-            return False
+        """Whether a new check starts: on start, then once an hour after the last one reached a decision."""
+        last_check = self.context.shared_state.get(LAST_TOPUP_CHECK_KEY)
+        return (
+            last_check is None
+            or int(time.time()) - last_check >= TOPUP_CHECK_INTERVAL_SECONDS
+        )
 
-        self.skill_shared_state[LAST_TOPUP_CHECK_KEY] = now
-        self.skill_shared_state[TOPUP_SUCCEEDED_KEY] = False
-        return True
+    def _close_check(self) -> None:
+        """Close the gate for an hour, once the check has reached a decision."""
+        self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
+
+    def _fail_topup(self) -> None:
+        """Stop `/funds-status` relying on the top-up until a transfer settles again."""
+        self.context.shared_state[TOPUP_SUCCEEDED_KEY] = False
 
     def _prepare_topup_tx(
         self, allow_unwrap: bool
@@ -141,9 +141,9 @@ class AgentTopUpBehaviour(BaseBehaviour):
         chain = self.params.default_chain_id
         agent_address = self.context.agent_address
         try:
-            funds = self.skill_shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+            funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
             topup = get_agent_topups(
-                self.skill_shared_state[GET_AGENT_TOPUP_METHOD_NAME],
+                self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
                 funds,
                 agent_address,
                 self.params.agent_balance_threshold,
@@ -154,9 +154,11 @@ class AgentTopUpBehaviour(BaseBehaviour):
             self.context.logger.warning(
                 f"Agent Signer top-up skipped: {type(exc).__name__}({exc})."
             )
+            self._fail_topup()
             return None
         if topup.move == 0:
             self.context.logger.info(f"No Agent Signer top-up on {chain}.")
+            self._close_check()
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))
@@ -165,15 +167,26 @@ class AgentTopUpBehaviour(BaseBehaviour):
             self.context.logger.info(
                 f"Unwrapping {unwrap_amount} wxDAI in the Agent Safe."
             )
-            return (yield from self._prepare_unwrap_tx(unwrap_amount))
+            tx_hex = yield from self._prepare_unwrap_tx(unwrap_amount)
+        else:
+            # After an unwrap, the Agent Signer paid its gas, so the rule asks for slightly
+            # more than was unwrapped; move what the Agent Safe holds rather than unwrap again.
+            amount = min(topup.move, safe_native)
+            if amount == 0:
+                self.context.logger.warning(
+                    f"Agent Signer top-up skipped: {topup.move} wei due, "
+                    f"but the Agent Safe holds {safe_native} wei."
+                )
+                self._fail_topup()
+                return None
+            self.context.logger.info(f"Moving {amount} wei to the Agent Signer.")
+            tx_hex = yield from self._prepare_safe_tx(agent_address, amount, b"")
 
-        # After an unwrap, the Agent Signer paid its gas, so the rule asks for slightly
-        # more than was unwrapped; move what the Agent Safe holds rather than unwrap again.
-        amount = min(topup.move, safe_native)
-        if amount == 0:
-            return None
-        self.context.logger.info(f"Moving {amount} wei to the Agent Signer.")
-        return (yield from self._prepare_safe_tx(agent_address, amount, b""))
+        if tx_hex is None:
+            self._fail_topup()
+        else:
+            self._close_check()
+        return tx_hex
 
     def _prepare_unwrap_tx(self, amount: int) -> Generator[None, None, Optional[str]]:
         """Prepare the Safe tx unwrapping `amount` wxDAI into xDAI."""

@@ -224,6 +224,59 @@ class TestGate:
         assert harness.run() is None
         assert "rpc down" in harness.context.logger.warning.call_args[0][0]
 
+    @pytest.mark.parametrize(
+        "chain, funds, responses",
+        [
+            ("polygon", funds_status("polygon", ETHER // 10, 10 * ETHER), []),
+            (
+                "polygon",
+                funds_status("polygon", ETHER // 10, 10 * ETHER),
+                [_response(ERROR)],
+            ),
+            (
+                "gnosis",
+                funds_status(
+                    "gnosis",
+                    ETHER // 10,
+                    ETHER,
+                    wxdai_balance=5 * ETHER,
+                    track_wxdai=True,
+                ),
+                [_response(ERROR)],
+            ),
+        ],
+        ids=["status read", "Safe hash", "unwrap build"],
+    )
+    def test_failure_leaves_the_gate_open(
+        self, chain: str, funds: FundRequirements, responses: List[MagicMock]
+    ) -> None:
+        """A check that fails before a decision is retried next period, not an hour later."""
+        last_check = NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        harness = _Harness(
+            chain,
+            funds,
+            shared_state={LAST_TOPUP_CHECK_KEY: last_check},
+            responses=responses,
+        )
+        if not responses:
+            harness.shared_state[GET_FUNDS_STATUS_METHOD_NAME].side_effect = (
+                RuntimeError
+            )
+
+        assert harness.run() is None
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == last_check
+
+    def test_prepared_tx_closes_the_gate(self) -> None:
+        """A check that prepares a top-up tx has reached a decision."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 10 * ETHER),
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert harness.run() is not None
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+
 
 class TestNoMove:
     """Only a non-zero move prepares a tx."""
@@ -407,6 +460,30 @@ class TestGnosisUnwrap:
             funds_status(
                 "gnosis", ETHER // 10, 0, wxdai_balance=5 * ETHER, track_wxdai=True
             ),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60, TOPUP_SUCCEEDED_KEY: True},
+            tx_submitter=SUBMITTER,
+            settled_to=WXDAI_ADDRESS,
+        )
+
+        assert harness.run() is None
+        assert not harness.contract_calls
+        assert "holds 0 wei" in harness.context.logger.warning.call_args[0][0]
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
+
+    def test_unwrap_gas_pushing_the_signer_below_the_settlement_threshold_skips_the_transfer(
+        self,
+    ) -> None:
+        """The unwrap's gas can take an Agent Signer just above `agent_balance_threshold` below it."""
+        gas = 10**15
+        harness = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis",
+                SIGNER_SETTLEMENT_THRESHOLD + gas // 2 - gas,
+                2 * ETHER,
+                wxdai_balance=3 * ETHER,
+                track_wxdai=True,
+            ),
             shared_state={LAST_TOPUP_CHECK_KEY: NOW - 60},
             tx_submitter=SUBMITTER,
             settled_to=WXDAI_ADDRESS,
@@ -414,6 +491,7 @@ class TestGnosisUnwrap:
 
         assert harness.run() is None
         assert not harness.contract_calls
+        assert "below the" in harness.context.logger.warning.call_args[0][0]
 
     def test_withdraw_build_failure_prepares_nothing(self) -> None:
         """An unwrap that cannot be built ends the check."""
@@ -468,7 +546,7 @@ class TestGnosisUnwrap:
 
         assert _decode(unwrap_tx or "")["to_address"] == WXDAI_ADDRESS
         assert _decode(transfer_tx or "")["to_address"] == AGENT
-        assert transfer.shared_state[TOPUP_SUCCEEDED_KEY] is False
+        assert TOPUP_SUCCEEDED_KEY not in transfer.shared_state
         assert done.run() is None
         assert done.shared_state[TOPUP_SUCCEEDED_KEY] is True
 
@@ -507,8 +585,8 @@ class TestTopUpSucceeded:
         "signer_balance",
         [ETHER // 10, ETHER],  # a top-up tx is prepared / nothing is due
     )
-    def test_new_check_clears_the_success(self, signer_balance: int) -> None:
-        """Until a transfer of the new check settles, an earlier success no longer counts."""
+    def test_new_check_keeps_the_success(self, signer_balance: int) -> None:
+        """A signer that drains between checks is still reported as the agent's to top up."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", signer_balance, 10 * ETHER),
@@ -517,6 +595,37 @@ class TestTopUpSucceeded:
         )
 
         harness.run()
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is True
+
+    @pytest.mark.parametrize(
+        "chain, funds",
+        [
+            ("polygon", funds_status("polygon", ETHER // 10, 10 * ETHER)),
+            (
+                "gnosis",
+                funds_status(
+                    "gnosis",
+                    ETHER // 10,
+                    ETHER,
+                    wxdai_balance=5 * ETHER,
+                    track_wxdai=True,
+                ),
+            ),
+        ],
+        ids=["transfer", "unwrap"],
+    )
+    def test_failed_build_clears_the_success(
+        self, chain: str, funds: FundRequirements
+    ) -> None:
+        """A top-up tx that cannot be built does not keep an earlier success."""
+        harness = _Harness(
+            chain,
+            funds,
+            shared_state={TOPUP_SUCCEEDED_KEY: True},
+            responses=[_response(ERROR)],
+        )
+
+        assert harness.run() is None
         assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is False
 
     def test_failed_read_clears_the_success(self) -> None:
