@@ -544,8 +544,17 @@ class TestSharedState:
         ],
         ids=["january", "october_dst"],
     )
+    @pytest.mark.parametrize(
+        "extra, days",
+        # The last day is simulated only while the latest bet opens more than
+        # the safe voting range after it.
+        [(1, 6), (0, 5)],
+        ids=["last_day_in", "last_day_out"],
+    )
     @pytest.mark.usefixtures("london_tz")
-    def test_initialize_simulated_now_timestamps(self, now_ts: int) -> None:
+    def test_initialize_simulated_now_timestamps(
+        self, now_ts: int, extra: int, days: int
+    ) -> None:
         """Simulated days are exactly one day apart in any local timezone."""
         safe_voting_range = 60
 
@@ -553,7 +562,7 @@ class TestSharedState:
         mock_bet1 = MagicMock()
         mock_bet1.openingTimestamp = now_ts + 86400 * 3 + safe_voting_range + 1
         mock_bet2 = MagicMock()
-        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
+        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + extra
         bets = [mock_bet1, mock_bet2]
 
         with patch(
@@ -563,7 +572,7 @@ class TestSharedState:
             self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
-        assert self.state.simulated_days == [now_ts + i * 86400 for i in range(6)]
+        assert self.state.simulated_days == [now_ts + i * 86400 for i in range(days)]
 
     def test_increase_one_day_simulation(self) -> None:
         """Test increase_one_day_simulation increments the index."""
