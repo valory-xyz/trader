@@ -283,10 +283,11 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             return
         mined = yield from self._await_relayer_tx(tx_id)
         if not (mined and mined.get("ok")):
+            state = "" if mined is None else f" (relayer state {mined.get('state')!r})"
             self.context.logger.warning(
                 f"DepositWallet {dw_address} approvals tx {tx_id} not confirmed "
-                "mined; the setup gate re-enters the approval round and retries "
-                "on the next pass."
+                f"mined{state}; the setup gate re-enters the approval round and "
+                "retries on the next pass."
             )
             return
         # Persist approvals completion only now that the relayer tx is confirmed
