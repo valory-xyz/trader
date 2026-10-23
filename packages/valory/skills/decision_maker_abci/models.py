@@ -22,7 +22,7 @@
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from string import Template
 from typing import (
     Any,
@@ -337,17 +337,13 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
 
         # Get current timestamp
         now_timestamp = int(time.time())
-        # Convert timestamps to datetime objects
-        max_date = datetime.fromtimestamp(max_timestamp)
-        current_date = datetime.fromtimestamp(now_timestamp)
+        max_date = datetime.fromtimestamp(max_timestamp, tz=timezone.utc)
+        current_date = datetime.fromtimestamp(now_timestamp, tz=timezone.utc)
         self.context.logger.info(
             f"Simulating timestamps between {current_date} and {max_date}"
         )
         # Generate list of timestamps with one day intervals
-        timestamps = []
-        while current_date <= max_date:
-            timestamps.append(int(current_date.timestamp()))
-            current_date += timedelta(days=1)
+        timestamps = list(range(now_timestamp, max_timestamp + 1, 24 * 60 * 60))
         self.context.logger.info(f"Simulated timestamps: {timestamps}")
         self.simulated_days = timestamps
 

@@ -20,7 +20,7 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -50,6 +50,20 @@ from packages.valory.skills.decision_maker_abci.redeem_info import (
     Question,
     Trade,
 )
+
+
+@pytest.fixture
+def london_tz(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    """Run the test with the local timezone set to Europe/London.
+
+    :param monkeypatch: the pytest monkeypatch fixture.
+    :yield: nothing; the timezone is restored afterwards.
+    """
+    monkeypatch.setenv("TZ", "Europe/London")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
 
 
 class TestPromptTemplate:
@@ -521,26 +535,44 @@ class TestSharedState:
         self.state.current_liquidity_amounts = [3000, 4000]
         assert self.state.liquidity_amounts["test_id"] == [3000, 4000]
 
-    def test_initialize_simulated_now_timestamps(self) -> None:
-        """Test _initialize_simulated_now_timestamps populates simulated_days."""
-        now_ts = int(time.time())
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="needs time.tzset")
+    @pytest.mark.parametrize(
+        "now_ts",
+        [
+            1768478400,  # 2026-01-15T12:00:00Z, no clock change in the window
+            1792756800,  # 2026-10-23T12:00:00Z, window crosses the UK clock change
+        ],
+        ids=["january", "october_dst"],
+    )
+    @pytest.mark.parametrize(
+        "extra, days",
+        # The last day is simulated only while the latest bet opens more than
+        # the safe voting range after it.
+        [(1, 6), (0, 5)],
+        ids=["last_day_in", "last_day_out"],
+    )
+    @pytest.mark.usefixtures("london_tz")
+    def test_initialize_simulated_now_timestamps(
+        self, now_ts: int, extra: int, days: int
+    ) -> None:
+        """Simulated days are exactly one day apart in any local timezone."""
         safe_voting_range = 60
 
         # Create mock bets with openingTimestamp in the future
         mock_bet1 = MagicMock()
         mock_bet1.openingTimestamp = now_ts + 86400 * 3 + safe_voting_range + 1
         mock_bet2 = MagicMock()
-        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + 1
+        mock_bet2.openingTimestamp = now_ts + 86400 * 5 + safe_voting_range + extra
         bets = [mock_bet1, mock_bet2]
 
-        self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
+        with patch(
+            "packages.valory.skills.decision_maker_abci.models.time.time",
+            return_value=float(now_ts),
+        ):
+            self.state._initialize_simulated_now_timestamps(bets, safe_voting_range)  # type: ignore[arg-type]
 
         assert self.state.simulated_days_idx == 0
-        assert len(self.state.simulated_days) > 0
-        # Each day is separated by one day interval
-        for i in range(1, len(self.state.simulated_days)):  # type: ignore[arg-type]
-            diff = self.state.simulated_days[i] - self.state.simulated_days[i - 1]
-            assert diff == 86400
+        assert self.state.simulated_days == [now_ts + i * 86400 for i in range(days)]
 
     def test_increase_one_day_simulation(self) -> None:
         """Test increase_one_day_simulation increments the index."""
