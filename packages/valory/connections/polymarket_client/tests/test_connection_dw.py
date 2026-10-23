@@ -526,6 +526,6 @@ class TestFunderThreading:
             "makingAmount": 1,
             "takingAmount": 1,
         }
-        with patch.object(_Conn, "_ensure_dw_funder") as ensure:
+        with patch.object(_Conn, "_ensure_dw_funder") as ensure, patch("requests.get"):
             conn._sell_position(token_id="1", amount=1.0, funder=DW)
         ensure.assert_called_once_with(DW)

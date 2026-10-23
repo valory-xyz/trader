@@ -1053,6 +1053,15 @@ class TestBetsDecoder:
         assert isinstance(decoded, Bet)
         assert decoded.description == "resolution rules here"
 
+    @pytest.mark.parametrize("stored", [{}, {"market_version": "v2"}])
+    def test_market_version_survives_decoding(self, stored: Dict[str, str]) -> None:
+        """A bet saved without a market version, as the current release saves it, loads as v1; a v2 one stays v2."""
+        data = json.loads(json.dumps(_make_bet(), cls=BetsEncoder))
+        data.pop("market_version", None)
+        decoded = json.loads(json.dumps({**data, **stored}), cls=BetsDecoder)
+        expected = stored.get("market_version", "v1")
+        assert getattr(decoded, "market_version", None) == expected
+
 
 # ===========================================================================
 # 8. serialize_bets
