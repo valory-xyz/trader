@@ -1134,7 +1134,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
-        tries = 1 if version else MAX_API_RETRIES  # a slow V2 read can't delay V1
+        # A V2 page gets one try, so a failing V2 read adds no retry backoff
+        # to V1 discovery.
+        tries = 1 if version else MAX_API_RETRIES
 
         while True:
             params: Dict[str, Any] = {
@@ -1177,11 +1179,14 @@ class PolymarketClientConnection(BaseSyncConnection):
                 break
 
         if not version:
-            v2_markets, _ = self._fetch_markets_by_tag_slug(
-                tag_slug, end_date_min, end_date_max, "v2"
-            )
-            seen = {market.get("id") for market in all_markets}
-            all_markets += [m for m in v2_markets or [] if m.get("id") not in seen]
+            try:
+                v2_markets, _ = self._fetch_markets_by_tag_slug(
+                    tag_slug, end_date_min, end_date_max, "v2"
+                )
+                seen = {market.get("id") for market in all_markets}
+                all_markets += [m for m in v2_markets or [] if m.get("id") not in seen]
+            except (AttributeError, TypeError) as e:
+                self.logger.warning(f"Skipping V2 markets for tag {tag_slug}: {e}")
         return all_markets, None
 
     def _filter_markets_by_created_at(self, markets: list) -> list:
