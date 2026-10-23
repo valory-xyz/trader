@@ -67,6 +67,8 @@ DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
 # Token reference facts, such as the contract module that issued a token.
 DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
 DATA_API_TOKENS_LIMIT = 50
+# Module IDs a Protocol V2 position ID carries in its top byte.
+V2_MODULE_IDS = (1, 2, 3)
 # ERC-1155 balanceOfBatch ids per eth_call.
 BALANCE_BATCH_LIMIT = 500
 DATA_API_PAGE_LIMIT = 100
@@ -1473,14 +1475,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Return the cached contract module of each token looked up so far."""
         return {}
 
-    def _read_token_modules(self, token_ids: List[str]) -> Optional[str]:
+    def _read_token_modules(self, token_ids: List[str]) -> None:
         """Look up the module of the tokens not yet known, in batches.
 
         A token's module never changes, so it is cached. ``v1_ctf`` is a V1
-        token; any other module is a Protocol V2 one.
+        token; any other module is a Protocol V2 one. A failed lookup leaves
+        the remaining tokens unknown until the next read.
 
         :param token_ids: the token ids to classify
-        :return: an error message unless every token's module is known
         """
         unknown = sorted({t for t in token_ids if t not in self._token_modules})
         for start in range(0, len(unknown), DATA_API_TOKENS_LIMIT):
@@ -1496,51 +1498,70 @@ class PolymarketClientConnection(BaseSyncConnection):
                     if isinstance(row["module"], str):  # else counted as missing
                         self._token_modules[str(row["token_id"])] = row["module"]
             except (requests.exceptions.RequestException, ValueError, KeyError) as e:
-                error_msg = f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}"
-                self.logger.error(error_msg)
-                return error_msg
-        missing = [t for t in token_ids if t not in self._token_modules]
-        return (
-            f"Unknown tokens in {DATA_API_TOKENS_URL}: {missing}" if missing else None
-        )
+                self.logger.error(f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}")
+                return
+
+    @staticmethod
+    def _could_be_v2(row: Dict[str, Any]) -> bool:
+        """Tell whether a row's position ID fits the Protocol V2 layout.
+
+        A V2 position ID is the bytes31 condition ID followed by the outcome
+        index, and its top byte is the module ID.
+
+        :param row: a positions row from Data API v2
+        :return: whether the row could be a V2 position
+        """
+        token_id = int(row["token_id"])
+        return token_id >> 248 in V2_MODULE_IDS or token_id == int(
+            row["condition_id"], 16
+        ) + int(row["outcome_index"])
 
     def _select_positions(
         self,
         rows: List[Dict[str, Any]],
         redeemable: Optional[bool],
         holder: str,
-    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+    ) -> List[Dict[str, Any]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
 
         v2 has no status for "not redeemable", and its default status returns
         settled rows alongside open ones, so the ``redeemable`` filter is
         applied here on the row flag. A V2 row, by its token's module, also
         gets the holder's exact PositionManager balance: the Data API rounds sizes.
+        A row whose module is unknown stays V1 unless it could be V2, in which
+        case it is left out of this read.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
         :param holder: the address holding the positions
-        :return: Tuple of (the selected positions keyed by v1 names, error_message)
+        :return: the selected positions keyed by v1 names
         """
         selected = [
-            (row, self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1))
+            row
             for row in rows
             if redeemable is None or bool(row.get("redeemable")) is redeemable
         ]
-        error = self._read_token_modules([row["token_id"] for row, _ in selected])
-        if error:
-            return None, error
-        v2 = [
-            (r, p)
-            for r, p in selected
-            if self._token_modules[r["token_id"]] != "v1_ctf"
-        ]
+        self._read_token_modules([row["token_id"] for row in selected])
+        positions: List[Dict[str, Any]] = []
+        v2: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+        for row in selected:
+            module = self._token_modules.get(row["token_id"])
+            if module is None and self._could_be_v2(row):
+                self.logger.warning(
+                    f"Skipping position {row['token_id']} this read: "
+                    f"its module is unknown in {DATA_API_TOKENS_URL}"
+                )
+                continue
+            position = self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1)
+            positions.append(position)
+            if module not in (None, "v1_ctf"):
+                v2.append((row, position))
         balances = self._erc1155_balance_of_batch(
             self.position_manager, holder, [int(r["token_id"]) for r, _ in v2]
         )
         for (_, position), balance in zip(v2, balances, strict=True):
             position[V2_BALANCE_KEY] = balance
-        return [position for _, position in selected], None
+        return positions
 
     def _get_positions(
         self,
@@ -1572,11 +1593,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions, error = self._select_positions(
-            rows or [], redeemable, params["user"]
-        )
-        if error:
-            return None, error
+        positions = self._select_positions(rows or [], redeemable, params["user"])
         self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
         return positions, None
 
@@ -1611,11 +1628,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions, error = self._select_positions(
-            rows or [], redeemable, params["user"]
-        )
-        if error:
-            return None, error
+        positions = self._select_positions(rows or [], redeemable, params["user"])
         self.logger.info(
             f"Fetched total of {len(positions)} positions for {params['user']}"
         )
