@@ -2628,6 +2628,35 @@ def test_v2_position_detected_by_token_module(lookup: str) -> None:
     assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
 
 
+def test_v2_position_short_balance_answer_fails_read() -> None:
+    """A balanceOfBatch answer shorter than its ids fails the read instead of leaving a V2 row on the V1 path."""
+    with _safe_world(V2_WIN, V1_WIN, XI) as conn:
+        chain = conn.w3.eth.call.side_effect  # the read's only eth_call is the batch
+        conn.w3.eth.call.side_effect = lambda tx, *a: abi_encode(
+            ["uint256[]"], [abi_decode(["uint256[]"], chain(tx, *a))[0][:-1]]
+        )
+        response, error = conn._route_request(
+            {"request_type": "fetch_all_positions", "params": {}}
+        )
+    assert response is None and error
+
+
+def test_v2_position_balances_read_in_chunks() -> None:
+    """Balances are read in chunks of BALANCE_BATCH_LIMIT ids, each row keeping its own balance."""
+    rows = (V2_WIN, V1_WIN, XI)
+    with (
+        _safe_world(*rows) as conn,
+        patch(f"{CONNECTION_MODULE}.BALANCE_BATCH_LIMIT", 1),
+    ):
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 2
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        ONCHAIN_BALANCE[XI["token_id"]],
+    ]
+
+
 class TestBoolParam:
     """Tests for _bool_param."""
 
