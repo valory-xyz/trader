@@ -266,14 +266,17 @@ class TestGate:
         assert harness.run() is None
         assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == last_check
 
-    def test_prepared_tx_closes_the_gate(self) -> None:
-        """A check that prepares a top-up tx has reached a decision."""
+    def test_retried_check_closes_the_gate_once_its_tx_is_prepared(self) -> None:
+        """A check that failed is retried next period, and closes the gate once it prepares its tx."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER // 10, 10 * ETHER),
-            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+            responses=[_response(ERROR), _response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
+        failed = harness.run()
+        harness.sent.clear()
 
+        assert failed is None
         assert harness.run() is not None
         assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
 
@@ -617,12 +620,13 @@ class TestTopUpSucceeded:
     def test_failed_build_clears_the_success(
         self, chain: str, funds: FundRequirements
     ) -> None:
-        """A top-up tx that cannot be built does not keep an earlier success."""
+        """A top-up tx that cannot be built, even on a retry, does not keep an earlier success."""
         harness = _Harness(
             chain,
             funds,
             shared_state={TOPUP_SUCCEEDED_KEY: True},
             responses=[_response(ERROR)],
+            retry=True,
         )
 
         assert harness.run() is None
