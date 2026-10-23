@@ -31,7 +31,7 @@ fingerprint:
   tool_keys.py: bafybeiaidr6yy435bomimdnqsdbbd4hfi5dz7tnpnqifgsdp4nadpxwqiq
 fingerprint_ignore_patterns: []
 connections:
-- valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
+- valory/genai:0.1.0:bafybeibjtviazyw2jpwlholtkyqprqit5uyzn2ucxg3s6lk3gumeq4picm
 protocols:
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
@@ -40,7 +40,7 @@ contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/agent_performance_summary_abci:0.1.0:bafybeiacwc4jn24337f3v7fq4374tby6e7ykqnqhhd2rwenqd7c7lf6scu
-- valory/mech_interact_abci:0.1.0:bafybeia5djdwulxkpzqehzvkrkvew6ef2wfaalodhwn7ficj5jhetzjawa
+- valory/mech_interact_abci:0.1.0:bafybeihcchkxvuci3thqh4s2bq75k2qklqhsesvciztiearse3aqhd2cee
 handlers:
   abci:
     args: {}
