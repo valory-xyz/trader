@@ -2512,13 +2512,13 @@ def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
     return {key: value for key, value in balances.items() if value}
 
 
-def _tokens_response(ids: list, modules: dict, down: bool = False) -> MagicMock:
-    """Answer a /v2/tokens read with each known token's module, or fail it."""
+def _tokens_response(ids: list, modules: dict, down: Any = False) -> MagicMock:
+    """Answer a /v2/tokens read with each known token's module, fail it, or reply with the body ``down`` gives."""
     response = MagicMock()
-    if down:
+    if down is True:
         response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
     rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
-    response.json.return_value = {"data": rows}
+    response.json.return_value = {"data": rows} if isinstance(down, bool) else down
     return response
 
 
@@ -2673,15 +2673,20 @@ def test_v2_rows_without_a_token_id_read_as_v1() -> None:
     ]
 
 
-def test_v2_token_outage_leaves_v1_rows_as_before() -> None:
-    """With /v2/tokens down, V1-only positions, malformed ones too, are read as V1 rows with no balance read."""
+@pytest.mark.parametrize(
+    "tokens_down",
+    [True, {"data": None}, [], {"data": ["v1_ctf"]}],
+    ids=["down", "null-data", "list-body", "non-dict-row"],
+)
+def test_v2_token_outage_leaves_v1_rows_as_before(tokens_down: Any) -> None:
+    """With /v2/tokens down or malformed, V1-only positions, malformed ones too, are read as V1 rows with no balance read."""
     rows = (
         *V1_ROWS,
         {**V1_WIN, "outcome_index": None},
         {**V1_LOSE, "condition_id": None},
     )
     with _safe_world(*rows) as conn:
-        conn.tokens_down = True
+        conn.tokens_down = tokens_down
         positions, error = conn._fetch_all_positions()
     assert error is None and conn.w3.eth.call.call_count == 0
     assert positions == [conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in rows]
