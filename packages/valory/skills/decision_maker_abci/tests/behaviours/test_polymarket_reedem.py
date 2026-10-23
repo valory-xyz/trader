@@ -19,12 +19,17 @@
 
 """Tests for PolymarketRedeemBehaviour."""
 
+import json
 from io import StringIO
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from eth_abi import decode as abi_decode
+from eth_abi import encode as abi_encode
+from eth_utils import to_checksum_address  # type: ignore[import-not-found]
+from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
     BLOCK_NUMBER_KEY,
@@ -1685,3 +1690,117 @@ class TestAsyncAct:
         assert isinstance(payloads_sent[0], PolymarketRedeemPayload)
         assert payloads_sent[0].tx_hash == "0xtxhash"
         assert payloads_sent[0].event == "prepare_tx"
+
+
+def _redeem_period(conn, builder, utilized_tools=None, policy=None, state=None):  # type: ignore[no-untyped-def]
+    """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
+    behaviour = _make_behaviour()
+    if state is not None:  # shared state kept across periods
+        behaviour.context.state = state
+    behaviour._policy = policy or _make_policy()
+    behaviour._utilized_tools = dict(utilized_tools or {})
+    behaviour._mech_tools = {"tool1"}
+    behaviour._setup_policy_and_tools = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour._build_multisend_data = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour._build_multisend_safe_tx_hash = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour.context.params = MagicMock(
+        polymarket_builder_program_enabled=builder, **pm.V2_PARAMS
+    )
+    payloads: list = []
+
+    def finish(payload):  # type: ignore[no-untyped-def]
+        payloads.append(payload)
+        yield
+
+    behaviour.finish_behaviour = finish  # type: ignore[method-assign]
+    pm._wire(behaviour, conn)
+    conn.relayer_client.execute.reset_mock()
+    with patch.multiple(
+        PolymarketRedeemBehaviour,
+        synchronized_data=PropertyMock(return_value=MagicMock(is_policy_set=True)),
+        tx_hex=PropertyMock(return_value="0xsafetx"),
+    ):
+        list(behaviour.async_act())
+    txs = list(behaviour.multisend_batches)
+    for call in conn.relayer_client.execute.call_args_list:
+        txs += call.kwargs.get("transactions") or call.args[0]
+    return payloads[0], [
+        (to_checksum_address(t.to), HexBytes(t.data), t.operation.value, int(t.value))
+        for t in txs
+    ]
+
+
+def _v1_claim(row):  # type: ignore[no-untyped-def]
+    """Return the collateral-adapter claim the V1 flow builds for a standard-market row."""
+    condition_id = bytes.fromhex(row["condition_id"][2:])
+    args = [pm.COLLATERAL_ADDRESS, bytes(32), condition_id, [1 << row["outcome_index"]]]
+    types = ["address", "bytes32", "bytes32", "uint256[]"]
+    data = pm._selector(f"redeemPositions({','.join(types)})") + abi_encode(types, args)
+    return pm.CTF_COLLATERAL_ADAPTER, data, 0, 0
+
+
+def _router_claim(row):  # type: ignore[no-untyped-def]
+    """Return the Router claim of a row's whole balance, addressed by its position ID."""
+    position_id = int(row["token_id"])  # bytes31 condition ID, then the outcome byte
+    amount = pm.ONCHAIN_BALANCE[row["token_id"]]
+    args = [(position_id >> 8).to_bytes(31, "big"), position_id & 0xFF, amount]
+    types = ["bytes31", "uint256", "uint256"]
+    data = pm._selector(f"redeem({','.join(types)})") + abi_encode(types, args)
+    return pm.ROUTER, data, 0, 0
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-untyped-def]
+    """The Safe claims winning V2 rows through the Router and its V1 rows as before."""
+    rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.XI_WON, pm.V1_LOSE, pm.V2_LOSE)
+    with pm._safe_world(*rows) as conn:
+        payload, claims = _redeem_period(conn, builder)
+    assert payload.event == ("done" if builder else "prepare_tx")
+    v2_claims = [_router_claim(row) for row in (pm.V2_WIN, pm.V2_WIN0, pm.XI_WON)]
+    expected = v2_claims + [_v1_claim(pm.V1_WIN), _v1_claim(pm.V1_LOSE)]
+    assert sorted(claims) == sorted(expected)
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_v2_position_losing_row_not_claimed(builder) -> None:  # type: ignore[no-untyped-def]
+    """No claim for a V2 row with no value, nor for a winning one the Safe no longer holds."""
+    rows, held = [pm.V2_LOSE, pm.V2_WIN0, pm.V1_LOSE], (pm.V2_LOSE, pm.V1_LOSE)
+    with pm._v2_world({pm.V2_SAFE: rows}, pm._ledger(pm.V2_SAFE, *held)) as conn:
+        _, claims = _redeem_period(conn, builder)
+    assert claims == [_v1_claim(pm.V1_LOSE)]
+
+
+def test_v2_position_accuracy_updated_once() -> None:
+    """A resolved V2 bet updates its tool once, as a win or a loss, over two periods."""
+    for row, won in ((pm.V2_WIN, True), (pm.V2_LOSE, False)):
+        policy, expected = _make_policy(), _make_policy()
+        expected.update_accuracy_store("tool1", winning=won)
+        tools = {row["condition_id"]: "tool1"}
+        with pm._safe_world(row) as conn:
+            for _ in range(2):  # the Data API still lists the row next period
+                payload, claims = _redeem_period(conn, False, tools, policy)
+                tools = json.loads(payload.utilized_tools)
+                assert policy.accuracy_store == expected.accuracy_store
+                # A loss leaves nothing to claim and no transaction to settle.
+                assert won or (claims, payload.event) == ([], "no_redeeming")
+
+
+def test_v2_position_claim_payout_recorded_once_landed() -> None:
+    """With the builder relayer, a Safe holding both sides gets the winner's payout card once its claim lands."""
+    state = MagicMock(polymarket_builder_redeems_pending={})
+    with (
+        pm._safe_world(pm.V2_WIN, pm.V2_LOSE) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        _redeem_period(conn, True, state=state)
+        assert list(state.polymarket_builder_redeems_pending) == [
+            pm.V2_WIN["condition_id"]
+        ]
+        # The claim lands: the winner leaves the read, the losing side stays.
+        conn.pages[pm.V2_SAFE] = [pm.V2_LOSE]
+        conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))] = 0
+        for _ in range(2):
+            _redeem_period(conn, True, state=state)
+    assert feed.call_count == 1 and feed.call_args.args[0] == EventType.PAYOUT_COLLECTED
+    assert feed.call_args.args[1][0]["value"] == pm.V2_WIN["title"]
+    assert state.polymarket_builder_redeems_pending == {}

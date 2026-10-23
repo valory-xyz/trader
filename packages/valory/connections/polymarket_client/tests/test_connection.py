@@ -20,13 +20,21 @@
 """Tests for the polymarket_client connection."""
 
 import json
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlsplit
 
 import pytest
 import requests
+from eth_abi import decode as abi_decode
+from eth_abi import encode as abi_encode
+from eth_utils import keccak, to_checksum_address
+from hexbytes import HexBytes
+from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
+    DATA_API_BASE_URL,
     DATA_API_POSITIONS_URL,
     DATA_API_TRADES_URL,
     GAMMA_API_BASE_URL,
@@ -34,10 +42,12 @@ from packages.valory.connections.polymarket_client.connection import (
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
+    POSITION_FIELDS_V2_TO_V1,
     PolymarketClientConnection,
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
     SrrDialogues,
+    V2_BALANCE_KEY,
     _bool_param,
     _validate_builder_code,
 )
@@ -2358,6 +2368,359 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
     return mock_get.call_args_list[call_index][1]["params"]
 
 
+# Real Data API /v2/positions rows, trimmed to the fields the code reads: a Safe
+# holding both sides of a resolved V2 neg-risk market ("No" won) and its V1 rows.
+# https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
+V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
+{"token_id": "50122824272784274265949198122337312072892569991370352556120170615749327480792", "condition_id": "0x2e7749c534f9ac6576d6d58c33e0d598fcd8a99b37ae8be4b34e27b83578ebca", "outcome_index": 1, "current_size": 1.0416, "current_value": 1.0416, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:45AM-11:50AM ET"},
+{"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
+]""")
+# Open V2 binary, V1 (token ID top byte 0x01) and V1 (condition ID ending in a
+# zero byte) rows of a wallet, then a winning "Yes" V2 binary row of another.
+# https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
+# https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
+V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
+{"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
+{"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"},
+{"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
+{"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
+]""")
+V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
+# The decision-maker params naming the contracts above.
+V2_PARAMS = dict(
+    polymarket_collateral_address=COLLATERAL_ADDRESS,
+    polymarket_ctf_address=CTF_ADDRESS,
+    polymarket_ctf_collateral_adapter_address=CTF_COLLATERAL_ADAPTER,
+    polymarket_neg_risk_ctf_collateral_adapter_address=NEG_RISK_CTF_COLLATERAL_ADAPTER,
+    polymarket_position_manager_address=POSITION_MANAGER,
+    polymarket_router_address=ROUTER,
+)
+V2_DW = to_checksum_address(DW_ADDRESS)
+# Derived from /v2/tokens, as the spec says a positions row carries it: the V2
+# "Yes" token of a market carried over from V1, whose rows keep the legacy CTF
+# condition ID (https://gamma-api.polymarket.com/markets/559651). No wallet
+# holds it: the size is a round test value.
+XI = json.loads(
+    '{"token_id": "895257453734540292493143124621755605615887197499956109032745153687078305792", "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcome_index": 0, "current_size": 1.0, "redeemable": false, "negative_risk": false, "title": "Xi Jinping out before 2027?"}'
+)
+XI_WON = {**XI, "redeemable": True, "current_value": 1.0}  # as if it resolved Yes
+# Each fixture token's `module` in /v2/tokens: v1_ctf is V1, binary and neg_risk V2.
+# https://data-api.polymarket.com/v2/tokens?token_id=<the fixture token IDs>
+TOKEN_MODULES = {
+    row["token_id"]: module
+    for row, module in zip(
+        (V2_WIN, V1_WIN, V1_LOSE, V2_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        "neg_risk v1_ctf v1_ctf neg_risk binary v1_ctf v1_ctf binary binary".split(),
+    )
+}
+V2_TOKEN_IDS = {token for token, module in TOKEN_MODULES.items() if module != "v1_ctf"}
+# The holders' balanceOf on PositionManager (V2) or the CTF (V1) at fetch time;
+# the Data API rounds sizes to four decimals.
+ONCHAIN_BALANCE = {
+    row["token_id"]: balance
+    for row, balance in zip(
+        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000, 5000000, 2094720)
+        + (10**6,),
+    )
+}
+
+
+def _selector(signature: str) -> bytes:
+    """Return the 4-byte selector of a function signature."""
+    return keccak(text=signature)[:4]
+
+
+def _ledger(holder: str, *rows: dict) -> Dict[tuple, int]:
+    """Give ``holder`` each row's on-chain balance on the row's ledger."""
+    return {
+        (
+            POSITION_MANAGER if row["token_id"] in V2_TOKEN_IDS else CTF_ADDRESS,
+            holder,
+            int(row["token_id"]),
+        ): ONCHAIN_BALANCE[row["token_id"]]
+        for row in rows
+    }
+
+
+def _fake_chain(balances: Dict[tuple, int]) -> MagicMock:
+    """Build a w3 stand-in answering balance and nonce reads from ``balances``."""
+    w3 = MagicMock(keccak=Web3.keccak, to_checksum_address=to_checksum_address)
+
+    def call(tx: dict, *_: Any) -> bytes:
+        data, token = HexBytes(tx["data"]), to_checksum_address(tx["to"])
+        if data[:4] == _selector("balanceOfBatch(address[],uint256[])"):
+            owners, ids = abi_decode(["address[]", "uint256[]"], data[4:])
+            keys = [(token, to_checksum_address(o), i) for o, i in zip(owners, ids)]
+            return abi_encode(["uint256[]"], [[balances.get(k, 0) for k in keys]])
+        if data[:4] == _selector("balanceOf(address,uint256)"):
+            owner, token_id = abi_decode(["address", "uint256"], data[4:])
+            key: tuple = (token, to_checksum_address(owner), token_id)
+        elif data[:4] == _selector("balanceOf(address)"):
+            key = (token, to_checksum_address(abi_decode(["address"], data[4:])[0]))
+        else:
+            assert data[:4] == _selector("nonce()"), f"unexpected eth_call {tx}"
+            key = ()
+        return balances.get(key, 0).to_bytes(32, "big")
+
+    w3.eth.call.side_effect = call
+    return w3
+
+
+TRANSFER_ARGS = {  # selector: argument types
+    _selector(signature): signature[signature.index("(") + 1 : -1].split(",")
+    for signature in (
+        "transfer(address,uint256)",
+        "safeTransferFrom(address,address,uint256,uint256,bytes)",
+        "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)",
+    )
+}
+
+
+def _apply_transfer(
+    balances: Dict[tuple, int], sender: str, token: str, data: Any
+) -> None:
+    """Apply an ERC-20 or ERC-1155 transfer call made by ``sender`` to ``balances``."""
+    data, token, sender = (
+        HexBytes(data),
+        to_checksum_address(token),
+        to_checksum_address(sender),
+    )
+    assert bytes(data[:4]) in TRANSFER_ARGS, f"unexpected call to {token}"
+    args = abi_decode(TRANSFER_ARGS[bytes(data[:4])], data[4:])
+    if len(args) == 2:  # ERC-20: balances keyed by (token, holder)
+        src, to, moves = sender, args[0], [((), args[1])]
+    else:  # ERC-1155: balances keyed by (token, holder, id)
+        src, to, ids, amounts = args[:4]
+        batch = isinstance(ids, tuple)
+        moves = [
+            ((i,), a) for i, a in (zip(ids, amounts) if batch else [(ids, amounts)])
+        ]
+    assert to_checksum_address(src) == sender, "moves only the sender's own tokens"
+    for token_id, amount in moves:
+        src_key = (token, sender, *token_id)
+        dst_key = (token, to_checksum_address(to), *token_id)
+        assert 0 < amount <= balances.get(src_key, 0), f"{amount} exceeds {src_key}"
+        balances[src_key] -= amount
+        balances[dst_key] = balances.get(dst_key, 0) + amount
+
+
+def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
+    """Drop the empty balances."""
+    return {key: value for key, value in balances.items() if value}
+
+
+def _tokens_response(ids: list, modules: dict, down: Any = False) -> MagicMock:
+    """Answer a /v2/tokens read with each known token's module, fail it, or reply with the body ``down`` gives."""
+    response = MagicMock()
+    if down is True:
+        response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
+    rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
+    response.json.return_value = {"data": rows} if isinstance(down, bool) else down
+    return response
+
+
+def _positions_get(*pages: MagicMock, down: bool = False) -> Any:
+    """Serve positions pages in turn (the last one repeats) and V1 tokens' modules."""
+    queue = list(pages)
+
+    def get(url: str, params: Optional[dict] = None, **_: Any) -> MagicMock:
+        if url.startswith(f"{DATA_API_BASE_URL}/v2/tokens"):
+            ids = params["token_id"].split(",")  # type: ignore[index]
+            return _tokens_response(ids, dict.fromkeys(ids, "v1_ctf"), down)
+        return queue.pop(0) if len(queue) > 1 else queue[0]
+
+    return get
+
+
+@contextmanager
+def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
+    """Yield a ``V2_SAFE`` connection reading ``pages`` from the Data API and ``balances`` from the chain."""
+    conn = _make_connection()
+    conn.dw_address, conn.w3 = V2_DW, _fake_chain(balances)
+    conn.pages, conn.balances = pages, balances
+    conn.configuration.config.get.side_effect = lambda key, *_, **__: (
+        {"polygon": V2_SAFE} if key == "safe_contract_addresses" else None
+    )
+    conn.relayer_client.execute.return_value.get_transaction.return_value = {}
+    conn.relayer_proxy.exec_wallet_batch.return_value = "0xbatch"
+
+    conn.token_lookups, conn.tokens_down, conn.modules = [], False, TOKEN_MODULES
+
+    def get(url: str, params: dict, **_: Any) -> MagicMock:
+        if urlsplit(url).path == "/v2/tokens":
+            ids = params["token_id"].split(",")
+            conn.token_lookups.append(sorted(ids))
+            return _tokens_response(ids, conn.modules, conn.tokens_down)
+        assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
+        rows = pages.get(to_checksum_address(params["user"]), [])
+        redeemable_only = params.get("status") == "REDEEMABLE"
+        return _v2_response([r for r in rows if r["redeemable"] or not redeemable_only])
+
+    with patch("requests.get", side_effect=get):
+        yield conn
+
+
+def _safe_world(*rows: dict) -> Any:
+    """Return a ``_v2_world`` whose Safe holds ``rows``."""
+    return _v2_world({V2_SAFE: list(rows)}, _ledger(V2_SAFE, *rows))
+
+
+def _wire(behaviour: Any, conn: Any) -> None:
+    """Answer the behaviour's Polymarket requests with ``conn``."""
+
+    def send(request: dict, none_on_error: bool = False) -> Generator:
+        response, error = conn._route_request(json.loads(json.dumps(request)))
+        yield
+        return None if error and none_on_error else json.loads(json.dumps(response))
+
+    behaviour.send_polymarket_connection_request = send
+    behaviour._send_polymarket_request = lambda kind, params: send(
+        {"request_type": kind.value, "params": params}, none_on_error=True
+    )
+
+
+def test_v2_position_custody_swept_to_safe() -> None:
+    """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares as before."""
+    dust = (POSITION_MANAGER, V2_DW, int(V2_WIN["token_id"]))  # one base unit moves too
+    pusd = (COLLATERAL_ADDRESS, V2_DW)
+    balances = {**_ledger(V2_DW, V2_OPEN, V1_OPEN), dust: 1, pusd: 2500000}
+    swept = {(key[0], V2_SAFE, *key[2:]): value for key, value in balances.items()}
+    token_ids = [int(row["token_id"]) for row in (V1_OPEN, V2_WIN, V2_OPEN)]
+    with _v2_world({}, balances) as conn:
+        response, error = conn._sweep_dw(dw_address=V2_DW, token_ids=token_ids)
+        dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
+        pusd_call = conn._encode_erc20_transfer(V2_SAFE, 2500000)
+        v1_call = conn._encode_erc1155_safe_transfer(
+            V2_DW, V2_SAFE, int(V1_OPEN["token_id"]), 5000000
+        )
+    assert (error, response["swept"], dw) == (None, True, V2_DW)
+    assert {"target": COLLATERAL_ADDRESS, "data": pusd_call} in calls
+    assert {"target": CTF_ADDRESS, "data": v1_call} in calls
+    for call in calls:
+        _apply_transfer(balances, V2_DW, call["target"], call["data"])
+    assert _held(balances) == swept
+
+
+@pytest.mark.parametrize("held", [V2_WIN, XI])
+@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null", "", "directional"])
+def test_v2_position_detected_by_token_module(lookup: str, held: dict) -> None:
+    """Rows are classed by their token's /v2/tokens module, looked up once in one batch; an unknown possible-V2 row fails the read and is looked up again."""
+    rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = lookup == "down"
+        conn.modules = dict(TOKEN_MODULES)
+        if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
+            del conn.modules[held["token_id"]]
+        if lookup not in ("ok", "down", "unknown"):
+            # no module, or one with no documented V2 module ID, is as good as missing
+            conn.modules[held["token_id"]] = None if lookup == "null" else lookup
+        reads = [conn._fetch_all_positions() for _ in range(2)]
+    if lookup != "ok":
+        assert [positions for positions, _ in reads] == [None, None]
+        assert all(held["token_id"] in error for _, error in reads)
+        assert held["token_id"] in conn.token_lookups[1]  # unknowns not cached
+        return
+    v2_balances = [
+        ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in rows
+    ]
+    assert [[p.get(V2_BALANCE_KEY) for p in ps] for ps, _ in reads] == [v2_balances] * 2
+    assert conn.w3.eth.call.call_count == len(reads)  # one balance read per read
+    assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
+
+
+V1_ROWS = (V1_WIN, V1_LOSE, V1_OPEN, V1_00)  # V1_OPEN's token ID top byte is 0x01
+
+
+@pytest.mark.parametrize(
+    "row,possible_v2",
+    [(row, False) for row in V1_ROWS]
+    + [(row, True) for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0, XI)]
+    + [({**V2_OPEN, "outcome_index": None}, True)]
+    + [({**V2_OPEN, "token_id": None}, False), ({**V2_OPEN, "token_id": "x"}, False)],
+)
+def test_v2_layout_never_matches_a_v1_token(row: dict, possible_v2: bool) -> None:
+    """A row could be V2 when its position ID's top byte is a V2 module and its low byte its outcome index."""
+    assert PolymarketClientConnection._could_be_v2(row) is possible_v2
+
+
+@pytest.mark.parametrize("module", ["binary", "", "directional"])
+def test_v2_module_must_fit_the_position_id(module: str) -> None:
+    """A V1-layout row named a V2 module fails the read; with an undocumented module it reads as V1."""
+    with _safe_world(V1_WIN, V2_WIN) as conn:
+        conn.modules = {**TOKEN_MODULES, V1_WIN["token_id"]: module}
+        positions, error = conn._fetch_all_positions()
+    if module == "binary":
+        assert positions is None and V1_WIN["token_id"] in error
+        return
+    assert error is None
+    assert [V2_BALANCE_KEY in p for p in positions] == [False, True]
+
+
+def test_v2_rows_without_a_token_id_read_as_v1() -> None:
+    """Rows with no token ID skip the module lookup and read as V1, next to a V2 row."""
+    no_id = {k: v for k, v in V1_WIN.items() if k != "token_id"}
+    rows = [V2_WIN, no_id, {**V1_LOSE, "token_id": None}]
+    with _v2_world({V2_SAFE: rows}, _ledger(V2_SAFE, V2_WIN)) as conn:
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.token_lookups == [[V2_WIN["token_id"]]]
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        None,
+    ]
+
+
+@pytest.mark.parametrize(
+    "tokens_down",
+    [True, {"data": None}, [], {"data": ["v1_ctf"]}],
+    ids=["down", "null-data", "list-body", "non-dict-row"],
+)
+def test_v2_token_outage_leaves_v1_rows_as_before(tokens_down: Any) -> None:
+    """With /v2/tokens down or malformed, V1-only positions, malformed ones too, are read as V1 rows with no balance read."""
+    rows = (
+        *V1_ROWS,
+        {**V1_WIN, "outcome_index": None},
+        {**V1_LOSE, "condition_id": None},
+    )
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = tokens_down
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 0
+    assert positions == [conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in rows]
+
+
+def test_v2_position_short_balance_answer_fails_read() -> None:
+    """A balanceOfBatch answer shorter than its ids fails the read instead of leaving a V2 row on the V1 path."""
+    with _safe_world(V2_WIN, V1_WIN, XI) as conn:
+        chain = conn.w3.eth.call.side_effect  # the read's only eth_call is the batch
+        conn.w3.eth.call.side_effect = lambda tx, *a: abi_encode(
+            ["uint256[]"], [abi_decode(["uint256[]"], chain(tx, *a))[0][:-1]]
+        )
+        response, error = conn._route_request(
+            {"request_type": "fetch_all_positions", "params": {}}
+        )
+    assert response is None and error
+
+
+def test_v2_position_balances_read_in_chunks() -> None:
+    """Balances are read in chunks of BALANCE_BATCH_LIMIT ids, each row keeping its own balance."""
+    rows = (V2_WIN, V1_WIN, XI)
+    with (
+        _safe_world(*rows) as conn,
+        patch(f"{CONNECTION_MODULE}.BALANCE_BATCH_LIMIT", 1),
+    ):
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 2
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        ONCHAIN_BALANCE[XI["token_id"]],
+    ]
+
+
 class TestBoolParam:
     """Tests for _bool_param."""
 
@@ -2492,7 +2855,10 @@ class TestPositionsReads:
     def test_maps_v2_fields_to_the_names_callers_read(self) -> None:
         """Each field a skill reads arrives under its v1 name with its value."""
         conn = _make_connection()
-        with patch("requests.get", return_value=_v2_response([_v2_position_row(True)])):
+        with patch(
+            "requests.get",
+            side_effect=_positions_get(_v2_response([_v2_position_row(True)])),
+        ):
             positions, error = conn._fetch_all_positions()
         assert error is None
         assert positions == [
@@ -2517,7 +2883,7 @@ class TestPositionsReads:
         conn = _make_connection()
         with patch("requests.get", return_value=_v2_response([])) as mock_get:
             conn._fetch_all_positions(size_threshold=5)
-        assert mock_get.call_args[0][0] == DATA_API_POSITIONS_URL
+        assert mock_get.call_args_list[0][0][0] == DATA_API_POSITIONS_URL
         assert _sent_params(mock_get) == {
             "user": SAFE_ADDRESS,
             "limit": 100,
@@ -2555,7 +2921,9 @@ class TestPositionsReads:
         """
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows)) as mock_get:
+        with patch(
+            "requests.get", side_effect=_positions_get(_v2_response(rows))
+        ) as mock_get:
             positions, _ = conn._fetch_all_positions(redeemable=redeemable)
         assert _sent_params(mock_get).get("status") == expected_status
         assert _sent_params(mock_get).get("include_archived") == expected_archived
@@ -2574,26 +2942,43 @@ class TestPositionsReads:
             conn._fetch_all_positions(address=address)
         assert _sent_params(mock_get)["user"] == expected_user
 
-    def test_fetch_all_reads_every_page(self) -> None:
-        """Positions on later pages are not dropped."""
+    @pytest.mark.parametrize("first_page,batches", [(1, [2]), (51, [2, 50])])
+    def test_fetch_all_reads_every_page(self, first_page: int, batches: list) -> None:
+        """Positions on later pages are not dropped; tokens are looked up 50 at a time."""
         conn = _make_connection()
-        responses = [
-            _v2_response([_v2_position_row(token_id="1")], SAMPLE_CURSOR),
-            _v2_response([_v2_position_row(token_id="2")]),
-        ]
-        with patch("requests.get", side_effect=responses):
+        ids = [str(i) for i in range(first_page + 1)]  # synthetic V1 token ids
+        rows = [_v2_position_row(token_id=i) for i in ids]
+        responses = [_v2_response(rows[:-1], SAMPLE_CURSOR), _v2_response(rows[-1:])]
+        with patch("requests.get", side_effect=_positions_get(*responses)) as get:
             positions, error = conn._fetch_all_positions()
         assert error is None
-        assert [p["asset"] for p in positions] == ["1", "2"]
+        assert [p["asset"] for p in positions] == ids
+        calls = [c for c in get.call_args_list if c[0][0] != DATA_API_POSITIONS_URL]
+        lookups = [c[1]["params"]["token_id"].split(",") for c in calls]
+        assert sorted(map(len, lookups)) == batches
+        assert sorted(sum(lookups, [])) == sorted(ids)
 
-    def test_get_positions_reads_only_the_first_page(self) -> None:
-        """A single-page read sends no cursor, stops there and selects rows the same way."""
+    @pytest.mark.parametrize("lookup", ["up", "down", "v2_down"])
+    def test_get_positions_reads_only_the_first_page(self, lookup: str) -> None:
+        """A single-page read sends no cursor, stops there and selects rows the same way; an unknown possible-V2 row fails it."""
         conn = _make_connection()
-        rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows, "next")) as mock_get:
+        v2_id = V2_OPEN["token_id"]
+        open_row = _v2_position_row(False)
+        if lookup == "v2_down":
+            open_row = _v2_position_row(False, token_id=v2_id, outcome_index=1)
+        page = _v2_response([_v2_position_row(True), open_row], "next")
+        with patch(
+            "requests.get", side_effect=_positions_get(page, down=lookup != "up")
+        ) as mock_get:
             positions, error = conn._get_positions(redeemable=False)
-        assert error is None
-        assert mock_get.call_count == 1
+        if lookup == "v2_down":  # fails the read, without a success log
+            assert positions is None and v2_id in error
+            assert "Fetched" not in str(conn.logger.info.call_args_list)
+            return
+        assert error is None  # a failed token lookup leaves V1 rows readable
+        assert [c.args[0] for c in mock_get.call_args_list].count(
+            DATA_API_POSITIONS_URL
+        ) == 1
         assert "cursor" not in _sent_params(mock_get)
         assert [p["redeemable"] for p in positions] == [False]
 

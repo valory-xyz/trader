@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, Generator, List, Optional, Tuple
 
+from packages.valory.connections.polymarket_client.connection import V2_BALANCE_KEY
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.chatui_abci.models import (
     CHATUI_PARAM_STORE,
@@ -158,7 +159,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
 
     @staticmethod
     def _sellable_token_ids(sellable: List[Dict[str, Any]]) -> List[int]:
-        """Integer CTF token ids of the positions the sweep should reclaim.
+        """Integer token ids of the positions the sweep should reclaim.
 
         :param sellable: the filtered sellable position records.
         :return: the parseable integer ``asset`` ids; unparseable ones skipped.
@@ -174,9 +175,9 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     def _sweep_dw_to_safe(
         self, token_ids: Optional[List[int]] = None
     ) -> Generator[None, None, None]:
-        """Sweep the DepositWallet's pUSD (and any unsold CTF) back to the Safe.
+        """Sweep the DepositWallet's pUSD (and any unsold shares) back to the Safe.
 
-        :param token_ids: CTF token ids whose residual DW balance to also sweep;
+        :param token_ids: position token ids whose residual DW balance to also sweep;
             ``None`` sweeps only pUSD (the opportunistic post-buy path).
         :yield: framework yields between dispatch and the connection response.
         """
@@ -851,6 +852,27 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
                 f"(fetch failed: {error})"
             )
             return
+        # V2 positions are held in the Safe, so count its open V2 rows too. With
+        # no DepositWallet the read above was already the Safe's.
+        if self._resolve_deposit_wallet():
+            safe_positions = yield from self.send_polymarket_connection_request(
+                {
+                    "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                    "params": {"redeemable": False},
+                }
+            )
+            if not isinstance(safe_positions, list):
+                self.context.logger.warning(
+                    f"withdrawal: skipping locked-funds snapshot "
+                    f"(Safe fetch failed: {safe_positions})"
+                )
+                return
+            assets = {p.get("asset") for p in positions}
+            positions += [
+                p
+                for p in safe_positions
+                if V2_BALANCE_KEY in p and p.get("asset") not in assets
+            ]
         try:
             locked = round(
                 sum(

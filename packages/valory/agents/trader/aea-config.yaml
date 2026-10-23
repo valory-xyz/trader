@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeickfz4dggcczmygjwwj6fupfocfzjy7ycbsm5xhyp76liqxvzfvnq
+- valory/polymarket_client:0.1.0:bafybeiebtka7atrdk2ltie554rsv67wvjmzuavktjneyd5aimc2jfyqqxm
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaorohvkswyveugihnaxuc2ccaln35dcc5ljomzeyphdscsxdmczy
-- valory/market_manager_abci:0.1.0:bafybeigpc3nsvexvhlxkgjdar4ky53oy6itj7vpb66qjoo3tmhktpdgwpy
-- valory/decision_maker_abci:0.1.0:bafybeibgoy23f6zfztvtgk4ori5r2g33v4hld3kbkl55ml2eoq5uims454
-- valory/trader_abci:0.1.0:bafybeiah2timjf2aut2tpfvs35smo4wyrkq2f4fqqqbw2wp4juqhcnu7tm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeietnpcomp3zkaykt3x5gumbobgdqzfnkfpprfbzxnhuzdqvpylkvm
+- valory/market_manager_abci:0.1.0:bafybeiapttw5qu7tbho6buzm5chtvyilpxzhvokqbmumclkgv2okahsvpa
+- valory/decision_maker_abci:0.1.0:bafybeibfubcbhfhoq3xvgreaq45p3rog6tmvohzuxiecfxbxoqy2vqzide
+- valory/trader_abci:0.1.0:bafybeicfkkoayeak4reyb22ne53n2wox3e2cbtj7c3udvlvxoeg4o4laxu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeicxt7obaaqzpaaajx62d7qvw7kwwhxzzqjhyee7ypffqa225l6xbi
+- valory/check_stop_trading_abci:0.1.0:bafybeihser4itrbkzpxaiad4g63iucuehcdowv4cbpxiu72yqggt3uwzda
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeibobbjfg4jhcsixpgijjshewoud4lhdzlg5es3ui2akz2p6lsxqmi
-- valory/agent_performance_summary_abci:0.1.0:bafybeiboyks7qbfexqf5emduucafz4634k46j7d5it4ubx4ksg5pr667uu
+- valory/chatui_abci:0.1.0:bafybeiczrqxn6dcrlvlqcuouw5yxgb4eleoo7w2nsxohfd4lplrmkr6hty
+- valory/agent_performance_summary_abci:0.1.0:bafybeifgf7cidsholwefjg2syqpipbswa63qtbqa5ltzfz7pvhshviqdre
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe

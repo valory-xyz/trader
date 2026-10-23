@@ -8,12 +8,12 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeicm5xbl7e3aft5phqbgf5qml6uilryyn6bdzeeaewc2a7ms4x2gwy
+  connection.py: bafybeidvarmowev5ddtzoqm56qpyzx5cfgt5cldmcvbtium4cyc3u4r77i
   relayer_proxy.py: bafybeihtqh44qrgeyx3vriowxpayz43bmeg5z4wcolrknybrhozfhmuqim
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeihpheg7dwy76oxstgcheqwbwgi24qdmv3zwgcbe3snemv3hsu2hma
-  tests/test_connection_dw.py: bafybeie6mrcbyqltywq44rzi7ytixd3vjobketaj3aoywap3x5dv3whrlq
+  tests/test_connection.py: bafybeihr7obnxv4xfs5kmxoypeyrn7c5cepvqr3b6ms4johizj3nvuwxiq
+  tests/test_connection_dw.py: bafybeiak7phfch3s4gkq6c4dewgvo5oklspmx2npsplgvosgrwpqfqtfne
   tests/test_relayer_proxy.py: bafybeicco4upyejikjpaahdaftxgcy3d3hdvqpxyp5zwaduowhjbzm3o6a
 fingerprint_ignore_patterns: []
 connections: []
