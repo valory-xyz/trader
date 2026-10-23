@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeib3db47p2kxnp6hzf3gl3py6axgjargbt57mbxmgdddwvl3kcmvgu
+- valory/polymarket_client:0.1.0:bafybeiei565owap342zbzlcjtqptfk63skpfhzymqidi3k7f5izyv45gti
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidi7hknitw7vwpbujlver54drxbywvaho4b45xdaa3qryhehy25t4
-- valory/market_manager_abci:0.1.0:bafybeihkqgtoi7rvznp7isebslhzd3ua5qiqlyk443ep5gz4ukxb4wxdvy
-- valory/decision_maker_abci:0.1.0:bafybeift27ju5krjtjoft2v7itgca4fyghwmqt4pjjfh652nnwyt2deoze
-- valory/trader_abci:0.1.0:bafybeicvwitbgeroqvtmgnndjdppfvntkfbniylfwmt5uup25qiqvvynbm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig7qxw6yqf44bfl3xwzaykuzggfqxtwreielektr4l4cezb3wm4r4
+- valory/market_manager_abci:0.1.0:bafybeigr7u4ldadfeiq4og4pq4vcho7pnviildkbswanrqskscnvjbebti
+- valory/decision_maker_abci:0.1.0:bafybeifsjvuobpbe5nsim4xxeqvtjoq6v5xv4ezbi4rljkzxvqsh4xidvu
+- valory/trader_abci:0.1.0:bafybeiaz5zjorlzbnbgp3tavufhzcpxsw2egs5zzlqcans3jqv3tdeyxhi
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeib2uyu3srhkxp6eqiqzqemadwktydisaggmllfcntmjpocvygve44
+- valory/check_stop_trading_abci:0.1.0:bafybeibmsxgev7w3lein47cl6tuz5gsqkt5asydlzru77diuqus6yj5lzm
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiedo4bqkztqpsxu7ydihbvexbfknpbbfepnmiuh3znl66wipe466u
-- valory/agent_performance_summary_abci:0.1.0:bafybeibf6t2vik6oduw72cogp7wovvzoj6gaqscm2vzem3mbfjecpxyl7e
+- valory/chatui_abci:0.1.0:bafybeig2lrvi2ebne5jxgpq7hoej5vpt4zqyuekbd274gvbxm3wy36p7ju
+- valory/agent_performance_summary_abci:0.1.0:bafybeia2z3uhdvndhloiajszfgyc3ennq2criedqaj7sjyasciqtujgd3u
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
