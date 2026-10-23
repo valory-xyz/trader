@@ -3531,3 +3531,27 @@ def test_v2_position_in_locked_funds_and_summary(tmp_path: Path, dw_rows: list) 
     behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
         locked
     )
+
+
+def test_v2_safe_read_failure_is_logged(tmp_path: Path) -> None:
+    """A failed Safe read still snapshots the DW's positions and logs a warning."""
+    behaviour = _make_behaviour(tmp_path)
+    (tmp_path / "deposit_wallet.json").write_text(
+        json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
+    )
+    with pm._v2_world({pm.V2_DW: [pm.V1_00]}, {}) as conn:
+        pm._wire(behaviour, conn)
+        read = behaviour.send_polymarket_connection_request
+
+        def send(request: dict) -> Generator:
+            if "address" in request["params"]:
+                return (yield from read(request))
+            yield
+            return {"error": "Safe read failed"}
+
+        behaviour.send_polymarket_connection_request = send
+        list(behaviour._snapshot_locked_funds())
+    behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+        round(pm.V1_00["entry_cost_usdc"], 2)
+    )
+    assert "Safe read failed" in str(behaviour.context.logger.warning.call_args)

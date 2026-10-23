@@ -867,6 +867,11 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
                 for p in safe_positions
                 if V2_BALANCE_KEY in p and p.get("asset") not in assets
             ]
+        else:
+            self.context.logger.warning(
+                f"withdrawal: locked-funds snapshot leaves out the Safe's V2 "
+                f"positions (fetch failed: {safe_positions})"
+            )
         try:
             locked = round(
                 sum(
