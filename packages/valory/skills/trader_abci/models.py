@@ -21,9 +21,6 @@
 
 from typing import Any, Callable, Dict, Type, Union, cast
 
-from aea.skills.base import SkillContext
-
-from packages.valory.connections.x402.clients.mech import slot_registry
 from packages.valory.skills.abstract_round_abci.models import (
     ApiSpecs,
 )
@@ -107,9 +104,6 @@ from packages.valory.skills.mech_interact_abci.models import (
 )
 from packages.valory.skills.mech_interact_abci.models import (
     MechsSubgraph as InteractMechsSubgraph,
-)
-from packages.valory.skills.mech_interact_abci.nonce_allocator import (
-    MECH_SLOT_REGISTRY,
 )
 from packages.valory.skills.mech_interact_abci.rounds import Event as MechInteractEvent
 from packages.valory.skills.reset_pause_abci.rounds import Event as ResetPauseEvent
@@ -232,13 +226,6 @@ class SharedState(BaseSharedState):
     """Keep the current shared state of the skill."""
 
     abci_app_cls = TraderAbciApp
-
-    def __init__(self, *args: Any, skill_context: SkillContext, **kwargs: Any) -> None:
-        """Initialize the state."""
-        super().__init__(*args, skill_context=skill_context, **kwargs)
-        # Bound here rather than in ``setup``: a paid call can be made
-        # before setup runs, and both routes must share one count by then.
-        skill_context.shared_state[MECH_SLOT_REGISTRY] = slot_registry()
 
     @property
     def params(self) -> TraderParams:
