@@ -75,8 +75,9 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             yield from self._provision_deposit_wallet()
 
             if self._safe_allowances_current():
-                # Keep mocking_mode=False: an all-None payload makes the round
-                # emit NONE, which maps to ImpossibleRound.
+                # Keep mocking_mode=False so the payload is not all-None and the
+                # round records the None tx hash, routing to the post-approval
+                # check.
                 self.context.logger.info(
                     "Safe allowances already recorded under the current "
                     "version - skipping the Safe approvals."
