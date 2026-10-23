@@ -3543,13 +3543,13 @@ def test_v2_safe_read_failure_is_logged(tmp_path: Path) -> None:
         pm._wire(behaviour, conn)
         read = behaviour.send_polymarket_connection_request
 
-        def send(request: dict) -> Generator:
+        def send(request: Dict[str, Any]) -> Generator[None, None, Any]:
             if "address" in request["params"]:
                 return (yield from read(request))
             yield
             return {"error": "Safe read failed"}
 
-        behaviour.send_polymarket_connection_request = send
+        behaviour.send_polymarket_connection_request = send  # type: ignore[method-assign,assignment]
         list(behaviour._snapshot_locked_funds())
     behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
         round(pm.V1_00["entry_cost_usdc"], 2)

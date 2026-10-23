@@ -2371,26 +2371,22 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
 # Real Data API /v2/positions rows, trimmed to the fields the code reads: a Safe
 # holding both sides of a resolved V2 neg-risk market ("No" won) and its V1 rows.
 # https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
-V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads(
-    """[
+V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
 {"token_id": "50122824272784274265949198122337312072892569991370352556120170615749327480792", "condition_id": "0x2e7749c534f9ac6576d6d58c33e0d598fcd8a99b37ae8be4b34e27b83578ebca", "outcome_index": 1, "current_size": 1.0416, "current_value": 1.0416, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:45AM-11:50AM ET"},
 {"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
-]"""
-)
+]""")
 # Open V2 binary, V1 (token ID top byte 0x01) and V1 (condition ID ending in a
 # zero byte) rows of a wallet, then a winning "Yes" V2 binary row of another.
 # https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
 # https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
-V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads(
-    """[
+V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
 {"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
 {"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"},
 {"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
 {"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
-]"""
-)
+]""")
 V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
 # The decision-maker params naming the contracts above.
 V2_PARAMS = dict(
