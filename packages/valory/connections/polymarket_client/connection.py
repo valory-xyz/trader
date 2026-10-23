@@ -122,8 +122,10 @@ TRADE_FIELDS_V2_TO_V1 = {
 }
 # Set on a Protocol V2 positions row: the holder's PositionManager balance.
 V2_BALANCE_KEY = "positionManagerBalance"
-# Gamma market `version` the agent can trade; other versions use different contracts.
-SUPPORTED_MARKET_VERSION = "v1"
+# Gamma market `version`s the agent can trade: v1 by `clobTokenIds`, v2 by `positionIds`.
+SUPPORTED_MARKET_VERSIONS = ("v1", "v2")
+# Cached signed-order key: the `MarketOrderArgs` field the order was signed with.
+ASSET_FIELD_KEY = "asset_field"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 RELAYER_URL = "https://relayer-v2.polymarket.com/"
 # Default wildcard predict-api proxy that fronts the CLOB v2 DepositWallet
@@ -305,6 +307,7 @@ def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
     :return: a SignedOrderV2 with enum fields rehydrated
     """
     payload = {k: v for k, v in payload.items() if k != "clob_version"}
+    payload.pop(ASSET_FIELD_KEY, None)
     if "side" in payload and not isinstance(payload["side"], Side):
         payload["side"] = Side(payload["side"])
     if "signatureType" in payload and not isinstance(
@@ -810,17 +813,21 @@ class PolymarketClientConnection(BaseSyncConnection):
         amount: float,
         cached_signed_order_json: str = None,
         funder: Optional[str] = None,
+        market_version: str = "v1",
     ) -> Tuple[Any, Any]:
         """Place a bet on Polymarket.
 
-        :param token_id: CTF token id of the outcome to buy.
+        :param token_id: the outcome's CLOB token ID, or a V2 market's position ID.
         :param amount: USDC (pUSD) amount to spend.
         :param cached_signed_order_json: optional cached signed order to retry.
         :param funder: DepositWallet address to fund the order. When
             given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
+        :param market_version: the Gamma ``version`` of the bet's market.
         :return: ``(response_payload, error_or_none)``.
         """
         self._ensure_dw_funder(funder or self.dw_address)
+        # SDK guide: https://docs.polymarket.com/migrate/polymarket-v2/sdk-integrations
+        asset_field = "position_id" if market_version == "v2" else "token_id"
         signed_order_json = None
 
         try:
@@ -836,12 +843,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                     if (
                         signed_dict.get("clob_version") == "v2"
                         and "timestamp" in signed_dict
+                        and signed_dict.get(ASSET_FIELD_KEY, "token_id") == asset_field
                     ):
                         signed = _deserialize_signed_order_v2(signed_dict)
                         signed_order_json = cached_signed_order_json
                     else:
                         self.logger.warning(
-                            "Dropping stale (non-v2) cached signed order; resigning."
+                            "Dropping a cached signed order for another exchange; resigning."
                         )
                 except (ValueError, TypeError) as e:
                     self.logger.warning(
@@ -866,14 +874,16 @@ class PolymarketClientConnection(BaseSyncConnection):
                             "below_minimum": True,
                         }, block_msg
                 mo = MarketOrderArgs(
-                    token_id=token_id,
+                    **{asset_field: token_id},
                     amount=amount,
                     side=BUY,
                     order_type=OrderType.FOK,
                     user_usdc_balance=user_balance,
                 )
                 signed = self.client.create_market_order(mo)
-                signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
+                signed_order_json = json.dumps(
+                    {**_serialize_signed_order_v2(signed), ASSET_FIELD_KEY: asset_field}
+                )
 
             # Post order
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
@@ -925,16 +935,40 @@ class PolymarketClientConnection(BaseSyncConnection):
         ``get_neg_risk``) from the cached market info. This matches the
         buy path.
 
-        :param token_id: CTF token id of the outcome to sell.
+        A positions row carries no market version, so the token's market is
+        looked up on Gamma, which lists a market only under its own version:
+        a V1 market sells by ``token_id``, a V2 market by ``position_id``. If
+        neither lookup finds it, nothing is signed and an error is returned.
+
+        :param token_id: the outcome's CLOB token ID, or a V2 market's position ID.
         :param amount: shares (CTF token units) to sell, not USDC.
         :param funder: DepositWallet address funding the sell. When
             given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
         :return: ``(response_payload, error_or_none)``.
         """
         self._ensure_dw_funder(funder or self.dw_address)
+        # Select the order field by the market version Gamma returns, per
+        # https://docs.polymarket.com/resources/onchain-position-data
+        for version, field in (("v1", "token_id"), ("v2", "position_id")):
+            rows, _ = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/markets",
+                params={"clob_token_ids": token_id, "version": version},
+                max_retries=1,
+            )
+            rows = rows if isinstance(rows, list) else []
+            if any(isinstance(r, dict) and r.get("version") == version for r in rows):
+                asset_field = field
+                break
+        else:
+            error_msg = (
+                f"Market version of token {token_id} is unknown (not listed on Gamma, "
+                "for example closed, or lookup failed); sell skipped, will be retried"
+            )
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
         try:
             mo = MarketOrderArgs(
-                token_id=token_id,
+                **{asset_field: token_id},
                 amount=amount,
                 side=Side.SELL,
                 order_type=OrderType.FAK,
@@ -1083,7 +1117,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         return None, last_error
 
     def _fetch_markets_by_tag_slug(
-        self, tag_slug: str, end_date_min: str, end_date_max: str
+        self, tag_slug: str, end_date_min: str, end_date_max: str, version: str = ""
     ) -> Tuple[list, str]:
         """Fetch markets for a tag slug via /events, flattened with per-market tags.
 
@@ -1095,10 +1129,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param tag_slug: The tag slug to filter events by
         :param end_date_min: Minimum end date filter
         :param end_date_max: Maximum end date filter
+        :param version: Gamma `version` to read; empty reads V1, then V2 unless it fails
         :return: Tuple of (markets_list, error_message)
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
+        # A V2 page gets one try, so a failing V2 read adds no retry backoff
+        # to V1 discovery.
+        tries = 1 if version else MAX_API_RETRIES
 
         while True:
             params: Dict[str, Any] = {
@@ -1107,11 +1145,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "end_date_min": end_date_min,
                 "limit": EVENTS_LIMIT,
             }
+            if version:
+                params["version"] = version
             if after_cursor:
                 params["after_cursor"] = after_cursor
 
             response, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/events/keyset", params=params
+                f"{GAMMA_API_BASE_URL}/events/keyset", params=params, max_retries=tries
             )
 
             if error:
@@ -1138,6 +1178,15 @@ class PolymarketClientConnection(BaseSyncConnection):
             if not after_cursor:
                 break
 
+        if not version:
+            try:
+                v2_markets, _ = self._fetch_markets_by_tag_slug(
+                    tag_slug, end_date_min, end_date_max, "v2"
+                )
+                seen = {market.get("id") for market in all_markets}
+                all_markets += [m for m in v2_markets or [] if m.get("id") not in seen]
+            except (AttributeError, TypeError) as e:
+                self.logger.warning(f"Skipping V2 markets for tag {tag_slug}: {e}")
         return all_markets, None
 
     def _filter_markets_by_created_at(self, markets: list) -> list:
@@ -1184,14 +1233,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         server-side. This filter matches that behaviour client-side.
 
         :param markets: List of market dictionaries
-        :return: Markets with non-empty outcomePrices and clobTokenIds, active=True
-            and version SUPPORTED_MARKET_VERSION
+        :return: active priced v1 markets with clobTokenIds, v2 with Binary positionIds
         """
         tradeable = []
         for market in markets:
             if not market.get("active"):
                 continue
-            if market.get("version") != SUPPORTED_MARKET_VERSION:
+            version = market.get("version")
+            if version not in SUPPORTED_MARKET_VERSIONS:
                 self.logger.debug(
                     f"Dropped market {market.get('id')}: "
                     f"unsupported version {market.get('version')!r}"
@@ -1199,14 +1248,27 @@ class PolymarketClientConnection(BaseSyncConnection):
                 continue
             try:
                 outcome_prices = json.loads(market.get("outcomePrices") or "[]")
-                clob_token_ids = json.loads(market.get("clobTokenIds") or "[]")
+                token_ids = (
+                    market.get("positionIds")
+                    if version == "v2"
+                    else json.loads(market.get("clobTokenIds") or "[]")
+                )
             except (json.JSONDecodeError, TypeError) as e:
                 self.logger.debug(
                     f"Dropped market {market.get('id')}: "
                     f"malformed JSON in price/token fields ({e})"
                 )
                 continue
-            if outcome_prices and clob_token_ids:
+            if version == "v2" and not (
+                isinstance(token_ids, list)
+                and all(
+                    isinstance(i, str) and i.isascii() and i.isdecimal() and len(i) < 79
+                    for i in token_ids
+                )
+                and all(int(i) >> 248 == V2_MODULE_IDS[0] for i in token_ids)  # Binary
+            ):
+                continue
+            if outcome_prices and token_ids:
                 tradeable.append(market)
         return tradeable
 
