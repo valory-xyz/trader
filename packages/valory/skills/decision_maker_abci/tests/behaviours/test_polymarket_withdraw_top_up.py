@@ -300,3 +300,20 @@ def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignor
             pm._apply_transfer(conn.balances, dw, tx["target"], tx["data"])
     assert sells == [(pm.V2_OPEN["token_id"], 10.0), (pm.V1_OPEN["token_id"], 5.0)]
     assert pm._held(conn.balances) == pm._ledger(pm.V2_SAFE, pm.V2_OPEN, pm.V1_OPEN)
+
+
+def test_v2_unknown_module_retries_top_up(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """A Safe row that could be V2 with an unknown module fails the read, so the top-up retries instead of finishing."""
+    behaviour = _make_behaviour(tmp_path)
+    behaviour.context.params.configure_mock(**pm.V2_PARAMS)
+    with pm._safe_world(pm.V2_OPEN) as conn:
+        conn.tokens_down = True
+        pm._wire(behaviour, conn)
+        with patch.object(
+            PolymarketWithdrawTopUpBehaviour,
+            "synchronized_data",
+            PropertyMock(return_value=_synced(DW)),
+        ):
+            behaviour.synchronized_data.safe_contract_address = pm.V2_SAFE
+            assert _drive(behaviour).event == Event.NONE.value
+    assert behaviour.multisend_batches == []

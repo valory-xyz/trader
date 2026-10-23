@@ -67,8 +67,6 @@ DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
 # Token reference facts, such as the contract module that issued a token.
 DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
 DATA_API_TOKENS_LIMIT = 50
-# Module IDs a Protocol V2 position ID carries in its top byte.
-V2_MODULE_IDS = (1, 2, 3)
 # ERC-1155 balanceOfBatch ids per eth_call.
 BALANCE_BATCH_LIMIT = 500
 DATA_API_PAGE_LIMIT = 100
@@ -1506,22 +1504,25 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Tell whether a row's position ID fits the Protocol V2 layout.
 
         A V2 position ID is the bytes31 condition ID followed by the outcome
-        index, and its top byte is the module ID.
+        index byte, so it equals the row's right-padded condition ID plus the
+        outcome index. A V1 position ID is a hash and never matches.
 
         :param row: a positions row from Data API v2
         :return: whether the row could be a V2 position
         """
-        token_id = int(row["token_id"])
-        return token_id >> 248 in V2_MODULE_IDS or token_id == int(
-            row["condition_id"], 16
-        ) + int(row["outcome_index"])
+        try:
+            return int(row["token_id"]) == int(row["condition_id"], 16) + int(
+                row["outcome_index"]
+            )
+        except (KeyError, TypeError, ValueError):
+            return False
 
     def _select_positions(
         self,
         rows: List[Dict[str, Any]],
         redeemable: Optional[bool],
         holder: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
 
         v2 has no status for "not redeemable", and its default status returns
@@ -1529,12 +1530,12 @@ class PolymarketClientConnection(BaseSyncConnection):
         applied here on the row flag. A V2 row, by its token's module, also
         gets the holder's exact PositionManager balance: the Data API rounds sizes.
         A row whose module is unknown stays V1 unless it could be V2, in which
-        case it is left out of this read.
+        case the read fails and is retried next period.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
         :param holder: the address holding the positions
-        :return: the selected positions keyed by v1 names
+        :return: Tuple of (the selected positions keyed by v1 names, error_message)
         """
         selected = [
             row
@@ -1542,16 +1543,19 @@ class PolymarketClientConnection(BaseSyncConnection):
             if redeemable is None or bool(row.get("redeemable")) is redeemable
         ]
         self._read_token_modules([row["token_id"] for row in selected])
+        unknown = [
+            row["token_id"]
+            for row in selected
+            if row["token_id"] not in self._token_modules and self._could_be_v2(row)
+        ]
+        if unknown:
+            error_msg = f"Unknown tokens in {DATA_API_TOKENS_URL}: {unknown}"
+            self.logger.error(error_msg)
+            return None, error_msg
         positions: List[Dict[str, Any]] = []
         v2: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
         for row in selected:
             module = self._token_modules.get(row["token_id"])
-            if module is None and self._could_be_v2(row):
-                self.logger.warning(
-                    f"Skipping position {row['token_id']} this read: "
-                    f"its module is unknown in {DATA_API_TOKENS_URL}"
-                )
-                continue
             position = self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1)
             positions.append(position)
             if module not in (None, "v1_ctf"):
@@ -1561,7 +1565,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         )
         for (_, position), balance in zip(v2, balances, strict=True):
             position[V2_BALANCE_KEY] = balance
-        return positions
+        return positions, None
 
     def _get_positions(
         self,
@@ -1593,7 +1597,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable, params["user"])
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        if error:
+            return None, error
         self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
         return positions, None
 
@@ -1628,7 +1636,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable, params["user"])
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        if error:
+            return None, error
         self.logger.info(
             f"Fetched total of {len(positions)} positions for {params['user']}"
         )
