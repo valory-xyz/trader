@@ -253,25 +253,32 @@ def _top_up(tmp_path, conn):  # type: ignore[no-untyped-def]
     return behaviour.multisend_batches
 
 
-@pytest.mark.parametrize("v1_rows", [(pm.V1_OPEN, pm.V1_00), ()])
-def test_v2_position_detected_from_row(tmp_path, v1_rows) -> None:  # type: ignore[no-untyped-def]
-    """Each Safe row moves on its token module's ledger, whatever its condition ID, with no bet record."""
+# drift: base units by which V2_OPEN's on-chain balance differs from its size (test values)
+@pytest.mark.parametrize(
+    "v1_rows,drift", [((pm.V1_OPEN, pm.V1_00), 0), ((), 49), ((), -49)]
+)
+def test_v2_position_detected_from_row(tmp_path, v1_rows, drift) -> None:  # type: ignore[no-untyped-def]
+    """Each Safe row moves on its token module's ledger, whatever its condition ID, with no bet record; V2 moves its exact balance."""
     rows, dw = (pm.V2_OPEN, pm.XI, *v1_rows), to_checksum_address(DW)
     v1_ids = [int(row["token_id"]) for row in v1_rows]
     types = ["address", "address", "uint256[]", "uint256[]", "bytes"]
     v1_batch = pm._selector(f"safeBatchTransferFrom({','.join(types)})") + abi_encode(
         types, [pm.V2_SAFE, dw, v1_ids, [5000000] * len(v1_ids), b""]
     )
+    v2_open = (pm.POSITION_MANAGER, int(pm.V2_OPEN["token_id"]))
+    expected = pm._ledger(dw, *rows)
+    expected[(v2_open[0], dw, v2_open[1])] += drift
     with pm._safe_world(*rows) as conn:
+        conn.balances[(v2_open[0], pm.V2_SAFE, v2_open[1])] += drift
         batches = _top_up(tmp_path, conn)
     v1_batches = [bytes(HexBytes(b.data)) for b in batches if b.to == CTF]
     assert v1_batches == ([v1_batch] if v1_rows else [])
-    assert pm._held(conn.balances) == pm._ledger(dw, *rows)
+    assert pm._held(conn.balances) == expected
 
 
 def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    """V2 positions move to the DW, sell by position ID, and the unsold return to the Safe."""
-    sells = []
+    """V2 positions move to the DW, the sell loop passes each row's asset ID, and the unsold return to the Safe."""
+    sells = []  # the sell is stubbed: V2 sell signing for the V2 exchange comes later
 
     def sell(token_id, amount, **_):  # type: ignore[no-untyped-def]
         sells.append((token_id, amount))
