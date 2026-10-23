@@ -39,7 +39,7 @@ fingerprint:
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/conftest.py: bafybeigeij2lqzbimqcf6c4maudbuiwloq3lz7fjthfrtm3fioqf2tzsyy
   tests/test_behaviours_base.py: bafybeifavo7imigpfonl7ujmofmrnozklthqfmyinduxs7wavjsu7abyca
-  tests/test_behaviours_polymarket.py: bafybeibhordsmfxcmidt7izhf7nerraximfyg3ff35jmfd7534qtgz4xsa
+  tests/test_behaviours_polymarket.py: bafybeihkxgtbkwfmp6xipl6qufkru3tejf3gm4wckm6yikjxegbttxohcm
   tests/test_behaviours_update_bets.py: bafybeieq5d2vcsqsldstbq2zzwo3lnuijtepepvbsvg2zinvficnxbzz7y
   tests/test_bets.py: bafybeidjdpzvnt6balu3ck7wzgey6bkppaoq62ly2skyiunkkigtw64l3y
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
@@ -53,7 +53,7 @@ fingerprint:
   tests/test_utils.py: bafybeiduu2sazycpzmqpmoxqqsgyi4rdjqye26w4chhr6dsbk7xdkib4ci
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeig7chmtjjpfhbx7sz5m4rgengsc6la7oldhphi22bvj4gyvpoay5y
+- valory/polymarket_client:0.1.0:bafybeicddgnewkb4hlf45wxyszixci5adonj4r6qgowp2ptfhfxgke64xi
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy

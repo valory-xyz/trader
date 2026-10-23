@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeig7chmtjjpfhbx7sz5m4rgengsc6la7oldhphi22bvj4gyvpoay5y
+- valory/polymarket_client:0.1.0:bafybeicddgnewkb4hlf45wxyszixci5adonj4r6qgowp2ptfhfxgke64xi
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicgzjvfcdjb7xxnitjmg2ab3o2ycc6jrhyunmjfo5vqc342thkj3q
-- valory/market_manager_abci:0.1.0:bafybeibzvzhnrbvd6mdk6ktzq6fh22ryr7bi2iean5ka7eu43w7e4kl3zy
-- valory/decision_maker_abci:0.1.0:bafybeihfltpzukappi5vj4oq2dbwdt6nal2jovbnxyvys35sb2orc2rb44
-- valory/trader_abci:0.1.0:bafybeifuvnkndxd3ra6ol7oguztee7w5zkv5skhzppkombp7yx6fkh2hce
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifp3zmqb6qnthgodgytywz6cjj7ifajk5yor366ebhjl6ouvu4era
+- valory/market_manager_abci:0.1.0:bafybeigdjr4ojxb5rbsweuubheobqlwxgwfaa3mghqbkbjvpvonwa4iy64
+- valory/decision_maker_abci:0.1.0:bafybeic6l6pmfwrwvy4rskyloniuwinsw2eax4vvqc6r4mhzbpy3rpmh4i
+- valory/trader_abci:0.1.0:bafybeifq3uhgwfxinewdi4fwifi2akhsjkxoauoufq62roy6rgdth35x2e
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeih4vogkshr6lwvu52czmxq7qfodh4e7ympp3dtnbb5axnzdoe2rxu
+- valory/check_stop_trading_abci:0.1.0:bafybeie5hr6mc4lyowmqemqxs5kovlellyuosep7hrg7fzdvnkszi4ntqa
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiemze3bhulupqrppmd6cfgxqbbglhwsbv73k2655lo5nvn2qcj4uy
-- valory/agent_performance_summary_abci:0.1.0:bafybeihn2pipqifx33jxrd44yvrsogqk2eocda4oy7yf4aiz4ebqui7nvq
+- valory/chatui_abci:0.1.0:bafybeifoq4sk2rvrmtlf2ct3wkieu7qihveuqghays22vdv577ydj3bz4e
+- valory/agent_performance_summary_abci:0.1.0:bafybeiffymd5xzpd65e7ijk3vxtqkknpxtq6qyqc5enkxelfi6xlw3ri64
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
