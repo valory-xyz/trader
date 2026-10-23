@@ -2262,9 +2262,29 @@ class TestFetchMarketsByTagSlug:
         assert len(result) == 1
         assert result[0]["id"] == "m1"
 
-    @pytest.mark.parametrize("v2_up", [True, False])
-    def test_market_version_discovery_includes_v2(self, v2_up: bool) -> None:
-        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; a V2 read gets one try, so a slow or failed one can't delay or drop the V1 markets."""
+    @pytest.mark.parametrize(
+        "v2_pages",  # (version, cursor) -> V2 page served instead; None fails the read
+        [
+            pytest.param({}, id="True"),
+            pytest.param({("v2", ""): None}, id="False"),
+            pytest.param({("v2", ""): []}, id="v2_body_list"),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": "3"}]}, "e"]}},
+                id="v2_event_str",
+            ),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": "3"}, "m"]}]}},
+                id="v2_market_str",
+            ),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": ["3"]}]}]}},
+                id="v2_id_list",
+            ),
+            pytest.param({("v2", "c"): []}, id="v2_later_body_list"),
+        ],
+    )
+    def test_market_version_discovery_includes_v2(self, v2_pages: Dict) -> None:
+        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; a V2 read gets one try, so a slow, failed or malformed one can't delay or drop the V1 markets."""
         from packages.valory.connections.polymarket_client.connection import (
             MAX_API_RETRIES,
         )
@@ -2282,10 +2302,11 @@ class TestFetchMarketsByTagSlug:
             },
             ("v2", "c"): {"events": [{"tags": tagged, "markets": [{"id": "4"}]}]},
         }
+        pages.update(v2_pages)
 
         def read(url: str, params: Dict, max_retries: int = 0) -> Any:
-            key = (params.get("version", ""), params.get("after_cursor", ""))
-            return (None, "Gamma down") if key[0] and not v2_up else (pages[key], None)
+            page = pages[(params.get("version", ""), params.get("after_cursor", ""))]
+            return (None, "Gamma down") if page is None else (page, None)
 
         conn = _make_connection()
         conn._request_with_retries = MagicMock(side_effect=read)
@@ -2296,7 +2317,7 @@ class TestFetchMarketsByTagSlug:
         assert sorted((m["id"], m["_poly_tags"]) for m in result) == [
             ("1", ["weather"]),
             ("2", []),
-            *([("3", ["weather"]), ("4", ["weather"])] if v2_up else []),
+            *([] if v2_pages else [("3", ["weather"]), ("4", ["weather"])]),
         ]
         calls = conn._request_with_retries.call_args_list
         assert {c.args[0] for c in calls} == {f"{GAMMA_API_BASE_URL}/events/keyset"}
@@ -2309,9 +2330,16 @@ class TestFetchMarketsByTagSlug:
             ("", "", MAX_API_RETRIES),
             ("", "c", MAX_API_RETRIES),
             ("v2", "", 1),
-            *([("v2", "c", 1)] if v2_up else []),
+            *([] if ("v2", "") in v2_pages else [("v2", "c", 1)]),
         ]
         assert all(p == sent[0] for p in sent)  # same tag, window and limit
+
+    def test_malformed_v1_body_fails_the_fetch(self) -> None:
+        """A malformed V1 body still fails the whole fetch; only V2 is tolerated."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=([], None))
+        markets, error = conn._fetch_markets()
+        assert markets is None and "Unexpected error" in error
 
 
 # ---------------------------------------------------------------------------

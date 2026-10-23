@@ -1781,6 +1781,8 @@ class TestFetchMarketsFromPolymarket:
     def test_market_version_selects_trading_ids(self) -> None:
         """Outcome tokens are a v2 market's positionIds in order and a v1 market's clobTokenIds, and each bet records its version; other versions make no bet."""
         behaviour = self._setup_behaviour()
+        # The helper adds liquidity: open Gamma rows (V1 and V2) omit it while
+        # the order book is empty and carry it once orders rest.
         v2 = _make_valid_market(**GAMMA_V2)  # the default clobTokenIds must be ignored
         markets = [
             _make_valid_market(**GAMMA_V1),
