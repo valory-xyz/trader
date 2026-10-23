@@ -42,6 +42,7 @@ from packages.valory.connections.polymarket_client.connection import (
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
+    POSITION_FIELDS_V2_TO_V1,
     PolymarketClientConnection,
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
@@ -2370,22 +2371,26 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
 # Real Data API /v2/positions rows, trimmed to the fields the code reads: a Safe
 # holding both sides of a resolved V2 neg-risk market ("No" won) and its V1 rows.
 # https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
-V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
+V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads(
+    """[
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
 {"token_id": "50122824272784274265949198122337312072892569991370352556120170615749327480792", "condition_id": "0x2e7749c534f9ac6576d6d58c33e0d598fcd8a99b37ae8be4b34e27b83578ebca", "outcome_index": 1, "current_size": 1.0416, "current_value": 1.0416, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:45AM-11:50AM ET"},
 {"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
 {"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
-]""")
+]"""
+)
 # Open V2 binary, V1 (token ID top byte 0x01) and V1 (condition ID ending in a
 # zero byte) rows of a wallet, then a winning "Yes" V2 binary row of another.
 # https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
 # https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
-V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
+V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads(
+    """[
 {"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
 {"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"},
 {"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
 {"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
-]""")
+]"""
+)
 V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
 # The decision-maker params naming the contracts above.
 V2_PARAMS = dict(
@@ -2603,29 +2608,52 @@ def test_v2_position_custody_swept_to_safe() -> None:
     assert _held(balances) == swept
 
 
-@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null"])
+@pytest.mark.parametrize("lookup", ["ok", "unknown", "null"])
 def test_v2_position_detected_by_token_module(lookup: str) -> None:
-    """Rows are classed by their token's /v2/tokens module, looked up once in one batch; a failed or partial lookup fails the read."""
+    """Rows are classed by their token's /v2/tokens module, looked up once in one batch; an unknown possible-V2 row is held back and looked up again."""
     rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
     with _safe_world(*rows) as conn:
-        conn.tokens_down = lookup == "down"
         conn.modules = dict(TOKEN_MODULES)
         if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
             del conn.modules[XI["token_id"]]
         if lookup == "null":  # a row with no module is as good as missing
             conn.modules[XI["token_id"]] = None
         reads = [conn._fetch_all_positions() for _ in range(2)]
-    if lookup != "ok":
-        assert [positions for positions, _ in reads] == [None, None]
-        assert all(error for _, error in reads)
-        assert len(conn.token_lookups) == 2 and XI["token_id"] in conn.token_lookups[1]
-        return
+    kept = rows if lookup == "ok" else rows[:2]
     v2_balances = [
-        ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in rows
+        ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in kept
     ]
+    assert [error for _, error in reads] == [None, None]
     assert [[p.get(V2_BALANCE_KEY) for p in ps] for ps, _ in reads] == [v2_balances] * 2
     assert conn.w3.eth.call.call_count == len(reads)  # one balance read per read
-    assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
+    if lookup == "ok":
+        assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
+        return
+    assert conn.token_lookups[1] == [XI["token_id"]]  # unknowns are not cached
+    assert XI["token_id"] in str(conn.logger.warning.call_args)
+
+
+def test_v2_token_outage_leaves_v1_rows_as_before() -> None:
+    """With /v2/tokens down, V1-only positions are read as V1 rows with no balance read."""
+    rows = (V1_WIN, V1_LOSE, V1_00)
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = True
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 0
+    assert positions == [conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in rows]
+    conn.logger.warning.assert_not_called()
+
+
+def test_v2_token_outage_holds_back_only_possible_v2_rows() -> None:
+    """With /v2/tokens down, a row that could be V2 is held back and logged; V1 rows proceed."""
+    with _safe_world(V1_WIN, XI, V1_LOSE) as conn:
+        conn.tokens_down = True
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 0
+    assert [p["asset"] for p in positions] == [V1_WIN["token_id"], V1_LOSE["token_id"]]
+    assert all(V2_BALANCE_KEY not in p for p in positions)
+    conn.logger.warning.assert_called_once()
+    assert XI["token_id"] in str(conn.logger.warning.call_args)
 
 
 def test_v2_position_short_balance_answer_fails_read() -> None:
@@ -2896,7 +2924,7 @@ class TestPositionsReads:
 
     @pytest.mark.parametrize("down", [False, True])
     def test_get_positions_reads_only_the_first_page(self, down: bool) -> None:
-        """A single-page read sends no cursor, stops there and selects rows the same way."""
+        """A single-page read sends no cursor, stops there and selects rows the same way, with or without the token lookup."""
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
         page = _v2_response(rows, "next")
@@ -2904,11 +2932,7 @@ class TestPositionsReads:
             "requests.get", side_effect=_positions_get(page, down=down)
         ) as mock_get:
             positions, error = conn._get_positions(redeemable=False)
-        if down:  # a failed token lookup fails the read, without a success log
-            assert positions is None and error
-            assert "Fetched" not in str(conn.logger.info.call_args_list)
-            return
-        assert error is None
+        assert error is None  # a failed token lookup leaves V1 rows readable
         assert [c.args[0] for c in mock_get.call_args_list].count(
             DATA_API_POSITIONS_URL
         ) == 1
