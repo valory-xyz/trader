@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeibgxu64euzq6ee3jt236sjcxsole6aalyhbqkadpx2ajjd56tcf6a
+- valory/polymarket_client:0.1.0:bafybeibuldgvjwwkwulkbuscfikavahd24el7cxoc4qcbcffm5nkhyd2sm
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidpuhodhevq3cp74e3jc3pxmuecfwdfpzdkibni6vgwikdytrci2i
-- valory/market_manager_abci:0.1.0:bafybeibyorxlvhyemn6olrkutjtoxotmsxb72uxosqudjnubabsnu4q744
-- valory/decision_maker_abci:0.1.0:bafybeiayyw4k23ocsuiv56dsueflmkag7l7tv4kn2bwnzfkrxj52vjlvny
-- valory/trader_abci:0.1.0:bafybeifrpedabxfkp7funkn7m6ei37zcufay3rgh7stina36oafxxdqsga
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidolqy3svibtglwxcmgn47etmfyqyihp2a6mxmwwyhhp2dq6ibfgi
+- valory/market_manager_abci:0.1.0:bafybeih4xpo5pmgzj34ulm23bkjj6iw32m2j4oac7ufj5cumf4it2yq5zi
+- valory/decision_maker_abci:0.1.0:bafybeic4p2vseeej7ggwwmomswryq6rhjd4p67umsdy7blvwbcmy4wf2k4
+- valory/trader_abci:0.1.0:bafybeig47rx6tfcgroelshxdlao4637w5dmja6wchn5l2tr7z7eyyusx4q
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeigxcxnrcvs3nw57qhqmfqblw4mvq5vbwyjsihis4i7yw4sd47qzfe
+- valory/check_stop_trading_abci:0.1.0:bafybeiec56soarua7xxd6zd45q4gpexp3on6y3jyuph3fljg6grfmlqzfi
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeidvzr2nkk2u4unpgshq6zpccr3fki42hapmcof6w2rinb2y5aeoqe
-- valory/agent_performance_summary_abci:0.1.0:bafybeign75m5ekdi4hjkxqjvddef64vawanzzuybva6fr2oy7ghnexbr7a
+- valory/chatui_abci:0.1.0:bafybeiazoqdrkattsdwrjhl3zt3oifongrkywniibglpi3eyr6xc4weu3e
+- valory/agent_performance_summary_abci:0.1.0:bafybeieqhswygjuz4wl55hwpnfbucyajegak3jia4ingqbkbx6uqmztp5y
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
