@@ -22,11 +22,14 @@
 import json
 from typing import Any, Dict, Generator, List, Optional, Union, cast
 
-from eth_abi import encode
-from eth_utils import keccak  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
+from packages.valory.connections.polymarket_client.connection import (
+    V2_BALANCE_KEY,
+    encode_router_redeem,
+    is_unclaimable_v2,
+)
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.agent_performance_summary_abci.feed import (
@@ -36,10 +39,7 @@ from packages.valory.skills.agent_performance_summary_abci.feed import (
     format_amount,
     market_url,
 )
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    MultisendBatch,
-    V2_BALANCE_KEY,
-)
+from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -54,8 +54,6 @@ ZERO_HEX = HASH_ZERO[2:]
 ZERO_BYTES = bytes.fromhex(ZERO_HEX)
 BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
-ROUTER_REDEEM_TYPES = ["bytes31", "uint256", "uint256"]
-ROUTER_REDEEM_SELECTOR = keccak(text=f"redeem({','.join(ROUTER_REDEEM_TYPES)})")[:4]
 
 
 class PolymarketRedeemBehaviour(StorageManagerBehaviour):
@@ -299,13 +297,10 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # update is always called with winning=True.  This mirrors
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
-            # The losing side of a resolved V2 market is redeemable too, but has
-            # nothing to claim. V1 positions are all claimed, as before.
+            # A V2 row with no value or no PositionManager balance has nothing
+            # to claim. V1 rows are all claimed, as before.
             redeemable_positions = [
-                p
-                for p in redeemable_positions
-                if V2_BALANCE_KEY not in p
-                or (p.get("currentValue") and p[V2_BALANCE_KEY])
+                p for p in redeemable_positions if not is_unclaimable_v2(p)
             ]
             self.shared_state.polymarket_payouts_to_record = []
             # A failed read says nothing about whether the pending redeems landed.
@@ -389,9 +384,13 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 )
                 continue
 
-            market_type = "negative risk" if is_neg_risk else "standard"
+            market_type, claimed = (
+                "negative risk" if is_neg_risk else "standard"
+            ), condition_id
+            if V2_BALANCE_KEY in position:
+                market_type, claimed = "Protocol V2", position["asset"]
             self.context.logger.info(
-                f"Redeeming {market_type} position: {condition_id} - {outcome} (size: {size})"
+                f"Redeeming {market_type} position: {claimed} - {outcome} (size: {size})"
             )
 
             # A V2 position also passes its id and amount, to claim through the Router.
@@ -453,38 +452,41 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
                 )
                 continue
 
-            market_type = "negative risk" if is_neg_risk else "standard"
+            market_type, claimed = (
+                "negative risk" if is_neg_risk else "standard"
+            ), condition_id
+            if V2_BALANCE_KEY in position:
+                market_type, claimed = "Protocol V2", position["asset"]
             self.context.logger.info(
-                f"Preparing redeem tx for {market_type} position: {condition_id} - {outcome} (size: {size})"
+                f"Preparing redeem tx for {market_type} position: {claimed} - {outcome} (size: {size})"
             )
 
-            # Both adapters expose the same 4-arg redeemPositions(IERC20,
-            # bytes32, bytes32, uint256[]) signature; only the destination
-            # contract differs. The deployed adapters ignore the uint256[]
-            # argument — they redeem both sides via CTFHelpers.partition() /
-            # balanceOf regardless. Passing [1 << outcomeIndex] is a
-            # calldata-size choice; it does not limit on-chain redemption.
-            redeem_data = self._build_redeem_positions_data(
-                collateral_token=self.params.polymarket_collateral_address,
-                condition_id=condition_id,
-                index_sets=[1 << outcome_index],
-            )
             if V2_BALANCE_KEY in position:
-                # A V2 claim goes to the Router. The position id is the bytes31
-                # condition id followed by the outcome index byte.
-                v2_id = int(position["asset"])
-                cid = (v2_id >> 8).to_bytes(31, "big")
-                args = [cid, v2_id & 0xFF, position[V2_BALANCE_KEY]]
-                redeem_data = (
-                    ROUTER_REDEEM_SELECTOR + encode(ROUTER_REDEEM_TYPES, args)
+                # A V2 claim goes to the Router, by position id.
+                redeem_data = encode_router_redeem(
+                    int(position["asset"]), position[V2_BALANCE_KEY]
                 ).hex()
                 target_address = self.params.polymarket_router_address
-            elif is_neg_risk:
-                target_address = (
-                    self.params.polymarket_neg_risk_ctf_collateral_adapter_address
-                )
             else:
-                target_address = self.params.polymarket_ctf_collateral_adapter_address
+                # Both adapters expose the same 4-arg redeemPositions(IERC20,
+                # bytes32, bytes32, uint256[]) signature; only the destination
+                # contract differs. The deployed adapters ignore the uint256[]
+                # argument — they redeem both sides via CTFHelpers.partition() /
+                # balanceOf regardless. Passing [1 << outcomeIndex] is a
+                # calldata-size choice; it does not limit on-chain redemption.
+                redeem_data = self._build_redeem_positions_data(
+                    collateral_token=self.params.polymarket_collateral_address,
+                    condition_id=condition_id,
+                    index_sets=[1 << outcome_index],
+                )
+                if is_neg_risk:
+                    target_address = (
+                        self.params.polymarket_neg_risk_ctf_collateral_adapter_address
+                    )
+                else:
+                    target_address = (
+                        self.params.polymarket_ctf_collateral_adapter_address
+                    )
 
             # Add to multisend batch
             redeem_batch = MultisendBatch(

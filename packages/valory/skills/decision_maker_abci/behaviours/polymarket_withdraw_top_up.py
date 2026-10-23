@@ -25,12 +25,10 @@ from eth_abi import encode
 from eth_utils import keccak, to_checksum_address  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.connection import V2_BALANCE_KEY
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
-from packages.valory.skills.decision_maker_abci.behaviours.base import (
-    MultisendBatch,
-    V2_BALANCE_KEY,
-)
+from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     PolymarketDepositWalletBehaviour,
 )
@@ -98,13 +96,14 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
                 size = float(position.get("size") or 0.0)
             except (TypeError, ValueError):
                 continue
-            if not asset or size <= DUST_EPSILON:
-                continue
             amount = int(round(size * CTF_DECIMAL_FACTOR))
             ledger = self.params.polymarket_ctf_address
-            if V2_BALANCE_KEY in position:
+            if V2_BALANCE_KEY in position:  # the exact balance; sizes are rounded
                 ledger = self.params.polymarket_position_manager_address
                 amount = position[V2_BALANCE_KEY]
+                size = amount / CTF_DECIMAL_FACTOR
+            if not asset or size <= DUST_EPSILON:
+                continue
             sellable.append((ledger, int(asset), amount))
         return sellable
 
