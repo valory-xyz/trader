@@ -51,13 +51,14 @@ SAFE_BATCH_TRANSFER_SELECTOR = keccak(
 
 
 class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
-    """Moves all sellable CTF positions from the Safe to the DepositWallet.
+    """Moves all sellable positions from the Safe to the DepositWallet.
 
     Runs once before the withdrawal sell-loop. Fetches the unredeemable
     positions, resolves the DepositWallet, and builds a single Safe multisend
-    ``safeBatchTransferFrom`` moving every sellable CTF position to the DW so
-    the loop's DW-funded FAK sells have the shares to sell. When nothing is
-    sellable the round short-circuits to ``WITHDRAWAL_DONE``.
+    with one ``safeBatchTransferFrom`` per ledger (V1 on the CTF, V2 on
+    PositionManager) moving every sellable position to the DW so the loop's
+    DW-funded FAK sells have the shares to sell. When nothing is sellable the
+    round short-circuits to ``WITHDRAWAL_DONE``.
     """
 
     matching_round = PolymarketWithdrawTopUpRound
@@ -114,11 +115,11 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         token_ids: List[int],
         amounts: List[int],
     ) -> bytes:
-        """Encode CTF ``safeBatchTransferFrom(safe, dw, ids, amounts, "")``.
+        """Encode ERC1155 ``safeBatchTransferFrom(safe, dw, ids, amounts, "")``.
 
-        :param safe_address: the Safe (current CTF holder / from).
+        :param safe_address: the Safe (current position holder / from).
         :param dw_address: the DepositWallet (to).
-        :param token_ids: CTF token ids to move.
+        :param token_ids: position token ids to move.
         :param amounts: parallel amounts in base units.
         :return: the encoded calldata.
         """
@@ -135,7 +136,7 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
         return SAFE_BATCH_TRANSFER_SELECTOR + encoded_args
 
     def _prepare_withdraw_top_up(self) -> Generator[None, None, None]:
-        """Resolve the DW and build the CTF batch-transfer multisend.
+        """Resolve the DW and build the per-ledger batch-transfer multisend.
 
         Sets ``self.payload`` carrying the FSM event to emit
         (WITHDRAWAL_DONE / PREPARE_TX / NONE).

@@ -159,7 +159,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
 
     @staticmethod
     def _sellable_token_ids(sellable: List[Dict[str, Any]]) -> List[int]:
-        """Integer CTF token ids of the positions the sweep should reclaim.
+        """Integer token ids of the positions the sweep should reclaim.
 
         :param sellable: the filtered sellable position records.
         :return: the parseable integer ``asset`` ids; unparseable ones skipped.
@@ -175,9 +175,9 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     def _sweep_dw_to_safe(
         self, token_ids: Optional[List[int]] = None
     ) -> Generator[None, None, None]:
-        """Sweep the DepositWallet's pUSD (and any unsold CTF) back to the Safe.
+        """Sweep the DepositWallet's pUSD (and any unsold shares) back to the Safe.
 
-        :param token_ids: CTF token ids whose residual DW balance to also sweep;
+        :param token_ids: position token ids whose residual DW balance to also sweep;
             ``None`` sweeps only pUSD (the opportunistic post-buy path).
         :yield: framework yields between dispatch and the connection response.
         """
