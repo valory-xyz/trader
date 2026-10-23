@@ -276,6 +276,23 @@ def test_v2_position_detected_from_row(tmp_path, v1_rows, drift) -> None:  # typ
     assert pm._held(conn.balances) == expected
 
 
+# 10**4 base units is the 0.01-share dust floor
+@pytest.mark.parametrize("size,balance", [(10.0, 0), (10.0, 10**4), (0.005, 10**6)])
+def test_v2_top_up_dust_floor_on_exact_balance(tmp_path, size, balance) -> None:  # type: ignore[no-untyped-def]
+    """A V2 row moves by its exact balance: not at all when that is dust, whatever its rounded size."""
+    v2, dw = {**pm.V2_OPEN, "current_size": size}, to_checksum_address(DW)
+    token = int(v2["token_id"])
+    with pm._safe_world(v2, pm.V1_OPEN) as conn:
+        conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, token)] = balance
+        _top_up(tmp_path, conn)
+    holder = dw if balance > 10**4 else pm.V2_SAFE
+    expected = {
+        **pm._ledger(dw, pm.V1_OPEN),
+        (pm.POSITION_MANAGER, holder, token): balance,
+    }
+    assert pm._held(conn.balances) == pm._held(expected)
+
+
 def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignore[no-untyped-def]
     """V2 positions move to the DW, the sell loop passes each row's asset ID, and the unsold return to the Safe."""
     sells = []  # the sell is stubbed: V2 sell signing for the V2 exchange comes later
