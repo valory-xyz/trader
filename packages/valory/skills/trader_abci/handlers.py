@@ -773,7 +773,8 @@ class HttpHandler(BaseHttpHandler):
             )
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
-                f"Keeping the deficits read: {type(exc).__name__}({exc})."
+                f"Keeping the deficits read: {type(exc).__name__}({exc}).",
+                exc_info=True,
             )
             return
         for chain_name, topup in topups.items():
