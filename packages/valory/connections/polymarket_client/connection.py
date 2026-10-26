@@ -1167,6 +1167,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
+        # One retry per V2 page keeps a hung V2 endpoint inside the fetch round.
+        tries = 2 if version else MAX_API_RETRIES
 
         while True:
             params: Dict[str, Any] = {
@@ -1181,7 +1183,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 params["after_cursor"] = after_cursor
 
             response, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/events/keyset", params=params
+                f"{GAMMA_API_BASE_URL}/events/keyset", params=params, max_retries=tries
             )
 
             if error:

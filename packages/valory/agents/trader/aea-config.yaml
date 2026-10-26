@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeihivtx3hfqclzklc3adpsjc4zndbvcuxoit2rn7lhkrvhs5lvat2i
+- valory/polymarket_client:0.1.0:bafybeibsr22idvkyjwhj6eg4asj3hm7p2chc5qmcpss46i2d5snif3rtle
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicvbt4khga37t2zqlsppahjzlszibcfso3ikwkac3mh33bmslx2qu
-- valory/market_manager_abci:0.1.0:bafybeianue74zw5zzzorxtueyzj4wc2hr45lbuluf53gvsjtjxnqgmta4q
-- valory/decision_maker_abci:0.1.0:bafybeifknsfowugahfopfyeo7rav6tr3drc24ktb4s6jnaudb7lonfqwnu
-- valory/trader_abci:0.1.0:bafybeibriamvhvun7e5bbjtwyqjque3g6gv5pd66xn3xazqk4j7oqkcye4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicrucgcjj2hqplaa4fyoa5fdipx6eyerxs3y6w2i5ufsn42mkitl4
+- valory/market_manager_abci:0.1.0:bafybeiaj4vxgxirtoqqvoj4jfwhrpcv3mfsn6k4ofi4lzwwhg4y465foxy
+- valory/decision_maker_abci:0.1.0:bafybeih45zxu7racy43oi7itprprrjyqrn4kinrmfj2lteef7znnqkmqo4
+- valory/trader_abci:0.1.0:bafybeic27ct4rnss5i7akhisis2ngnzx64nwywqo3adgr2u5gkdesjqdt4
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeifvyzpgjqc3pz76vbk2h44a5lvmekrob4724qlwzescd22mt6dyoq
+- valory/check_stop_trading_abci:0.1.0:bafybeib6cl6dwmnfjuonebkubmtu67tieice5wkc4mwrqszt2q4mol633a
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiauefcqriecd2ye2k7afugaixbanjvcwgolhbmfllchyxsp7vwsym
-- valory/agent_performance_summary_abci:0.1.0:bafybeiaifv3iltprwmqqulytmxf3wjz5q7snbgd5sgskljgfueww3pz55y
+- valory/chatui_abci:0.1.0:bafybeig3iw2nqhvzninejr3pdnswo6demwxcbzpbn5slnlwbhkhkltscxq
+- valory/agent_performance_summary_abci:0.1.0:bafybeiajxgfnx6wlyrlrksk2rlm52mlmhojydmpey6gqx6fou4y6cpjgeq
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
