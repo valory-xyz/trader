@@ -22,7 +22,7 @@
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -39,6 +39,8 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
+NOW = 1700000000
+COOLDOWN = 3600
 LATEST_DECLINE_TS = 1700000000
 EARLIER_DECLINE_TS = 1690000000
 
@@ -576,6 +578,150 @@ class TestClassifyProcessableBet:
             self._patched(behaviour, bet, now=now, sample_bets_closing_days=60)
             == "processable"
         )
+
+
+class TestDeclinedMarketCooldown:
+    """Tests for the cooldown on markets declined without a position."""
+
+    @staticmethod
+    def _params(**overrides: Any) -> MagicMock:
+        """Return params with wide sampling ranges and a 1 h cooldown."""
+        values: Dict[str, Any] = dict(
+            sample_bets_closing_days=60,
+            opening_margin=100,
+            safe_voting_range=100,
+            declined_market_cooldown=COOLDOWN,
+        )
+        values.update(overrides)
+        return MagicMock(**values)
+
+    @pytest.mark.parametrize(
+        "benchmarking, invested, declined_ago, cooldown, expected",
+        (
+            (False, 0, 60, COOLDOWN, True),
+            (False, 0, COOLDOWN - 1, COOLDOWN, True),
+            (False, 0, COOLDOWN, COOLDOWN, False),
+            (False, 0, None, COOLDOWN, False),
+            (False, 5, 60, COOLDOWN, False),
+            (False, 0, 60, 0, False),
+            (True, 0, 60, COOLDOWN, False),
+        ),
+        ids=(
+            "declined-a-minute-ago",
+            "declined-just-inside",
+            "cooldown-elapsed",
+            "never-processed",
+            "has-position",
+            "cooldown-off",
+            "benchmarking",
+        ),
+    )
+    def test_declined_recently(
+        self,
+        benchmarking: bool,
+        invested: int,
+        declined_ago: Optional[int],
+        cooldown: int,
+        expected: bool,
+    ) -> None:
+        """Only a no-position market processed less than the cooldown ago is cooling."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+        bet = _make_mock_bet(
+            invested_amount=invested,
+            processed_timestamp=0 if declined_ago is None else NOW - declined_ago,
+        )
+        with patch.object(
+            type(behaviour),
+            "params",
+            new_callable=PropertyMock,
+            return_value=self._params(declined_market_cooldown=cooldown),
+        ):
+            assert behaviour._declined_recently(bet, NOW) is expected
+
+    def test_cooling_bet_is_not_processable_and_classified(self) -> None:
+        """A cooling bet is dropped by processable_bet and reported as cooling."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        bet = _make_mock_bet(
+            queue_status=QueueStatus.REPROCESSED,
+            opening_timestamp=NOW + 86400 * 5,
+            processed_timestamp=NOW - 60,
+        )
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(behaviour), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            assert behaviour.processable_bet(bet, now=NOW) is False
+            assert (
+                behaviour._classify_processable_bet(bet, NOW, multi_bets_active=False)
+                == "cooling"
+            )
+            assert behaviour.processable_bet(bet, now=NOW + COOLDOWN) is True
+
+    def test_small_pool_waits_out_the_cooldown(self) -> None:
+        """Declining all of a 3-market pool leaves nothing to sample until the cooldown ends."""
+        sampler = _make_behaviour()
+        sampler.__dict__["_context"].benchmarking_mode.enabled = False
+        bets = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=NOW + 86400 * 5,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=liquidity,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i, liquidity in enumerate((900.0, 500.0, 300.0))
+        ]
+        sampler.bets = bets
+
+        sampled: List[Optional[str]] = []
+        with (
+            patch.object(
+                type(sampler),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(sampler), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(sampler), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            for now in (NOW, NOW + 96, NOW + 192, NOW + 288, NOW + COOLDOWN):
+                available = [b for b in bets if sampler.processable_bet(b, now=now)]
+                if not available:
+                    sampled.append(None)
+                    continue
+                bet = bets[sampler._sampled_bet_idx(available)]
+                sampled.append(bet.id)
+                bet.processed_timestamp = now
+
+        assert sampled == ["m0", "m1", "m2", None, "m0"]
 
 
 class TestSortByPriorityLogic:

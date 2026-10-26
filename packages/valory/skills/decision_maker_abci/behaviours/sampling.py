@@ -129,7 +129,23 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        return bet_mode_allowable and within_ranges and bet_queue_processable
+        return (
+            bet_mode_allowable
+            and within_ranges
+            and bet_queue_processable
+            and not self._declined_recently(bet, now)
+        )
+
+    def _declined_recently(self, bet: Bet, now: int) -> bool:
+        """Whether a market with no position was processed less than the cooldown ago."""
+        # Benchmarking replays simulated time per market, so no cooldown there.
+        if self.benchmarking_mode.enabled:
+            return False
+        return (
+            bet.invested_amount == 0
+            and bet.processed_timestamp > 0
+            and now - bet.processed_timestamp < self.params.declined_market_cooldown
+        )
 
     def _classify_processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool
@@ -137,8 +153,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Classify the dominant rejection reason in the mirror's own precedence.
 
         Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
-        that trips, in that precedence order. Pure read; does NOT call
+        ``out_of_open``, ``wrong_queue``, ``cooling``, ``processable``: the
+        first one that trips, in that precedence order. Pure read; does NOT call
         ``blacklist_forever`` and does NOT mutate the bet — the real filter
         ``processable_bet`` still runs and is the source of truth.
 
@@ -186,6 +202,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         if bet.queue_status not in processable_statuses:
             return "wrong_queue"
+        if self._declined_recently(bet, now):
+            return "cooling"
         return "processable"
 
     @staticmethod
@@ -362,6 +380,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"out_of_safe={strict_breakdown['out_of_safe']} "
             f"out_of_open={strict_breakdown['out_of_open']} "
             f"wrong_queue={strict_breakdown['wrong_queue']} "
+            f"cooling={strict_breakdown['cooling']} "
             f"processable={strict_breakdown['processable']}"
         )
         if fallback_breakdown is not None:
@@ -372,6 +391,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 f"out_of_safe={fallback_breakdown['out_of_safe']} "
                 f"out_of_open={fallback_breakdown['out_of_open']} "
                 f"wrong_queue={fallback_breakdown['wrong_queue']} "
+                f"cooling={fallback_breakdown['cooling']} "
                 f"processable={fallback_breakdown['processable']}"
             )
 

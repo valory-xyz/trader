@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeibg7bdqpioh4lmvknw3ygnllfku32oca4eq5pqtvdrdsgw6buko7e
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeibnslizvag2l72ewge5aibxvw4lzxzhjcfpczb4g27yt5it3ak7re
+agent: valory/trader:0.1.0:bafybeib2v4uxzn6rs5w7zfrigqzfclmuhiimmfqwh7tt3zx3zwhl6hfkni
 number_of_agents: 1
 deployment:
   agent:
@@ -94,6 +94,7 @@ models:
       mech_chain_id: ${MECH_CHAIN_ID:str:gnosis}
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${SAMPLE_BETS_CLOSING_DAYS:int:10}
+      declined_market_cooldown: ${DECLINED_MARKET_COOLDOWN:int:3600}
       trading_strategy: ${TRADING_STRATEGY:str:kelly_criterion}
       use_fallback_strategy: ${USE_FALLBACK_STRATEGY:bool:false}
       mech_activity_checker_contract: ${MECH_ACTIVITY_CHECKER_CONTRACT:str:0x0000000000000000000000000000000000000000}

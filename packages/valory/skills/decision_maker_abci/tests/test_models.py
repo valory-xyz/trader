@@ -632,6 +632,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "agent_registry_address": "0xaddr",
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
+        "declined_market_cooldown": 3600,
         "polymarket_spread_min": 0.0,
         "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
@@ -715,6 +716,26 @@ class TestDecisionMakerParams:
                 sample_bets_closing_days=0,
             )
 
+    def test_negative_declined_market_cooldown_raises(self) -> None:
+        """Test that a negative declined_market_cooldown raises ValueError."""
+
+        def mock_ensure(key: str, kwargs: dict, type_: Any) -> Any:
+            """Return controlled values for _ensure calls."""
+            if key == "sample_bets_closing_days":
+                return 7
+            if key == "declined_market_cooldown":
+                return -1
+            return MagicMock()
+
+        with (
+            patch.object(DecisionMakerParams, "_ensure", side_effect=mock_ensure),
+            pytest.raises(ValueError, match="must not be negative"),
+        ):
+            DecisionMakerParams(
+                skill_context=MagicMock(),
+                agent_registry_address="0xaddr",
+            )
+
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""
         kwargs = _build_decision_maker_params_kwargs()
@@ -723,6 +744,7 @@ class TestDecisionMakerParams:
         ):
             params = DecisionMakerParams(**kwargs)
         assert params.sample_bets_closing_days == 7
+        assert params.declined_market_cooldown == 3600
         assert params.trading_strategy == "kelly_criterion"
         assert params.slippage == 0.1
         assert params.epsilon == 0.2
