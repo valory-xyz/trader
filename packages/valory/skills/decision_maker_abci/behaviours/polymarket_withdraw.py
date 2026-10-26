@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Polymarket withdrawal behaviour — sells unredeemable CTF positions on FAK."""
+"""Polymarket withdrawal behaviour — sells unredeemable positions on FAK."""
 
 import json
 import time
@@ -95,7 +95,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     1. Persist ``selling`` to the JSON store.
     2. Refresh CLOB balance/allowance (top-level retry).
     3. Fetch unredeemable positions (top-level retry).
-    4. Filter to sellable shares (size > epsilon, has CTF token id).
+    4. Filter to sellable shares (size > epsilon, has a token id).
     5. Per position: FAK sell, retry on partial / SDK errors (per-position retry).
     6. Append fill / error records as they happen.
     7. Persist ``complete`` (no errors) or ``errored`` (any errors), then finish.
@@ -144,7 +144,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         # Sweep it back to the Safe before the cycle wraps up (idempotent —
         # a failed/empty sweep is non-fatal; the next top-up reclaims any
         # residual via its opportunistic sweep). Pass the sold token ids so any
-        # CTF that did NOT fully sell (dust / in-flight / permanent-failure
+        # position that did NOT fully sell (dust / in-flight / permanent-failure
         # positions) is also returned to the Safe rather than stranded in the
         # transient DW — there may be no subsequent buy to reclaim it.
         token_ids = self._sellable_token_ids(sellable)
@@ -282,14 +282,14 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
         """Send SELL_POSITION; return the normalized ``(response, error)`` tuple.
 
-        :param token_id: the CTF token id to sell.
+        :param token_id: the position token id to sell.
         :param amount: shares to sell on this attempt (may be the full size or
             a residual after a partial fill).
         :yield: framework yields between dispatch and response.
         :return: normalized ``(payload_dict, error_or_none)``.
         """
         params: Dict[str, Any] = {"token_id": token_id, "amount": amount}
-        # CLOB v2: the sell is funded by the DepositWallet (the CTF shares were
+        # CLOB v2: the sell is funded by the DepositWallet (the shares were
         # moved Safe→DW by the withdrawal top-up round). Pass it so the
         # connection signs with signature_type=3 / funder=DW.
         dw_address = self._resolve_deposit_wallet()
