@@ -51,9 +51,8 @@ class BlacklistingBehaviour(  # type: ignore
         # the question is blacklisted, i.e., we did not place a bet on it,
         # therefore, we bump the queue's status to the next one
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
-        # REPROCESSED is terminal, so without a timestamp the sampler's
-        # least-recently-processed ordering keeps picking the same market.
-        # Benchmarking mode already stored a simulated timestamp.
+        # Among equal invested_amount the sampler takes the least recently
+        # processed bet, so stamp the decline or the same market is re-picked.
         if not self.benchmarking_mode.enabled:
             sampled_bet.processed_timestamp = self.synced_timestamp
 

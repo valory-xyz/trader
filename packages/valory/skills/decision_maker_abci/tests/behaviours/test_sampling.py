@@ -39,6 +39,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
 from packages.valory.skills.decision_maker_abci.payloads import SamplingPayload
 from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
 
+LATEST_DECLINE_TS = 1700000000
+EARLIER_DECLINE_TS = 1690000000
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -669,7 +672,8 @@ class TestSampledBetIdx:
 
     @pytest.mark.parametrize(
         "liquid_declined_at, other_declined_at",
-        ((1700000000, 0), (1700000000, 1690000000)),
+        ((LATEST_DECLINE_TS, 0), (LATEST_DECLINE_TS, EARLIER_DECLINE_TS)),
+        ids=("other-never-declined", "other-declined-earlier"),
     )
     def test_recently_declined_reprocessed_bet_is_not_sampled_next(
         self, liquid_declined_at: int, other_declined_at: int
