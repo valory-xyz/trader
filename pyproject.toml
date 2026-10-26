@@ -40,7 +40,7 @@ dependencies = [
     "ecdsa==0.19.2",
     "pydantic==2.12.5",
     "httpx==0.28.1",
-    "certifi==2026.2.25",
+    "certifi==2026.10.19",
     "multidict==6.7.1",
     "eth_typing==6.0.0",
     "w3multicall==0.3.1",
