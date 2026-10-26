@@ -1167,9 +1167,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
-        # A V2 page gets one try, so a failing V2 read adds no retry backoff
-        # to V1 discovery.
-        tries = 1 if version else MAX_API_RETRIES
 
         while True:
             params: Dict[str, Any] = {
@@ -1184,7 +1181,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 params["after_cursor"] = after_cursor
 
             response, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/events/keyset", params=params, max_retries=tries
+                f"{GAMMA_API_BASE_URL}/events/keyset", params=params
             )
 
             if error:

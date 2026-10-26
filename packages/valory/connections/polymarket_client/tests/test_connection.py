@@ -2284,7 +2284,7 @@ class TestFetchMarketsByTagSlug:
         ],
     )
     def test_market_version_discovery_includes_v2(self, v2_pages: Dict) -> None:
-        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; a V2 read gets one try, so a slow, failed or malformed one can't delay or drop the V1 markets."""
+        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; V1 and V2 reads share one retry policy, and a failed or malformed V2 read can't drop the V1 markets."""
         from packages.valory.connections.polymarket_client.connection import (
             MAX_API_RETRIES,
         )
@@ -2329,8 +2329,8 @@ class TestFetchMarketsByTagSlug:
         ) == [
             ("", "", MAX_API_RETRIES),
             ("", "c", MAX_API_RETRIES),
-            ("v2", "", 1),
-            *([] if ("v2", "") in v2_pages else [("v2", "c", 1)]),
+            ("v2", "", MAX_API_RETRIES),
+            *([] if ("v2", "") in v2_pages else [("v2", "c", MAX_API_RETRIES)]),
         ]
         assert all(p == sent[0] for p in sent)  # same tag, window and limit
 
