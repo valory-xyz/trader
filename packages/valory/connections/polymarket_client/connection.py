@@ -1262,7 +1262,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         return yes_no_markets
 
     def _filter_tradeable_markets(self, markets: list) -> list:
-        """Filter to active markets of a supported version with populated price + CLOB tokens.
+        """Filter to active markets of a supported version with prices and outcome IDs.
 
         The /events endpoint can surface nested markets that are yes/no-shaped
         but not yet (or no longer) tradeable — empty outcomePrices or outcome
