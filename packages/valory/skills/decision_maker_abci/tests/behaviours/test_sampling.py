@@ -671,6 +671,46 @@ class TestDeclinedMarketCooldown:
             )
             assert behaviour.processable_bet(bet, now=NOW + COOLDOWN) is True
 
+    @pytest.mark.parametrize(
+        "queue_status, opening_offset, expected",
+        (
+            (QueueStatus.FRESH, 86400 * 5, "wrong_queue"),
+            (QueueStatus.REPROCESSED, 10, "out_of_safe"),
+        ),
+        ids=("wrong-queue-first", "out-of-safe-first"),
+    )
+    def test_cooling_has_lowest_precedence(
+        self, queue_status: QueueStatus, opening_offset: int, expected: str
+    ) -> None:
+        """A cooling bet that also trips an earlier check reports the earlier class."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        bet = _make_mock_bet(
+            queue_status=queue_status,
+            opening_timestamp=NOW + opening_offset,
+            processed_timestamp=NOW - 60,
+        )
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour), "kpi_is_met", new_callable=PropertyMock
+            ) as mock_kpi,
+            patch.object(
+                type(behaviour), "review_bets_for_selling", new_callable=PropertyMock
+            ) as mock_rbs,
+        ):
+            mock_kpi.return_value = False
+            mock_rbs.return_value = False
+            assert (
+                behaviour._classify_processable_bet(bet, NOW, multi_bets_active=False)
+                == expected
+            )
+
     def test_small_pool_waits_out_the_cooldown(self) -> None:
         """Declining all of a 3-market pool leaves nothing to sample until the cooldown ends."""
         sampler = _make_behaviour()
@@ -913,6 +953,7 @@ class TestSample:
         exclude_neg_risk_markets=False,
         is_running_on_polymarket=False,
         disabled_polymarket_tags=None,
+        declined_market_cooldown=COOLDOWN,
     ):
         """Create a behaviour for _sample testing."""
         behaviour = _make_behaviour()
@@ -926,6 +967,7 @@ class TestSample:
         params.sample_bets_closing_days = 60
         params.opening_margin = 100
         params.safe_voting_range = 100
+        params.declined_market_cooldown = declined_market_cooldown
         params.is_outcome_side_threshold_filter_enabled = (
             is_outcome_side_threshold_filter_enabled
         )
@@ -1398,6 +1440,91 @@ class TestSample:
                                 result = behaviour._sample()
 
         assert result is None
+
+    @pytest.mark.parametrize(
+        "fallback_enabled", (False, True), ids=("fallback-off", "fallback-on")
+    )
+    def test_sample_all_cooling_waits(self, fallback_enabled: bool) -> None:
+        """With every unheld market cooling, _sample returns None, even with the fallback on."""
+        cooling = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=NOW + 86400 * 5,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=100.0,
+                processed_timestamp=NOW - 60,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i in range(3)
+        ]
+        held = _make_mock_bet(
+            bet_id="held",
+            queue_status=QueueStatus.REPROCESSED,
+            n_bets=1,
+            invested_amount=5,
+            opening_timestamp=NOW + 86400 * 5,
+        )
+        behaviour, params, bm, ss = self._setup_behaviour_for_sample(
+            bets=[*cooling, held], enable_multi_bets_fallback=fallback_enabled
+        )
+
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=params,
+            ),
+            patch.object(
+                type(behaviour),
+                "benchmarking_mode",
+                new_callable=PropertyMock,
+                return_value=bm,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=NOW,
+            ),
+            patch.object(
+                type(behaviour),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=ss,
+            ),
+            patch.object(
+                type(behaviour),
+                "kpi_is_met",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+            patch.object(
+                type(behaviour),
+                "review_bets_for_selling",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            result = behaviour._sample()
+
+        assert result is None
+        logger = behaviour.context.logger
+        info_calls = [str(c) for c in logger.info.call_args_list]
+        assert any(
+            "breakdown.strict" in call and "cooling=3 " in call for call in info_calls
+        )
+        assert not any("fallback_activated=True" in call for call in info_calls)
+        warning = str(logger.warning.call_args)
+        assert "3 markets are cooling down for 3600s" in warning
 
     def test_sample_multi_bets_fallback(self) -> None:
         """Should use multi-bet fallback when no bets in single-bet mode."""

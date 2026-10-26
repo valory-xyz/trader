@@ -718,23 +718,23 @@ class TestDecisionMakerParams:
 
     def test_negative_declined_market_cooldown_raises(self) -> None:
         """Test that a negative declined_market_cooldown raises ValueError."""
-
-        def mock_ensure(key: str, kwargs: dict, type_: Any) -> Any:
-            """Return controlled values for _ensure calls."""
-            if key == "sample_bets_closing_days":
-                return 7
-            if key == "declined_market_cooldown":
-                return -1
-            return MagicMock()
-
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = -1
         with (
-            patch.object(DecisionMakerParams, "_ensure", side_effect=mock_ensure),
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
             pytest.raises(ValueError, match="must not be negative"),
         ):
-            DecisionMakerParams(
-                skill_context=MagicMock(),
-                agent_registry_address="0xaddr",
-            )
+            DecisionMakerParams(**kwargs)
+
+    def test_zero_declined_market_cooldown_is_allowed(self) -> None:
+        """Test that 0, the off switch, is accepted."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = 0
+        with patch.object(
+            DecisionMakerParams.__mro__[1], "__init__", return_value=None
+        ):
+            params = DecisionMakerParams(**kwargs)
+        assert params.declined_market_cooldown == 0
 
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""

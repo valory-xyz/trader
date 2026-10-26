@@ -459,7 +459,6 @@ class DecisionMakerParams(
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
 
-        # seconds a market with no position stays unsampleable after a decline
         self.declined_market_cooldown: int = self._ensure(
             "declined_market_cooldown", kwargs, int
         )
