@@ -227,15 +227,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         Sample a bet and return its index.
 
         The sampling logic follows the specified priority logic:
-        1. Filter out all the bets that have a processed_timestamp != 0 to get a list of new bets.
-        2. If the list of new bets is not empty:
-           2.1 Order the list in decreasing order of liquidity (highest liquidity first).
-           2.2 For bets with the same liquidity, order them in decreasing order of market closing time (openingTimestamp).
-        3. If the list of new bets is empty:
-           3.1 Order the bets in decreasing order of invested_amount.
-           3.2 For bets with the same invested_amount, order them in increasing order of processed_timestamp (least recently processed first).
-           3.3 For bets with the same invested_amount and processed_timestamp, order them in decreasing order of liquidity.
-           3.4 For bets with the same invested_amount, processed_timestamp, and liquidity, order them in decreasing order of market closing time (openingTimestamp).
+        1. Take the bets of the first non-empty queue status: TO_PROCESS, then PROCESSED, then REPROCESSED.
+        2. Order them in decreasing order of invested_amount.
+        3. For bets with the same invested_amount, order them in increasing order of processed_timestamp (least recently processed first).
+        4. For bets with the same invested_amount and processed_timestamp, order them in decreasing order of liquidity.
+        5. For bets with the same invested_amount, processed_timestamp, and liquidity, order them in decreasing order of market closing time (openingTimestamp).
 
         :param bets: the bets' values to compare for the sampling.
         :return: the index of the sampled bet, out of all the available bets, not only the given ones.
