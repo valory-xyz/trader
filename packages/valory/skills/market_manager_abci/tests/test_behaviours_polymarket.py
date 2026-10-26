@@ -135,10 +135,8 @@ def _make_valid_market(**overrides: Any) -> Dict[str, Any]:
     return defaults
 
 
-# Real Gamma rows trimmed to the fields the behaviour reads: a V1 market whose
-# row also carries V2 positionIds, and a binary V2 market, read by positionIds.
-# https://gamma-api.polymarket.com/markets/559651
-# https://gamma-api.polymarket.com/events/keyset?version=v2 (6015109)
+# The GAMMA_V1/GAMMA_V2 markets of polymarket_client's test_connection.py,
+# trimmed to the fields the behaviour reads.
 GAMMA_V1, GAMMA_V2 = json.loads(r"""[
 {"id": "559651", "question": "Xi Jinping out before 2027?", "conditionId": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.0265\", \"0.9735\"]", "endDate": "2027-01-01T04:59:00Z", "version": "v1", "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]", "positionIds": ["895257453734540292493143124621755605615887197499956109032745153687078305792", "895257453734540292493143124621755605615887197499956109032745153687078305793"]},
 {"id": "6015109", "question": "Will Central Park record at least 0.01 inches of precipitation on October 22, 2026?", "conditionId": "0x01930457ddf921a30b0d8aabfa2ef601f0000000000000000000000000000000", "outcomes": "[\"Yes\", \"No\"]", "outcomePrices": "[\"0.525\", \"0.475\"]", "endDate": "2026-10-23T16:00:00Z", "version": "v2", "positionIds": ["712069342982939259021323770019514721134145408933508924027915981665668694016", "712069342982939259021323770019514721134145408933508924027915981665668694017"]}

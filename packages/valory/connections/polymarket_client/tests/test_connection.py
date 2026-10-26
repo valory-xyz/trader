@@ -2284,7 +2284,7 @@ class TestFetchMarketsByTagSlug:
         ],
     )
     def test_market_version_discovery_includes_v2(self, v2_pages: Dict) -> None:
-        """V1 events are read as before and V2 events with version=v2, each paged, and merged once per market; a V2 page gets one retry, and a failed or malformed V2 read can't drop the V1 markets."""
+        """V1 events are read and V2 events with version=v2, each paged, and merged once per market; a V2 page gets one retry, and a failed or malformed V2 read can't drop the V1 markets."""
         from packages.valory.connections.polymarket_client.connection import (
             MAX_API_RETRIES,
         )
@@ -2856,7 +2856,7 @@ def test_v2_position_balances_read_in_chunks() -> None:
         # by version, in order (None: a buy), and the order's field (None: no order)
         ({"market_version": "v1"}, "binary", None, "token_id"),
         ({"market_version": "v2"}, "v1_ctf", None, "position_id"),
-        ({}, "binary", None, "token_id"),  # a bet stored by the current release
+        ({}, "binary", None, "token_id"),  # a bet stored without a version
         ({}, "binary", {"v1": [GAMMA_V1]}, "token_id"),
         ({}, "v1_ctf", {"v1": [], "v2": [GAMMA_V2]}, "position_id"),
         ({}, "binary", {"v1": [], "v2": []}, None),
@@ -2903,10 +2903,10 @@ def test_market_version_v2_order_uses_position_id(
 
 
 def test_market_version_signed_order_cache_keyed_by_exchange() -> None:
-    """An order the current release cached replays for a v1 bet but is re-signed by position ID for a v2 bet, whose new order replays on retry and is never replayed for a v1 bet."""
+    """An order cached without a marker replays for a v1 bet but is re-signed by position ID for a v2 bet, whose new order replays on retry and is never replayed for a v1 bet; a v1 bet's new order is marked by token ID and replays."""
     token = V2_OPEN["token_id"]
     order = TestPlaceBet._make_signed_order_v2()  # on "tok", a V1 token
-    # The JSON the current release caches for this order, and for one on the V2 token
+    # This order cached without a marker, and one on the V2 token
     v1_cached = dict(dataclasses.asdict(order), side=0, signatureType=2)
     v1_cached["clob_version"] = "v2"
     stale = json.dumps({**v1_cached, "tokenId": token})
@@ -2922,10 +2922,18 @@ def test_market_version_signed_order_cache_keyed_by_exchange() -> None:
             conn._place_bet(
                 token, 10.0, first["signed_order_json"], market_version=version
             )
+        v1_bet, _ = conn._place_bet("tok", 10.0, market_version="v1")
+        v1_json = v1_bet["signed_order_json"]
+        conn._place_bet("tok", 10.0, v1_json, market_version="v1")
+    assert json.loads(v1_json)["asset_field"] == "token_id"
     args = [c.args[0] for c in conn.client.create_market_order.call_args_list]
-    assert [(a.token_id, a.position_id) for a in args] == [(None, token), (token, None)]
+    assert [(a.token_id, a.position_id) for a in args] == [
+        (None, token),
+        (token, None),
+        ("tok", None),
+    ]
     posted = [c.args[0] for c in conn.client.post_order.call_args_list]
-    assert posted == [order, fresh, fresh, fresh]
+    assert posted == [order, fresh, fresh, fresh, fresh, fresh]
 
 
 class TestBoolParam:

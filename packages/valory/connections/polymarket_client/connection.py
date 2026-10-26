@@ -968,10 +968,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         ``get_neg_risk``) from the cached market info. This matches the
         buy path.
 
-        A positions row carries no market version, so the token's market is
-        looked up on Gamma, which lists a market only under its own version:
-        a V1 market sells by ``token_id``, a V2 market by ``position_id``. If
-        neither lookup finds it, nothing is signed and an error is returned.
+        Looks up the token's market version on Gamma; skips the sell if it's unknown.
 
         :param token_id: the outcome's CLOB token ID, or a V2 market's position ID.
         :param amount: shares (CTF token units) to sell, not USDC.
@@ -1167,7 +1164,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
-        # One retry per V2 page keeps a hung V2 endpoint inside the fetch round.
+        # One retry per V2 page bounds the time a hung V2 endpoint adds per page.
         tries = 2 if version else MAX_API_RETRIES
 
         while True:
@@ -1212,11 +1209,19 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         if not version:
             try:
-                v2_markets, _ = self._fetch_markets_by_tag_slug(
+                v2_markets, v2_error = self._fetch_markets_by_tag_slug(
                     tag_slug, end_date_min, end_date_max, "v2"
                 )
+                if v2_error:
+                    self.logger.warning(
+                        f"V2 markets for tag {tag_slug} unavailable: {v2_error}"
+                    )
                 seen = {market.get("id") for market in all_markets}
                 all_markets += [m for m in v2_markets or [] if m.get("id") not in seen]
+                self.logger.info(
+                    f"Merged {sum(m.get('id') not in seen for m in all_markets)} "
+                    f"V2 markets for tag {tag_slug}"
+                )
             except (AttributeError, TypeError) as e:
                 self.logger.warning(f"Skipping V2 markets for tag {tag_slug}: {e}")
         return all_markets, None
@@ -1260,9 +1265,10 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Filter to active markets of a supported version with populated price + CLOB tokens.
 
         The /events endpoint can surface nested markets that are yes/no-shaped
-        but not yet (or no longer) tradeable — empty outcomePrices/clobTokenIds
-        or active=False. The old /markets?tag_id=X endpoint filtered these
-        server-side. This filter matches that behaviour client-side.
+        but not yet (or no longer) tradeable — empty outcomePrices or outcome
+        IDs (clobTokenIds for v1, positionIds for v2), or active=False. The old
+        /markets?tag_id=X endpoint filtered these server-side. This filter
+        matches that behaviour client-side.
 
         :param markets: List of market dictionaries
         :return: active priced v1 markets with clobTokenIds, v2 with Binary positionIds
@@ -1299,6 +1305,10 @@ class PolymarketClientConnection(BaseSyncConnection):
                 )
                 and all(int(i) >> 248 == V2_MODULE_IDS[0] for i in token_ids)  # Binary
             ):
+                self.logger.debug(
+                    f"Dropped market {market.get('id')}: "
+                    "positionIds missing, malformed or not Binary"
+                )
                 continue
             if outcome_prices and token_ids:
                 tradeable.append(market)

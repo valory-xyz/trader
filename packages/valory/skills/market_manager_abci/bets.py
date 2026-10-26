@@ -189,8 +189,7 @@ class Bet:
     description: Optional[str] = None
     # Polymarket-only market slug, which its public page URL is built from.
     slug: Optional[str] = None
-    # Polymarket-only Gamma market `version`; bets stored before this field
-    # existed are V1.
+    # Polymarket-only Gamma version
     market_version: str = "v1"
 
     def __post_init__(self) -> None:

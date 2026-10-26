@@ -14,7 +14,7 @@ fingerprint:
   behaviours/polymarket_fetch_market.py: bafybeiepa3z3wn3zhm6unhtglzokbwypmzjiqc3hwozfgkyc7irwtsfmou
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeidypa2fhkebcfubiz5rxq4xwnhakdbxqp5ewct4oyzw6j3ybmul4q
-  bets.py: bafybeic3irviqcglpxohezqlslhy64ytqxxe2yb7wyiq7nzn3nwmzjcoxi
+  bets.py: bafybeifoo6tesphd46h7coqago6h4nd4trglyarrerfqqvomrhguvlto24
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -39,9 +39,9 @@ fingerprint:
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/conftest.py: bafybeigeij2lqzbimqcf6c4maudbuiwloq3lz7fjthfrtm3fioqf2tzsyy
   tests/test_behaviours_base.py: bafybeifavo7imigpfonl7ujmofmrnozklthqfmyinduxs7wavjsu7abyca
-  tests/test_behaviours_polymarket.py: bafybeihkxgtbkwfmp6xipl6qufkru3tejf3gm4wckm6yikjxegbttxohcm
+  tests/test_behaviours_polymarket.py: bafybeiaqgz5vggr5cunaumqzw4ml5njtdvgmst7jaxcs4nk62cihjhsl7i
   tests/test_behaviours_update_bets.py: bafybeieq5d2vcsqsldstbq2zzwo3lnuijtepepvbsvg2zinvficnxbzz7y
-  tests/test_bets.py: bafybeidjdpzvnt6balu3ck7wzgey6bkppaoq62ly2skyiunkkigtw64l3y
+  tests/test_bets.py: bafybeidn6pg5nl6kiiliusf56ywhuxeelv4yzsqkgyeje5yrazii4wl2hy
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_disabled_tags_invariant.py: bafybeihw2elbgoitd6cpnwzs5odj6l5otdatdsjknjnpdjj3jsivp54fba
   tests/test_graph_queries.py: bafybeifrh723g6jbu2yvikz74eyfjwdbo4sz7ockecliia5zfqe5vu3ed4
@@ -53,7 +53,7 @@ fingerprint:
   tests/test_utils.py: bafybeiduu2sazycpzmqpmoxqqsgyi4rdjqye26w4chhr6dsbk7xdkib4ci
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeibsr22idvkyjwhj6eg4asj3hm7p2chc5qmcpss46i2d5snif3rtle
+- valory/polymarket_client:0.1.0:bafybeic2skal7aahkl7yhsm6pbrmjjp4azlt6tlmn6gqr6eqlxko4jd2e4
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy
