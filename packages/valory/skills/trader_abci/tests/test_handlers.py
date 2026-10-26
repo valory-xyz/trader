@@ -3184,12 +3184,18 @@ class TestApplyAgentTopUp:
         assert safe_tokens[NATIVE].deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
         assert safe_tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS].deficit == 0
 
-    @pytest.mark.parametrize("topup_succeeded", [None, False])
-    def test_without_a_succeeded_topup_keeps_the_deficits_read(
-        self, topup_succeeded: Optional[bool]
-    ) -> None:
-        """Before a top-up has succeeded, or after one failed, the Agent Signer deficit is not reported as 0."""
-        handler = self._handler("polygon", topup_succeeded)
+    def test_startup_reports_no_signer_deficit_for_a_pending_topup(self) -> None:
+        """Before any top-up has run, a top-up the Agent Safe covers raises no Agent Signer alert."""
+        handler = self._handler("gnosis", topup_succeeded=None)
+        status = funds_status("gnosis", ETHER // 10, 10 * ETHER)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", AGENT) == 0
+
+    def test_after_a_failed_topup_keeps_the_deficits_read(self) -> None:
+        """After a top-up failed, the Agent Signer deficit is not reported as 0."""
+        handler = self._handler("polygon", topup_succeeded=False)
         status = funds_status("polygon", ETHER // 10, ETHER // 2)
         status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
 

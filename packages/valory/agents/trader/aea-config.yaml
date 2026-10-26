@@ -70,12 +70,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihum7jp3wk4576tiy6ysyivwoyzukrqvr75fjcpbfqalaydaadfxe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibivr6sla6t6eansl26jnfj36i4whgvzhcrgs7pui2dstzfu3perm
 - valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
-- valory/decision_maker_abci:0.1.0:bafybeib3tso7n6oettzmysig736kp5fgnpg2dwf7swmzh3lchlkf3vh6ue
-- valory/trader_abci:0.1.0:bafybeictasqh7zt3ftcpsx2saba3jnyvrkl3tcepdsn4vbydgpow2alvvm
+- valory/decision_maker_abci:0.1.0:bafybeieegp6ehrpoqwwka5b5lihly6735twczkfge3buaj52qpysezdtfi
+- valory/trader_abci:0.1.0:bafybeiguumds4n74hgx5uqdxlxfnchpv5hkbwem5m2ymxuvqujmyz2r3mu
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeihm4itdczpsp7amygzdr4ilvgmulw2p7m6aqffoipo2g7m7z227zu
+- valory/agent_topup_abci:0.1.0:bafybeicj6h6sxmpdrt43h7eyh2yec2brh5l6dojsiaulgh6miupoqvxqdy
 - valory/check_stop_trading_abci:0.1.0:bafybeihopa2buonry5ryrhsxr2a5adfzs2bw4sedq7efc4i232hlnlwaua
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeiea7ymnt4cyzbheu5ko7mlwzrlw5o42nqvvq2n7ca24djq4ne4774

@@ -30,7 +30,8 @@ from packages.valory.skills.funds_manager.models import (
 
 GNOSIS_CHAIN_NAME = "gnosis"
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
-# Set when a top-up transfer settles, cleared when a top-up fails.
+# False once a top-up fails, True again once a top-up transfer settles.
+# Unset (e.g. at startup) counts as True: a pending top-up the Agent Safe covers raises no alert.
 TOPUP_SUCCEEDED_KEY = "agent_topup_succeeded"
 
 NO_TOPUP = AgentTopUp(move=0, signer_deficit=None, safe_deficit=None)

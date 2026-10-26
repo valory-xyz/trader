@@ -761,11 +761,11 @@ class HttpHandler(BaseHttpHandler):
             )
 
     def _apply_agent_topup(self, funds_status: FundRequirements) -> None:
-        """Report the native deficits of funds-manager `get_agent_topup`, once a top-up has succeeded.
+        """Report the native deficits of funds-manager `get_agent_topup`, unless the last top-up failed.
 
         :param funds_status: the adjusted funds status; updated in place.
         """
-        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, False):
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
             return
         agent_address = self.context.agent_address
         try:
