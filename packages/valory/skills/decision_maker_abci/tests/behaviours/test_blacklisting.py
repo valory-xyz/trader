@@ -21,6 +21,8 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
 )
@@ -96,6 +98,38 @@ class TestBlacklistBlacklist:
             behaviour._blacklist()
 
         assert mock_bet.queue_status == expected_next
+
+    @pytest.mark.parametrize(
+        "benchmarking, expected_timestamp", ((False, 1700000000), (True, 123))
+    )
+    def test_blacklist_sets_processed_timestamp(
+        self, benchmarking: bool, expected_timestamp: int
+    ) -> None:
+        """_blacklist should stamp the synced time, except in benchmarking mode."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+
+        mock_bet = MagicMock()
+        mock_bet.queue_status = QueueStatus.REPROCESSED
+        mock_bet.processed_timestamp = 123
+        behaviour.bets = [mock_bet]
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=1700000000,
+            ),
+        ):
+            mock_sd.return_value = MagicMock(sampled_bet_index=0)
+            behaviour._blacklist()
+
+        assert mock_bet.processed_timestamp == expected_timestamp
+        assert mock_bet.queue_status == QueueStatus.REPROCESSED
 
 
 class TestBlacklistingAsyncAct:

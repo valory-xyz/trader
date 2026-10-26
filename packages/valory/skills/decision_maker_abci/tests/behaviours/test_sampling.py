@@ -667,6 +667,32 @@ class TestSampledBetIdx:
         idx = behaviour._sampled_bet_idx([bet1])
         assert idx == 0
 
+    @pytest.mark.parametrize(
+        "liquid_declined_at, other_declined_at",
+        ((1700000000, 0), (1700000000, 1690000000)),
+    )
+    def test_recently_declined_reprocessed_bet_is_not_sampled_next(
+        self, liquid_declined_at: int, other_declined_at: int
+    ) -> None:
+        """Of two REPROCESSED bets, the one declined most recently goes last."""
+        behaviour = _make_behaviour()
+        liquid = _make_mock_bet(
+            bet_id="liquid",
+            queue_status=QueueStatus.REPROCESSED,
+            processed_timestamp=liquid_declined_at,
+            liquidity=1000.0,
+        )
+        other = _make_mock_bet(
+            bet_id="other",
+            queue_status=QueueStatus.REPROCESSED,
+            processed_timestamp=other_declined_at,
+            liquidity=10.0,
+        )
+        behaviour.bets = [liquid, other]
+
+        idx = behaviour._sampled_bet_idx([liquid, other])
+        assert behaviour.bets[idx].id == "other"
+
 
 class TestSamplingBenchmarkingBet:
     """Tests for _sampling_benchmarking_bet."""
