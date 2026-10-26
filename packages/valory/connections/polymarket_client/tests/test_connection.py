@@ -2583,7 +2583,7 @@ def _wire(behaviour: Any, conn: Any) -> None:
 
 
 def test_v2_position_custody_swept_to_safe() -> None:
-    """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares as before."""
+    """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares."""
     dust = (POSITION_MANAGER, V2_DW, int(V2_WIN["token_id"]))  # one base unit moves too
     pusd = (COLLATERAL_ADDRESS, V2_DW)
     balances = {**_ledger(V2_DW, V2_OPEN, V1_OPEN), dust: 1, pusd: 2500000}
@@ -3367,6 +3367,32 @@ class TestRedeemPositions:
         assert standard_tx.to != neg_risk_tx.to
         assert standard_tx.to == CTF_COLLATERAL_ADAPTER
         assert neg_risk_tx.to == NEG_RISK_CTF_COLLATERAL_ADAPTER
+
+    def test_v2_claim_goes_to_router_by_position_id(self) -> None:
+        """A V2 claim calls the Router's redeem(bytes31,uint256,uint256)."""
+        from eth_hash.auto import keccak
+
+        conn = _make_connection()
+        condition, outcome, amount = b"\xab" * 31, 0x1F, 2500000
+        position_id = int.from_bytes(condition + bytes([outcome]), "big")
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=False,
+            position_id=str(position_id),
+            amount=amount,
+        )
+
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        types = ["bytes31", "uint256", "uint256"]
+        selector = keccak(f"redeem({','.join(types)})".encode())[:4]
+        assert tx.to == ROUTER
+        assert (
+            tx.data
+            == "0x" + (selector + abi_encode(types, [condition, outcome, amount])).hex()
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -249,7 +249,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
     ) -> Generator[None, None, Tuple[Optional[List[Dict[str, Any]]], Optional[str]]]:
         """Send FETCH_ALL_POSITIONS with ``redeemable=False`` against the DW.
 
-        The withdrawal top-up round has already moved every sellable CTF
+        The withdrawal top-up round has already moved every sellable
         position Safe→DepositWallet, so the positions now live under the DW —
         querying the Safe (the connection default) would return nothing. Pass
         the DW address so the sell-loop and locked-funds snapshot see the

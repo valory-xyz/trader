@@ -298,7 +298,7 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             # RedeemInfoBehaviour._update_policy in reedem.py for Omen.
             self._update_policy_for_redeemable_positions(redeemable_positions)
             # A V2 row with no value or no PositionManager balance has nothing
-            # to claim. V1 rows are all claimed, as before.
+            # to claim. V1 rows are all claimed.
             redeemable_positions = [
                 p for p in redeemable_positions if not is_unclaimable_v2(p)
             ]
@@ -462,7 +462,6 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             )
 
             if V2_BALANCE_KEY in position:
-                # A V2 claim goes to the Router, by position id.
                 redeem_data = encode_router_redeem(
                     int(position["asset"]), position[V2_BALANCE_KEY]
                 ).hex()

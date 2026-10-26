@@ -502,8 +502,7 @@ class FetchPerformanceSummaryBehaviour(
                 )
                 return None
 
-            # Extract titles from positions. A settled V2 row with nothing to
-            # claim is never claimed, so it is not open.
+            # Extract titles from positions. Unclaimable V2 rows aren't open.
             titles = {
                 p.get("title", "")
                 for p in positions

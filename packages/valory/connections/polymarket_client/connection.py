@@ -64,7 +64,7 @@ PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
 DATA_API_POSITIONS_URL = f"{DATA_API_BASE_URL}/v2/positions"
 DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
-# Token reference facts, such as the contract module that issued a token.
+# /v2/tokens: token id -> contract module
 DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
 DATA_API_TOKENS_LIMIT = 50
 # Protocol V2 position ID layout, from "Decode Polymarket Protocol V2 Position
@@ -131,9 +131,6 @@ ROUTER_REDEEM_SELECTOR = keccak(text=f"redeem({','.join(ROUTER_REDEEM_TYPES)})")
 
 def is_unclaimable_v2(position: Dict[str, Any]) -> bool:
     """Tell whether a positions row is a settled V2 position with nothing to claim.
-
-    The losing side of a resolved V2 market is redeemable too, with no value,
-    and a claimed position has no PositionManager balance left.
 
     :param position: a positions row, keyed by v1 names
     :return: whether the row is redeemable V2 with no value or no balance
@@ -1517,11 +1514,6 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _read_token_modules(self, token_ids: List[str]) -> None:
         """Look up the module of the tokens not yet known, in batches.
 
-        A token's module never changes, so it is cached. ``v1_ctf`` is a V1
-        token and ``V2_MODULES`` are Protocol V2 ones; a token with any other
-        module, like one left out, stays unknown. A failed lookup leaves the
-        remaining tokens unknown until the next read.
-
         :param token_ids: the token ids to classify
         """
         unknown = sorted({t for t in token_ids if t not in self._token_modules})
@@ -1535,7 +1527,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 )
                 response.raise_for_status()
                 for row in response.json()["data"]:
-                    if row["module"] in (V1_MODULE, *V2_MODULES):  # else missing
+                    if row["module"] in (V1_MODULE, *V2_MODULES):
                         self._token_modules[str(row["token_id"])] = row["module"]
             except (
                 requests.exceptions.RequestException,
@@ -1574,14 +1566,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         holder: str,
     ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
-
-        v2 has no status for "not redeemable", and its default status returns
-        settled rows alongside open ones, so the ``redeemable`` filter is
-        applied here on the row flag. A V2 row, by its token's module, also
-        gets the holder's exact PositionManager balance: the Data API rounds sizes.
-        A row whose module is unknown stays V1 unless it could be V2, and a V2
-        module must fit the row's position ID; otherwise the read fails and is
-        retried next period. A row with no token ID stays V1.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
@@ -1637,7 +1621,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
         :param address: holder address to query; defaults to the Safe. The
             CLOB v2 withdrawal sell-loop passes the DepositWallet here because
-            the sellable CTF has been moved Safe→DW by the withdrawal top-up.
+            the sellable positions have been moved Safe→DW by the withdrawal top-up.
         :return: Tuple of (positions_data, error_message)
         """
         params = self._positions_params(
@@ -1788,7 +1772,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 return None, error_msg
 
             if amount is not None:
-                # A V2 claim goes to the Router, by position id.
                 calldata = encode_router_redeem(int(str(position_id)), amount)
                 target_address = self.router
                 market_type = "Protocol V2 (via Router)"
@@ -2071,7 +2054,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         CTF and PositionManager balances for each supplied ``token_ids``,
         then relays a single ``execute`` batch moving every non-zero balance
         DW→Safe through the relayer proxy. The Safe is the canonical store of
-        persistent assets, so the bought CTF position must not linger in the
+        persistent assets, so the bought position must not linger in the
         transient DW (otherwise withdrawal/redeem, which act on the Safe, can
         never see it). Nothing to move is a successful no-op so the round can
         converge after a crash/empty DW.
@@ -2102,7 +2085,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ),
                     }
                 )
-            # A V1 position is on the CTF and a V2 one on PositionManager.
             ledgers = (self.ctf_address, self.position_manager)
             for ledger, token_id in product(ledgers, token_ids or []):
                 balance = self._erc1155_balance_of(ledger, dw, token_id)

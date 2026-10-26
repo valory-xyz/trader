@@ -77,10 +77,10 @@ class PolymarketWithdrawTopUpBehaviour(PolymarketDepositWalletBehaviour):
 
         :yield: framework yields between dispatch and the connection response.
         :return: list of ``(ledger, token_id_int, amount_base_units)`` for sellable
-            positions (V1 on the CTF, V2 on PositionManager), or ``None`` on error.
+            positions, or ``None`` on error.
         """
         # Query the Safe (the connection default): this runs BEFORE the top-up
-        # moves anything, so the sellable CTF is still held by the Safe. (The
+        # moves anything, so the sellable positions are still held by the Safe. (The
         # round is only re-entered on a pre-PREPARE_TX failure — never after the
         # Safe→DW batch settles — so the holder is always the Safe here. The
         # post-move DW query lives in the sell-loop's _request_fetch_positions.)

@@ -1751,7 +1751,7 @@ def _router_claim(row):  # type: ignore[no-untyped-def]
 
 @pytest.mark.parametrize("builder", [False, True])
 def test_v2_position_claim_through_router(builder) -> None:  # type: ignore[no-untyped-def]
-    """The Safe claims winning V2 rows through the Router and its V1 rows as before."""
+    """The Safe claims winning V2 rows through the Router and its V1 rows."""
     rows = (pm.V2_WIN, pm.V1_WIN, pm.V2_WIN0, pm.XI_WON, pm.V1_LOSE, pm.V2_LOSE)
     with pm._safe_world(*rows) as conn:
         payload, claims = _redeem_period(conn, builder)

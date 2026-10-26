@@ -11,7 +11,7 @@ fingerprint:
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeiahyu3zepvnuk45e6elxso63lfmoxgk3vfpnp6mr4mjsebsr44nqq
   activity_goal.py: bafybeicojs7j4jsacetzro3qvwd7af6gvgtvfxtpno54tvxlw3zf64k36y
-  behaviours.py: bafybeigxptxwp3mnof2r6lvvqg3lseedoippg4ir63x2eritb3qug7whge
+  behaviours.py: bafybeieiegxafncyfve663gdlojasdpnqmelybvh6oehqjnk4fjfzww5km
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   feed.py: bafybeicljeuw5uevp3sow2fzfrowm5sq4ur6hviiwu6bofqpw4zn73d6mu
   fsm_specification.yaml: bafybeibjgjldm26nwmidx75ylvr5q7oe4kthiphvceuerkacxd3chj6vuu
@@ -60,7 +60,7 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 connections:
-- valory/polymarket_client:0.1.0:bafybeiebtka7atrdk2ltie554rsv67wvjmzuavktjneyd5aimc2jfyqqxm
+- valory/polymarket_client:0.1.0:bafybeiaxk4my7vs57kpt47g6ft2lxz4v2s42m2skndtl5ef2ugqdjpy2he
 handlers:
   abci:
     args: {}

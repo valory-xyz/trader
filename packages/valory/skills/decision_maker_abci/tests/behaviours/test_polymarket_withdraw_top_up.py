@@ -295,7 +295,7 @@ def test_v2_top_up_dust_floor_on_exact_balance(tmp_path, size, balance) -> None:
 
 def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignore[no-untyped-def]
     """V2 positions move to the DW, the sell loop passes each row's asset ID, and the unsold return to the Safe."""
-    sells = []  # the sell is stubbed: V2 sell signing for the V2 exchange comes later
+    sells = []  # the sell is stubbed
 
     def sell(token_id, amount, **_):  # type: ignore[no-untyped-def]
         sells.append((token_id, amount))
