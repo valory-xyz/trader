@@ -526,6 +526,14 @@ class TestFunderThreading:
             "makingAmount": 1,
             "takingAmount": 1,
         }
-        with patch.object(_Conn, "_ensure_dw_funder") as ensure:
+        gamma = {"return_value.json.return_value": [{"version": "v1"}]}
+        with (
+            patch.object(_Conn, "_ensure_dw_funder") as ensure,
+            patch("requests.get", **gamma),
+        ):
+            calls = MagicMock()
+            calls.attach_mock(ensure, "ensure")
+            calls.attach_mock(conn.client.post_order, "post_order")
             conn._sell_position(token_id="1", amount=1.0, funder=DW)
         ensure.assert_called_once_with(DW)
+        assert [name for name, *_ in calls.mock_calls] == ["ensure", "post_order"]
