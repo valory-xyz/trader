@@ -303,8 +303,7 @@ def test_v2_address_params_resolve(
 
 SERVICES_DIR = _VALORY_DIR / "services"
 
-# Must outlast Pearl's middleware chat deadline (60 s), so a slow chat reply
-# reaches the app instead of a 408 from the agent's own http server.
+# Must outlast Pearl's middleware chat deadline, so a slow reply is not a 408.
 HTTP_SERVER_TIMEOUT = 65.0
 
 
