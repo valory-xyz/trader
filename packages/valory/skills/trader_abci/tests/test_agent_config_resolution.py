@@ -53,6 +53,10 @@ from packages.valory.skills.funds_manager.models import Params
 # packages/valory/skills/trader_abci/tests/ -> packages/valory/
 _VALORY_DIR = Path(__file__).resolve().parents[3]
 AEA_CONFIG_PATH = _VALORY_DIR / "agents" / "trader" / "aea-config.yaml"
+SERVICES_DIR = _VALORY_DIR / "services"
+
+# Must outlast Pearl's middleware chat deadline, so a slow reply is not a 408.
+HTTP_SERVER_TIMEOUT = 65.0
 
 # The path-derived env var the middleware exports for the (anonymous) mechs
 # marketplace subgraph url; open-aea derives this name from the config path.
@@ -301,14 +305,8 @@ def test_v2_address_params_resolve(
         assert args.get(key) == expected
 
 
-SERVICES_DIR = _VALORY_DIR / "services"
-
-# Must outlast Pearl's middleware chat deadline, so a slow reply is not a 408.
-HTTP_SERVER_TIMEOUT = 65.0
-
-
 def test_agent_config_http_server_timeout_default() -> None:
-    """The agent-level http server deadline matches the services' default."""
+    """The agent-level http_server timeout defaults to HTTP_SERVER_TIMEOUT."""
     assert _override(_resolve({}), "http_server")["config"]["timeout"] == (
         HTTP_SERVER_TIMEOUT
     )
