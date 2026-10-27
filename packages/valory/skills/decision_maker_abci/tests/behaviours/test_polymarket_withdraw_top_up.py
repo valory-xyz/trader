@@ -22,9 +22,18 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+from eth_abi import encode as abi_encode
+from eth_utils import to_checksum_address  # type: ignore[import-not-found]
+from hexbytes import HexBytes
+
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
     DEPOSIT_WALLET_STORE,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw import (
+    PolymarketWithdrawBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_withdraw_top_up import (
     CTF_DECIMAL_FACTOR,
@@ -222,3 +231,106 @@ class TestPolymarketWithdrawTopUpBehaviour:
     def test_amount_scaling(self) -> None:
         """CTF_DECIMAL_FACTOR scales human shares to 6-decimal base units."""
         assert CTF_DECIMAL_FACTOR == 10**6
+
+
+def _top_up(tmp_path, conn):  # type: ignore[no-untyped-def]
+    """Run the withdrawal top-up of the Safe against ``conn`` and apply its batches."""
+    behaviour = _make_behaviour(tmp_path)
+    behaviour.context.params.configure_mock(**pm.V2_PARAMS)
+    behaviour._build_multisend_data = lambda: _ok()  # type: ignore[method-assign]
+    behaviour._build_multisend_safe_tx_hash = lambda: _ok()  # type: ignore[method-assign]
+    pm._wire(behaviour, conn)
+    with patch.multiple(
+        PolymarketWithdrawTopUpBehaviour,
+        synchronized_data=PropertyMock(return_value=_synced(DW)),
+        tx_hex=PropertyMock(return_value="0xsafehash"),
+    ):
+        behaviour.synchronized_data.safe_contract_address = pm.V2_SAFE
+        assert _drive(behaviour).event == Event.PREPARE_TX.value
+    for batch in behaviour.multisend_batches:
+        assert batch.value == 0
+        pm._apply_transfer(conn.balances, pm.V2_SAFE, batch.to, batch.data)
+    return behaviour.multisend_batches
+
+
+# drift: base units by which V2_OPEN's on-chain balance differs from its size (test values)
+@pytest.mark.parametrize(
+    "v1_rows,drift", [((pm.V1_OPEN, pm.V1_00), 0), ((), 49), ((), -49)]
+)
+def test_v2_position_detected_from_row(tmp_path, v1_rows, drift) -> None:  # type: ignore[no-untyped-def]
+    """Each Safe row moves on its token module's ledger, whatever its condition ID, with no bet record; V2 moves its exact balance."""
+    rows, dw = (pm.V2_OPEN, pm.XI, *v1_rows), to_checksum_address(DW)
+    v1_ids = [int(row["token_id"]) for row in v1_rows]
+    types = ["address", "address", "uint256[]", "uint256[]", "bytes"]
+    v1_batch = pm._selector(f"safeBatchTransferFrom({','.join(types)})") + abi_encode(
+        types, [pm.V2_SAFE, dw, v1_ids, [5000000] * len(v1_ids), b""]
+    )
+    v2_open = (pm.POSITION_MANAGER, int(pm.V2_OPEN["token_id"]))
+    expected = pm._ledger(dw, *rows)
+    expected[(v2_open[0], dw, v2_open[1])] += drift
+    with pm._safe_world(*rows) as conn:
+        conn.balances[(v2_open[0], pm.V2_SAFE, v2_open[1])] += drift
+        batches = _top_up(tmp_path, conn)
+    v1_batches = [bytes(HexBytes(b.data)) for b in batches if b.to == CTF]
+    assert v1_batches == ([v1_batch] if v1_rows else [])
+    assert pm._held(conn.balances) == expected
+
+
+# 10**4 base units is the 0.01-share dust floor
+@pytest.mark.parametrize("size,balance", [(10.0, 0), (10.0, 10**4), (0.005, 10**6)])
+def test_v2_top_up_dust_floor_on_exact_balance(tmp_path, size, balance) -> None:  # type: ignore[no-untyped-def]
+    """A V2 row moves by its exact balance: not at all when that is dust, whatever its rounded size."""
+    v2, dw = {**pm.V2_OPEN, "current_size": size}, to_checksum_address(DW)
+    token = int(v2["token_id"])
+    with pm._safe_world(v2, pm.V1_OPEN) as conn:
+        conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, token)] = balance
+        _top_up(tmp_path, conn)
+    holder = dw if balance > 10**4 else pm.V2_SAFE
+    expected = {
+        **pm._ledger(dw, pm.V1_OPEN),
+        (pm.POSITION_MANAGER, holder, token): balance,
+    }
+    assert pm._held(conn.balances) == pm._held(expected)
+
+
+def test_v2_position_withdrawal_by_position_id(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """V2 positions move to the DW, the sell loop passes each row's asset ID, and the unsold return to the Safe."""
+    sells = []  # the sell is stubbed
+
+    def sell(token_id, amount, **_):  # type: ignore[no-untyped-def]
+        sells.append((token_id, amount))
+        return {"status": "unmatched", "filled_shares": 0.0}, None
+
+    with pm._safe_world(pm.V2_OPEN, pm.V1_OPEN) as conn:
+        _top_up(tmp_path, conn)
+        conn.pages[to_checksum_address(DW)] = conn.pages.pop(pm.V2_SAFE)
+        withdraw = object.__new__(PolymarketWithdrawBehaviour)
+        withdraw.__dict__["_context"] = MagicMock(agent_address="agent")
+        withdraw.context.params.store_path = tmp_path
+        withdraw.context.params.withdrawal_max_fak_attempts = 1
+        withdraw.finish_behaviour = lambda payload: _ok()  # type: ignore[method-assign]
+        conn._sell_position = sell
+        pm._wire(withdraw, conn)
+        list(withdraw.async_act())
+    for (dw, _, txs), _ in conn.relayer_proxy.exec_wallet_batch.call_args_list:
+        for tx in txs:
+            pm._apply_transfer(conn.balances, dw, tx["target"], tx["data"])
+    assert sells == [(pm.V2_OPEN["token_id"], 10.0), (pm.V1_OPEN["token_id"], 5.0)]
+    assert pm._held(conn.balances) == pm._ledger(pm.V2_SAFE, pm.V2_OPEN, pm.V1_OPEN)
+
+
+def test_v2_unknown_module_retries_top_up(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """A Safe row that could be V2 with an unknown module fails the read, so the top-up retries instead of finishing."""
+    behaviour = _make_behaviour(tmp_path)
+    behaviour.context.params.configure_mock(**pm.V2_PARAMS)
+    with pm._safe_world(pm.V2_OPEN) as conn:
+        conn.tokens_down = True
+        pm._wire(behaviour, conn)
+        with patch.object(
+            PolymarketWithdrawTopUpBehaviour,
+            "synchronized_data",
+            PropertyMock(return_value=_synced(DW)),
+        ):
+            behaviour.synchronized_data.safe_contract_address = pm.V2_SAFE
+            assert _drive(behaviour).event == Event.NONE.value
+    assert behaviour.multisend_batches == []
