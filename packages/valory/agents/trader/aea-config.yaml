@@ -73,12 +73,13 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibn3rsc2vkbk5awojwo3u3epmpla4kfbt7sh54d3jcmsknqjkzcfu
 - valory/market_manager_abci:0.1.0:bafybeifxqn7dscoia55vyk3gohkqfe2oc64eerbaz3ajobv743cx75kdye
 - valory/decision_maker_abci:0.1.0:bafybeic5gen2z4fh63ikfe3kvhkhimewirl2qpyjv5qdiqc7px3m5ffi3i
-- valory/trader_abci:0.1.0:bafybeiei4wrw7vitdxmccu4ttrq34fvjghx7lejhi4tpwibss43azkwuay
+- valory/trader_abci:0.1.0:bafybeictf6geljbczmhghp6r7bwpoadim33fpffjsqnycgdqku33g3givm
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeibhsaiis5r6shsog62dtmn2cvetbzncxinp2atkgmvu4rtm7vuife
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeieby4hfizo25q6ueammco4ncifmzksboggsuond2zyjfsw3sq4tlm
+- valory/agent_performance_summary_abci:0.1.0:bafybeih6vfe5ygpgmclpf6qvi4ttm46zaiped7vjaljm5pvrhjmo7t5mw4
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
