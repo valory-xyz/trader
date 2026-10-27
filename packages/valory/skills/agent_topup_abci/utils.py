@@ -47,6 +47,17 @@ def get_safe_native_balance(
     return None if native is None else native.balance
 
 
+def native_balances_read(
+    funds: FundRequirements, chain_name: str, agent_address: str
+) -> bool:
+    """Return whether the Agent Signer and Agent Safe native balances were read on a chain."""
+    for is_signer in (True, False):
+        native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer))
+        if native is not None and native.balance is None:
+            return False
+    return True
+
+
 def get_signer_native_deficit(
     funds: FundRequirements, chain_name: str, agent_address: str
 ) -> Optional[int]:

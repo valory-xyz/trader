@@ -70,12 +70,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiaza4225i3mgnuvhtohsuygqfw2vs6gegdw7dc2dtwjajonngyqdu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid5m6udcluwzwgh7jchsq2giz5gs7ddod6p3z4spsnez2yujfqkwy
 - valory/market_manager_abci:0.1.0:bafybeifxqn7dscoia55vyk3gohkqfe2oc64eerbaz3ajobv743cx75kdye
-- valory/decision_maker_abci:0.1.0:bafybeihtithkzgpxh4crs67xosfzgnfardzu4atqjofab43o56nekdf6me
-- valory/trader_abci:0.1.0:bafybeidudflf5h4czii3xqx2iliqpaeeasffszsaqs5a5xpnscxvsc4rh4
+- valory/decision_maker_abci:0.1.0:bafybeifish2rkibmbukre5xvtk7ou3m2wgtqdq5a2kep2r7mksaavfu2lm
+- valory/trader_abci:0.1.0:bafybeiheyxeiddwit3kbemoyd7ltb2flixzlyavlfpv65s7dxhihhds2um
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeicj6h6sxmpdrt43h7eyh2yec2brh5l6dojsiaulgh6miupoqvxqdy
+- valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeibhsaiis5r6shsog62dtmn2cvetbzncxinp2atkgmvu4rtm7vuife
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeieby4hfizo25q6ueammco4ncifmzksboggsuond2zyjfsw3sq4tlm

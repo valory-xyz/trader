@@ -44,6 +44,7 @@ from packages.valory.skills.agent_topup_abci.utils import (
     WXDAI_ADDRESS,
     get_agent_topups,
     get_safe_native_balance,
+    native_balances_read,
 )
 from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
@@ -157,6 +158,12 @@ class AgentTopUpBehaviour(BaseBehaviour):
             self._fail_topup()
             return None
         if topup.move == 0:
+            if not native_balances_read(funds, chain, agent_address):
+                # Keep the gate open so the next period checks again.
+                self.context.logger.warning(
+                    f"No Agent Signer top-up on {chain}: a native balance was not read."
+                )
+                return None
             self.context.logger.info(f"No Agent Signer top-up on {chain}.")
             self._close_check()
             return None

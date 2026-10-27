@@ -266,6 +266,24 @@ class TestGate:
         assert harness.run() is None
         assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == last_check
 
+    @pytest.mark.parametrize(
+        "signer_balance, safe_balance", [(None, 10 * ETHER), (ETHER // 10, None)]
+    )
+    def test_unread_balance_leaves_the_gate_open(
+        self, signer_balance: Optional[int], safe_balance: Optional[int]
+    ) -> None:
+        """An unread native balance is no decision: the next period checks again."""
+        last_check = NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", signer_balance, safe_balance),
+            shared_state={LAST_TOPUP_CHECK_KEY: last_check, TOPUP_SUCCEEDED_KEY: True},
+        )
+
+        assert harness.run() is None
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == last_check
+        assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is True
+
     def test_retried_check_closes_the_gate_once_its_tx_is_prepared(self) -> None:
         """A check that failed is retried next period, and closes the gate once it prepares its tx."""
         harness = _Harness(
