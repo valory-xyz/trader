@@ -12,7 +12,7 @@ fingerprint:
   relayer_proxy.py: bafybeihtqh44qrgeyx3vriowxpayz43bmeg5z4wcolrknybrhozfhmuqim
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
-  tests/test_connection.py: bafybeidjju5s6qfeycww2rr6ris6m7cv2um3yrw5sad7oc54yoptbnep6y
+  tests/test_connection.py: bafybeifx7gdjd57huh3g4rriyom7gk24nn6bvflhkwy2lspzyxwey3xyv4
   tests/test_connection_dw.py: bafybeia2kjf23h25cv3izhyw4xsgylgszrunfwmhcelmh2gbej624jheu4
   tests/test_relayer_proxy.py: bafybeicco4upyejikjpaahdaftxgcy3d3hdvqpxyp5zwaduowhjbzm3o6a
 fingerprint_ignore_patterns: []

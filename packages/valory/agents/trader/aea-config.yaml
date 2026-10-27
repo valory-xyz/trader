@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeiceqikep6cpqyyrqkosw2ru4xerqp4nkhfzt4h6l7yrkixtmyxiea
+- valory/polymarket_client:0.1.0:bafybeif6zgtuf5tifynjm4efvenihvbjedzybxpjbqdu6z7tdw3jp2c2ey
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihfoursjvcstyz4uuxjawcribhvexmm2vzu54p2wagstnq7g25ls4
-- valory/market_manager_abci:0.1.0:bafybeihqzi6rf4mna5qyzqli2jahdpott6xhdf67oejpgsrw72jx4evhgu
-- valory/decision_maker_abci:0.1.0:bafybeigp7adheuop6ogpzan7tvb4uz3zxyy5kh7wmd2ry52x4i4rezqhb4
-- valory/trader_abci:0.1.0:bafybeiekezfoxykbugongjwdiiffqbkxolmc3avah2rcmsvj2w7fybnf2m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeif5oyrdhj424fvgb7rrgczu2qsyl2obrvhwac6xp76jqv6cyzl2kq
+- valory/market_manager_abci:0.1.0:bafybeifxqn7dscoia55vyk3gohkqfe2oc64eerbaz3ajobv743cx75kdye
+- valory/decision_maker_abci:0.1.0:bafybeib7vi7xhsswnilwwaxi4wwg74ga2knzi2wji6rpqe6wxogr7tt6dy
+- valory/trader_abci:0.1.0:bafybeictkue5jeyjbf4ql7cxdqbbjycoe4zvqrix66l3yynyy47rkkjuuq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeidgttpeu6v62a7xfp5g5v4242gzfh3sbglinsrehf3pgy7jhxpxyi
+- valory/check_stop_trading_abci:0.1.0:bafybeibhsaiis5r6shsog62dtmn2cvetbzncxinp2atkgmvu4rtm7vuife
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeigaz4ja5j5yqip5kgs5rd2lyqurkhjnx5uljtsdsete6yui76ntqq
-- valory/agent_performance_summary_abci:0.1.0:bafybeigqt4vsl3emqg5zffshexk6d2x3cq3webva2qxemeyhqllxhphmfu
+- valory/chatui_abci:0.1.0:bafybeieby4hfizo25q6ueammco4ncifmzksboggsuond2zyjfsw3sq4tlm
+- valory/agent_performance_summary_abci:0.1.0:bafybeih6vfe5ygpgmclpf6qvi4ttm46zaiped7vjaljm5pvrhjmo7t5mw4
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe

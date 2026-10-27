@@ -32,6 +32,7 @@ from eth_abi import decode as abi_decode
 from eth_abi import encode as abi_encode
 from eth_utils import keccak, to_checksum_address
 from hexbytes import HexBytes
+from py_clob_client_v2 import ClobClient
 from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
@@ -946,6 +947,43 @@ class TestBuySizing:
         assert response["below_minimum"] is True
         assert "signed_order_json" not in response
         assert "min size: 1" in error
+
+
+# Real CLOB answers for Gamma market 6261770 (version v2, binary), trimmed to the
+# fields the SDK reads: /markets-by-token, /clob-markets and /book.
+V2_POSITION_IDS = [
+    "673779244106476936176328196335078147708901168426603784117164734511803531264",
+    "673779244106476936176328196335078147708901168426603784117164734511803531265",
+]
+V2_CONDITION_ID = "0x017d58752a1991c27b94033aa3ef4ba81e000000000000000000000000000000"
+
+
+@pytest.mark.parametrize(
+    "listed, fee", [(V2_POSITION_IDS, 0.0014), (V2_POSITION_IDS[1:], 0.0)]
+)
+def test_market_version_v2_buy_quotes_fee_by_position_id(
+    listed: list, fee: float
+) -> None:
+    """A V2 buy quoted by position ID carries the fee the CLOB lists for that ID; an ID the market does not list would quote no fee."""
+    answers = {
+        f"/markets-by-token/{V2_POSITION_IDS[0]}": {"condition_id": V2_CONDITION_ID},
+        f"/clob-markets/{V2_CONDITION_ID}": {
+            "t": [{"t": position_id} for position_id in listed],
+            "mts": 0.01,
+            "fd": {"r": 0.07, "e": 1},
+        },
+        "/book": {"asks": [{"price": "0.99", "size": "5"}]},
+    }
+    conn = _make_connection()
+    conn.client = ClobClient(conn._host, chain_id=conn._chain_id)
+    conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
+    with patch.object(
+        conn.client, "_get", side_effect=lambda url, **_: answers[urlsplit(url).path]
+    ):
+        quote, error = conn._quote_buy(V2_POSITION_IDS[0], 2.0, funder=SAFE_ADDRESS)
+    assert error is None
+    assert quote["fee_usd"] == pytest.approx(fee, abs=1e-12)  # 2.0 * r * (1 - p)
+    assert quote["required_usd"] == 2.0 + quote["fee_usd"]
 
 
 # ---------------------------------------------------------------------------
