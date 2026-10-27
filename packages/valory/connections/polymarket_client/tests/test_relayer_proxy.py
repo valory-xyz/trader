@@ -138,8 +138,9 @@ class TestRequest:
             "request",
             side_effect=requests.exceptions.ConnectionError("boom"),
         ):
-            with pytest.raises(RelayerProxyError, match="failed"):
+            with pytest.raises(RelayerProxyError) as excinfo:
                 client._request("GET", "transaction")
+        assert str(excinfo.value) == "Relayer proxy GET transaction failed: boom"
 
     def test_request_http_error(self) -> None:
         """A non-2xx status is wrapped."""
@@ -149,14 +150,19 @@ class TestRequest:
             with pytest.raises(RelayerProxyError):
                 client._request("GET", "transaction")
 
-    def test_request_non_json(self) -> None:
-        """A non-JSON body is wrapped."""
+    def test_request_2xx_non_json_body_is_reported(self) -> None:
+        """A 2xx non-JSON reply names the decode error and the capped body."""
         client = _make_client()
-        r = MagicMock()
-        r.json.side_effect = ValueError("not json")
-        with patch.object(requests, "request", return_value=r):
-            with pytest.raises(RelayerProxyError, match="non-JSON"):
+        response = requests.Response()
+        response.status_code = 200
+        response._content = b"<html>" + b"x" * 600
+        with patch.object(requests, "request", return_value=response):
+            with pytest.raises(RelayerProxyError) as excinfo:
                 client._request("GET", "transaction")
+        assert str(excinfo.value) == (
+            "Relayer proxy GET transaction returned non-JSON: "
+            f"{excinfo.value.__cause__}: <html>{'x' * 494}"
+        )
 
 
 class TestDeployedAndDeploy:
