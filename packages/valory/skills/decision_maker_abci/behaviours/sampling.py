@@ -149,10 +149,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # Benchmarking replays simulated time per market, so no cooldown there.
         if self.benchmarking_mode.enabled:
             return False
+        # A stamp in the future (clock skew) does not hold the market back.
+        elapsed = now - bet.processed_timestamp
         return (
             bet.invested_amount == 0
             and bet.processed_timestamp > 0
-            and now - bet.processed_timestamp < self.params.declined_market_cooldown
+            and 0 <= elapsed < self.params.declined_market_cooldown
         )
 
     def _classify_processable_bet(
@@ -343,6 +345,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # Markets cooling down after a decline must not push the agent into
         # re-betting the markets it already holds; it waits out the cooldown.
         markets_cooling = strict_breakdown["cooling"] > 0
+        cooling_note = (
+            f" {strict_breakdown['cooling']} markets are cooling down for "
+            f"{self.params.declined_market_cooldown}s after a decision "
+            "that left no position."
+            if markets_cooling
+            else ""
+        )
         if (
             len(available_bets) <= 0
             and self._multi_bets_fallback_allowed()
@@ -412,13 +421,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
-            if markets_cooling:
-                msg += (
-                    f" {strict_breakdown['cooling']} markets are cooling down for "
-                    f"{self.params.declined_market_cooldown}s after a decision "
-                    "that left no position."
-                )
-            self.context.logger.warning(msg)
+            self.context.logger.warning(msg + cooling_note)
             return None
 
         if self.benchmarking_mode.enabled:
@@ -546,7 +549,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"dropped={in_loop_neg_risk} kept=0"
         )
         msg = "No valid bets found after liquidity validation!"
-        self.context.logger.warning(msg)
+        self.context.logger.warning(msg + cooling_note)
         return None
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
