@@ -58,6 +58,8 @@ NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"  # v2
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
 CTF_COLLATERAL_ADAPTER = "0xAdA100Db00Ca00073811820692005400218FcE1f"
 NEG_RISK_CTF_COLLATERAL_ADAPTER = "0xadA2005600Dec949baf300f4C6120000bDB6eAab"
+POSITION_MANAGER = "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"  # Protocol V2
+ROUTER = "0x12121212006e4CD160D18e3f00711DA5c3372600"  # Protocol V2
 
 
 class _TestableConnection(PolymarketClientConnection):
@@ -95,6 +97,8 @@ def _make_connection() -> _TestableConnection:
     conn.neg_risk_adapter = NEG_RISK_ADAPTER
     conn.ctf_collateral_adapter = CTF_COLLATERAL_ADAPTER
     conn.neg_risk_ctf_collateral_adapter = NEG_RISK_CTF_COLLATERAL_ADAPTER
+    conn.position_manager = POSITION_MANAGER
+    conn.router = ROUTER
     conn.clob_version = "v2"
     conn.dialogues = MagicMock()
     configuration_mock = MagicMock()
@@ -459,6 +463,24 @@ class TestPlaceBet:
         cached_dict = json.loads(response["signed_order_json"])
         assert cached_dict["clob_version"] == "v2"
         assert cached_dict["timestamp"] == "1700000000000"
+
+    def test_v1_order_unchanged(self) -> None:
+        """A V1 market order still names its token id and no V3 position id.
+
+        The SDK signs a token-id order with the CLOB-reported domain version,
+        so the connection passes the order args and nothing else.
+        """
+        conn = _make_connection()
+        _arm_preflight(conn)
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        _, error = conn._place_bet(token_id="tok123", amount=10.0)  # nosec B106
+        assert error is None
+        (order_args,), kwargs = conn.client.create_market_order.call_args
+        assert kwargs == {}
+        assert order_args.token_id == "tok123"
+        assert getattr(order_args, "position_id", "absent") is None
 
     def test_place_bet_with_cached_v2_order(self) -> None:
         """Uses cached v2 signed order instead of creating a new one."""
@@ -3033,7 +3055,7 @@ class TestSetApproval:
     """Tests for _set_approval."""
 
     def test_success(self) -> None:
-        """Executes 8 approval transactions and returns transaction data."""
+        """Executes 9 approval transactions and returns transaction data."""
         conn = _make_connection()
         tx_data = {"hash": "0xabc"}
         result_mock = MagicMock()
@@ -3044,13 +3066,41 @@ class TestSetApproval:
         assert result == tx_data
         assert error is None
 
-        # 8 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
-        # NegRisk Exchange, NegRiskAdapter) plus 2 ERC-1155 setApprovalForAll
-        # for the CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair.
+        # 9 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
+        # NegRisk Exchange, NegRiskAdapter), 2 ERC-1155 setApprovalForAll
+        # for the CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair, and
+        # the PositionManager setApprovalForAll for the Router (V2 claims).
         # No pUSD allowances are granted to the collateral adapters: their
         # redeem path doesn't pull ERC-20 from the Safe.
         call_kwargs = conn.relayer_client.execute.call_args[1]
-        assert len(call_kwargs["transactions"]) == 8
+        assert len(call_kwargs["transactions"]) == 9
+
+    def test_safe_approves_router_for_v2_positions(self) -> None:
+        """The Safe lets the Router operate its PositionManager positions.
+
+        The relayer batch ends with PositionManager ``setApprovalForAll(Router,
+        true)``, and ``_check_approval`` reads that approval and reports
+        ``all_approvals_set: false`` until it is on chain.
+        """
+        conn = _make_connection()
+        conn._set_approval()
+        last = conn.relayer_client.execute.call_args[1]["transactions"][-1]
+        assert (last.to, last.data, last.value) == (
+            POSITION_MANAGER,
+            "0xa22cb465" + "0" * 24 + ROUTER[2:].lower() + "0" * 63 + "1",
+            "0",
+        )
+
+        conn._check_erc20_allowance = MagicMock(return_value=MAX_UINT256)
+        conn._check_erc1155_approval = MagicMock(
+            side_effect=lambda token, owner, operator: operator != ROUTER
+        )
+        result, _ = conn._check_approval()
+        assert result["all_approvals_set"] is False
+        assert result["position_manager_approvals"] == {"router": False}
+        conn._check_erc1155_approval.assert_any_call(
+            POSITION_MANAGER, SAFE_ADDRESS, ROUTER
+        )
 
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""
@@ -3269,10 +3319,11 @@ class TestCheckApproval:
         conn._check_erc20_allowance = MagicMock(
             side_effect=[MAX_UINT256, 0, MAX_UINT256]
         )
-        # 5 ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
-        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
+        # ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
+        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter,
+        # then the PositionManager operator check for the Router.
         conn._check_erc1155_approval = MagicMock(
-            side_effect=[True, False, True, True, True]
+            side_effect=[True, False, True, True, True, True]
         )
 
         result, error = conn._check_approval()

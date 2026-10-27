@@ -17,7 +17,7 @@ connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
 - valory/genai:0.1.0:bafybeibu5zmkjhtesernme7fow7m4kokfxjhykm6a3huskmuagbf2jkrku
 - valory/x402:0.1.0:bafybeifhxkt7kaxfotnqnr6w4hxfjnjxf3uumr6psz3felj6pe5astyily
-- valory/polymarket_client:0.1.0:bafybeiaycpfvuukairdzlbqnw6gvxgbdfaqdhcdxxtoszle5fhe67q6zve
+- valory/polymarket_client:0.1.0:bafybeickfz4dggcczmygjwwj6fupfocfzjy7ycbsm5xhyp76liqxvzfvnq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/gnosis_safe_proxy_factory:0.1.0:bafybeigr6ugkp6bxwnbkecktotekcjihabb6eudh3bgcnjfdorwosygile
@@ -70,15 +70,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihsecd5ttwryoubt5i7wab6mxc2erqa2meqbnm77qrwbm7ofyadfe
-- valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
-- valory/decision_maker_abci:0.1.0:bafybeihnppntssde22k5fpjmd6q5sejhujkbr25twkebig2yh5p77uv45q
-- valory/trader_abci:0.1.0:bafybeigmi6u2hn7auylbgbewbt2octo7o5oafxrl3l4uxwulcbxz7dwjzm
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiggmfzjwhlqg5fbbohm4g4qlkkpzcxnglpa6htp3mm34y3zvuycby
+- valory/market_manager_abci:0.1.0:bafybeigpc3nsvexvhlxkgjdar4ky53oy6itj7vpb66qjoo3tmhktpdgwpy
+- valory/decision_maker_abci:0.1.0:bafybeigofnmu6m574egdjhzijwwwmysjltjpooeaoocdnkugh7ap6w6l2u
+- valory/trader_abci:0.1.0:bafybeicjm7tyf5yvt326v2jwuxoz3bf54yoaj2vm6o2ygme4wyx62tgpkm
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/check_stop_trading_abci:0.1.0:bafybeihopa2buonry5ryrhsxr2a5adfzs2bw4sedq7efc4i232hlnlwaua
+- valory/check_stop_trading_abci:0.1.0:bafybeicxt7obaaqzpaaajx62d7qvw7kwwhxzzqjhyee7ypffqa225l6xbi
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiea7ymnt4cyzbheu5ko7mlwzrlw5o42nqvvq2n7ca24djq4ne4774
-- valory/agent_performance_summary_abci:0.1.0:bafybeiber3axwwonu47iks66afla7quytbk5odv7e2db5bvup3ufoz6dne
+- valory/chatui_abci:0.1.0:bafybeibobbjfg4jhcsixpgijjshewoud4lhdzlg5es3ui2akz2p6lsxqmi
+- valory/agent_performance_summary_abci:0.1.0:bafybeiboyks7qbfexqf5emduucafz4634k46j7d5it4ubx4ksg5pr667uu
 - valory/funds_manager:0.1.0:bafybeicfw7qjtnlcbw6awsvxdahqu42fxsfsd3wy7mbyhcbls4l5pee3by
 customs:
 - valory/kelly_criterion:0.1.0:bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe
@@ -305,6 +305,9 @@ models:
       polymarket_ctf_exchange_address: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
       polymarket_neg_risk_ctf_exchange_address: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
       polymarket_neg_risk_adapter_address: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+      polymarket_exchange_v3_address: ${POLYMARKET_EXCHANGE_V3:str:0xe3333700cA9d93003F00f0F71f8515005F6c00Aa}
+      polymarket_position_manager_address: ${POLYMARKET_POSITION_MANAGER:str:0x006F54F7f9A22e0000CC2AB60031000000ae9fEF}
+      polymarket_router_address: ${POLYMARKET_ROUTER:str:0x12121212006e4CD160D18e3f00711DA5c3372600}
       valid_mechs: ${VALID_MECHS:list:["0xc05e7412439bd7e91730a6880e18d5d5873f632c","0x601024e27f1c67b28209e24272ced8a31fc8151f","0xb3c6319962484602b00d5587e965946890b82101","0xdb78159e9246ec738f51c2c9cb1169b5c0e45fee","0x818df8dcd43d716a7263798c99a2fc8e27010711","0x11c4389bf449991d69f89f941c3e79d5d828f1bc"]}
       mech_marketplace_v1_suitable_tools: ${MECH_MARKETPLACE_V1_SUITABLE_TOOLS:list:["prediction-offline","prediction-offline-sme","prediction-online","prediction-online-sme","prediction-request-reasoning","prediction-request-reasoning-claude"]}
       penalize_mech_time_window: ${int:1800}
@@ -603,5 +606,7 @@ config:
   ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
   neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
   neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+  position_manager_address: ${POLYMARKET_POSITION_MANAGER:str:0x006F54F7f9A22e0000CC2AB60031000000ae9fEF}
+  router_address: ${POLYMARKET_ROUTER:str:0x12121212006e4CD160D18e3f00711DA5c3372600}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon.drpc.org}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:false}
