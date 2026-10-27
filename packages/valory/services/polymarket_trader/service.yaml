@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeib4ljnpeiyb55rgoxgq7y4oxqsdfdrbbzwdepv5ji6isnzpmgtvly
+agent: valory/trader:0.1.0:bafybeigfa3ieceycgengw6y6k7dys5gy5u7vqqd75jdbe7prz4nn7rg3z4
 number_of_agents: 1
 deployment:
   agent:
@@ -398,7 +398,7 @@ type: connection
 config:
   host: ${HTTP_SERVER_HOST:str:127.0.0.1}
   port: ${HTTP_SERVER_PORT:int:8716}
-  timeout: ${HTTP_SERVER_TIMEOUT:float:30.0}
+  timeout: ${HTTP_SERVER_TIMEOUT:float:65.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
 public_id: valory/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq
