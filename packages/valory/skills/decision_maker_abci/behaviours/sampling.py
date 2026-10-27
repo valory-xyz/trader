@@ -568,6 +568,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 "request_type": RequestType.FETCH_ORDER_BOOK.value,
                 "params": {"token_id": token_id},
             }
+            book = None
             try:
                 book = yield from self.send_polymarket_connection_request(request)
                 asks, bids = book["asks"], book["bids"]
@@ -575,7 +576,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     if not bids or lo <= self.bid_ask_spread(asks, bids) <= hi:
                         return True
             except (KeyError, TypeError, ValueError) as exc:
-                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc!r}")
+                why = book.get("error", exc) if isinstance(book, dict) else exc
+                self.context.logger.warning(f"Book check skipped for {bet.id}: {why!r}")
                 return True
         return False
 

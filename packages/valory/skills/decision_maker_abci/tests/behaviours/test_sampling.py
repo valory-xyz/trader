@@ -2486,6 +2486,10 @@ class TestBookCanTakeBet:
         assert _run(behaviour._book_can_take_bet(bet)) is True
         assert send.call_count == 1
         behaviour.context.logger.warning.assert_called_once()
+        if isinstance(response, dict) and "error" in response:
+            logged = behaviour.context.logger.warning.call_args[0][0]
+            assert response["error"] in logged
+            assert "KeyError" not in logged
 
     def test_malformed_json_proceeds(self) -> None:
         """A connection reply that is not JSON proceeds instead of crashing."""
