@@ -21,6 +21,7 @@
 
 import json
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -606,6 +607,7 @@ class TestDeclinedMarketCooldown:
             (False, 5, 60, COOLDOWN, False),
             (False, 0, 60, 0, False),
             (True, 0, 60, COOLDOWN, False),
+            (False, 0, -60, COOLDOWN, False),
         ),
         ids=(
             "declined-a-minute-ago",
@@ -615,6 +617,7 @@ class TestDeclinedMarketCooldown:
             "has-position",
             "cooldown-off",
             "benchmarking",
+            "stamped-in-the-future",
         ),
     )
     def test_declined_recently(
@@ -1443,9 +1446,17 @@ class TestSample:
         assert result is None
 
     @pytest.mark.parametrize(
-        "fallback_enabled", (False, True), ids=("fallback-off", "fallback-on")
+        "fallback_enabled, zero_liquidity_left, expected_warning",
+        (
+            (False, False, "There were no unprocessed bets"),
+            (True, False, "There were no unprocessed bets"),
+            (False, True, "No valid bets found after liquidity validation"),
+        ),
+        ids=("fallback-off", "fallback-on", "zero-liquidity-left"),
     )
-    def test_sample_all_cooling_waits(self, fallback_enabled: bool) -> None:
+    def test_sample_all_cooling_waits(
+        self, fallback_enabled: bool, zero_liquidity_left: bool, expected_warning: str
+    ) -> None:
         """With every unheld market cooling, _sample returns None, even with the fallback on."""
         cooling = [
             Bet(
@@ -1473,8 +1484,11 @@ class TestSample:
             invested_amount=5,
             opening_timestamp=NOW + 86400 * 5,
         )
+        dry = replace(cooling[0], id="dry", processed_timestamp=0)
+        dry.scaledLiquidityMeasure = 0.0  # drained after discovery
         behaviour, params, bm, ss = self._setup_behaviour_for_sample(
-            bets=[*cooling, held], enable_multi_bets_fallback=fallback_enabled
+            bets=[*cooling, dry if zero_liquidity_left else held],
+            enable_multi_bets_fallback=fallback_enabled,
         )
 
         with (
@@ -1525,6 +1539,7 @@ class TestSample:
         )
         assert not any("fallback_activated=True" in call for call in info_calls)
         warning = str(logger.warning.call_args)
+        assert expected_warning in warning
         assert "3 markets are cooling down for 3600s" in warning
 
     def test_sample_multi_bets_fallback(self) -> None:

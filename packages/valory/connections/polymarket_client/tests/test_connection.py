@@ -19,14 +19,25 @@
 
 """Tests for the polymarket_client connection."""
 
+import dataclasses
 import json
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlsplit
 
 import pytest
 import requests
+from eth_abi import decode as abi_decode
+from eth_abi import encode as abi_encode
+from eth_utils import keccak, to_checksum_address
+from hexbytes import HexBytes
+from py_clob_client_v2 import ClobClient
+from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
+    API_REQUEST_TIMEOUT,
+    DATA_API_BASE_URL,
     DATA_API_POSITIONS_URL,
     DATA_API_TRADES_URL,
     GAMMA_API_BASE_URL,
@@ -34,10 +45,12 @@ from packages.valory.connections.polymarket_client.connection import (
     MAX_UINT256,
     PARENT_COLLECTION_ID,
     POLYMARKET_CATEGORY_TAGS,
+    POSITION_FIELDS_V2_TO_V1,
     PolymarketClientConnection,
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
     SrrDialogues,
+    V2_BALANCE_KEY,
     _bool_param,
     _validate_builder_code,
 )
@@ -58,6 +71,8 @@ NEG_RISK_CTF_EXCHANGE = "0xe2222d279d744050d28e00520010520000310F59"  # v2
 NEG_RISK_ADAPTER = "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296"
 CTF_COLLATERAL_ADAPTER = "0xAdA100Db00Ca00073811820692005400218FcE1f"
 NEG_RISK_CTF_COLLATERAL_ADAPTER = "0xadA2005600Dec949baf300f4C6120000bDB6eAab"
+POSITION_MANAGER = "0x006F54F7f9A22e0000CC2AB60031000000ae9fEF"  # Protocol V2
+ROUTER = "0x12121212006e4CD160D18e3f00711DA5c3372600"  # Protocol V2
 
 
 class _TestableConnection(PolymarketClientConnection):
@@ -95,6 +110,8 @@ def _make_connection() -> _TestableConnection:
     conn.neg_risk_adapter = NEG_RISK_ADAPTER
     conn.ctf_collateral_adapter = CTF_COLLATERAL_ADAPTER
     conn.neg_risk_ctf_collateral_adapter = NEG_RISK_CTF_COLLATERAL_ADAPTER
+    conn.position_manager = POSITION_MANAGER
+    conn.router = ROUTER
     conn.clob_version = "v2"
     conn.dialogues = MagicMock()
     configuration_mock = MagicMock()
@@ -459,6 +476,24 @@ class TestPlaceBet:
         cached_dict = json.loads(response["signed_order_json"])
         assert cached_dict["clob_version"] == "v2"
         assert cached_dict["timestamp"] == "1700000000000"
+
+    def test_v1_order_unchanged(self) -> None:
+        """A V1 market order still names its token id and no V3 position id.
+
+        The SDK signs a token-id order with the CLOB-reported domain version,
+        so the connection passes the order args and nothing else.
+        """
+        conn = _make_connection()
+        _arm_preflight(conn)
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.return_value = {"status": "matched"}
+
+        _, error = conn._place_bet(token_id="tok123", amount=10.0)  # nosec B106
+        assert error is None
+        (order_args,), kwargs = conn.client.create_market_order.call_args
+        assert kwargs == {}
+        assert order_args.token_id == "tok123"
+        assert getattr(order_args, "position_id", "absent") is None
 
     def test_place_bet_with_cached_v2_order(self) -> None:
         """Uses cached v2 signed order instead of creating a new one."""
@@ -914,6 +949,43 @@ class TestBuySizing:
         assert "min size: 1" in error
 
 
+# Real CLOB answers for Gamma market 6261770 (version v2, binary), trimmed to the
+# fields the SDK reads: /markets-by-token, /clob-markets and /book.
+V2_POSITION_IDS = [
+    "673779244106476936176328196335078147708901168426603784117164734511803531264",
+    "673779244106476936176328196335078147708901168426603784117164734511803531265",
+]
+V2_CONDITION_ID = "0x017d58752a1991c27b94033aa3ef4ba81e000000000000000000000000000000"
+
+
+@pytest.mark.parametrize(
+    "listed, fee", [(V2_POSITION_IDS, 0.0014), (V2_POSITION_IDS[1:], 0.0)]
+)
+def test_market_version_v2_buy_quotes_fee_by_position_id(
+    listed: list, fee: float
+) -> None:
+    """A V2 buy quoted by position ID carries the fee the CLOB lists for that ID; an ID the market does not list would quote no fee."""
+    answers = {
+        f"/markets-by-token/{V2_POSITION_IDS[0]}": {"condition_id": V2_CONDITION_ID},
+        f"/clob-markets/{V2_CONDITION_ID}": {
+            "t": [{"t": position_id} for position_id in listed],
+            "mts": 0.01,
+            "fd": {"r": 0.07, "e": 1},
+        },
+        "/book": {"asks": [{"price": "0.99", "size": "5"}]},
+    }
+    conn = _make_connection()
+    conn.client = ClobClient(conn._host, chain_id=conn._chain_id)
+    conn._read_dw_collateral_balance = MagicMock(return_value=100.0)
+    with patch.object(
+        conn.client, "_get", side_effect=lambda url, **_: answers[urlsplit(url).path]
+    ):
+        quote, error = conn._quote_buy(V2_POSITION_IDS[0], 2.0, funder=SAFE_ADDRESS)
+    assert error is None
+    assert quote["fee_usd"] == pytest.approx(fee, abs=1e-12)  # 2.0 * r * (1 - p)
+    assert quote["required_usd"] == 2.0 + quote["fee_usd"]
+
+
 # ---------------------------------------------------------------------------
 # _sell_position
 # ---------------------------------------------------------------------------
@@ -921,6 +993,12 @@ class TestBuySizing:
 
 class TestSellPosition:
     """Tests for _sell_position (phase 2 of withdrawal mode)."""
+
+    @pytest.fixture(autouse=True)
+    def _no_v2_market(self) -> Generator[None, None, None]:
+        """Answer the sell's Gamma version lookup offline, with a V1 market."""
+        with patch("requests.get", **{"return_value.json.return_value": [GAMMA_V1]}):
+            yield
 
     @staticmethod
     def _make_signed_order_v2() -> "object":
@@ -1580,6 +1658,16 @@ class TestRequestWithRetries:
 # _filter_tradeable_markets
 # ---------------------------------------------------------------------------
 
+# Real Gamma rows trimmed to the fields the filter reads: a V1 market whose row
+# also carries V2 positionIds, a binary V2 market and a neg-risk V2 market.
+# https://gamma-api.polymarket.com/markets/559651
+# https://gamma-api.polymarket.com/events/keyset?version=v2 (6015109, 6015111)
+GAMMA_V1, GAMMA_V2, GAMMA_V2_NEG_RISK = json.loads(r"""[
+{"id": "559651", "active": true, "negRisk": false, "version": "v1", "outcomePrices": "[\"0.0265\", \"0.9735\"]", "clobTokenIds": "[\"32338220190071351435772801779725302244575775216413325951443816017994629993401\", \"25659310674993675562345759665114759892400026242514633218387667107987341231962\"]", "positionIds": ["895257453734540292493143124621755605615887197499956109032745153687078305792", "895257453734540292493143124621755605615887197499956109032745153687078305793"]},
+{"id": "6015109", "active": true, "negRisk": false, "version": "v2", "outcomePrices": "[\"0.525\", \"0.475\"]", "clobTokenIds": "[\"712069342982939259021323770019514721134145408933508924027915981665668694016\", \"712069342982939259021323770019514721134145408933508924027915981665668694017\"]", "positionIds": ["712069342982939259021323770019514721134145408933508924027915981665668694016", "712069342982939259021323770019514721134145408933508924027915981665668694017"]},
+{"id": "6015111", "active": true, "negRisk": true, "version": "v2", "outcomePrices": "[\"0.5\", \"0.525\"]", "clobTokenIds": "[\"1325353424987440299227997884811379130217952539907057621693281548675181445120\", \"1325353424987440299227997884811379130217952539907057621693281548675181445121\"]", "positionIds": ["1325353424987440299227997884811379130217952539907057621693281548675181445120", "1325353424987440299227997884811379130217952539907057621693281548675181445121"]}
+]""")
+
 
 class TestFilterTradeableMarkets:
     """Tests for _filter_tradeable_markets.
@@ -1718,7 +1806,7 @@ class TestFilterTradeableMarkets:
     def test_keeps_only_supported_market_version(
         self, version: Optional[str], kept: bool
     ) -> None:
-        """Only Gamma `version` v1 markets are tradeable; missing or other versions drop."""
+        """A market with clobTokenIds and no positionIds trades only as v1; other versions drop."""
         conn = _make_connection()
         market = {
             "id": "m1",
@@ -1730,6 +1818,37 @@ class TestFilterTradeableMarkets:
             market["version"] = version
         result = conn._filter_tradeable_markets([market])
         assert [m["id"] for m in result] == (["m1"] if kept else [])
+
+    def test_market_version_selects_trading_ids(self) -> None:
+        """A v2 market trades by its decimal positionIds and a v1 market by its clobTokenIds; other versions drop."""
+        conn = _make_connection()
+        t = GAMMA_V2["positionIds"][0]
+        markets = [
+            GAMMA_V1,  # its positionIds don't make it a v2 market
+            {**GAMMA_V2, "clobTokenIds": None},
+            {**GAMMA_V1, "id": "v1-no-clob-token-ids", "clobTokenIds": "[]"},
+            *({**GAMMA_V2, "version": v} for v in (None, "V2", "v2\n", "v3")),
+            *(  # positionIds missing, hex, a number, non-ASCII decimal digits
+                {**GAMMA_V2, "positionIds": p}
+                for p in (None, [hex(int(t))], [int(t)], [t.replace("7", "\u0667")])
+            ),
+            {**GAMMA_V2, "positionIds": ["1" * 5000]},  # longer than a uint256
+        ]
+        result = conn._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["559651", "6015109"]
+
+    def test_market_version_unsupported_never_reaches_order(self) -> None:
+        """Only v1 and binary v2 markets leave the connection, so a neg-risk or combinatorial V2 market is never sampled, even without negRisk, by its positionIds' module (positionId >> 248: 1 binary, 2 neg-risk, 3 combinatorial); sampling judges a V1 neg-risk one."""
+        ids = GAMMA_V2["positionIds"]
+        combo = dict(
+            GAMMA_V2, id="3", positionIds=[ids[0], str(int(ids[1]) | 3 << 248)]
+        )
+        markets = [{**GAMMA_V1, "negRisk": True}, GAMMA_V2_NEG_RISK] + [
+            {k: v for k, v in m.items() if k != "negRisk"}  # Gamma usually omits it
+            for m in (GAMMA_V2, GAMMA_V2_NEG_RISK, combo)
+        ]
+        result = _make_connection()._filter_tradeable_markets(markets)
+        assert [m["id"] for m in result] == ["559651", "6015109"]
 
 
 # ---------------------------------------------------------------------------
@@ -2095,6 +2214,7 @@ class TestFetchMarketsByTagSlug:
             side_effect=[
                 ({"events": page1, "next_cursor": "cursor-1"}, None),
                 ({"events": page2}, None),
+                ({"events": []}, None),  # the other market version
             ]
         )
 
@@ -2179,6 +2299,85 @@ class TestFetchMarketsByTagSlug:
         assert error is None
         assert len(result) == 1
         assert result[0]["id"] == "m1"
+
+    @pytest.mark.parametrize(
+        "v2_pages",  # (version, cursor) -> V2 page served instead; None fails the read
+        [
+            pytest.param({}, id="True"),
+            pytest.param({("v2", ""): None}, id="False"),
+            pytest.param({("v2", ""): []}, id="v2_body_list"),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": "3"}]}, "e"]}},
+                id="v2_event_str",
+            ),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": "3"}, "m"]}]}},
+                id="v2_market_str",
+            ),
+            pytest.param(
+                {("v2", ""): {"events": [{"markets": [{"id": ["3"]}]}]}},
+                id="v2_id_list",
+            ),
+            pytest.param({("v2", "c"): []}, id="v2_later_body_list"),
+        ],
+    )
+    def test_market_version_discovery_includes_v2(self, v2_pages: Dict) -> None:
+        """V1 events are read and V2 events with version=v2, each paged, and merged once per market; a V2 page gets one retry, and a failed or malformed V2 read can't drop the V1 markets."""
+        from packages.valory.connections.polymarket_client.connection import (
+            MAX_API_RETRIES,
+        )
+
+        tagged = [{"slug": "weather"}]
+        pages = {  # (version, cursor) -> page; Gamma serves V1 unless asked for v2
+            ("", ""): {
+                "events": [{"tags": tagged, "markets": [{"id": "1"}]}],
+                "next_cursor": "c",
+            },
+            ("", "c"): {"events": [{"tags": [], "markets": [{"id": "2"}]}]},
+            ("v2", ""): {
+                "events": [{"tags": tagged, "markets": [{"id": "1"}, {"id": "3"}]}],
+                "next_cursor": "c",
+            },
+            ("v2", "c"): {"events": [{"tags": tagged, "markets": [{"id": "4"}]}]},
+        }
+        pages.update(v2_pages)
+
+        def read(url: str, params: Dict, max_retries: int = 0) -> Any:
+            page = pages[(params.get("version", ""), params.get("after_cursor", ""))]
+            return (None, "Gamma down") if page is None else (page, None)
+
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(side_effect=read)
+
+        result, error = conn._fetch_markets_by_tag_slug("weather", "start", "end")
+
+        assert error is None
+        assert sorted((m["id"], m["_poly_tags"]) for m in result) == [
+            ("1", ["weather"]),
+            ("2", []),
+            *([] if v2_pages else [("3", ["weather"]), ("4", ["weather"])]),
+        ]
+        calls = conn._request_with_retries.call_args_list
+        assert {c.args[0] for c in calls} == {f"{GAMMA_API_BASE_URL}/events/keyset"}
+        sent = [dict(c.kwargs["params"]) for c in calls]
+        tries = [c.kwargs.get("max_retries", MAX_API_RETRIES) for c in calls]
+        assert sorted(
+            (p.pop("version", ""), p.pop("after_cursor", ""), n)
+            for p, n in zip(sent, tries)
+        ) == [
+            ("", "", MAX_API_RETRIES),
+            ("", "c", MAX_API_RETRIES),
+            ("v2", "", 2),
+            *([] if ("v2", "") in v2_pages else [("v2", "c", 2)]),
+        ]
+        assert all(p == sent[0] for p in sent)  # same tag, window and limit
+
+    def test_malformed_v1_body_fails_the_fetch(self) -> None:
+        """A malformed V1 body still fails the whole fetch; only V2 is tolerated."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=([], None))
+        markets, error = conn._fetch_markets()
+        assert markets is None and "Unexpected error" in error
 
 
 # ---------------------------------------------------------------------------
@@ -2336,6 +2535,445 @@ def _sent_params(mock_get: MagicMock, call_index: int = 0) -> dict:
     return mock_get.call_args_list[call_index][1]["params"]
 
 
+# Real Data API /v2/positions rows, trimmed to the fields the code reads: a Safe
+# holding both sides of a resolved V2 neg-risk market ("No" won) and its V1 rows.
+# https://data-api.polymarket.com/v2/positions?user=0x378a84d576bc58df81a25638b051c729edf7f885&status=REDEEMABLE&include_archived=true&limit=500
+V2_WIN, V1_WIN, V1_LOSE, V2_LOSE = json.loads("""[
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838145", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 1, "current_size": 1.0526, "current_value": 1.0526, "current_price": 1.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"},
+{"token_id": "50122824272784274265949198122337312072892569991370352556120170615749327480792", "condition_id": "0x2e7749c534f9ac6576d6d58c33e0d598fcd8a99b37ae8be4b34e27b83578ebca", "outcome_index": 1, "current_size": 1.0416, "current_value": 1.0416, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:45AM-11:50AM ET"},
+{"token_id": "12432397535027976576229256511506328206877382331083681904543078188555197478702", "condition_id": "0x2b0aa2725ea5a3c8ca2854aa6341ac0d245c12d7ee82c2eed898891992e40338", "outcome_index": 0, "current_size": 1.1627, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 0.9999, "title": "Bitcoin Up or Down - October 20, 11:35AM-11:40AM ET"},
+{"token_id": "1300360066161977289524430685838222987903983325604679475414554323874840838144", "condition_id": "0x02dffa4b8e1f2af8be25e1443a82c69f88000500000000000000000000000000", "outcome_index": 0, "current_size": 1.0526, "current_value": 0.0, "current_price": 0.0, "redeemable": true, "negative_risk": true, "entry_cost_usdc": 0.9999, "title": "Will Central Park’s maximum temperature be 59°F or below on October 20, 2026?"}
+]""")
+# Open V2 binary, V1 (token ID top byte 0x01) and V1 (condition ID ending in a
+# zero byte) rows of a wallet, then a winning "Yes" V2 binary row of another.
+# https://data-api.polymarket.com/v2/positions?user=0x5bdf08637500cc12de6688c3c908a990d410e240&limit=500
+# https://data-api.polymarket.com/v2/positions?user=0x71485bdd23e308b2faab685f122175292fcaeec9&status=REDEEMABLE&include_archived=true&limit=500
+V2_OPEN, V1_OPEN, V1_00, V2_WIN0 = json.loads("""[
+{"token_id": "686342014231208532311977908354326755387739596605141201213029204596382236673", "condition_id": "0x018474b034e4c7fbeb28c0cf4772ae5d7e000000000000000000000000000000", "outcome_index": 1, "current_size": 10.0, "current_value": 7.05, "current_price": 0.705, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 6.9, "title": "Zcash Up or Down - October 21, 9:30PM-9:45PM ET"},
+{"token_id": "533848389579378347435675393657953161373132149476495818044608252655854869002", "condition_id": "0x43c709c75fed36db6c206cadf2c4d95056829095bc357294514bb0de52727ca0", "outcome_index": 0, "current_size": 5.0, "current_value": 0.0625, "current_price": 0.0125, "redeemable": false, "negative_risk": true, "entry_cost_usdc": 0.3571, "title": "Will New Mexico State Aggies Win the 2026 Conference USA Championship?"},
+{"token_id": "73854236012894472921118837797709685990766485520105972396162507024624016818352", "condition_id": "0x97e292152cdd414c2dcab4381d7eb2e6c59c98e8f53721df59bf83c8eb7eb700", "outcome_index": 1, "current_size": 5.0, "current_value": 0.0025, "current_price": 0.0005, "redeemable": false, "negative_risk": false, "entry_cost_usdc": 3.25, "title": "Bucks vs. Wizards: O/U 232.5"},
+{"token_id": "495099235152725588201991226912420825532590817323357329480139627250245959680", "condition_id": "0x0118375b48443dbc85984171d6cdcf12f3000000000000000000000000000000", "outcome_index": 0, "current_size": 2.0947, "current_value": 2.0947, "current_price": 1.0, "redeemable": true, "negative_risk": false, "entry_cost_usdc": 1.9899, "title": "Will Central Park record at least 0.01 inches of precipitation on October 16, 2026?"}
+]""")
+V2_SAFE = to_checksum_address("0x378a84d576bc58df81a25638b051c729edf7f885")
+# The decision-maker params naming the contracts above.
+V2_PARAMS = dict(
+    polymarket_collateral_address=COLLATERAL_ADDRESS,
+    polymarket_ctf_address=CTF_ADDRESS,
+    polymarket_ctf_collateral_adapter_address=CTF_COLLATERAL_ADAPTER,
+    polymarket_neg_risk_ctf_collateral_adapter_address=NEG_RISK_CTF_COLLATERAL_ADAPTER,
+    polymarket_position_manager_address=POSITION_MANAGER,
+    polymarket_router_address=ROUTER,
+)
+V2_DW = to_checksum_address(DW_ADDRESS)
+# Derived from /v2/tokens, as the spec says a positions row carries it: the V2
+# "Yes" token of a market carried over from V1, whose rows keep the legacy CTF
+# condition ID (https://gamma-api.polymarket.com/markets/559651). No wallet
+# holds it: the size is a round test value.
+XI = json.loads(
+    '{"token_id": "895257453734540292493143124621755605615887197499956109032745153687078305792", "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7", "outcome_index": 0, "current_size": 1.0, "redeemable": false, "negative_risk": false, "title": "Xi Jinping out before 2027?"}'
+)
+XI_WON = {**XI, "redeemable": True, "current_value": 1.0}  # as if it resolved Yes
+# Each fixture token's `module` in /v2/tokens: v1_ctf is V1, binary and neg_risk V2.
+# https://data-api.polymarket.com/v2/tokens?token_id=<the fixture token IDs>
+TOKEN_MODULES = {
+    row["token_id"]: module
+    for row, module in zip(
+        (V2_WIN, V1_WIN, V1_LOSE, V2_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        "neg_risk v1_ctf v1_ctf neg_risk binary v1_ctf v1_ctf binary binary".split(),
+    )
+}
+V2_TOKEN_IDS = {token for token, module in TOKEN_MODULES.items() if module != "v1_ctf"}
+# The holders' balanceOf on PositionManager (V2) or the CTF (V1) at fetch time;
+# the Data API rounds sizes to four decimals.
+ONCHAIN_BALANCE = {
+    row["token_id"]: balance
+    for row, balance in zip(
+        (V2_WIN, V2_LOSE, V1_WIN, V1_LOSE, V2_OPEN, V1_OPEN, V1_00, V2_WIN0, XI),
+        (1052620, 1052620, 1041650, 1162785, 10000000, 5000000, 5000000, 2094720)
+        + (10**6,),
+    )
+}
+
+
+def _selector(signature: str) -> bytes:
+    """Return the 4-byte selector of a function signature."""
+    return keccak(text=signature)[:4]
+
+
+def _ledger(holder: str, *rows: dict) -> Dict[tuple, int]:
+    """Give ``holder`` each row's on-chain balance on the row's ledger."""
+    return {
+        (
+            POSITION_MANAGER if row["token_id"] in V2_TOKEN_IDS else CTF_ADDRESS,
+            holder,
+            int(row["token_id"]),
+        ): ONCHAIN_BALANCE[row["token_id"]]
+        for row in rows
+    }
+
+
+def _fake_chain(balances: Dict[tuple, int]) -> MagicMock:
+    """Build a w3 stand-in answering balance and nonce reads from ``balances``."""
+    w3 = MagicMock(keccak=Web3.keccak, to_checksum_address=to_checksum_address)
+
+    def call(tx: dict, *_: Any) -> bytes:
+        data, token = HexBytes(tx["data"]), to_checksum_address(tx["to"])
+        if data[:4] == _selector("balanceOfBatch(address[],uint256[])"):
+            owners, ids = abi_decode(["address[]", "uint256[]"], data[4:])
+            keys = [(token, to_checksum_address(o), i) for o, i in zip(owners, ids)]
+            return abi_encode(["uint256[]"], [[balances.get(k, 0) for k in keys]])
+        if data[:4] == _selector("balanceOf(address,uint256)"):
+            owner, token_id = abi_decode(["address", "uint256"], data[4:])
+            key: tuple = (token, to_checksum_address(owner), token_id)
+        elif data[:4] == _selector("balanceOf(address)"):
+            key = (token, to_checksum_address(abi_decode(["address"], data[4:])[0]))
+        else:
+            assert data[:4] == _selector("nonce()"), f"unexpected eth_call {tx}"
+            key = ()
+        return balances.get(key, 0).to_bytes(32, "big")
+
+    w3.eth.call.side_effect = call
+    return w3
+
+
+TRANSFER_ARGS = {  # selector: argument types
+    _selector(signature): signature[signature.index("(") + 1 : -1].split(",")
+    for signature in (
+        "transfer(address,uint256)",
+        "safeTransferFrom(address,address,uint256,uint256,bytes)",
+        "safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)",
+    )
+}
+
+
+def _apply_transfer(
+    balances: Dict[tuple, int], sender: str, token: str, data: Any
+) -> None:
+    """Apply an ERC-20 or ERC-1155 transfer call made by ``sender`` to ``balances``."""
+    data, token, sender = (
+        HexBytes(data),
+        to_checksum_address(token),
+        to_checksum_address(sender),
+    )
+    assert bytes(data[:4]) in TRANSFER_ARGS, f"unexpected call to {token}"
+    args = abi_decode(TRANSFER_ARGS[bytes(data[:4])], data[4:])
+    if len(args) == 2:  # ERC-20: balances keyed by (token, holder)
+        src, to, moves = sender, args[0], [((), args[1])]
+    else:  # ERC-1155: balances keyed by (token, holder, id)
+        src, to, ids, amounts = args[:4]
+        batch = isinstance(ids, tuple)
+        moves = [
+            ((i,), a) for i, a in (zip(ids, amounts) if batch else [(ids, amounts)])
+        ]
+    assert to_checksum_address(src) == sender, "moves only the sender's own tokens"
+    for token_id, amount in moves:
+        src_key = (token, sender, *token_id)
+        dst_key = (token, to_checksum_address(to), *token_id)
+        assert 0 < amount <= balances.get(src_key, 0), f"{amount} exceeds {src_key}"
+        balances[src_key] -= amount
+        balances[dst_key] = balances.get(dst_key, 0) + amount
+
+
+def _held(balances: Dict[tuple, int]) -> Dict[tuple, int]:
+    """Drop the empty balances."""
+    return {key: value for key, value in balances.items() if value}
+
+
+def _tokens_response(ids: list, modules: dict, down: Any = False) -> MagicMock:
+    """Answer a /v2/tokens read with each known token's module, fail it, or reply with the body ``down`` gives."""
+    response = MagicMock()
+    if down is True:
+        response.raise_for_status.side_effect = requests.exceptions.HTTPError("503")
+    rows = [{"token_id": i, "module": modules[i]} for i in ids if i in modules]
+    response.json.return_value = {"data": rows} if isinstance(down, bool) else down
+    return response
+
+
+def _positions_get(*pages: MagicMock, down: bool = False) -> Any:
+    """Serve positions pages in turn (the last one repeats) and V1 tokens' modules."""
+    queue = list(pages)
+
+    def get(url: str, params: Optional[dict] = None, **_: Any) -> MagicMock:
+        if url.startswith(f"{DATA_API_BASE_URL}/v2/tokens"):
+            ids = params["token_id"].split(",")  # type: ignore[index]
+            return _tokens_response(ids, dict.fromkeys(ids, "v1_ctf"), down)
+        return queue.pop(0) if len(queue) > 1 else queue[0]
+
+    return get
+
+
+@contextmanager
+def _v2_world(pages: Dict[str, list], balances: Dict[tuple, int]) -> Generator:
+    """Yield a ``V2_SAFE`` connection reading ``pages`` from the Data API and ``balances`` from the chain."""
+    conn = _make_connection()
+    conn.dw_address, conn.w3 = V2_DW, _fake_chain(balances)
+    conn.pages, conn.balances = pages, balances
+    conn.configuration.config.get.side_effect = lambda key, *_, **__: (
+        {"polygon": V2_SAFE} if key == "safe_contract_addresses" else None
+    )
+    conn.relayer_client.execute.return_value.get_transaction.return_value = {}
+    conn.relayer_proxy.exec_wallet_batch.return_value = "0xbatch"
+
+    conn.token_lookups, conn.tokens_down, conn.modules = [], False, TOKEN_MODULES
+
+    def get(url: str, params: dict, **_: Any) -> MagicMock:
+        if urlsplit(url).path == "/v2/tokens":
+            ids = params["token_id"].split(",")
+            conn.token_lookups.append(sorted(ids))
+            return _tokens_response(ids, conn.modules, conn.tokens_down)
+        assert url == DATA_API_POSITIONS_URL, f"unexpected GET {url}"
+        rows = pages.get(to_checksum_address(params["user"]), [])
+        redeemable_only = params.get("status") == "REDEEMABLE"
+        return _v2_response([r for r in rows if r["redeemable"] or not redeemable_only])
+
+    with patch("requests.get", side_effect=get):
+        yield conn
+
+
+def _safe_world(*rows: dict) -> Any:
+    """Return a ``_v2_world`` whose Safe holds ``rows``."""
+    return _v2_world({V2_SAFE: list(rows)}, _ledger(V2_SAFE, *rows))
+
+
+def _wire(behaviour: Any, conn: Any) -> None:
+    """Answer the behaviour's Polymarket requests with ``conn``."""
+
+    def send(request: dict, none_on_error: bool = False) -> Generator:
+        response, error = conn._route_request(json.loads(json.dumps(request)))
+        yield
+        return None if error and none_on_error else json.loads(json.dumps(response))
+
+    behaviour.send_polymarket_connection_request = send
+    behaviour._send_polymarket_request = lambda kind, params: send(
+        {"request_type": kind.value, "params": params}, none_on_error=True
+    )
+
+
+def test_v2_position_custody_swept_to_safe() -> None:
+    """The DW sweep moves V2 shares through PositionManager, and pUSD and V1 shares."""
+    dust = (POSITION_MANAGER, V2_DW, int(V2_WIN["token_id"]))  # one base unit moves too
+    pusd = (COLLATERAL_ADDRESS, V2_DW)
+    balances = {**_ledger(V2_DW, V2_OPEN, V1_OPEN), dust: 1, pusd: 2500000}
+    swept = {(key[0], V2_SAFE, *key[2:]): value for key, value in balances.items()}
+    token_ids = [int(row["token_id"]) for row in (V1_OPEN, V2_WIN, V2_OPEN)]
+    with _v2_world({}, balances) as conn:
+        response, error = conn._sweep_dw(dw_address=V2_DW, token_ids=token_ids)
+        dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
+        pusd_call = conn._encode_erc20_transfer(V2_SAFE, 2500000)
+        v1_call = conn._encode_erc1155_safe_transfer(
+            V2_DW, V2_SAFE, int(V1_OPEN["token_id"]), 5000000
+        )
+    assert (error, response["swept"], dw) == (None, True, V2_DW)
+    assert {"target": COLLATERAL_ADDRESS, "data": pusd_call} in calls
+    assert {"target": CTF_ADDRESS, "data": v1_call} in calls
+    for call in calls:
+        _apply_transfer(balances, V2_DW, call["target"], call["data"])
+    assert _held(balances) == swept
+
+
+@pytest.mark.parametrize("held", [V2_WIN, XI])
+@pytest.mark.parametrize("lookup", ["ok", "down", "unknown", "null", "", "directional"])
+def test_v2_position_detected_by_token_module(lookup: str, held: dict) -> None:
+    """Rows are classed by their token's /v2/tokens module, looked up once in one batch; an unknown possible-V2 row fails the read and is looked up again."""
+    rows = (V2_WIN, V1_WIN, XI)  # XI's row carries its market's legacy condition ID
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = lookup == "down"
+        conn.modules = dict(TOKEN_MODULES)
+        if lookup == "unknown":  # /v2/tokens leaves out a token it doesn't know
+            del conn.modules[held["token_id"]]
+        if lookup not in ("ok", "down", "unknown"):
+            # no module, or one with no documented V2 module ID, is as good as missing
+            conn.modules[held["token_id"]] = None if lookup == "null" else lookup
+        reads = [conn._fetch_all_positions() for _ in range(2)]
+    if lookup != "ok":
+        assert [positions for positions, _ in reads] == [None, None]
+        assert all(held["token_id"] in error for _, error in reads)
+        assert held["token_id"] in conn.token_lookups[1]  # unknowns not cached
+        return
+    v2_balances = [
+        ONCHAIN_BALANCE[r["token_id"]] if r is not V1_WIN else None for r in rows
+    ]
+    assert [[p.get(V2_BALANCE_KEY) for p in ps] for ps, _ in reads] == [v2_balances] * 2
+    assert conn.w3.eth.call.call_count == len(reads)  # one balance read per read
+    assert conn.token_lookups == [sorted(row["token_id"] for row in rows)]
+
+
+V1_ROWS = (V1_WIN, V1_LOSE, V1_OPEN, V1_00)  # V1_OPEN's token ID top byte is 0x01
+
+
+@pytest.mark.parametrize(
+    "row,possible_v2",
+    [(row, False) for row in V1_ROWS]
+    + [(row, True) for row in (V2_WIN, V2_LOSE, V2_OPEN, V2_WIN0, XI)]
+    + [({**V2_OPEN, "outcome_index": None}, True)]
+    + [({**V2_OPEN, "token_id": None}, False), ({**V2_OPEN, "token_id": "x"}, False)],
+)
+def test_v2_layout_never_matches_a_v1_token(row: dict, possible_v2: bool) -> None:
+    """A row could be V2 when its position ID's top byte is a V2 module and its low byte its outcome index."""
+    assert PolymarketClientConnection._could_be_v2(row) is possible_v2
+
+
+@pytest.mark.parametrize("module", ["binary", "", "directional"])
+def test_v2_module_must_fit_the_position_id(module: str) -> None:
+    """A V1-layout row named a V2 module fails the read; with an undocumented module it reads as V1."""
+    with _safe_world(V1_WIN, V2_WIN) as conn:
+        conn.modules = {**TOKEN_MODULES, V1_WIN["token_id"]: module}
+        positions, error = conn._fetch_all_positions()
+    if module == "binary":
+        assert positions is None and V1_WIN["token_id"] in error
+        return
+    assert error is None
+    assert [V2_BALANCE_KEY in p for p in positions] == [False, True]
+
+
+def test_v2_rows_without_a_token_id_read_as_v1() -> None:
+    """Rows with no token ID skip the module lookup and read as V1, next to a V2 row."""
+    no_id = {k: v for k, v in V1_WIN.items() if k != "token_id"}
+    rows = [V2_WIN, no_id, {**V1_LOSE, "token_id": None}]
+    with _v2_world({V2_SAFE: rows}, _ledger(V2_SAFE, V2_WIN)) as conn:
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.token_lookups == [[V2_WIN["token_id"]]]
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        None,
+    ]
+
+
+@pytest.mark.parametrize(
+    "tokens_down",
+    [True, {"data": None}, [], {"data": ["v1_ctf"]}],
+    ids=["down", "null-data", "list-body", "non-dict-row"],
+)
+def test_v2_token_outage_leaves_v1_rows_as_before(tokens_down: Any) -> None:
+    """With /v2/tokens down or malformed, V1-only positions, malformed ones too, are read as V1 rows with no balance read."""
+    rows = (
+        *V1_ROWS,
+        {**V1_WIN, "outcome_index": None},
+        {**V1_LOSE, "condition_id": None},
+    )
+    with _safe_world(*rows) as conn:
+        conn.tokens_down = tokens_down
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 0
+    assert positions == [conn._to_v1_fields(r, POSITION_FIELDS_V2_TO_V1) for r in rows]
+
+
+def test_v2_position_short_balance_answer_fails_read() -> None:
+    """A balanceOfBatch answer shorter than its ids fails the read instead of leaving a V2 row on the V1 path."""
+    with _safe_world(V2_WIN, V1_WIN, XI) as conn:
+        chain = conn.w3.eth.call.side_effect  # the read's only eth_call is the batch
+        conn.w3.eth.call.side_effect = lambda tx, *a: abi_encode(
+            ["uint256[]"], [abi_decode(["uint256[]"], chain(tx, *a))[0][:-1]]
+        )
+        response, error = conn._route_request(
+            {"request_type": "fetch_all_positions", "params": {}}
+        )
+    assert response is None and error
+
+
+def test_v2_position_balances_read_in_chunks() -> None:
+    """Balances are read in chunks of BALANCE_BATCH_LIMIT ids, each row keeping its own balance."""
+    rows = (V2_WIN, V1_WIN, XI)
+    with (
+        _safe_world(*rows) as conn,
+        patch(f"{CONNECTION_MODULE}.BALANCE_BATCH_LIMIT", 1),
+    ):
+        positions, error = conn._fetch_all_positions()
+    assert error is None and conn.w3.eth.call.call_count == 2
+    assert [p.get(V2_BALANCE_KEY) for p in positions] == [
+        ONCHAIN_BALANCE[V2_WIN["token_id"]],
+        None,
+        ONCHAIN_BALANCE[XI["token_id"]],
+    ]
+
+
+@pytest.mark.parametrize(
+    "bet,module,gamma,asset",
+    [  # a buy's bet, the token's cached module, Gamma's answers to a sell's lookups
+        # by version, in order (None: a buy), and the order's field (None: no order)
+        ({"market_version": "v1"}, "binary", None, "token_id"),
+        ({"market_version": "v2"}, "v1_ctf", None, "position_id"),
+        ({}, "binary", None, "token_id"),  # a bet stored without a version
+        ({}, "binary", {"v1": [GAMMA_V1]}, "token_id"),
+        ({}, "v1_ctf", {"v1": [], "v2": [GAMMA_V2]}, "position_id"),
+        ({}, "binary", {"v1": [], "v2": []}, None),
+        ({}, "binary", {"v1": requests.RequestException(), "v2": []}, None),
+        ({}, "v1_ctf", {"v1": [], "v2": requests.RequestException()}, None),
+        ({}, "binary", {v: [dict(GAMMA_V2, version="v3")] for v in ("v1", "v2")}, None),
+    ],
+)
+def test_market_version_v2_order_uses_position_id(
+    bet: Dict, module: str, gamma: Optional[Dict], asset: Optional[str]
+) -> None:
+    """A buy names its token by position ID for a v2 market and by token ID otherwise; a sell asks Gamma for the token's v1 market, then its v2 one, never using its cached /v2/tokens module, and is skipped when neither is found."""
+    token = GAMMA_V2["positionIds"][0]
+
+    def get(*_: Any, params: Dict[str, str], **__: Any) -> MagicMock:
+        return MagicMock(**{"json.side_effect": [gamma[params["version"]]]})
+
+    conn = _make_connection()
+    _arm_preflight(conn)
+    conn._token_modules[token] = module
+    conn.client.create_market_order.return_value = TestPlaceBet._make_signed_order_v2()
+    conn.client.post_order.return_value = {"status": "matched", "orderID": "o-1"}
+    place = conn._place_bet if gamma is None else conn._sell_position
+    with patch("requests.get", side_effect=get) as gamma_get:
+        response, error = place(token, 10.0, **bet)
+    assert gamma_get.call_args_list == [  # one try each
+        (
+            (f"{GAMMA_API_BASE_URL}/markets",),
+            {
+                "params": {"clob_token_ids": token, "version": version},
+                "timeout": API_REQUEST_TIMEOUT,
+            },
+        )
+        for version in gamma or []
+    ]
+    if asset is None:
+        assert error and response["error"] == error
+        assert not conn.client.mock_calls  # nothing signed or posted
+        return
+    assert not error
+    (order_args,), _ = conn.client.create_market_order.call_args
+    assert getattr(order_args, asset) == token
+    assert {order_args.token_id, order_args.position_id} == {token, None}
+
+
+def test_market_version_signed_order_cache_keyed_by_exchange() -> None:
+    """An order cached without a marker replays for a v1 bet but is re-signed by position ID for a v2 bet, whose new order replays on retry and is never replayed for a v1 bet; a v1 bet's new order is marked by token ID and replays."""
+    token = V2_OPEN["token_id"]
+    order = TestPlaceBet._make_signed_order_v2()  # on "tok", a V1 token
+    # This order cached without a marker, and one on the V2 token
+    v1_cached = dict(dataclasses.asdict(order), side=0, signatureType=2)
+    v1_cached["clob_version"] = "v2"
+    stale = json.dumps({**v1_cached, "tokenId": token})
+    fresh = dataclasses.replace(order, tokenId=token, salt="2")
+    conn = _make_connection()
+    _arm_preflight(conn)
+    conn.client.create_market_order.return_value = fresh
+    conn.client.post_order.return_value = {"status": "matched"}
+    with patch("requests.get"):
+        conn._place_bet("tok", 10.0, json.dumps(v1_cached))  # a bet with no version
+        first, _ = conn._place_bet(token, 10.0, stale, market_version="v2")
+        for version in ("v2", "v1"):
+            conn._place_bet(
+                token, 10.0, first["signed_order_json"], market_version=version
+            )
+        v1_bet, _ = conn._place_bet("tok", 10.0, market_version="v1")
+        v1_json = v1_bet["signed_order_json"]
+        conn._place_bet("tok", 10.0, v1_json, market_version="v1")
+    assert json.loads(v1_json)["asset_field"] == "token_id"
+    args = [c.args[0] for c in conn.client.create_market_order.call_args_list]
+    assert [(a.token_id, a.position_id) for a in args] == [
+        (None, token),
+        (token, None),
+        ("tok", None),
+    ]
+    posted = [c.args[0] for c in conn.client.post_order.call_args_list]
+    assert posted == [order, fresh, fresh, fresh, fresh, fresh]
+
+
 class TestBoolParam:
     """Tests for _bool_param."""
 
@@ -2470,7 +3108,10 @@ class TestPositionsReads:
     def test_maps_v2_fields_to_the_names_callers_read(self) -> None:
         """Each field a skill reads arrives under its v1 name with its value."""
         conn = _make_connection()
-        with patch("requests.get", return_value=_v2_response([_v2_position_row(True)])):
+        with patch(
+            "requests.get",
+            side_effect=_positions_get(_v2_response([_v2_position_row(True)])),
+        ):
             positions, error = conn._fetch_all_positions()
         assert error is None
         assert positions == [
@@ -2495,7 +3136,7 @@ class TestPositionsReads:
         conn = _make_connection()
         with patch("requests.get", return_value=_v2_response([])) as mock_get:
             conn._fetch_all_positions(size_threshold=5)
-        assert mock_get.call_args[0][0] == DATA_API_POSITIONS_URL
+        assert mock_get.call_args_list[0][0][0] == DATA_API_POSITIONS_URL
         assert _sent_params(mock_get) == {
             "user": SAFE_ADDRESS,
             "limit": 100,
@@ -2533,7 +3174,9 @@ class TestPositionsReads:
         """
         conn = _make_connection()
         rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows)) as mock_get:
+        with patch(
+            "requests.get", side_effect=_positions_get(_v2_response(rows))
+        ) as mock_get:
             positions, _ = conn._fetch_all_positions(redeemable=redeemable)
         assert _sent_params(mock_get).get("status") == expected_status
         assert _sent_params(mock_get).get("include_archived") == expected_archived
@@ -2552,26 +3195,43 @@ class TestPositionsReads:
             conn._fetch_all_positions(address=address)
         assert _sent_params(mock_get)["user"] == expected_user
 
-    def test_fetch_all_reads_every_page(self) -> None:
-        """Positions on later pages are not dropped."""
+    @pytest.mark.parametrize("first_page,batches", [(1, [2]), (51, [2, 50])])
+    def test_fetch_all_reads_every_page(self, first_page: int, batches: list) -> None:
+        """Positions on later pages are not dropped; tokens are looked up 50 at a time."""
         conn = _make_connection()
-        responses = [
-            _v2_response([_v2_position_row(token_id="1")], SAMPLE_CURSOR),
-            _v2_response([_v2_position_row(token_id="2")]),
-        ]
-        with patch("requests.get", side_effect=responses):
+        ids = [str(i) for i in range(first_page + 1)]  # synthetic V1 token ids
+        rows = [_v2_position_row(token_id=i) for i in ids]
+        responses = [_v2_response(rows[:-1], SAMPLE_CURSOR), _v2_response(rows[-1:])]
+        with patch("requests.get", side_effect=_positions_get(*responses)) as get:
             positions, error = conn._fetch_all_positions()
         assert error is None
-        assert [p["asset"] for p in positions] == ["1", "2"]
+        assert [p["asset"] for p in positions] == ids
+        calls = [c for c in get.call_args_list if c[0][0] != DATA_API_POSITIONS_URL]
+        lookups = [c[1]["params"]["token_id"].split(",") for c in calls]
+        assert sorted(map(len, lookups)) == batches
+        assert sorted(sum(lookups, [])) == sorted(ids)
 
-    def test_get_positions_reads_only_the_first_page(self) -> None:
-        """A single-page read sends no cursor, stops there and selects rows the same way."""
+    @pytest.mark.parametrize("lookup", ["up", "down", "v2_down"])
+    def test_get_positions_reads_only_the_first_page(self, lookup: str) -> None:
+        """A single-page read sends no cursor, stops there and selects rows the same way; an unknown possible-V2 row fails it."""
         conn = _make_connection()
-        rows = [_v2_position_row(True), _v2_position_row(False)]
-        with patch("requests.get", return_value=_v2_response(rows, "next")) as mock_get:
+        v2_id = V2_OPEN["token_id"]
+        open_row = _v2_position_row(False)
+        if lookup == "v2_down":
+            open_row = _v2_position_row(False, token_id=v2_id, outcome_index=1)
+        page = _v2_response([_v2_position_row(True), open_row], "next")
+        with patch(
+            "requests.get", side_effect=_positions_get(page, down=lookup != "up")
+        ) as mock_get:
             positions, error = conn._get_positions(redeemable=False)
-        assert error is None
-        assert mock_get.call_count == 1
+        if lookup == "v2_down":  # fails the read, without a success log
+            assert positions is None and v2_id in error
+            assert "Fetched" not in str(conn.logger.info.call_args_list)
+            return
+        assert error is None  # a failed token lookup leaves V1 rows readable
+        assert [c.args[0] for c in mock_get.call_args_list].count(
+            DATA_API_POSITIONS_URL
+        ) == 1
         assert "cursor" not in _sent_params(mock_get)
         assert [p["redeemable"] for p in positions] == [False]
 
@@ -2961,6 +3621,32 @@ class TestRedeemPositions:
         assert standard_tx.to == CTF_COLLATERAL_ADAPTER
         assert neg_risk_tx.to == NEG_RISK_CTF_COLLATERAL_ADAPTER
 
+    def test_v2_claim_goes_to_router_by_position_id(self) -> None:
+        """A V2 claim calls the Router's redeem(bytes31,uint256,uint256)."""
+        from eth_hash.auto import keccak
+
+        conn = _make_connection()
+        condition, outcome, amount = b"\xab" * 31, 0x1F, 2500000
+        position_id = int.from_bytes(condition + bytes([outcome]), "big")
+
+        conn._redeem_positions(
+            condition_id="ab" * 32,
+            index_sets=[],
+            collateral_token=COLLATERAL_ADDRESS,
+            is_neg_risk=False,
+            position_id=str(position_id),
+            amount=amount,
+        )
+
+        tx = conn.relayer_client.execute.call_args[1]["transactions"][0]
+        types = ["bytes31", "uint256", "uint256"]
+        selector = keccak(f"redeem({','.join(types)})".encode())[:4]
+        assert tx.to == ROUTER
+        assert (
+            tx.data
+            == "0x" + (selector + abi_encode(types, [condition, outcome, amount])).hex()
+        )
+
 
 # ---------------------------------------------------------------------------
 # _encode_approve / _encode_set_approval_for_all
@@ -3033,7 +3719,7 @@ class TestSetApproval:
     """Tests for _set_approval."""
 
     def test_success(self) -> None:
-        """Executes 8 approval transactions and returns transaction data."""
+        """Executes 9 approval transactions and returns transaction data."""
         conn = _make_connection()
         tx_data = {"hash": "0xabc"}
         result_mock = MagicMock()
@@ -3044,13 +3730,41 @@ class TestSetApproval:
         assert result == tx_data
         assert error is None
 
-        # 8 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
-        # NegRisk Exchange, NegRiskAdapter) plus 2 ERC-1155 setApprovalForAll
-        # for the CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair.
+        # 9 transactions: the original 6 (collateral×3 + CTF×3 for v2 Exchange,
+        # NegRisk Exchange, NegRiskAdapter), 2 ERC-1155 setApprovalForAll
+        # for the CtfCollateralAdapter / NegRiskCtfCollateralAdapter pair, and
+        # the PositionManager setApprovalForAll for the Router (V2 claims).
         # No pUSD allowances are granted to the collateral adapters: their
         # redeem path doesn't pull ERC-20 from the Safe.
         call_kwargs = conn.relayer_client.execute.call_args[1]
-        assert len(call_kwargs["transactions"]) == 8
+        assert len(call_kwargs["transactions"]) == 9
+
+    def test_safe_approves_router_for_v2_positions(self) -> None:
+        """The Safe lets the Router operate its PositionManager positions.
+
+        The relayer batch ends with PositionManager ``setApprovalForAll(Router,
+        true)``, and ``_check_approval`` reads that approval and reports
+        ``all_approvals_set: false`` until it is on chain.
+        """
+        conn = _make_connection()
+        conn._set_approval()
+        last = conn.relayer_client.execute.call_args[1]["transactions"][-1]
+        assert (last.to, last.data, last.value) == (
+            POSITION_MANAGER,
+            "0xa22cb465" + "0" * 24 + ROUTER[2:].lower() + "0" * 63 + "1",
+            "0",
+        )
+
+        conn._check_erc20_allowance = MagicMock(return_value=MAX_UINT256)
+        conn._check_erc1155_approval = MagicMock(
+            side_effect=lambda token, owner, operator: operator != ROUTER
+        )
+        result, _ = conn._check_approval()
+        assert result["all_approvals_set"] is False
+        assert result["position_manager_approvals"] == {"router": False}
+        conn._check_erc1155_approval.assert_any_call(
+            POSITION_MANAGER, SAFE_ADDRESS, ROUTER
+        )
 
     def test_no_relayer_client_returns_error(self) -> None:
         """Returns error when relayer_client is None."""
@@ -3269,10 +3983,11 @@ class TestCheckApproval:
         conn._check_erc20_allowance = MagicMock(
             side_effect=[MAX_UINT256, 0, MAX_UINT256]
         )
-        # 5 ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
-        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter.
+        # ERC-1155 approval checks: CTF Exchange, NegRisk Exchange,
+        # NegRiskAdapter, CtfCollateralAdapter, NegRiskCtfCollateralAdapter,
+        # then the PositionManager operator check for the Router.
         conn._check_erc1155_approval = MagicMock(
-            side_effect=[True, False, True, True, True]
+            side_effect=[True, False, True, True, True, True]
         )
 
         result, error = conn._check_approval()

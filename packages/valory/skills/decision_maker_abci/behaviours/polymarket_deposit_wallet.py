@@ -22,7 +22,7 @@
 import json
 import os
 from abc import ABC
-from typing import Any, Generator, Optional, cast
+from typing import Any, Dict, Generator, Optional, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
@@ -32,6 +32,9 @@ from packages.valory.protocols.srr.dialogues import SrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    DW_APPROVALS_VERSION,
 )
 
 DEPOSIT_WALLET_STORE = "deposit_wallet.json"
@@ -135,20 +138,26 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
 
     def _write_deposit_wallet_file(
         self, dw_address: str, dw_owner: Optional[str], approvals_done: bool
-    ) -> None:
+    ) -> bool:
         """Persist the DepositWallet state for the setup gate / self-heal.
+
+        A confirmed record also carries ``approvals_version``, the version of
+        the DepositWallet trading-approval set that was mined.
 
         :param dw_address: the resolved DepositWallet address.
         :param dw_owner: the DW owner (current agent EOA).
         :param approvals_done: whether the DW trading approvals have been
             confirmed mined; only ``True`` once the relayer tx has settled.
+        :return: ``True`` if the record was persisted, ``False`` on error.
         """
         path = self.params.store_path / DEPOSIT_WALLET_STORE
-        data = {
+        data: Dict[str, Any] = {
             "dw_address": dw_address,
             "dw_owner": dw_owner,
             "approvals_done": approvals_done,
         }
+        if approvals_done:
+            data["approvals_version"] = DW_APPROVALS_VERSION
         tmp = f"{path}.tmp"
         try:
             with open(tmp, "w") as f:
@@ -156,6 +165,8 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             os.replace(tmp, path)
         except OSError as e:
             self.context.logger.error(f"Failed to write {DEPOSIT_WALLET_STORE}: {e}")
+            return False
+        return True
 
     def _invalidate_deposit_wallet_file(self) -> None:
         """Remove the persisted DepositWallet state to force a fresh deploy.

@@ -26,6 +26,8 @@ import json
 import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from functools import cached_property
+from itertools import product
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, cast
 
 import requests
@@ -34,7 +36,7 @@ from aea.connections.base import BaseSyncConnection
 from aea.mail.base import Envelope
 from aea.protocols.base import Address, Message
 from aea.protocols.dialogue.base import Dialogue
-from eth_abi import encode
+from eth_abi import decode, encode
 from eth_utils import keccak, to_checksum_address
 from py_builder_relayer_client.client import RelayClient
 from py_builder_relayer_client.models import OperationType, SafeTransaction
@@ -62,6 +64,19 @@ PUBLIC_ID = PublicId.from_str("valory/polymarket_client:0.1.0")
 DATA_API_BASE_URL = "https://data-api.polymarket.com"
 DATA_API_POSITIONS_URL = f"{DATA_API_BASE_URL}/v2/positions"
 DATA_API_TRADES_URL = f"{DATA_API_BASE_URL}/v2/trades"
+# /v2/tokens: token id -> contract module
+DATA_API_TOKENS_URL = f"{DATA_API_BASE_URL}/v2/tokens"
+DATA_API_TOKENS_LIMIT = 50
+# Protocol V2 position ID layout, from "Decode Polymarket Protocol V2 Position
+# IDs" on https://docs.polymarket.com/resources/onchain-position-data:
+# [moduleId 8 | baseHash 128 | arity 16 | reserved 64 | resolutionChain 16 |
+#  conditionIndex 16 | outcomeIndex 8]. Module IDs: Binary, NegRisk, Combinatorial.
+V2_MODULE_IDS = (1, 2, 3)
+# The /v2/tokens `module` names of those modules, and of V1 tokens.
+V2_MODULES = ("binary", "neg_risk", "combo")
+V1_MODULE = "v1_ctf"
+# ERC-1155 balanceOfBatch ids per eth_call.
+BALANCE_BATCH_LIMIT = 500
 DATA_API_PAGE_LIMIT = 100
 # A paginated Data API read needing more pages than this is reported as failed.
 DATA_API_MAX_PAGES = 200
@@ -108,8 +123,42 @@ TRADE_FIELDS_V2_TO_V1 = {
     "outcome_index": "outcomeIndex",
     "transaction_hash": "transactionHash",
 }
-# Gamma market `version` the agent can trade; other versions use different contracts.
-SUPPORTED_MARKET_VERSION = "v1"
+# Set on a Protocol V2 positions row: the holder's PositionManager balance.
+V2_BALANCE_KEY = "positionManagerBalance"
+ROUTER_REDEEM_TYPES = ["bytes31", "uint256", "uint256"]
+ROUTER_REDEEM_SELECTOR = keccak(text=f"redeem({','.join(ROUTER_REDEEM_TYPES)})")[:4]
+
+
+def is_unclaimable_v2(position: Dict[str, Any]) -> bool:
+    """Tell whether a positions row is a settled V2 position with nothing to claim.
+
+    :param position: a positions row, keyed by v1 names
+    :return: whether the row is redeemable V2 with no value or no balance
+    """
+    return (
+        V2_BALANCE_KEY in position
+        and bool(position.get("redeemable"))
+        and not (position.get("currentValue") and position[V2_BALANCE_KEY])
+    )
+
+
+def encode_router_redeem(position_id: int, amount: int) -> bytes:
+    """Encode the Router claim of a Protocol V2 position.
+
+    The position id is the bytes31 condition id followed by the outcome index byte.
+
+    :param position_id: the V2 position id
+    :param amount: the position amount to claim, in base units
+    :return: the ``redeem(bytes31,uint256,uint256)`` calldata
+    """
+    args = [(position_id >> 8).to_bytes(31, "big"), position_id & 0xFF, amount]
+    return ROUTER_REDEEM_SELECTOR + encode(ROUTER_REDEEM_TYPES, args)
+
+
+# Gamma market `version`s the agent can trade: v1 by `clobTokenIds`, v2 by `positionIds`.
+SUPPORTED_MARKET_VERSIONS = ("v1", "v2")
+# Cached signed-order key: the `MarketOrderArgs` field the order was signed with.
+ASSET_FIELD_KEY = "asset_field"
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 RELAYER_URL = "https://relayer-v2.polymarket.com/"
 # Default wildcard predict-api proxy that fronts the CLOB v2 DepositWallet
@@ -291,6 +340,7 @@ def _deserialize_signed_order_v2(payload: Dict[str, Any]) -> SignedOrderV2:
     :return: a SignedOrderV2 with enum fields rehydrated
     """
     payload = {k: v for k, v in payload.items() if k != "clob_version"}
+    payload.pop(ASSET_FIELD_KEY, None)
     if "side" in payload and not isinstance(payload["side"], Side):
         payload["side"] = Side(payload["side"])
     if "signatureType" in payload and not isinstance(
@@ -437,6 +487,14 @@ class PolymarketClientConnection(BaseSyncConnection):
         )
         self.neg_risk_ctf_collateral_adapter = to_checksum_address(
             self.configuration.config.get("neg_risk_ctf_collateral_adapter_address")
+        )
+        # Protocol V2: the Safe lets the Router operate its PositionManager
+        # positions to claim V2 winnings.
+        self.position_manager = to_checksum_address(
+            self.configuration.config.get("position_manager_address")
+        )
+        self.router = to_checksum_address(
+            self.configuration.config.get("router_address")
         )
 
         # Initialize Web3 for approval checking
@@ -788,17 +846,21 @@ class PolymarketClientConnection(BaseSyncConnection):
         amount: float,
         cached_signed_order_json: str = None,
         funder: Optional[str] = None,
+        market_version: str = "v1",
     ) -> Tuple[Any, Any]:
         """Place a bet on Polymarket.
 
-        :param token_id: CTF token id of the outcome to buy.
+        :param token_id: the outcome's CLOB token ID, or a V2 market's position ID.
         :param amount: USDC (pUSD) amount to spend.
         :param cached_signed_order_json: optional cached signed order to retry.
         :param funder: DepositWallet address to fund the order. When
             given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
+        :param market_version: the Gamma ``version`` of the bet's market.
         :return: ``(response_payload, error_or_none)``.
         """
         self._ensure_dw_funder(funder or self.dw_address)
+        # SDK guide: https://docs.polymarket.com/migrate/polymarket-v2/sdk-integrations
+        asset_field = "position_id" if market_version == "v2" else "token_id"
         signed_order_json = None
 
         try:
@@ -814,12 +876,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                     if (
                         signed_dict.get("clob_version") == "v2"
                         and "timestamp" in signed_dict
+                        and signed_dict.get(ASSET_FIELD_KEY, "token_id") == asset_field
                     ):
                         signed = _deserialize_signed_order_v2(signed_dict)
                         signed_order_json = cached_signed_order_json
                     else:
                         self.logger.warning(
-                            "Dropping stale (non-v2) cached signed order; resigning."
+                            "Dropping a cached signed order for another exchange; resigning."
                         )
                 except (ValueError, TypeError) as e:
                     self.logger.warning(
@@ -844,14 +907,16 @@ class PolymarketClientConnection(BaseSyncConnection):
                             "below_minimum": True,
                         }, block_msg
                 mo = MarketOrderArgs(
-                    token_id=token_id,
+                    **{asset_field: token_id},
                     amount=amount,
                     side=BUY,
                     order_type=OrderType.FOK,
                     user_usdc_balance=user_balance,
                 )
                 signed = self.client.create_market_order(mo)
-                signed_order_json = json.dumps(_serialize_signed_order_v2(signed))
+                signed_order_json = json.dumps(
+                    {**_serialize_signed_order_v2(signed), ASSET_FIELD_KEY: asset_field}
+                )
 
             # Post order
             resp: Dict = self.client.post_order(signed, OrderType.FOK)
@@ -903,16 +968,37 @@ class PolymarketClientConnection(BaseSyncConnection):
         ``get_neg_risk``) from the cached market info. This matches the
         buy path.
 
-        :param token_id: CTF token id of the outcome to sell.
+        Looks up the token's market version on Gamma; skips the sell if it's unknown.
+
+        :param token_id: the outcome's CLOB token ID, or a V2 market's position ID.
         :param amount: shares (CTF token units) to sell, not USDC.
         :param funder: DepositWallet address funding the sell. When
             given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
         :return: ``(response_payload, error_or_none)``.
         """
         self._ensure_dw_funder(funder or self.dw_address)
+        # Select the order field by the market version Gamma returns, per
+        # https://docs.polymarket.com/resources/onchain-position-data
+        for version, field in (("v1", "token_id"), ("v2", "position_id")):
+            rows, _ = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/markets",
+                params={"clob_token_ids": token_id, "version": version},
+                max_retries=1,
+            )
+            rows = rows if isinstance(rows, list) else []
+            if any(isinstance(r, dict) and r.get("version") == version for r in rows):
+                asset_field = field
+                break
+        else:
+            error_msg = (
+                f"Market version of token {token_id} is unknown (not listed on Gamma, "
+                "for example closed, or lookup failed); sell skipped, will be retried"
+            )
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
         try:
             mo = MarketOrderArgs(
-                token_id=token_id,
+                **{asset_field: token_id},
                 amount=amount,
                 side=Side.SELL,
                 order_type=OrderType.FAK,
@@ -1061,7 +1147,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         return None, last_error
 
     def _fetch_markets_by_tag_slug(
-        self, tag_slug: str, end_date_min: str, end_date_max: str
+        self, tag_slug: str, end_date_min: str, end_date_max: str, version: str = ""
     ) -> Tuple[list, str]:
         """Fetch markets for a tag slug via /events, flattened with per-market tags.
 
@@ -1073,10 +1159,13 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param tag_slug: The tag slug to filter events by
         :param end_date_min: Minimum end date filter
         :param end_date_max: Maximum end date filter
+        :param version: Gamma `version` to read; empty reads V1, then V2 unless it fails
         :return: Tuple of (markets_list, error_message)
         """
         after_cursor: Optional[str] = None
         all_markets: list = []
+        # One retry per V2 page bounds the time a hung V2 endpoint adds per page.
+        tries = 2 if version else MAX_API_RETRIES
 
         while True:
             params: Dict[str, Any] = {
@@ -1085,11 +1174,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 "end_date_min": end_date_min,
                 "limit": EVENTS_LIMIT,
             }
+            if version:
+                params["version"] = version
             if after_cursor:
                 params["after_cursor"] = after_cursor
 
             response, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/events/keyset", params=params
+                f"{GAMMA_API_BASE_URL}/events/keyset", params=params, max_retries=tries
             )
 
             if error:
@@ -1116,6 +1207,23 @@ class PolymarketClientConnection(BaseSyncConnection):
             if not after_cursor:
                 break
 
+        if not version:
+            try:
+                v2_markets, v2_error = self._fetch_markets_by_tag_slug(
+                    tag_slug, end_date_min, end_date_max, "v2"
+                )
+                if v2_error:
+                    self.logger.warning(
+                        f"V2 markets for tag {tag_slug} unavailable: {v2_error}"
+                    )
+                seen = {market.get("id") for market in all_markets}
+                all_markets += [m for m in v2_markets or [] if m.get("id") not in seen]
+                self.logger.info(
+                    f"Merged {sum(m.get('id') not in seen for m in all_markets)} "
+                    f"V2 markets for tag {tag_slug}"
+                )
+            except (AttributeError, TypeError) as e:
+                self.logger.warning(f"Skipping V2 markets for tag {tag_slug}: {e}")
         return all_markets, None
 
     def _filter_markets_by_created_at(self, markets: list) -> list:
@@ -1154,22 +1262,23 @@ class PolymarketClientConnection(BaseSyncConnection):
         return yes_no_markets
 
     def _filter_tradeable_markets(self, markets: list) -> list:
-        """Filter to active markets of a supported version with populated price + CLOB tokens.
+        """Filter to active markets of a supported version with prices and outcome IDs.
 
         The /events endpoint can surface nested markets that are yes/no-shaped
-        but not yet (or no longer) tradeable — empty outcomePrices/clobTokenIds
-        or active=False. The old /markets?tag_id=X endpoint filtered these
-        server-side. This filter matches that behaviour client-side.
+        but not yet (or no longer) tradeable — empty outcomePrices or outcome
+        IDs (clobTokenIds for v1, positionIds for v2), or active=False. The old
+        /markets?tag_id=X endpoint filtered these server-side. This filter
+        matches that behaviour client-side.
 
         :param markets: List of market dictionaries
-        :return: Markets with non-empty outcomePrices and clobTokenIds, active=True
-            and version SUPPORTED_MARKET_VERSION
+        :return: active priced v1 markets with clobTokenIds, v2 with Binary positionIds
         """
         tradeable = []
         for market in markets:
             if not market.get("active"):
                 continue
-            if market.get("version") != SUPPORTED_MARKET_VERSION:
+            version = market.get("version")
+            if version not in SUPPORTED_MARKET_VERSIONS:
                 self.logger.debug(
                     f"Dropped market {market.get('id')}: "
                     f"unsupported version {market.get('version')!r}"
@@ -1177,14 +1286,31 @@ class PolymarketClientConnection(BaseSyncConnection):
                 continue
             try:
                 outcome_prices = json.loads(market.get("outcomePrices") or "[]")
-                clob_token_ids = json.loads(market.get("clobTokenIds") or "[]")
+                token_ids = (
+                    market.get("positionIds")
+                    if version == "v2"
+                    else json.loads(market.get("clobTokenIds") or "[]")
+                )
             except (json.JSONDecodeError, TypeError) as e:
                 self.logger.debug(
                     f"Dropped market {market.get('id')}: "
                     f"malformed JSON in price/token fields ({e})"
                 )
                 continue
-            if outcome_prices and clob_token_ids:
+            if version == "v2" and not (
+                isinstance(token_ids, list)
+                and all(
+                    isinstance(i, str) and i.isascii() and i.isdecimal() and len(i) < 79
+                    for i in token_ids
+                )
+                and all(int(i) >> 248 == V2_MODULE_IDS[0] for i in token_ids)  # Binary
+            ):
+                self.logger.debug(
+                    f"Dropped market {market.get('id')}: "
+                    "positionIds missing, malformed or not Binary"
+                )
+                continue
+            if outcome_prices and token_ids:
                 tradeable.append(market)
         return tradeable
 
@@ -1451,25 +1577,102 @@ class PolymarketClientConnection(BaseSyncConnection):
             params["include_archived"] = "true"
         return params
 
+    @cached_property
+    def _token_modules(self) -> Dict[str, str]:
+        """Return the cached contract module of each token looked up so far."""
+        return {}
+
+    def _read_token_modules(self, token_ids: List[str]) -> None:
+        """Look up the module of the tokens not yet known, in batches.
+
+        :param token_ids: the token ids to classify
+        """
+        unknown = sorted({t for t in token_ids if t not in self._token_modules})
+        for start in range(0, len(unknown), DATA_API_TOKENS_LIMIT):
+            batch = unknown[start : start + DATA_API_TOKENS_LIMIT]
+            try:
+                response = requests.get(
+                    DATA_API_TOKENS_URL,
+                    params={"token_id": ",".join(batch)},
+                    timeout=API_REQUEST_TIMEOUT,
+                )
+                response.raise_for_status()
+                for row in response.json()["data"]:
+                    if row["module"] in (V1_MODULE, *V2_MODULES):
+                        self._token_modules[str(row["token_id"])] = row["module"]
+            except (
+                requests.exceptions.RequestException,
+                ValueError,
+                KeyError,
+                TypeError,
+            ) as e:
+                self.logger.error(f"Error fetching {DATA_API_TOKENS_URL}: {str(e)}")
+                return
+
+    @staticmethod
+    def _could_be_v2(row: Dict[str, Any]) -> bool:
+        """Tell whether a row's position ID fits the Protocol V2 layout.
+
+        A V2 position ID's top byte is a V2 module ID and its low byte is the
+        outcome index. A row whose outcome index can't be read fits.
+
+        :param row: a positions row from Data API v2
+        :return: whether the row could be a V2 position
+        """
+        try:
+            token_id = int(row["token_id"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        if token_id >> 248 not in V2_MODULE_IDS:
+            return False
+        try:
+            return token_id & 0xFF == int(row["outcome_index"])
+        except (KeyError, TypeError, ValueError):
+            return True
+
     def _select_positions(
         self,
         rows: List[Dict[str, Any]],
         redeemable: Optional[bool],
-    ) -> List[Dict[str, Any]]:
+        holder: str,
+    ) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
         """Map position rows to v1 names and keep those matching ``redeemable``.
-
-        v2 has no status for "not redeemable", and its default status returns
-        settled rows alongside open ones, so the ``redeemable`` filter is
-        applied here on the row flag.
 
         :param rows: positions rows from Data API v2
         :param redeemable: keep only rows with this redeemable flag; None keeps all
-        :return: the selected positions, keyed by v1 names
+        :param holder: the address holding the positions
+        :return: Tuple of (the selected positions keyed by v1 names, error_message)
         """
-        positions = [self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1) for row in rows]
-        if redeemable is None:
-            return positions
-        return [p for p in positions if bool(p.get("redeemable")) is redeemable]
+        selected = [
+            row
+            for row in rows
+            if redeemable is None or bool(row.get("redeemable")) is redeemable
+        ]
+        selected_ids = [row.get("token_id") for row in selected]
+        self._read_token_modules([t for t in selected_ids if isinstance(t, str)])
+        positions: List[Dict[str, Any]] = []
+        v2: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+        unknown = []
+        for row, token_id in zip(selected, selected_ids):
+            module = self._token_modules.get(token_id)
+            position = self._to_v1_fields(row, POSITION_FIELDS_V2_TO_V1)
+            positions.append(position)
+            if module == V1_MODULE or (module is None and not self._could_be_v2(row)):
+                continue
+            if module in V2_MODULES and self._could_be_v2(row):
+                v2.append((row, position))
+            else:
+                unknown.append(token_id)
+        if unknown:
+            error_msg = f"No matching module in {DATA_API_TOKENS_URL}: {unknown}"
+            self.logger.error(error_msg)
+            return None, error_msg
+        balances = self._erc1155_balance_of_batch(
+            self.position_manager, holder, [int(r["token_id"]) for r, _ in v2]
+        )
+        for (_, position), balance in zip(v2, balances, strict=True):
+            position[V2_BALANCE_KEY] = balance
+        return positions, None
 
     def _get_positions(
         self,
@@ -1489,7 +1692,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param redeemable: Filter for redeemable positions only. If None, returns all positions.
         :param address: holder address to query; defaults to the Safe. The
             CLOB v2 withdrawal sell-loop passes the DepositWallet here because
-            the sellable CTF has been moved Safe→DW by the withdrawal top-up.
+            the sellable positions have been moved Safe→DW by the withdrawal top-up.
         :return: Tuple of (positions_data, error_message)
         """
         params = self._positions_params(
@@ -1501,7 +1704,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable)
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        if error:
+            return None, error
         self.logger.info(f"Fetched {len(positions)} positions for {params['user']}")
         return positions, None
 
@@ -1536,7 +1743,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         if error:
             return None, error
 
-        positions = self._select_positions(rows or [], redeemable)
+        positions, error = self._select_positions(
+            rows or [], redeemable, params["user"]
+        )
+        if error:
+            return None, error
         self.logger.info(
             f"Fetched total of {len(positions)} positions for {params['user']}"
         )
@@ -1611,6 +1822,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         index_sets: list[int],
         collateral_token: str,
         is_neg_risk: bool = False,
+        position_id: Optional[str] = None,
+        amount: Optional[int] = None,
     ) -> Tuple[Any, Any]:
         """Redeem positions on Polymarket.
 
@@ -1618,6 +1831,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param index_sets: List of index sets to redeem (uint256[])
         :param collateral_token: The collateral token address
         :param is_neg_risk: Whether this is a negative risk market
+        :param position_id: the Protocol V2 position id to claim
+        :param amount: the Protocol V2 position amount to claim; None claims V1
         :return: Tuple of (transaction_result, error_message)
         """
         try:
@@ -1627,33 +1842,35 @@ class PolymarketClientConnection(BaseSyncConnection):
                 self.logger.error(error_msg)
                 return None, error_msg
 
-            # Convert condition_id to bytes
-            condition_id_clean = condition_id.removeprefix("0x")
-            condition_id_bytes = bytes.fromhex(condition_id_clean)
-
-            # Both CtfCollateralAdapter and NegRiskCtfCollateralAdapter expose
-            # the same 4-arg redeemPositions(address,bytes32,bytes32,uint256[])
-            # signature; only the destination contract differs. Under CLOB v2,
-            # neg-risk markets are plain CTF binary conditions and the v1
-            # 2-arg overload (0xdbeccb23) reverts with GS013.
-            selector = bytes.fromhex("01b7037c")
-            encoded_args = encode(
-                ["address", "bytes32", "bytes32", "uint256[]"],
-                [
-                    collateral_token,
-                    PARENT_COLLECTION_ID,
-                    condition_id_bytes,
-                    index_sets,
-                ],
-            )
-            calldata = selector + encoded_args
-
-            if is_neg_risk:
-                target_address = self.neg_risk_ctf_collateral_adapter
-                market_type = "negative risk (via NegRiskCtfCollateralAdapter)"
+            if amount is not None:
+                calldata = encode_router_redeem(int(str(position_id)), amount)
+                target_address = self.router
+                market_type = "Protocol V2 (via Router)"
+                claimed = f"position {position_id}"
             else:
-                target_address = self.ctf_collateral_adapter
-                market_type = "standard (via CtfCollateralAdapter)"
+                # Both CtfCollateralAdapter and NegRiskCtfCollateralAdapter expose
+                # the same 4-arg redeemPositions(address,bytes32,bytes32,uint256[])
+                # signature; only the destination contract differs. Under CLOB v2,
+                # neg-risk markets are plain CTF binary conditions and the v1
+                # 2-arg overload (0xdbeccb23) reverts with GS013.
+                selector = bytes.fromhex("01b7037c")
+                encoded_args = encode(
+                    ["address", "bytes32", "bytes32", "uint256[]"],
+                    [
+                        collateral_token,
+                        PARENT_COLLECTION_ID,
+                        bytes.fromhex(condition_id.removeprefix("0x")),
+                        index_sets,
+                    ],
+                )
+                calldata = selector + encoded_args
+                if is_neg_risk:
+                    target_address = self.neg_risk_ctf_collateral_adapter
+                    market_type = "negative risk (via NegRiskCtfCollateralAdapter)"
+                else:
+                    target_address = self.ctf_collateral_adapter
+                    market_type = "standard (via CtfCollateralAdapter)"
+                claimed = f"positions for condition {condition_id}"
 
             # Create SafeTransaction
             tx = SafeTransaction(
@@ -1669,9 +1886,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             )
 
             transaction_data = result.get_transaction()
-            self.logger.info(
-                f"Redeemed {market_type} positions for condition {condition_id}: {transaction_data}"
-            )
+            self.logger.info(f"Redeemed {market_type} {claimed}: {transaction_data}")
             return transaction_data, None
 
         except Exception as e:
@@ -1713,11 +1928,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         return "0x" + (selector + encoded_args).hex()
 
     def _erc1155_balance_of(self, token_address: str, owner: str, token_id: int) -> int:
-        """Read an ERC1155 (CTF) balance for a single token id via eth_call.
+        """Read an ERC1155 balance for a single token id via eth_call.
 
-        :param token_address: the ERC1155 token (the Conditional Tokens / CTF).
+        :param token_address: the ERC1155 token (the CTF for V1, PositionManager for V2).
         :param owner: the holder address.
-        :param token_id: the CTF position (outcome) token id.
+        :param token_id: the position (outcome) token id.
         :return: the balance in base units.
         """
         selector = self.w3.keccak(text="balanceOf(address,uint256)")[:4].hex()
@@ -1732,17 +1947,40 @@ class PolymarketClientConnection(BaseSyncConnection):
         )
         return int.from_bytes(result, byteorder="big")
 
+    def _erc1155_balance_of_batch(
+        self, token_address: str, owner: str, token_ids: List[int]
+    ) -> List[int]:
+        """Read an owner's ERC1155 balances for many token ids via ``balanceOfBatch``.
+
+        :param token_address: the ERC1155 token (PositionManager or the CTF).
+        :param owner: the holder address.
+        :param token_ids: the position token ids, read in chunks.
+        :return: the balances in base units, in ``token_ids`` order.
+        """
+        selector = self.w3.keccak(text="balanceOfBatch(address[],uint256[])")[:4].hex()
+        balances: List[int] = []
+        for start in range(0, len(token_ids), BALANCE_BATCH_LIMIT):
+            ids = token_ids[start : start + BALANCE_BATCH_LIMIT]
+            owners = [to_checksum_address(owner)] * len(ids)
+            data = selector + encode(["address[]", "uint256[]"], [owners, ids]).hex()
+            result = self.w3.eth.call(
+                {"to": self.w3.to_checksum_address(token_address), "data": data}
+            )
+            balances.extend(decode(["uint256[]"], bytes(result))[0])
+        return balances
+
     def _encode_erc1155_safe_transfer(
         self, from_addr: str, to: str, token_id: int, amount: int
     ) -> str:
         """Encode ERC1155 ``safeTransferFrom(address,address,uint256,uint256,bytes)``.
 
         The DepositWallet is the token owner and executes the call itself, so
-        ``msg.sender == from`` satisfies the CTF transfer authorization.
+        ``msg.sender == from`` satisfies the CTF or PositionManager transfer
+        authorization.
 
         :param from_addr: the token sender (the DepositWallet).
         :param to: the recipient (the Safe).
-        :param token_id: the CTF position (outcome) token id.
+        :param token_id: the position (outcome) token id.
         :param amount: the number of position tokens to transfer.
         :return: Encoded calldata as a 0x hex string.
         """
@@ -1881,19 +2119,19 @@ class PolymarketClientConnection(BaseSyncConnection):
     def _sweep_dw(
         self, dw_address: Optional[str] = None, token_ids: Optional[list] = None
     ) -> Tuple[Any, Any]:
-        """Sweep the DepositWallet's pUSD AND CTF positions back to the Safe.
+        """Sweep the DepositWallet's pUSD and position shares back to the Safe.
 
         "Transfer whatever's there": reads the DW's current pUSD balance and the
-        CTF balance for each supplied ``token_ids`` (the bet's outcome tokens),
+        CTF and PositionManager balances for each supplied ``token_ids``,
         then relays a single ``execute`` batch moving every non-zero balance
         DW→Safe through the relayer proxy. The Safe is the canonical store of
-        persistent assets, so the bought CTF position must not linger in the
+        persistent assets, so the bought position must not linger in the
         transient DW (otherwise withdrawal/redeem, which act on the Safe, can
         never see it). Nothing to move is a successful no-op so the round can
         converge after a crash/empty DW.
 
         :param dw_address: the DW to sweep; defaults to the known DW.
-        :param token_ids: CTF (outcome) token ids whose DW balance to sweep.
+        :param token_ids: position (outcome) token ids whose DW balance to sweep.
         :return: ``({"swept", "amount", "transaction_id"}, error_or_none)``.
         """
         target_dw = dw_address or self.dw_address
@@ -1918,14 +2156,15 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ),
                     }
                 )
-            for token_id in token_ids or []:
-                ctf_balance = self._erc1155_balance_of(self.ctf_address, dw, token_id)
-                if ctf_balance > 0:
+            ledgers = (self.ctf_address, self.position_manager)
+            for ledger, token_id in product(ledgers, token_ids or []):
+                balance = self._erc1155_balance_of(ledger, dw, token_id)
+                if balance > 0:
                     calls.append(
                         {
-                            "target": self.ctf_address,
+                            "target": ledger,
                             "data": self._encode_erc1155_safe_transfer(
-                                dw, self.safe_address, token_id, ctf_balance
+                                dw, self.safe_address, token_id, balance
                             ),
                         }
                     )
@@ -2034,6 +2273,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         - CTF for Neg Risk Adapter
         - CTF for CtfCollateralAdapter (redeem)
         - CTF for NegRiskCtfCollateralAdapter (redeem)
+        - PositionManager for Router (Protocol V2 redeem)
 
         :return: Tuple of (transaction_result, error_message)
         """
@@ -2119,6 +2359,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 value="0",
             )
 
+            position_manager_approve_router = SafeTransaction(
+                to=self.position_manager,
+                operation=OperationType.Call,
+                data=self._encode_set_approval_for_all(self.router, True),
+                value="0",
+            )
+
             # Execute all approval transactions together
             transactions = [
                 usdc_approve_ctf,
@@ -2129,6 +2376,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ctf_approve_adapter,
                 ctf_approve_collateral_adapter,
                 ctf_approve_neg_risk_collateral_adapter,
+                position_manager_approve_router,
             ]
 
             self.logger.info("Executing all approval transactions...")
@@ -2193,6 +2441,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         - USDC allowances for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter
         - CTF approvals for CTF Exchange, Neg Risk CTF Exchange, Neg Risk Adapter,
           CtfCollateralAdapter, NegRiskCtfCollateralAdapter
+        - PositionManager approval for Router
 
         :return: Tuple of (approval_status_dict, error_message)
         """
@@ -2230,6 +2479,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                 self.safe_address,
                 self.neg_risk_ctf_collateral_adapter,
             )
+            position_manager_router_approved = self._check_erc1155_approval(
+                self.position_manager, self.safe_address, self.router
+            )
 
             # Build response
             approval_status = {
@@ -2248,6 +2500,9 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ctf_neg_risk_collateral_adapter_approved
                     ),
                 },
+                "position_manager_approvals": {
+                    "router": position_manager_router_approved,
+                },
                 "all_approvals_set": all(
                     [
                         usdc_ctf_exchange_allowance > 0,
@@ -2258,6 +2513,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                         ctf_adapter_approved,
                         ctf_collateral_adapter_approved,
                         ctf_neg_risk_collateral_adapter_approved,
+                        position_manager_router_approved,
                     ]
                 ),
             }

@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidro5obayk75ynreh3dmp6fcyqk4q65nhpeab5pal7nbbrgfxvpim
+agent: valory/trader:0.1.0:bafybeieaz7qm7zcowzidhj36xhcvnnipgvrqltzjiq4t7kkovxfdhsiu5e
 number_of_agents: 1
 deployment:
   agent:
@@ -439,6 +439,8 @@ config:
   ctf_exchange: ${POLYMARKET_CTF_EXCHANGE:str:0xE111180000d2663C0091e4f400237545B87B996B}
   neg_risk_ctf_exchange: ${POLYMARKET_NEG_RISK_CTF_EXCHANGE:str:0xe2222d279d744050d28e00520010520000310F59}
   neg_risk_adapter: ${POLYMARKET_NEG_RISK_ADAPTER:str:0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296}
+  position_manager_address: ${POLYMARKET_POSITION_MANAGER:str:0x006F54F7f9A22e0000CC2AB60031000000ae9fEF}
+  router_address: ${POLYMARKET_ROUTER:str:0x12121212006e4CD160D18e3f00711DA5c3372600}
   polygon_ledger_rpc: ${POLYGON_LEDGER_RPC:str:https://polygon-rpc.com}
   is_running_on_polymarket: ${IS_RUNNING_ON_POLYMARKET:bool:true}
   polymarket_relayer_proxy_url: ${POLYMARKET_RELAYER_PROXY_URL:str:https://mpp.valory.xyz}

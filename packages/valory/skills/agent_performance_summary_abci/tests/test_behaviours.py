@@ -32,6 +32,7 @@ import pytest
 from requests import ConnectionError as RequestsConnectionError
 from requests import Timeout as RequestsTimeout
 
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.bet_payout_checker import (
@@ -9693,3 +9694,20 @@ class TestAsyncActLeaderboard:
                 pass  # pragma: no cover
         step.assert_called()
         assert finish.call_args[0][0].vote is True
+
+
+def test_v2_position_in_locked_funds_and_summary() -> None:
+    """Open positions include the Safe's V2 positions, not a settled V2 row with nothing to claim."""
+    b = _make_fetch_behaviour()
+    ctx, _, synced_data, _ = _mock_context(is_polymarket=True)
+    v2_open = {**pm.V2_OPEN, "current_value": 0.0}  # unsettled, so still open
+    rows = (v2_open, pm.V2_WIN0, pm.V2_WIN, pm.V2_LOSE, pm.V1_OPEN, pm.V1_LOSE)
+    with pm._safe_world(*rows) as conn:
+        del conn.balances[(pm.POSITION_MANAGER, pm.V2_SAFE, int(pm.V2_WIN["token_id"]))]
+        with _patch_context(b, ctx, synced_data)[0]:
+            pm._wire(b, conn)
+            gen = b._fetch_polymarket_open_position_titles()
+            next(gen)  # the positions request
+            titles = _drive_gen(gen)
+    claimed = (pm.V2_WIN, pm.V2_LOSE)  # V2_WIN has no balance left to claim
+    assert titles == {row["title"] for row in rows if row not in claimed}

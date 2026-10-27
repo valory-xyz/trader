@@ -685,6 +685,9 @@ def _build_decision_maker_params_kwargs() -> dict:
         "polymarket_neg_risk_adapter_address": "0xnegadapt",
         "polymarket_ctf_collateral_adapter_address": "0xctfcoladapt",
         "polymarket_neg_risk_ctf_collateral_adapter_address": "0xnegctfcoladapt",
+        "polymarket_exchange_v3_address": "0xexchv3",
+        "polymarket_position_manager_address": "0xposmgr",
+        "polymarket_router_address": "0xrouter",
         "pol_threshold_for_swap": 1000,
         "slippages_for_swap": {"ETH": 0.01},
         "is_outcome_side_threshold_filter_enabled": False,
@@ -791,6 +794,9 @@ class TestDecisionMakerParams:
             params.polymarket_neg_risk_ctf_collateral_adapter_address
             == "0xnegctfcoladapt"
         )
+        assert params.polymarket_exchange_v3_address == "0xexchv3"
+        assert params.polymarket_position_manager_address == "0xposmgr"
+        assert params.polymarket_router_address == "0xrouter"
         assert params.pol_threshold_for_swap == 1000
         assert params.slippages_for_swap == {"ETH": 0.01}
         assert params.is_outcome_side_threshold_filter_enabled is False
