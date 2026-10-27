@@ -24,6 +24,7 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
 )
@@ -40,6 +41,8 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
+MAX_BETTABLE_ASK = 0.99
+BOOK_CHECK_CANDIDATES = 3
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -549,6 +552,30 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.warning(msg)
         return None
 
+    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether a side of a Polymarket book could take a bet; True when unreadable.
+
+        :param bet: the sampled bet.
+        :yield: None
+        :return: whether a side has an ask below MAX_BETTABLE_ASK and a spread in band.
+        """
+        lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
+        for token_id in (bet.outcome_token_ids or {}).values():
+            request = {
+                "request_type": RequestType.FETCH_ORDER_BOOK.value,
+                "params": {"token_id": token_id},
+            }
+            try:
+                book = yield from self.send_polymarket_connection_request(request)
+                asks, bids = book["asks"], book["bids"]
+                if asks and min(float(a["price"]) for a in asks) < MAX_BETTABLE_ASK:
+                    if not bids or lo <= self.bid_ask_spread(asks, bids) <= hi:
+                        return True
+            except (KeyError, TypeError, ValueError) as exc:
+                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc!r}")
+                return True
+        return False
+
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
         self.context.logger.info(
@@ -569,6 +596,26 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
+            # On Polymarket, skip a market whose book cannot take a bet before
+            # paying the mech; the stamp keeps it out for the cooldown.
+            checks_left = BOOK_CHECK_CANDIDATES
+            if (
+                not self.params.is_running_on_polymarket
+                or self.benchmarking_mode.enabled
+            ):
+                checks_left = 0
+            while (
+                idx is not None and checks_left and not self.bets[idx].invested_amount
+            ):
+                checks_left -= 1
+                bet = self.bets[idx]
+                if (yield from self._book_can_take_bet(bet)):
+                    break
+                self.context.logger.info(
+                    f"Book of {bet.id} cannot take a bet, skipped before the mech."
+                )
+                bet.processed_timestamp = self.synced_timestamp
+                idx = self._sample() if checks_left else None
             benchmarking_finished = None
             day_increased = None
 

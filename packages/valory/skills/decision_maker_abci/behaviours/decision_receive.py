@@ -551,15 +551,13 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             band_is_default = lo <= 0.0 and hi >= 1.0
             if spread_asks and spread_bids:
                 try:
-                    best_ask = min(float(a["price"]) for a in spread_asks)
-                    best_bid = max(float(b["price"]) for b in spread_bids)
+                    spread = self.bid_ask_spread(spread_asks, spread_bids)
                 except (ValueError, TypeError) as exc:
                     self.context.logger.warning(
                         f"Spread gate bypassed: could not parse order book "
                         f"prices ({exc})."
                     )
                 else:
-                    spread = best_ask - best_bid
                     if not lo <= spread <= hi:
                         self.context.logger.info(
                             f"Spread gate: {spread:.4f} outside "
