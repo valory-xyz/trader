@@ -153,6 +153,7 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 | `FILE_HASH_TO_STRATEGIES` | Maps the IPFS hash of a `customs/` package to the strategy names it provides. Defaulted; only override if you ship a new strategy. |
 | `CREATOR_PER_SUBGRAPH` | Dict mapping market-spec subgraph name to creator addresses to track (Omen-only by default). |
 | `DEFAULT_ACTIVITY_GOAL` | Trades the agent places per staking epoch before standing by, unless the user sets their own goal in the chat. Standby also needs the staking target met. `8` for Omenstrat, `1` for Polystrat; `aea-config.yaml` defaults to `8`. |
+| `DECLINED_MARKET_COOLDOWN` | Seconds a market stays unsampleable after a decision that left no position (a decline or a full sell), so a small pool waits instead of paying the mech again. Default `3600`; `0` turns it off. |
 | `PROMPT_TEMPLATE` | Single-line prompt for the prediction Mech, with `@{question}`, `@{yes}`, `@{no}` placeholders. |
 
 `POLYGON_LEDGER_CHAIN_ID` / `GNOSIS_LEDGER_CHAIN_ID` exist too but default to the right values (137 / 100), so you don't normally need to set them.
@@ -326,7 +327,7 @@ If you add or remove a dependency:
 ## Notes on profitability
 
 - If the agent does not have enough funds to place a bet, you'll see `Event.INSUFICIENT_FUNDS` in the logs.
-- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE` and the market is blacklisted for a configurable duration.
+- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600).
 - For Omen, fees are queryable via the [Omen subgraph on The Graph](https://thegraph.com/explorer); they have historically sat around 0.02 xDAI but should be re-checked.
 - For Polymarket CLOB v2, fee math is delegated to the protocol — see `client.get_clob_market_info(condition_id)["fd"]`.
 

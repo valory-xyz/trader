@@ -48,8 +48,8 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeidn33r5rus3yedhatolkidwx6qf2jn3jgq73xgoyhpxxdpysg4nkq
-- valory/decision_maker_abci:0.1.0:bafybeiavkin2ntzjoadprktoma75v5xsk5ezduxc76p6kpijzjo35te4vi
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiarirzcnwk6nhkrtv3zsynd3rrpn5fzlkj6mmk6uypo7vclnkdxky
+- valory/decision_maker_abci:0.1.0:bafybeig2uavck5quqxs7scyt755smxnuoihbj6cn3hm5ai2ooxedkbimp4
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicx6e5efylvyvftut5egfj6ugh7eguaegdyiabutuszqdepzw2wvy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/check_stop_trading_abci:0.1.0:bafybeihopa2buonry5ryrhsxr2a5adfzs2bw4sedq7efc4i232hlnlwaua
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
@@ -230,6 +230,7 @@ models:
       mech_chain_id: gnosis
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
+      declined_market_cooldown: 3600
       polymarket_spread_min: 0.0
       polymarket_spread_max: 1.0
       trading_strategy: strategy_name
