@@ -370,6 +370,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         """Convert USDC wei to native token (6 decimals)."""
         return usdc_wei / 10**6
 
+    @staticmethod
+    def bid_ask_spread(asks: List[Dict[str, Any]], bids: List[Dict[str, Any]]) -> float:
+        """Best ask minus best bid of non-empty book levels; raises on bad prices."""
+        best_ask = min(float(a["price"]) for a in asks)
+        return best_ask - max(float(b["price"]) for b in bids)
+
     def convert_unit_to_wei(self, amount: float) -> int:
         """Convert an amount in the token's unit to its WEI equivalent based on collateral token type."""
         return int(self.get_token_precision() * amount)
