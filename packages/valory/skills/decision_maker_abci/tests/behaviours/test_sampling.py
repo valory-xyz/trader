@@ -21,6 +21,7 @@
 
 import json
 import time
+from contextlib import ExitStack
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -2391,13 +2392,13 @@ def _book_bet(bet_id: str = "bet1", invested_amount: int = 0) -> Any:
 
 
 def _book_behaviour(
-    books: Dict[str, Any], spread_max: float = 0.1
+    books: Dict[str, Any], spread_max: float = 0.1, spread_min: float = 0.0
 ) -> Tuple[SamplingBehaviour, MagicMock]:
     """Return a Polymarket behaviour whose connection serves ``books`` by token id."""
     behaviour = _make_behaviour()
     params = behaviour.context.params
     params.is_running_on_polymarket = True
-    params.polymarket_spread_min = 0.0
+    params.polymarket_spread_min = spread_min
     params.polymarket_spread_max = spread_max
     params.declined_market_cooldown = COOLDOWN
     behaviour.context.benchmarking_mode.enabled = False
@@ -2438,6 +2439,8 @@ class TestBookCanTakeBet:
             # no bids: the spread gate is bypassed, so a bet can be placed
             (_book("0.5"), EMPTY_BOOK, True, 1),
             (NORMAL_BOOK, NORMAL_BOOK, True, 1),
+            # the Yes side is out of band, the No side passes
+            (_book("0.9", "0.5"), _book("0.5", "0.45"), True, 2),
         ],
     )
     def test_book_shapes(
@@ -2457,6 +2460,51 @@ class TestBookCanTakeBet:
         assert send.call_count == n_fetches
         fetched = [c.args[0]["params"]["token_id"] for c in send.call_args_list]
         assert fetched == [f"bet1_{YES_TOKEN}", f"bet1_{NO_TOKEN}"][:n_fetches]
+        # a readable book never takes the error path
+        behaviour.context.logger.warning.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "yes_book, no_book, reason",
+        [
+            (EMPTY_BOOK, EMPTY_BOOK, "Yes: no asks; No: no asks"),
+            (_book("0.995"), _book("0.99"), "Yes: best ask 0.995; No: best ask 0.99"),
+            (_book("0.7", "0.5"), _book("0.5", "0.3"), "Yes: spread 0.200"),
+        ],
+    )
+    def test_failure_reason_is_logged(
+        self, yes_book: Dict[str, Any], no_book: Dict[str, Any], reason: str
+    ) -> None:
+        """The skip line names the reason for each side."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": yes_book, f"bet1_{NO_TOKEN}": no_book}
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is False
+        logged = behaviour.context.logger.info.call_args[0][0]
+        assert reason in logged and "bet1" in logged
+
+    @pytest.mark.parametrize("spread_min, expected", [(0.25, True), (0.26, False)])
+    def test_spread_min_edge(self, spread_min: float, expected: bool) -> None:
+        """A spread exactly at polymarket_spread_min passes; below it fails."""
+        book = _book("0.75", "0.5")
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": book, f"bet1_{NO_TOKEN}": book},
+            spread_max=1.0,
+            spread_min=spread_min,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is expected
+
+    def test_bid_ask_spread_uses_best_levels(self) -> None:
+        """The spread is the lowest ask minus the highest bid."""
+        asks = [{"price": "0.7"}, {"price": "0.6"}, {"price": "0.8"}]
+        bids = [{"price": "0.4"}, {"price": "0.5"}, {"price": "0.3"}]
+        assert SamplingBehaviour.bid_ask_spread(asks, bids) == pytest.approx(0.1)
+
+    def test_connection_exception_proceeds(self) -> None:
+        """An exception raised at the connection boundary proceeds with the market."""
+        behaviour, send = _book_behaviour({})
+        send.side_effect = ValueError("boom")
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        assert "boom" in behaviour.context.logger.warning.call_args[0][0]
 
     @pytest.mark.parametrize("spread_ask, expected", [("0.6", True), ("0.61", False)])
     def test_service_spread_max(self, spread_ask: str, expected: bool) -> None:
@@ -2514,6 +2562,7 @@ class TestBookCanTakeBet:
         behaviour, send = _book_behaviour({})
         assert _run(behaviour._book_can_take_bet(bet)) is False
         send.assert_not_called()
+        assert "no token ids" in behaviour.context.logger.info.call_args[0][0]
 
 
 class TestAsyncActBookCheck:
@@ -2522,35 +2571,58 @@ class TestAsyncActBookCheck:
     @staticmethod
     def _act(
         behaviour: SamplingBehaviour,
-        sampled: List[Optional[int]],
+        sampled: Optional[List[Optional[int]]] = None,
         benchmarking: bool = False,
-    ) -> Tuple[SamplingPayload, MagicMock]:
-        """Run async_act with ``_sample`` returning ``sampled`` in order."""
+    ) -> Tuple[SamplingPayload, Any]:
+        """Run async_act; ``_sample`` returns ``sampled`` in order, or runs for real."""
         bm = MagicMock()
         bm.enabled = benchmarking
-        with (
-            patch.object(behaviour, "_sample", side_effect=sampled) as sample,
-            patch.object(behaviour, "store_bets"),
-            patch.object(behaviour, "hash_stored_bets", return_value="hash"),
-            patch.object(
-                type(behaviour),
-                "benchmarking_mode",
-                new_callable=PropertyMock,
-                return_value=bm,
-            ),
-            patch.object(
-                type(behaviour),
-                "synced_timestamp",
-                new_callable=PropertyMock,
-                return_value=NOW,
-            ),
-            patch.object(
-                behaviour, "_benchmarking_inc_day", return_value=(False, False)
-            ),
-            patch.object(
-                behaviour, "finish_behaviour", side_effect=lambda p: iter([None])
-            ) as finish,
-        ):
+        stored: List[List[int]] = []
+        behaviour.__dict__["stored"] = stored
+        props = {
+            "benchmarking_mode": bm,
+            "synced_timestamp": NOW,
+            "kpi_is_met": False,
+            "review_bets_for_selling": False,
+            "shared_state": MagicMock(liquidity_cache={}),
+        }
+        with ExitStack() as stack:
+            sample = None
+            if sampled is not None:
+                sample = stack.enter_context(
+                    patch.object(behaviour, "_sample", side_effect=sampled)
+                )
+            for name, value in props.items():
+                stack.enter_context(
+                    patch.object(
+                        type(behaviour),
+                        name,
+                        new_callable=PropertyMock,
+                        return_value=value,
+                    )
+                )
+            stack.enter_context(
+                patch.object(
+                    behaviour,
+                    "store_bets",
+                    side_effect=lambda: stored.append(
+                        [b.processed_timestamp for b in behaviour.bets]
+                    ),
+                )
+            )
+            stack.enter_context(
+                patch.object(behaviour, "hash_stored_bets", return_value="hash")
+            )
+            stack.enter_context(
+                patch.object(
+                    behaviour, "_benchmarking_inc_day", return_value=(False, False)
+                )
+            )
+            finish = stack.enter_context(
+                patch.object(
+                    behaviour, "finish_behaviour", side_effect=lambda p: iter([None])
+                )
+            )
             _run(behaviour.async_act())
         return finish.call_args[0][0], sample
 
@@ -2567,11 +2639,42 @@ class TestAsyncActBookCheck:
         behaviour.bets = [bad, good]
         payload, sample = self._act(behaviour, [0, 1])
         assert payload.index == 1
+        assert payload.bets_hash == "hash"
         assert sample.call_count == 2
         assert send.call_count == 3
         assert bad.processed_timestamp == NOW
         assert good.processed_timestamp == 0
         assert behaviour._declined_recently(bad, NOW + 1)
+        # the stamp is saved, so the cooldown carries into the next period
+        assert behaviour.__dict__["stored"] == [[NOW, 0]]
+
+    def test_stamped_market_is_not_resampled(self) -> None:
+        """With the real _sample, a market failing its book makes way for the next."""
+        bad = _book_bet("bad")
+        good = _book_bet("good")
+        for bet, liquidity in ((bad, 200.0), (good, 100.0)):
+            bet.openingTimestamp = NOW + 86400 * 5
+            bet.scaledLiquidityMeasure = liquidity
+        behaviour, send = _book_behaviour({})
+        send.side_effect = lambda payload: _return_gen(
+            EMPTY_BOOK
+            if payload["params"]["token_id"].startswith("bad")
+            else NORMAL_BOOK
+        )
+        params = behaviour.context.params
+        params.use_multi_bets_mode = False
+        params.enable_multi_bets_fallback = False
+        params.sample_bets_closing_days = 60
+        params.opening_margin = 100
+        params.safe_voting_range = 100
+        params.is_outcome_side_threshold_filter_enabled = False
+        params.exclude_neg_risk_markets = False
+        params.disabled_polymarket_tags = []
+        behaviour.bets = [bad, good]
+        payload, _ = self._act(behaviour)
+        assert payload.index == 1
+        assert bad.processed_timestamp == NOW
+        assert behaviour.__dict__["stored"] == [[NOW, 0]]
 
     def test_every_candidate_fails(self) -> None:
         """When every candidate within the cap fails, the cycle has no market."""
@@ -2586,6 +2689,9 @@ class TestAsyncActBookCheck:
         assert send.call_count == 2 * BOOK_CHECK_CANDIDATES
         stamped = [b.processed_timestamp for b in bets]
         assert stamped == [NOW] * BOOK_CHECK_CANDIDATES + [0]
+        assert behaviour.__dict__["stored"] == [stamped]
+        warning = behaviour.context.logger.warning.call_args[0][0]
+        assert "failed the book check" in warning
 
     def test_nothing_sampled(self) -> None:
         """No sampled market means no book fetch."""
