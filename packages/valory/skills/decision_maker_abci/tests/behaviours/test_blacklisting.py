@@ -21,14 +21,22 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
     BlacklistingBehaviour,
+)
+from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
+    SamplingBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import BlacklistingPayload
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
-from packages.valory.skills.market_manager_abci.bets import QueueStatus
+from packages.valory.skills.market_manager_abci.bets import Bet, QueueStatus
+
+SYNCED_TS = 1700000000
+SIMULATED_BENCHMARK_TS = 123
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -96,6 +104,95 @@ class TestBlacklistBlacklist:
             behaviour._blacklist()
 
         assert mock_bet.queue_status == expected_next
+
+    @pytest.mark.parametrize(
+        "benchmarking, expected_timestamp",
+        ((False, SYNCED_TS), (True, SIMULATED_BENCHMARK_TS)),
+        ids=("live", "benchmarking"),
+    )
+    def test_blacklist_sets_processed_timestamp(
+        self, benchmarking: bool, expected_timestamp: int
+    ) -> None:
+        """_blacklist should stamp the synced time, except in benchmarking mode."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+
+        other_bet = MagicMock(spec=Bet)
+        other_bet.queue_status = QueueStatus.REPROCESSED
+        other_bet.processed_timestamp = 0
+        sampled_bet = MagicMock(spec=Bet)
+        sampled_bet.queue_status = QueueStatus.REPROCESSED
+        sampled_bet.processed_timestamp = SIMULATED_BENCHMARK_TS
+        behaviour.bets = [other_bet, sampled_bet]
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            mock_sd.return_value = MagicMock(sampled_bet_index=1)
+            behaviour._blacklist()
+
+        assert sampled_bet.processed_timestamp == expected_timestamp
+        assert sampled_bet.queue_status == QueueStatus.REPROCESSED
+        assert other_bet.processed_timestamp == 0
+        assert other_bet.queue_status == QueueStatus.REPROCESSED
+
+    def test_declines_rotate_through_reprocessed_bets(self) -> None:
+        """Repeated declines with the real sampler visit every REPROCESSED bet."""
+        bets = [
+            Bet(
+                id=f"m{i}",
+                market="omen",
+                title=f"market {i}",
+                collateralToken="0x0",
+                creator="0x0",
+                fee=0,
+                openingTimestamp=1800000000,
+                outcomeSlotCount=2,
+                outcomeTokenAmounts=[10, 10],
+                outcomeTokenMarginalPrices=[0.5, 0.5],
+                outcomes=["Yes", "No"],
+                scaledLiquidityMeasure=liquidity,
+                queue_status=QueueStatus.REPROCESSED,
+            )
+            for i, liquidity in enumerate((900.0, 500.0, 300.0, 200.0, 100.0))
+        ]
+        sampler = object.__new__(SamplingBehaviour)
+        sampler.bets = bets
+        blacklister = _make_behaviour()
+        blacklister.__dict__["_context"].benchmarking_mode.enabled = False
+        blacklister.bets = bets
+
+        sampled_ids = []
+        now = SYNCED_TS
+        for _ in range(8):
+            idx = sampler._sampled_bet_idx(sampler.bets)
+            sampled_ids.append(bets[idx].id)
+            with (
+                patch.object(
+                    BlacklistingBehaviour,
+                    "synchronized_data",
+                    new_callable=PropertyMock,
+                    return_value=MagicMock(sampled_bet_index=idx),
+                ),
+                patch.object(
+                    BlacklistingBehaviour,
+                    "synced_timestamp",
+                    new_callable=PropertyMock,
+                    return_value=now,
+                ),
+            ):
+                blacklister._blacklist()
+            now += 96
+
+        assert sampled_ids == ["m0", "m1", "m2", "m3", "m4", "m0", "m1", "m2"]
 
 
 class TestBlacklistingAsyncAct:
