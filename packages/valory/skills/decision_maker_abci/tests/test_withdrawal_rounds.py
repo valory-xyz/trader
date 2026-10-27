@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import pytest
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.abstract_round_abci.base import (
     BaseTxPayload,
     CollectSameUntilThresholdRound,
@@ -3509,3 +3510,46 @@ class TestPostOmenWithdrawSnapshotFundsLocked:
         behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
             2.5
         )
+
+
+@pytest.mark.parametrize("dw_rows", [[pm.V1_OPEN], []])
+def test_v2_position_in_locked_funds_and_summary(tmp_path: Path, dw_rows: list) -> None:
+    """The snapshot counts the Safe's open V2 positions next to the DW's, each once."""
+    behaviour = _make_behaviour(tmp_path)
+    if dw_rows:  # with no DepositWallet the snapshot reads the Safe alone
+        (tmp_path / "deposit_wallet.json").write_text(
+            json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
+        )
+    safe = [pm.V2_OPEN, pm.V2_LOSE] + [pm.V1_00] * len(dw_rows)  # Safe V1: uncounted
+    with pm._v2_world({pm.V2_SAFE: safe, pm.V2_DW: dw_rows}, {}) as conn:
+        conn._route_request = MagicMock(wraps=conn._route_request)
+        pm._wire(behaviour, conn)
+        list(behaviour._snapshot_locked_funds())
+    reads = [call.args[0].get("params") for call in conn._route_request.call_args_list]
+    assert {"redeemable": False} in reads  # the Safe's unredeemable positions
+    locked = round(sum(row["entry_cost_usdc"] for row in [pm.V2_OPEN, *dw_rows]), 2)
+    behaviour.context.state.update_funds_locked_in_markets.assert_called_once_with(
+        locked
+    )
+
+
+def test_v2_safe_read_failure_keeps_previous_snapshot(tmp_path: Path) -> None:
+    """A failed Safe read writes no understated snapshot and logs a warning."""
+    behaviour = _make_behaviour(tmp_path)
+    (tmp_path / "deposit_wallet.json").write_text(
+        json.dumps({"dw_address": pm.V2_DW, "dw_owner": "agent_x"})
+    )
+    with pm._v2_world({pm.V2_DW: [pm.V1_00]}, {}) as conn:
+        pm._wire(behaviour, conn)
+        read = behaviour.send_polymarket_connection_request
+
+        def send(request: Dict[str, Any]) -> Generator[None, None, Any]:
+            if "address" in request["params"]:
+                return (yield from read(request))
+            yield
+            return {"error": "Safe read failed"}
+
+        behaviour.send_polymarket_connection_request = send  # type: ignore[method-assign,assignment]
+        list(behaviour._snapshot_locked_funds())
+    behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
+    assert "Safe read failed" in str(behaviour.context.logger.warning.call_args)

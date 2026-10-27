@@ -345,6 +345,22 @@ class TestPolymarketSetApprovalRound(BaseCollectSameUntilThresholdRoundTest):
         assert result[0] is synced_data_mock  # type: ignore[index]
         assert result[1] == Event.PREPARE_TX  # type: ignore[index]
 
+    @pytest.mark.parametrize(
+        "tx_hash, event", [(None, Event.DONE), ("", Event.PREPARE_TX)]
+    )
+    def test_end_block_routes_on_agreed_tx_hash(self, tx_hash, event) -> None:  # type: ignore[no-untyped-def]
+        """Skipped Safe approvals (no tx hash) go to DONE; an empty hash still settles."""
+        round_ = PolymarketSetApprovalRound(
+            synchronized_data=self.synchronized_data, context=MagicMock()
+        )
+        round_.context.params.polymarket_builder_program_enabled = False
+        submitter = None if tx_hash is None else "submitter"
+        for participant in self.participants:
+            round_.process_payload(
+                PolymarketSetApprovalPayload(participant, submitter, tx_hash, False)
+            )
+        assert round_.end_block()[1] == event  # type: ignore[index]
+
 
 # ---------------------------------------------------------------------------
 # PolymarketPostSetApprovalRound

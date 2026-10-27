@@ -459,6 +459,13 @@ class DecisionMakerParams(
             msg = "The number of days to sample bets from must be positive!"
             raise ValueError(msg)
 
+        self.declined_market_cooldown: int = self._ensure(
+            "declined_market_cooldown", kwargs, int
+        )
+        if self.declined_market_cooldown < 0:
+            msg = "The declined market cooldown must not be negative!"
+            raise ValueError(msg)
+
         # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults
         # 0.0 / 1.0 widen the band to the full [0, 1] range = no-op.
         self.polymarket_spread_min: float = self._ensure(
@@ -632,6 +639,15 @@ class DecisionMakerParams(
         )
         self.polymarket_neg_risk_ctf_collateral_adapter_address: str = self._ensure(
             "polymarket_neg_risk_ctf_collateral_adapter_address", kwargs, str
+        )
+        self.polymarket_exchange_v3_address: str = self._ensure(
+            "polymarket_exchange_v3_address", kwargs, str
+        )
+        self.polymarket_position_manager_address: str = self._ensure(
+            "polymarket_position_manager_address", kwargs, str
+        )
+        self.polymarket_router_address: str = self._ensure(
+            "polymarket_router_address", kwargs, str
         )
         self.pol_threshold_for_swap: int = self._ensure(
             "pol_threshold_for_swap", kwargs, int

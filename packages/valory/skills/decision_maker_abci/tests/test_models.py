@@ -632,6 +632,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "agent_registry_address": "0xaddr",
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
+        "declined_market_cooldown": 3600,
         "polymarket_spread_min": 0.0,
         "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
@@ -684,6 +685,9 @@ def _build_decision_maker_params_kwargs() -> dict:
         "polymarket_neg_risk_adapter_address": "0xnegadapt",
         "polymarket_ctf_collateral_adapter_address": "0xctfcoladapt",
         "polymarket_neg_risk_ctf_collateral_adapter_address": "0xnegctfcoladapt",
+        "polymarket_exchange_v3_address": "0xexchv3",
+        "polymarket_position_manager_address": "0xposmgr",
+        "polymarket_router_address": "0xrouter",
         "pol_threshold_for_swap": 1000,
         "slippages_for_swap": {"ETH": 0.01},
         "is_outcome_side_threshold_filter_enabled": False,
@@ -715,6 +719,26 @@ class TestDecisionMakerParams:
                 sample_bets_closing_days=0,
             )
 
+    def test_negative_declined_market_cooldown_raises(self) -> None:
+        """Test that a negative declined_market_cooldown raises ValueError."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = -1
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="must not be negative"),
+        ):
+            DecisionMakerParams(**kwargs)
+
+    def test_zero_declined_market_cooldown_is_allowed(self) -> None:
+        """Test that 0, the off switch, is accepted."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["declined_market_cooldown"] = 0
+        with patch.object(
+            DecisionMakerParams.__mro__[1], "__init__", return_value=None
+        ):
+            params = DecisionMakerParams(**kwargs)
+        assert params.declined_market_cooldown == 0
+
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""
         kwargs = _build_decision_maker_params_kwargs()
@@ -723,6 +747,7 @@ class TestDecisionMakerParams:
         ):
             params = DecisionMakerParams(**kwargs)
         assert params.sample_bets_closing_days == 7
+        assert params.declined_market_cooldown == 3600
         assert params.trading_strategy == "kelly_criterion"
         assert params.slippage == 0.1
         assert params.epsilon == 0.2
@@ -769,6 +794,9 @@ class TestDecisionMakerParams:
             params.polymarket_neg_risk_ctf_collateral_adapter_address
             == "0xnegctfcoladapt"
         )
+        assert params.polymarket_exchange_v3_address == "0xexchv3"
+        assert params.polymarket_position_manager_address == "0xposmgr"
+        assert params.polymarket_router_address == "0xrouter"
         assert params.pol_threshold_for_swap == 1000
         assert params.slippages_for_swap == {"ETH": 0.01}
         assert params.is_outcome_side_threshold_filter_enabled is False
