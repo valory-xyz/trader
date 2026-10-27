@@ -129,7 +129,31 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         bet_queue_processable = bet.queue_status in processable_statuses
 
-        return bet_mode_allowable and within_ranges and bet_queue_processable
+        return (
+            bet_mode_allowable
+            and within_ranges
+            and bet_queue_processable
+            and not self._declined_recently(bet, now)
+        )
+
+    def _declined_recently(self, bet: Bet, now: int) -> bool:
+        """Whether a market left without a position was processed less than the cooldown ago.
+
+        Any decision that leaves no position starts the cooldown: a decline (tie,
+        unprofitable, mech error) as well as a full sell.
+
+        :param bet: the bet to check.
+        :param now: the current timestamp.
+        :return: whether the bet is still cooling down.
+        """
+        # Benchmarking replays simulated time per market, so no cooldown there.
+        if self.benchmarking_mode.enabled:
+            return False
+        return (
+            bet.invested_amount == 0
+            and bet.processed_timestamp > 0
+            and now - bet.processed_timestamp < self.params.declined_market_cooldown
+        )
 
     def _classify_processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool
@@ -137,15 +161,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Classify the dominant rejection reason in the mirror's own precedence.
 
         Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``wrong_queue``, ``processable`` — the first one
-        that trips, in that precedence order. Pure read; does NOT call
+        ``out_of_open``, ``wrong_queue``, ``cooling``, ``processable`` — the
+        first one that trips, in that precedence order. Pure read; does NOT call
         ``blacklist_forever`` and does NOT mutate the bet — the real filter
         ``processable_bet`` still runs and is the source of truth.
 
-        Caveat: ``processable_bet`` does NOT short-circuit on the last three
+        Caveat: ``processable_bet`` does NOT short-circuit on the last five
         conditions — it computes ``bet_mode_allowable / within_opening_range
-        / within_safe_range / bet_queue_processable`` independently and ANDs
-        them. It also has a ``blacklist_forever()`` side-effect on
+        / within_safe_range / bet_queue_processable / not cooling``
+        independently and ANDs them. It also has a ``blacklist_forever()`` side-effect on
         ``not within_safe_range`` regardless of the other conditions. So
         when a bet trips both ``wrong_mode`` and ``out_of_safe``, this
         classifier reports ``wrong_mode`` (precedence) while the actual
@@ -186,6 +210,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         }
         if bet.queue_status not in processable_statuses:
             return "wrong_queue"
+        if self._declined_recently(bet, now):
+            return "cooling"
         return "processable"
 
     @staticmethod
@@ -314,7 +340,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # If no bets available and fallback is enabled, try again with fallback
         fallback_activated = False
-        if len(available_bets) <= 0 and self._multi_bets_fallback_allowed():
+        # Markets cooling down after a decline must not push the agent into
+        # re-betting the markets it already holds; it waits out the cooldown.
+        markets_cooling = strict_breakdown["cooling"] > 0
+        if (
+            len(available_bets) <= 0
+            and self._multi_bets_fallback_allowed()
+            and not markets_cooling
+        ):
             self.context.logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
             )
@@ -362,6 +395,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"out_of_safe={strict_breakdown['out_of_safe']} "
             f"out_of_open={strict_breakdown['out_of_open']} "
             f"wrong_queue={strict_breakdown['wrong_queue']} "
+            f"cooling={strict_breakdown['cooling']} "
             f"processable={strict_breakdown['processable']}"
         )
         if fallback_breakdown is not None:
@@ -372,11 +406,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 f"out_of_safe={fallback_breakdown['out_of_safe']} "
                 f"out_of_open={fallback_breakdown['out_of_open']} "
                 f"wrong_queue={fallback_breakdown['wrong_queue']} "
+                f"cooling={fallback_breakdown['cooling']} "
                 f"processable={fallback_breakdown['processable']}"
             )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
+            if markets_cooling:
+                msg += (
+                    f" {strict_breakdown['cooling']} markets are cooling down for "
+                    f"{self.params.declined_market_cooldown}s after a decision "
+                    "that left no position."
+                )
             self.context.logger.warning(msg)
             return None
 
