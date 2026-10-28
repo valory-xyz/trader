@@ -41,7 +41,11 @@ from typing import Any, Dict, List, Tuple
 from unittest import mock
 
 import pytest
-from aea.helpers.env_vars import ENV_VARIABLE_RE, apply_env_variables_on_agent_config
+from aea.helpers.env_vars import (
+    ENV_VARIABLE_RE,
+    apply_env_variables,
+    apply_env_variables_on_agent_config,
+)
 from aea.helpers.yaml_utils import yaml_load_all
 
 from packages.valory.skills.funds_manager.models import Params
@@ -49,6 +53,10 @@ from packages.valory.skills.funds_manager.models import Params
 # packages/valory/skills/trader_abci/tests/ -> packages/valory/
 _VALORY_DIR = Path(__file__).resolve().parents[3]
 AEA_CONFIG_PATH = _VALORY_DIR / "agents" / "trader" / "aea-config.yaml"
+SERVICES_DIR = _VALORY_DIR / "services"
+
+# Must outlast Pearl's middleware chat deadline, so a slow reply is not a 408.
+HTTP_SERVER_TIMEOUT = 65.0
 
 # The path-derived env var the middleware exports for the (anonymous) mechs
 # marketplace subgraph url; open-aea derives this name from the config path.
@@ -295,3 +303,26 @@ def test_v2_address_params_resolve(
         doc = _override(_resolve(env), component)
         args = doc.get("config") or doc["models"]["params"]["args"]
         assert args.get(key) == expected
+
+
+def test_agent_config_http_server_timeout_default() -> None:
+    """The agent-level http_server timeout defaults to HTTP_SERVER_TIMEOUT."""
+    assert _override(_resolve({}), "http_server")["config"]["timeout"] == (
+        HTTP_SERVER_TIMEOUT
+    )
+
+
+@pytest.mark.parametrize("service", ["trader_pearl", "polymarket_trader"])
+def test_service_http_server_timeout(service: str) -> None:
+    """Each Pearl service defaults to the chat deadline and keeps its env override.
+
+    :param service: the service package name.
+    """
+    path = SERVICES_DIR / service / "service.yaml"
+    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
+    for env, expected in (
+        ({}, HTTP_SERVER_TIMEOUT),
+        ({"HTTP_SERVER_TIMEOUT": "90.5"}, 90.5),
+    ):
+        doc = _override(apply_env_variables(overrides, env), "http_server")
+        assert doc["config"]["timeout"] == expected

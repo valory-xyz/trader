@@ -41,7 +41,9 @@ from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
 WEEKDAYS = 7
 UNIX_DAY = 60 * 60 * 24
 UNIX_WEEK = WEEKDAYS * UNIX_DAY
+# Kelly's default min_edge (0.01) leaves no edge on an ask at 0.99 or above.
 MAX_BETTABLE_ASK = 0.99
+# Markets whose book is read per period before giving up on a mech request.
 BOOK_CHECK_CANDIDATES = 3
 
 
@@ -560,25 +562,38 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         :param bet: the sampled bet.
         :yield: None
-        :return: whether a side has an ask below MAX_BETTABLE_ASK and a spread in band.
+        :return: whether the book can take a bet.
         """
         lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
-        for token_id in (bet.outcome_token_ids or {}).values():
+        reasons = []
+        for side, token_id in (bet.outcome_token_ids or {}).items():
             request = {
                 "request_type": RequestType.FETCH_ORDER_BOOK.value,
                 "params": {"token_id": token_id},
             }
-            book = None
             try:
                 book = yield from self.send_polymarket_connection_request(request)
-                asks, bids = book["asks"], book["bids"]
-                if asks and min(float(a["price"]) for a in asks) < MAX_BETTABLE_ASK:
-                    if not bids or lo <= self.bid_ask_spread(asks, bids) <= hi:
-                        return True
+                if not isinstance(book, dict) or "error" in book:
+                    why = book.get("error") if isinstance(book, dict) else book
+                    raise ValueError(why or "no response")
+                asks, bids = book.get("asks") or [], book.get("bids") or []
+                best_ask = min((float(a["price"]) for a in asks), default=None)
+                spread = self.bid_ask_spread(asks, bids) if asks and bids else None
             except (KeyError, TypeError, ValueError) as exc:
-                why = book.get("error", exc) if isinstance(book, dict) else exc
-                self.context.logger.warning(f"Book check skipped for {bet.id}: {why!r}")
+                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc}")
                 return True
+            if best_ask is None:
+                reasons.append(f"{side}: no asks")
+            elif best_ask >= MAX_BETTABLE_ASK:
+                reasons.append(f"{side}: best ask {best_ask}")
+            elif spread is not None and not lo <= spread <= hi:
+                reasons.append(f"{side}: spread {spread:.3f}")
+            else:
+                return True
+        self.context.logger.info(
+            f"Book of {bet.id} cannot take a bet "
+            f"({'; '.join(reasons) or 'no token ids'}), skipped before the mech."
+        )
         return False
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
@@ -601,8 +616,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             idx = self._sample()
-            # On Polymarket, skip a market whose book cannot take a bet before
-            # paying the mech; the stamp keeps it out for the cooldown.
+            # The stamp keeps a skipped market out for the cooldown. Each agent
+            # reads the books itself, so this assumes a single-agent service.
             checks_left = BOOK_CHECK_CANDIDATES
             if (
                 not self.params.is_running_on_polymarket
@@ -616,11 +631,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 bet = self.bets[idx]
                 if (yield from self._book_can_take_bet(bet)):
                     break
-                self.context.logger.info(
-                    f"Book of {bet.id} cannot take a bet, skipped before the mech."
-                )
                 bet.processed_timestamp = self.synced_timestamp
                 idx = self._sample() if checks_left else None
+                if not checks_left:
+                    self.context.logger.warning(
+                        f"{BOOK_CHECK_CANDIDATES} markets failed the book check: "
+                        "no market this period."
+                    )
             benchmarking_finished = None
             day_increased = None
 

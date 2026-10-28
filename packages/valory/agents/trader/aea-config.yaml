@@ -70,10 +70,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiatrbds3ree6naapjzgppi5elr3omlmz3xd4xxluz3talx2o66hjy
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib2iqcuwc5sw546ieycumvavutwt55mxdmdtahk5j6a24ctvw45hu
 - valory/market_manager_abci:0.1.0:bafybeifxqn7dscoia55vyk3gohkqfe2oc64eerbaz3ajobv743cx75kdye
-- valory/decision_maker_abci:0.1.0:bafybeibxhv5vpzyxhmljka2bkpm4evx2erthvhsb3wfr3jfd5dvnr4vn6a
-- valory/trader_abci:0.1.0:bafybeif62zi5qsgrhyf3rk76if3augeffbeomifpqf5pais6hixewqxwne
+- valory/decision_maker_abci:0.1.0:bafybeihpvt63j5vdod76mhr7c5pzd27y35vgghd5cwh3q4zcpa4wgpmdiq
+- valory/trader_abci:0.1.0:bafybeih7resggculs4trhq5jmi6q2hfzt6ucibzth2potxxwvii5kzehpe
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeibhsaiis5r6shsog62dtmn2cvetbzncxinp2atkgmvu4rtm7vuife
@@ -565,7 +565,7 @@ type: connection
 config:
   host: ${str:0.0.0.0}
   port: ${int:8716}
-  timeout: ${float:30.0}
+  timeout: ${float:65.0}
   target_skill_id: valory/trader_abci:0.1.0
 ---
 public_id: valory/genai:0.1.0:bafybeicblltx7ha3ulthg7bzfccuqqyjmihhrvfeztlgrlcoxhr7kf6nbq

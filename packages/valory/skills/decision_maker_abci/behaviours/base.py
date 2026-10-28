@@ -372,7 +372,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @staticmethod
     def bid_ask_spread(asks: List[Dict[str, Any]], bids: List[Dict[str, Any]]) -> float:
-        """Best ask minus best bid of non-empty book levels; raises on bad prices."""
+        """Best ask minus best bid; asks and bids must be non-empty."""
         best_ask = min(float(a["price"]) for a in asks)
         return best_ask - max(float(b["price"]) for b in bids)
 
