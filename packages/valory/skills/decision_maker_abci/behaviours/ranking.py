@@ -66,12 +66,24 @@ class RankingRequestBehaviour(SamplingBehaviour):
         """Get the logger of the pool and per-pick checks."""
         return QUIET_LOGGER
 
+    def _has_room_to_trade(self, bet: Bet) -> bool:
+        """Whether a bet can still be won: no side near certainty and, on Polymarket, a spread the book check accepts."""
+        if max(bet.outcomeTokenMarginalPrices) > self.params.ranking_max_price:
+            return False
+        spread = bet.market_spread
+        return not (
+            self.params.is_running_on_polymarket
+            and spread is not None
+            and spread > self.params.polymarket_spread_max
+        )
+
     def _ranking_batch(self) -> List[Bet]:
         """Get the markets to rank, empty when the list needs no renewal."""
         # unset until the first redeem round reaches consensus
         tools = self.synchronized_data.db.get("available_mech_tools", None)
         if not (
-            self.synchronized_data.is_marketplace_v2
+            self.params.enable_market_ranking
+            and self.synchronized_data.is_marketplace_v2
             and tools
             and RANKING_TOOL in tool_names(json.loads(tools))
             and self.params.slot_count == BINARY_N_SLOTS
@@ -86,6 +98,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
             if bet.queue_status == QueueStatus.TO_PROCESS
             and not bet.invested_amount
             and self._pick_filter_reason(bet) is None
+            and self._has_room_to_trade(bet)
         ]
         latest = max((bet.ranked_at for bet in self.bets), default=0)
         renew = now - latest >= RANKING_MAX_AGE

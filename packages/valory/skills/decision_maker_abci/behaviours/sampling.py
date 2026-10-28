@@ -288,7 +288,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             best = max(
                 ranked,
                 key=lambda bet: (
-                    bet.research_score is not None,
                     bet.research_score or 0.0,
                     bet.scaledLiquidityMeasure,
                     bet.openingTimestamp,
@@ -319,6 +318,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             and not bet.invested_amount
             # a market whose book check failed goes back to today's order
             and not bet.processed_timestamp
+            # unscored or low-scored markets also follow today's order
+            and (bet.research_score or 0.0) >= self.params.ranking_min_score
         ]
 
     def _sampling_benchmarking_bet(self, bets: List[Bet]) -> Optional[int]:

@@ -411,6 +411,7 @@ class Bet:
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
         self.scaledLiquidityMeasure = bet.scaledLiquidityMeasure
         self.neg_risk = bet.neg_risk
+        self.market_spread = bet.market_spread
         self.poly_tags = list(bet.poly_tags)
         # Resolution rules can be edited on Polymarket's side after discovery;
         # refresh so already-queued bets carry the latest description.

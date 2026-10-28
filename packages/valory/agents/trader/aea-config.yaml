@@ -70,10 +70,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiekzpnmcxrtpj4wa4e2tn25dvj2dwfrvyu7mtoxzdb3prmi4gs5h4
-- valory/market_manager_abci:0.1.0:bafybeicldc7s4p4wlffgho6jmryznd33oaycj2oqdod4nvkhj62hmbkdva
-- valory/decision_maker_abci:0.1.0:bafybeihiviah77u3bk26pqbprvs3xfxzhjhvqo3xi25rxlaqbvomn7ts5q
-- valory/trader_abci:0.1.0:bafybeif7s7yfspril5jbnafti5asbe5g6re3wvpufuvcdffth6bblbliga
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifvkmyxlqpvmb2362ihhxy5vloqo74hpktd5gjqamcgbwk6okqrwu
+- valory/market_manager_abci:0.1.0:bafybeic2jennlerzwnjovuzgkyoni4ewqxsodon33bcmn5x6rgpqvty5su
+- valory/decision_maker_abci:0.1.0:bafybeicr5bi74puejdhck4hytwooyceuc36v6bncc7xgvcz4drkvk6o5pm
+- valory/trader_abci:0.1.0:bafybeiakklf34mwhwbaq24krrctzugnihdjk57rdqettlf4vr3n2fliaru
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeibhsaiis5r6shsog62dtmn2cvetbzncxinp2atkgmvu4rtm7vuife
@@ -317,6 +317,9 @@ models:
       is_outcome_side_threshold_filter_enabled: ${IS_OUTCOME_SIDE_THRESHOLD_FILTER_ENABLED:bool:false}
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.8}
       exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:false}
+      enable_market_ranking: ${ENABLE_MARKET_RANKING:bool:false}
+      ranking_max_price: ${RANKING_MAX_PRICE:float:0.95}
+      ranking_min_score: ${RANKING_MIN_SCORE:float:0.5}
       deliveries_lookback_days: ${int:30}
       delivery_rate_caps: ${dict:{"native":10000000000000000,"token_usdc":10000}}
       marketplace_api_url: ${MARKETPLACE_API_URL:str:https://marketplace.olas.network/api/erc8004}

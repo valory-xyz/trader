@@ -35,11 +35,11 @@ fingerprint:
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/ranking.py: bafybeif7pdsbzibrjpajn5szpezeibxgj6rmbv4b2a5ztqk4lbk76nhbvi
+  behaviours/ranking.py: bafybeihuuoinxb5onxr7eeqxe2wa4l7eu6dwyfe65iuw4emv4vmnz4aymy
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaf7tmcpywo7myeskrozkvvg5mtdabip5uz4lvymf3wyrrdpjpjou
-  behaviours/sampling.py: bafybeibneu743c7bcxzntwm53hzb2u2kwm6k3prpycbby7tqdurdnfbeua
+  behaviours/sampling.py: bafybeidvqe3r234idc6ykiel2frbuaqmnneuu7bjtdlsh3wwmp7xjkmsmm
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeihzjj7dy4vybjaorts5n77gwpuxbhpgw53ehgcpt2apu7qzocivdq
   behaviours/tool_selection.py: bafybeidpklb4qnjgus27jozbbbze32fvpoxybeg6jdtwcs7m3sm3sbpvq4
@@ -48,7 +48,7 @@ fingerprint:
   handlers.py: bafybeiclcz4uz7xnmhipvdwpekmqvgliuprgwcyuzg2sredaaxaugdarpq
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeihmflaawfakhpt373ma45u2ugbvhvsbgiw6luy2fc4ayrvyhvivv4
+  models.py: bafybeihrnv6iwjtyumekt5vcspxfptar4s2fb3i3tqs76mtfpgxc7wyylu
   payloads.py: bafybeifzw7ynkd3xwpxrili3qwqo7foyng7ir5ierwz77dbw6y3yhr37zm
   policy.py: bafybeigiczejrlln5jnumrjsowbzq5ibcavox56mfsyf2dfv7hvfdjow6i
   redeem_info.py: bafybeihssy2mx3z5pcxpkyt3y265futflpihd3boa5l6qkwrjvyjtee4f4
@@ -139,12 +139,12 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeih44rx4ljcze7cgyalsjxp4b2zv4256xztu6axpd74djn63eagucq
-  tests/test_models.py: bafybeia23dffglz6igqcnpobqm6hwelumwnllcp7cjdthybex5i4ngysge
+  tests/test_models.py: bafybeihihv3kfgxljfnrpmtw732jq2sifgjy6kz7wn2niqp6pfaxbaieqa
   tests/test_payloads.py: bafybeidd3jnjhmdeawfpty6ugudu566fhhy6sioxcrbt7uabdkvghs7bpe
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
   tests/test_polymarket_states.py: bafybeiej5zbm4cmc3vplrdldqdfsd3iacwklhyqzcoxg57lexw5wkasu2u
-  tests/test_ranking.py: bafybeia6rs4pxda7z3z4imgsuooi745dk4wlonfv4jnrlhtfvzv4fflfsu
+  tests/test_ranking.py: bafybeid3tatbursgsc6vdewi233l6nxn543hny2ot6noanklano4spm5de
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4
@@ -180,7 +180,7 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/market_manager_abci:0.1.0:bafybeicldc7s4p4wlffgho6jmryznd33oaycj2oqdod4nvkhj62hmbkdva
+- valory/market_manager_abci:0.1.0:bafybeic2jennlerzwnjovuzgkyoni4ewqxsodon33bcmn5x6rgpqvty5su
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
@@ -443,6 +443,9 @@ models:
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8
       exclude_neg_risk_markets: false
+      enable_market_ranking: false
+      ranking_max_price: 0.95
+      ranking_min_score: 0.5
     class_name: DecisionMakerParams
   acc_info_fields:
     args:

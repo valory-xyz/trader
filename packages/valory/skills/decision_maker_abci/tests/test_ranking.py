@@ -160,6 +160,10 @@ def _behaviour(
     params.is_running_on_polymarket = True
     params.exclude_neg_risk_markets = True
     params.disabled_polymarket_tags = ["weather"]
+    params.enable_market_ranking = True
+    params.ranking_max_price = 0.85
+    params.ranking_min_score = 0.5
+    params.polymarket_spread_max = 0.1
     behaviour.__dict__["_context"] = context
     behaviour.bets = bets
     behaviour.store_bets = MagicMock()
@@ -244,6 +248,10 @@ def test_row_1_no_ranking_keeps_todays_picks() -> None:
     for db in (unlisted, _db(is_marketplace_v2=False)):
         assert _request(bets, db=db).mech_tool is None
         assert _request(stale, db=db).mech_tool is None
+    # the feature switched off: no ranking request, today's picks
+    switched_off = _behaviour(RankingRequestBehaviour, bets)
+    switched_off.context.params.enable_market_ranking = False
+    assert _act(switched_off).mech_tool is None
     # benchmarking never enters the ranking round, and Sampling ignores a list
     assert (
         DecisionMakerAbciApp.transition_function[BenchmarkingRandomnessRound][
@@ -312,7 +320,7 @@ def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
     bets[2].research_score, bets[5].research_score, bets[9].research_score = (
         0.9,
         0.95,
-        0.3,
+        0.6,
     )
     bets[5].investments = {"Yes": [5], "No": []}  # held: not re-bet
     assert _sampled(bets) == "m2"
@@ -326,7 +334,7 @@ def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
     payload = _act(sampler)
     assert (
         bets[payload.index].id == "m11"
-    )  # the unscored list markets follow, by liquidity
+    )  # unscored list markets follow today's order, by liquidity
     assert bets[9].processed_timestamp == NOW
 
     # after the cooldown, a stamped list market goes after every untried one
@@ -567,3 +575,29 @@ def test_review_fixes() -> None:
     _receive(listed, json.dumps({"ranking": answer}))
     assert listed[1].research_score == 0.7
     assert listed[3].research_score == 0.9 and listed[2].research_score is None
+
+
+def test_room_to_trade_and_score_floor() -> None:
+    """Near-certain prices and wide spreads stay out of the list; low scores follow today's order."""
+    bets = [_bet(i) for i in range(12)]
+    bets[0].outcomeTokenMarginalPrices = [0.86, 0.14]  # above ranking_max_price
+    bets[1].market_spread = 0.2  # wider than the book check accepts
+    bets[2].market_spread = 0.05
+    ids = _ranked_ids(_request(bets))
+    assert "m0" not in ids and "m1" not in ids and "m2" in ids
+    # the spread rule applies on Polymarket only
+    omen = _behaviour(RankingRequestBehaviour, bets)
+    omen.context.params.is_running_on_polymarket = False
+    assert omen._has_room_to_trade(bets[1]) and not omen._has_room_to_trade(bets[0])
+
+    # list markets scored under ranking_min_score follow today's order
+    listed = _listed(12)
+    listed[3].research_score, listed[4].research_score = 0.4, 0.6
+    assert _sampled(listed) == "m4"
+    listed[4].research_score = 0.45
+    assert _sampled(listed) == _todays_pick(listed) == "m11"
+
+    # a refetch refreshes the stored spread
+    stored, fetched = _bet(1, market_spread=0.3), _bet(1, market_spread=0.04)
+    stored.update_market_info(fetched)
+    assert stored.market_spread == 0.04
