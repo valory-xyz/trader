@@ -282,12 +282,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             ranked
             and not self.benchmarking_mode.enabled
             and self.synced_timestamp - ranked[0].ranked_at < RANKING_MAX_AGE
+            # held markets keep their priority, as in today's order
+            and not any(bet.invested_amount for bet in bets)
         ):
-            # A market whose book check failed goes after the untried ones.
             best = max(
                 ranked,
                 key=lambda bet: (
-                    -bet.processed_timestamp,
                     bet.research_score is not None,
                     bet.research_score or 0.0,
                     bet.scaledLiquidityMeasure,
@@ -317,6 +317,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             and bet.ranked_at == latest
             and bet.queue_status == QueueStatus.TO_PROCESS
             and not bet.invested_amount
+            # a market whose book check failed goes back to today's order
+            and not bet.processed_timestamp
         ]
 
     def _sampling_benchmarking_bet(self, bets: List[Bet]) -> Optional[int]:

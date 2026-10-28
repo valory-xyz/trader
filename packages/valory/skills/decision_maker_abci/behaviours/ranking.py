@@ -22,7 +22,7 @@
 import json
 import logging
 from dataclasses import asdict
-from typing import Any, Generator, List
+from typing import Any, Dict, Generator, List
 from uuid import uuid4
 
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
@@ -68,9 +68,12 @@ class RankingRequestBehaviour(SamplingBehaviour):
 
     def _ranking_batch(self) -> List[Bet]:
         """Get the markets to rank, empty when the list needs no renewal."""
+        # unset until the first redeem round reaches consensus
+        tools = self.synchronized_data.db.get("available_mech_tools", None)
         if not (
             self.synchronized_data.is_marketplace_v2
-            and RANKING_TOOL in tool_names(self.synchronized_data.available_mech_tools)
+            and tools
+            and RANKING_TOOL in tool_names(json.loads(tools))
             and self.params.slot_count == BINARY_N_SLOTS
         ):
             return []
@@ -143,11 +146,14 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
         """Store the valid scores of the answer on the markets of the latest list."""
         try:
             response = self.synchronized_data.mech_responses[0].result
-            ranking = loads_bounded(response)["ranking"]  # type: ignore[arg-type]
-            # reversed, so that the first of repeated ids is kept
-            scores = {entry["id"]: entry["score"] for entry in reversed(ranking)}
+            ranking = list(loads_bounded(response)["ranking"])  # type: ignore[arg-type]
         except (IndexError, KeyError, TypeError, ValueError):
-            scores = {}
+            ranking = []
+        scores: Dict[str, Any] = {}
+        for entry in ranking:
+            # a malformed entry is skipped; the first of repeated ids is kept
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                scores.setdefault(entry["id"], entry.get("score"))
 
         self.read_bets()
         latest = max((bet.ranked_at for bet in self.bets), default=0)
@@ -155,7 +161,11 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
         stored = 0
         for bet in listed:
             score = scores.get(bet.id)
-            if isinstance(score, (int, float)) and 0 <= score <= 1:
+            if (
+                isinstance(score, (int, float))
+                and not isinstance(score, bool)
+                and 0 <= score <= 1
+            ):
                 bet.research_score = float(score)
                 stored += 1
         self.store_bets()

@@ -537,3 +537,33 @@ def test_quiet_pool_logs() -> None:
     assert requester.pool_logger is QUIET_LOGGER and QUIET_LOGGER.disabled
     sampler = _behaviour(SamplingBehaviour, [])
     assert sampler.pool_logger is sampler.context.logger
+
+
+def test_review_fixes() -> None:
+    """Tools unset, held and book-failed markets, and malformed or boolean scores."""
+    bets = [_bet(i) for i in range(12)]
+    # the tools are unset until the first redeem round reaches consensus
+    assert _request(bets, db=_db(available_mech_tools=None)).mech_tool is None
+
+    # held markets keep their priority in multi-bets mode
+    listed = _listed(12)
+    listed[3].research_score = 0.9
+    held = _bet(50, investments={"Yes": [5], "No": []})
+    sampler = _behaviour(SamplingBehaviour, listed + [held])
+    assert (listed + [held])[sampler._sampled_bet_idx(listed + [held])].id == "m50"
+
+    # a list market whose book check failed goes back to today's order
+    stamped = _listed(3, processed_timestamp=NOW - 2 * COOLDOWN)
+    untried = [_bet(i) for i in range(30, 35)]
+    assert _sampled(stamped + untried) == _todays_pick(stamped + untried) == "m34"
+
+    # a malformed entry is skipped, and a boolean is not a score
+    answer = [
+        {"id": "m1", "score": 0.7},
+        {"id": "m2"},
+        "junk",
+        {"id": "m3", "score": True},
+    ]
+    _receive(listed, json.dumps({"ranking": answer}))
+    assert listed[1].research_score == 0.7
+    assert listed[3].research_score == 0.9 and listed[2].research_score is None
