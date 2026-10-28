@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2024 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import CollectionRound
 from packages.valory.skills.abstract_round_abci.test_tools.rounds import (
     BaseCollectSameUntilThresholdRoundTest,
 )
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.decision_maker_abci.payloads import HandleFailedTxPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -57,19 +58,22 @@ class TestEstimateConsensusRound(BaseCollectSameUntilThresholdRoundTest):
         }
 
     @pytest.mark.parametrize(
-        "vote, expected_event",
+        "failed_tx_submitter, vote, expected_event",
         (
-            (True, HandleFailedTxRound.done_event),
-            (False, HandleFailedTxRound.no_op_event),
+            ("tx_submitter", True, HandleFailedTxRound.done_event),
+            ("tx_submitter", False, HandleFailedTxRound.no_op_event),
+            (AgentTopUpRound.auto_round_id(), False, Event.AGENT_TOPUP_FAILED),
         ),
     )
     def test_run(
         self,
+        failed_tx_submitter: str,
         vote: Optional[bool],
         expected_event: Event,
     ) -> None:
         """Runs test."""
 
+        self.synchronized_data.update(tx_submitter=failed_tx_submitter)
         test_round = HandleFailedTxRound(
             synchronized_data=self.synchronized_data, context=MagicMock()
         )

@@ -101,5 +101,9 @@ class FinishedPolymarketTopUpTxPreparationRound(DegenerateRound):
     """A round representing that a Safe→DepositWallet top-up has been prepared and needs tx settlement."""
 
 
+class FailedAgentTopUpTxRound(DegenerateRound):
+    """A round representing that an Agent Safe to Agent Signer top-up tx failed to settle."""
+
+
 class FinishedPolymarketWithdrawTopUpTxPreparationRound(DegenerateRound):
     """A round representing that a Safe→DepositWallet CTF withdrawal top-up has been prepared and needs tx settlement."""

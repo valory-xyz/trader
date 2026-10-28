@@ -61,6 +61,7 @@ from packages.valory.skills.agent_performance_summary_abci.models import (
 from packages.valory.skills.agent_performance_summary_abci.rounds import (
     Event as AgentPerformanceSummaryEvent,
 )
+from packages.valory.skills.agent_topup_abci.rounds import Event as AgentTopUpEvent
 from packages.valory.skills.chatui_abci.rounds import Event as ChatuiEvent
 from packages.valory.skills.check_stop_trading_abci.models import CheckStopTradingParams
 from packages.valory.skills.decision_maker_abci.models import (
@@ -257,6 +258,7 @@ class SharedState(BaseSharedState):
             ResetPauseEvent,
             ChatuiEvent,
             AgentPerformanceSummaryEvent,
+            AgentTopUpEvent,
         )
         round_timeout = params.round_timeout_seconds
         round_timeout_overrides = {

@@ -1,4 +1,5 @@
 alphabet_in:
+- AGENT_TOPUP_FAILED
 - APPROVAL_FAILED
 - BENCHMARKING_DISABLED
 - BENCHMARKING_ENABLED
@@ -35,6 +36,7 @@ default_start_state: CheckBenchmarkingModeRound
 final_states:
 - BenchmarkingDoneRound
 - BenchmarkingModeDisabledRound
+- FailedAgentTopUpTxRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedOmenWithdrawRound
@@ -76,6 +78,7 @@ states:
 - CheckBenchmarkingModeRound
 - DecisionReceiveRound
 - DecisionRequestRound
+- FailedAgentTopUpTxRound
 - FinishedDecisionMakerRound
 - FinishedDecisionRequestRound
 - FinishedOmenWithdrawRound
@@ -149,6 +152,7 @@ transition_func:
     (DecisionRequestRound, NO_MAJORITY): DecisionRequestRound
     (DecisionRequestRound, ROUND_TIMEOUT): DecisionRequestRound
     (DecisionRequestRound, SLOTS_UNSUPPORTED_ERROR): BlacklistingRound
+    (HandleFailedTxRound, AGENT_TOPUP_FAILED): FailedAgentTopUpTxRound
     (HandleFailedTxRound, BLACKLIST): BlacklistingRound
     (HandleFailedTxRound, NO_MAJORITY): HandleFailedTxRound
     (HandleFailedTxRound, NO_OP): RedeemRound
