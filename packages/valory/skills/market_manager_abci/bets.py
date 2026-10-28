@@ -191,6 +191,9 @@ class Bet:
     slug: Optional[str] = None
     # Polymarket-only Gamma version
     market_version: str = "v1"
+    # When the market entered a ranked list, and its score there (0 to 1)
+    ranked_at: int = 0
+    research_score: Optional[float] = None
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""

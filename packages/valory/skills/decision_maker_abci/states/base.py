@@ -50,6 +50,9 @@ from packages.valory.skills.transaction_settlement_abci.rounds import (
     SynchronizedData as TxSettlementSyncedData,
 )
 
+# The mech tool that ranks the candidate markets by researchability.
+RANKING_TOOL = "market-researchability-ranking"
+
 
 class Event(Enum):
     """Event enumeration for the price estimation demo."""
@@ -141,6 +144,14 @@ class SynchronizedData(
     def mech_tool(self) -> str:
         """Get the selected mech tool."""
         return str(self.db.get_strict("mech_tool"))
+
+    @property
+    def is_ranking_period(self) -> bool:
+        """Get whether this period's mech request ranks the candidate markets."""
+        return (
+            self.db.get("mech_tool", None) == RANKING_TOOL
+            and self.db.get("sampled_bet_index", None) is None
+        )
 
     @property
     def selected_tool_key(self) -> Optional[str]:
