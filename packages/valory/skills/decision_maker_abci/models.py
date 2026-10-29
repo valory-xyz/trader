@@ -274,6 +274,12 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.benchmarking_mech_calls: int = 0
         # whether the mech response round timed out
         self.mech_timed_out: bool = False
+        # consecutive failed order-book fetches, and when the run of failures began
+        self.orderbook_failures: int = 0
+        self.orderbook_failing_since: Optional[int] = None
+        # whether a book fetch of the current decision failed; read and cleared
+        # by the blacklisting, which then leaves the market out of the cooldown
+        self.orderbook_fetch_failed: bool = False
         # final_tx_hash of the most recent tx whose post-bet bookkeeping
         # was already applied by `PostBetUpdateBehaviour`. Guards against
         # double-mutation when `PostBetUpdateRound` self-loops on
@@ -282,6 +288,28 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # consensus-replicated, so re-running the behaviour would advance
         # them twice.
         self.post_bet_update_applied_tx_hash: Optional[str] = None
+
+    def record_orderbook_fetch(self, succeeded: bool, timestamp: int) -> None:
+        """Count a failed order-book fetch; a successful one resets the count.
+
+        :param succeeded: whether the fetch returned a book.
+        :param timestamp: when the fetch was made, in unix seconds.
+        """
+        if succeeded:
+            self.orderbook_failures = 0
+            self.orderbook_failing_since = None
+            return
+        if self.orderbook_failures == 0:
+            self.orderbook_failing_since = timestamp
+        self.orderbook_failures += 1
+
+    def is_orderbook_unavailable(self, threshold: int) -> bool:
+        """Whether enough consecutive book fetches failed to call the CLOB unreachable.
+
+        :param threshold: the number of consecutive failures that make it unreachable.
+        :return: whether the order books are unavailable.
+        """
+        return self.orderbook_failures >= threshold
 
     @property
     def mock_question_id(self) -> Any:
@@ -464,6 +492,13 @@ class DecisionMakerParams(
         )
         if self.declined_market_cooldown < 0:
             msg = "The declined market cooldown must not be negative!"
+            raise ValueError(msg)
+
+        self.orderbook_unavailable_threshold: int = self._ensure(
+            "orderbook_unavailable_threshold", kwargs, int
+        )
+        if self.orderbook_unavailable_threshold < 1:
+            msg = "The order book unavailable threshold must be at least 1!"
             raise ValueError(msg)
 
         # Optional, Polymarket-only live-CLOB bid-ask spread band. Defaults

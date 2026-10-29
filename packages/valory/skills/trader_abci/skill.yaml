@@ -232,6 +232,7 @@ models:
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       declined_market_cooldown: 3600
+      orderbook_unavailable_threshold: 5
       polymarket_spread_min: 0.0
       polymarket_spread_max: 1.0
       trading_strategy: strategy_name

@@ -217,6 +217,7 @@ models:
       mech_wrapped_native_token_address: ${MECH_WRAPPED_NATIVE_TOKEN_ADDRESS:str:0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d}
       sample_bets_closing_days: ${int:10}
       declined_market_cooldown: ${int:3600}
+      orderbook_unavailable_threshold: ${int:5}
       polymarket_spread_min: ${float:0.0}
       polymarket_spread_max: ${float:1.0}
       trading_strategy: ${str:kelly_criterion}

@@ -557,12 +557,16 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.warning(msg + cooling_note)
         return None
 
-    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
+    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, Optional[bool]]:
         """Whether a side of a Polymarket book could take a bet; True when unreadable.
+
+        An unreadable book stops being True once the order books have been
+        unavailable for ``orderbook_unavailable_threshold`` fetches in a row.
 
         :param bet: the sampled bet.
         :yield: None
-        :return: whether the book can take a bet.
+        :return: whether the book can take a bet; None when it cannot be read
+            and the order books are unavailable.
         """
         lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
         reasons = []
@@ -571,16 +575,34 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 "request_type": RequestType.FETCH_ORDER_BOOK.value,
                 "params": {"token_id": token_id},
             }
+            fetched = False
+            unreadable: Optional[Exception] = None
             try:
                 book = yield from self.send_polymarket_connection_request(request)
                 if not isinstance(book, dict) or "error" in book:
                     why = book.get("error") if isinstance(book, dict) else book
                     raise ValueError(why or "no response")
+                fetched = True
                 asks, bids = book.get("asks") or [], book.get("bids") or []
                 best_ask = min((float(a["price"]) for a in asks), default=None)
                 spread = self.bid_ask_spread(asks, bids) if asks and bids else None
             except (KeyError, TypeError, ValueError) as exc:
-                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc}")
+                unreadable = exc
+            self.shared_state.record_orderbook_fetch(fetched, self.synced_timestamp)
+            if unreadable is not None:
+                threshold = self.params.orderbook_unavailable_threshold
+                if not fetched and self.shared_state.is_orderbook_unavailable(
+                    threshold
+                ):
+                    self.context.logger.warning(
+                        f"Book of {bet.id} unreadable ({unreadable}) after "
+                        f"{self.shared_state.orderbook_failures} failed book "
+                        "fetches in a row, skipped before the mech."
+                    )
+                    return None
+                self.context.logger.warning(
+                    f"Book check skipped for {bet.id}: {unreadable}"
+                )
                 return True
             if best_ask is None:
                 reasons.append(f"{side}: no asks")
@@ -629,9 +651,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             ):
                 checks_left -= 1
                 bet = self.bets[idx]
-                if (yield from self._book_can_take_bet(bet)):
+                can_take_bet = yield from self._book_can_take_bet(bet)
+                if can_take_bet:
                     break
-                bet.processed_timestamp = self.synced_timestamp
+                # An unreadable book says nothing about the market itself.
+                if can_take_bet is not None:
+                    bet.processed_timestamp = self.synced_timestamp
                 idx = self._sample() if checks_left else None
                 if not checks_left:
                     self.context.logger.warning(

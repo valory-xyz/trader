@@ -343,6 +343,7 @@ models:
       mech_marketplace_v1_suitable_tools: []
       sample_bets_closing_days: 10
       declined_market_cooldown: 3600
+      orderbook_unavailable_threshold: 5
       polymarket_spread_min: 0.0
       polymarket_spread_max: 1.0
       trading_strategy: strategy_name

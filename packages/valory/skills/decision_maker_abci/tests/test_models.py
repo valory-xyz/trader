@@ -436,10 +436,53 @@ class TestSharedStateInit:
         assert state.bet_id_row_manager == {}
         assert state.benchmarking_mech_calls == 0
         assert state.mech_timed_out is False
+        assert state.orderbook_failures == 0
+        assert state.orderbook_failing_since is None
+        assert state.orderbook_fetch_failed is False
         # Must default to None, not False: the staking-regime cache distinguishes
         # "never computed" (None ⇒ read on-chain) from a computed OLD verdict
         # (False ⇒ cache hit). A False default would suppress the first read.
         assert state.staking_regime_is_new is None
+
+
+class TestOrderbookFailures:
+    """Tests for the count of consecutive failed order-book fetches."""
+
+    @staticmethod
+    def _state() -> SharedState:
+        state = object.__new__(SharedState)
+        state.orderbook_failures = 0
+        state.orderbook_failing_since = None
+        return state
+
+    def test_failures_count_from_the_first_one(self) -> None:
+        """Consecutive failures add up and keep the time of the first."""
+        state = self._state()
+        for timestamp in (100, 200, 300):
+            state.record_orderbook_fetch(False, timestamp)
+        assert state.orderbook_failures == 3
+        assert state.orderbook_failing_since == 100
+
+    def test_success_resets_the_count(self) -> None:
+        """A successful fetch ends the run of failures."""
+        state = self._state()
+        state.record_orderbook_fetch(False, 100)
+        state.record_orderbook_fetch(True, 200)
+        assert state.orderbook_failures == 0
+        assert state.orderbook_failing_since is None
+        state.record_orderbook_fetch(False, 300)
+        assert state.orderbook_failing_since == 300
+
+    @pytest.mark.parametrize(
+        "failures, expected", [(0, False), (4, False), (5, True), (6, True)]
+    )
+    def test_unavailable_from_the_threshold(
+        self, failures: int, expected: bool
+    ) -> None:
+        """The order books are unavailable from the threshold on."""
+        state = self._state()
+        state.orderbook_failures = failures
+        assert state.is_orderbook_unavailable(5) is expected
 
 
 class TestSharedState:
@@ -633,6 +676,7 @@ def _build_decision_maker_params_kwargs() -> dict:
         "mech_marketplace_v1_suitable_tools": [],
         "sample_bets_closing_days": 7,
         "declined_market_cooldown": 3600,
+        "orderbook_unavailable_threshold": 5,
         "polymarket_spread_min": 0.0,
         "polymarket_spread_max": 1.0,
         "trading_strategy": "kelly_criterion",
@@ -739,6 +783,16 @@ class TestDecisionMakerParams:
             params = DecisionMakerParams(**kwargs)
         assert params.declined_market_cooldown == 0
 
+    def test_zero_orderbook_unavailable_threshold_raises(self) -> None:
+        """Test that a threshold below one failed fetch raises ValueError."""
+        kwargs = _build_decision_maker_params_kwargs()
+        kwargs["orderbook_unavailable_threshold"] = 0
+        with (
+            patch.object(DecisionMakerParams.__mro__[1], "__init__", return_value=None),
+            pytest.raises(ValueError, match="must be at least 1"),
+        ):
+            DecisionMakerParams(**kwargs)
+
     def test_full_init(self) -> None:
         """Test DecisionMakerParams.__init__ with all required kwargs."""
         kwargs = _build_decision_maker_params_kwargs()
@@ -748,6 +802,7 @@ class TestDecisionMakerParams:
             params = DecisionMakerParams(**kwargs)
         assert params.sample_bets_closing_days == 7
         assert params.declined_market_cooldown == 3600
+        assert params.orderbook_unavailable_threshold == 5
         assert params.trading_strategy == "kelly_criterion"
         assert params.slippage == 0.1
         assert params.epsilon == 0.2
