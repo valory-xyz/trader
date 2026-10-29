@@ -471,7 +471,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         orderbook_bids_yes = None
         orderbook_bids_no = None
         min_order_shares = 0.0
-        orderbook_unreadable = False
+        orderbooks_fetched: List[Optional[Dict[str, Any]]] = []
 
         prices = bet.outcomeTokenMarginalPrices
         price_yes = prices[0] if prices else 0.0
@@ -484,7 +484,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 no_token_id = bet.outcome_token_ids.get("No")
                 if yes_token_id:
                     ob_yes = yield from self._fetch_orderbook(yes_token_id)
-                    orderbook_unreadable |= ob_yes is None
+                    orderbooks_fetched.append(ob_yes)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
                         orderbook_bids_yes = ob_yes.get("bids", [])
@@ -492,7 +492,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
                     ob_no = yield from self._fetch_orderbook(no_token_id)
-                    orderbook_unreadable |= ob_no is None
+                    orderbooks_fetched.append(ob_no)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
                         orderbook_bids_no = ob_no.get("bids", [])
@@ -534,7 +534,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
-            if orderbook_unreadable:
+            # With one book read the strategy did decide, so it stays a decline.
+            if orderbooks_fetched and all(ob is None for ob in orderbooks_fetched):
                 self.shared_state.orderbook_fetch_failed = True
                 self._record_market_skipped(bet, SKIP_ORDERBOOK_UNAVAILABLE)
             else:

@@ -330,7 +330,7 @@ If you add or remove a dependency:
 ## Notes on profitability
 
 - If the agent does not have enough funds to place a bet, you'll see `Event.INSUFICIENT_FUNDS` in the logs.
-- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600), except one whose order book could not be read.
+- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600), except one whose decision could read neither of its order books.
 - For Omen, fees are queryable via the [Omen subgraph on The Graph](https://thegraph.com/explorer); they have historically sat around 0.02 xDAI but should be re-checked.
 - For Polymarket CLOB v2, fee math is delegated to the protocol — see `client.get_clob_market_info(condition_id)["fd"]`.
 

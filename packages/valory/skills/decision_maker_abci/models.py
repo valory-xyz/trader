@@ -277,8 +277,8 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # consecutive failed order-book fetches, and when the run of failures began
         self.orderbook_failures: int = 0
         self.orderbook_failing_since: Optional[int] = None
-        # whether a book fetch of the current decision failed; read and cleared
-        # by the blacklisting, which then leaves the market out of the cooldown
+        # whether the current decision could read no order book at all; read and
+        # cleared by the blacklisting, which then leaves the market out of the cooldown
         self.orderbook_fetch_failed: bool = False
         # final_tx_hash of the most recent tx whose post-bet bookkeeping
         # was already applied by `PostBetUpdateBehaviour`. Guards against

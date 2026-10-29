@@ -22,7 +22,7 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
@@ -1011,25 +1011,25 @@ class TestIsProfitable:
         assert strategy_vote == 1  # strategy's NO, not mech's YES
 
     @pytest.mark.parametrize(
-        "yes_book, no_book",
+        "token_ids, books",
         [
-            (None, None),
-            (None, {"asks": [], "bids": []}),
-            ({"asks": [], "bids": []}, None),
+            ({"Yes": "yes_token", "No": "no_token"}, [None, None]),
+            ({"Yes": "yes_token"}, [None]),
         ],
     )
-    def test_no_bet_with_an_unreadable_book_is_no_decline(
-        self, yes_book: Any, no_book: Any
+    def test_no_bet_without_a_readable_book_is_no_decline(
+        self, token_ids: Dict[str, str], books: List[Any]
     ) -> None:
-        """A no-bet without a readable book gets its own skip reason and no cooldown."""
+        """A no-bet with no book read at all gets its own skip reason and no cooldown."""
         behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
         )
-        books = iter([yes_book, no_book])
+        bet.outcome_token_ids = token_ids
+        fetched = iter(books)
         patch.object(
             behaviour,
             "_fetch_orderbook",
-            side_effect=lambda _tid: _return_gen(next(books)),
+            side_effect=lambda _tid: _return_gen(next(fetched)),
         ).start()
         behaviour.context.state.orderbook_fetch_failed = False
         record_skip = patch.object(behaviour, "_record_market_skipped").start()
@@ -1040,15 +1040,26 @@ class TestIsProfitable:
         record_skip.assert_called_once_with(bet, SKIP_ORDERBOOK_UNAVAILABLE)
         assert behaviour.context.state.orderbook_fetch_failed is True
 
-    def test_no_bet_with_readable_books_is_a_decline(self) -> None:
-        """A no-bet on readable books stays the strategy's decline."""
+    @pytest.mark.parametrize(
+        "yes_book, no_book",
+        [
+            (READABLE_BOOK, READABLE_BOOK),
+            (None, READABLE_BOOK),
+            (READABLE_BOOK, None),
+        ],
+    )
+    def test_no_bet_with_a_readable_book_is_a_decline(
+        self, yes_book: Any, no_book: Any
+    ) -> None:
+        """A no-bet with at least one book read stays the strategy's decline."""
         behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
         )
+        books = iter([yes_book, no_book])
         patch.object(
             behaviour,
             "_fetch_orderbook",
-            side_effect=lambda _tid: _return_gen({"asks": [], "bids": []}),
+            side_effect=lambda _tid: _return_gen(next(books)),
         ).start()
         behaviour.context.state.orderbook_fetch_failed = False
         record_skip = patch.object(behaviour, "_record_market_skipped").start()
