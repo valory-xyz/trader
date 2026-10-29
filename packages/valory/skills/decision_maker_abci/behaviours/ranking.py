@@ -116,9 +116,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
         never_ranked = sum(not bet.ranked_at for bet in candidates)
         # the list counts as used up on the whole pool, not only on the
         # markets that represent their event in this batch
-        renew |= (
-            not self._ranked_list(eligible) and never_ranked >= RANKING_MIN_MARKETS
-        )
+        renew |= not self._ranked_list(eligible) and never_ranked >= RANKING_MIN_MARKETS
         if not renew:
             return []
         return candidates[:RANKING_MAX_MARKETS]

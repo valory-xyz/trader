@@ -48,8 +48,8 @@ from packages.valory.skills.decision_maker_abci.payloads import RankingRequestPa
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 from packages.valory.skills.decision_maker_abci.states.base import (
-    RANKING_TOOL,
     Event,
+    RANKING_TOOL,
     SynchronizedData,
 )
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
