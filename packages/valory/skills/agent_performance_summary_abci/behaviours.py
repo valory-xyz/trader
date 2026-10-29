@@ -3082,9 +3082,10 @@ class FetchPerformanceSummaryBehaviour(
         if not self._should_update():
             self.context.logger.info("Skipping update - too soon")
             self._update_leaderboard()
+            # a deliberate skip is not a failure, so it must not end in Event.FAIL
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return

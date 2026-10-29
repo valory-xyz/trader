@@ -481,7 +481,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             for m in m_list
             if m.get("category_valid", False)
         )
-        self.context.logger.warning(
+        self.context.logger.info(
             f"Keyword category filter DISABLED — passing all {total_markets_pre_filter} markets "
             f"(if enabled, only {would_pass_filter}/{total_markets_pre_filter} would pass)."
         )
@@ -955,9 +955,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # This is to ensure that in case of subgraph or API failure,
         # agent doesn't lose existing investment data and end up placing duplicate bets.
         if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
-            self.context.logger.warning(
-                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
-            )
+            if any(a for amounts in existing_investments.values() for a in amounts):
+                self.context.logger.warning(
+                    f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+                )
             bet.investments = existing_investments
 
     def _update_all_bets_investments(
@@ -968,11 +969,19 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         :param trades_by_condition_outcome: Grouped trades dictionary
         """
+        refreshed = held = 0
         for bet in self.bets:
             if self._should_skip_bet(bet):
                 continue
 
             self._update_single_bet_investments(bet, trades_by_condition_outcome)
+            refreshed += 1
+            held += bet.has_investments
+
+        self.context.logger.info(
+            f"Refreshed the investments of {refreshed} bets, "
+            f"{held} of them with recorded investments."
+        )
 
     def _bet_freshness_check_and_update(self) -> None:
         """Check the freshness of the bets."""

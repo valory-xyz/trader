@@ -3773,6 +3773,39 @@ class TestMechPreDepositTopUp:
         # This is the one case where asking the user for funds is right.
         assert handler.context.shared_state[_EOA_SHORT] is True
 
+    def test_no_native_headroom_logs_no_deposit_plan(self) -> None:
+        """An EOA that cannot pay gets one decision line, not a plan it drops."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        logger = handler.context.logger
+        logged = [c.args[0] for c in logger.info.call_args_list]
+        logged += [c.args[0] for c in logger.warning.call_args_list]
+        assert not [line for line in logged if "; depositing" in line]
+        assert [line for line in logged if "gas reserve" in line] == [
+            f"EOA holds {_GAS_RESERVE} wei, at or under the {_GAS_RESERVE} wei gas reserve."
+        ]
+        logger.warning.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            "not depositing: the EOA is out of native."
+        )
+
+    def test_a_native_deposit_rechecks_the_eoa(self) -> None:
+        """An EOA drained after the check still sends nothing."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        account = MagicMock()
+        account.address = "0x" + "ee" * 20
+
+        with patch.object(handler, "_send_from_eoa") as send:
+            assert (
+                handler._deposit_native(
+                    "gnosis", 100, account, _SAFE, _TRACKER, _TARGET
+                )
+                is False
+            )
+        send.assert_not_called()
+
     def test_the_eoa_flag_is_refreshed_even_when_nothing_is_deposited(self) -> None:
         """A user who funded the agent must stop being asked for funds."""
         handler = _facilitator_handler()

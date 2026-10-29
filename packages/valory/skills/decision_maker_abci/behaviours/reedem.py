@@ -111,7 +111,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
                 break
 
         if self._fetch_status == FetchStatus.SUCCESS:
-            block_number = block.get("id", "")
+            block_number = block.get(BLOCK_NUMBER_KEY, "")
             if block_number.isdigit():
                 self.earliest_block_number = int(block_number)
 

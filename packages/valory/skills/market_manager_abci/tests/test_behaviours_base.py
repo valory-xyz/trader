@@ -20,6 +20,7 @@
 """Tests for the market_manager_abci behaviours package."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
@@ -744,6 +745,29 @@ class TestPruneBets:
         b = _make_behaviour(bets=[bet])
         b.prune_bets(NOW)
         assert b.bets == [bet]
+
+    def test_polystrat_drops_never_invested_bets_a_day_after_close(self) -> None:
+        """Test that Polystrat's retention drops untraded bets after a day only."""
+        service = next(
+            parent / "packages/valory/services/polymarket_trader/service.yaml"
+            for parent in Path(__file__).resolve().parents
+            if (parent / "packages/packages.json").is_file()
+        )
+        match = re.search(
+            r"expired_bet_retention: \$\{EXPIRED_BET_RETENTION:int:(\d+)\}",
+            service.read_text(),
+        )
+        assert match is not None
+        untraded = _prunable_bet("untraded", openingTimestamp=NOW - 2 * DAY_IN_SECONDS)
+        held = _prunable_bet(
+            "held",
+            openingTimestamp=NOW - 40 * DAY_IN_SECONDS,
+            investments={"Yes": [10], "No": []},
+        )
+        b = _make_behaviour(bets=[untraded, held])
+        b.params.expired_bet_retention = int(match.group(1))
+        b.prune_bets(NOW)
+        assert b.bets == [held]
 
     def test_no_log_when_nothing_is_dropped(self) -> None:
         """Test that a pass dropping nothing leaves the store and log untouched."""

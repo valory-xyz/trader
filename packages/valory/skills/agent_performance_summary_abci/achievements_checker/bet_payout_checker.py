@@ -21,7 +21,7 @@
 
 from datetime import datetime
 from logging import Logger, getLogger
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from packages.valory.skills.agent_performance_summary_abci.achievements_checker.base import (
     AchievementsChecker,
@@ -94,11 +94,12 @@ class BetPayoutChecker(AchievementsChecker):
                 )
             eligible_since = achievements.eligible_since
 
+        settled_before_eligible: List[str] = []
         for bet in prediction_history.items:
             # One malformed persisted item must not fail the round every cycle.
             try:
                 achievement = self._new_achievement(
-                    bet, achievements, eligible_since, logger
+                    bet, achievements, eligible_since, logger, settled_before_eligible
                 )
             except (AttributeError, KeyError, TypeError, ValueError) as e:
                 bet_id = bet.get("id") if isinstance(bet, dict) else None
@@ -113,6 +114,12 @@ class BetPayoutChecker(AchievementsChecker):
             achievements.items[achievement.achievement_id] = achievement
             achievements_updated = True
 
+        if settled_before_eligible:
+            logger.info(
+                f"{self.achievement_type}: skipping {len(settled_before_eligible)} "
+                f"qualifying bets settled before eligible_since={eligible_since}."
+            )
+
         return achievements_updated
 
     def _new_achievement(
@@ -121,6 +128,7 @@ class BetPayoutChecker(AchievementsChecker):
         achievements: Achievements,
         eligible_since: int,
         logger: Logger,
+        settled_before_eligible: List[str],
     ) -> Optional[Achievement]:
         """Return the achievement a bet newly qualifies for, or `None`."""
         # Sell-aware: only fire on resolved-and-redeemed wins. The
@@ -168,11 +176,8 @@ class BetPayoutChecker(AchievementsChecker):
         )
 
         if settled_timestamp < eligible_since:
-            logger.info(
-                f"{self.achievement_type}: skipping bet {bet['id']} at {roi_text}x "
-                f"ROI: settled at {settled_timestamp}, before "
-                f"eligible_since={eligible_since}."
-            )
+            # counted rather than logged, so the caller logs one line per period
+            settled_before_eligible.append(bet["id"])
             return None
 
         return Achievement(

@@ -1449,6 +1449,24 @@ class TestReplaceWithExistingInvestmentsIfEmpty:
         behaviour._replace_with_existing_investments_if_empty(bet, existing)
         assert bet.investments == existing
 
+    def test_warns_only_when_keeping_a_recorded_investment(self) -> None:
+        """Test that only a kept non-empty investment record is warned about."""
+        behaviour = _make_behaviour()
+        never_invested = _make_bet(id="never")
+        never_invested.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            never_invested, {"Yes": [], "No": []}
+        )
+        behaviour.context.logger.warning.assert_not_called()
+
+        held = _make_bet(id="held")
+        held.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            held, {"Yes": [100], "No": []}
+        )
+        behaviour.context.logger.warning.assert_called_once()
+        assert "held" in behaviour.context.logger.warning.call_args[0][0]
+
     def test_does_not_replace_when_has_yes(self) -> None:
         """Test no replacement when bet has yes investments."""
         behaviour = _make_behaviour()
@@ -1630,6 +1648,24 @@ class TestUpdateAllBetsInvestments:
         behaviour._update_all_bets_investments(trades_map)
         # bet2 should have been updated
         assert len(bet2.investments["Yes"]) == 1
+
+    def test_logs_one_summary_line(self) -> None:
+        """Test that a refresh logs one summary line and no per-bet warnings."""
+        behaviour = _make_behaviour()
+        held = _make_bet(id="held")
+        held.condition_id = "0xheld"
+        untraded = _make_bet(id="untraded")
+        untraded.condition_id = "0xuntraded"
+        behaviour.bets = [held, untraded]
+
+        behaviour._update_all_bets_investments(
+            {"0xheld": {0: [{"side": "BUY", "usdc_amount": 10.0}]}}
+        )
+
+        behaviour.context.logger.warning.assert_not_called()
+        behaviour.context.logger.info.assert_any_call(
+            "Refreshed the investments of 2 bets, 1 of them with recorded investments."
+        )
 
     def test_empty_bets_list(self) -> None:
         """Test with empty bets list."""
@@ -1938,13 +1974,22 @@ class TestFetchMarketsFromPolymarket:
         response = {"technology": [valid, invalid]}
         behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
-        with patch.object(behaviour.context.logger, "warning") as mock_warning:
+        with (
+            patch.object(behaviour.context.logger, "info") as mock_info,
+            patch.object(behaviour.context.logger, "warning") as mock_warning,
+        ):
             gen = behaviour._fetch_markets_from_polymarket()
             result = _exhaust_gen(gen)  # type: ignore[arg-type]
 
-        disabled_calls = [
+        # a configuration choice, so it is logged at INFO, not WARNING
+        assert not [
             c
             for c in mock_warning.call_args_list
+            if "Keyword category filter DISABLED" in str(c)
+        ]
+        disabled_calls = [
+            c
+            for c in mock_info.call_args_list
             if "Keyword category filter DISABLED" in str(c)
         ]
         assert len(disabled_calls) == 1

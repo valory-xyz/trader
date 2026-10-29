@@ -28,6 +28,7 @@ from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, cast
 
 from web3 import Web3
 
+from packages.valory.protocols.http import HttpMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import BaseBehaviour
 from packages.valory.skills.abstract_round_abci.models import ApiSpecs
 from packages.valory.skills.market_manager_abci.graph_tooling.queries.conditional_tokens import (
@@ -74,6 +75,22 @@ def to_content(query: str) -> bytes:
 def to_graphql_list(li: list) -> str:
     """Convert the given list to a string representing a list for a GraphQL query."""
     return repr(li).replace("'", '"')
+
+
+def _is_unknown_user(response: HttpMessage) -> bool:
+    """Check whether a user query succeeded with no entity for the user.
+
+    :param response: the raw subgraph response.
+    :return: whether the response is `{"data": {"user": null}}` with no errors.
+    """
+    try:
+        body = json.loads(response.body)
+    except (AttributeError, TypeError, ValueError):
+        return False
+    if not isinstance(body, dict) or body.get("errors"):
+        return False
+    data = body.get("data")
+    return isinstance(data, dict) and "user" in data and data["user"] is None
 
 
 class FetchStatus(Enum):
@@ -479,6 +496,10 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 content=to_content(query),
                 **current_subgraph.get_spec(),
             )
+            if _is_unknown_user(res_raw):
+                # the subgraph has no entity for a Safe that never held a position
+                self._fetch_status = FetchStatus.SUCCESS
+                return all_positions
             res = current_subgraph.process_response(res_raw)
 
             positions = yield from self._handle_response(

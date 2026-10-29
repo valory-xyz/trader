@@ -23,12 +23,15 @@ import json
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.market_manager_abci.graph_tooling.requests import (
     FetchStatus,
     MAX_LOG_SIZE,
     QUESTION_DATA_SEPARATOR,
     QueryingBehaviour,
     _MAX_SLEEP_TIME,
+    _is_unknown_user,
     to_content,
     to_graphql_list,
 )
@@ -646,7 +649,7 @@ class TestFetchBlockNumber:
 
         mock_sg = MagicMock()
         mock_sg.get_spec.return_value = {}
-        block_data = [{"id": "12345"}]
+        block_data = [{"number": "12345"}]
         mock_sg.process_response.return_value = block_data
         mock_sg.is_retries_exceeded.return_value = False
         b.context.network_subgraph = mock_sg
@@ -877,6 +880,38 @@ class TestFetchUserPositions:
         result = _exhaust(gen)
 
         assert result == batch1 + batch2
+
+    def test_unknown_user_returns_empty_without_errors(self) -> None:
+        """A Safe that never held a position yields no positions and no errors."""
+        b, mock_sg = self._setup_behaviour()
+        mock_raw = MagicMock()
+        mock_raw.body = b'{"data":{"user":null}}'
+        b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+
+        result = _exhaust(b.fetch_user_positions(user="0xUser1"))
+
+        assert result == []
+        assert b._fetch_status == FetchStatus.SUCCESS
+        mock_sg.process_response.assert_not_called()
+        b.context.logger.error.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            (b'{"data":{"user":null}}', True),
+            (b'{"data":{"user":{"userPositions":[]}}}', False),
+            (b'{"data":{"user":null},"errors":[{"message":"boom"}]}', False),
+            (b'{"data":null}', False),
+            (b"[]", False),
+            (b"not json", False),
+            (None, False),
+        ],
+    )
+    def test_is_unknown_user(self, body: Any, expected: bool) -> None:
+        """Only an error-free `user: null` response counts as an unknown user."""
+        response = MagicMock()
+        response.body = body
+        assert _is_unknown_user(response) is expected
 
     def test_none_response_returns_none(self) -> None:
         """Subgraph error mid-pagination returns ``None``, not a partial list.

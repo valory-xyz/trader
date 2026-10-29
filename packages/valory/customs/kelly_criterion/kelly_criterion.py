@@ -314,6 +314,8 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
     info.append(f"W_bet (per-bet bankroll): {w_bet} {token_name}")
 
     # 4. Validate inputs
+    if p_yes in (0, 1):
+        return _no_trade(info, error, f"p_yes {p_yes} is certain, no edge to size")
     if not (0 < p_yes < 1):
         error.append(f"Invalid p_yes: {p_yes}")
         return _no_trade(info, error)
