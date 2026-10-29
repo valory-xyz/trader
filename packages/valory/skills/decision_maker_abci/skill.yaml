@@ -177,12 +177,12 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/market_manager_abci:0.1.0:bafybeihaatuwm2eqktklmuxmy3gag4q34tknj32mu5kzqapmy274iq7kqe
+- valory/market_manager_abci:0.1.0:bafybeih4nfq3kadbsbuqpd5buhh2jvkdphrind6tyoaozjk4xs4hek4r5y
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_performance_summary_abci:0.1.0:bafybeihw75bxgcgmdn6kz2cdq3zreq64qtgkbf5bqkgiy6ardzy4zvqzke
-- valory/chatui_abci:0.1.0:bafybeiha67c4ixbnoi2b22xormmttrikusfsehwfqyfvtrvedejniwe6fe
+- valory/agent_performance_summary_abci:0.1.0:bafybeicpuqvcnt4v5w4nrgpa4dbyt7foxvy5u4xbtbvajkk223rbv634ma
+- valory/chatui_abci:0.1.0:bafybeihfn42katqlxemwkdq2kzz2cyl5efaau64j7ts64fhvdjtb6nqacy
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 behaviours:
   main:

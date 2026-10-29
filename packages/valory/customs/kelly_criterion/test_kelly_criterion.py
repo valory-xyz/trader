@@ -387,14 +387,20 @@ class TestRunValidation:
         result = run(**{**CLOB_KWARGS, "p_yes": 0.0})
         assert result["bet_amount"] == 0
         assert result["error"] == []
-        assert "No trade: p_yes 0.0 is certain, no edge to size" in result["info"]
+        assert (
+            "No trade: p_yes 0.0 is certain; Kelly does not size a certain prediction"
+            in result["info"]
+        )
 
     def test_certain_p_yes_exactly_one(self) -> None:
         """p_yes = 1.0 is a no-trade reason, not an error (boundary)."""
         result = run(**{**CLOB_KWARGS, "p_yes": 1.0})
         assert result["bet_amount"] == 0
         assert result["error"] == []
-        assert "No trade: p_yes 1.0 is certain, no edge to size" in result["info"]
+        assert (
+            "No trade: p_yes 1.0 is certain; Kelly does not size a certain prediction"
+            in result["info"]
+        )
 
     def test_unknown_kwargs_no_crash(self) -> None:
         """Extra unknown kwargs are silently ignored."""

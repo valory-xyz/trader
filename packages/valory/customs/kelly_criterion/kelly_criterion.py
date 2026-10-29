@@ -315,7 +315,11 @@ def run(**kwargs: Any) -> Dict[str, Any]:  # pylint: disable=too-many-locals
 
     # 4. Validate inputs
     if p_yes in (0, 1):
-        return _no_trade(info, error, f"p_yes {p_yes} is certain, no edge to size")
+        return _no_trade(
+            info,
+            error,
+            f"p_yes {p_yes} is certain; Kelly does not size a certain prediction",
+        )
     if not (0 < p_yes < 1):
         error.append(f"Invalid p_yes: {p_yes}")
         return _no_trade(info, error)

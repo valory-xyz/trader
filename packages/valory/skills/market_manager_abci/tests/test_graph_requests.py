@@ -887,11 +887,14 @@ class TestFetchUserPositions:
         mock_raw = MagicMock()
         mock_raw.body = b'{"data":{"user":null}}'
         b.get_http_response = _return_gen(mock_raw)  # type: ignore[method-assign]
+        b._call_failed = True
 
         result = _exhaust(b.fetch_user_positions(user="0xUser1"))
 
         assert result == []
         assert b._fetch_status == FetchStatus.SUCCESS
+        assert b._call_failed is False
+        mock_sg.reset_retries.assert_called_once()
         mock_sg.process_response.assert_not_called()
         b.context.logger.error.assert_not_called()
 
