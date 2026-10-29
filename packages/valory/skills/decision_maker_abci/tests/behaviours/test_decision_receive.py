@@ -838,23 +838,32 @@ class TestFetchOrderbookCounts:
     """Every order-book fetch updates the count of consecutive failures."""
 
     @pytest.mark.parametrize(
-        "response, succeeded",
-        [(READABLE_BOOK, True), (None, False), (FAILED_FETCH, False)],
+        "response, succeeded, returned",
+        [
+            (READABLE_BOOK, True, READABLE_BOOK),
+            (None, False, None),
+            (FAILED_FETCH, False, None),
+            ("unexpected", True, "unexpected"),
+        ],
     )
-    def test_fetch_is_counted(self, response: Any, succeeded: bool) -> None:
-        """A book counts as a success; no response or an error as a failure."""
+    def test_fetch_is_counted(
+        self, response: Any, succeeded: bool, returned: Any
+    ) -> None:
+        """Only no response or an error counts as a failure."""
         behaviour = _make_behaviour()
         behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
             side_effect=lambda _payload: _return_gen(response)
         )
         gen = behaviour._fetch_orderbook("token_123")
+        result = None
         try:
             while True:
                 next(gen)
-        except StopIteration:
-            pass
+        except StopIteration as stop:
+            result = stop.value
         record = behaviour.context.state.record_orderbook_fetch
         record.assert_called_once_with(succeeded, ANY)
+        assert result == returned
 
 
 class TestIsProfitable:
