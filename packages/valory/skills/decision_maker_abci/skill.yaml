@@ -38,7 +38,7 @@ fingerprint:
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaxn7lofhbwjwbm5x6i47k2s5u4f3o3xcs4zek3agwgatwwknu5iu
-  behaviours/sampling.py: bafybeie4vv5ugutdp3rhspn37ji7wzib3tqnjji2ywkh27tm6dlp5k73q4
+  behaviours/sampling.py: bafybeiffjmp3hzkmviwwkce3c2rnboaai4rvrstv5yyirokkm4ynfppjta
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeihzjj7dy4vybjaorts5n77gwpuxbhpgw53ehgcpt2apu7qzocivdq
   behaviours/tool_selection.py: bafybeidpklb4qnjgus27jozbbbze32fvpoxybeg6jdtwcs7m3sm3sbpvq4
@@ -91,7 +91,7 @@ fingerprint:
   tests/behaviours/test_bet_placement.py: bafybeiajpmr5atpu4ymcjhplag6ibger7pnepnfmxy77ardllnv5meg3cy
   tests/behaviours/test_blacklisting.py: bafybeicu433kyhcpzjle4bjpfr5h4nneccgydddcbzzmhb4d6aqshynypy
   tests/behaviours/test_check_benchmarking.py: bafybeihfdlrjliykbuwfqsv3snkgzge3jfug3dezp7uan5qooufoevtbnq
-  tests/behaviours/test_decision_receive.py: bafybeifufcamj32c6giypgoo4mnpkmtm37nirelc4ds26eripyjzzfpp4u
+  tests/behaviours/test_decision_receive.py: bafybeiel6b4jevdufhklgmnife7fg5i5yce4koyhaw65rv5gskm7rvflqu
   tests/behaviours/test_decision_request.py: bafybeiacd7ji65apfapxongatdljsne6kl3q3sgmzgkgihtevgz5hfppky
   tests/behaviours/test_handle_failed_tx.py: bafybeibejwondwq5cbewtrobgpopydfroz7pk7uf456wumofdo4ehmbgba
   tests/behaviours/test_omen_withdrawal_store.py: bafybeideljsqwfekjexwrq3mq36fv7gh4qonsuuh22k3frypt7fvifrqz4
@@ -111,7 +111,7 @@ fingerprint:
   tests/behaviours/test_post_bet_update.py: bafybeicwbwvoyhpjqbgxh5lxj3rt5ygit5z3bso3yafydlc36zam2mksvm
   tests/behaviours/test_redeem_router.py: bafybeifttfb4ik5hpyc6rivp6gcseih3dtcnw2437u4j2teshfr6tejlvm
   tests/behaviours/test_reedem.py: bafybeicogm6qti4pzjhhumfivvfy4qut5ob6o5gsrcdvryllgapz4n672u
-  tests/behaviours/test_sampling.py: bafybeif5ph2trx5xhevrucfkuuw24boet4yofsqxyjcl5lk56n4ympstn4
+  tests/behaviours/test_sampling.py: bafybeibylxgqul4ygnb2iy2em6rdygmwp6bhvsgtpcpnnml7bcx5lyuupu
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
   tests/behaviours/test_storage_manager.py: bafybeiaa5tdbelghizurtdkybcu36bfw4ekxwyogoibb7mcdlemf4mussa
   tests/behaviours/test_tool_selection.py: bafybeiah73gs56p3pgaozurdkf5x7jqzghigoauigmiwjja46lpk7d3ivq
