@@ -29,6 +29,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
 )
@@ -2393,6 +2396,10 @@ def _book_bet(bet_id: str = "bet1", invested_amount: int = 0) -> Any:
 
 
 ORDERBOOK_UNAVAILABLE_THRESHOLD = 5
+UNREACHABLE_FETCH: Dict[str, Any] = {
+    "error": "Connection reset by peer",
+    CLOB_UNREACHABLE: True,
+}
 
 
 def _count_orderbook_fetches(state: MagicMock, failures: int = 0) -> None:
@@ -2400,8 +2407,13 @@ def _count_orderbook_fetches(state: MagicMock, failures: int = 0) -> None:
     state.orderbook_failures = failures
     state.orderbook_failing_since = NOW if failures else None
     state.record_orderbook_fetch.side_effect = (
-        lambda succeeded, timestamp: SharedState.record_orderbook_fetch(
-            state, succeeded, timestamp
+        lambda reached, timestamp: SharedState.record_orderbook_fetch(
+            state, reached, timestamp
+        )
+    )
+    state.record_orderbook_response.side_effect = (
+        lambda response, timestamp: SharedState.record_orderbook_response(
+            state, response, timestamp
         )
     )
     state.is_orderbook_unavailable.side_effect = (
@@ -2583,7 +2595,7 @@ class TestBookCanTakeBet:
     def test_failed_fetch_below_the_threshold_proceeds(self) -> None:
         """A failed fetch is counted, and below the threshold the market proceeds."""
         behaviour, _ = _book_behaviour(
-            {f"bet1_{YES_TOKEN}": {"error": "Connection reset by peer"}},
+            {f"bet1_{YES_TOKEN}": UNREACHABLE_FETCH},
             orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 2,
         )
         assert _run(behaviour._book_can_take_bet(_book_bet())) is True
@@ -2591,11 +2603,9 @@ class TestBookCanTakeBet:
         assert state.orderbook_failures == ORDERBOOK_UNAVAILABLE_THRESHOLD - 1
         assert state.orderbook_failing_since == NOW
 
-    @pytest.mark.parametrize(
-        "response", [None, {"error": "Connection reset by peer"}, "unexpected"]
-    )
+    @pytest.mark.parametrize("response", [None, UNREACHABLE_FETCH])
     def test_failed_fetch_at_the_threshold_is_counted(self, response: Any) -> None:
-        """Every unreadable book is counted; async_act, not the check, stops the mech."""
+        """Every fetch that cannot reach the CLOB is counted."""
         behaviour, _ = _book_behaviour(
             {f"bet1_{YES_TOKEN}": response},
             orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 1,
@@ -2604,6 +2614,19 @@ class TestBookCanTakeBet:
         state = behaviour.context.state
         assert state.orderbook_failures == ORDERBOOK_UNAVAILABLE_THRESHOLD
         assert state.orderbook_failing_since == NOW
+
+    @pytest.mark.parametrize(
+        "response",
+        [{"error": "No orderbook exists for the requested token id"}, "unexpected"],
+    )
+    def test_answered_fetch_resets_the_count(self, response: Any) -> None:
+        """A CLOB that answers is reachable, even when the book is unreadable."""
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": response},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
+        assert behaviour.context.state.orderbook_failures == 0
 
     def test_unparseable_book_at_the_threshold_proceeds(self) -> None:
         """A book that arrives is a working CLOB, even when it cannot be parsed."""
@@ -2770,9 +2793,7 @@ class TestAsyncActBookCheck:
         behaviour, send = _book_behaviour(
             {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
         )
-        send.side_effect = lambda payload: _return_gen(
-            {"error": "Connection reset by peer"}
-        )
+        send.side_effect = lambda payload: _return_gen(UNREACHABLE_FETCH)
         behaviour.bets = bets
         payload, sample = self._act(behaviour, list(range(len(bets))))
         assert payload.index is None
@@ -2796,6 +2817,18 @@ class TestAsyncActBookCheck:
         assert send.call_count == 2
         assert behaviour.context.state.orderbook_failures == 0
         assert bet.processed_timestamp == 0
+
+    def test_answered_probe_resumes_the_book_check(self) -> None:
+        """A probe the CLOB answers with an error still proves it reachable."""
+        bet = _book_bet()
+        behaviour, _ = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": {"error": "No orderbook exists"}},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert behaviour.context.state.orderbook_failures == 0
 
     def test_unavailable_books_probe_a_market_with_position(self) -> None:
         """A market holding a position is probed too while the books are unavailable."""

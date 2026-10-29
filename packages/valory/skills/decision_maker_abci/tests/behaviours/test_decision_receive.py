@@ -23,10 +23,13 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
-from unittest.mock import ANY, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_NO_MECH_RESPONSE,
     SKIP_NO_TRADE,
@@ -37,7 +40,10 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
 from packages.valory.skills.decision_maker_abci.behaviours.decision_receive import (
     DecisionReceiveBehaviour,
 )
-from packages.valory.skills.decision_maker_abci.models import LiquidityInfo
+from packages.valory.skills.decision_maker_abci.models import (
+    LiquidityInfo,
+    SharedState,
+)
 from packages.valory.skills.market_manager_abci.bets import (
     PredictionResponse,
     QueueStatus,
@@ -774,83 +780,44 @@ class TestRebetAllowed:
 # ---------------------------------------------------------------------------
 
 
+READABLE_BOOK: Dict[str, Any] = {"asks": [], "bids": []}
+UNREACHABLE_FETCH: Dict[str, Any] = {
+    "error": "Connection reset by peer",
+    CLOB_UNREACHABLE: True,
+}
+ANSWERED_FETCH: Dict[str, Any] = {"error": "No orderbook exists"}
+
+
 class TestFetchOrderbook:
     """Tests for _fetch_orderbook."""
 
-    def test_success(self) -> None:
-        """Should return parsed orderbook on success."""
-        behaviour = _make_behaviour()
-        ob_data = {"asks": [{"price": "0.5", "size": "10"}], "bids": []}
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return ob_data  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
-        gen = behaviour._fetch_orderbook("token_123")
-        try:
-            next(gen)
-            while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value == ob_data
-
-    def test_none_response(self) -> None:
-        """Should return None when response is None."""
-        behaviour = _make_behaviour()
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return None  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
-        gen = behaviour._fetch_orderbook("token_123")
-        try:
-            next(gen)
-            while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value is None
-
-    def test_error_response(self) -> None:
-        """Should return None when response has error key."""
-        behaviour = _make_behaviour()
-
-        def mock_send(*_args: Any, **_kwargs: Any) -> Generator:
-            yield
-            return {"error": "API timeout"}  # type: ignore[return-value]
-
-        behaviour.send_polymarket_connection_request = MagicMock(side_effect=mock_send)  # type: ignore[method-assign]
-        gen = behaviour._fetch_orderbook("token_123")
-        try:
-            next(gen)
-            while True:
-                gen.send(None)
-        except StopIteration as e:
-            assert e.value is None
-
-
-READABLE_BOOK: Dict[str, Any] = {"asks": [], "bids": []}
-FAILED_FETCH: Dict[str, Any] = {"error": "Connection reset by peer"}
-
-
-class TestFetchOrderbookCounts:
-    """Every order-book fetch updates the count of consecutive failures."""
-
     @pytest.mark.parametrize(
-        "response, succeeded, returned",
+        "response, book, reached, failures",
         [
-            (READABLE_BOOK, True, READABLE_BOOK),
-            (None, False, None),
-            (FAILED_FETCH, False, None),
-            ("unexpected", True, "unexpected"),
+            (READABLE_BOOK, READABLE_BOOK, True, 0),
+            (None, None, False, 3),
+            (UNREACHABLE_FETCH, None, False, 3),
+            (ANSWERED_FETCH, None, True, 0),
+            ("unexpected", None, True, 0),
         ],
     )
     def test_fetch_is_counted(
-        self, response: Any, succeeded: bool, returned: Any
+        self, response: Any, book: Any, reached: bool, failures: int
     ) -> None:
-        """Only no response or an error counts as a failure."""
+        """Only a fetch that cannot reach the CLOB counts as a failure."""
         behaviour = _make_behaviour()
+        state = behaviour.context.state
+        state.orderbook_failures = 2
+        state.record_orderbook_fetch.side_effect = (
+            lambda reached, timestamp: SharedState.record_orderbook_fetch(
+                state, reached, timestamp
+            )
+        )
+        state.record_orderbook_response.side_effect = (
+            lambda response, timestamp: SharedState.record_orderbook_response(
+                state, response, timestamp
+            )
+        )
         behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
             side_effect=lambda _payload: _return_gen(response)
         )
@@ -861,9 +828,9 @@ class TestFetchOrderbookCounts:
                 next(gen)
         except StopIteration as stop:
             result = stop.value
-        record = behaviour.context.state.record_orderbook_fetch
-        record.assert_called_once_with(succeeded, ANY)
-        assert result == returned
+        assert result == (book, reached)
+        assert state.orderbook_failures == failures
+        assert behaviour.context.logger.warning.called is (book is None)
 
 
 class TestIsProfitable:
@@ -936,7 +903,7 @@ class TestIsProfitable:
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda _tid: _return_gen(None),
+                side_effect=lambda _tid: _return_gen((None, True)),
             ).start()
 
         return behaviour, pred, bet
@@ -1011,21 +978,21 @@ class TestIsProfitable:
         assert strategy_vote == 1  # strategy's NO, not mech's YES
 
     @pytest.mark.parametrize(
-        "token_ids, books",
+        "token_ids, fetches",
         [
-            ({"Yes": "yes_token", "No": "no_token"}, [None, None]),
-            ({"Yes": "yes_token"}, [None]),
+            ({"Yes": "yes_token", "No": "no_token"}, [(None, False), (None, False)]),
+            ({"Yes": "yes_token"}, [(None, False)]),
         ],
     )
-    def test_no_bet_without_a_readable_book_is_no_decline(
-        self, token_ids: Dict[str, str], books: List[Any]
+    def test_no_bet_without_reaching_the_clob_is_no_decline(
+        self, token_ids: Dict[str, str], fetches: List[Any]
     ) -> None:
-        """A no-bet with no book read at all gets its own skip reason and no cooldown."""
+        """A no-bet that could not reach the CLOB gets its own skip reason."""
         behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
         )
         bet.outcome_token_ids = token_ids
-        fetched = iter(books)
+        fetched = iter(fetches)
         patch.object(
             behaviour,
             "_fetch_orderbook",
@@ -1041,27 +1008,29 @@ class TestIsProfitable:
         assert behaviour.context.state.orderbook_fetch_failed is True
 
     @pytest.mark.parametrize(
-        "yes_book, no_book",
+        "yes_fetch, no_fetch",
         [
-            (READABLE_BOOK, READABLE_BOOK),
-            (None, READABLE_BOOK),
-            (READABLE_BOOK, None),
+            ((READABLE_BOOK, True), (READABLE_BOOK, True)),
+            ((None, False), (READABLE_BOOK, True)),
+            ((READABLE_BOOK, True), (None, False)),
+            ((None, True), (None, True)),
         ],
     )
-    def test_no_bet_with_a_readable_book_is_a_decline(
-        self, yes_book: Any, no_book: Any
+    def test_no_bet_with_the_clob_reached_is_a_decline(
+        self, yes_fetch: Any, no_fetch: Any
     ) -> None:
-        """A no-bet with at least one book read stays the strategy's decline."""
+        """A no-bet with the CLOB answering, even without a book, stays a decline."""
         behaviour, pred, bet = self._setup_behaviour(
             strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
         )
-        books = iter([yes_book, no_book])
+        fetches = iter([yes_fetch, no_fetch])
         patch.object(
             behaviour,
             "_fetch_orderbook",
-            side_effect=lambda _tid: _return_gen(next(books)),
+            side_effect=lambda _tid: _return_gen(next(fetches)),
         ).start()
-        behaviour.context.state.orderbook_fetch_failed = False
+        # left over from an earlier decision that never reached the blacklisting
+        behaviour.context.state.orderbook_fetch_failed = True
         record_skip = patch.object(behaviour, "_record_market_skipped").start()
         self._run_is_profitable(behaviour, pred)
         patch.stopall()
@@ -1112,7 +1081,7 @@ class TestIsProfitable:
         patch.object(
             behaviour,
             "_fetch_orderbook",
-            side_effect=lambda _tid: _return_gen(ob_data),
+            side_effect=lambda _tid: _return_gen((ob_data, True)),
         ).start()
 
         def mock_get_bet_amount(*_args: Any, **_kwargs: Any) -> Generator:
@@ -1169,7 +1138,7 @@ class TestIsProfitable:
         def mock_fetch(_tid: str) -> Generator:
             call_count["n"] += 1
             yield
-            return ob_yes if call_count["n"] == 1 else ob_no  # type: ignore[return-value]
+            return (ob_yes if call_count["n"] == 1 else ob_no), True  # type: ignore[return-value]
 
         patch.object(behaviour, "_fetch_orderbook", side_effect=mock_fetch).start()
 
@@ -1298,14 +1267,14 @@ class TestIsProfitable:
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda _tid: _return_gen(ob),
+                side_effect=lambda _tid: _return_gen((ob, True)),
             ).start()
         else:
             books = {"token_yes_123": ob, "token_no_123": ob_no}
             patch.object(
                 behaviour,
                 "_fetch_orderbook",
-                side_effect=lambda tid: _return_gen(books[tid]),
+                side_effect=lambda tid: _return_gen((books[tid], True)),
             ).start()
 
         def _mock_get_bet_amount(*_a: Any, **_k: Any) -> Generator:

@@ -40,7 +40,7 @@ protocols:
 contracts: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeieq2wh3ixdbznwb6e2e2bp7sramjozei7ucac3xtwxudmvwbqvj6i
+- valory/agent_performance_summary_abci:0.1.0:bafybeihkfszqfnr443kxgluqnl4r3c65xgdksodpmefapva6f2dhaq4viy
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 handlers:
   abci:

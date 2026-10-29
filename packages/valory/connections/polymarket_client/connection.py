@@ -55,7 +55,10 @@ from packages.valory.connections.polymarket_client.relayer_proxy import (
     TX_TERMINAL_FAIL,
     TX_TERMINAL_OK,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+    RequestType,
+)
 from packages.valory.protocols.srr.dialogues import SrrDialogue
 from packages.valory.protocols.srr.dialogues import SrrDialogues as BaseSrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
@@ -456,8 +459,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         # Bootstrap the CLOB client with the legacy Safe funder so read-only
         # calls (markets, order book, get_order) work before the DW is
         # provisioned. Order placement always calls _ensure_dw_funder first to
-        # (re)point the client at the runtime-resolved DepositWallet. When the
-        # CLOB cannot be reached the agent still starts, without a client.
+        # (re)point the client at the runtime-resolved DepositWallet.
         self.client: Optional[ClobClient] = None
         self._client_funder: Optional[str] = None
         self._ensure_clob_client()
@@ -573,8 +575,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         No-op when the client already targets ``dw_address``. Called before
         every order placement / sell so the funder matches the just-topped-up
         DepositWallet even if the DW was provisioned after connection start.
-        The DW is recorded even when the CLOB is unreachable, so the next CLOB
-        request builds the client against it.
 
         :param dw_address: the DepositWallet address to fund orders from.
         :return: why the client could not be built, or None when it is ready.
@@ -727,7 +727,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         if request_type in CLOB_REQUEST_TYPES:
             error_msg = self._ensure_clob_client()
             if error_msg:
-                return {"error": error_msg}, error_msg
+                return {"error": error_msg, CLOB_UNREACHABLE: True}, error_msg
 
         try:
             params = payload.get("params", {})
@@ -2611,4 +2611,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         except Exception as e:
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
-            return None, error_msg
+            # The client raises PolyApiException without a status on transport errors.
+            unreachable = isinstance(e, PolyApiException) and e.status_code is None
+            return {"error": error_msg, CLOB_UNREACHABLE: unreachable}, error_msg

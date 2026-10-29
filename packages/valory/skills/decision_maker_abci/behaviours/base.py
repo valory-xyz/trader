@@ -32,6 +32,7 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -246,6 +247,29 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
                 f"period reset: {e}. Falling back to the local clock."
             )
             return int(datetime.now(timezone.utc).timestamp())
+
+    def _fetch_orderbook(
+        self, token_id: str
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], bool]]:
+        """Fetch a CLOB token's order book, counting the fetch towards the CLOB's status.
+
+        :param token_id: The CLOB token ID.
+        :yield: None
+        :return: the book with "asks" and "bids" keys (None on failure), and
+            whether the CLOB answered.
+        """
+        payload = {
+            "request_type": RequestType.FETCH_ORDER_BOOK.value,
+            "params": {"token_id": token_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        error, reached = self.shared_state.record_orderbook_response(
+            response, self.synced_timestamp
+        )
+        if error:
+            self.context.logger.warning(f"Failed to fetch orderbook: {error}")
+            return None, reached
+        return response, reached
 
     @property
     def safe_tx_hash(self) -> str:

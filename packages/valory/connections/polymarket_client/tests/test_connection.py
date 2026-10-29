@@ -33,6 +33,7 @@ from eth_abi import encode as abi_encode
 from eth_utils import keccak, to_checksum_address
 from hexbytes import HexBytes
 from py_clob_client_v2 import ClobClient
+from py_clob_client_v2.exceptions import PolyApiException
 from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
@@ -57,7 +58,10 @@ from packages.valory.connections.polymarket_client.connection import (
     _bool_param,
     _validate_builder_code,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+    RequestType,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -515,7 +519,7 @@ class TestEnsureClobClient:
                 {"request_type": request_type.value, "params": {}}
             )
         handler.assert_not_called()
-        assert response == {"error": error}
+        assert response == {"error": error, CLOB_UNREACHABLE: True}
         assert "reset by peer" in error
 
     def test_clob_request_builds_the_missing_client(self) -> None:
@@ -4366,15 +4370,24 @@ class TestFetchOrderBook:
         assert error is None
         assert result == {"asks": [], "bids": [], "min_order_size": None}
 
-    def test_client_exception(self) -> None:
-        """Client exception returns None with error message."""
+    @pytest.mark.parametrize(
+        "exception, unreachable",
+        [
+            (PolyApiException(error_msg="Request exception!"), True),
+            (PolyApiException(MagicMock(status_code=404)), False),
+            (PolyApiException(MagicMock(status_code=429)), False),
+            (Exception("unparseable"), False),
+        ],
+    )
+    def test_client_exception(self, exception: Exception, unreachable: bool) -> None:
+        """Only an error without an HTTP answer marks the CLOB unreachable."""
         conn = _make_connection()
-        conn.client.get_order_book.side_effect = Exception("API timeout")
+        conn.client.get_order_book.side_effect = exception
 
         result, error = conn._fetch_order_book("token_123")
 
-        assert result is None
-        assert "API timeout" in error
+        assert result == {"error": error, CLOB_UNREACHABLE: unreachable}
+        assert "token_123" in error
 
     def test_v2_dict_response(self) -> None:
         """v2 ``get_order_book`` returns a plain dict with dict levels.

@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, Mapping, Union, cast
+from typing import Any, Dict, List, Mapping, Union, cast
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -616,8 +616,15 @@ class TestHttpHandler:
             self.handler._handle_get_health(http_msg, http_dialogue)
             mock_too_early.assert_called_once_with(http_msg, http_dialogue)
 
-    def test_handle_get_health_success(self) -> None:
+    @pytest.mark.parametrize(
+        "failures, issue_codes",
+        [(0, []), (ORDERBOOK_UNAVAILABLE_THRESHOLD, ["polymarket_unreachable"])],
+    )
+    def test_handle_get_health_success(
+        self, failures: int, issue_codes: List[str]
+    ) -> None:
         """Test _handle_get_health returns a full health response."""
+        _count_orderbook_failures(self.context, failures)
 
         class MockStakingState(Enum):
             """Mock staking state."""
@@ -696,7 +703,7 @@ class TestHttpHandler:
             assert agent_health["is_activity_target_met"] is False
             assert agent_health["activity_target"] == 8
             assert agent_health["activity_completed"] == 5
-            assert agent_health["issues"] == []
+            assert [i["code"] for i in agent_health["issues"]] == issue_codes
 
     @pytest.mark.parametrize("failures", [0, 1, ORDERBOOK_UNAVAILABLE_THRESHOLD - 1])
     def test_no_issue_below_the_threshold(self, failures: int) -> None:

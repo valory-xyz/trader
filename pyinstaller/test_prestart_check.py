@@ -138,8 +138,18 @@ config:
 """
 
 
+EMPTY_OVERRIDE = "name: s\n---\n"
+NULL_CONFIG = """name: s
+---
+public_id: valory/polymarket_client:0.1.0
+type: connection
+config: null
+"""
+
+
 @pytest.mark.parametrize(
-    "service_yaml", [None, "", "public_id: [unclosed", UNSET_CLOB_HOST]
+    "service_yaml",
+    [None, "", "public_id: [unclosed", UNSET_CLOB_HOST, EMPTY_OVERRIDE, NULL_CONFIG],
 )
 def test_unreadable_service_package_cannot_run(
     tmp_path: Path, service_yaml: Optional[str]

@@ -44,6 +44,9 @@ from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 from web3.types import BlockIdentifier
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.contracts.multisend.contract import MultiSendOperation
 from packages.valory.skills.abstract_round_abci.base import AbciApp
 from packages.valory.skills.abstract_round_abci.models import (
@@ -277,8 +280,7 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # consecutive failed order-book fetches, and when the run of failures began
         self.orderbook_failures: int = 0
         self.orderbook_failing_since: Optional[int] = None
-        # whether the current decision could read no order book at all; read and
-        # cleared by the blacklisting, which then leaves the market out of the cooldown
+        # set when a decision could not reach the CLOB; cleared by BlacklistingBehaviour
         self.orderbook_fetch_failed: bool = False
         # final_tx_hash of the most recent tx whose post-bet bookkeeping
         # was already applied by `PostBetUpdateBehaviour`. Guards against
@@ -289,19 +291,39 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         # them twice.
         self.post_bet_update_applied_tx_hash: Optional[str] = None
 
-    def record_orderbook_fetch(self, succeeded: bool, timestamp: int) -> None:
-        """Count a failed order-book fetch; a successful one resets the count.
+    def record_orderbook_fetch(self, reached: bool, timestamp: int) -> None:
+        """Count a fetch that could not reach the CLOB; one that did resets the count.
 
-        :param succeeded: whether the fetch returned a book.
+        :param reached: whether the CLOB answered the fetch.
         :param timestamp: when the fetch was made, in unix seconds.
         """
-        if succeeded:
+        if reached:
             self.orderbook_failures = 0
             self.orderbook_failing_since = None
             return
         if self.orderbook_failures == 0:
             self.orderbook_failing_since = timestamp
         self.orderbook_failures += 1
+
+    def record_orderbook_response(
+        self, response: Any, timestamp: int
+    ) -> Tuple[Optional[str], bool]:
+        """Count an order-book response towards the CLOB's status.
+
+        :param response: the connection's response to the fetch.
+        :param timestamp: when the fetch was made, in unix seconds.
+        :return: why the book is unreadable (None when it was read), and whether
+            the CLOB answered.
+        """
+        if isinstance(response, dict):
+            reached = not response.get(CLOB_UNREACHABLE)
+            error = response.get("error")
+            error = str(error) if error else None
+        else:
+            reached = response is not None
+            error = "no response" if response is None else f"unexpected {response!r}"
+        self.record_orderbook_fetch(reached, timestamp)
+        return error, reached
 
     def is_orderbook_unavailable(self, threshold: int) -> bool:
         """Whether enough consecutive book fetches failed to call the CLOB unreachable.

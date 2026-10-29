@@ -20,13 +20,16 @@
 """Tests for the models module of decision_maker_abci."""
 
 import time
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 from hexbytes import HexBytes
 from web3.constants import HASH_ZERO
 
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+)
 from packages.valory.skills.decision_maker_abci.models import (
     AccuracyInfoFields,
     BenchmarkingMockData,
@@ -463,8 +466,8 @@ class TestOrderbookFailures:
         assert state.orderbook_failures == 3
         assert state.orderbook_failing_since == 100
 
-    def test_success_resets_the_count(self) -> None:
-        """A successful fetch ends the run of failures."""
+    def test_reached_fetch_resets_the_count(self) -> None:
+        """A fetch that reaches the CLOB ends the run of failures."""
         state = self._state()
         state.record_orderbook_fetch(False, 100)
         state.record_orderbook_fetch(True, 200)
@@ -472,6 +475,25 @@ class TestOrderbookFailures:
         assert state.orderbook_failing_since is None
         state.record_orderbook_fetch(False, 300)
         assert state.orderbook_failing_since == 300
+
+    @pytest.mark.parametrize(
+        "response, error, reached",
+        [
+            ({"asks": [], "bids": []}, None, True),
+            ({"error": "404"}, "404", True),
+            ({"error": "reset", CLOB_UNREACHABLE: True}, "reset", False),
+            (None, "no response", False),
+            ("odd", "unexpected 'odd'", True),
+        ],
+    )
+    def test_response_is_counted_by_reach(
+        self, response: Any, error: Optional[str], reached: bool
+    ) -> None:
+        """A response counts as a failure only when the CLOB could not be reached."""
+        state = self._state()
+        state.orderbook_failures = 2
+        assert state.record_orderbook_response(response, 100) == (error, reached)
+        assert state.orderbook_failures == (0 if reached else 3)
 
     @pytest.mark.parametrize(
         "failures, expected", [(0, False), (4, False), (5, True), (6, True)]

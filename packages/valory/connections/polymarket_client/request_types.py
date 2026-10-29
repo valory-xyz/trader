@@ -51,3 +51,7 @@ class RequestType(Enum):
     # request; the behaviour drives the retry/backoff loop). When the polled
     # tx is a DW deploy, the response also carries the discovered DW address.
     RELAYER_TX = "relayer_tx"
+
+
+# Marks an error response for which the CLOB gave no HTTP answer at all.
+CLOB_UNREACHABLE = "clob_unreachable"

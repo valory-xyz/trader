@@ -118,8 +118,8 @@ def prestart_check(click_context: click.Context, service_dir: Path) -> None:
     """
     try:
         result = run_checks(service_dir, os.environ)
-    except (OSError, ValueError, yaml.YAMLError) as e:
-        click.echo(f"Cannot read the service package: {e}", err=True)
+    except Exception as e:  # pylint: disable=broad-except
+        click.echo(f"Cannot read the service package: {e!r}", err=True)
         click_context.exit(2)
     click.echo(json.dumps(result))
     click_context.exit(0 if result["status"] == "passed" else 1)

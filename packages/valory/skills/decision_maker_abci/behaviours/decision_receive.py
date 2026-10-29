@@ -26,7 +26,6 @@ from datetime import datetime
 from math import prod
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_NO_MECH_RESPONSE,
     SKIP_NO_TRADE,
@@ -420,33 +419,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info("Conditions for rebetting are not met!")
         return rebet_allowed
 
-    def _fetch_orderbook(
-        self, token_id: str
-    ) -> Generator[None, None, Optional[Dict[str, Any]]]:
-        """Fetch the orderbook for a CLOB token.
-
-        :param token_id: The CLOB token ID.
-        :yield: None
-        :return: Dict with "asks" and "bids" keys, or None on failure.
-        """
-        payload = {
-            "request_type": RequestType.FETCH_ORDER_BOOK.value,
-            "params": {"token_id": token_id},
-        }
-        response = yield from self.send_polymarket_connection_request(payload)
-        error: Optional[str]
-        if response is None:
-            error = "no response"
-        elif isinstance(response, dict):
-            error = response.get("error")
-        else:
-            error = None
-        self.shared_state.record_orderbook_fetch(not error, self.synced_timestamp)
-        if error:
-            self.context.logger.warning(f"Failed to fetch orderbook: {error}")
-            return None
-        return response
-
     def _is_profitable(
         self, prediction_response: PredictionResponse
     ) -> Generator[None, None, Tuple[bool, int, Optional[int]]]:
@@ -471,7 +443,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         orderbook_bids_yes = None
         orderbook_bids_no = None
         min_order_shares = 0.0
-        orderbooks_fetched: List[Optional[Dict[str, Any]]] = []
+        clob_reached: List[bool] = []
+        self.shared_state.orderbook_fetch_failed = False
 
         prices = bet.outcomeTokenMarginalPrices
         price_yes = prices[0] if prices else 0.0
@@ -483,16 +456,16 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 yes_token_id = bet.outcome_token_ids.get("Yes")
                 no_token_id = bet.outcome_token_ids.get("No")
                 if yes_token_id:
-                    ob_yes = yield from self._fetch_orderbook(yes_token_id)
-                    orderbooks_fetched.append(ob_yes)
+                    ob_yes, reached = yield from self._fetch_orderbook(yes_token_id)
+                    clob_reached.append(reached)
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
                         orderbook_bids_yes = ob_yes.get("bids", [])
                         if ob_yes.get("min_order_size") is not None:
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
-                    ob_no = yield from self._fetch_orderbook(no_token_id)
-                    orderbooks_fetched.append(ob_no)
+                    ob_no, reached = yield from self._fetch_orderbook(no_token_id)
+                    clob_reached.append(reached)
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
                         orderbook_bids_no = ob_no.get("bids", [])
@@ -534,8 +507,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
-            # With one book read the strategy did decide, so it stays a decline.
-            if orderbooks_fetched and all(ob is None for ob in orderbooks_fetched):
+            # Only an outage leaves the market out of the cooldown.
+            if clob_reached and not any(clob_reached):
                 self.shared_state.orderbook_fetch_failed = True
                 self._record_market_skipped(bet, SKIP_ORDERBOOK_UNAVAILABLE)
             else:

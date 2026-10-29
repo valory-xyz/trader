@@ -24,7 +24,6 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
 )
@@ -557,26 +556,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.warning(msg + cooling_note)
         return None
 
-    def _fetch_book(self, token_id: str) -> Generator[None, None, Dict[str, Any]]:
-        """Fetch a token's order book, counting the fetch towards the CLOB's status.
-
-        :param token_id: the outcome token whose book to fetch.
-        :yield: None
-        :return: the order book.
-        :raises ValueError: when the book cannot be read.
-        """
-        request = {
-            "request_type": RequestType.FETCH_ORDER_BOOK.value,
-            "params": {"token_id": token_id},
-        }
-        book = yield from self.send_polymarket_connection_request(request)
-        fetched = isinstance(book, dict) and "error" not in book
-        self.shared_state.record_orderbook_fetch(fetched, self.synced_timestamp)
-        if not fetched:
-            why = book.get("error") if isinstance(book, dict) else book
-            raise ValueError(why or "no response")
-        return book
-
     def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
         """Whether a side of a Polymarket book could take a bet; True when unreadable.
 
@@ -588,7 +567,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         reasons = []
         for side, token_id in (bet.outcome_token_ids or {}).items():
             try:
-                book = yield from self._fetch_book(token_id)
+                book, _ = yield from self._fetch_orderbook(token_id)
+                if book is None:
+                    return True
                 asks, bids = book.get("asks") or [], book.get("bids") or []
                 best_ask = min((float(a["price"]) for a in asks), default=None)
                 spread = self.bid_ask_spread(asks, bids) if asks and bids else None
@@ -609,26 +590,24 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         return False
 
-    def _orderbooks_readable(self, bet: Bet) -> Generator[None, None, bool]:
-        """Whether one order book of the bet can be read, after a run of failed fetches.
+    def _clob_reachable(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether the CLOB answers a fetch of the bet's first order book.
 
         :param bet: the sampled bet, whose first outcome token's book is the probe.
         :yield: None
-        :return: whether the book was read.
+        :return: whether the CLOB answered.
         """
         token_id = next(iter((bet.outcome_token_ids or {}).values()), None)
-        try:
-            if token_id is None:
-                raise ValueError("no token ids")
-            yield from self._fetch_book(token_id)
-        except ValueError as exc:
+        reached = False
+        if token_id is not None:
+            _, reached = yield from self._fetch_orderbook(token_id)
+        if not reached:
             self.context.logger.warning(
-                f"Order books unavailable after {self.shared_state.orderbook_failures}"
-                f" failed fetches in a row, and the book of {bet.id} is unreadable "
-                f"({exc}): no market this period."
+                f"Polymarket's CLOB unreachable after "
+                f"{self.shared_state.orderbook_failures} failed fetches in a row: "
+                "no market this period."
             )
-            return False
-        return True
+        return reached
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
@@ -658,7 +637,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 or self.benchmarking_mode.enabled
             ):
                 checks_left = 0
-            # No market, and no stamp, until a book can be read again: picking
+            # No market, and no stamp, until the CLOB answers again: picking
             # a market here would pay the mech for a prediction it cannot use.
             if (
                 idx is not None
@@ -666,7 +645,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 and self.shared_state.is_orderbook_unavailable(
                     self.params.orderbook_unavailable_threshold
                 )
-                and not (yield from self._orderbooks_readable(self.bets[idx]))
+                and not (yield from self._clob_reachable(self.bets[idx]))
             ):
                 idx = None
             while (
