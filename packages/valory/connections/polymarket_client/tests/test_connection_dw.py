@@ -602,3 +602,43 @@ class TestFunderThreading:
         assert "reset by peer" in err
         assert resp == {"error": err}
         clob.create_market_order.assert_not_called()
+
+    def test_quote_buy_returns_error_when_the_dw_client_cannot_be_built(
+        self,
+    ) -> None:
+        """_quote_buy answers with an error, without pricing, when the CLOB is down."""
+        conn = _make_conn()
+        clob = conn.client
+        with (
+            patch.object(
+                _Conn,
+                "_build_clob_client",
+                side_effect=requests.exceptions.ConnectionError("reset by peer"),
+            ),
+            patch.object(_Conn, "_read_dw_collateral_balance") as read_balance,
+        ):
+            resp, err = conn._quote_buy(token_id="1", amount=1.0, funder=DW)
+        assert "reset by peer" in err
+        assert resp == {"error": err}
+        read_balance.assert_not_called()
+        clob.calculate_market_price.assert_not_called()
+
+    def test_sell_position_returns_error_when_the_dw_client_cannot_be_built(
+        self,
+    ) -> None:
+        """_sell_position answers with an error, without selling, when the CLOB is down."""
+        conn = _make_conn()
+        clob = conn.client
+        with (
+            patch.object(
+                _Conn,
+                "_build_clob_client",
+                side_effect=requests.exceptions.ConnectionError("reset by peer"),
+            ),
+            patch("requests.get") as gamma,
+        ):
+            resp, err = conn._sell_position(token_id="1", amount=1.0, funder=DW)
+        assert "reset by peer" in err
+        assert resp == {"error": err}
+        gamma.assert_not_called()
+        clob.create_market_order.assert_not_called()
