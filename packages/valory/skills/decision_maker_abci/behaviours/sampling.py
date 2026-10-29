@@ -22,7 +22,7 @@
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import AbstractSet, Any, Dict, Generator, List, Optional, Set, Tuple
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -306,8 +306,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _sample(self) -> Optional[int]:
-        """Sample a bet, mark it as processed, and return its index."""
+    def _sample(self, excluded: AbstractSet[str] = frozenset()) -> Optional[int]:
+        """Sample a bet, mark it as processed, and return its index.
+
+        :param excluded: ids of bets that must not be sampled.
+        :return: the index of the sampled bet, or None if none is available.
+        """
         # modify time "NOW" in benchmarking mode
         if self.benchmarking_mode.enabled:
             safe_voting_range = (
@@ -423,6 +427,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 f"cooling={fallback_breakdown['cooling']} "
                 f"processable={fallback_breakdown['processable']}"
             )
+
+        available_bets = [bet for bet in available_bets if bet.id not in excluded]
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
@@ -641,6 +647,9 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # The stamp keeps a skipped market out for the cooldown. Each agent
             # reads the books itself, so this assumes a single-agent service.
             checks_left = BOOK_CHECK_CANDIDATES
+            # An unreadable book leaves its market unstamped, so it would be
+            # sampled again; skip it to give another market's book a chance.
+            checked: Set[str] = set()
             if (
                 not self.params.is_running_on_polymarket
                 or self.benchmarking_mode.enabled
@@ -651,13 +660,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             ):
                 checks_left -= 1
                 bet = self.bets[idx]
+                checked.add(bet.id)
                 can_take_bet = yield from self._book_can_take_bet(bet)
                 if can_take_bet:
                     break
                 # An unreadable book says nothing about the market itself.
                 if can_take_bet is not None:
                     bet.processed_timestamp = self.synced_timestamp
-                idx = self._sample() if checks_left else None
+                idx = self._sample(checked) if checks_left else None
                 if not checks_left:
                     self.context.logger.warning(
                         f"{BOOK_CHECK_CANDIDATES} markets failed the book check: "

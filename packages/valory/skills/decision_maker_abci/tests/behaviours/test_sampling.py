@@ -2750,6 +2750,41 @@ class TestAsyncActBookCheck:
         assert bad.processed_timestamp == NOW
         assert behaviour.__dict__["stored"] == [[NOW, 0]]
 
+    def test_unreadable_book_makes_way_for_the_next_market(self) -> None:
+        """With the books unavailable, a market whose book alone is unreadable is not re-sampled."""
+        gone, healthy, other = (
+            _book_bet("gone"),
+            _book_bet("healthy"),
+            _book_bet("other"),
+        )
+        for bet, liquidity in ((gone, 300.0), (healthy, 200.0), (other, 100.0)):
+            bet.openingTimestamp = NOW + 86400 * 5
+            bet.scaledLiquidityMeasure = liquidity
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        send.side_effect = lambda payload: _return_gen(
+            {"error": "404 Not Found"}
+            if payload["params"]["token_id"].startswith("gone")
+            else NORMAL_BOOK
+        )
+        params = behaviour.context.params
+        params.use_multi_bets_mode = False
+        params.enable_multi_bets_fallback = False
+        params.sample_bets_closing_days = 60
+        params.opening_margin = 100
+        params.safe_voting_range = 100
+        params.is_outcome_side_threshold_filter_enabled = False
+        params.exclude_neg_risk_markets = False
+        params.disabled_polymarket_tags = []
+        behaviour.bets = [gone, healthy, other]
+        payload, _ = self._act(behaviour)
+        assert payload.index == 1
+        fetched = [c.args[0]["params"]["token_id"] for c in send.call_args_list]
+        assert fetched == [f"gone_{YES_TOKEN}", f"healthy_{YES_TOKEN}"]
+        assert behaviour.context.state.orderbook_failures == 0
+        assert gone.processed_timestamp == 0
+
     def test_every_candidate_fails(self) -> None:
         """When every candidate within the cap fails, the cycle has no market."""
         bets = [_book_bet(f"b{i}") for i in range(BOOK_CHECK_CANDIDATES + 1)]
