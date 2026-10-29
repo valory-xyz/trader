@@ -129,6 +129,30 @@ def test_missing_service_dir_is_a_usage_error() -> None:
     assert result.exit_code not in (0, 1)
 
 
+UNSET_CLOB_HOST = """name: s
+---
+public_id: valory/polymarket_client:0.1.0
+type: connection
+config:
+  host: ${POLYMARKET_CLOB_HOST_UNSET:str}
+"""
+
+
+@pytest.mark.parametrize(
+    "service_yaml", [None, "", "public_id: [unclosed", UNSET_CLOB_HOST]
+)
+def test_unreadable_service_package_cannot_run(
+    tmp_path: Path, service_yaml: Optional[str]
+) -> None:
+    """A service package the check cannot read exits 2, with no result on stdout."""
+    if service_yaml is not None:
+        (tmp_path / "service.yaml").write_text(service_yaml, encoding="utf-8")
+    result, probed = _run(tmp_path)
+    assert result.exit_code == 2
+    assert not result.stdout
+    assert not probed
+
+
 def test_help_lists_prestart_check() -> None:
     """Pearl detects the command from the runner's ``--help``."""
     result = CliRunner().invoke(cli, ["--help"])
