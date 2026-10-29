@@ -60,10 +60,27 @@ from packages.valory.skills.decision_maker_abci.handlers import (
     HttpMethod,
     IpfsHandler,
     LedgerApiHandler,
+    POLYMARKET_UNREACHABLE_ISSUE,
     SigningHandler,
     TendermintHandler,
     resolve_round_timeout,
 )
+from packages.valory.skills.decision_maker_abci.models import SharedState
+
+
+ORDERBOOK_UNAVAILABLE_THRESHOLD = 5
+
+
+def _count_orderbook_failures(context: MagicMock, failures: int = 0) -> None:
+    """Give a mocked context the order-book failure count of SharedState."""
+    context.params.orderbook_unavailable_threshold = ORDERBOOK_UNAVAILABLE_THRESHOLD
+    context.state.orderbook_failures = failures
+    context.state.orderbook_failing_since = 1700000000 if failures else None
+    context.state.is_orderbook_unavailable.side_effect = (
+        lambda threshold: SharedState.is_orderbook_unavailable(
+            context.state, threshold
+        )
+    )
 
 
 @dataclass
@@ -152,6 +169,7 @@ class TestHttpHandler:
         self.handler = HttpHandler(name="", skill_context=self.context)
         self.handler.context.params.service_endpoint = "http://localhost:8080/some/path"
         self.handler.setup()
+        _count_orderbook_failures(self.context)
 
     def test_setup(self) -> None:
         """Test the setup method of HttpHandler."""
@@ -681,6 +699,32 @@ class TestHttpHandler:
             assert agent_health["is_activity_target_met"] is False
             assert agent_health["activity_target"] == 8
             assert agent_health["activity_completed"] == 5
+            assert agent_health["issues"] == []
+
+    @pytest.mark.parametrize(
+        "failures", [0, 1, ORDERBOOK_UNAVAILABLE_THRESHOLD - 1]
+    )
+    def test_no_issue_below_the_threshold(self, failures: int) -> None:
+        """Fewer failed book fetches than the threshold report nothing."""
+        _count_orderbook_failures(self.context, failures)
+        assert self.handler._agent_issues() == []
+
+    @pytest.mark.parametrize(
+        "failures", [ORDERBOOK_UNAVAILABLE_THRESHOLD, ORDERBOOK_UNAVAILABLE_THRESHOLD + 1]
+    )
+    def test_polymarket_unreachable_issue_at_the_threshold(
+        self, failures: int
+    ) -> None:
+        """Unavailable order books report Polymarket as unreachable, since the first failure."""
+        _count_orderbook_failures(self.context, failures)
+        assert self.handler._agent_issues() == [
+            {
+                "code": "polymarket_unreachable",
+                "title": POLYMARKET_UNREACHABLE_ISSUE["title"],
+                "description": POLYMARKET_UNREACHABLE_ISSUE["description"],
+                "since": 1700000000,
+            }
+        ]
 
     def test_handle_get_health_after_period_reset(self) -> None:
         """Test _handle_get_health stays healthy when the transition history was wiped."""
@@ -938,6 +982,7 @@ class TestHandleGetHealthFreshness:
         self.handler = HttpHandler(name="", skill_context=self.context)
         self.handler.context.params.service_endpoint = "http://localhost:8080/some/path"
         self.handler.setup()
+        _count_orderbook_failures(self.context)
 
     def _report_health(
         self,
