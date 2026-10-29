@@ -2594,19 +2594,16 @@ class TestBookCanTakeBet:
     @pytest.mark.parametrize(
         "response", [None, {"error": "Connection reset by peer"}, "unexpected"]
     )
-    def test_failed_fetch_at_the_threshold_skips_before_the_mech(
-        self, response: Any
-    ) -> None:
-        """Once the order books are unavailable, an unreadable book stops the market."""
+    def test_failed_fetch_at_the_threshold_is_counted(self, response: Any) -> None:
+        """Every unreadable book is counted; async_act, not the check, stops the mech."""
         behaviour, _ = _book_behaviour(
             {f"bet1_{YES_TOKEN}": response},
             orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 1,
         )
-        assert _run(behaviour._book_can_take_bet(_book_bet())) is None
+        assert _run(behaviour._book_can_take_bet(_book_bet())) is True
         state = behaviour.context.state
         assert state.orderbook_failures == ORDERBOOK_UNAVAILABLE_THRESHOLD
-        logged = behaviour.context.logger.warning.call_args[0][0]
-        assert "skipped before the mech" in logged
+        assert state.orderbook_failing_since == NOW
 
     def test_unparseable_book_at_the_threshold_proceeds(self) -> None:
         """A book that arrives is a working CLOB, even when it cannot be parsed."""
@@ -2750,41 +2747,6 @@ class TestAsyncActBookCheck:
         assert bad.processed_timestamp == NOW
         assert behaviour.__dict__["stored"] == [[NOW, 0]]
 
-    def test_unreadable_book_makes_way_for_the_next_market(self) -> None:
-        """With the books unavailable, a market whose book alone is unreadable is not re-sampled."""
-        gone, healthy, other = (
-            _book_bet("gone"),
-            _book_bet("healthy"),
-            _book_bet("other"),
-        )
-        for bet, liquidity in ((gone, 300.0), (healthy, 200.0), (other, 100.0)):
-            bet.openingTimestamp = NOW + 86400 * 5
-            bet.scaledLiquidityMeasure = liquidity
-        behaviour, send = _book_behaviour(
-            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
-        )
-        send.side_effect = lambda payload: _return_gen(
-            {"error": "404 Not Found"}
-            if payload["params"]["token_id"].startswith("gone")
-            else NORMAL_BOOK
-        )
-        params = behaviour.context.params
-        params.use_multi_bets_mode = False
-        params.enable_multi_bets_fallback = False
-        params.sample_bets_closing_days = 60
-        params.opening_margin = 100
-        params.safe_voting_range = 100
-        params.is_outcome_side_threshold_filter_enabled = False
-        params.exclude_neg_risk_markets = False
-        params.disabled_polymarket_tags = []
-        behaviour.bets = [gone, healthy, other]
-        payload, _ = self._act(behaviour)
-        assert payload.index == 1
-        fetched = [c.args[0]["params"]["token_id"] for c in send.call_args_list]
-        assert fetched == [f"gone_{YES_TOKEN}", f"healthy_{YES_TOKEN}"]
-        assert behaviour.context.state.orderbook_failures == 0
-        assert gone.processed_timestamp == 0
-
     def test_every_candidate_fails(self) -> None:
         """When every candidate within the cap fails, the cycle has no market."""
         bets = [_book_bet(f"b{i}") for i in range(BOOK_CHECK_CANDIDATES + 1)]
@@ -2803,7 +2765,7 @@ class TestAsyncActBookCheck:
         assert "failed the book check" in warning
 
     def test_unavailable_books_stamp_no_market(self) -> None:
-        """With the order books unavailable no market is picked, and none cools down."""
+        """With the order books unavailable, a failed probe ends the period unstamped."""
         bets = [_book_bet(f"b{i}") for i in range(BOOK_CHECK_CANDIDATES + 1)]
         behaviour, send = _book_behaviour(
             {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
@@ -2814,9 +2776,65 @@ class TestAsyncActBookCheck:
         behaviour.bets = bets
         payload, sample = self._act(behaviour, list(range(len(bets))))
         assert payload.index is None
-        assert sample.call_count == BOOK_CHECK_CANDIDATES
-        assert send.call_count == BOOK_CHECK_CANDIDATES
+        assert sample.call_count == 1
+        assert send.call_count == 1
         assert [b.processed_timestamp for b in bets] == [0] * len(bets)
+        assert behaviour.__dict__["stored"] == [[0] * len(bets)]
+        warning = behaviour.context.logger.warning.call_args[0][0]
+        assert "no market this period" in warning
+
+    def test_readable_probe_resumes_the_book_check(self) -> None:
+        """A book read by the probe resets the count, and the check goes on as usual."""
+        bet = _book_bet()
+        behaviour, send = _book_behaviour(
+            {f"bet1_{YES_TOKEN}": NORMAL_BOOK},
+            orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert send.call_count == 2
+        assert behaviour.context.state.orderbook_failures == 0
+        assert bet.processed_timestamp == 0
+
+    def test_unavailable_books_probe_a_market_with_position(self) -> None:
+        """A market holding a position is probed too while the books are unavailable."""
+        bet = _book_bet(invested_amount=10)
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index is None
+        send.assert_called_once()
+        assert bet.processed_timestamp == 0
+
+    def test_unavailable_books_and_no_token_ids(self) -> None:
+        """A market without token ids has no book to probe, so there is no market."""
+        bet = _book_bet()
+        bet.outcome_token_ids = None
+        behaviour, send = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index is None
+        send.assert_not_called()
+        assert bet.processed_timestamp == 0
+
+    def test_failed_fetch_below_the_threshold_proceeds_to_the_mech(self) -> None:
+        """Below the threshold an unreadable book still lets the market through."""
+        bet = _book_bet()
+        behaviour, _ = _book_behaviour(
+            {}, orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD - 1
+        )
+        behaviour.bets = [bet]
+        payload, _ = self._act(behaviour, [0])
+        assert payload.index == 0
+        assert behaviour.context.state.orderbook_failures == (
+            ORDERBOOK_UNAVAILABLE_THRESHOLD
+        )
+        assert bet.processed_timestamp == 0
 
     def test_nothing_sampled(self) -> None:
         """No sampled market means no book fetch."""

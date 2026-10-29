@@ -22,7 +22,7 @@
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
-from typing import AbstractSet, Any, Dict, Generator, List, Optional, Set, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -306,12 +306,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _sample(self, excluded: AbstractSet[str] = frozenset()) -> Optional[int]:
-        """Sample a bet, mark it as processed, and return its index.
-
-        :param excluded: ids of bets that must not be sampled.
-        :return: the index of the sampled bet, or None if none is available.
-        """
+    def _sample(self) -> Optional[int]:
+        """Sample a bet, mark it as processed, and return its index."""
         # modify time "NOW" in benchmarking mode
         if self.benchmarking_mode.enabled:
             safe_voting_range = (
@@ -427,8 +423,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 f"cooling={fallback_breakdown['cooling']} "
                 f"processable={fallback_breakdown['processable']}"
             )
-
-        available_bets = [bet for bet in available_bets if bet.id not in excluded]
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
@@ -563,52 +557,43 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.warning(msg + cooling_note)
         return None
 
-    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, Optional[bool]]:
-        """Whether a side of a Polymarket book could take a bet; True when unreadable.
+    def _fetch_book(self, token_id: str) -> Generator[None, None, Dict[str, Any]]:
+        """Fetch a token's order book, counting the fetch towards the CLOB's status.
 
-        An unreadable book stops being True once the order books have been
-        unavailable for ``orderbook_unavailable_threshold`` fetches in a row.
+        :param token_id: the outcome token whose book to fetch.
+        :yield: None
+        :return: the order book.
+        :raises ValueError: when the book cannot be read.
+        """
+        request = {
+            "request_type": RequestType.FETCH_ORDER_BOOK.value,
+            "params": {"token_id": token_id},
+        }
+        book = yield from self.send_polymarket_connection_request(request)
+        fetched = isinstance(book, dict) and "error" not in book
+        self.shared_state.record_orderbook_fetch(fetched, self.synced_timestamp)
+        if not fetched:
+            why = book.get("error") if isinstance(book, dict) else book
+            raise ValueError(why or "no response")
+        return book
+
+    def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether a side of a Polymarket book could take a bet; True when unreadable.
 
         :param bet: the sampled bet.
         :yield: None
-        :return: whether the book can take a bet; None when it cannot be read
-            and the order books are unavailable.
+        :return: whether the book can take a bet.
         """
         lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
         reasons = []
         for side, token_id in (bet.outcome_token_ids or {}).items():
-            request = {
-                "request_type": RequestType.FETCH_ORDER_BOOK.value,
-                "params": {"token_id": token_id},
-            }
-            fetched = False
-            unreadable: Optional[Exception] = None
             try:
-                book = yield from self.send_polymarket_connection_request(request)
-                if not isinstance(book, dict) or "error" in book:
-                    why = book.get("error") if isinstance(book, dict) else book
-                    raise ValueError(why or "no response")
-                fetched = True
+                book = yield from self._fetch_book(token_id)
                 asks, bids = book.get("asks") or [], book.get("bids") or []
                 best_ask = min((float(a["price"]) for a in asks), default=None)
                 spread = self.bid_ask_spread(asks, bids) if asks and bids else None
             except (KeyError, TypeError, ValueError) as exc:
-                unreadable = exc
-            self.shared_state.record_orderbook_fetch(fetched, self.synced_timestamp)
-            if unreadable is not None:
-                threshold = self.params.orderbook_unavailable_threshold
-                if not fetched and self.shared_state.is_orderbook_unavailable(
-                    threshold
-                ):
-                    self.context.logger.warning(
-                        f"Book of {bet.id} unreadable ({unreadable}) after "
-                        f"{self.shared_state.orderbook_failures} failed book "
-                        "fetches in a row, skipped before the mech."
-                    )
-                    return None
-                self.context.logger.warning(
-                    f"Book check skipped for {bet.id}: {unreadable}"
-                )
+                self.context.logger.warning(f"Book check skipped for {bet.id}: {exc}")
                 return True
             if best_ask is None:
                 reasons.append(f"{side}: no asks")
@@ -623,6 +608,27 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"({'; '.join(reasons) or 'no token ids'}), skipped before the mech."
         )
         return False
+
+    def _orderbooks_readable(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether one order book of the bet can be read, after a run of failed fetches.
+
+        :param bet: the sampled bet, whose first outcome token's book is the probe.
+        :yield: None
+        :return: whether the book was read.
+        """
+        token_id = next(iter((bet.outcome_token_ids or {}).values()), None)
+        try:
+            if token_id is None:
+                raise ValueError("no token ids")
+            yield from self._fetch_book(token_id)
+        except ValueError as exc:
+            self.context.logger.warning(
+                f"Order books unavailable after {self.shared_state.orderbook_failures}"
+                f" failed fetches in a row, and the book of {bet.id} is unreadable "
+                f"({exc}): no market this period."
+            )
+            return False
+        return True
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
@@ -647,27 +653,31 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # The stamp keeps a skipped market out for the cooldown. Each agent
             # reads the books itself, so this assumes a single-agent service.
             checks_left = BOOK_CHECK_CANDIDATES
-            # An unreadable book leaves its market unstamped, so it would be
-            # sampled again; skip it to give another market's book a chance.
-            checked: Set[str] = set()
             if (
                 not self.params.is_running_on_polymarket
                 or self.benchmarking_mode.enabled
             ):
                 checks_left = 0
+            # No market, and no stamp, until a book can be read again: picking
+            # a market here would pay the mech for a prediction it cannot use.
+            if (
+                idx is not None
+                and checks_left
+                and self.shared_state.is_orderbook_unavailable(
+                    self.params.orderbook_unavailable_threshold
+                )
+                and not (yield from self._orderbooks_readable(self.bets[idx]))
+            ):
+                idx = None
             while (
                 idx is not None and checks_left and not self.bets[idx].invested_amount
             ):
                 checks_left -= 1
                 bet = self.bets[idx]
-                checked.add(bet.id)
-                can_take_bet = yield from self._book_can_take_bet(bet)
-                if can_take_bet:
+                if (yield from self._book_can_take_bet(bet)):
                     break
-                # An unreadable book says nothing about the market itself.
-                if can_take_bet is not None:
-                    bet.processed_timestamp = self.synced_timestamp
-                idx = self._sample(checked) if checks_left else None
+                bet.processed_timestamp = self.synced_timestamp
+                idx = self._sample() if checks_left else None
                 if not checks_left:
                     self.context.logger.warning(
                         f"{BOOK_CHECK_CANDIDATES} markets failed the book check: "
