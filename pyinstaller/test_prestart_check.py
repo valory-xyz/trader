@@ -96,7 +96,7 @@ def test_omenstrat_passes_without_probing() -> None:
     result, probed = _run(OMENSTRAT_DIR, unreachable=POLYMARKET_HOSTS)
     assert result.exit_code == 0
     assert json.loads(result.output) == {"status": "passed", "issues": []}
-    assert probed == []
+    assert not probed
 
 
 def test_env_turning_polymarket_off_passes_without_probing() -> None:
@@ -107,7 +107,7 @@ def test_env_turning_polymarket_off_passes_without_probing() -> None:
         env={"IS_RUNNING_ON_POLYMARKET": "false"},
     )
     assert result.exit_code == 0
-    assert probed == []
+    assert not probed
 
 
 def test_env_clob_host_is_probed() -> None:

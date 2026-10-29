@@ -830,16 +830,16 @@ class TestFetchOrderbook:
             assert e.value is None
 
 
+READABLE_BOOK: Dict[str, Any] = {"asks": [], "bids": []}
+FAILED_FETCH: Dict[str, Any] = {"error": "Connection reset by peer"}
+
+
 class TestFetchOrderbookCounts:
     """Every order-book fetch updates the count of consecutive failures."""
 
     @pytest.mark.parametrize(
         "response, succeeded",
-        [
-            ({"asks": [], "bids": []}, True),
-            (None, False),
-            ({"error": "Connection reset by peer"}, False),
-        ],
+        [(READABLE_BOOK, True), (None, False), (FAILED_FETCH, False)],
     )
     def test_fetch_is_counted(self, response: Any, succeeded: bool) -> None:
         """A book counts as a success; no response or an error as a failure."""
