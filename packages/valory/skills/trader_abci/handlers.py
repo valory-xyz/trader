@@ -1419,7 +1419,11 @@ class HttpHandler(BaseHttpHandler):
             return True
 
         token = self._tracker_token(chain, tracker)
-        if token is None and spendable == 0:
+        out_of_native = spendable == 0
+        if out_of_native and token is not None:
+            held = self._check_usdc_balance(eoa_account.address, chain, token)
+            out_of_native = held is not None and held < amount
+        if out_of_native:
             self.context.logger.warning(
                 f"Mech pre-deposit {deposited} is below the floor {floor}; "
                 "not depositing: the EOA is out of native."
