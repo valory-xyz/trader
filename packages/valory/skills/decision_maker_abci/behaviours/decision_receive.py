@@ -434,6 +434,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             "params": {"token_id": token_id},
         }
         response = yield from self.send_polymarket_connection_request(payload)
+        error: Optional[str]
         if response is None:
             error = "no response"
         elif isinstance(response, dict):
