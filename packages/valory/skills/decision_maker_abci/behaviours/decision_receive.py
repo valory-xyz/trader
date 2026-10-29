@@ -434,11 +434,12 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             "params": {"token_id": token_id},
         }
         response = yield from self.send_polymarket_connection_request(payload)
-        error = (
-            "no response"
-            if response is None
-            else response.get("error") if isinstance(response, dict) else None
-        )
+        if response is None:
+            error = "no response"
+        elif isinstance(response, dict):
+            error = response.get("error")
+        else:
+            error = None
         self.shared_state.record_orderbook_fetch(not error, self.synced_timestamp)
         if error:
             self.context.logger.warning(f"Failed to fetch orderbook: {error}")
