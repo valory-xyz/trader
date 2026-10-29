@@ -623,6 +623,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
                         "poly_tags": list(market.get("_poly_tags", []) or []),
+                        "poly_event_id": market.get("_poly_event_id"),
                         "market_version": version,
                     }
 

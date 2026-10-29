@@ -2303,6 +2303,7 @@ class TestPolyTagsFlowThrough:
         behaviour = self._setup_behaviour()
         market = _make_valid_market()
         market["_poly_tags"] = ["politics", "elections"]
+        market["_poly_event_id"] = "903"
         response = {"technology": [market]}
         behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
 
@@ -2311,6 +2312,7 @@ class TestPolyTagsFlowThrough:
         assert result is not None
         assert len(result) == 1
         assert result[0]["poly_tags"] == ["politics", "elections"]
+        assert result[0]["poly_event_id"] == "903"
 
 
 # ===========================================================================

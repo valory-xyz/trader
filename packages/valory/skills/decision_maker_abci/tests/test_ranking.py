@@ -20,6 +20,7 @@
 """Tests for the ranked market list: one test per SPEC-M2.1 row 1 to 9."""
 
 import json
+import random
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, Type
 from unittest.mock import MagicMock
@@ -47,8 +48,8 @@ from packages.valory.skills.decision_maker_abci.payloads import RankingRequestPa
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
 from packages.valory.skills.decision_maker_abci.states.base import (
-    Event,
     RANKING_TOOL,
+    Event,
     SynchronizedData,
 )
 from packages.valory.skills.decision_maker_abci.states.blacklisting import (
@@ -127,6 +128,7 @@ def _db(**data: Any) -> AbciAppDB:
     """Build a period db holding the given values."""
     data.setdefault("is_marketplace_v2", True)
     data.setdefault("available_mech_tools", json.dumps([LISTED_TOOL, PREDICTION_TOOL]))
+    data.setdefault("most_voted_randomness", "ab" * 32)
     return AbciAppDB(setup_data=AbciAppDB.data_to_lists(data))
 
 
@@ -317,15 +319,12 @@ def test_row_2_first_period_requests_a_ranking_of_prefiltered_markets() -> None:
 def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
     """Row 3: best score first; held, cooling and book-failed markets as today."""
     bets = _listed(12)
-    bets[2].research_score, bets[5].research_score, bets[9].research_score = (
-        0.9,
-        0.95,
-        0.6,
-    )
+    bets[2].research_score, bets[5].research_score = 0.9, 0.95
     bets[5].investments = {"Yes": [5], "No": []}  # held: not re-bet
     assert _sampled(bets) == "m2"
 
     bets[2].processed_timestamp = NOW - 60  # declined a minute ago: cooling
+    bets[9].research_score = 0.6
     assert _sampled(bets) == "m9"
 
     # the book of m9 cannot take a bet: it is stamped and m2 is not tried before its cooldown
@@ -601,3 +600,59 @@ def test_room_to_trade_and_score_floor() -> None:
     stored, fetched = _bet(1, market_spread=0.3), _bet(1, market_spread=0.04)
     stored.update_market_info(fetched)
     assert stored.market_spread == 0.04
+
+
+def test_weighted_pick_spreads_over_the_list() -> None:
+    """The pick is a score-weighted draw: the same in one period, spread over periods, high scores more often."""
+    listed = _listed(12)
+    for i, bet in enumerate(listed):
+        bet.research_score = 0.5 + i * 0.04  # 0.50 to 0.94
+    picks = [
+        _sampled(listed, db=_db(most_voted_randomness=f"{seed:064x}"))
+        for seed in range(300)
+    ]
+    assert _sampled(listed, db=_db(most_voted_randomness="01" * 32)) == _sampled(
+        listed, db=_db(most_voted_randomness="01" * 32)
+    )
+    assert len(set(picks)) >= 8
+    assert picks.count("m11") > picks.count("m0")
+    # the draw is seeded apart from the tool policy, which reads the same value
+    randomness = "ab" * 32
+    rng = random.Random(f"{randomness}:ranked-pick")
+    assert rng.random() != random.Random(randomness).random()
+
+    # a zero floor with zero scores falls back to an even draw
+    for bet in listed:
+        bet.research_score = 0.0
+    sampler = _behaviour(SamplingBehaviour, listed)
+    sampler.context.params.ranking_min_score = 0.0
+    assert listed[sampler._sampled_bet_idx(listed)].id in {b.id for b in listed}
+
+
+def test_one_market_per_event() -> None:
+    """A ranking sends one market per Polymarket event, none from an event already held."""
+    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
+    rungs = [_bet(i, poly_event_id="ladder") for i in range(20, 24)]
+    held = _bet(30, poly_event_id="e5", investments={"Yes": [5], "No": []})
+    unknown = [_bet(i) for i in range(40, 42)]  # stored before the event id existed
+    ids = _ranked_ids(_request(bets + rungs + [held] + unknown))
+    assert set(ids) & {"m20", "m21", "m22", "m23"} == {"m23"}  # the most liquid rung
+    assert "m5" not in ids and "m30" not in ids
+    assert {"m40", "m41"} <= set(ids)
+
+    # a listed rung whose unranked sibling became more liquid does not renew a fresh list
+    listed = [
+        _bet(100 + i, poly_event_id=f"e{i}", ranked_at=NOW - 60, research_score=0.9)
+        for i in range(12)
+    ]
+    siblings = [
+        _bet(200 + i, poly_event_id=f"e{i}", scaledLiquidityMeasure=500.0)
+        for i in range(12)
+    ]
+    assert _request(listed + siblings).mech_tool is None
+    assert _sampled(listed + siblings) in {b.id for b in listed}
+
+    # a refetch refreshes the stored event id
+    stored, fetched = _bet(1), _bet(1, poly_event_id="e1")
+    stored.update_market_info(fetched)
+    assert stored.poly_event_id == "e1"

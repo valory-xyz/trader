@@ -19,6 +19,7 @@
 
 """This module contains the behaviour for sampling a bet."""
 
+import random
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
@@ -47,6 +48,7 @@ MAX_BETTABLE_ASK = 0.99
 BOOK_CHECK_CANDIDATES = 3
 # A ranked list steers the picks for this long after it was requested.
 RANKING_MAX_AGE = UNIX_DAY
+RANKING_PICK_EXPONENT = 4
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -285,14 +287,15 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # held markets keep their priority, as in today's order
             and not any(bet.invested_amount for bet in bets)
         ):
-            best = max(
-                ranked,
-                key=lambda bet: (
-                    bet.research_score or 0.0,
-                    bet.scaledLiquidityMeasure,
-                    bet.openingTimestamp,
-                ),
-            )
+            # A draw weighted by score, seeded by the period's agreed
+            # randomness, so the agents of a fleet spread over the list; the
+            # suffix keeps it apart from the tool policy's draw on the same value.
+            seed = f"{self.synchronized_data.most_voted_randomness}:ranked-pick"
+            rng = random.Random(seed)  # nosec
+            weights = [
+                (bet.research_score or 0.0) ** RANKING_PICK_EXPONENT for bet in ranked
+            ]
+            best = rng.choices(ranked, weights=weights if any(weights) else None)[0]
             return self.bets.index(best)
 
         to_process_bets, processed_bets, reprocessed_bets = self._get_bets_queue_wise(
