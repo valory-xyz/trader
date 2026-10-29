@@ -207,7 +207,7 @@ uv run autonomy deploy run --build-dir $build_dir
 
 Production agents run as a PyInstaller-packaged single-file binary built by `make build-agent-runner` (Linux/Windows) or `make build-agent-runner-mac` (macOS, with codesign) from `pyinstaller/agent_bin.py`. The output `dist/agent_runner_bin` is what Pearl ships to end users. `make check-agent-runner` smoke-tests the resulting binary.
 
-Besides the `aea` commands, the binary has `prestart-check --service-dir <service package>`, which Pearl runs before a start. It prints `{"status": "passed" | "failed", "issues": [...]}` and exits `0` or `1`; for Polystrat it fails when the Polymarket hosts do not answer from this machine.
+Besides the `aea` commands, the binary has `prestart-check --service-dir <service package>`, which Pearl runs before a start. It prints `{"status": "passed" | "failed", "issues": [...]}` and exits `0` or `1` (`2` when it cannot read the package); for Polystrat it fails when the Polymarket hosts do not answer from this machine.
 
 ### Create a release
 
