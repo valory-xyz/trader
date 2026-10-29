@@ -67,7 +67,6 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.models import SharedState
 
-
 ORDERBOOK_UNAVAILABLE_THRESHOLD = 5
 
 
@@ -77,9 +76,7 @@ def _count_orderbook_failures(context: MagicMock, failures: int = 0) -> None:
     context.state.orderbook_failures = failures
     context.state.orderbook_failing_since = 1700000000 if failures else None
     context.state.is_orderbook_unavailable.side_effect = (
-        lambda threshold: SharedState.is_orderbook_unavailable(
-            context.state, threshold
-        )
+        lambda threshold: SharedState.is_orderbook_unavailable(context.state, threshold)
     )
 
 
@@ -701,20 +698,17 @@ class TestHttpHandler:
             assert agent_health["activity_completed"] == 5
             assert agent_health["issues"] == []
 
-    @pytest.mark.parametrize(
-        "failures", [0, 1, ORDERBOOK_UNAVAILABLE_THRESHOLD - 1]
-    )
+    @pytest.mark.parametrize("failures", [0, 1, ORDERBOOK_UNAVAILABLE_THRESHOLD - 1])
     def test_no_issue_below_the_threshold(self, failures: int) -> None:
         """Fewer failed book fetches than the threshold report nothing."""
         _count_orderbook_failures(self.context, failures)
         assert self.handler._agent_issues() == []
 
     @pytest.mark.parametrize(
-        "failures", [ORDERBOOK_UNAVAILABLE_THRESHOLD, ORDERBOOK_UNAVAILABLE_THRESHOLD + 1]
+        "failures",
+        [ORDERBOOK_UNAVAILABLE_THRESHOLD, ORDERBOOK_UNAVAILABLE_THRESHOLD + 1],
     )
-    def test_polymarket_unreachable_issue_at_the_threshold(
-        self, failures: int
-    ) -> None:
+    def test_polymarket_unreachable_issue_at_the_threshold(self, failures: int) -> None:
         """Unavailable order books report Polymarket as unreachable, since the first failure."""
         _count_orderbook_failures(self.context, failures)
         assert self.handler._agent_issues() == [

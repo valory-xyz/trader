@@ -37,7 +37,6 @@ from prestart_check import (
     prestart_check,
 )
 
-
 PACKAGES_DIR = Path(__file__).parents[1] / "packages" / "valory"
 SERVICES_DIR = PACKAGES_DIR / "services"
 POLYMARKET_CONNECTION_PY = (

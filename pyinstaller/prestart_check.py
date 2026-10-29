@@ -30,7 +30,6 @@ import requests
 import yaml
 from aea.helpers.env_vars import apply_env_variables
 
-
 POLYMARKET_CONNECTION = "valory/polymarket_client"
 DEFAULT_CLOB_HOST = "https://clob.polymarket.com"
 # The hosts the Polymarket connection calls besides the CLOB.
