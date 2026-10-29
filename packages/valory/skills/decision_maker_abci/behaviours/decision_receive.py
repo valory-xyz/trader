@@ -30,6 +30,7 @@ from packages.valory.connections.polymarket_client.request_types import RequestT
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_NO_MECH_RESPONSE,
     SKIP_NO_TRADE,
+    SKIP_ORDERBOOK_UNAVAILABLE,
     SKIP_REBET_NOT_ALLOWED,
     SKIP_SPREAD,
 )
@@ -433,13 +434,14 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             "params": {"token_id": token_id},
         }
         response = yield from self.send_polymarket_connection_request(payload)
-        if response is None:
-            self.context.logger.warning("Failed to fetch orderbook: no response")
-            return None
-        if isinstance(response, dict) and response.get("error"):
-            self.context.logger.warning(
-                f"Failed to fetch orderbook: {response['error']}"
-            )
+        error = (
+            "no response"
+            if response is None
+            else response.get("error") if isinstance(response, dict) else None
+        )
+        self.shared_state.record_orderbook_fetch(not error, self.synced_timestamp)
+        if error:
+            self.context.logger.warning(f"Failed to fetch orderbook: {error}")
             return None
         return response
 
@@ -467,6 +469,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         orderbook_bids_yes = None
         orderbook_bids_no = None
         min_order_shares = 0.0
+        orderbook_unreadable = False
 
         prices = bet.outcomeTokenMarginalPrices
         price_yes = prices[0] if prices else 0.0
@@ -479,6 +482,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                 no_token_id = bet.outcome_token_ids.get("No")
                 if yes_token_id:
                     ob_yes = yield from self._fetch_orderbook(yes_token_id)
+                    orderbook_unreadable |= ob_yes is None
                     if ob_yes is not None:
                         orderbook_asks_yes = ob_yes.get("asks", [])
                         orderbook_bids_yes = ob_yes.get("bids", [])
@@ -486,6 +490,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
                             min_order_shares = float(ob_yes["min_order_size"])
                 if no_token_id:
                     ob_no = yield from self._fetch_orderbook(no_token_id)
+                    orderbook_unreadable |= ob_no is None
                     if ob_no is not None:
                         orderbook_asks_no = ob_no.get("asks", [])
                         orderbook_bids_no = ob_no.get("bids", [])
@@ -527,7 +532,11 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
-            self._record_market_skipped(bet, SKIP_NO_TRADE)
+            if orderbook_unreadable:
+                self.shared_state.orderbook_fetch_failed = True
+                self._record_market_skipped(bet, SKIP_ORDERBOOK_UNAVAILABLE)
+            else:
+                self._record_market_skipped(bet, SKIP_NO_TRADE)
             return False, 0, None
 
         # Optional spread gate (Polymarket / CLOB only): skip the bet when the

@@ -23,13 +23,14 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Tuple
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_NO_MECH_RESPONSE,
     SKIP_NO_TRADE,
+    SKIP_ORDERBOOK_UNAVAILABLE,
     SKIP_REBET_NOT_ALLOWED,
     SKIP_SPREAD,
 )
@@ -829,6 +830,33 @@ class TestFetchOrderbook:
             assert e.value is None
 
 
+class TestFetchOrderbookCounts:
+    """Every order-book fetch updates the count of consecutive failures."""
+
+    @pytest.mark.parametrize(
+        "response, succeeded",
+        [
+            ({"asks": [], "bids": []}, True),
+            (None, False),
+            ({"error": "Connection reset by peer"}, False),
+        ],
+    )
+    def test_fetch_is_counted(self, response: Any, succeeded: bool) -> None:
+        """A book counts as a success; no response or an error as a failure."""
+        behaviour = _make_behaviour()
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda _payload: _return_gen(response)
+        )
+        gen = behaviour._fetch_orderbook("token_123")
+        try:
+            while True:
+                next(gen)
+        except StopIteration:
+            pass
+        record = behaviour.context.state.record_orderbook_fetch
+        record.assert_called_once_with(succeeded, ANY)
+
+
 class TestIsProfitable:
     """Tests for _is_profitable."""
 
@@ -972,6 +1000,54 @@ class TestIsProfitable:
         is_profitable, bet_amount, strategy_vote = result
         assert is_profitable is True
         assert strategy_vote == 1  # strategy's NO, not mech's YES
+
+    @pytest.mark.parametrize(
+        "yes_book, no_book",
+        [
+            (None, None),
+            (None, {"asks": [], "bids": []}),
+            ({"asks": [], "bids": []}, None),
+        ],
+    )
+    def test_no_bet_with_an_unreadable_book_is_no_decline(
+        self, yes_book: Any, no_book: Any
+    ) -> None:
+        """A no-bet without a readable book gets its own skip reason and no cooldown."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
+        )
+        books = iter([yes_book, no_book])
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen(next(books)),
+        ).start()
+        behaviour.context.state.orderbook_fetch_failed = False
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
+        result = self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        assert result == (False, 0, None)
+        record_skip.assert_called_once_with(bet, SKIP_ORDERBOOK_UNAVAILABLE)
+        assert behaviour.context.state.orderbook_fetch_failed is True
+
+    def test_no_bet_with_readable_books_is_a_decline(self) -> None:
+        """A no-bet on readable books stays the strategy's decline."""
+        behaviour, pred, bet = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None, is_polymarket=True
+        )
+        patch.object(
+            behaviour,
+            "_fetch_orderbook",
+            side_effect=lambda _tid: _return_gen({"asks": [], "bids": []}),
+        ).start()
+        behaviour.context.state.orderbook_fetch_failed = False
+        record_skip = patch.object(behaviour, "_record_market_skipped").start()
+        self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        record_skip.assert_called_once_with(bet, SKIP_NO_TRADE)
+        assert behaviour.context.state.orderbook_fetch_failed is False
 
     def test_clob_fetches_both_orderbooks(self) -> None:
         """CLOB market type triggers _fetch_orderbook for both tokens."""
