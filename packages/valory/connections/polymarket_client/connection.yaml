@@ -13,7 +13,7 @@ fingerprint:
   request_types.py: bafybeidsc2l62w7rkdop5frxldre344wcjqvizohe7eaylsjkkyrylelha
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
   tests/test_connection.py: bafybeiec6d7mv6iw4nzppxzz2sdxddmufn2k7ofxbs3q72fbwqtjmu6fhe
-  tests/test_connection_dw.py: bafybeic2pzz5jnsrdlx7iglzahytrg2r7uyoakct636mjiss3rlskohf3m
+  tests/test_connection_dw.py: bafybeidfzi44zfrl6p7gvsxk5yewdjkuykdqiluqtbyozpbi5hgcpeo6qm
   tests/test_relayer_proxy.py: bafybeicco4upyejikjpaahdaftxgcy3d3hdvqpxyp5zwaduowhjbzm3o6a
 fingerprint_ignore_patterns: []
 connections: []
