@@ -42,7 +42,7 @@ POLYMARKET_UNREACHABLE = {
     "title": "Can't reach Polymarket",
     "description": (
         "Polystrat can't connect to Polymarket's trading service from this "
-        "network, so it couldn't place any bets. Start the agent again once "
+        "network, so it can't place bets. Start the agent again once "
         "Polymarket is reachable from this network."
     ),
 }
