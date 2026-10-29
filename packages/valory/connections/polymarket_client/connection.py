@@ -169,6 +169,17 @@ DEFAULT_RELAYER_PROXY_URL = "https://mpp.valory.xyz"
 # with the DepositWallet as funder, replacing the legacy POLY_GNOSIS_SAFE (2).
 SIGNATURE_TYPE_POLY_1271 = 3
 SIGNATURE_TYPE_POLY_GNOSIS_SAFE = 2
+# The requests served by the CLOB client, which is built on first use when the
+# CLOB was unreachable at start.
+CLOB_REQUEST_TYPES = frozenset(
+    {
+        RequestType.PLACE_BET,
+        RequestType.QUOTE_BUY,
+        RequestType.SELL_POSITION,
+        RequestType.GET_ORDER,
+        RequestType.FETCH_ORDER_BOOK,
+    }
+)
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
 ZERO_ADDRESS = "0x" + "0" * 40
 CHAIN_ID = 137  # Polygon
@@ -445,12 +456,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         # Bootstrap the CLOB client with the legacy Safe funder so read-only
         # calls (markets, order book, get_order) work before the DW is
         # provisioned. Order placement always calls _ensure_dw_funder first to
-        # (re)point the client at the runtime-resolved DepositWallet.
-        self._client_funder = self.safe_address
-        self.client = self._build_clob_client(
-            funder=self.safe_address,
-            signature_type=SIGNATURE_TYPE_POLY_GNOSIS_SAFE,
-        )
+        # (re)point the client at the runtime-resolved DepositWallet. When the
+        # CLOB cannot be reached the agent still starts, without a client.
+        self.client: Optional[ClobClient] = None
+        self._client_funder: Optional[str] = None
+        self._ensure_clob_client()
 
         # Load contract addresses. In v2 the collateral token is pUSD; USDC.e
         # is kept only as a wrap-source. The onramp contract exposes
@@ -533,6 +543,29 @@ class PolymarketClientConnection(BaseSyncConnection):
         # the returned credentials are valid either way.
         client.set_api_creds(client.create_or_derive_api_key())
         return client
+
+    def _ensure_clob_client(self) -> Optional[str]:
+        """Build the CLOB client if there is none yet.
+
+        :return: why the client could not be built, or None when it is ready.
+        """
+        if self.client is not None:
+            return None
+        funder, signature_type = (
+            (self.dw_address, SIGNATURE_TYPE_POLY_1271)
+            if self.dw_address
+            else (self.safe_address, SIGNATURE_TYPE_POLY_GNOSIS_SAFE)
+        )
+        try:
+            self.client = self._build_clob_client(
+                funder=funder, signature_type=signature_type
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            error_msg = f"Polymarket CLOB client unavailable: {e}"
+            self.logger.warning(error_msg)
+            return error_msg
+        self._client_funder = funder
+        return None
 
     def _ensure_dw_funder(self, dw_address: Optional[str]) -> None:
         """Rebuild the CLOB client to sign POLY_1271 orders funded by the DW.
@@ -687,6 +720,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         }
 
         self.logger.info(f"Routing request of type: {request_type.value}")
+
+        if request_type in CLOB_REQUEST_TYPES:
+            error_msg = self._ensure_clob_client()
+            if error_msg:
+                return {"error": error_msg}, error_msg
 
         try:
             params = payload.get("params", {})
