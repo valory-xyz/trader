@@ -19,11 +19,14 @@
 
 """Tests for the market_manager_abci behaviours package."""
 
+import io
 import json
-import re
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
+
+from aea.helpers.env_vars import apply_env_variables
+from aea.helpers.yaml_utils import yaml_load_all
 
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BETS_FILENAME,
@@ -753,11 +756,14 @@ class TestPruneBets:
             for parent in Path(__file__).resolve().parents
             if (parent / "packages/packages.json").is_file()
         )
-        match = re.search(
-            r"expired_bet_retention: \$\{EXPIRED_BET_RETENTION:int:(\d+)\}",
-            service.read_text(),
+        # resolve the shipped default the way the deployment does
+        overrides = list(yaml_load_all(io.StringIO(service.read_text())))[1:]
+        trader_abci = next(
+            doc
+            for doc in apply_env_variables(overrides, {})
+            if doc["public_id"].startswith("valory/trader_abci:")
         )
-        assert match is not None
+        retention = trader_abci["models"]["params"]["args"]["expired_bet_retention"]
         untraded = _prunable_bet("untraded", openingTimestamp=NOW - 2 * DAY_IN_SECONDS)
         held = _prunable_bet(
             "held",
@@ -765,7 +771,7 @@ class TestPruneBets:
             investments={"Yes": [10], "No": []},
         )
         b = _make_behaviour(bets=[untraded, held])
-        b.params.expired_bet_retention = int(match.group(1))
+        b.params.expired_bet_retention = retention
         b.prune_bets(NOW)
         assert b.bets == [held]
 

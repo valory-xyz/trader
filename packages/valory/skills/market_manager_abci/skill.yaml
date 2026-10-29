@@ -38,7 +38,7 @@ fingerprint:
   states/update_bets.py: bafybeictnk527d5wrixsw2klbb3m52clsfvapmjylhguluidn6mhyd6s2e
   tests/__init__.py: bafybeigaewntxawezvygss345kytjijo56bfwddjtfm6egzxfajsgojam4
   tests/conftest.py: bafybeigeij2lqzbimqcf6c4maudbuiwloq3lz7fjthfrtm3fioqf2tzsyy
-  tests/test_behaviours_base.py: bafybeigdihnwqr7aslut5h6yfmxmvh3b5ctiu2txqzwh2527meugrqxsta
+  tests/test_behaviours_base.py: bafybeihdlocxgjoxlj6hn2vcaigkujj5ijuhf2mswmlugz5bu2hkk46n4m
   tests/test_behaviours_polymarket.py: bafybeihdyjbuktbtfawi53cctbzwagkg5vgn7urgxpdmu4ghcqxumw2af4
   tests/test_behaviours_update_bets.py: bafybeiatfqbk27uttz44ussh72uahv3zrrmt6rqohtlnpbtvzugiidy4fm
   tests/test_bets.py: bafybeidn6pg5nl6kiiliusf56ywhuxeelv4yzsqkgyeje5yrazii4wl2hy
