@@ -3773,6 +3773,74 @@ class TestMechPreDepositTopUp:
         # This is the one case where asking the user for funds is right.
         assert handler.context.shared_state[_EOA_SHORT] is True
 
+    def test_no_native_headroom_logs_no_deposit_plan(self) -> None:
+        """An EOA that cannot pay gets one decision line, not a plan it drops."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=None)
+
+        assert _run(handler, chain) is False
+        logger = handler.context.logger
+        logged = [c.args[0] for c in logger.info.call_args_list]
+        logged += [c.args[0] for c in logger.warning.call_args_list]
+        assert not [line for line in logged if "; depositing" in line]
+        assert [line for line in logged if "gas reserve" in line] == [
+            f"EOA holds {_GAS_RESERVE} wei, at or under the {_GAS_RESERVE} wei gas reserve."
+        ]
+        logger.warning.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            "not depositing: the EOA is out of native."
+        )
+
+    @pytest.mark.parametrize("held", [0, _TARGET - 1])
+    def test_no_native_headroom_and_short_token_logs_no_deposit_plan(
+        self, held: int
+    ) -> None:
+        """A token tracker the EOA can neither fund nor swap into gets one line."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=held):
+            assert _run(handler, chain) is False
+        logger = handler.context.logger
+        logged = [c.args[0] for c in logger.info.call_args_list]
+        logged += [c.args[0] for c in logger.warning.call_args_list]
+        assert not [line for line in logged if "; depositing" in line]
+        assert "Not swapping: the EOA is out of native." not in logged
+        logger.warning.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            "not depositing: the EOA is out of native."
+        )
+
+    @pytest.mark.parametrize("held", [None, _TARGET])
+    def test_no_native_headroom_keeps_the_token_flow_otherwise(
+        self, held: Optional[int]
+    ) -> None:
+        """A held or unreadable token balance still reaches the deposit plan."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        chain = _ChainStub(deposited=0, token=_TOKEN)
+
+        with patch.object(handler, "_check_usdc_balance", return_value=held):
+            _run(handler, chain)
+        handler.context.logger.info.assert_any_call(
+            f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
+            f"depositing {_TARGET} into {_TRACKER}."
+        )
+
+    def test_a_native_deposit_rechecks_the_eoa(self) -> None:
+        """An EOA drained after the check still sends nothing."""
+        handler = _facilitator_handler(native_balance=_GAS_RESERVE)
+        account = MagicMock()
+        account.address = "0x" + "ee" * 20
+
+        with patch.object(handler, "_send_from_eoa") as send:
+            assert (
+                handler._deposit_native(
+                    "gnosis", 100, account, _SAFE, _TRACKER, _TARGET
+                )
+                is False
+            )
+        send.assert_not_called()
+
     def test_the_eoa_flag_is_refreshed_even_when_nothing_is_deposited(self) -> None:
         """A user who funded the agent must stop being asked for funds."""
         handler = _facilitator_handler()

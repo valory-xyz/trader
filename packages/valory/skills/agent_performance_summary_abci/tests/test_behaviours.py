@@ -5621,7 +5621,7 @@ class TestFetchAsyncAct:
             pass
 
     def test_disabled(self) -> None:
-        """Sends vote=False when disabled."""
+        """Sends vote=True when disabled, as a skip is no failure."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.is_agent_performance_summary_enabled = False
@@ -5633,10 +5633,10 @@ class TestFetchAsyncAct:
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
         assert isinstance(call_args, FetchPerformanceDataPayload)
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_should_not_update(self) -> None:
-        """Sends vote=False when _should_update returns False."""
+        """Sends vote=True when _should_update returns False, as a skip is no failure."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         with (
@@ -5647,7 +5647,7 @@ class TestFetchAsyncAct:
         ):
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_successful_update_all_metrics_valid(self) -> None:
         """Sends vote=True when all metrics are valid (not NA)."""
@@ -6337,7 +6337,7 @@ class TestUpdateAchievementsAsyncAct:
             pass
 
     def test_disabled(self) -> None:
-        """Sends vote=False when achievement checker is disabled."""
+        """Sends vote=True when the achievement checker is disabled."""
         b = _make_update_behaviour()
         ctx, params, synced_data, state = _mock_context()
         params.is_achievement_checker_enabled = False
@@ -6349,7 +6349,7 @@ class TestUpdateAchievementsAsyncAct:
             self._run_gen(b.async_act())
         call_args = mock_finish.call_args[0][0]
         assert isinstance(call_args, UpdateAchievementsPayload)
-        assert call_args.vote is False
+        assert call_args.vote is True
 
     def test_achievements_none_creates_new(self) -> None:
         """Creates new Achievements when None."""
@@ -9647,7 +9647,7 @@ class TestAsyncActLeaderboard:
         """The step runs even when the performance summary is skipped."""
         step = self._run_act(should_update=False)
         step.assert_called_once()
-        assert step.finish.call_args[0][0].vote is False
+        assert step.finish.call_args[0][0].vote is True
 
     def test_runs_after_summary_update(self) -> None:
         """The step runs after a summary refresh and leaves the vote alone."""

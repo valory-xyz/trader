@@ -320,6 +320,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
+        tag = "[POLYSTRAT]" if self.params.is_running_on_polymarket else "[OMENSTRAT]"
+
         # Strict-mode breakdown (observability only — pure read pass).
         # Captured BEFORE the side-effecting processable_bet call so
         # out_of_safe bets are still classified as out_of_safe rather than
@@ -396,14 +398,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 ] += 1
 
         self.context.logger.info(
-            f"[POLYSTRAT] filter=processable_bet "
+            f"{tag} filter=processable_bet "
             f"input={len(self.bets)} "
             f"dropped={len(self.bets) - len(available_bets)} "
             f"kept={len(available_bets)} "
             f"fallback_activated={fallback_activated}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=processable_bet.breakdown.strict "
+            f"{tag} filter=processable_bet.breakdown.strict "
             f"expired={strict_breakdown['expired']} "
             f"wrong_mode={strict_breakdown['wrong_mode']} "
             f"out_of_safe={strict_breakdown['out_of_safe']} "
@@ -414,7 +416,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         if fallback_breakdown is not None:
             self.context.logger.info(
-                f"[POLYSTRAT] filter=processable_bet.breakdown.fallback "
+                f"{tag} filter=processable_bet.breakdown.fallback "
                 f"expired={fallback_breakdown['expired']} "
                 f"wrong_mode={fallback_breakdown['wrong_mode']} "
                 f"out_of_safe={fallback_breakdown['out_of_safe']} "
@@ -453,7 +455,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             ]
             skipped = before - len(available_bets)
             self.context.logger.info(
-                f"[POLYSTRAT] filter=disabled_tag "
+                f"{tag} filter=disabled_tag "
                 f"input={before} dropped={skipped} "
                 f"kept={len(available_bets)} slugs={len(disabled_tags)}"
             )
@@ -466,7 +468,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 return None
 
         # In-loop drop counters (per-iteration sequential funnel: zero_liq →
-        # outcome_skew → neg_risk). Emitted as [POLYSTRAT] roll-up rows at
+        # outcome_skew → neg_risk). Emitted as venue-tagged roll-up rows at
         # both exit paths.
         in_loop_iterations = 0
         in_loop_zero_liq = 0
@@ -517,18 +519,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             # Valid bet found
             self.shared_state.liquidity_cache[sampled_bet.id] = liquidity
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_zero_liq "
+                f"{tag} filter=in_loop_zero_liq "
                 f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
                 f"kept={in_loop_iterations - in_loop_zero_liq}"
             )
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_outcome_skew "
+                f"{tag} filter=in_loop_outcome_skew "
                 f"input={in_loop_iterations - in_loop_zero_liq} "
                 f"dropped={in_loop_skew} "
                 f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
             )
             self.context.logger.info(
-                f"[POLYSTRAT] filter=in_loop_neg_risk "
+                f"{tag} filter=in_loop_neg_risk "
                 f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
                 f"dropped={in_loop_neg_risk} kept=1"
             )
@@ -538,18 +540,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # No valid bets found
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_zero_liq "
+            f"{tag} filter=in_loop_zero_liq "
             f"input={in_loop_iterations} dropped={in_loop_zero_liq} "
             f"kept={in_loop_iterations - in_loop_zero_liq}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_outcome_skew "
+            f"{tag} filter=in_loop_outcome_skew "
             f"input={in_loop_iterations - in_loop_zero_liq} "
             f"dropped={in_loop_skew} "
             f"kept={in_loop_iterations - in_loop_zero_liq - in_loop_skew}"
         )
         self.context.logger.info(
-            f"[POLYSTRAT] filter=in_loop_neg_risk "
+            f"{tag} filter=in_loop_neg_risk "
             f"input={in_loop_iterations - in_loop_zero_liq - in_loop_skew} "
             f"dropped={in_loop_neg_risk} kept=0"
         )

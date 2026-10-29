@@ -19,10 +19,14 @@
 
 """Tests for the market_manager_abci behaviours package."""
 
+import io
 import json
 from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import MagicMock, patch
+
+from aea.helpers.env_vars import apply_env_variables
+from aea.helpers.yaml_utils import yaml_load_all
 
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     BETS_FILENAME,
@@ -744,6 +748,32 @@ class TestPruneBets:
         b = _make_behaviour(bets=[bet])
         b.prune_bets(NOW)
         assert b.bets == [bet]
+
+    def test_polystrat_drops_never_invested_bets_a_day_after_close(self) -> None:
+        """Test that Polystrat's retention drops untraded bets after a day only."""
+        service = next(
+            parent / "packages/valory/services/polymarket_trader/service.yaml"
+            for parent in Path(__file__).resolve().parents
+            if (parent / "packages/packages.json").is_file()
+        )
+        # resolve the shipped default the way the deployment does
+        overrides = list(yaml_load_all(io.StringIO(service.read_text())))[1:]
+        trader_abci = next(
+            doc
+            for doc in apply_env_variables(overrides, {})
+            if doc["public_id"].startswith("valory/trader_abci:")
+        )
+        retention = trader_abci["models"]["params"]["args"]["expired_bet_retention"]
+        untraded = _prunable_bet("untraded", openingTimestamp=NOW - 2 * DAY_IN_SECONDS)
+        held = _prunable_bet(
+            "held",
+            openingTimestamp=NOW - 40 * DAY_IN_SECONDS,
+            investments={"Yes": [10], "No": []},
+        )
+        b = _make_behaviour(bets=[untraded, held])
+        b.params.expired_bet_retention = retention
+        b.prune_bets(NOW)
+        assert b.bets == [held]
 
     def test_no_log_when_nothing_is_dropped(self) -> None:
         """Test that a pass dropping nothing leaves the store and log untouched."""

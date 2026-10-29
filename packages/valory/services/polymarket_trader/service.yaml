@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeibkxst76mkzqedabc5i2j43ekkqltbgdgd57sgugs4xg3fwg3bfdu
+agent: valory/trader:0.1.0:bafybeiaehveorhhnth4zmc4fs7yxl7at5bhsrjdw6yotk2mix4zpazzcca
 number_of_agents: 1
 deployment:
   agent:
@@ -82,7 +82,7 @@ models:
       creator_per_subgraph: ${CREATOR_PER_SUBGRAPH:dict:{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA596E7D23f557"]}}
       slot_count: ${SLOT_COUNT:int:2}
       opening_margin: ${OPENING_MARGIN:int:300}
-      expired_bet_retention: ${EXPIRED_BET_RETENTION:int:2592000}
+      expired_bet_retention: ${EXPIRED_BET_RETENTION:int:86400}
       languages: ${LANGUAGES:list:["en_US"]}
       disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
       average_block_time: ${ABT:int:5}
@@ -137,7 +137,7 @@ models:
       redeem_round_timeout: ${REDEEM_ROUND_TIMEOUT:float:3600.0}
       withdrawal_round_timeout: ${WITHDRAWAL_ROUND_TIMEOUT:float:1800.0}
       contract_timeout: ${CONTRACT_TIMEOUT:float:300.0}
-      file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeidme2uybzyzagky3jtosheqmpgc6b6w4rum7cdxw2fc35nnpwblfe":["kelly_criterion"],"bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim":["fixed_bet"]}}
+      file_hash_to_strategies: ${FILE_HASH_TO_STRATEGIES:dict:{"bafybeicilvsozfawzdcsmtcwxiutr33dtixeebhawn7nolxmm5vj74z5h4":["kelly_criterion"],"bafybeidahih5c7htr5g5e4nq5wcqfiwse2z6ga27jxsxll7iracehmysim":["fixed_bet"]}}
       strategies_kwargs: ${STRATEGIES_KWARGS:dict:{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"max_edge":0.30,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}}
       use_subgraph_for_redeeming: ${USE_SUBGRAPH_FOR_REDEEMING:bool:true}
       use_mech_marketplace: ${USE_MECH_MARKETPLACE:bool:true}

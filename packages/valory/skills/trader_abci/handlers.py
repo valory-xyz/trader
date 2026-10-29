@@ -1393,8 +1393,9 @@ class HttpHandler(BaseHttpHandler):
         # balance rather than the last path that happened to read it.
         self.context.shared_state[MECH_PRE_DEPOSIT_EOA_SHORT] = False
         w3 = self._get_web3_instance(chain)
-        if w3 is not None:
-            self._eoa_spendable_native(w3, eoa_account.address)
+        spendable = (
+            None if w3 is None else self._eoa_spendable_native(w3, eoa_account.address)
+        )
         tracker = self._resolve_balance_tracker(chain, payment_type)
         if tracker is None:
             return False
@@ -1418,6 +1419,16 @@ class HttpHandler(BaseHttpHandler):
             return True
 
         token = self._tracker_token(chain, tracker)
+        out_of_native = spendable == 0
+        if out_of_native and token is not None:
+            held = self._check_usdc_balance(eoa_account.address, chain, token)
+            out_of_native = held is not None and held < amount
+        if out_of_native:
+            self.context.logger.warning(
+                f"Mech pre-deposit {deposited} is below the floor {floor}; "
+                "not depositing: the EOA is out of native."
+            )
+            return False
         self.context.logger.info(
             f"Mech pre-deposit {deposited} is below the floor {floor}; "
             f"depositing {amount} into {tracker}."

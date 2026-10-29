@@ -542,7 +542,10 @@ class TestSetBlockNumber:
             call_count[0] += 1
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "12345"}
+            return {
+                "id": "0x84f77003c15a6bd451e80fe0de2629f5fc1f127890d5789217043900b76fdc62",
+                "number": "12345",
+            }
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -551,8 +554,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 12345
 
-    def test_set_block_number_non_digit_id(self) -> None:
-        """Should not set earliest_block_number when id is not a digit."""
+    def test_set_block_number_non_digit_number(self) -> None:
+        """Should not set earliest_block_number when number is not a digit."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -560,7 +563,7 @@ class TestSetBlockNumber:
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "not_a_number"}
+            return {"number": "not_a_number"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -588,8 +591,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 0
 
-    def test_set_block_number_missing_id_key(self) -> None:
-        """Should not update block number when id key is missing."""
+    def test_set_block_number_missing_number_key(self) -> None:
+        """Should not update block number when number key is missing."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -621,7 +624,7 @@ class TestSetBlockNumber:
             else:
                 behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "999"}
+            return {"number": "999"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 

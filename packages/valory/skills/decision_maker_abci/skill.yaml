@@ -36,9 +36,9 @@ fingerprint:
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
-  behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
+  behaviours/reedem.py: bafybeidau4zbrf7sx327du2nzryawomm5ms67mcwa3p74hx3orxw36toqy
   behaviours/round_behaviour.py: bafybeiaxn7lofhbwjwbm5x6i47k2s5u4f3o3xcs4zek3agwgatwwknu5iu
-  behaviours/sampling.py: bafybeictdvc2jbqcacuvhexhfldow7nqshtnmrwrrvomaf5rlr4waqy6cm
+  behaviours/sampling.py: bafybeibslu6m3pjhj5icbrkbft7l2vzvon5fth63tlkcgxzf3t7gbd6szi
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeihzjj7dy4vybjaorts5n77gwpuxbhpgw53ehgcpt2apu7qzocivdq
   behaviours/tool_selection.py: bafybeidpklb4qnjgus27jozbbbze32fvpoxybeg6jdtwcs7m3sm3sbpvq4
@@ -110,8 +110,8 @@ fingerprint:
   tests/behaviours/test_polymarket_wrap_collateral.py: bafybeigeekby762zs4ru72ylnlnyibaa7pg6642xxscr7rq63rya4g5xiu
   tests/behaviours/test_post_bet_update.py: bafybeicwbwvoyhpjqbgxh5lxj3rt5ygit5z3bso3yafydlc36zam2mksvm
   tests/behaviours/test_redeem_router.py: bafybeifttfb4ik5hpyc6rivp6gcseih3dtcnw2437u4j2teshfr6tejlvm
-  tests/behaviours/test_reedem.py: bafybeicogm6qti4pzjhhumfivvfy4qut5ob6o5gsrcdvryllgapz4n672u
-  tests/behaviours/test_sampling.py: bafybeidumydfyk7umoxqiemkarhy54ymp6udsd53ho4im3ydlzj3cyjy2q
+  tests/behaviours/test_reedem.py: bafybeihufczcjxn36qk4rtqvqfwdxkl663nklcdwwolp3zpohxnuyrgl7q
+  tests/behaviours/test_sampling.py: bafybeidsaoflvjpcs5gosz3rqfvlk5dhjs7z3rqbr5ryd6e23seki6sn3e
   tests/behaviours/test_sell_outcome_tokens.py: bafybeiej3ci4irissz45kk5ooy4notxcjl2dtbxioljqlzqtwex3elrqqq
   tests/behaviours/test_storage_manager.py: bafybeiaa5tdbelghizurtdkybcu36bfw4ekxwyogoibb7mcdlemf4mussa
   tests/behaviours/test_tool_selection.py: bafybeiah73gs56p3pgaozurdkf5x7jqzghigoauigmiwjja46lpk7d3ivq
@@ -177,12 +177,12 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/market_manager_abci:0.1.0:bafybeifxqn7dscoia55vyk3gohkqfe2oc64eerbaz3ajobv743cx75kdye
+- valory/market_manager_abci:0.1.0:bafybeih4nfq3kadbsbuqpd5buhh2jvkdphrind6tyoaozjk4xs4hek4r5y
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_performance_summary_abci:0.1.0:bafybeih6vfe5ygpgmclpf6qvi4ttm46zaiped7vjaljm5pvrhjmo7t5mw4
-- valory/chatui_abci:0.1.0:bafybeieby4hfizo25q6ueammco4ncifmzksboggsuond2zyjfsw3sq4tlm
+- valory/agent_performance_summary_abci:0.1.0:bafybeicpuqvcnt4v5w4nrgpa4dbyt7foxvy5u4xbtbvajkk223rbv634ma
+- valory/chatui_abci:0.1.0:bafybeihfn42katqlxemwkdq2kzz2cyl5efaau64j7ts64fhvdjtb6nqacy
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 behaviours:
   main:
