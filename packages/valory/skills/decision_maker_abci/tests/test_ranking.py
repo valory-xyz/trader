@@ -375,6 +375,14 @@ def test_row_4_renewal_rule() -> None:
     assert {f"m{i}" for i in range(20)} <= set(later)
     assert _request(many, now=NOW + 120).mech_tool is None
 
+    # a 24 h renewal keeps today's order: the most liquid markets, not the tail
+    pool = [_bet(i) for i in range(180)]
+    first = _ranked_ids(_request(pool))
+    for bet in pool:
+        if bet.ranked_at:
+            bet.research_score = 0.9
+    assert _ranked_ids(_request(pool, now=NOW + RANKING_MAX_AGE)) == first
+
 
 @pytest.mark.parametrize(
     "result, expected",

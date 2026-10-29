@@ -109,18 +109,17 @@ class RankingRequestBehaviour(SamplingBehaviour):
                 events.add(bet.poly_event_id)
                 candidates.append(bet)
         latest = max((bet.ranked_at for bet in self.bets), default=0)
-        renew = now - latest >= RANKING_MAX_AGE
-        renew = renew and len(candidates) >= RANKING_MIN_MARKETS
+        if now - latest >= RANKING_MAX_AGE and len(candidates) >= RANKING_MIN_MARKETS:
+            return candidates[:RANKING_MAX_MARKETS]
         # A used-up list renews only with never-ranked markets, so markets
         # whose books keep failing cannot bring a ranking every cooldown.
         never_ranked = sum(not bet.ranked_at for bet in candidates)
         # the list counts as used up on the whole pool, not only on the
         # markets that represent their event in this batch
-        renew |= not self._ranked_list(eligible) and never_ranked >= RANKING_MIN_MARKETS
-        if not renew:
+        if self._ranked_list(eligible) or never_ranked < RANKING_MIN_MARKETS:
             return []
-        # never-ranked markets go first, so a renewal always brings them into
-        # the batch and a list left unscored cannot be re-sent every period
+        # never-ranked markets go first, so this renewal brings them into the
+        # batch and a list left unscored cannot be re-sent every period
         return sorted(candidates, key=lambda bet: bool(bet.ranked_at))[
             :RANKING_MAX_MARKETS
         ]
