@@ -119,7 +119,11 @@ class RankingRequestBehaviour(SamplingBehaviour):
         renew |= not self._ranked_list(eligible) and never_ranked >= RANKING_MIN_MARKETS
         if not renew:
             return []
-        return candidates[:RANKING_MAX_MARKETS]
+        # never-ranked markets go first, so a renewal always brings them into
+        # the batch and a list left unscored cannot be re-sent every period
+        return sorted(candidates, key=lambda bet: bool(bet.ranked_at))[
+            :RANKING_MAX_MARKETS
+        ]
 
     def async_act(self) -> Generator:
         """Do the action."""

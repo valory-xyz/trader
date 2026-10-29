@@ -368,6 +368,13 @@ def test_row_4_renewal_rule() -> None:
     ids = _ranked_ids(_request(many))
     assert len(ids) == RANKING_MAX_MARKETS and ids[0] == f"m{len(many) - 1}"
 
+    # an unscored answer: the next period sends the 20 never-ranked markets
+    # first, and the one after sends nothing
+    _receive(many, None)
+    later = _ranked_ids(_request(many, now=NOW + 60))
+    assert {f"m{i}" for i in range(20)} <= set(later)
+    assert _request(many, now=NOW + 120).mech_tool is None
+
 
 @pytest.mark.parametrize(
     "result, expected",
