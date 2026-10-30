@@ -35,11 +35,11 @@ fingerprint:
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/ranking.py: bafybeie5z7q4nsa6vnws5jvn4o27oiwghsgfl52w7tmjxkkqr3gnajixda
+  behaviours/ranking.py: bafybeigasttszhe5iodk3m7qt5wl6qquyayvf2qta4zfjsfq7ljopu3ujm
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaf7tmcpywo7myeskrozkvvg5mtdabip5uz4lvymf3wyrrdpjpjou
-  behaviours/sampling.py: bafybeif6nkduylzusygdeew33al6dwkwbfan42x6xrfoz73vtgdcrelboa
+  behaviours/sampling.py: bafybeidaf3pszda2tirwtofytfgqriujljhbhky6qs2q22g5vzftoy3iva
   behaviours/sell_outcome_tokens.py: bafybeih6xtmqtuasnm63b5u3qau6ssj7dvvgvmwmepll6ydwo3aqc7tzv4
   behaviours/storage_manager.py: bafybeihzjj7dy4vybjaorts5n77gwpuxbhpgw53ehgcpt2apu7qzocivdq
   behaviours/tool_selection.py: bafybeidpklb4qnjgus27jozbbbze32fvpoxybeg6jdtwcs7m3sm3sbpvq4
@@ -53,7 +53,7 @@ fingerprint:
   policy.py: bafybeigiczejrlln5jnumrjsowbzq5ibcavox56mfsyf2dfv7hvfdjow6i
   redeem_info.py: bafybeihssy2mx3z5pcxpkyt3y265futflpihd3boa5l6qkwrjvyjtee4f4
   rounds.py: bafybeidb22moihldanikypihravhk3qjyvg54ksbxc4lvpbc5rkbadoqai
-  rounds_info.py: bafybeidexkvunmyv6rnjdybjehfcwbiqtf537aawfwpzkpb72weteyelga
+  rounds_info.py: bafybeigzlu7nl3pp3vry4h2v4d2z4hg2grdyzvi2zze4sbhgqsgkallao4
   states/__init__.py: bafybeid23llnyp6j257dluxmrnztugo5llsrog7kua53hllyktz4dqhqoy
   states/base.py: bafybeibltsd2sgd3s6eqyrw76vaoeh5ql3zk5i5mgepfusfvxtuj5nv2ze
   states/bet_placement.py: bafybeigxqet2qc7ocnkglhdylx63z5puiolwcl2g4vfksfdf6qoxveej4a
@@ -144,7 +144,7 @@ fingerprint:
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
   tests/test_polymarket_states.py: bafybeiej5zbm4cmc3vplrdldqdfsd3iacwklhyqzcoxg57lexw5wkasu2u
-  tests/test_ranking.py: bafybeihxi4hpdlkih7swf7vmtplli5snqwi4573qozeunjgcodpwzzlfnq
+  tests/test_ranking.py: bafybeiewbnohm4rvsfrtpm4ggbvqqty7jdqu35skdcffyyihkarqwcuy6y
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4

@@ -95,7 +95,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
         )
 
     def _ranking_batch(self) -> Tuple[List[Bet], int]:
-        """Get the markets to rank in today's order and the list's stamp; no markets when no request is due."""
+        """Get the markets to rank and the list's stamp; no markets when no request is due."""
         # unset until the first redeem round reaches consensus
         tools = self.synchronized_data.db.get("available_mech_tools", None)
         if not (
@@ -109,9 +109,6 @@ class RankingRequestBehaviour(SamplingBehaviour):
 
         now = self.synced_timestamp
         available, _ = self._processable_bets(now)
-        # The untried markets Sampling could pick and its book check would
-        # pass; a market with a failed book check follows today's order, as on
-        # the list.
         eligible = [
             bet
             for bet in self._drop_disabled_tags(available)
@@ -212,10 +209,11 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
     def _store_scores(self) -> None:
         """Store the valid scores of the answer on the markets of the latest list."""
         try:
-            response = self.synchronized_data.mech_responses[0].result
-            ranking = list(loads_bounded(response)["ranking"])  # type: ignore[arg-type]
-        except (IndexError, KeyError, TypeError, ValueError):
+            response = self.synchronized_data.mech_responses[0]
+            ranking = list(loads_bounded(response.result)["ranking"])  # type: ignore[arg-type]
+        except (IndexError, KeyError, TypeError, ValueError) as exc:
             ranking = []
+            self.context.logger.warning(f"[RANKING] no ranking in the answer: {exc!r}")
         scores: Dict[str, Any] = {}
         for entry in ranking:
             # a malformed entry is skipped; the first of repeated ids is kept

@@ -249,6 +249,6 @@ def test_trader_abci_app_is_type() -> None:
 
 
 def test_ranking_request_and_answer_mapping() -> None:
-    """A ranking request goes straight to the mech, and every answer to the router (SPEC-M2.1 rows 2, 7)."""
+    """A ranking request goes straight to the mech, and every answer to the router."""
     assert abci_app_transition_mapping[FinishedRankingRequestRound] is MechRequestRound
     assert abci_app_transition_mapping[FinishedMechResponseRound] is RankingReceiveRound
