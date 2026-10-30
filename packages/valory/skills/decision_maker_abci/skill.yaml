@@ -35,7 +35,7 @@ fingerprint:
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/ranking.py: bafybeic3kgn4itdxw2z6yybxvwsfr2cp6rpx35o3rvuvcbypom55rhxj2y
+  behaviours/ranking.py: bafybeibwuhlbcsf5erthix6n6g5r6jj5nst2jt4ypndblv5oncllbldb7a
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaf7tmcpywo7myeskrozkvvg5mtdabip5uz4lvymf3wyrrdpjpjou
@@ -144,7 +144,7 @@ fingerprint:
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
   tests/test_polymarket_states.py: bafybeiej5zbm4cmc3vplrdldqdfsd3iacwklhyqzcoxg57lexw5wkasu2u
-  tests/test_ranking.py: bafybeibd5hkivit4vxqzba4qrjzmb36pbduubjjk6a3ndsnat35u5qo7ea
+  tests/test_ranking.py: bafybeifiy4n2aangfg4nfxa4r7zodnrbkxzqr46boxx7z53udiph5izhkm
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4

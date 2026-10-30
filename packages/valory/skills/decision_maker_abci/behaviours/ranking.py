@@ -50,6 +50,9 @@ from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 RANKING_MAX_MARKETS = 100
 RANKING_MIN_MARKETS = 10
+# requests one list may take; the markets past them follow today's order
+RANKING_MAX_REQUESTS = 3
+LIST_MAX_MARKETS = RANKING_MAX_REQUESTS * RANKING_MAX_MARKETS
 
 # Takes the pool logs of the ranking round, so only Sampling prints them.
 QUIET_LOGGER = logging.getLogger(f"{__name__}.quiet")
@@ -121,7 +124,9 @@ class RankingRequestBehaviour(SamplingBehaviour):
         latest = max((bet.ranked_at for bet in self.bets), default=0)
         if now - latest >= RANKING_MAX_AGE:
             return (
-                (candidates, now) if len(candidates) >= RANKING_MIN_MARKETS else ([], 0)
+                (candidates[:LIST_MAX_MARKETS], now)
+                if len(candidates) >= RANKING_MIN_MARKETS
+                else ([], 0)
             )
         # Markets a renewal could not fit in its request go next, on the same
         # list. The queue is sent once: a market that misses it (prices or book
@@ -139,7 +144,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
         never_ranked = sum(bet.ranked_at <= 0 for bet in candidates)
         if self._ranked_list(candidates) or never_ranked < RANKING_MIN_MARKETS:
             return [], 0
-        return candidates, now
+        return candidates[:LIST_MAX_MARKETS], now
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -214,7 +219,7 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
                 bet.research_score = float(score)
                 stored += 1
         self.store_bets()
-        # a list sent in two requests counts the scores of both
+        # a list sent in several requests counts the scores of all of them
         unscored = sum(bet.research_score is None for bet in listed)
         self.context.logger.info(
             f"[RANKING] stored={stored} unscored={unscored} "

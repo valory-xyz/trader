@@ -742,6 +742,16 @@ def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
         bet.outcomeTokenMarginalPrices = [0.5, 0.5]
     assert _request(pool, now=NOW + 120).mech_tool is None
 
+    # a list takes at most three requests; the markets past them follow today's order
+    big = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS + 50)]
+    sizes = [len(_ranked_ids(_request(big, now=NOW + 60 * k))) for k in range(3)]
+    assert sizes == [RANKING_MAX_MARKETS] * 3
+    for bet in big:
+        if bet.ranked_at > 0:
+            bet.research_score = 0.9
+    assert _request(big, now=NOW + 180).mech_tool is None
+    assert sum(bet.ranked_at == 0 for bet in big) == 50
+
     # a market whose book check failed is not a candidate, so it is never queued
     untried = [_bet(i) for i in range(RANKING_MAX_MARKETS)]
     stamped = [_bet(200 + i, processed_timestamp=NOW - 2 * COOLDOWN) for i in range(3)]
