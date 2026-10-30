@@ -155,10 +155,11 @@ build-agent-runner: uv-install  agent
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
 	$(shell uv run aea-helpers build-binary-deps ./agent) \
-	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
+	--onefile pyinstaller/agent_bin.py \
 	--name agent_runner_bin
 	./dist/agent_runner_bin$(EXE_SUFFIX) --help 1>/dev/null
 	./dist/agent_runner_bin$(EXE_SUFFIX) --version
+	./dist/agent_runner_bin$(EXE_SUFFIX) prestart-check --help 1>/dev/null
 
 
 .PHONY: build-agent-runner-mac
@@ -174,11 +175,12 @@ build-agent-runner-mac: uv-install  agent
 	--hidden-import aea_ledger_cosmos \
 	--hidden-import aea_ledger_ethereum_flashbots \
 	$(shell uv run aea-helpers build-binary-deps ./agent) \
-	--onefile $(shell uv run python -c "import aea_helpers, os; print(os.path.join(os.path.dirname(aea_helpers.__file__), 'bin_template.py'))") \
+	--onefile pyinstaller/agent_bin.py \
 	--codesign-identity "${SIGN_ID}" \
 	--name agent_runner_bin
 	./dist/agent_runner_bin$(EXE_SUFFIX) --help 1>/dev/null
 	./dist/agent_runner_bin$(EXE_SUFFIX) --version
+	./dist/agent_runner_bin$(EXE_SUFFIX) prestart-check --help 1>/dev/null
 
 
 ./hash_id: ./packages/packages.json

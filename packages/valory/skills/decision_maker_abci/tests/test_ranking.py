@@ -44,6 +44,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     RANKING_MAX_AGE,
     SamplingBehaviour,
 )
+from packages.valory.skills.decision_maker_abci.models import SharedState
 from packages.valory.skills.decision_maker_abci.payloads import RankingRequestPayload
 from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.rounds_info import ROUNDS_INFO
@@ -166,6 +167,24 @@ def _behaviour(
     params.ranking_min_score = 0.5
     params.polymarket_spread_min = 0.0
     params.polymarket_spread_max = 0.1
+    params.orderbook_unavailable_threshold = 5
+    # the CLOB answers until a test says otherwise, counted as SharedState does
+    state = context.state
+    state.orderbook_failures = 0
+    state.orderbook_failing_since = None
+    state.record_orderbook_fetch.side_effect = (
+        lambda reached, timestamp: SharedState.record_orderbook_fetch(
+            state, reached, timestamp
+        )
+    )
+    state.record_orderbook_response.side_effect = (
+        lambda response, timestamp: SharedState.record_orderbook_response(
+            state, response, timestamp
+        )
+    )
+    state.is_orderbook_unavailable.side_effect = (
+        lambda threshold: SharedState.is_orderbook_unavailable(state, threshold)
+    )
     behaviour.__dict__["_context"] = context
     behaviour.bets = bets
     behaviour.store_bets = MagicMock()
