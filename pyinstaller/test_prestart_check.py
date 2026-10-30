@@ -20,6 +20,7 @@
 """Tests for the prestart-check command of the agent runner."""
 
 import json
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, patch
@@ -108,6 +109,16 @@ def test_env_turning_polymarket_off_passes_without_probing() -> None:
     )
     assert result.exit_code == 0
     assert not probed
+
+
+def test_values_pearl_has_not_computed_yet_do_not_stop_the_check() -> None:
+    """Pearl passes the values it computes at deploy empty before then."""
+    service_yaml = (POLYSTRAT_DIR / "service.yaml").read_text(encoding="utf-8")
+    names = set(re.findall(r"\$\{([A-Z0-9_]+):", service_yaml))
+    assert {"SAFE_CONTRACT_ADDRESSES", "POLYMARKET_CLOB_HOST"} <= names
+    result, probed = _run(POLYSTRAT_DIR, env=dict.fromkeys(names, ""))
+    assert result.exit_code == 0, result.output
+    assert sorted(probed) == sorted(POLYMARKET_HOSTS)
 
 
 def test_env_clob_host_is_probed() -> None:

@@ -62,8 +62,15 @@ def polymarket_hosts(service_dir: Path, env: Mapping[str, str]) -> List[str]:
         public_id = str(override.get("public_id", ""))
         if not public_id.startswith(f"{POLYMARKET_CONNECTION}:"):
             continue
+        raw = override.get("config", {})
+        # Pearl passes the values it computes at deploy as empty strings before then.
         config: Dict[str, Any] = apply_env_variables(  # type: ignore[assignment]
-            override.get("config", {}), env
+            {
+                key: raw[key]
+                for key in ("is_running_on_polymarket", "host")
+                if key in raw
+            },
+            env,
         )
         if not config.get("is_running_on_polymarket"):
             return []
