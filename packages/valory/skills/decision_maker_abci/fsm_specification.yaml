@@ -47,6 +47,7 @@ final_states:
 - FinishedPolymarketWithdrawTopUpTxPreparationRound
 - FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
+- FinishedRankingRequestRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -68,6 +69,7 @@ start_states:
 - PostBetUpdateRound
 - PostOmenWithdrawRound
 - RandomnessRound
+- RankingReceiveRound
 - RedeemRouterRound
 states:
 - BenchmarkingDoneRound
@@ -89,6 +91,7 @@ states:
 - FinishedPolymarketWithdrawTopUpTxPreparationRound
 - FinishedPolymarketWrapCollateralTxPreparationRound
 - FinishedPostBetUpdateRound
+- FinishedRankingRequestRound
 - FinishedRedeemTxPreparationRound
 - FinishedSetApprovalTxPreparationRound
 - FinishedWithoutDecisionRound
@@ -109,6 +112,8 @@ states:
 - PostBetUpdateRound
 - PostOmenWithdrawRound
 - RandomnessRound
+- RankingReceiveRound
+- RankingRequestRound
 - RedeemRound
 - RedeemRouterRound
 - RefillRequiredRound
@@ -230,10 +235,18 @@ transition_func:
     (PostOmenWithdrawRound, NO_MAJORITY): PostOmenWithdrawRound
     (PostOmenWithdrawRound, WITHDRAWAL_DONE): WithdrawalIdleRound
     (PostOmenWithdrawRound, WITHDRAWAL_ROUND_TIMEOUT): WithdrawalIdleRound
-    (RandomnessRound, DONE): SamplingRound
+    (RandomnessRound, DONE): RankingRequestRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
+    (RankingReceiveRound, DONE): FinishedWithoutDecisionRound
+    (RankingReceiveRound, NONE): DecisionReceiveRound
+    (RankingReceiveRound, NO_MAJORITY): RankingReceiveRound
+    (RankingReceiveRound, ROUND_TIMEOUT): RankingReceiveRound
+    (RankingRequestRound, DONE): FinishedRankingRequestRound
+    (RankingRequestRound, NONE): SamplingRound
+    (RankingRequestRound, NO_MAJORITY): RankingRequestRound
+    (RankingRequestRound, ROUND_TIMEOUT): RankingRequestRound
     (RedeemRound, DONE): FinishedDecisionMakerRound
     (RedeemRound, MOCK_TX): SamplingRound
     (RedeemRound, NO_MAJORITY): RedeemRound

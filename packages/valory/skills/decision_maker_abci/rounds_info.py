@@ -172,6 +172,16 @@ ROUNDS_INFO = {
         "description": "Generates randomness.",
         "transitions": {},
     },
+    "ranking_receive_round": {
+        "name": "Making a prediction",
+        "description": "The agent reviews the information it received to make its prediction for the trade.",
+        "transitions": {},
+    },
+    "ranking_request_round": {
+        "name": "Sampling a trade",
+        "description": "Selects a potential trade for the agent to consider.",
+        "transitions": {},
+    },
     "redeem_round": {
         "name": "Preparing a redeem transaction",
         "description": "Prepares a transaction to redeem winnings from a resolved trade.",

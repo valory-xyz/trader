@@ -693,6 +693,8 @@ def _build_decision_maker_params_kwargs() -> dict:
         "is_outcome_side_threshold_filter_enabled": False,
         "outcome_side_threshold_filter_threshold": 0.5,
         "exclude_neg_risk_markets": False,
+        "enable_market_ranking": False,
+        "ranking_min_score": 0.5,
     }
 
 
@@ -802,6 +804,8 @@ class TestDecisionMakerParams:
         assert params.is_outcome_side_threshold_filter_enabled is False
         assert params.outcome_side_threshold_filter_threshold == 0.5
         assert params.exclude_neg_risk_markets is False
+        assert params.enable_market_ranking is False
+        assert params.ranking_min_score == 0.5
         assert params.polymarket_spread_min == 0.0
         assert params.polymarket_spread_max == 1.0
 

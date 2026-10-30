@@ -120,6 +120,8 @@ def _make_mock_bet(  # type: ignore[no-untyped-def]
     bet.outcomeTokenMarginalPrices = outcome_prices
     bet.neg_risk = neg_risk
     bet.poly_tags = poly_tags
+    bet.ranked_at = 0
+    bet.research_score = None
     bet.blacklist_forever = MagicMock()
     return bet
 

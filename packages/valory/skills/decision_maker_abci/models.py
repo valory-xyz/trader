@@ -664,6 +664,10 @@ class DecisionMakerParams(
         self.exclude_neg_risk_markets: bool = self._ensure(
             "exclude_neg_risk_markets", kwargs, bool
         )
+        self.enable_market_ranking: bool = self._ensure(
+            "enable_market_ranking", kwargs, bool
+        )
+        self.ranking_min_score: float = self._ensure("ranking_min_score", kwargs, float)
         super().__init__(*args, **kwargs)
 
     @property

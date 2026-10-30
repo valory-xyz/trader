@@ -41,6 +41,10 @@ class FinishedDecisionRequestRound(DegenerateRound):
     """A round representing that decision request has finished."""
 
 
+class FinishedRankingRequestRound(DegenerateRound):
+    """A round representing that a ranking request is ready for the mech."""
+
+
 class FinishedWithoutRedeemingRound(DegenerateRound):
     """A round representing that decision-making has finished without redeeming."""
 
