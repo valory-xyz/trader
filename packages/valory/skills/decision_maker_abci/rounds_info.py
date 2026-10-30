@@ -173,13 +173,13 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "ranking_receive_round": {
-        "name": "Making a prediction",
-        "description": "The agent reviews the information it received to make its prediction for the trade.",
+        "name": "Storing ranking scores",
+        "description": "Stores the mech's scores for the ranked markets.",
         "transitions": {},
     },
     "ranking_request_round": {
-        "name": "Sampling a trade",
-        "description": "Selects a potential trade for the agent to consider.",
+        "name": "Ranking markets",
+        "description": "Requests a ranking of the candidate markets.",
         "transitions": {},
     },
     "redeem_round": {

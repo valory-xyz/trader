@@ -1242,6 +1242,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ]
                 for market in event.get("markets") or []:
                     market["_poly_tags"] = tag_slugs
+                    market["_poly_event_id"] = event.get("id")
                     all_markets.append(market)
                     markets_this_page += 1
 
@@ -2609,10 +2610,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ),
             }, None
         except Exception as e:
+            # The CLOB answers 404 for a token with no book: not a failed read.
+            if isinstance(e, PolyApiException) and e.status_code == 404:
+                return {"asks": [], "bids": [], "min_order_size": None}, None
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
             # No status means a transport error; a 5xx is an outage and a 403/451 a
-            # network that blocks with a response. A 404 or 429 proves it reachable.
+            # network that blocks with a response. A 429 proves it reachable.
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500

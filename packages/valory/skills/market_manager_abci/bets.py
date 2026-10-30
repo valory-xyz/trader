@@ -184,6 +184,8 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
+    # Polymarket-only event id; the markets of one event are rungs of one question
+    poly_event_id: Optional[str] = None
     # Polymarket-only best bid and ask of the first outcome at the last fetch
     best_bid: Optional[float] = None
     best_ask: Optional[float] = None
@@ -417,6 +419,7 @@ class Bet:
         self.neg_risk = bet.neg_risk
         self.market_spread = bet.market_spread
         self.poly_tags = list(bet.poly_tags)
+        self.poly_event_id = bet.poly_event_id
         self.best_bid = bet.best_bid
         self.best_ask = bet.best_ask
         # Resolution rules can be edited on Polymarket's side after discovery;

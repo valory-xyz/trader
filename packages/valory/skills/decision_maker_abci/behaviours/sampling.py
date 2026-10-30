@@ -318,7 +318,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             and bet.ranked_at == latest
             and bet.queue_status == QueueStatus.TO_PROCESS
             and not bet.invested_amount
-            # a market whose book check failed goes back to today's order
+            # declined or book-failed markets go back to today's order
             and not bet.processed_timestamp
             # unscored or low-scored markets also follow today's order
             and (bet.research_score or 0.0) >= self.params.ranking_min_score
@@ -462,13 +462,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _drop_disabled_tags(self, available_bets: List[Bet]) -> List[Bet]:
         """Drop the bets that carry a disabled Polymarket tag."""
-        # Policy filter: reject candidates whose Polymarket tags are on the
-        # operator-configured disable list. Normalize both sides — strip
-        # whitespace + lowercase — so tag casing drift or accidental
-        # whitespace upstream doesn't silently break the match. Pre-filter
-        # the candidate pool once here rather than per-iteration inside the
-        # while-loop so we avoid redundant priority-sorting of bets we've
-        # already decided to skip.
+        # both sides are normalized, so tag casing or whitespace upstream cannot break the match
         disabled_tags = {
             t.strip().lower() for t in self.params.disabled_polymarket_tags
         }

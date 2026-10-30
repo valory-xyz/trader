@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeidrgzypwcmglyigi57khpg246szva3kiunmdcyuuvf53ux3dqao6m
+agent: valory/trader:0.1.0:bafybeifdomwtejih5ettit56fb4t5pszymde774hxy2n6wxhoukhwv726u
 number_of_agents: 1
 deployment:
   agent:
@@ -84,7 +84,7 @@ models:
       opening_margin: ${OPENING_MARGIN:int:300}
       expired_bet_retention: ${EXPIRED_BET_RETENTION:int:2592000}
       languages: ${LANGUAGES:list:["en_US"]}
-      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["hide-from-new","rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary"]}
+      disabled_polymarket_tags: ${DISABLED_POLYMARKET_TAGS:list:["rewards-50-4pt5-20","rewards-100-4pt5-100","rewards-automation-50-4pt5-50","finance-rewards-20","denmark","denmark-election","slovenia","slovenia-elections","bulgaria","venezuela","colombia","columbia","colombia-election","bangladesh-election","trump-iran","trump-xi","trade-war","tariffs","tiktok","china","trump-presidency","middle-east","iran","diplomacy-ceasefire","geopolitics","starmer","uap","ufo","aliens","march-3-primaries","primaries","primary-elections","texas-primary","house-primary","republican-primary","weather","daily-temperature","earthquakes","finance-updown","hit-price","stock-prices","forex","daily","weekly","multi-strikes"]}
       average_block_time: ${ABT:int:5}
       abt_error_mult: ${ABT_ERROR_MULT:int:5}
       the_graph_error_message_key: ${THE_GRAPH_ERROR_MESSAGE_KEY:str:message}
@@ -187,6 +187,7 @@ models:
       outcome_side_threshold_filter_threshold: ${OUTCOME_SIDE_THRESHOLD_FILTER_THRESHOLD:float:0.9}
       exclude_neg_risk_markets: ${EXCLUDE_NEG_RISK_MARKETS:bool:true}
       enable_market_ranking: ${ENABLE_MARKET_RANKING:bool:true}
+      ranking_max_price: ${RANKING_MAX_PRICE:float:0.95}
       ranking_min_score: ${RANKING_MIN_SCORE:float:0.5}
       deliveries_lookback_days: ${DELIVERIES_LOOKBACK_DAYS:int:30}
       delivery_rate_caps: ${DELIVERY_RATE_CAPS:dict:{"token_usdc":10000}}
