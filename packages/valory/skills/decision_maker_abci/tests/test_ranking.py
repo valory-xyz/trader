@@ -163,6 +163,7 @@ def _behaviour(
     params.exclude_neg_risk_markets = True
     params.disabled_polymarket_tags = ["weather"]
     params.enable_market_ranking = True
+    params.ranking_max_price = 0.85
     params.ranking_min_score = 0.5
     params.polymarket_spread_min = 0.0
     params.polymarket_spread_max = 0.1
@@ -661,9 +662,11 @@ def test_book_rule_and_score_floor() -> None:
     requester = _behaviour(RankingRequestBehaviour, bets)
     for bet in bets[: len(BOOKS) - 1]:
         assert requester._has_room_to_trade(bet) is _book_check(bet)
-    # the book rule applies on Polymarket only
+    # the book rule applies on Polymarket only; the price ceiling everywhere
     requester.context.params.is_running_on_polymarket = False
     assert requester._has_room_to_trade(bets[1])
+    near_certain = _bet(50, outcomeTokenMarginalPrices=[0.86, 0.14])
+    assert not requester._has_room_to_trade(near_certain)
 
     # list markets scored under ranking_min_score follow today's order
     listed = _listed(12)
@@ -758,3 +761,36 @@ def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
     assert len(_ranked_ids(_request(untried + stamped))) == RANKING_MAX_MARKETS
     assert all(bet.ranked_at == 0 for bet in stamped)
     assert _request(untried + stamped, now=NOW + 60).mech_tool is None
+
+
+def test_one_market_per_event() -> None:
+    """A ranking sends one market per Polymarket event, none from an event with a live position."""
+    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
+    rungs = [_bet(i, poly_event_id="ladder") for i in range(20, 24)]
+    held = _bet(30, poly_event_id="e5", investments={"Yes": [5], "No": []})
+    unknown = [_bet(i) for i in range(40, 42)]  # stored before the event id existed
+    ids = _ranked_ids(_request(bets + rungs + [held] + unknown))
+    assert set(ids) & {"m20", "m21", "m22", "m23"} == {"m23"}  # the most liquid rung
+    assert "m5" not in ids and "m30" not in ids
+    assert {"m40", "m41"} <= set(ids)
+
+    # a position in an expired market of the event does not keep the event out
+    held.queue_status = QueueStatus.EXPIRED
+    assert "m5" in _ranked_ids(_request(bets + [held], now=NOW + DAY))
+
+    # a listed rung whose unranked sibling became more liquid does not renew a fresh list
+    listed = [
+        _bet(100 + i, poly_event_id=f"e{i}", ranked_at=NOW - 60, research_score=0.9)
+        for i in range(12)
+    ]
+    siblings = [
+        _bet(200 + i, poly_event_id=f"e{i}", scaledLiquidityMeasure=500.0)
+        for i in range(12)
+    ]
+    assert _request(listed + siblings).mech_tool is None
+    assert _sampled(listed + siblings) in {b.id for b in listed}
+
+    # a refetch refreshes the stored event id
+    stored, fetched = _bet(1), _bet(1, poly_event_id="e1")
+    stored.update_market_info(fetched)
+    assert stored.poly_event_id == "e1"

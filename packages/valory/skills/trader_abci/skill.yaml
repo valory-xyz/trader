@@ -47,15 +47,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeid3clqraxk64rznnamhs2okie3zlm2sm3uidcozr4evsfl7wy2tsu
-- valory/decision_maker_abci:0.1.0:bafybeifggenvibhvlfkjcjfjoidtbv5pqtxi6dxypi52nphkialnhfua4u
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiebnete33hbsf6oll7bvyx645baep66lthhiulnfbxdrwboirbnim
+- valory/market_manager_abci:0.1.0:bafybeiadm7al2upewgeept7bwy6npmblghx7fzsfedc5nelvneyeos2lwu
+- valory/decision_maker_abci:0.1.0:bafybeig3s6tbydx52ourj3wsn3jce5pzrgtb5lblhwctcztisix7wadusa
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeid33shafr67oznnhizina7cyh2e7hm7kroonc5frc5csimoy7lqce
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeifkrtr6qfsfm6o7gk6kpwrsty3imfittiyzay5inhfmpabpnhjm74
+- valory/check_stop_trading_abci:0.1.0:bafybeib3xptv5pkbjitqhaxqh4qr5wrfp4ckncefi3dcv3dqikw2zd3o6i
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeidevl3fcdovjb5izbpwumhne7cvldhzlgmthf6r6tgcufcnb7nr4m
-- valory/agent_performance_summary_abci:0.1.0:bafybeig2zkr6qucvrwbspnfkwogcqhj3oel6j4mursds6n5sw3b53ipzju
+- valory/chatui_abci:0.1.0:bafybeia6qbnpojvcdyghg5phqwmcqcbfqo2ojdgttz72k6o76ktwpnhlpy
+- valory/agent_performance_summary_abci:0.1.0:bafybeiafwfvwhk2gt5ucpcwg74sdj6by646lhgb6ix6ejnvlbjjrtt5nhi
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -360,6 +360,7 @@ models:
       outcome_side_threshold_filter_threshold: 0.8
       exclude_neg_risk_markets: false
       enable_market_ranking: false
+      ranking_max_price: 0.95
       ranking_min_score: 0.5
       deliveries_lookback_days: 30
       delivery_rate_caps:

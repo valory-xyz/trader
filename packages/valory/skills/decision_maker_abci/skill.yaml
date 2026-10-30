@@ -35,7 +35,7 @@ fingerprint:
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/ranking.py: bafybeibwuhlbcsf5erthix6n6g5r6jj5nst2jt4ypndblv5oncllbldb7a
+  behaviours/ranking.py: bafybeid6ritwaiuqnm7afwz562q7ztppjhherq67d5me6fjevlbsomova4
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeid7r24bwtndfoy7g7slvpvoxhihbxhtd4nabo2bzvubmy4nersp3a
   behaviours/round_behaviour.py: bafybeiaf7tmcpywo7myeskrozkvvg5mtdabip5uz4lvymf3wyrrdpjpjou
@@ -48,7 +48,7 @@ fingerprint:
   handlers.py: bafybeiclcz4uz7xnmhipvdwpekmqvgliuprgwcyuzg2sredaaxaugdarpq
   io_/__init__.py: bafybeifxgmmwjqzezzn3e6keh2bfo4cyo7y5dq2ept3stfmgglbrzfl5rq
   io_/loader.py: bafybeidxedelj7gmprur3oriwdinxjnutroxttt5ltnhi6uglhxfawzgmq
-  models.py: bafybeig2oak6q33u5smaeyg66jhmxzhixjuiq2d5jkzcpuotfr7fxvcfgy
+  models.py: bafybeihrnv6iwjtyumekt5vcspxfptar4s2fb3i3tqs76mtfpgxc7wyylu
   payloads.py: bafybeifzw7ynkd3xwpxrili3qwqo7foyng7ir5ierwz77dbw6y3yhr37zm
   policy.py: bafybeigiczejrlln5jnumrjsowbzq5ibcavox56mfsyf2dfv7hvfdjow6i
   redeem_info.py: bafybeihssy2mx3z5pcxpkyt3y265futflpihd3boa5l6qkwrjvyjtee4f4
@@ -139,12 +139,12 @@ fingerprint:
   tests/states/test_tool_selection.py: bafybeihnpzdd5sidmehijgxof36rohjy6qv4vu7qnvzdzbnl4tzzcc5ge4
   tests/test_dialogues.py: bafybeibulo64tgfrq4e5qbcqnmifrlehkqciwuavublints353zaj2mlpa
   tests/test_handlers.py: bafybeih44rx4ljcze7cgyalsjxp4b2zv4256xztu6axpd74djn63eagucq
-  tests/test_models.py: bafybeibj737n6wq7eokl622gvlhfvkvhp3xxwrpg6o6lujk3jvrwevh67m
+  tests/test_models.py: bafybeihihv3kfgxljfnrpmtw732jq2sifgjy6kz7wn2niqp6pfaxbaieqa
   tests/test_payloads.py: bafybeidd3jnjhmdeawfpty6ugudu566fhhy6sioxcrbt7uabdkvghs7bpe
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
   tests/test_polymarket_states.py: bafybeiej5zbm4cmc3vplrdldqdfsd3iacwklhyqzcoxg57lexw5wkasu2u
-  tests/test_ranking.py: bafybeifiy4n2aangfg4nfxa4r7zodnrbkxzqr46boxx7z53udiph5izhkm
+  tests/test_ranking.py: bafybeieuoigbpibjlahufr6kzkgiibcuzw7hgz7vjapzhtg6tezarka4vy
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4
@@ -160,7 +160,7 @@ fingerprint:
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
-- valory/polymarket_client:0.1.0:bafybeigceisk6vejo333uo3zowekkl7fbnhrxnbdkzm7eo2d2eg3ajttae
+- valory/polymarket_client:0.1.0:bafybeicdodlx6ukfkvn3e3awzm4ned33d7fz5ow3ieru2mx5otdedajvvq
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
 - valory/market_maker:0.1.0:bafybeiaogkujiilubosloromkikuhltgiiadjvtzw2b5p5hc3klzi4m4nq
@@ -180,12 +180,12 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/market_manager_abci:0.1.0:bafybeid3clqraxk64rznnamhs2okie3zlm2sm3uidcozr4evsfl7wy2tsu
+- valory/market_manager_abci:0.1.0:bafybeiadm7al2upewgeept7bwy6npmblghx7fzsfedc5nelvneyeos2lwu
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_performance_summary_abci:0.1.0:bafybeig2zkr6qucvrwbspnfkwogcqhj3oel6j4mursds6n5sw3b53ipzju
-- valory/chatui_abci:0.1.0:bafybeidevl3fcdovjb5izbpwumhne7cvldhzlgmthf6r6tgcufcnb7nr4m
+- valory/agent_performance_summary_abci:0.1.0:bafybeiafwfvwhk2gt5ucpcwg74sdj6by646lhgb6ix6ejnvlbjjrtt5nhi
+- valory/chatui_abci:0.1.0:bafybeia6qbnpojvcdyghg5phqwmcqcbfqo2ojdgttz72k6o76ktwpnhlpy
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 behaviours:
   main:
@@ -444,6 +444,7 @@ models:
       outcome_side_threshold_filter_threshold: 0.8
       exclude_neg_risk_markets: false
       enable_market_ranking: false
+      ranking_max_price: 0.95
       ranking_min_score: 0.5
     class_name: DecisionMakerParams
   acc_info_fields:
