@@ -2071,6 +2071,18 @@ class TestFetchMarketsFromPolymarket:
         bet_dict = result[0]
         assert bet_dict["market_spread"] == 0.04
 
+    def test_valid_market_reads_best_bid_and_ask(self) -> None:
+        """Gamma's best bid and ask are stored; a value outside [0, 1] or not a number is None."""
+        behaviour = self._setup_behaviour()
+        market = _make_valid_market(bestBid="0.41", bestAsk="1.5")
+        response = {"technology": [market]}
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        result = _exhaust_gen(behaviour._fetch_markets_from_polymarket())  # type: ignore[arg-type]
+
+        assert result is not None
+        assert (result[0]["best_bid"], result[0]["best_ask"]) == (0.41, None)
+
     def test_valid_market_reads_description(self) -> None:
         """Test that description from the Gamma API response is included in bet_dict."""
         behaviour = self._setup_behaviour()

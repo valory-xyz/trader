@@ -35,12 +35,16 @@ from packages.valory.skills.check_stop_trading_abci.rounds import CheckStopTradi
 from packages.valory.skills.decision_maker_abci.states.final_states import (
     FailedAgentTopUpTxRound,
     FinishedPostBetUpdateRound,
+    FinishedRankingRequestRound,
 )
 from packages.valory.skills.decision_maker_abci.states.handle_failed_tx import (
     HandleFailedTxRound,
 )
 from packages.valory.skills.decision_maker_abci.states.post_bet_update import (
     PostBetUpdateRound,
+)
+from packages.valory.skills.decision_maker_abci.states.ranking import (
+    RankingReceiveRound,
 )
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
@@ -52,6 +56,7 @@ from packages.valory.skills.market_manager_abci.rounds import (
 )
 from packages.valory.skills.mech_interact_abci.states.final_states import (
     FailedOffchainMechRequestRound,
+    FinishedMechResponseRound,
     FinishedOffchainMechDepositNeededRound,
     FinishedOffchainMechRequestRound,
 )
@@ -80,7 +85,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     PreTxSettlementRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 65
+EXPECTED_TRANSITION_MAPPING_LENGTH = 66
 
 # Agent Signer top-up at period start: each settled tx re-enters the round,
 # and the check ends, finished or failed, at `FetchPerformanceDataRound`.
@@ -241,3 +246,9 @@ def test_termination_config_abci_app() -> None:
 def test_trader_abci_app_is_type() -> None:
     """Test that TraderAbciApp is a type (class), not an instance."""
     assert isinstance(TraderAbciApp, type)
+
+
+def test_ranking_request_and_answer_mapping() -> None:
+    """A ranking request goes straight to the mech, and every answer to the router (SPEC-M2.1 rows 2, 7)."""
+    assert abci_app_transition_mapping[FinishedRankingRequestRound] is MechRequestRound
+    assert abci_app_transition_mapping[FinishedMechResponseRound] is RankingReceiveRound

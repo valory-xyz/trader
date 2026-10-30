@@ -712,6 +712,13 @@ class TestBetUpdateMarketInfo:
         bet.update_market_info(other)
         assert bet.neg_risk is True
 
+    def test_update_market_info_refreshes_the_book(self) -> None:
+        """update_market_info copies the spread, best bid and best ask of the latest fetch."""
+        bet = _make_bet(market_spread=0.4, best_bid=0.3, best_ask=0.7)
+        other = _make_bet(market_spread=0.02, best_bid=0.49, best_ask=0.51)
+        bet.update_market_info(other)
+        assert (bet.market_spread, bet.best_bid, bet.best_ask) == (0.02, 0.49, 0.51)
+
     def test_update_market_info_copies_poly_tags(self) -> None:
         """update_market_info carries poly_tags from the incoming bet.
 

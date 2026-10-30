@@ -413,6 +413,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
@@ -486,6 +487,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = HandleFailedTxRound.auto_round_id()
                 sd.mech_tool = "tool1"
@@ -554,6 +556,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
