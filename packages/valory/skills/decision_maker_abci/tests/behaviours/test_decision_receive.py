@@ -785,7 +785,7 @@ UNREACHABLE_FETCH: Dict[str, Any] = {
     "error": "Connection reset by peer",
     CLOB_UNREACHABLE: True,
 }
-ANSWERED_FETCH: Dict[str, Any] = {"error": "No orderbook exists"}
+ANSWERED_FETCH: Dict[str, Any] = {"error": "Too many requests"}
 
 
 class TestFetchOrderbook:

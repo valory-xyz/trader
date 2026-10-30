@@ -2557,7 +2557,7 @@ class TestBookCanTakeBet:
         "response",
         [
             None,
-            {"error": "No orderbook exists for the requested token id"},
+            {"error": "Too many requests"},
             "unexpected",
             {"asks": [{"price": "None", "size": "1"}], "bids": []},
         ],
@@ -2619,7 +2619,7 @@ class TestBookCanTakeBet:
 
     @pytest.mark.parametrize(
         "response",
-        [{"error": "No orderbook exists for the requested token id"}, "unexpected"],
+        [{"error": "Too many requests"}, "unexpected"],
     )
     def test_answered_fetch_resets_the_count(self, response: Any) -> None:
         """A CLOB that answers is reachable, even when the book is unreadable."""
@@ -2824,7 +2824,7 @@ class TestAsyncActBookCheck:
         """A probe the CLOB answers with an error still proves it reachable."""
         bet = _book_bet()
         behaviour, _ = _book_behaviour(
-            {f"bet1_{YES_TOKEN}": {"error": "No orderbook exists"}},
+            {f"bet1_{YES_TOKEN}": {"error": "Too many requests"}},
             orderbook_failures=ORDERBOOK_UNAVAILABLE_THRESHOLD,
         )
         behaviour.bets = [bet]

@@ -4371,11 +4371,23 @@ class TestFetchOrderBook:
         assert error is None
         assert result == {"asks": [], "bids": [], "min_order_size": None}
 
+    def test_no_book_is_an_empty_book(self) -> None:
+        """A 404 means the token has no book: an empty book and no error."""
+        conn = _make_connection()
+        conn.client.get_order_book.side_effect = PolyApiException(
+            MagicMock(status_code=404)
+        )
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
+        conn.logger.exception.assert_not_called()
+
     @pytest.mark.parametrize(
         "exception, unreachable",
         [
             (PolyApiException(error_msg="Request exception!"), True),
-            (PolyApiException(MagicMock(status_code=404)), False),
             (PolyApiException(MagicMock(status_code=429)), False),
             (PolyApiException(MagicMock(status_code=400)), False),
             (PolyApiException(MagicMock(status_code=403)), True),

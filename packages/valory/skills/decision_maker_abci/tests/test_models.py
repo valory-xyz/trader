@@ -480,7 +480,7 @@ class TestOrderbookFailures:
         "response, error, reached",
         [
             ({"asks": [], "bids": []}, None, True),
-            ({"error": "404"}, "404", True),
+            ({"error": "429"}, "429", True),
             ({"error": "reset", CLOB_UNREACHABLE: True}, "reset", False),
             (None, "no response", False),
             ("odd", "unexpected 'odd'", True),
