@@ -47,15 +47,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeiadm7al2upewgeept7bwy6npmblghx7fzsfedc5nelvneyeos2lwu
-- valory/decision_maker_abci:0.1.0:bafybeicjiqr5frnndk3k6ulsud4qlns25436encjaaqw5eqey3bavei7wq
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidwc24ospisvjnvtcstujm633fho74ycfwncmbdm22ps5jdps26su
+- valory/market_manager_abci:0.1.0:bafybeifbe7xi62ekassxnmuzs7ddgs2f5homxqrsy5euc46w2lbjsa46tm
+- valory/decision_maker_abci:0.1.0:bafybeieixubiye3wlnwqxilwr4hgfop7u5zmxi25hhkide33gscfrnul6e
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeighrfntcwgmhbyza7aerlppp2o7ns6nmjtjywphsbtgxdgi33lnti
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeib3xptv5pkbjitqhaxqh4qr5wrfp4ckncefi3dcv3dqikw2zd3o6i
+- valory/check_stop_trading_abci:0.1.0:bafybeifxspj6jtuiu3n5ysdg5kaoc5zxo63nqkathkg375ha7qjz57hzli
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeia6qbnpojvcdyghg5phqwmcqcbfqo2ojdgttz72k6o76ktwpnhlpy
-- valory/agent_performance_summary_abci:0.1.0:bafybeiafwfvwhk2gt5ucpcwg74sdj6by646lhgb6ix6ejnvlbjjrtt5nhi
+- valory/chatui_abci:0.1.0:bafybeicvtjvc5oydvh6cvxh3bcajl743q7mveznurjylsrfu3t2afrpmbm
+- valory/agent_performance_summary_abci:0.1.0:bafybeid7e55eeedwsomr7olhxqv2gmvpm24tdrwzzpe4jlcxnrrkcqzk5m
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -232,6 +232,7 @@ models:
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       declined_market_cooldown: 3600
+      orderbook_unavailable_threshold: 5
       polymarket_spread_min: 0.0
       polymarket_spread_max: 1.0
       trading_strategy: strategy_name

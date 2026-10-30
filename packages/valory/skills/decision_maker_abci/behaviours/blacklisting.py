@@ -53,8 +53,13 @@ class BlacklistingBehaviour(  # type: ignore
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
         # Among equal invested_amount the sampler takes the least recently
         # processed bet, so stamp the decline or the same market is re-picked.
-        if not self.benchmarking_mode.enabled:
+        # A decision without a readable order book is no decline.
+        if (
+            not self.benchmarking_mode.enabled
+            and not self.shared_state.orderbook_fetch_failed
+        ):
             sampled_bet.processed_timestamp = self.synced_timestamp
+        self.shared_state.orderbook_fetch_failed = False
 
     def async_act(self) -> Generator:
         """Do the action."""

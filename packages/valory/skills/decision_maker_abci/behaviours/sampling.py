@@ -25,7 +25,6 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
 )
@@ -648,15 +647,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
         reasons = []
         for side, token_id in (bet.outcome_token_ids or {}).items():
-            request = {
-                "request_type": RequestType.FETCH_ORDER_BOOK.value,
-                "params": {"token_id": token_id},
-            }
             try:
-                book = yield from self.send_polymarket_connection_request(request)
-                if not isinstance(book, dict) or "error" in book:
-                    why = book.get("error") if isinstance(book, dict) else book
-                    raise ValueError(why or "no response")
+                book, _ = yield from self._fetch_orderbook(token_id)
+                if book is None:
+                    return True
                 asks, bids = book.get("asks") or [], book.get("bids") or []
                 reason = self._side_rejection(asks, bids, lo, hi)
             except (KeyError, TypeError, ValueError) as exc:
@@ -670,6 +664,25 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"({'; '.join(reasons) or 'no token ids'}), skipped before the mech."
         )
         return False
+
+    def _clob_reachable(self, bet: Bet) -> Generator[None, None, bool]:
+        """Whether a fetch of the bet's first order book reaches the CLOB.
+
+        :param bet: the sampled bet, whose first outcome token's book is the probe.
+        :yield: None
+        :return: whether the CLOB was reached (not flagged unreachable).
+        """
+        token_id = next(iter((bet.outcome_token_ids or {}).values()), None)
+        reached = False
+        if token_id is not None:
+            _, reached = yield from self._fetch_orderbook(token_id)
+        if not reached:
+            self.context.logger.warning(
+                f"Polymarket's CLOB unreachable after "
+                f"{self.shared_state.orderbook_failures} failed fetches in a row: "
+                "no market this period."
+            )
+        return reached
 
     def _benchmarking_inc_day(self) -> Tuple[bool, bool]:
         """Increase the simulated day in benchmarking mode."""
@@ -699,6 +712,17 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 or self.benchmarking_mode.enabled
             ):
                 checks_left = 0
+            # No market, and no stamp, until the CLOB answers again: picking
+            # a market here would pay the mech for a prediction it cannot use.
+            if (
+                idx is not None
+                and checks_left
+                and self.shared_state.is_orderbook_unavailable(
+                    self.params.orderbook_unavailable_threshold
+                )
+                and not (yield from self._clob_reachable(self.bets[idx]))
+            ):
+                idx = None
             while (
                 idx is not None and checks_left and not self.bets[idx].invested_amount
             ):

@@ -33,10 +33,12 @@ from eth_abi import encode as abi_encode
 from eth_utils import keccak, to_checksum_address
 from hexbytes import HexBytes
 from py_clob_client_v2 import ClobClient
+from py_clob_client_v2.exceptions import PolyApiException
 from web3 import Web3
 
 from packages.valory.connections.polymarket_client.connection import (
     API_REQUEST_TIMEOUT,
+    CLOB_REQUEST_TYPES,
     DATA_API_BASE_URL,
     DATA_API_POSITIONS_URL,
     DATA_API_TRADES_URL,
@@ -49,12 +51,17 @@ from packages.valory.connections.polymarket_client.connection import (
     PolymarketClientConnection,
     RATE_LIMIT_RETRY_DELAY,
     RETRY_DELAY,
+    SIGNATURE_TYPE_POLY_1271,
+    SIGNATURE_TYPE_POLY_GNOSIS_SAFE,
     SrrDialogues,
     V2_BALANCE_KEY,
     _bool_param,
     _validate_builder_code,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+    RequestType,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -419,6 +426,132 @@ class TestTestConnection:
         conn = _make_connection()
         conn.client.get_ok.side_effect = Exception("network error")
         assert conn._test_connection() is False
+
+
+# ---------------------------------------------------------------------------
+# _ensure_clob_client
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureClobClient:
+    """Tests for building the CLOB client lazily when the CLOB is unreachable."""
+
+    DW = "0x00000000000000000000000000000000000000d1"
+
+    def test_existing_client_is_kept(self) -> None:
+        """A built client is not rebuilt."""
+        conn = _make_connection()
+        before = conn.client
+        with patch.object(_TestableConnection, "_build_clob_client") as build:
+            assert conn._ensure_clob_client() is None
+        build.assert_not_called()
+        assert conn.client is before
+
+    def test_builds_with_safe_funder_before_the_dw_is_known(self) -> None:
+        """Without a DepositWallet the client is bootstrapped on the Safe."""
+        conn = _make_connection()
+        conn.client = None
+        conn._client_funder = None
+        new_client = MagicMock()
+        with patch.object(
+            _TestableConnection, "_build_clob_client", return_value=new_client
+        ) as build:
+            assert conn._ensure_clob_client() is None
+        build.assert_called_once_with(
+            funder=SAFE_ADDRESS, signature_type=SIGNATURE_TYPE_POLY_GNOSIS_SAFE
+        )
+        assert conn.client is new_client
+        assert conn._client_funder == SAFE_ADDRESS
+
+    def test_builds_with_dw_funder_once_the_dw_is_known(self) -> None:
+        """A DepositWallet learned while the CLOB was down becomes the funder."""
+        conn = _make_connection()
+        conn.client = None
+        conn._client_funder = None
+        conn.dw_address = self.DW
+        with patch.object(
+            _TestableConnection, "_build_clob_client", return_value=MagicMock()
+        ) as build:
+            assert conn._ensure_clob_client() is None
+        build.assert_called_once_with(
+            funder=self.DW, signature_type=SIGNATURE_TYPE_POLY_1271
+        )
+        assert conn._client_funder == self.DW
+
+    def test_build_failure_leaves_no_client(self) -> None:
+        """A failed build is reported, not raised, and leaves no client."""
+        conn = _make_connection()
+        conn.client = None
+        conn._client_funder = None
+        with patch.object(
+            _TestableConnection,
+            "_build_clob_client",
+            side_effect=requests.exceptions.ConnectionError("reset by peer"),
+        ):
+            error = conn._ensure_clob_client()
+        assert error is not None
+        assert "reset by peer" in error
+        assert conn.client is None
+        assert conn._client_funder is None
+
+    @pytest.mark.parametrize("request_type", sorted(CLOB_REQUEST_TYPES, key=str))
+    def test_clob_request_without_client_returns_error(
+        self, request_type: RequestType
+    ) -> None:
+        """A CLOB request answers with an error when the client cannot be built."""
+        conn = _make_connection()
+        conn.client = None
+        handler = MagicMock(return_value=({"ok": True}, None))
+        for method in (
+            "_place_bet",
+            "_quote_buy",
+            "_sell_position",
+            "_get_order",
+            "_fetch_order_book",
+        ):
+            setattr(conn, method, handler)
+        with patch.object(
+            _TestableConnection,
+            "_build_clob_client",
+            side_effect=requests.exceptions.ConnectionError("reset by peer"),
+        ):
+            response, error = conn._route_request(
+                {"request_type": request_type.value, "params": {}}
+            )
+        handler.assert_not_called()
+        assert response == {"error": error, CLOB_UNREACHABLE: True}
+        assert "reset by peer" in error
+
+    def test_clob_request_builds_the_missing_client(self) -> None:
+        """The first CLOB request after the CLOB comes back builds the client."""
+        conn = _make_connection()
+        conn.client = None
+        new_client = MagicMock()
+        new_client.get_order_book.return_value = {"asks": [], "bids": []}
+        with patch.object(
+            _TestableConnection, "_build_clob_client", return_value=new_client
+        ):
+            response, error = conn._route_request(
+                {
+                    "request_type": RequestType.FETCH_ORDER_BOOK.value,
+                    "params": {"token_id": "t"},
+                }
+            )
+        assert error == ""
+        assert response["asks"] == []
+        new_client.get_order_book.assert_called_once_with("t")
+
+    def test_non_clob_request_does_not_need_the_client(self) -> None:
+        """Gamma and data-API requests are served without a CLOB client."""
+        conn = _make_connection()
+        conn.client = None
+        conn._fetch_markets = MagicMock(return_value=({"cat": []}, None))
+        with patch.object(_TestableConnection, "_build_clob_client") as build:
+            response, error = conn._route_request(
+                {"request_type": RequestType.FETCH_MARKETS.value, "params": {}}
+            )
+        build.assert_not_called()
+        assert error == ""
 
 
 # ---------------------------------------------------------------------------
@@ -4238,15 +4371,30 @@ class TestFetchOrderBook:
         assert error is None
         assert result == {"asks": [], "bids": [], "min_order_size": None}
 
-    def test_client_exception(self) -> None:
-        """Client exception returns None with error message."""
+    @pytest.mark.parametrize(
+        "exception, unreachable",
+        [
+            (PolyApiException(error_msg="Request exception!"), True),
+            (PolyApiException(MagicMock(status_code=404)), False),
+            (PolyApiException(MagicMock(status_code=429)), False),
+            (PolyApiException(MagicMock(status_code=400)), False),
+            (PolyApiException(MagicMock(status_code=403)), True),
+            (PolyApiException(MagicMock(status_code=451)), True),
+            (PolyApiException(MagicMock(status_code=500)), True),
+            (PolyApiException(MagicMock(status_code=502)), True),
+            (PolyApiException(MagicMock(status_code=503)), True),
+            (Exception("unparseable"), False),
+        ],
+    )
+    def test_client_exception(self, exception: Exception, unreachable: bool) -> None:
+        """A missing answer, a 5xx or a 403/451 marks the CLOB unreachable."""
         conn = _make_connection()
-        conn.client.get_order_book.side_effect = Exception("API timeout")
+        conn.client.get_order_book.side_effect = exception
 
         result, error = conn._fetch_order_book("token_123")
 
-        assert result is None
-        assert "API timeout" in error
+        assert result == {"error": error, CLOB_UNREACHABLE: unreachable}
+        assert "token_123" in error
 
     def test_v2_dict_response(self) -> None:
         """v2 ``get_order_book`` returns a plain dict with dict levels.

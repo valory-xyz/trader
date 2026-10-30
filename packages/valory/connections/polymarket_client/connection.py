@@ -55,7 +55,10 @@ from packages.valory.connections.polymarket_client.relayer_proxy import (
     TX_TERMINAL_FAIL,
     TX_TERMINAL_OK,
 )
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+    RequestType,
+)
 from packages.valory.protocols.srr.dialogues import SrrDialogue
 from packages.valory.protocols.srr.dialogues import SrrDialogues as BaseSrrDialogues
 from packages.valory.protocols.srr.message import SrrMessage
@@ -169,6 +172,17 @@ DEFAULT_RELAYER_PROXY_URL = "https://mpp.valory.xyz"
 # with the DepositWallet as funder, replacing the legacy POLY_GNOSIS_SAFE (2).
 SIGNATURE_TYPE_POLY_1271 = 3
 SIGNATURE_TYPE_POLY_GNOSIS_SAFE = 2
+# The requests served by the CLOB client, which is built on first use when the
+# CLOB was unreachable at start.
+CLOB_REQUEST_TYPES = frozenset(
+    {
+        RequestType.PLACE_BET,
+        RequestType.QUOTE_BUY,
+        RequestType.SELL_POSITION,
+        RequestType.GET_ORDER,
+        RequestType.FETCH_ORDER_BOOK,
+    }
+)
 PARENT_COLLECTION_ID = bytes.fromhex("00" * 32)
 ZERO_ADDRESS = "0x" + "0" * 40
 CHAIN_ID = 137  # Polygon
@@ -446,11 +460,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         # calls (markets, order book, get_order) work before the DW is
         # provisioned. Order placement always calls _ensure_dw_funder first to
         # (re)point the client at the runtime-resolved DepositWallet.
-        self._client_funder = self.safe_address
-        self.client = self._build_clob_client(
-            funder=self.safe_address,
-            signature_type=SIGNATURE_TYPE_POLY_GNOSIS_SAFE,
-        )
+        self.client: Optional[ClobClient] = None
+        self._client_funder: Optional[str] = None
+        self._ensure_clob_client()
 
         # Load contract addresses. In v2 the collateral token is pUSD; USDC.e
         # is kept only as a wrap-source. The onramp contract exposes
@@ -534,7 +546,30 @@ class PolymarketClientConnection(BaseSyncConnection):
         client.set_api_creds(client.create_or_derive_api_key())
         return client
 
-    def _ensure_dw_funder(self, dw_address: Optional[str]) -> None:
+    def _ensure_clob_client(self) -> Optional[str]:
+        """Build the CLOB client if there is none yet.
+
+        :return: why the client could not be built, or None when it is ready.
+        """
+        if self.client is not None:
+            return None
+        funder, signature_type = (
+            (self.dw_address, SIGNATURE_TYPE_POLY_1271)
+            if self.dw_address
+            else (self.safe_address, SIGNATURE_TYPE_POLY_GNOSIS_SAFE)
+        )
+        try:
+            self.client = self._build_clob_client(
+                funder=funder, signature_type=signature_type
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            error_msg = f"Polymarket CLOB client unavailable: {e}"
+            self.logger.warning(error_msg)
+            return error_msg
+        self._client_funder = funder
+        return None
+
+    def _ensure_dw_funder(self, dw_address: Optional[str]) -> Optional[str]:
         """Rebuild the CLOB client to sign POLY_1271 orders funded by the DW.
 
         No-op when the client already targets ``dw_address``. Called before
@@ -542,19 +577,20 @@ class PolymarketClientConnection(BaseSyncConnection):
         DepositWallet even if the DW was provisioned after connection start.
 
         :param dw_address: the DepositWallet address to fund orders from.
+        :return: why the client could not be built, or None when it is ready.
         """
         if not dw_address:
-            return
+            return None
         dw_address = to_checksum_address(dw_address)
         if self._client_funder == dw_address:
-            return
+            return None
         self.dw_address = dw_address
-        self.client = self._build_clob_client(
-            funder=dw_address,
-            signature_type=SIGNATURE_TYPE_POLY_1271,
-        )
-        self._client_funder = dw_address
-        self.logger.info(f"CLOB client funder set to DepositWallet {dw_address}")
+        self.client = None
+        self._client_funder = None
+        error_msg = self._ensure_clob_client()
+        if error_msg is None:
+            self.logger.info(f"CLOB client funder set to DepositWallet {dw_address}")
+        return error_msg
 
     def main(self) -> None:
         """
@@ -688,6 +724,11 @@ class PolymarketClientConnection(BaseSyncConnection):
 
         self.logger.info(f"Routing request of type: {request_type.value}")
 
+        if request_type in CLOB_REQUEST_TYPES:
+            error_msg = self._ensure_clob_client()
+            if error_msg:
+                return {"error": error_msg, CLOB_UNREACHABLE: True}, error_msg
+
         try:
             params = payload.get("params", {})
             response, error_msg = request_function_map[request_type](**params)
@@ -814,7 +855,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param funder: DepositWallet address, for the balance read.
         :return: ``(quote, None)``; ``fee_usd`` is ``None`` when unmeasurable.
         """
-        self._ensure_dw_funder(funder or self.dw_address)
+        error_msg = self._ensure_dw_funder(funder or self.dw_address)
+        if error_msg:
+            return {"error": error_msg}, error_msg
         balance = self._read_dw_collateral_balance(funder or self.dw_address)
         sizing = self._buy_sizing(token_id, amount, balance)
         quote: Dict[str, Any] = {
@@ -858,7 +901,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         :param market_version: the Gamma ``version`` of the bet's market.
         :return: ``(response_payload, error_or_none)``.
         """
-        self._ensure_dw_funder(funder or self.dw_address)
+        error_msg = self._ensure_dw_funder(funder or self.dw_address)
+        if error_msg:
+            return {"error": error_msg}, error_msg
         # SDK guide: https://docs.polymarket.com/migrate/polymarket-v2/sdk-integrations
         asset_field = "position_id" if market_version == "v2" else "token_id"
         signed_order_json = None
@@ -976,7 +1021,9 @@ class PolymarketClientConnection(BaseSyncConnection):
             given, the CLOB client is (re)bound to sign POLY_1271/funder=DW.
         :return: ``(response_payload, error_or_none)``.
         """
-        self._ensure_dw_funder(funder or self.dw_address)
+        error_msg = self._ensure_dw_funder(funder or self.dw_address)
+        if error_msg:
+            return {"error": error_msg}, error_msg
         # Select the order field by the market version Gamma returns, per
         # https://docs.polymarket.com/resources/onchain-position-data
         for version, field in (("v1", "token_id"), ("v2", "position_id")):
@@ -2565,4 +2612,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         except Exception as e:
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
-            return None, error_msg
+            # No status means a transport error; a 5xx is an outage and a 403/451 a
+            # network that blocks with a response. A 404 or 429 proves it reachable.
+            unreachable = isinstance(e, PolyApiException) and (
+                e.status_code is None
+                or e.status_code >= 500
+                or e.status_code in (403, 451)
+            )
+            return {"error": error_msg, CLOB_UNREACHABLE: unreachable}, error_msg
