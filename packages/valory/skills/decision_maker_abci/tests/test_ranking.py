@@ -746,11 +746,18 @@ def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
     big = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS + 50)]
     sizes = [len(_ranked_ids(_request(big, now=NOW + 60 * k))) for k in range(3)]
     assert sizes == [RANKING_MAX_MARKETS] * 3
+    tail = {bet.id for bet in big if bet.ranked_at == 0}
+    assert len(tail) == 50
+    # scored, the list is in use and the tail brings no request
     for bet in big:
-        if bet.ranked_at > 0:
-            bet.research_score = 0.9
+        bet.research_score = 0.9 if bet.ranked_at > 0 else None
     assert _request(big, now=NOW + 180).mech_tool is None
-    assert sum(bet.ranked_at == 0 for bet in big) == 50
+    # all unscored, the next list sends the tail first and then nothing is left to renew
+    for bet in big:
+        bet.research_score = None
+    assert tail <= set(_ranked_ids(_request(big, now=NOW + 240)))
+    later = [_request(big, now=NOW + 300 + 60 * k).mech_tool for k in range(3)]
+    assert later == [RANKING_TOOL, RANKING_TOOL, None]
 
     # a market whose book check failed is not a candidate, so it is never queued
     untried = [_bet(i) for i in range(RANKING_MAX_MARKETS)]

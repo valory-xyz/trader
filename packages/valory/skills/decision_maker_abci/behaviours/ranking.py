@@ -144,7 +144,10 @@ class RankingRequestBehaviour(SamplingBehaviour):
         never_ranked = sum(bet.ranked_at <= 0 for bet in candidates)
         if self._ranked_list(candidates) or never_ranked < RANKING_MIN_MARKETS:
             return [], 0
-        return candidates[:LIST_MAX_MARKETS], now
+        # never-ranked markets go first: past the cap they would stay unranked
+        # and an unscored list would bring the same requests every period
+        never_first = sorted(candidates, key=lambda bet: bet.ranked_at > 0)
+        return never_first[:LIST_MAX_MARKETS], now
 
     def async_act(self) -> Generator:
         """Do the action."""
