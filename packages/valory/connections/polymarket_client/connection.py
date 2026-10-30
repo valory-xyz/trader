@@ -2611,6 +2611,11 @@ class PolymarketClientConnection(BaseSyncConnection):
         except Exception as e:
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
-            # The client raises PolyApiException without a status on transport errors.
-            unreachable = isinstance(e, PolyApiException) and e.status_code is None
+            # No status means a transport error; a 5xx is an outage and a 403/451 a
+            # network that blocks with a response. A 404 or 429 proves it reachable.
+            unreachable = isinstance(e, PolyApiException) and (
+                e.status_code is None
+                or e.status_code >= 500
+                or e.status_code in (403, 451)
+            )
             return {"error": error_msg, CLOB_UNREACHABLE: unreachable}, error_msg

@@ -53,5 +53,5 @@ class RequestType(Enum):
     RELAYER_TX = "relayer_tx"
 
 
-# Marks an error response for which the CLOB gave no HTTP answer at all.
+# Marks an error response for which the CLOB was down, blocked or not reached.
 CLOB_UNREACHABLE = "clob_unreachable"

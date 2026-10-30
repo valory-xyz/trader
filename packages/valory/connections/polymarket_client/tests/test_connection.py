@@ -4376,11 +4376,17 @@ class TestFetchOrderBook:
             (PolyApiException(error_msg="Request exception!"), True),
             (PolyApiException(MagicMock(status_code=404)), False),
             (PolyApiException(MagicMock(status_code=429)), False),
+            (PolyApiException(MagicMock(status_code=400)), False),
+            (PolyApiException(MagicMock(status_code=403)), True),
+            (PolyApiException(MagicMock(status_code=451)), True),
+            (PolyApiException(MagicMock(status_code=500)), True),
+            (PolyApiException(MagicMock(status_code=502)), True),
+            (PolyApiException(MagicMock(status_code=503)), True),
             (Exception("unparseable"), False),
         ],
     )
     def test_client_exception(self, exception: Exception, unreachable: bool) -> None:
-        """Only an error without an HTTP answer marks the CLOB unreachable."""
+        """A missing answer, a 5xx or a 403/451 marks the CLOB unreachable."""
         conn = _make_connection()
         conn.client.get_order_book.side_effect = exception
 
