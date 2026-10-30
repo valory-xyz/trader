@@ -313,7 +313,7 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         :param response: the connection's response to the fetch.
         :param timestamp: when the fetch was made, in unix seconds.
         :return: why the book is unreadable (None when it was read), and whether
-            the CLOB answered.
+            the CLOB was reached (not flagged unreachable).
         """
         if isinstance(response, dict):
             reached = not response.get(CLOB_UNREACHABLE)

@@ -256,7 +256,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         :param token_id: The CLOB token ID.
         :yield: None
         :return: the book with "asks" and "bids" keys (None on failure), and
-            whether the CLOB answered.
+            whether the CLOB was reached (not flagged unreachable).
         """
         payload = {
             "request_type": RequestType.FETCH_ORDER_BOOK.value,

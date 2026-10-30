@@ -591,11 +591,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return False
 
     def _clob_reachable(self, bet: Bet) -> Generator[None, None, bool]:
-        """Whether the CLOB answers a fetch of the bet's first order book.
+        """Whether a fetch of the bet's first order book reaches the CLOB.
 
         :param bet: the sampled bet, whose first outcome token's book is the probe.
         :yield: None
-        :return: whether the CLOB answered.
+        :return: whether the CLOB was reached (not flagged unreachable).
         """
         token_id = next(iter((bet.outcome_token_ids or {}).values()), None)
         reached = False
