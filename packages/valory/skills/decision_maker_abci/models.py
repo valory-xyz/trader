@@ -294,7 +294,7 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
     def record_orderbook_fetch(self, reached: bool, timestamp: int) -> None:
         """Count a fetch that could not reach the CLOB; one that did resets the count.
 
-        :param reached: whether the CLOB answered the fetch.
+        :param reached: False when the connection flagged the CLOB unreachable.
         :param timestamp: when the fetch was made, in unix seconds.
         """
         if reached:
