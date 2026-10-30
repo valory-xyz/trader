@@ -618,6 +618,32 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         self.context.logger.warning(msg + cooling_note)
         return None
 
+    @classmethod
+    def _side_rejection(
+        cls,
+        asks: List[Dict[str, Any]],
+        bids: List[Dict[str, Any]],
+        lo: float,
+        hi: float,
+    ) -> Optional[str]:
+        """Get why one side of a book cannot take a bet, `None` when it can.
+
+        :param asks: the side's asks.
+        :param bids: the side's bids.
+        :param lo: the lowest accepted spread.
+        :param hi: the highest accepted spread.
+        :return: the reason, or `None`.
+        """
+        best_ask = min((float(a["price"]) for a in asks), default=None)
+        if best_ask is None:
+            return "no asks"
+        if best_ask >= MAX_BETTABLE_ASK:
+            return f"best ask {best_ask}"
+        spread = cls.bid_ask_spread(asks, bids) if bids else None
+        if spread is not None and not lo <= spread <= hi:
+            return f"spread {spread:.3f}"
+        return None
+
     def _book_can_take_bet(self, bet: Bet) -> Generator[None, None, bool]:
         """Whether a side of a Polymarket book could take a bet; True when unreadable.
 
@@ -638,19 +664,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     why = book.get("error") if isinstance(book, dict) else book
                     raise ValueError(why or "no response")
                 asks, bids = book.get("asks") or [], book.get("bids") or []
-                best_ask = min((float(a["price"]) for a in asks), default=None)
-                spread = self.bid_ask_spread(asks, bids) if asks and bids else None
+                reason = self._side_rejection(asks, bids, lo, hi)
             except (KeyError, TypeError, ValueError) as exc:
                 self.context.logger.warning(f"Book check skipped for {bet.id}: {exc}")
                 return True
-            if best_ask is None:
-                reasons.append(f"{side}: no asks")
-            elif best_ask >= MAX_BETTABLE_ASK:
-                reasons.append(f"{side}: best ask {best_ask}")
-            elif spread is not None and not lo <= spread <= hi:
-                reasons.append(f"{side}: spread {spread:.3f}")
-            else:
+            if reason is None:
                 return True
+            reasons.append(f"{side}: {reason}")
         self.context.logger.info(
             f"Book of {bet.id} cannot take a bet "
             f"({'; '.join(reasons) or 'no token ids'}), skipped before the mech."

@@ -1195,7 +1195,6 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ]
                 for market in event.get("markets") or []:
                     market["_poly_tags"] = tag_slugs
-                    market["_poly_event_id"] = event.get("id")
                     all_markets.append(market)
                     markets_this_page += 1
 

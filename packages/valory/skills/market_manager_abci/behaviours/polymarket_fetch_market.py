@@ -348,6 +348,15 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             self.prune_bets(self.synced_time)
 
     @staticmethod
+    def _gamma_price(raw: Any) -> Optional[float]:
+        """Get a Gamma decimal in [0, 1], `None` when missing or invalid."""
+        try:
+            value = float(raw)
+        except (ValueError, TypeError):
+            return None
+        return value if 0 <= value <= 1 else None
+
+    @staticmethod
     def _is_null_or_mismatch_violation(raw_bet: Dict[str, Any]) -> bool:
         """Whether the raw bet would trip ``Bet._validate`` (null/mismatch).
 
@@ -578,16 +587,11 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                     if not market.get("question"):
                         raise ValueError("Missing question")
 
-                    # Parse spread from Gamma API (decimal, e.g. 0.02)
-                    raw_spread = market.get("spread")
-                    market_spread = None
-                    if raw_spread is not None:
-                        try:
-                            parsed = float(raw_spread)
-                            if 0 <= parsed <= 1:
-                                market_spread = parsed
-                        except (ValueError, TypeError):
-                            market_spread = None
+                    # Spread, best bid and best ask from Gamma (decimals, e.g. 0.02)
+                    market_spread, best_bid, best_ask = (
+                        self._gamma_price(market.get(key))
+                        for key in ("spread", "bestBid", "bestAsk")
+                    )
 
                     bet_dict = {
                         "id": market_id,
@@ -623,7 +627,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                         "market_spread": market_spread,
                         "neg_risk": str(market.get("negRisk", False)).lower() == "true",
                         "poly_tags": list(market.get("_poly_tags", []) or []),
-                        "poly_event_id": market.get("_poly_event_id"),
+                        "best_bid": best_bid,
+                        "best_ask": best_ask,
                         "market_version": version,
                     }
 

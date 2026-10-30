@@ -667,7 +667,6 @@ class DecisionMakerParams(
         self.enable_market_ranking: bool = self._ensure(
             "enable_market_ranking", kwargs, bool
         )
-        self.ranking_max_price: float = self._ensure("ranking_max_price", kwargs, float)
         self.ranking_min_score: float = self._ensure("ranking_min_score", kwargs, float)
         super().__init__(*args, **kwargs)
 

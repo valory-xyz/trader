@@ -184,8 +184,9 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
-    # Polymarket-only event id; the markets of one event are rungs of one question
-    poly_event_id: Optional[str] = None
+    # Polymarket-only best bid and ask of the first outcome at the last fetch
+    best_bid: Optional[float] = None
+    best_ask: Optional[float] = None
     # Polymarket-only long-form market description (resolution rules). Omen bets
     # leave this None. Sent to the mech via `to_request_context`.
     description: Optional[str] = None
@@ -193,7 +194,8 @@ class Bet:
     slug: Optional[str] = None
     # Polymarket-only Gamma version
     market_version: str = "v1"
-    # When the market entered a ranked list, and its score there (0 to 1)
+    # When the market entered a ranked list (0 if never, -stamp while it waits
+    # for the next request of that list), and its score there (0 to 1)
     ranked_at: int = 0
     research_score: Optional[float] = None
 
@@ -415,7 +417,8 @@ class Bet:
         self.neg_risk = bet.neg_risk
         self.market_spread = bet.market_spread
         self.poly_tags = list(bet.poly_tags)
-        self.poly_event_id = bet.poly_event_id
+        self.best_bid = bet.best_bid
+        self.best_ask = bet.best_ask
         # Resolution rules can be edited on Polymarket's side after discovery;
         # refresh so already-queued bets carry the latest description.
         self.description = bet.description

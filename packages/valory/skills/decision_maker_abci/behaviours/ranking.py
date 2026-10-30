@@ -22,7 +22,7 @@
 import json
 import logging
 from dataclasses import asdict
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from uuid import uuid4
 
 from packages.valory.skills.chatui_abci.tool_keys import tool_names
@@ -57,7 +57,7 @@ QUIET_LOGGER.disabled = True
 
 
 class RankingRequestBehaviour(SamplingBehaviour):
-    """A behaviour that requests a ranking of the candidate markets when the list needs renewing."""
+    """A behaviour that requests a ranking of the candidate markets when a list or its queued part is due."""
 
     matching_round = RankingRequestRound  # type: ignore[assignment]
 
@@ -67,18 +67,30 @@ class RankingRequestBehaviour(SamplingBehaviour):
         return QUIET_LOGGER
 
     def _has_room_to_trade(self, bet: Bet) -> bool:
-        """Whether a bet can still be won: no side near certainty and, on Polymarket, a spread the book check accepts."""
-        if max(bet.outcomeTokenMarginalPrices) > self.params.ranking_max_price:
-            return False
-        spread = bet.market_spread
-        return not (
-            self.params.is_running_on_polymarket
-            and spread is not None
-            and spread > self.params.polymarket_spread_max
+        """Whether the book stored at the last fetch passes the Polymarket book check; true when none is stored."""
+        bid, ask = bet.best_bid, bet.best_ask
+        if not self.params.is_running_on_polymarket or (bid is None and ask is None):
+            return True
+
+        def level(price: Optional[float]) -> List[Dict[str, Any]]:
+            return [] if price is None or not 0 < price < 1 else [{"price": price}]
+
+        # the first outcome's book, then the second as its complement, rounded
+        # as the CLOB prints prices so a spread at the band's edge compares alike
+        sides = (
+            (level(ask), level(bid)),
+            (
+                level(None if bid is None else round(1 - bid, 4)),
+                level(None if ask is None else round(1 - ask, 4)),
+            ),
+        )
+        lo, hi = self.params.polymarket_spread_min, self.params.polymarket_spread_max
+        return any(
+            self._side_rejection(asks, bids, lo, hi) is None for asks, bids in sides
         )
 
-    def _ranking_batch(self) -> List[Bet]:
-        """Get the markets to rank, empty when the list needs no renewal."""
+    def _ranking_batch(self) -> Tuple[List[Bet], int]:
+        """Get the markets to rank in today's order and the list's stamp; no markets when no request is due."""
         # unset until the first redeem round reaches consensus
         tools = self.synchronized_data.db.get("available_mech_tools", None)
         if not (
@@ -88,54 +100,62 @@ class RankingRequestBehaviour(SamplingBehaviour):
             and RANKING_TOOL in tool_names(json.loads(tools))
             and self.params.slot_count == BINARY_N_SLOTS
         ):
-            return []
+            return [], 0
 
         now = self.synced_timestamp
         available, _ = self._processable_bets(now)
-        # One market per Polymarket event, none from an event already held:
-        # the rungs of one event are one question.
-        events = {bet.poly_event_id for bet in self.bets if bet.has_investments}
-        eligible = [
-            bet
-            for bet in self._drop_disabled_tags(available)
-            if bet.queue_status == QueueStatus.TO_PROCESS
-            and not bet.invested_amount
-            and self._pick_filter_reason(bet) is None
-            and self._has_room_to_trade(bet)
-        ]
-        candidates = []
-        for bet in self._sort_by_priority_logic(eligible):
-            if bet.poly_event_id is None or bet.poly_event_id not in events:
-                events.add(bet.poly_event_id)
-                candidates.append(bet)
+        # The untried markets Sampling could pick and its book check would
+        # pass, so the list holds every one the pick could send to a mech; a
+        # market with a failed book check follows today's order, as on the list.
+        candidates = self._sort_by_priority_logic(
+            [
+                bet
+                for bet in self._drop_disabled_tags(available)
+                if bet.queue_status == QueueStatus.TO_PROCESS
+                and not bet.invested_amount
+                and not bet.processed_timestamp
+                and self._pick_filter_reason(bet) is None
+                and self._has_room_to_trade(bet)
+            ]
+        )
         latest = max((bet.ranked_at for bet in self.bets), default=0)
-        if now - latest >= RANKING_MAX_AGE and len(candidates) >= RANKING_MIN_MARKETS:
-            return candidates[:RANKING_MAX_MARKETS]
+        if now - latest >= RANKING_MAX_AGE:
+            return (
+                (candidates, now) if len(candidates) >= RANKING_MIN_MARKETS else ([], 0)
+            )
+        # Markets a renewal could not fit in its request go next, on the same
+        # list. The queue is sent once: a market that misses it (prices or book
+        # changed) counts as never ranked and waits for a renewal.
+        queued = [bet for bet in candidates if latest > 0 and bet.ranked_at == -latest]
+        missed = [bet for bet in self.bets if latest > 0 and bet.ranked_at == -latest]
+        for bet in missed:
+            bet.ranked_at = 0
+        if queued:
+            return queued, latest
+        if missed:
+            self.store_bets()
         # A used-up list renews only with never-ranked markets, so markets
         # whose books keep failing cannot bring a ranking every cooldown.
-        never_ranked = sum(not bet.ranked_at for bet in candidates)
-        # the list counts as used up on the whole pool, not only on the
-        # markets that represent their event in this batch
-        if self._ranked_list(eligible) or never_ranked < RANKING_MIN_MARKETS:
-            return []
-        # never-ranked markets go first, so this renewal brings them into the
-        # batch and a list left unscored cannot be re-sent every period
-        return sorted(candidates, key=lambda bet: bool(bet.ranked_at))[
-            :RANKING_MAX_MARKETS
-        ]
+        never_ranked = sum(bet.ranked_at <= 0 for bet in candidates)
+        if self._ranked_list(candidates) or never_ranked < RANKING_MIN_MARKETS:
+            return [], 0
+        return candidates, now
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             agent = self.context.agent_address
-            now = self.synced_timestamp
-            batch = self._ranking_batch()
+            candidates, stamp = self._ranking_batch()
+            batch = candidates[:RANKING_MAX_MARKETS]
             payload = RankingRequestPayload(agent, None, None, None, None)
             if batch:
                 # The stamp is stored before the request, so a lost answer
                 # cannot bring another ranking before the list expires.
                 for bet in batch:
-                    bet.ranked_at, bet.research_score = now, None
+                    bet.ranked_at, bet.research_score = stamp, None
+                # the rest is queued for the next request of the same list
+                for bet in candidates[RANKING_MAX_MARKETS:]:
+                    bet.ranked_at, bet.research_score = -stamp, None
                 self.store_bets()
                 markets = [
                     {
@@ -149,7 +169,8 @@ class RankingRequestBehaviour(SamplingBehaviour):
                 metadata = MechMetadata(prompt, RANKING_TOOL, str(uuid4()))
                 self.shared_state.mech_timed_out = False
                 self.context.logger.info(
-                    f"[RANKING] requesting a ranking of {len(batch)} markets."
+                    f"[RANKING] requesting a ranking of {len(batch)} markets "
+                    f"({len(candidates) - len(batch)} queued for the next request)."
                 )
                 payload = RankingRequestPayload(
                     agent,
@@ -193,8 +214,10 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
                 bet.research_score = float(score)
                 stored += 1
         self.store_bets()
+        # a list sent in two requests counts the scores of both
+        unscored = sum(bet.research_score is None for bet in listed)
         self.context.logger.info(
-            f"[RANKING] stored={stored} unscored={len(listed) - stored} "
+            f"[RANKING] stored={stored} unscored={unscored} "
             f"answer_entries={len(scores)}"
         )
 

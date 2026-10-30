@@ -163,8 +163,8 @@ def _behaviour(
     params.exclude_neg_risk_markets = True
     params.disabled_polymarket_tags = ["weather"]
     params.enable_market_ranking = True
-    params.ranking_max_price = 0.85
     params.ranking_min_score = 0.5
+    params.polymarket_spread_min = 0.0
     params.polymarket_spread_max = 0.1
     behaviour.__dict__["_context"] = context
     behaviour.bets = bets
@@ -363,25 +363,33 @@ def test_row_4_renewal_rule() -> None:
     assert _request(skewed + few_fresh).mech_tool is None
     assert _sampled(skewed + few_fresh) == "m38"
 
-    # at most 100 markets go into one request, today's first ones
+    # one request takes today's first 100 markets; the next period sends the
+    # rest on the same list
     many = [_bet(i) for i in range(RANKING_MAX_MARKETS + 20)]
     ids = _ranked_ids(_request(many))
     assert len(ids) == RANKING_MAX_MARKETS and ids[0] == f"m{len(many) - 1}"
+    assert {bet.ranked_at for bet in many} == {NOW, -NOW}
+    rest = _ranked_ids(_request(many, now=NOW + 60))
+    assert sorted(rest) == sorted(f"m{i}" for i in range(20))
+    assert {bet.ranked_at for bet in many} == {NOW}
 
-    # an unscored answer: the next period sends the 20 never-ranked markets
-    # first, and the one after sends nothing
+    # an unscored answer: nothing is re-sent while no market was never ranked
     _receive(many, None)
-    later = _ranked_ids(_request(many, now=NOW + 60))
-    assert {f"m{i}" for i in range(20)} <= set(later)
     assert _request(many, now=NOW + 120).mech_tool is None
 
-    # a 24 h renewal keeps today's order: the most liquid markets, not the tail
+    # a 24 h renewal keeps today's order, and drops what an old list still had queued
     pool = [_bet(i) for i in range(180)]
     first = _ranked_ids(_request(pool))
     for bet in pool:
-        if bet.ranked_at:
+        if bet.ranked_at == NOW:
             bet.research_score = 0.9
+    # never-ranked markets less liquid than today's first 100 stay behind them
+    pool += [_bet(i, scaledLiquidityMeasure=1.0) for i in range(200, 220)]
     assert _ranked_ids(_request(pool, now=NOW + RANKING_MAX_AGE)) == first
+    assert {bet.ranked_at for bet in pool} == {
+        NOW + RANKING_MAX_AGE,
+        -NOW - RANKING_MAX_AGE,
+    }
 
 
 @pytest.mark.parametrize(
@@ -591,18 +599,71 @@ def test_review_fixes() -> None:
     assert listed[3].research_score == 0.9 and listed[2].research_score is None
 
 
-def test_room_to_trade_and_score_floor() -> None:
-    """Near-certain prices and wide spreads stay out of the list; low scores follow today's order."""
-    bets = [_bet(i) for i in range(12)]
-    bets[0].outcomeTokenMarginalPrices = [0.86, 0.14]  # above ranking_max_price
-    bets[1].market_spread = 0.2  # wider than the book check accepts
-    bets[2].market_spread = 0.05
+def _run(gen: Generator) -> Any:
+    """Run a generator to the end and return its value."""
+    while True:
+        try:
+            next(gen)
+        except StopIteration as stop:
+            return stop.value
+
+
+def _gamma_books(bet: Bet) -> Dict[str, Dict[str, Any]]:
+    """The order books the book check reads, built from a market's best bid and ask."""
+
+    def level(price: Optional[float]) -> List[Dict[str, Any]]:
+        return [] if price is None or not 0 < price < 1 else [{"price": str(price)}]
+
+    bid, ask = bet.best_bid, bet.best_ask
+    return {
+        "t-yes": {"asks": level(ask), "bids": level(bid)},
+        "t-no": {
+            "asks": level(None if bid is None else float(f"{1 - bid:.2f}")),
+            "bids": level(None if ask is None else float(f"{1 - ask:.2f}")),
+        },
+    }
+
+
+def _book_check(bet: Bet) -> bool:
+    """Run Sampling's book check on the books of the market's stored best bid and ask."""
+    sampler = _behaviour(SamplingBehaviour, [bet])
+
+    def send(request: Dict[str, Any]) -> Generator[None, None, Dict[str, Any]]:
+        yield
+        return _gamma_books(bet)[request["params"]["token_id"]]
+
+    sampler.send_polymarket_connection_request = send
+    return _run(sampler._book_can_take_bet(bet))
+
+
+TOKENS = {"Yes": "t-yes", "No": "t-no"}
+BOOKS = [
+    (0.45, 0.5),  # spread 0.05: accepted
+    (0.3, 0.5),  # spread 0.2: rejected
+    (0.02, 1.0),  # no Yes ask; No asks 0.98 with no bid: accepted
+    (0.0, 0.995),  # Yes ask 0.995 and no No ask: rejected
+    (0.004, 0.9),  # No ask 0.996; Yes ask 0.9 with spread 0.896: rejected
+    (0.41, 0.51),  # spread 0.1 at the band's edge: accepted
+    (None, 0.5),  # no bid stored: the Yes side has asks and no spread, accepted
+    (None, None),  # not stored: accepted, as an unreadable book
+]
+
+
+def test_book_rule_and_score_floor() -> None:
+    """The list leaves out the markets the book check would reject on their stored book; low scores follow today's order."""
+    bets = [_bet(i, outcome_token_ids=TOKENS) for i in range(14)]
+    for bet, (bid, ask) in zip(bets, BOOKS):
+        bet.best_bid, bet.best_ask = bid, ask
     ids = _ranked_ids(_request(bets))
-    assert "m0" not in ids and "m1" not in ids and "m2" in ids
-    # the spread rule applies on Polymarket only
-    omen = _behaviour(RankingRequestBehaviour, bets)
-    omen.context.params.is_running_on_polymarket = False
-    assert omen._has_room_to_trade(bets[1]) and not omen._has_room_to_trade(bets[0])
+    assert {"m1", "m3", "m4"}.isdisjoint(ids)
+    assert {"m0", "m2", "m5", "m6", "m7", "m8"} <= set(ids)
+    # the stored rule is Sampling's book check on the same prices
+    requester = _behaviour(RankingRequestBehaviour, bets)
+    for bet in bets[: len(BOOKS) - 1]:
+        assert requester._has_room_to_trade(bet) is _book_check(bet)
+    # the book rule applies on Polymarket only
+    requester.context.params.is_running_on_polymarket = False
+    assert requester._has_room_to_trade(bets[1])
 
     # list markets scored under ranking_min_score follow today's order
     listed = _listed(12)
@@ -610,11 +671,6 @@ def test_room_to_trade_and_score_floor() -> None:
     assert _sampled(listed) == "m4"
     listed[4].research_score = 0.45
     assert _sampled(listed) == _todays_pick(listed) == "m11"
-
-    # a refetch refreshes the stored spread
-    stored, fetched = _bet(1, market_spread=0.3), _bet(1, market_spread=0.04)
-    stored.update_market_info(fetched)
-    assert stored.market_spread == 0.04
 
 
 def test_weighted_pick_spreads_over_the_list() -> None:
@@ -644,30 +700,51 @@ def test_weighted_pick_spreads_over_the_list() -> None:
     assert listed[sampler._sampled_bet_idx(listed)].id in {b.id for b in listed}
 
 
-def test_one_market_per_event() -> None:
-    """A ranking sends one market per Polymarket event, none from an event already held."""
-    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
-    rungs = [_bet(i, poly_event_id="ladder") for i in range(20, 24)]
-    held = _bet(30, poly_event_id="e5", investments={"Yes": [5], "No": []})
-    unknown = [_bet(i) for i in range(40, 42)]  # stored before the event id existed
-    ids = _ranked_ids(_request(bets + rungs + [held] + unknown))
-    assert set(ids) & {"m20", "m21", "m22", "m23"} == {"m23"}  # the most liquid rung
-    assert "m5" not in ids and "m30" not in ids
-    assert {"m40", "m41"} <= set(ids)
-
-    # a listed rung whose unranked sibling became more liquid does not renew a fresh list
-    listed = [
-        _bet(100 + i, poly_event_id=f"e{i}", ranked_at=NOW - 60, research_score=0.9)
-        for i in range(12)
+def test_the_list_holds_every_market_todays_pick_could_send() -> None:
+    """Every untried market Sampling's checks and book check accept is ranked, the markets of one event included."""
+    accepted = [
+        _bet(i, title="Will Trump say X?", best_bid=0.45, best_ask=0.5)
+        for i in range(150)
     ]
-    siblings = [
-        _bet(200 + i, poly_event_id=f"e{i}", scaledLiquidityMeasure=500.0)
-        for i in range(12)
+    rejected = [
+        _bet(300, outcomeTokenMarginalPrices=[0.85, 0.15]),
+        _bet(301, neg_risk=True),
+        _bet(302, poly_tags=["weather"]),
+        _bet(303, best_bid=0.2, best_ask=0.5),
+        _bet(304, queue_status=QueueStatus.PROCESSED),
     ]
-    assert _request(listed + siblings).mech_tool is None
-    assert _sampled(listed + siblings) in {b.id for b in listed}
+    pool = accepted + rejected
+    sent = _ranked_ids(_request(pool)) + _ranked_ids(_request(pool, now=NOW + 60))
+    assert sorted(sent) == sorted(bet.id for bet in accepted)
+    assert {bet.ranked_at for bet in accepted} == {NOW}
+    assert {bet.ranked_at for bet in rejected} == {0}
 
-    # a refetch refreshes the stored event id
-    stored, fetched = _bet(1), _bet(1, poly_event_id="e1")
-    stored.update_market_info(fetched)
-    assert stored.poly_event_id == "e1"
+    # a market of the second request is picked like one of the first
+    for bet in accepted:
+        bet.research_score = 0.0
+    accepted[0].research_score = 0.9
+    assert _sampled(pool) == "m0"
+
+
+def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
+    """A queued market that misses its request waits for a renewal; a failed book check keeps a market off the list."""
+    pool = [_bet(i) for i in range(RANKING_MAX_MARKETS + 5)]
+    _request(pool)
+    queued = [bet for bet in pool if bet.ranked_at == -NOW]
+    assert len(queued) == 5
+    # two queued markets are skewed when the queue goes out: three are sent
+    for bet in queued[:2]:
+        bet.outcomeTokenMarginalPrices = [0.95, 0.05]
+    assert len(_ranked_ids(_request(pool, now=NOW + 60))) == 3
+    assert {bet.ranked_at for bet in queued[:2]} == {0}
+    # back in range, they bring no request of their own while the list is in use
+    for bet in queued[:2]:
+        bet.outcomeTokenMarginalPrices = [0.5, 0.5]
+    assert _request(pool, now=NOW + 120).mech_tool is None
+
+    # a market whose book check failed is not a candidate, so it is never queued
+    untried = [_bet(i) for i in range(RANKING_MAX_MARKETS)]
+    stamped = [_bet(200 + i, processed_timestamp=NOW - 2 * COOLDOWN) for i in range(3)]
+    assert len(_ranked_ids(_request(untried + stamped))) == RANKING_MAX_MARKETS
+    assert all(bet.ranked_at == 0 for bet in stamped)
+    assert _request(untried + stamped, now=NOW + 60).mech_tool is None

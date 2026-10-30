@@ -2194,7 +2194,6 @@ class TestFetchMarketsByTagSlug:
         assert result[0]["_poly_tags"] == ["politics", "elections"]
         assert result[1]["_poly_tags"] == ["politics", "elections"]
         assert result[2]["_poly_tags"] == ["world"]
-        assert [m["_poly_event_id"] for m in result] == ["e1", "e1", "e2"]
 
     def test_paginates_until_next_cursor_absent(self) -> None:
         """Paginates /events/keyset until a response omits next_cursor."""
