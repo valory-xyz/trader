@@ -32,6 +32,8 @@ class RequestType(Enum):
     QUOTE_BUY = "quote_buy"
     FETCH_MARKETS = "fetch_markets"
     FETCH_MARKET = "fetch_market"
+    # Which of the given market ids Gamma reports closed.
+    FETCH_CLOSED_MARKET_IDS = "fetch_closed_market_ids"
     GET_POSITIONS = "get_positions"
     FETCH_ALL_POSITIONS = "fetch_all_positions"
     GET_TRADES = "get_trades"

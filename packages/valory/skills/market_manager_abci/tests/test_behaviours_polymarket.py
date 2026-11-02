@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     YIELD_EVERY_N_MARKETS,
 )
@@ -2289,6 +2291,76 @@ class TestUpdateBets:
 
         assert len(behaviour.bets) == 1
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
+
+    def test_live_bets_missing_from_the_fetch_are_checked(self) -> None:
+        """The live bets the fetch did not return go to the closed-state check."""
+        behaviour = _make_behaviour()
+        behaviour.bets = [_make_bet(id="fetched"), _make_bet(id="stale")]
+        behaviour._fetch_markets_from_polymarket = _return_gen([{"id": "fetched"}])  # type: ignore[method-assign]
+        behaviour._process_chunk = _return_gen(None)  # type: ignore[method-assign]
+        behaviour._blacklist_expired_bets = MagicMock()  # type: ignore[method-assign]
+        check = MagicMock(side_effect=_return_gen(None))
+        behaviour._blacklist_closed_unfetched_bets = check  # type: ignore[method-assign]
+
+        _exhaust_gen(behaviour._update_bets())
+
+        check.assert_called_once_with({"fetched"})
+
+
+class TestBlacklistClosedUnfetchedBets:
+    """Tests for _blacklist_closed_unfetched_bets."""
+
+    def test_blacklists_only_the_closed_unfetched_bets(self) -> None:
+        """Only live unfetched bets are sent; the closed ones are blacklisted."""
+        behaviour = _make_behaviour()
+        fetched, closed, still_open = (
+            _make_bet(id="fetched"),
+            _make_bet(id="closed"),
+            _make_bet(id="open"),
+        )
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        behaviour.bets = [fetched, closed, still_open, expired]
+        request = MagicMock(side_effect=_return_gen(["closed"]))
+        behaviour.send_polymarket_connection_request = request  # type: ignore[method-assign]
+
+        _exhaust_gen(behaviour._blacklist_closed_unfetched_bets({"fetched"}))
+
+        request.assert_called_once_with(
+            {
+                "request_type": "fetch_closed_market_ids",
+                "params": {"market_ids": ["closed", "open"]},
+            }
+        )
+        assert closed.queue_status.is_expired()
+        assert not fetched.queue_status.is_expired()
+        assert not still_open.queue_status.is_expired()
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist input=2 dropped=1 kept=1"
+        )
+
+    def test_no_unfetched_bets_sends_no_request(self) -> None:
+        """When the fetch returned every live bet, Gamma is not asked."""
+        behaviour = _make_behaviour()
+        behaviour.bets = [_make_bet(id="fetched")]
+        behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
+
+        _exhaust_gen(behaviour._blacklist_closed_unfetched_bets({"fetched"}))
+
+        behaviour.send_polymarket_connection_request.assert_not_called()
+
+    @pytest.mark.parametrize("response", [None, {"error": "timeout"}])
+    def test_a_failed_check_blacklists_nothing(self, response: Any) -> None:
+        """A failed check leaves every bet live for the next period."""
+        behaviour = _make_behaviour()
+        stale = _make_bet(id="stale")
+        behaviour.bets = [stale]
+        behaviour.send_polymarket_connection_request = _return_gen(response)  # type: ignore[method-assign]
+
+        _exhaust_gen(behaviour._blacklist_closed_unfetched_bets(set()))
+
+        assert not stale.queue_status.is_expired()
+        behaviour.context.logger.warning.assert_called_once()
 
 
 # ===========================================================================
