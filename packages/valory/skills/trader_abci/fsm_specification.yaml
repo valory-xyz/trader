@@ -130,6 +130,8 @@ states:
 - PreTxSettlementRound
 - RandomnessRound
 - RandomnessTransactionSubmissionRound
+- RankingReceiveRound
+- RankingRequestRound
 - RedeemRound
 - RedeemRouterRound
 - RegistrationRound
@@ -256,7 +258,7 @@ transition_func:
     (MechRequestRound, OFFCHAIN_DONE): MechResponseRound
     (MechRequestRound, ROUND_TIMEOUT): MechRequestRound
     (MechRequestRound, SKIP_REQUEST): CallCheckpointRound
-    (MechResponseRound, DONE): DecisionReceiveRound
+    (MechResponseRound, DONE): RankingReceiveRound
     (MechResponseRound, NO_MAJORITY): MechResponseRound
     (MechResponseRound, ROUND_TIMEOUT): HandleFailedTxRound
     (MechVersionDetectionRound, NO_MAJORITY): MechVersionDetectionRound
@@ -362,7 +364,7 @@ transition_func:
     (PreTxSettlementRound, NO_MAJORITY): PreTxSettlementRound
     (PreTxSettlementRound, REFILL_REQUIRED): PreTxSettlementRound
     (PreTxSettlementRound, ROUND_TIMEOUT): PreTxSettlementRound
-    (RandomnessRound, DONE): SamplingRound
+    (RandomnessRound, DONE): RankingRequestRound
     (RandomnessRound, NONE): ImpossibleRound
     (RandomnessRound, NO_MAJORITY): RandomnessRound
     (RandomnessRound, ROUND_TIMEOUT): RandomnessRound
@@ -370,6 +372,14 @@ transition_func:
     (RandomnessTransactionSubmissionRound, NONE): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, NO_MAJORITY): RandomnessTransactionSubmissionRound
     (RandomnessTransactionSubmissionRound, ROUND_TIMEOUT): RandomnessTransactionSubmissionRound
+    (RankingReceiveRound, DONE): CallCheckpointRound
+    (RankingReceiveRound, NONE): DecisionReceiveRound
+    (RankingReceiveRound, NO_MAJORITY): RankingReceiveRound
+    (RankingReceiveRound, ROUND_TIMEOUT): RankingReceiveRound
+    (RankingRequestRound, DONE): MechRequestRound
+    (RankingRequestRound, NONE): SamplingRound
+    (RankingRequestRound, NO_MAJORITY): RankingRequestRound
+    (RankingRequestRound, ROUND_TIMEOUT): RankingRequestRound
     (RedeemRound, DONE): PreTxSettlementRound
     (RedeemRound, MOCK_TX): SamplingRound
     (RedeemRound, NO_MAJORITY): RedeemRound

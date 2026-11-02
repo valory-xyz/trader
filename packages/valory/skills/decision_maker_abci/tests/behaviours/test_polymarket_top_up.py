@@ -350,7 +350,7 @@ class TestPolymarketTopUpBehaviour:
         conn.client = MagicMock()
         conn.builder_config = None
         conn.dw_address = DW
-        conn._ensure_dw_funder = MagicMock()  # type: ignore[method-assign]
+        conn._ensure_dw_funder = MagicMock(return_value=None)  # type: ignore[method-assign]
         conn.client.calculate_market_price.return_value = 0.98
 
         def _adjust(_tok, amount, _price, balance, _builder=None):  # type: ignore[no-untyped-def]

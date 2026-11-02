@@ -22,7 +22,17 @@
 import re
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    cast,
+)
 from urllib.parse import urlparse
 
 from aea.protocols.base import Message
@@ -74,6 +84,15 @@ TendermintHandler = BaseTendermintHandler
 
 
 FSM_REPR_MAX_DEPTH = 25
+POLYMARKET_UNREACHABLE_ISSUE = {
+    "code": "polymarket_unreachable",
+    "title": "Can't reach Polymarket",
+    "description": (
+        "Polystrat can't connect to Polymarket's trading service, so it has "
+        "stopped asking for predictions to avoid paying for ones it can't act "
+        "on. It resumes on its own once Polymarket is reachable again."
+    ),
+}
 
 
 class IpfsHandler(AbstractResponseHandler):
@@ -468,6 +487,7 @@ class HttpHandler(BaseHttpHandler):
                 "activity_completed": activity_completed,
                 "has_required_funds": has_required_funds,
                 "staking_status": staking_status,
+                "issues": self._agent_issues(),
             },
             "rounds_info": self.rounds_info,
         }
@@ -490,6 +510,19 @@ class HttpHandler(BaseHttpHandler):
         # Send response
         self.context.logger.info("Responding with: {}".format(http_response))
         self.context.outbox.put_message(message=http_response)
+
+    def _agent_issues(self) -> List[Dict[str, Any]]:
+        """The problems the user should know about, written for display."""
+        shared_state = cast(SharedState, self.context.state)
+        threshold = self.context.params.orderbook_unavailable_threshold
+        if not shared_state.is_orderbook_unavailable(threshold):
+            return []
+        return [
+            {
+                **POLYMARKET_UNREACHABLE_ISSUE,
+                "since": shared_state.orderbook_failing_since,
+            }
+        ]
 
     def _check_required_funds(self) -> bool:
         """Check the agent has enough funds."""

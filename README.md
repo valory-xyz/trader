@@ -154,6 +154,7 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 | `CREATOR_PER_SUBGRAPH` | Dict mapping market-spec subgraph name to creator addresses to track (Omen-only by default). |
 | `DEFAULT_ACTIVITY_GOAL` | Trades the agent places per staking epoch before standing by, unless the user sets their own goal in the chat. Standby also needs the staking target met. `8` for Omenstrat, `1` for Polystrat; `aea-config.yaml` defaults to `8`. |
 | `DECLINED_MARKET_COOLDOWN` | Seconds a market stays unsampleable after a decision that left no position (a decline or a full sell), so a small pool waits instead of paying the mech again. Default `3600`; `0` turns it off. |
+| `ORDERBOOK_UNAVAILABLE_THRESHOLD` | Polymarket only. Consecutive order-book fetches the CLOB did not serve (no answer, a 5xx, or a 403/451 block), after which the agent stops requesting the mech and reports `polymarket_unreachable` in `/healthcheck`'s `agent_health.issues`, until a fetch reaches the CLOB again. A 404 or 429 counts as reached. Default `5`. |
 | `PROMPT_TEMPLATE` | Single-line prompt for the prediction Mech, with `@{question}`, `@{yes}`, `@{no}` placeholders. |
 
 `POLYGON_LEDGER_CHAIN_ID` / `GNOSIS_LEDGER_CHAIN_ID` exist too but default to the right values (137 / 100), so you don't normally need to set them.
@@ -204,7 +205,9 @@ uv run autonomy deploy run --build-dir $build_dir
 
 ### Pearl-distributed binary
 
-Production agents run as a PyInstaller-packaged single-file binary built by `make build-agent-runner` (Linux/Windows) or `make build-agent-runner-mac` (macOS, with codesign). The output `dist/agent_runner_bin` is what Pearl ships to end users. `make check-agent-runner` smoke-tests the resulting binary.
+Production agents run as a PyInstaller-packaged single-file binary built by `make build-agent-runner` (Linux/Windows) or `make build-agent-runner-mac` (macOS, with codesign) from `pyinstaller/agent_bin.py`. The output `dist/agent_runner_bin` is what Pearl ships to end users. `make check-agent-runner` smoke-tests the resulting binary.
+
+Besides the `aea` commands, the binary has `prestart-check --service-dir <service package>`, which Pearl runs before a start. It prints `{"status": "passed" | "failed", "issues": [...]}` and exits `0` or `1` (`2` when it cannot read the package); for Polystrat it fails when the Polymarket hosts do not answer from this machine.
 
 ### Create a release
 
@@ -327,7 +330,7 @@ If you add or remove a dependency:
 ## Notes on profitability
 
 - If the agent does not have enough funds to place a bet, you'll see `Event.INSUFICIENT_FUNDS` in the logs.
-- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600).
+- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600), except one whose decision could not reach the CLOB for any of its order books.
 - For Omen, fees are queryable via the [Omen subgraph on The Graph](https://thegraph.com/explorer); they have historically sat around 0.02 xDAI but should be re-checked.
 - For Polymarket CLOB v2, fee math is delegated to the protocol — see `client.get_clob_market_info(condition_id)["fd"]`.
 

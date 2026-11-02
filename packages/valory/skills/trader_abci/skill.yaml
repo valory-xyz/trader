@@ -9,15 +9,15 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
   behaviours.py: bafybeigdyc5tl3cggwi2kjuygwawkp5fc2akqhp3gczumycavi44ej6r6i
-  composition.py: bafybeiatal5ffgjuf4s5shs37wfnyvstsqnt4uxwrfcvyk6x5isps72f34
+  composition.py: bafybeie7gcusfom44mwydtlfj447qsxw5zfe4hjwf32yrk2tp77nvfbuf4
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeicpxmtygttwpc4eupbul6z6sbeafwcqjmgpu2hkrl5cx4i2435pbe
+  fsm_specification.yaml: bafybeihrnxolrwg7zl62hi2ldevtwyjrze3l7p5jkd73qmkmvjhmu3r3lu
   handlers.py: bafybeicdamuu3eptxnuftb4dkdn46sopg4nmyjsnmwlinsgitgt6cs4izm
   models.py: bafybeiefga6y4rqanb3n4czpthj5pka62uhhwlthwjazul6mjkejf6xqcu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeibq6z5rwgusrjxbv5jvfnyc2sfjlxd7saydiagq6lgio5tvp4rkwy
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeihatmgxqn4setgli67ipsdc5pto73dpcrewlsty7oukqigyxgomha
+  tests/test_composition.py: bafybeihb4mbwraarrqq6imil6cowhifn3z4e2lif3o4ylolenwonljdcde
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
   tests/test_handlers.py: bafybeig6ljhznorgwy64ifb7qwjokhqc7ja67d3nua7jlre3grcpoj7jpq
   tests/test_models.py: bafybeicypkna3ikkhfvxpirmzspyqdnml66m6yajo6r64r3eylhx4dmkum
@@ -47,15 +47,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeih4nfq3kadbsbuqpd5buhh2jvkdphrind6tyoaozjk4xs4hek4r5y
-- valory/decision_maker_abci:0.1.0:bafybeiadwsnbmr4pcmn3wvbb2vfyrw5hpweg55tihofus7utxrzov4qfa4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigsctpfdyljhh7nlnfe5oivnapkg3dprdyazhsjlplbm7467zfhzq
+- valory/market_manager_abci:0.1.0:bafybeidi5oglqgopralkhayhc5ypju6vqtjwzjc6ry445nlady622juqvu
+- valory/decision_maker_abci:0.1.0:bafybeicq22nsqgwlw47toq6jtjw2oj5ezrkr7g62idmumypxpzlrdljmnq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeib6fp4a5p5lam3gyv2iyx32vxfmkp6aqhhjol4rl4st4romwf75dm
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeibjmngknbboz2dtghqbwxxbyi5aaoawjgykelu75k36cywymcvjza
+- valory/check_stop_trading_abci:0.1.0:bafybeifk55e6ulhymjuykb6odsvmghu76gqnqovokitkacu66cghajf66u
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeihfn42katqlxemwkdq2kzz2cyl5efaau64j7ts64fhvdjtb6nqacy
-- valory/agent_performance_summary_abci:0.1.0:bafybeicpuqvcnt4v5w4nrgpa4dbyt7foxvy5u4xbtbvajkk223rbv634ma
+- valory/chatui_abci:0.1.0:bafybeigm22n2t35er6omrxvf6lhkqa2ft3xwpfsmfl23mumedcuvmm5l7y
+- valory/agent_performance_summary_abci:0.1.0:bafybeifsznpsu5547xdpdyx4bywgghlctooi2hhghab4axoesns3znus6i
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -232,6 +232,7 @@ models:
       mech_wrapped_native_token_address: '0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d'
       sample_bets_closing_days: 10
       declined_market_cooldown: 3600
+      orderbook_unavailable_threshold: 5
       polymarket_spread_min: 0.0
       polymarket_spread_max: 1.0
       trading_strategy: strategy_name
@@ -359,6 +360,8 @@ models:
       is_outcome_side_threshold_filter_enabled: false
       outcome_side_threshold_filter_threshold: 0.8
       exclude_neg_risk_markets: false
+      enable_market_ranking: false
+      ranking_min_score: 0.5
       deliveries_lookback_days: 30
       delivery_rate_caps:
         native: 10000000000000000

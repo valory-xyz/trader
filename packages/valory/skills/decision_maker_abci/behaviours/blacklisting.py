@@ -53,8 +53,13 @@ class BlacklistingBehaviour(  # type: ignore
         sampled_bet.queue_status = sampled_bet.queue_status.next_status()
         # Among equal invested_amount the sampler takes the least recently
         # processed bet, so stamp the decline or the same market is re-picked.
-        if not self.benchmarking_mode.enabled:
+        # A decision without a readable order book is no decline.
+        if (
+            not self.benchmarking_mode.enabled
+            and not self.shared_state.orderbook_fetch_failed
+        ):
             sampled_bet.processed_timestamp = self.synced_timestamp
+        self.shared_state.orderbook_fetch_failed = False
 
     def async_act(self) -> Generator:
         """Do the action."""
@@ -68,8 +73,10 @@ class BlacklistingBehaviour(  # type: ignore
         if not success:
             self.context.logger.info("Policy setup failed, skipping blacklisting.")
             return
-        # if the tool selection has not been run for the current period, do not do anything
-        if not self.synchronized_data.has_tool_selection_run:
+        # if the tool selection has not been run for the current period, or the
+        # mech request was a ranking, there is no sampled bet: do not do anything
+        synced_data = self.synchronized_data
+        if not synced_data.has_tool_selection_run or synced_data.is_ranking_period:
             policy = self.policy.serialize()
             payload = BlacklistingPayload(self.context.agent_address, None, policy)
             yield from self.finish_behaviour(payload)

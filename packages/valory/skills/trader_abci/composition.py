@@ -53,9 +53,6 @@ from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciA
 from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
     CheckBenchmarkingModeRound,
 )
-from packages.valory.skills.decision_maker_abci.states.decision_receive import (
-    DecisionReceiveRound,
-)
 from packages.valory.skills.decision_maker_abci.states.decision_request import (
     DecisionRequestRound,
 )
@@ -73,6 +70,7 @@ from packages.valory.skills.decision_maker_abci.states.final_states import (
     FinishedPolymarketWithdrawTopUpTxPreparationRound,
     FinishedPolymarketWrapCollateralTxPreparationRound,
     FinishedPostBetUpdateRound,
+    FinishedRankingRequestRound,
     FinishedRedeemTxPreparationRound,
     FinishedSetApprovalTxPreparationRound,
     FinishedWithoutDecisionRound,
@@ -104,6 +102,9 @@ from packages.valory.skills.decision_maker_abci.states.post_omen_withdraw import
     PostOmenWithdrawRound,
 )
 from packages.valory.skills.decision_maker_abci.states.randomness import RandomnessRound
+from packages.valory.skills.decision_maker_abci.states.ranking import (
+    RankingReceiveRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem_router import (
     RedeemRouterRound,
 )
@@ -220,9 +221,10 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedSubscriptionTxRound: RandomnessRound,
     FailedTransactionSubmissionRound: HandleFailedTxRound,
     FinishedDecisionRequestRound: MechRequestRound,
+    FinishedRankingRequestRound: MechRequestRound,
     FinishedMechRequestRound: PreTxSettlementRound,
     FinishedMechRequestTxRound: MechResponseRound,
-    FinishedMechResponseRound: DecisionReceiveRound,
+    FinishedMechResponseRound: RankingReceiveRound,
     FinishedMechResponseTimeoutRound: HandleFailedTxRound,
     # Mech-request skip, no-decision, and the off-chain Polymarket bet exit
     # all go straight to the staking checkpoint; any winnings produced this

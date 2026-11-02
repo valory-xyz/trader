@@ -50,6 +50,15 @@ class SamplingPayload(UpdateBetsPayload):
 
 
 @dataclass(frozen=True)
+class RankingRequestPayload(UpdateBetsPayload):
+    """Represents a transaction payload for requesting a ranking of the candidate markets."""
+
+    mech_requests: Optional[str]
+    mech_tool: Optional[str]
+    index: Optional[int]
+
+
+@dataclass(frozen=True)
 class MultisigTxPayload(BaseTxPayload):
     """Represents a transaction payload for preparing an on-chain transaction to be sent via the agents' multisig."""
 

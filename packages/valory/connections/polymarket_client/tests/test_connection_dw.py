@@ -164,6 +164,21 @@ class TestEnsureDwFunder:
         assert conn.client is new_client
         assert conn.dw_address == to_checksum_address(DW)
 
+    def test_build_failure_records_dw_and_leaves_no_client(self) -> None:
+        """An unreachable CLOB is reported, not raised, and the DW is kept."""
+        conn = _make_conn()
+        with patch.object(
+            _Conn,
+            "_build_clob_client",
+            side_effect=requests.exceptions.ConnectionError("reset by peer"),
+        ):
+            error = conn._ensure_dw_funder(DW)
+        assert error is not None
+        assert "reset by peer" in error
+        assert conn.client is None
+        assert conn._client_funder is None
+        assert conn.dw_address == to_checksum_address(DW)
+
     def test_build_clob_client(self) -> None:
         """_build_clob_client constructs a client and sets API creds."""
         conn = _make_conn()
@@ -201,6 +216,21 @@ class TestDeployDw:
         assert resp["deployed"] is True
         assert resp["dw_address"] == DW
         conn.relayer_proxy.deploy_dw.assert_not_called()
+
+    def test_deploy_existing_with_clob_unreachable(self) -> None:
+        """A registered DW is returned even when the CLOB client cannot be built."""
+        conn = _make_conn()
+        conn.dw_address = DW
+        conn.relayer_proxy.deployed.return_value = True
+        with patch.object(
+            _Conn,
+            "_build_clob_client",
+            side_effect=requests.exceptions.ConnectionError("reset by peer"),
+        ):
+            resp, err = conn._deploy_dw()
+        assert err is None
+        assert resp["deployed"] is True
+        assert resp["dw_address"] == DW
 
     def test_deploy_new(self) -> None:
         """_deploy_dw submits a deploy when the DW is not yet registered."""
@@ -443,6 +473,25 @@ class TestRelayerTx:
         assert resp["dw_address"] == DW
         ensure.assert_called_once_with(DW)
 
+    def test_mined_deploy_with_clob_unreachable_returns_dw(self) -> None:
+        """A mined deploy reports the DW even when the CLOB client cannot be built."""
+        conn = _make_conn()
+        conn.relayer_proxy.transaction.return_value = ("STATE_MINED", "0xhash")
+        with (
+            patch.object(_Conn, "_extract_dw_from_receipt", return_value=DW),
+            patch.object(
+                _Conn,
+                "_build_clob_client",
+                side_effect=requests.exceptions.ConnectionError("reset by peer"),
+            ),
+        ):
+            resp, err = conn._relayer_tx("tx", is_deploy=True)
+        assert err is None
+        assert resp["ok"] is True
+        assert resp["dw_address"] == DW
+        assert conn.dw_address == to_checksum_address(DW)
+        assert conn.client is None
+
     def test_mined_deploy_no_dw_in_receipt(self) -> None:
         """A mined deploy whose receipt has no DW log reports ok with no DW."""
         conn = _make_conn()
@@ -506,7 +555,7 @@ class TestFunderThreading:
         conn.client.create_market_order.return_value = MagicMock()
         conn.client.post_order.return_value = {"status": "matched"}
         with (
-            patch.object(_Conn, "_ensure_dw_funder") as ensure,
+            patch.object(_Conn, "_ensure_dw_funder", return_value=None) as ensure,
             patch(
                 "packages.valory.connections.polymarket_client.connection."
                 "_serialize_signed_order_v2",
@@ -528,7 +577,7 @@ class TestFunderThreading:
         }
         gamma = {"return_value.json.return_value": [{"version": "v1"}]}
         with (
-            patch.object(_Conn, "_ensure_dw_funder") as ensure,
+            patch.object(_Conn, "_ensure_dw_funder", return_value=None) as ensure,
             patch("requests.get", **gamma),
         ):
             calls = MagicMock()
@@ -537,3 +586,59 @@ class TestFunderThreading:
             conn._sell_position(token_id="1", amount=1.0, funder=DW)
         ensure.assert_called_once_with(DW)
         assert [name for name, *_ in calls.mock_calls] == ["ensure", "post_order"]
+
+    def test_place_bet_returns_error_when_the_dw_client_cannot_be_built(
+        self,
+    ) -> None:
+        """_place_bet answers with an error, without signing, when the CLOB is down."""
+        conn = _make_conn()
+        clob = conn.client
+        with patch.object(
+            _Conn,
+            "_build_clob_client",
+            side_effect=requests.exceptions.ConnectionError("reset by peer"),
+        ):
+            resp, err = conn._place_bet(token_id="1", amount=1.0, funder=DW)
+        assert "reset by peer" in err
+        assert resp == {"error": err}
+        clob.create_market_order.assert_not_called()
+
+    def test_quote_buy_returns_error_when_the_dw_client_cannot_be_built(
+        self,
+    ) -> None:
+        """_quote_buy answers with an error, without pricing, when the CLOB is down."""
+        conn = _make_conn()
+        clob = conn.client
+        with (
+            patch.object(
+                _Conn,
+                "_build_clob_client",
+                side_effect=requests.exceptions.ConnectionError("reset by peer"),
+            ),
+            patch.object(_Conn, "_read_dw_collateral_balance") as read_balance,
+        ):
+            resp, err = conn._quote_buy(token_id="1", amount=1.0, funder=DW)
+        assert "reset by peer" in err
+        assert resp == {"error": err}
+        read_balance.assert_not_called()
+        clob.calculate_market_price.assert_not_called()
+
+    def test_sell_position_returns_error_when_the_dw_client_cannot_be_built(
+        self,
+    ) -> None:
+        """_sell_position answers with an error, without selling, when the CLOB is down."""
+        conn = _make_conn()
+        clob = conn.client
+        with (
+            patch.object(
+                _Conn,
+                "_build_clob_client",
+                side_effect=requests.exceptions.ConnectionError("reset by peer"),
+            ),
+            patch("requests.get") as gamma,
+        ):
+            resp, err = conn._sell_position(token_id="1", amount=1.0, funder=DW)
+        assert "reset by peer" in err
+        assert resp == {"error": err}
+        gamma.assert_not_called()
+        clob.create_market_order.assert_not_called()
