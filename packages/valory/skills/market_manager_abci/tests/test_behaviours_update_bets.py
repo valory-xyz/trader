@@ -785,6 +785,19 @@ class TestProcessChunk:
         assert len(behaviour.bets) == 1
         assert behaviour.bets[0].scaledLiquidityMeasure == 20.0
 
+    def test_market_first_seen_empty_returns_once_it_has_liquidity(self) -> None:
+        """An Omen market stays blacklisted while empty and returns once funded."""
+        behaviour = _make_behaviour(bets=[])
+        behaviour._current_market = "omen_subgraph"
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=20.0)]))
+        assert behaviour.bets[0].queue_status == QueueStatus.FRESH
+        assert behaviour.bets[0].scaledLiquidityMeasure == 20.0
+
 
 class TestUpdateBets:
     """Tests for _update_bets."""

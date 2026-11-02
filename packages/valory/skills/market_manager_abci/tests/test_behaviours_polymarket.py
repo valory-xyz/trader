@@ -1097,6 +1097,42 @@ class TestProcessChunk:
             for call in log_calls
         )
 
+    def test_market_first_seen_empty_is_queued_once_it_has_liquidity(self) -> None:
+        """A market that lists empty is queued by the refresh that shows liquidity."""
+        behaviour = _make_behaviour(bets=[])
+        behaviour._current_market = "polymarket_client"
+        behaviour.context.params.use_multi_bets_mode = False
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0)]))
+        behaviour._bet_freshness_check_and_update()
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+
+        list(behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=5000.0)]))
+        behaviour._bet_freshness_check_and_update()
+        assert behaviour.bets[0].queue_status == QueueStatus.TO_PROCESS
+
+    def test_market_past_its_margin_is_blacklisted_again_after_liquidity(self) -> None:
+        """Liquidity does not bring back a market past its opening margin for good."""
+        behaviour = _make_behaviour(bets=[])
+        behaviour._current_market = "polymarket_client"
+        behaviour.context.params.opening_margin = 100
+        type(behaviour).synced_time = PropertyMock(return_value=5000000000)  # type: ignore[method-assign]
+        ended = dict(openingTimestamp=1000)
+
+        list(
+            behaviour._process_chunk([raw_bet("b1", scaledLiquidityMeasure=0, **ended)])
+        )
+        list(
+            behaviour._process_chunk(
+                [raw_bet("b1", scaledLiquidityMeasure=5000.0, **ended)]
+            )
+        )
+        behaviour._blacklist_expired_bets()
+
+        assert behaviour.bets[0].queue_status == QueueStatus.EXPIRED
+        assert behaviour.bets[0].processed_timestamp == sys.maxsize
+
 
 # ===========================================================================
 # Tests for _validate_trade
