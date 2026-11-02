@@ -784,17 +784,21 @@ class TestBetUpdateMarketInfo:
         assert bet.queue_status == QueueStatus.FRESH
         assert bet.outcomes == ["Yes", "No"]
 
-    def test_market_that_lost_its_liquidity_returns_with_its_investments(self) -> None:
-        """A market that runs dry and refills keeps what the agent holds in it."""
-        bet = _make_bet(investments={"Yes": [7], "No": []})
+    def test_live_market_that_drops_to_zero_stays_blacklisted(self) -> None:
+        """A market seen with liquidity stays blacklisted after a drop to zero."""
+        bet = _make_bet(scaledLiquidityMeasure=5.0, investments={"Yes": [7], "No": []})
 
         bet.update_market_info(_make_bet(scaledLiquidityMeasure=0))
         assert bet.queue_status == QueueStatus.EXPIRED
-        assert bet.scaledLiquidityMeasure == 0
+        assert bet.scaledLiquidityMeasure == 5.0
 
         bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
-        assert bet.queue_status == QueueStatus.FRESH
-        assert bet.invested_amount_yes == 7
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.processed_timestamp == sys.maxsize
+        assert bet.outcomes is None
+        assert bet.scaledLiquidityMeasure == 5.0
+        assert bet.investments == {"Yes": [7], "No": []}
 
     def test_blacklist_for_another_reason_is_kept(self) -> None:
         """A market blacklisted while it had liquidity stays blacklisted."""
