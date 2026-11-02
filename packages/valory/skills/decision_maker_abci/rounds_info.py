@@ -26,6 +26,12 @@ import yaml
 from aea.protocols.generator.common import _camel_case_to_snake_case
 
 ROUNDS_INFO = {
+    # Reuses the copy of the round it now precedes, so Pearl shows no new text.
+    "agent_top_up_round": {
+        "name": "Fetching agent performance data",
+        "description": "Retrieves the latest performance statistics for the agent.",
+        "transitions": {},
+    },
     "benchmarking_randomness_round": {
         "name": "Gathering randomness in benchmarking mode",
         "description": "Introduces randomness so the agent can run realistic benchmarking tests.",
@@ -164,6 +170,16 @@ ROUNDS_INFO = {
     "randomness_transaction_submission_round": {
         "name": "Generating randomness",
         "description": "Generates randomness.",
+        "transitions": {},
+    },
+    "ranking_receive_round": {
+        "name": "Making a prediction",
+        "description": "The agent reviews the information it received to make its prediction for the trade.",
+        "transitions": {},
+    },
+    "ranking_request_round": {
+        "name": "Sampling a trade",
+        "description": "Selects a potential trade for the agent to consider.",
         "transitions": {},
     },
     "redeem_round": {

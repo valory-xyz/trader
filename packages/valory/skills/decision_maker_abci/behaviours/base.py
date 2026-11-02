@@ -32,6 +32,7 @@ from aea.protocols.base import Message
 from aea.protocols.dialogue.base import Dialogue
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.contracts.erc20.contract import ERC20TokenContract as ERC20
 from packages.valory.contracts.gnosis_safe.contract import (
     GnosisSafeContract,
@@ -117,6 +118,9 @@ SKIP_NO_TRADE = "The trading strategy found no trade worth placing"
 SKIP_SPREAD = "The market's price spread is outside the allowed range"
 SKIP_REBET_NOT_ALLOWED = "The conditions to trade this market again are not met"
 SKIP_ORDER_IMPOSSIBLE = "The order can't be placed on this market"
+SKIP_ORDERBOOK_UNAVAILABLE = (
+    "Couldn't read the market's order book, so no trade was considered"
+)
 
 
 class TradingOperation(str, Enum):
@@ -244,6 +248,29 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             return int(datetime.now(timezone.utc).timestamp())
 
+    def _fetch_orderbook(
+        self, token_id: str
+    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], bool]]:
+        """Fetch a CLOB token's order book, counting the fetch towards the CLOB's status.
+
+        :param token_id: The CLOB token ID.
+        :yield: None
+        :return: the book with "asks" and "bids" keys (None on failure), and
+            whether the CLOB was reached (not flagged unreachable).
+        """
+        payload = {
+            "request_type": RequestType.FETCH_ORDER_BOOK.value,
+            "params": {"token_id": token_id},
+        }
+        response = yield from self.send_polymarket_connection_request(payload)
+        error, reached = self.shared_state.record_orderbook_response(
+            response, self.synced_timestamp
+        )
+        if error:
+            self.context.logger.warning(f"Failed to fetch orderbook: {error}")
+            return None, reached
+        return response, reached
+
     @property
     def safe_tx_hash(self) -> str:
         """Get the safe_tx_hash."""
@@ -369,6 +396,12 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
     def usdc_to_native(usdc_wei: int) -> float:
         """Convert USDC wei to native token (6 decimals)."""
         return usdc_wei / 10**6
+
+    @staticmethod
+    def bid_ask_spread(asks: List[Dict[str, Any]], bids: List[Dict[str, Any]]) -> float:
+        """Best ask minus best bid; asks and bids must be non-empty."""
+        best_ask = min(float(a["price"]) for a in asks)
+        return best_ask - max(float(b["price"]) for b in bids)
 
     def convert_unit_to_wei(self, amount: float) -> int:
         """Convert an amount in the token's unit to its WEI equivalent based on collateral token type."""

@@ -64,6 +64,7 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     context.logger = MagicMock()
     context.benchmark_tool.measure.return_value.__enter__ = MagicMock()
     context.benchmark_tool.measure.return_value.__exit__ = MagicMock()
+    context.state.orderbook_fetch_failed = False
     behaviour.__dict__["_context"] = context
 
     # shared_state
@@ -143,6 +144,37 @@ class TestBlacklistBlacklist:
         assert sampled_bet.queue_status == QueueStatus.REPROCESSED
         assert other_bet.processed_timestamp == 0
         assert other_bet.queue_status == QueueStatus.REPROCESSED
+
+    def test_unreadable_order_book_is_not_stamped(self) -> None:
+        """A decision without a readable book leaves the market out of the cooldown."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        state = behaviour.__dict__["_context"].state
+        state.orderbook_fetch_failed = True
+        sampled_bet = MagicMock(spec=Bet)
+        sampled_bet.queue_status = QueueStatus.TO_PROCESS
+        sampled_bet.processed_timestamp = 0
+        behaviour.bets = [sampled_bet]
+
+        with (
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            mock_sd.return_value = MagicMock(sampled_bet_index=0)
+            behaviour._blacklist()
+            assert sampled_bet.processed_timestamp == 0
+            assert sampled_bet.queue_status == QueueStatus.TO_PROCESS.next_status()
+            assert state.orderbook_fetch_failed is False
+            # the flag covers one decision only
+            behaviour._blacklist()
+            assert sampled_bet.processed_timestamp == SYNCED_TS
 
     def test_declines_rotate_through_reprocessed_bets(self) -> None:
         """Repeated declines with the real sampler visit every REPROCESSED bet."""
@@ -381,6 +413,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"
@@ -454,6 +487,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = HandleFailedTxRound.auto_round_id()
                 sd.mech_tool = "tool1"
@@ -522,6 +556,7 @@ class TestBlacklistingAsyncAct:
             ) as mock_sd:
                 sd = MagicMock()
                 sd.has_tool_selection_run = True
+                sd.is_ranking_period = False
                 sd.sampled_bet_index = 0
                 sd.tx_submitter = "other_submitter"
                 sd.mech_tool = "tool1"

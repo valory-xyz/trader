@@ -22,6 +22,8 @@
 import json
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_IMPOSSIBLE,
 )
@@ -1081,8 +1083,9 @@ class TestPolymarketBetPlacementBehaviour:
         # utilized_tools should be None since condition_id is None
         assert payloads_sent[0].utilized_tools is None
 
-    def test_async_act_with_cached_signed_order(self) -> None:
-        """When cached signed order exists, should include it in request params."""
+    @pytest.mark.parametrize("market_version", ["v1", "v2"])
+    def test_async_act_with_cached_signed_order(self, market_version: str) -> None:
+        """When cached signed order exists, should include it in request params, with the bet's market version."""
         behaviour = _make_behaviour()
         behaviour.token_balance = 1000
 
@@ -1102,6 +1105,7 @@ class TestPolymarketBetPlacementBehaviour:
         mock_bet.outcome_token_ids = {"Yes": "token123"}
         mock_bet.condition_id = "0xcond123"
         mock_bet.id = "bet1"
+        mock_bet.market_version = market_version
 
         response = {
             "success": True,
@@ -1169,6 +1173,7 @@ class TestPolymarketBetPlacementBehaviour:
 
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
+        assert request_payloads[0]["params"].get("market_version") == market_version
 
     def test_async_act_fallback_event_none_with_signed_order(self) -> None:
         """Exercise fallback when event is None and signed_order_json is present."""

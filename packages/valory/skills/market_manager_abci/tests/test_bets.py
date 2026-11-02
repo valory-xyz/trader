@@ -712,6 +712,13 @@ class TestBetUpdateMarketInfo:
         bet.update_market_info(other)
         assert bet.neg_risk is True
 
+    def test_update_market_info_refreshes_the_book(self) -> None:
+        """update_market_info copies the spread, best bid and best ask of the latest fetch."""
+        bet = _make_bet(market_spread=0.4, best_bid=0.3, best_ask=0.7)
+        other = _make_bet(market_spread=0.02, best_bid=0.49, best_ask=0.51)
+        bet.update_market_info(other)
+        assert (bet.market_spread, bet.best_bid, bet.best_ask) == (0.02, 0.49, 0.51)
+
     def test_update_market_info_copies_poly_tags(self) -> None:
         """update_market_info carries poly_tags from the incoming bet.
 
@@ -1052,6 +1059,15 @@ class TestBetsDecoder:
         decoded = json.loads(encoded, cls=BetsDecoder)
         assert isinstance(decoded, Bet)
         assert decoded.description == "resolution rules here"
+
+    @pytest.mark.parametrize("stored", [{}, {"market_version": "v2"}])
+    def test_market_version_survives_decoding(self, stored: Dict[str, str]) -> None:
+        """A bet stored without a version loads as v1; a v2 one stays v2."""
+        data = json.loads(json.dumps(_make_bet(), cls=BetsEncoder))
+        data.pop("market_version", None)
+        decoded = json.loads(json.dumps({**data, **stored}), cls=BetsDecoder)
+        expected = stored.get("market_version", "v1")
+        assert getattr(decoded, "market_version", None) == expected
 
 
 # ===========================================================================

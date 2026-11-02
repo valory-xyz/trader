@@ -28,6 +28,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 import yaml
 
 from packages.valory.connections.x402.clients.mech import slot_registry
+from packages.valory.skills.agent_topup_abci.rounds import Event as AgentTopUpEvent
 from packages.valory.skills.chatui_abci.models import ChatuiParams
 from packages.valory.skills.decision_maker_abci.models import (
     SharedState as BaseSharedState,
@@ -182,6 +183,7 @@ class TestSharedState:
             )
             assert TraderAbciApp.event_to_timeout[TSEvent.ROUND_TIMEOUT] == 30
             assert TraderAbciApp.event_to_timeout[ResetPauseEvent.ROUND_TIMEOUT] == 30
+            assert TraderAbciApp.event_to_timeout[AgentTopUpEvent.ROUND_TIMEOUT] == 30
 
             # Verify MechInteractEvent.ROUND_TIMEOUT uses mech-specific timeout
             assert (

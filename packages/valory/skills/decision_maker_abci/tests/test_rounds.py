@@ -70,6 +70,9 @@ from packages.valory.skills.decision_maker_abci.states.randomness import (
     BenchmarkingRandomnessRound,
     RandomnessRound,
 )
+from packages.valory.skills.decision_maker_abci.states.ranking import (
+    RankingRequestRound,
+)
 from packages.valory.skills.decision_maker_abci.states.redeem import RedeemRound
 from packages.valory.skills.decision_maker_abci.states.sampling import SamplingRound
 from packages.valory.skills.decision_maker_abci.states.sell_outcome_tokens import (
@@ -140,7 +143,7 @@ def test_randomness_round_transition(setup_app: DecisionMakerAbciApp) -> None:
     transition_function = app.transition_function[RandomnessRound]
 
     # Transition on done
-    assert transition_function[Event.DONE] == SamplingRound
+    assert transition_function[Event.DONE] == RankingRequestRound
 
 
 def test_tool_selection_round_transition(setup_app: DecisionMakerAbciApp) -> None:

@@ -1,0 +1,155 @@
+name: agent_topup_abci
+author: valory
+version: 0.1.0
+type: skill
+description: This skill moves native token from the Agent Safe to the Agent Signer.
+license: Apache-2.0
+aea_version: '>=2.0.0, <3.0.0'
+fingerprint:
+  README.md: bafybeibmdvzqvxtwiqzjwyejvxx7icxdhrkp4dmbmujrugfjwtm6njl66q
+  __init__.py: bafybeihbnh6gky3gc2pwj2cuzjufwaexn3bxmxdinchlvhx6ywodnh6zau
+  behaviours.py: bafybeibizc6hfde5mwjs6s2srca6ydg7sswqxgxvuesdubq2ph5xbzdpsi
+  dialogues.py: bafybeiefsmka6bsnk2aajv2ndaz7dhpgxmh3g6lidadokpeyotnmlwy3e4
+  fsm_specification.yaml: bafybeih7tisjrxhzfmi2syyzusogjlusp6upoh76iies4vm2pvqc7gkfka
+  handlers.py: bafybeigcm4ntr3ezpcjzdixrvnynjpg7gxabjyvsgfq2icf6f7e35zra7u
+  models.py: bafybeihzrvvdunrdvvjc7aijo76df2f2yw7zfyg75yycapnjhj6ha5sxji
+  payloads.py: bafybeifvhr75ewg2tiai7iwhhn3no5pmtmpjkzpzbjztqeugoyzzhjpigm
+  rounds.py: bafybeidkixskcadsdoagjq6b7ziwkrmgqtdcxvkqzwc26wnxcwob5pnlke
+  tests/__init__.py: bafybeia5xqbqsrbr3iflp3aonkqvipxnrl3hsrlzj2drs7gr5evfzzw5ze
+  tests/helpers.py: bafybeiczc7ajkvu4tinpyn6lmpmwmeqmue5rjjyf7d23yrmfwfxdwkcshi
+  tests/test_behaviours.py: bafybeidv2a62jbekuqaj3puwqv6fpu25yo4lpxf5x6qrsbknlkepdtb7jq
+  tests/test_dialogues.py: bafybeiebzxxc2wzywe2apkv2sweiusguovsxllfrwtf3bgbtxrl7vvuqby
+  tests/test_handlers.py: bafybeiakcmtv4dbfhofjarbbk66b4tjsn7yniwjaxtwssdbhrbncdfeufa
+  tests/test_models.py: bafybeihbx3yjxcrqapbg22hp4e6o7jsb7grlbzcf7kchpddjupsvb46j3y
+  tests/test_payloads.py: bafybeibgmsenzgmoltnpttffzgvfuhvptvemrvucq4mj5rjv7jgvqgloqi
+  tests/test_rounds.py: bafybeiaa37aqfk2agnyu2gyfgtwhjdgxc4s54xx25qspfzqhoup7jqf5g4
+  tests/test_utils.py: bafybeiei2vmumnv76pnpjdk2gnemj22khhu4ikr2q725zmpmftyt2j56je
+  utils.py: bafybeialua4hluqbzh57g3zbihjplmojx6yhqtxyjbuqoytjwhucngpsoe
+fingerprint_ignore_patterns: []
+connections: []
+contracts:
+- valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
+- valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
+protocols:
+- valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
+skills:
+- valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
+- valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
+- valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
+behaviours:
+  main:
+    args: {}
+    class_name: AgentTopUpRoundBehaviour
+handlers:
+  abci:
+    args: {}
+    class_name: ABCIAgentTopUpHandler
+  contract_api:
+    args: {}
+    class_name: ContractApiHandler
+  http:
+    args: {}
+    class_name: HttpHandler
+  ipfs:
+    args: {}
+    class_name: IpfsHandler
+  ledger_api:
+    args: {}
+    class_name: LedgerApiHandler
+  signing:
+    args: {}
+    class_name: SigningHandler
+  tendermint:
+    args: {}
+    class_name: TendermintHandler
+models:
+  abci_dialogues:
+    args: {}
+    class_name: AbciDialogues
+  benchmark_tool:
+    args:
+      log_dir: /logs
+    class_name: BenchmarkTool
+  contract_api_dialogues:
+    args: {}
+    class_name: ContractApiDialogues
+  http_dialogues:
+    args: {}
+    class_name: HttpDialogues
+  ipfs_dialogues:
+    args: {}
+    class_name: IpfsDialogues
+  ledger_api_dialogues:
+    args: {}
+    class_name: LedgerApiDialogues
+  params:
+    args:
+      agent_balance_threshold: 10000000000000000
+      cleanup_history_depth: 1
+      cleanup_history_depth_current: null
+      drand_public_key: 868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31
+      genesis_config:
+        genesis_time: '2022-05-20T16:00:21.735122717Z'
+        chain_id: chain-c4daS1
+        consensus_params:
+          block:
+            max_bytes: '22020096'
+            max_gas: '-1'
+            time_iota_ms: '1000'
+          evidence:
+            max_age_num_blocks: '100000'
+            max_age_duration: '172800000000000'
+            max_bytes: '1048576'
+          validator:
+            pub_key_types:
+            - ed25519
+          version: {}
+        voting_power: '10'
+      keeper_timeout: 30.0
+      max_attempts: 10
+      max_healthcheck: 120
+      multisend_address: '0x0000000000000000000000000000000000000000'
+      on_chain_service_id: null
+      request_retry_delay: 1.0
+      request_timeout: 10.0
+      reset_pause_duration: 10
+      reset_tendermint_after: 2
+      retry_attempts: 400
+      retry_timeout: 3
+      round_timeout_seconds: 350.0
+      service_id: agent_topup
+      service_registry_address: null
+      setup:
+        all_participants:
+        - '0x0000000000000000000000000000000000000000'
+        safe_contract_address: '0x0000000000000000000000000000000000000000'
+        consensus_threshold: null
+      share_tm_config_on_startup: false
+      sleep_time: 5
+      tendermint_check_sleep_delay: 3
+      tendermint_com_url: http://localhost:8080
+      tendermint_max_retries: 5
+      tendermint_p2p_url: localhost:26656
+      tendermint_url: http://localhost:26657
+      termination_sleep: 900
+      tx_timeout: 10.0
+      use_termination: false
+      use_slashing: false
+      slash_cooldown_hours: 3
+      slash_threshold_amount: 10000000000000000
+      light_slash_unit_amount: 5000000000000000
+      serious_slash_unit_amount: 8000000000000000
+    class_name: Params
+  requests:
+    args: {}
+    class_name: Requests
+  signing_dialogues:
+    args: {}
+    class_name: SigningDialogues
+  state:
+    args: {}
+    class_name: SharedState
+dependencies:
+  hexbytes:
+    version: ==1.3.0
+is_abstract: true

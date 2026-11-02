@@ -21,6 +21,8 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
+from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
 from packages.valory.skills.decision_maker_abci.behaviours.handle_failed_tx import (
     HandleFailedTxBehaviour,
 )
@@ -135,6 +137,27 @@ class TestHandleFailedTxBehaviour:
 
         assert isinstance(payload, HandleFailedTxPayload)
         assert payload.vote is False
+
+    def test_failed_topup_tx_warns_and_clears_the_topup_success(self) -> None:
+        """A failed top-up tx says so, and `/funds-status` stops relying on the top-up."""
+        behaviour = _make_behaviour()
+        behaviour.context.shared_state = {TOPUP_SUCCEEDED_KEY: True}
+
+        payload = _run_async_act(behaviour, AgentTopUpRound.auto_round_id())
+
+        assert payload.vote is False
+        assert behaviour.context.shared_state[TOPUP_SUCCEEDED_KEY] is False
+        assert "top-up tx failed" in behaviour.context.logger.warning.call_args[0][0]
+
+    def test_other_failed_tx_keeps_the_topup_success(self) -> None:
+        """Only a failed top-up tx clears the top-up success."""
+        behaviour = _make_behaviour()
+        behaviour.context.shared_state = {TOPUP_SUCCEEDED_KEY: True}
+
+        _run_async_act(behaviour, BetPlacementRound.auto_round_id())
+
+        assert behaviour.context.shared_state[TOPUP_SUCCEEDED_KEY] is True
+        behaviour.context.logger.warning.assert_not_called()
 
     def test_payload_has_handle_failed_tx_submitter(self) -> None:
         """The payload's tx_submitter should be HandleFailedTxRound.auto_round_id()."""

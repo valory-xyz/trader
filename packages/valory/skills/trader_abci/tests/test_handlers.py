@@ -48,6 +48,15 @@ from packages.valory.skills.abstract_round_abci.handlers import (
 from packages.valory.skills.abstract_round_abci.handlers import (
     TendermintHandler as BaseTendermintHandler,
 )
+from packages.valory.skills.agent_topup_abci.tests.helpers import (
+    AGENT,
+    ETHER,
+    NATIVE,
+    SAFE,
+    funds_status,
+    real_topup_rule,
+)
+from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -61,6 +70,9 @@ from packages.valory.skills.decision_maker_abci.handlers import (
 )
 from packages.valory.skills.decision_maker_abci.tests.test_handlers import (
     GetHandlerTestCase,
+)
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_AGENT_TOPUP_METHOD_NAME,
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
@@ -3118,6 +3130,163 @@ class TestHandleGetAgentInfoPreFSM:
 
         mock_send_error.assert_called_once()
         self.handler.context.logger.error.assert_called_once()
+
+
+class TestApplyAgentTopUp:
+    """`/funds-status` reports what is left once the agent tops up its own Agent Signer."""
+
+    @staticmethod
+    def _handler(chain: str, topup_succeeded: Optional[bool] = True) -> HttpHandler:
+        """A handler whose funds-manager rule is the real one."""
+        handler = _make_handler()
+        handler.context.agent_address = AGENT
+        handler.context.shared_state = {
+            GET_AGENT_TOPUP_METHOD_NAME: real_topup_rule(chain)
+        }
+        if topup_succeeded is not None:
+            handler.context.shared_state[TOPUP_SUCCEEDED_KEY] = topup_succeeded
+        handler.context.params.agent_balance_threshold = ETHER // 100
+        handler.context.params.is_running_on_polymarket = chain == "polygon"
+        return handler
+
+    @staticmethod
+    def _native_deficit(status: FundRequirements, chain: str, address: str) -> Any:
+        """The native deficit reported for an account."""
+        return status[chain].accounts[address].tokens[NATIVE].deficit
+
+    def test_short_safe_asks_for_the_signer_shortfall_too(self) -> None:
+        """The rule's combined Agent Safe deficit replaces the adjusted one."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == (
+            19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+        )
+
+    def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
+        """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
+        handler = self._handler("gnosis")
+        status = funds_status(
+            "gnosis",
+            ETHER // 10,
+            ETHER // 4,
+            wxdai_balance=ETHER // 4,
+            track_wxdai=True,
+        )
+
+        handler._apply_agent_topup(status)
+
+        safe_tokens = status["gnosis"].accounts[SAFE].tokens
+        assert safe_tokens[NATIVE].deficit == 19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+        assert safe_tokens[GNOSIS_WRAPPED_NATIVE_ADDRESS].deficit == 0
+
+    def test_startup_reports_no_signer_deficit_for_a_pending_topup(self) -> None:
+        """Before any top-up has run, a top-up the Agent Safe covers raises no Agent Signer alert."""
+        handler = self._handler("gnosis", topup_succeeded=None)
+        status = funds_status("gnosis", ETHER // 10, 10 * ETHER)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", AGENT) == 0
+
+    def test_after_a_failed_topup_keeps_the_deficits_read(self) -> None:
+        """After a top-up failed, the Agent Signer deficit is not reported as 0."""
+        handler = self._handler("polygon", topup_succeeded=False)
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_nothing_due_keeps_the_deficits_read(self) -> None:
+        """With the Agent Signer above its threshold, the adjusted deficits stand."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    @pytest.mark.parametrize("safe_balance", [19 * ETHER // 10, 10 * ETHER])
+    def test_polygon_pol_covering_the_move_keeps_the_usdc_adjusted_safe_deficit(
+        self, safe_balance: int
+    ) -> None:
+        """The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 10, safe_balance)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_gnosis_reports_the_rule_safe_deficit_even_when_xdai_covers_the_move(
+        self,
+    ) -> None:
+        """Only Polygon keeps the adjusted Agent Safe deficit: Gnosis passes wxDAI to the rule."""
+        handler = self._handler("gnosis")
+        status = funds_status("gnosis", ETHER // 10, 2 * ETHER)
+        status["gnosis"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "gnosis", SAFE) == (
+            10 * ETHER - (2 * ETHER - 19 * ETHER // 10)
+        )
+
+    def test_signer_below_the_settlement_threshold_keeps_the_deficits_read(
+        self,
+    ) -> None:
+        """No top-up is sent below `agent_balance_threshold`, so the Agent Signer alert shows."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", ETHER // 200, 10 * ETHER)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert (
+            self._native_deficit(status, "polygon", AGENT) == 2 * ETHER - ETHER // 200
+        )
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_failing_rule_keeps_the_deficits_read(self) -> None:
+        """A failing top-up rule never fails `/funds-status`."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME] = MagicMock(
+            side_effect=ValueError("bad status")
+        )
+        status = funds_status("polygon", ETHER // 10, ETHER // 2)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert "bad status" in handler.context.logger.warning.call_args[0][0]
+
+    def test_handler_responds_with_the_topped_up_status(self) -> None:
+        """The response body carries the deficits left after the top-up."""
+        handler = self._handler("gnosis")
+        handler.context.params.use_x402 = False
+        status = funds_status(
+            "gnosis", ETHER // 10, ETHER, wxdai_balance=5 * ETHER, track_wxdai=True
+        )
+
+        with (
+            patch.object(handler, "_get_adjusted_funds_status", return_value=status),
+            patch.object(handler, "_send_ok_response") as mock_send,
+        ):
+            handler._handle_get_funds_status(MagicMock(), MagicMock())
+
+        body = mock_send.call_args.args[2]
+        assert body["gnosis"][AGENT][NATIVE]["deficit"] == "0"
 
 
 # ---------------------------------------------------------------------------

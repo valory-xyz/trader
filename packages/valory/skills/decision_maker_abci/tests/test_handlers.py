@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, Mapping, Union, cast
+from typing import Any, Dict, List, Mapping, Union, cast
 from unittest import mock
 from unittest.mock import MagicMock, PropertyMock, patch
 
@@ -60,10 +60,24 @@ from packages.valory.skills.decision_maker_abci.handlers import (
     HttpMethod,
     IpfsHandler,
     LedgerApiHandler,
+    POLYMARKET_UNREACHABLE_ISSUE,
     SigningHandler,
     TendermintHandler,
     resolve_round_timeout,
 )
+from packages.valory.skills.decision_maker_abci.models import SharedState
+
+ORDERBOOK_UNAVAILABLE_THRESHOLD = 5
+
+
+def _count_orderbook_failures(context: MagicMock, failures: int = 0) -> None:
+    """Give a mocked context the order-book failure count of SharedState."""
+    context.params.orderbook_unavailable_threshold = ORDERBOOK_UNAVAILABLE_THRESHOLD
+    context.state.orderbook_failures = failures
+    context.state.orderbook_failing_since = 1700000000 if failures else None
+    context.state.is_orderbook_unavailable.side_effect = (
+        lambda threshold: SharedState.is_orderbook_unavailable(context.state, threshold)
+    )
 
 
 @dataclass
@@ -152,6 +166,7 @@ class TestHttpHandler:
         self.handler = HttpHandler(name="", skill_context=self.context)
         self.handler.context.params.service_endpoint = "http://localhost:8080/some/path"
         self.handler.setup()
+        _count_orderbook_failures(self.context)
 
     def test_setup(self) -> None:
         """Test the setup method of HttpHandler."""
@@ -601,8 +616,15 @@ class TestHttpHandler:
             self.handler._handle_get_health(http_msg, http_dialogue)
             mock_too_early.assert_called_once_with(http_msg, http_dialogue)
 
-    def test_handle_get_health_success(self) -> None:
+    @pytest.mark.parametrize(
+        "failures, issue_codes",
+        [(0, []), (ORDERBOOK_UNAVAILABLE_THRESHOLD, ["polymarket_unreachable"])],
+    )
+    def test_handle_get_health_success(
+        self, failures: int, issue_codes: List[str]
+    ) -> None:
         """Test _handle_get_health returns a full health response."""
+        _count_orderbook_failures(self.context, failures)
 
         class MockStakingState(Enum):
             """Mock staking state."""
@@ -681,6 +703,29 @@ class TestHttpHandler:
             assert agent_health["is_activity_target_met"] is False
             assert agent_health["activity_target"] == 8
             assert agent_health["activity_completed"] == 5
+            assert [i["code"] for i in agent_health["issues"]] == issue_codes
+
+    @pytest.mark.parametrize("failures", [0, 1, ORDERBOOK_UNAVAILABLE_THRESHOLD - 1])
+    def test_no_issue_below_the_threshold(self, failures: int) -> None:
+        """Fewer failed book fetches than the threshold report nothing."""
+        _count_orderbook_failures(self.context, failures)
+        assert self.handler._agent_issues() == []
+
+    @pytest.mark.parametrize(
+        "failures",
+        [ORDERBOOK_UNAVAILABLE_THRESHOLD, ORDERBOOK_UNAVAILABLE_THRESHOLD + 1],
+    )
+    def test_polymarket_unreachable_issue_at_the_threshold(self, failures: int) -> None:
+        """Unavailable order books report Polymarket as unreachable, since the first failure."""
+        _count_orderbook_failures(self.context, failures)
+        assert self.handler._agent_issues() == [
+            {
+                "code": "polymarket_unreachable",
+                "title": POLYMARKET_UNREACHABLE_ISSUE["title"],
+                "description": POLYMARKET_UNREACHABLE_ISSUE["description"],
+                "since": 1700000000,
+            }
+        ]
 
     def test_handle_get_health_after_period_reset(self) -> None:
         """Test _handle_get_health stays healthy when the transition history was wiped."""
@@ -852,6 +897,23 @@ class TestPolymarketLabelOverrides:
         assert "polymarket_swap_usdc_round" not in handler.rounds_info
 
 
+@pytest.mark.parametrize("is_running_on_polymarket", [True, False])
+def test_agent_top_up_round_shows_no_new_copy(is_running_on_polymarket: bool) -> None:
+    """The top-up round reuses the copy of the round it precedes."""
+    context = MagicMock()
+    context.params.service_endpoint = "http://localhost:8080/path"
+    context.params.is_running_on_polymarket = is_running_on_polymarket
+    handler = HttpHandler(name="", skill_context=context)
+    handler.setup()
+
+    top_up = handler.rounds_info["agent_top_up_round"]
+    next_round = handler.rounds_info["fetch_performance_data_round"]
+    assert (top_up["name"], top_up["description"]) == (
+        next_round["name"],
+        next_round["description"],
+    )
+
+
 ROUND_TIMEOUT_SECONDS = 350.0
 
 
@@ -921,6 +983,7 @@ class TestHandleGetHealthFreshness:
         self.handler = HttpHandler(name="", skill_context=self.context)
         self.handler.context.params.service_endpoint = "http://localhost:8080/some/path"
         self.handler.setup()
+        _count_orderbook_failures(self.context)
 
     def _report_health(
         self,

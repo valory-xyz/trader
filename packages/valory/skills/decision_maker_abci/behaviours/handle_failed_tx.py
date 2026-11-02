@@ -21,6 +21,8 @@
 
 from typing import Generator
 
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
+from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
@@ -69,6 +71,11 @@ class HandleFailedTxBehaviour(DecisionMakerBaseBehaviour):
                 != OFFCHAIN_NONCE_TAKEN
             )
             self.shared_state.mech_timed_out = mech_timed_out
+            if tx_submitter == AgentTopUpRound.auto_round_id():
+                self.context.logger.warning(
+                    "The Agent Signer top-up tx failed, so the Agent Signer may stay short."
+                )
+                self.context.shared_state[TOPUP_SUCCEEDED_KEY] = False
             after_bet_attempt = mech_timed_out or tx_submitter in (
                 BetPlacementRound.auto_round_id(),
                 SellOutcomeTokensRound.auto_round_id(),

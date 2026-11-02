@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ------------------------------------------------------------------------------
 #
-#   Copyright 2023-2025 Valory AG
+#   Copyright 2023-2026 Valory AG
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     NONE_EVENT_ATTRIBUTE,
     get_name,
 )
+from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.decision_maker_abci.payloads import HandleFailedTxPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
@@ -57,6 +58,10 @@ class HandleFailedTxRound(CollectSameUntilThresholdRound):
 
     def end_block(self) -> Optional[Tuple[BaseSynchronizedData, Enum]]:
         """Process the end of the block."""
+        # read before `super()` overwrites it with this round's own submitter
+        failed_tx_submitter = self.synchronized_data.db.get(
+            get_name(SynchronizedData.tx_submitter), None
+        )
         res = super().end_block()
         if res is None:
             return None
@@ -68,5 +73,9 @@ class HandleFailedTxRound(CollectSameUntilThresholdRound):
 
         if synced_data.after_bet_attempt:
             return synced_data, self.done_event
+
+        # a failed top-up tx ends the top-up check, whether it was the unwrap or the transfer
+        if failed_tx_submitter == AgentTopUpRound.auto_round_id():
+            return synced_data, Event.AGENT_TOPUP_FAILED
 
         return synced_data, self.no_op_event

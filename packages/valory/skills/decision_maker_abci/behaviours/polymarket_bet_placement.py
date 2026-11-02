@@ -113,6 +113,7 @@ class PolymarketBetPlacementBehaviour(
         params = {
             "token_id": token_id,
             "amount": amount,
+            "market_version": self.sampled_bet.market_version,
         }
         dw_address = self._resolve_deposit_wallet()
         if dw_address:

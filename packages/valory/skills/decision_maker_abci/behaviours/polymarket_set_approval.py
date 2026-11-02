@@ -25,6 +25,9 @@ from typing import Any, Generator, Optional, cast
 from hexbytes import HexBytes
 
 from packages.valory.connections.polymarket_client.connection import (
+    MAX_UINT256,
+)
+from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
 )
 from packages.valory.connections.polymarket_client.request_types import RequestType
@@ -39,6 +42,10 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wa
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
     PolymarketSetApprovalPayload,
+)
+from packages.valory.skills.decision_maker_abci.states.check_benchmarking import (
+    DW_APPROVALS_VERSION,
+    POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION,
 )
 from packages.valory.skills.decision_maker_abci.states.polymarket_set_approval import (
     PolymarketSetApprovalRound,
@@ -64,14 +71,24 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         """Do the action."""
 
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
-            # CLOB v2: provision the DepositWallet and set its trading approvals
-            # (pUSD allowance + CTF operator rights to the V2 Exchange,
-            # NegRiskAdapter, NegRiskCTFExchange) via the relayer proxy. The
-            # Safe keeps only the redemption approvals, built below.
+            # CLOB v2: provision the DepositWallet and its trading approvals.
             yield from self._provision_deposit_wallet()
 
-            # Check if builder program is enabled
-            if self.context.params.polymarket_builder_program_enabled:
+            if self._safe_allowances_current():
+                # Keep mocking_mode=False so the payload is not all-None and the
+                # round records the None tx hash, routing to the post-approval
+                # check.
+                self.context.logger.info(
+                    "Safe allowances already recorded under the current "
+                    "version - skipping the Safe approvals."
+                )
+                self.payload = PolymarketSetApprovalPayload(
+                    self.context.agent_address,
+                    None,
+                    None,
+                    False,
+                )
+            elif self.context.params.polymarket_builder_program_enabled:
                 self.context.logger.info(
                     "Polymarket builder program enabled - calling connection to set approvals..."
                 )
@@ -93,6 +110,25 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
                 )
 
         yield from self.finish_behaviour(self.payload)
+
+    def _safe_allowances_current(self) -> bool:
+        """Whether ``polymarket.json`` records the Safe approvals as current.
+
+        :return: ``True`` if the file records ``allowances_set`` under the
+            current ``POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION`` stamp.
+        """
+        allowances_path = self.params.store_path / "polymarket.json"
+        try:
+            with open(allowances_path) as f:
+                allowances_data = json.load(f)
+        except (OSError, ValueError):
+            return False
+        return (
+            isinstance(allowances_data, dict)
+            and bool(allowances_data.get("allowances_set"))
+            and allowances_data.get("clob_version")
+            == POLYMARKET_ALLOWANCES_FILE_CLOB_VERSION
+        )
 
     def _set_approval(self) -> Generator[None, None, None]:
         """Set approval for Polymarket contracts."""
@@ -207,21 +243,24 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             )
             return
         # Skip the (idempotent) approvals batch when it is already recorded done
-        # for this DW — otherwise every setup re-entry re-submits 6 relayer calls
-        # and burns the full ~4-minute mine-confirmation backoff.
-        if persisted and persisted.get("approvals_done"):
-            self.context.logger.info(
-                f"DepositWallet {dw_address} trading approvals already recorded; "
-                "skipping re-approval."
-            )
-            return
+        # for this DW - otherwise every setup re-entry re-submits the batch and
+        # burns the full ~4-minute mine-confirmation backoff.
+        if persisted and persisted.get("approvals_done") is True:
+            if persisted.get("approvals_version") == DW_APPROVALS_VERSION:
+                self.context.logger.info(
+                    f"DepositWallet {dw_address} trading approvals already "
+                    "recorded; skipping re-approval."
+                )
+                return
+            # Recorded under another version: re-send only the Protocol V2 calls,
+            # the V1 set is already mined.
+            transactions = self._build_dw_v2_trading_approvals()
+        else:
+            transactions = self._build_dw_trading_approvals()
 
         approvals_resp = yield from self._send_polymarket_request(
             RequestType.EXEC_WALLET_BATCH,
-            {
-                "dw_address": dw_address,
-                "transactions": self._build_dw_trading_approvals(),
-            },
+            {"dw_address": dw_address, "transactions": transactions},
         )
         if approvals_resp is None:
             self.context.logger.warning(
@@ -241,16 +280,25 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             return
         mined = yield from self._await_relayer_tx(tx_id)
         if not (mined and mined.get("ok")):
+            state = "" if mined is None else f" (relayer state {mined.get('state')!r})"
             self.context.logger.warning(
                 f"DepositWallet {dw_address} approvals tx {tx_id} not confirmed "
-                "mined; the post-approval gate will re-check and retry."
+                f"mined{state}; the setup gate re-enters the approval round and "
+                "retries on the next pass."
             )
             return
         # Persist approvals completion only now that the relayer tx is confirmed
         # mined, recording the on-chain-verified owner when available.
-        self._write_deposit_wallet_file(
+        written = self._write_deposit_wallet_file(
             dw_address, owner or agent_eoa, approvals_done=True
         )
+        if not written:
+            self.context.logger.warning(
+                f"DepositWallet {dw_address} approvals tx {tx_id} mined but the "
+                "record could not be written; the approvals batch will be "
+                "re-sent on the next pass."
+            )
+            return
         self.context.logger.info(f"DepositWallet {dw_address} trading approvals mined.")
 
     def _resolve_or_deploy_dw(self) -> Generator[None, None, Optional[str]]:
@@ -387,17 +435,20 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         neg_risk_ctf_collateral_adapter_address = (
             self.params.polymarket_neg_risk_ctf_collateral_adapter_address
         )
+        position_manager_address = self.params.polymarket_position_manager_address
+        router_address = self.params.polymarket_router_address
 
         # Build approval transactions and add to multisend_batches (must match
-        # polymarket_client _check_approval: 3 collateral allowances + 5 CTF
-        # setApprovalForAll; 8 entries total). The collateral adapters
-        # intentionally receive only ERC-1155 operator rights — their redeem
-        # path doesn't pull ERC-20 from the Safe, so no pUSD allowance.
+        # polymarket_client _check_approval: collateral allowances, CTF
+        # setApprovalForAll and the PositionManager setApprovalForAll). The
+        # collateral adapters intentionally receive only ERC-1155 operator
+        # rights - their redeem path doesn't pull ERC-20 from the Safe, so no
+        # pUSD allowance.
         # 1. Collateral approve for CTF Exchange
         collateral_approve_batch = MultisendBatch(
             to=collateral_address,
             data=HexBytes(
-                self._build_erc20_approve_data(ctf_exchange_address, 2**256 - 1)
+                self._build_erc20_approve_data(ctf_exchange_address, MAX_UINT256)
             ),
             value=0,
         )
@@ -418,7 +469,7 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             to=collateral_address,
             data=HexBytes(
                 self._build_erc20_approve_data(
-                    neg_risk_ctf_exchange_address, 2**256 - 1
+                    neg_risk_ctf_exchange_address, MAX_UINT256
                 )
             ),
             value=0,
@@ -441,7 +492,7 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         collateral_approve_neg_risk_adapter_batch = MultisendBatch(
             to=collateral_address,
             data=HexBytes(
-                self._build_erc20_approve_data(neg_risk_adapter_address, 2**256 - 1)
+                self._build_erc20_approve_data(neg_risk_adapter_address, MAX_UINT256)
             ),
             value=0,
         )
@@ -483,6 +534,15 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         )
         self.multisend_batches.append(ctf_approve_neg_risk_collateral_adapter_batch)
 
+        # 9. PositionManager setApprovalForAll for the Router (Protocol V2:
+        # lets the Router claim the Safe's V2 winnings).
+        position_manager_approve_router_batch = MultisendBatch(
+            to=position_manager_address,
+            data=HexBytes(self._build_set_approval_for_all_data(router_address, True)),
+            value=0,
+        )
+        self.multisend_batches.append(position_manager_approve_router_batch)
+
         # Build the multisend transaction directly (no balance check needed for approvals)
         success = yield from self._build_multisend_data()
         if not success:
@@ -516,15 +576,15 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
         return f"{function_signature}{operator_padded}{approved_padded}"
 
     def _build_dw_trading_approvals(self) -> list:
-        """Build the 6 DepositWallet trading-approval calls.
+        """Build the full DepositWallet trading-approval batch.
 
         pUSD allowance + CTF operator rights to the V2 Exchange,
-        NegRiskCTFExchange and NegRiskAdapter — the first six of the eight
-        Safe approvals built in ``_prepare_approval_tx``. The two
-        redemption-adapter approvals are excluded: redemption is executed by
-        the Safe, never the DepositWallet. The connection's
-        ``EXEC_WALLET_BATCH`` is a generic relay, so the calls are constructed
-        here rather than connection-side.
+        NegRiskCTFExchange and NegRiskAdapter, plus the Protocol V2 approvals
+        from ``_build_dw_v2_trading_approvals``. The CLOB checks the
+        NegRiskAdapter approvals on negative-risk orders. The redemption-adapter
+        approvals are excluded: redemption is executed by the Safe, never the
+        DepositWallet. The connection's ``EXEC_WALLET_BATCH`` is a generic
+        relay, so the calls are constructed here rather than connection-side.
 
         :return: list of ``{"to", "data", "value"}`` calls for EXEC_WALLET_BATCH.
         """
@@ -535,11 +595,10 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             self.params.polymarket_neg_risk_ctf_exchange_address,
             self.params.polymarket_neg_risk_adapter_address,
         )
-        max_uint = 2**256 - 1
         txs = [
             {
                 "to": collateral,
-                "data": self._build_erc20_approve_data(spender, max_uint),
+                "data": self._build_erc20_approve_data(spender, MAX_UINT256),
                 "value": "0",
             }
             for spender in spenders
@@ -552,7 +611,29 @@ class PolymarketSetApprovalBehaviour(PolymarketDepositWalletBehaviour):
             }
             for operator in spenders
         ]
-        return txs
+        return txs + self._build_dw_v2_trading_approvals()
+
+    def _build_dw_v2_trading_approvals(self) -> list:
+        """Build the Protocol V2 DepositWallet trading-approval calls.
+
+        pUSD ``approve(ExchangeV3, MaxUint256)`` (the relayer rejects a bounded
+        amount) and PositionManager ``setApprovalForAll(ExchangeV3, true)``.
+
+        :return: list of ``{"to", "data", "value"}`` calls for EXEC_WALLET_BATCH.
+        """
+        exchange_v3 = self.params.polymarket_exchange_v3_address
+        return [
+            {
+                "to": self.params.polymarket_collateral_address,
+                "data": self._build_erc20_approve_data(exchange_v3, MAX_UINT256),
+                "value": "0",
+            },
+            {
+                "to": self.params.polymarket_position_manager_address,
+                "data": self._build_set_approval_for_all_data(exchange_v3, True),
+                "value": "0",
+            },
+        ]
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""
