@@ -2292,7 +2292,6 @@ class TestUpdateBets:
         assert len(behaviour.bets) == 1
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
 
-
     @staticmethod
     def _run_update(
         stored: List[Bet], fetched: List[Dict[str, Any]], response: Any

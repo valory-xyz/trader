@@ -4572,7 +4572,9 @@ class TestCheckClosedMarkets:
         with patch("requests.get", return_value=response) as mock_get:
             conn._check_closed_markets(["1", "2"])
         prepared = requests.Request(
-            "GET", mock_get.call_args.args[0], params=mock_get.call_args.kwargs["params"]
+            "GET",
+            mock_get.call_args.args[0],
+            params=mock_get.call_args.kwargs["params"],
         ).prepare()
         assert urlsplit(prepared.url).query == "id=1&id=2&closed=true&limit=100"
 
