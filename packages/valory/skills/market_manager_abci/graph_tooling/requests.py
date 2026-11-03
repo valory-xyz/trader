@@ -78,11 +78,7 @@ def to_graphql_list(li: list) -> str:
 
 
 def _is_unknown_user(response: HttpMessage) -> bool:
-    """Check whether a user query succeeded with no entity for the user.
-
-    :param response: the raw subgraph response.
-    :return: whether the response is `{"data": {"user": null}}` with no errors.
-    """
+    """Return whether the response is an error-free `user: null`."""
     try:
         body = json.loads(response.body)
     except (AttributeError, TypeError, ValueError):

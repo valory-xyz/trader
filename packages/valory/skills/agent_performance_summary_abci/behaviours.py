@@ -3072,7 +3072,6 @@ class FetchPerformanceSummaryBehaviour(
             self.context.logger.info(
                 "Agent performance summary is disabled. Skipping fetch and save."
             )
-            # a deliberate skip is not a failure, so it must not end in Event.FAIL
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
                 vote=True,
@@ -3083,7 +3082,6 @@ class FetchPerformanceSummaryBehaviour(
         if not self._should_update():
             self.context.logger.info("Skipping update - too soon")
             self._update_leaderboard()
-            # a deliberate skip is not a failure, so it must not end in Event.FAIL
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
                 vote=True,
@@ -3160,7 +3158,6 @@ class UpdateAchievementsBehaviour(
             self.context.logger.info(
                 "Achievement checker is disabled. Skipping achievements update."
             )
-            # a deliberate skip is not a failure, so it must not end in Event.FAIL
             payload = UpdateAchievementsPayload(
                 sender=self.context.agent_address,
                 vote=True,

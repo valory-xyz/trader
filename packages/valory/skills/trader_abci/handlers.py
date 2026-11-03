@@ -1426,7 +1426,13 @@ class HttpHandler(BaseHttpHandler):
         if out_of_native:
             self.context.logger.warning(
                 f"Mech pre-deposit {deposited} is below the floor {floor}; "
-                "not depositing: the EOA is out of native."
+                "not depositing: the EOA is out of native"
+                + (
+                    ""
+                    if token is None
+                    else " and holds less of the token than the deposit needs"
+                )
+                + "."
             )
             return False
         self.context.logger.info(

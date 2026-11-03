@@ -1095,7 +1095,6 @@ class TestSample:
         assert not any(
             "filter=processable_bet.breakdown.fallback" in call for call in log_calls
         )
-        # an Omen run must not tag its filter lines as Polystrat
         assert not any("[POLYSTRAT]" in call for call in log_calls)
         assert any("[OMENSTRAT] filter=processable_bet " in call for call in log_calls)
 

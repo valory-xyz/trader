@@ -22,6 +22,7 @@
 import json
 from io import StringIO
 from pathlib import Path
+from typing import Any, Dict, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -1650,6 +1651,48 @@ class TestCheckAlreadyRedeemedViaSubgraph:
             result = _exhaust_gen(gen)
 
         assert result is False  # type: ignore[no-untyped-def]
+
+    @pytest.mark.parametrize(
+        "trades, expected, warnings",
+        [([{"trade1": "data"}], False, 1), ([], True, 0)],
+    )
+    def test_no_positions(
+        self, trades: List[Dict[str, Any]], expected: bool, warnings: int
+    ) -> None:
+        """No positions fail the check only when the Safe has trades."""
+        behaviour = _make_redeem_behaviour()
+        mock_context = MagicMock()
+
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
+            """Mock fetch_trades."""
+            yield
+            return trades
+
+        def mock_fetch_user_positions(safe):  # type: ignore[no-untyped-def]
+            """Mock fetch_user_positions for a user the subgraph does not know."""
+            yield
+            return []
+
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
+
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(type(behaviour), "context", new_callable=PropertyMock) as ctx,
+        ):
+            mock_rp.return_value = RedeemingProgress()
+            mock_sd.return_value = MagicMock(safe_contract_address="0xSafe")
+            ctx.return_value = mock_context
+
+            result = _exhaust_gen(behaviour._check_already_redeemed_via_subgraph())
+
+        assert result is expected
+        assert mock_context.logger.warning.call_count == warnings
 
 
 class TestCheckAlreadyRedeemed:

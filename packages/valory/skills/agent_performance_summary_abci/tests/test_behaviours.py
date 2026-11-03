@@ -5621,7 +5621,7 @@ class TestFetchAsyncAct:
             pass
 
     def test_disabled(self) -> None:
-        """Sends vote=True when disabled, as a skip is no failure."""
+        """Sends vote=True when disabled."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         params.is_agent_performance_summary_enabled = False
@@ -5636,7 +5636,7 @@ class TestFetchAsyncAct:
         assert call_args.vote is True
 
     def test_should_not_update(self) -> None:
-        """Sends vote=True when _should_update returns False, as a skip is no failure."""
+        """Sends vote=True when _should_update returns False."""
         b = _make_fetch_behaviour()
         ctx, params, synced_data, _ = _mock_context()
         with (

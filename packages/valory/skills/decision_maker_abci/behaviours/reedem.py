@@ -500,6 +500,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         if user_positions is None:
             return False
 
+        if trades and not user_positions:
+            self.context.logger.warning(
+                "The conditional tokens subgraph has no positions for a Safe with "
+                "trades. It may be lagging, so the redeem check will retry."
+            )
+            return False
+
         # process the positions
         payouts, unredeemed_raw = get_condition_id_to_balances(trades, user_positions)
 

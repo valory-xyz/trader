@@ -176,7 +176,6 @@ class BetPayoutChecker(AchievementsChecker):
         )
 
         if settled_timestamp < eligible_since:
-            # counted rather than logged, so the caller logs one line per period
             settled_before_eligible.append(bet["id"])
             return None
 

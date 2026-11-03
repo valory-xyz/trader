@@ -3774,7 +3774,7 @@ class TestMechPreDepositTopUp:
         assert handler.context.shared_state[_EOA_SHORT] is True
 
     def test_no_native_headroom_logs_no_deposit_plan(self) -> None:
-        """An EOA that cannot pay gets one decision line, not a plan it drops."""
+        """An EOA with no native gas logs no deposit plan."""
         handler = _facilitator_handler(native_balance=_GAS_RESERVE)
         chain = _ChainStub(deposited=0, token=None)
 
@@ -3808,7 +3808,8 @@ class TestMechPreDepositTopUp:
         assert "Not swapping: the EOA is out of native." not in logged
         logger.warning.assert_any_call(
             f"Mech pre-deposit 0 is below the floor {_FLOOR}; "
-            "not depositing: the EOA is out of native."
+            "not depositing: the EOA is out of native "
+            "and holds less of the token than the deposit needs."
         )
 
     @pytest.mark.parametrize("held", [None, _TARGET])
