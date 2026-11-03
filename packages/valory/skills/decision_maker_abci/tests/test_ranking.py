@@ -906,7 +906,7 @@ def test_no_ranking_request_while_the_clob_is_flagged() -> None:
     due = {
         "no list": [_bet(i) for i in range(12)],
         "expired list": _listed(12, ranked_at=NOW - RANKING_MAX_AGE),
-        # an unscored list with 10+ never-ranked markets: the renewals #1103 counted
+        # an unscored list with 10+ never-ranked markets is due for renewal
         "used-up list": used_up + [_bet(i) for i in range(30, 40)],
         "not due": _listed(12),
     }
@@ -923,6 +923,10 @@ def test_no_ranking_request_while_the_clob_is_flagged() -> None:
     # one failure short of the threshold, the request goes out as today
     below = _flagged(RankingRequestBehaviour, due["no list"], failures=4)
     assert _act(below).mech_tool == RANKING_TOOL
+    # the threshold is the configured one
+    lower = _flagged(RankingRequestBehaviour, due["no list"], failures=3)
+    lower.context.params.orderbook_unavailable_threshold = 3
+    assert _act(lower).mech_tool is None
 
 
 def test_flagged_for_twelve_periods_sends_no_mech_request() -> None:
