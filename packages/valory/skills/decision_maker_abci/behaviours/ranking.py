@@ -104,6 +104,21 @@ class RankingRequestBehaviour(SamplingBehaviour):
             and self.params.slot_count == BINARY_N_SLOTS
         ):
             return [], 0
+        # No request, and no stamp touched, until Sampling's probe reaches the
+        # CLOB again: a list read off books it cannot fetch is paid for nothing.
+        # Returning before the queue reset keeps the rest of a list waiting.
+        if (
+            self.params.is_running_on_polymarket
+            and not self.benchmarking_mode.enabled
+            and self.shared_state.is_orderbook_unavailable(
+                self.params.orderbook_unavailable_threshold
+            )
+        ):
+            self.context.logger.info(
+                "[RANKING] Polymarket's CLOB unreachable: no ranking request "
+                "this period."
+            )
+            return [], 0
 
         now = self.synced_timestamp
         available, _ = self._processable_bets(now)
