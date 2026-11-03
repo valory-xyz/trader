@@ -273,7 +273,10 @@ class Bet:
         return vote ^ 1
 
     def blacklist_forever(self) -> None:
-        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
+        """Blacklist a bet. Should only be used in cases where it is impossible to bet.
+
+        `update_market_info` lifts this for a bet stored with zero liquidity.
+        """
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
         self.queue_status = QueueStatus.EXPIRED
