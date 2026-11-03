@@ -2580,6 +2580,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         (v1 wrapped it in an ``OrderBookSummary`` object); each level is a
         ``{"price": "...", "size": "..."}`` dict.
 
+        A 404 means the token has no book (e.g. its market closed), so it is
+        answered as an empty book.
+
         :param token_id: The CLOB token ID for the outcome.
         :return: Tuple of (order_book_dict, error_string).
         """
@@ -2609,10 +2612,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ),
             }, None
         except Exception as e:
+            if isinstance(e, PolyApiException) and e.status_code == 404:
+                self.logger.info(f"No order book for token {token_id}: {e}")
+                return {"asks": [], "bids": [], "min_order_size": None}, None
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
             # No status means a transport error; a 5xx is an outage and a 403/451 a
-            # network that blocks with a response. A 404 or 429 proves it reachable.
+            # network that blocks with a response. A 429 proves it reachable.
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500

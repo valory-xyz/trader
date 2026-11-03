@@ -4374,7 +4374,6 @@ class TestFetchOrderBook:
         "exception, unreachable",
         [
             (PolyApiException(error_msg="Request exception!"), True),
-            (PolyApiException(MagicMock(status_code=404)), False),
             (PolyApiException(MagicMock(status_code=429)), False),
             (PolyApiException(MagicMock(status_code=400)), False),
             (PolyApiException(MagicMock(status_code=403)), True),
@@ -4394,6 +4393,19 @@ class TestFetchOrderBook:
 
         assert result == {"error": error, CLOB_UNREACHABLE: unreachable}
         assert "token_123" in error
+
+    def test_no_book_is_an_empty_book(self) -> None:
+        """A 404 is a token with no book: an empty book, with no error and no flag."""
+        conn = _make_connection()
+        conn.client.get_order_book.side_effect = PolyApiException(
+            MagicMock(status_code=404)
+        )
+
+        result, error = conn._fetch_order_book("token_123")
+
+        assert error is None
+        assert result == {"asks": [], "bids": [], "min_order_size": None}
+        conn.logger.exception.assert_not_called()
 
     def test_v2_dict_response(self) -> None:
         """v2 ``get_order_book`` returns a plain dict with dict levels.
