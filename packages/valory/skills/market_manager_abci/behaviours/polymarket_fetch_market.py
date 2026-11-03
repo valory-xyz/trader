@@ -23,7 +23,7 @@ import json
 import sys
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, Generator, List, Optional, Set
+from typing import Any, Dict, Generator, List, Optional
 
 from dateutil import parser as date_parser
 
@@ -725,52 +725,10 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         yield from self._process_chunk(bets_market_chunk)
         self._blacklist_expired_bets()
-        yield from self._blacklist_closed_unfetched_bets(
-            {raw_bet["id"] for raw_bet in bets_market_chunk}
-        )
 
         # truncate the bets, otherwise logs get too big
         bets_str = str(self.bets)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Updated bets: {bets_str}")
-
-    def _blacklist_closed_unfetched_bets(self, fetched_ids: Set[str]) -> Generator:
-        """Blacklist the live bets that the fetch did not return and Gamma reports closed.
-
-        The fetch asks for events ending inside the time window, so a market whose
-        event ended before the market's own end date is never returned again. Without
-        this check it keeps its last prices and stays live until that end date.
-
-        :param fetched_ids: the ids of the markets this fetch returned.
-        :yield: control while the Polymarket connection answers.
-        """
-        unfetched = [
-            bet.id
-            for bet in self.bets
-            if not bet.queue_status.is_expired() and bet.id not in fetched_ids
-        ]
-        if not unfetched:
-            return
-        response = yield from self.send_polymarket_connection_request(
-            {
-                "request_type": RequestType.FETCH_CLOSED_MARKET_IDS.value,
-                "params": {"market_ids": unfetched},
-            }
-        )
-        if response is None or (isinstance(response, dict) and response.get("error")):
-            self.context.logger.warning(
-                "Closed-state check of the unfetched bets failed; retried next period"
-            )
-            return
-        closed_ids = set(response)
-        dropped = 0
-        for bet in self.bets:
-            if bet.id in closed_ids and not bet.queue_status.is_expired():
-                bet.blacklist_forever()
-                dropped += 1
-        self.context.logger.info(
-            f"[POLYSTRAT] filter=closed_unfetched_blacklist "
-            f"input={len(unfetched)} dropped={dropped} kept={len(unfetched) - dropped}"
-        )
 
     def update_bets_investments(self) -> Generator:
         """Update the investments of the bets from Polymarket trades."""

@@ -384,7 +384,6 @@ class TestRouteRequest:
             "_quote_buy",
             "_fetch_markets",
             "_fetch_market_by_slug",
-            "_fetch_closed_market_ids",
             "_get_positions",
             "_fetch_all_positions",
             "_get_trades",
@@ -2520,52 +2519,6 @@ class TestFetchMarketsByTagSlug:
 # ---------------------------------------------------------------------------
 
 
-class TestFetchClosedMarketIds:
-    """Tests for _fetch_closed_market_ids."""
-
-    def test_returns_the_closed_ids_one_request_per_chunk(self) -> None:
-        """Ids go 100 per request with closed=true; only rows marked closed count."""
-        conn = _make_connection()
-        ids = [str(i) for i in range(150)]
-        conn._request_with_retries = MagicMock(  # type: ignore[method-assign]
-            side_effect=[
-                ([{"id": 7, "closed": True}, {"id": "8", "closed": False}], None),
-                ([{"id": "120", "closed": True}], None),
-            ]
-        )
-
-        result, error = conn._fetch_closed_market_ids(ids)
-
-        assert (result, error) == (["7", "120"], None)
-        first, second = conn._request_with_retries.call_args_list
-        assert first.args == (f"{GAMMA_API_BASE_URL}/markets",)
-        assert first.kwargs["params"] == {
-            "closed": "true",
-            "limit": 100,
-            "id": ids[:100],
-        }
-        assert second.kwargs["params"]["id"] == ids[100:]
-        assert second.kwargs["params"]["limit"] == 50
-
-    def test_a_failed_request_returns_the_error(self) -> None:
-        """A failed chunk stops the check and returns no ids."""
-        conn = _make_connection()
-        conn._request_with_retries = MagicMock(return_value=(None, "timeout"))  # type: ignore[method-assign]
-
-        result, error = conn._fetch_closed_market_ids(["1"])
-
-        assert result is None
-        assert error == "Error fetching closed markets: timeout"
-
-    def test_no_ids_sends_no_request(self) -> None:
-        """An empty id list returns no ids without calling Gamma."""
-        conn = _make_connection()
-        conn._request_with_retries = MagicMock()  # type: ignore[method-assign]
-
-        assert conn._fetch_closed_market_ids([]) == ([], None)
-        conn._request_with_retries.assert_not_called()
-
-
 class TestFetchMarketBySlug:
     """Tests for _fetch_market_by_slug."""
 
@@ -4418,23 +4371,11 @@ class TestFetchOrderBook:
         assert error is None
         assert result == {"asks": [], "bids": [], "min_order_size": None}
 
-    def test_no_book_is_an_empty_book(self) -> None:
-        """A 404 means the token has no book: an empty book and no error."""
-        conn = _make_connection()
-        conn.client.get_order_book.side_effect = PolyApiException(
-            MagicMock(status_code=404)
-        )
-
-        result, error = conn._fetch_order_book("token_123")
-
-        assert error is None
-        assert result == {"asks": [], "bids": [], "min_order_size": None}
-        conn.logger.exception.assert_not_called()
-
     @pytest.mark.parametrize(
         "exception, unreachable",
         [
             (PolyApiException(error_msg="Request exception!"), True),
+            (PolyApiException(MagicMock(status_code=404)), False),
             (PolyApiException(MagicMock(status_code=429)), False),
             (PolyApiException(MagicMock(status_code=400)), False),
             (PolyApiException(MagicMock(status_code=403)), True),

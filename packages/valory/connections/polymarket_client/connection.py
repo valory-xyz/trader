@@ -204,8 +204,6 @@ POLYMARKET_CATEGORY_TAGS = [
 MARKETS_LIMIT = 300
 EVENTS_LIMIT = 200
 MARKETS_TIME_WINDOW_DAYS = 7
-# Market ids per Gamma /markets?id=... request.
-GAMMA_IDS_PER_REQUEST = 100
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 1  # base seconds for transient connection errors
@@ -708,7 +706,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.QUOTE_BUY: self._quote_buy,
             RequestType.FETCH_MARKETS: self._fetch_markets,
             RequestType.FETCH_MARKET: self._fetch_market_by_slug,
-            RequestType.FETCH_CLOSED_MARKET_IDS: self._fetch_closed_market_ids,
             RequestType.GET_POSITIONS: self._get_positions,
             RequestType.FETCH_ALL_POSITIONS: self._fetch_all_positions,
             RequestType.GET_TRADES: self._get_trades,
@@ -1495,29 +1492,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             error_msg = f"Unexpected error fetching market by slug '{slug}': {str(e)}"
             self.logger.exception(error_msg)
             return None, error_msg
-
-    def _fetch_closed_market_ids(self, market_ids: List[str]) -> Tuple[Any, Any]:
-        """Return the ids among `market_ids` that Gamma reports closed.
-
-        Gamma's /markets leaves closed markets out unless asked for them, and
-        with `closed=true` it returns only the closed ones.
-
-        :param market_ids: the Gamma market ids to check
-        :return: Tuple of (closed market ids, error_message)
-        """
-        closed: List[str] = []
-        for start in range(0, len(market_ids), GAMMA_IDS_PER_REQUEST):
-            chunk = market_ids[start : start + GAMMA_IDS_PER_REQUEST]
-            markets, error = self._request_with_retries(
-                f"{GAMMA_API_BASE_URL}/markets",
-                params={"closed": _bool_param(True), "limit": len(chunk), "id": chunk},
-            )
-            if error:
-                return None, f"Error fetching closed markets: {error}"
-            closed.extend(
-                str(market["id"]) for market in markets if market.get("closed")
-            )
-        return closed, None
 
     @staticmethod
     def _to_v1_fields(row: Dict[str, Any], field_map: Dict[str, str]) -> Dict[str, Any]:
@@ -2636,13 +2610,10 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ),
             }, None
         except Exception as e:
-            # The CLOB answers 404 for a token with no book: not a failed read.
-            if isinstance(e, PolyApiException) and e.status_code == 404:
-                return {"asks": [], "bids": [], "min_order_size": None}, None
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
             # No status means a transport error; a 5xx is an outage and a 403/451 a
-            # network that blocks with a response. A 429 proves it reachable.
+            # network that blocks with a response. A 404 or 429 proves it reachable.
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500
