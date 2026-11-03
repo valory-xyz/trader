@@ -70,9 +70,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
         return QUIET_LOGGER
 
     def _has_room_to_trade(self, bet: Bet) -> bool:
-        """Whether a bet can still be won: no side above ranking_max_price and, on Polymarket, a stored book the book check accepts."""
-        if max(bet.outcomeTokenMarginalPrices) > self.params.ranking_max_price:
-            return False
+        """Whether the book stored at the last fetch passes the Polymarket book check; true when none is stored."""
         bid, ask = bet.best_bid, bet.best_ask
         if not self.params.is_running_on_polymarket or (bid is None and ask is None):
             return True

@@ -164,7 +164,6 @@ def _behaviour(
     params.exclude_neg_risk_markets = True
     params.disabled_polymarket_tags = ["weather"]
     params.enable_market_ranking = True
-    params.ranking_max_price = 0.85
     params.ranking_min_score = 0.5
     params.polymarket_spread_min = 0.0
     params.polymarket_spread_max = 0.1
@@ -688,11 +687,9 @@ def test_book_rule_and_score_floor() -> None:
     requester = _behaviour(RankingRequestBehaviour, bets)
     for bet in bets[: len(BOOKS) - 1]:
         assert requester._has_room_to_trade(bet) is _book_check(bet)
-    # the book rule applies on Polymarket only; the price ceiling everywhere
+    # the book rule applies on Polymarket only
     requester.context.params.is_running_on_polymarket = False
     assert requester._has_room_to_trade(bets[1])
-    near_certain = _bet(50, outcomeTokenMarginalPrices=[0.86, 0.14])
-    assert not requester._has_room_to_trade(near_certain)
 
     # list markets scored under ranking_min_score follow today's order
     listed = _listed(12)
