@@ -326,11 +326,7 @@ class Bet:
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
 
     def _check_usefulness(self) -> None:
-        """Blacklist a bet with no liquidity.
-
-        Only a market first seen empty returns, through `update_market_info`, once it
-        has liquidity. Every other blacklist stays.
-        """
+        """Blacklist a bet with no liquidity."""
         if self.scaledLiquidityMeasure == 0:
             self.blacklist_forever()
 
@@ -409,18 +405,18 @@ class Bet:
     def update_market_info(self, bet: "Bet") -> None:
         """Update the bet's market information.
 
-        Only a market first seen empty returns, as a fresh bet, with the first refresh
-        that shows liquidity. Every other blacklist stays.
+        Revive a zero-liquidity blacklist once a refresh shows liquidity.
 
         :param bet: the market as the latest refresh sees it.
         """
-        if bet.processed_timestamp == sys.maxsize or (
-            self.processed_timestamp == sys.maxsize and self.scaledLiquidityMeasure != 0
-        ):
-            self.blacklist_forever()  # copy over the changes from new bet object to the local store
+        if bet.processed_timestamp == sys.maxsize:
+            self.blacklist_forever()
             return
 
         if self.processed_timestamp == sys.maxsize:
+            if self.scaledLiquidityMeasure != 0:
+                self.blacklist_forever()
+                return
             self.outcomes = bet.outcomes
             self.processed_timestamp = bet.processed_timestamp
             self.queue_status = bet.queue_status

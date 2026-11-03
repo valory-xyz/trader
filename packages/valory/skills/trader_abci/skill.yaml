@@ -47,9 +47,9 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeiglv7hpthklkmdijhgdksyzzbf66cvc4i5iulyykmwqpyprgiikee
-- valory/decision_maker_abci:0.1.0:bafybeih3dt3t4hmy6f7vbhgcr42dqpijpg3ucnutqdyazoxheig27cpie4
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiexk7cvwq37huiit2u54yl4nrkgpdf4c4bud7rtz4iuepfafz6zwu
+- valory/market_manager_abci:0.1.0:bafybeig7pu5dpaz4qe2zfiaq7dlsdbhcwn4ywdw4rtyrul4h2tiwxi5roi
+- valory/decision_maker_abci:0.1.0:bafybeigr6zhvlt5dhhlxhlrsqqpzfhcknqag42yf272p2m3u3aslsigdkq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicikwsxuhro736ihulxub3qowr6cf7ci6apzovli4rof5niyrcihq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeibme2hyiy73ltegrqwmy3vk6rvegje5ko2n75mzqezn33eo5u6o2q
