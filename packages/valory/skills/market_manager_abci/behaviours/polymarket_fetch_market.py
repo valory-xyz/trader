@@ -745,6 +745,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             closed_ids = response.get("closed_ids") or []
             unchecked = len(response.get("unchecked_ids") or [])
 
+        total_unfetched = len(unfetched)
         dropped = 0
         for market_id in closed_ids:
             bet = unfetched.pop(market_id, None)
@@ -753,7 +754,7 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 dropped += 1
         self.context.logger.info(
             f"[POLYSTRAT] filter=closed_unfetched_blacklist "
-            f"input={len(unfetched) + dropped} dropped={dropped} unchecked={unchecked}"
+            f"input={total_unfetched} dropped={dropped} unchecked={unchecked}"
         )
 
     def _update_bets(self) -> Generator:
