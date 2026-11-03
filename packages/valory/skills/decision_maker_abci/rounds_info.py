@@ -173,8 +173,8 @@ ROUNDS_INFO = {
         "transitions": {},
     },
     "ranking_receive_round": {
-        "name": "Storing ranking scores",
-        "description": "Stores the mech's scores for the ranked markets.",
+        "name": "Receiving mech answer",
+        "description": "Stores the scores of a ranking answer, or passes a prediction answer on.",
         "transitions": {},
     },
     "ranking_request_round": {

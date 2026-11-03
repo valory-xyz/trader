@@ -225,12 +225,14 @@ def _sampled(bets: List[Bet], **kwargs: Any) -> Optional[str]:
     return None if idx is None else bets[idx].id
 
 
-def _receive(bets: List[Bet], result: Optional[str], ranking: bool = True) -> Any:
+def _receive(
+    bets: List[Bet], result: Optional[str], ranking: bool = True, **response: Any
+) -> Any:
     """Run the router round's behaviour over a mech answer and return it."""
     db = _db(
         mech_tool=RANKING_TOOL if ranking else "prediction-online",
         sampled_bet_index=None if ranking else 0,
-        mech_responses=json.dumps([{"nonce": "n", "result": result}]),
+        mech_responses=json.dumps([{"nonce": "n", "result": result, **response}]),
     )
     behaviour = _behaviour(RankingReceiveBehaviour, bets, db=db)
     _act(behaviour)
@@ -581,8 +583,14 @@ def test_row_9_old_market_file_and_restart() -> None:
 
 
 def test_answer_without_a_ranking_is_logged() -> None:
-    """A mech answer with no usable ranking leaves a warning with the cause."""
-    receiver = _receive(_listed(3), None)
+    """A failed request logs the mech's error; an answer with no usable ranking logs the cause."""
+    receiver = _receive(_listed(3), None, error="mech timed out")
+    receiver.context.logger.warning.assert_called_once()
+    message = receiver.context.logger.warning.call_args[0][0]
+    assert "no answer from the mech" in message
+    assert "mech timed out" in message
+
+    receiver = _receive(_listed(3), json.dumps({"scores": []}))
     receiver.context.logger.warning.assert_called_once()
     assert "no ranking in the answer" in receiver.context.logger.warning.call_args[0][0]
 
@@ -835,3 +843,36 @@ def test_one_market_per_event() -> None:
     stored, fetched = _bet(1), _bet(1, poly_event_id="e1")
     stored.update_market_info(fetched)
     assert stored.poly_event_id == "e1"
+
+
+def test_one_market_per_event_in_the_queue_and_renewals() -> None:
+    """The queue, a used-up renewal and its 10+ gate all count one market per event."""
+    # a queued market whose sibling became more liquid is not sent, and is reset
+    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(RANKING_MAX_MARKETS + 5)]
+    _request(bets)
+    queued = [bet for bet in bets if bet.ranked_at == -NOW]
+    siblings = [
+        _bet(500 + i, poly_event_id=bet.poly_event_id) for i, bet in enumerate(queued)
+    ]
+    assert _request(bets + siblings, now=NOW + 60).mech_tool is None
+    assert {bet.ranked_at for bet in queued} == {0}
+
+    # a used-up list renews with one market per event
+    used = [
+        _bet(
+            100 + i,
+            poly_event_id=f"used{i}",
+            ranked_at=NOW - 60,
+            research_score=0.9,
+            processed_timestamp=NOW - 10,
+        )
+        for i in range(12)
+    ]
+    fresh = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
+    rungs = [_bet(50 + i, poly_event_id="ladder") for i in range(3)]
+    ids = _ranked_ids(_request(used + fresh + rungs))
+    assert len(set(ids) & {"m50", "m51", "m52"}) == 1
+
+    # the 10+ gate counts events, not markets
+    clustered = [_bet(200 + i, poly_event_id=f"c{i % 3}") for i in range(12)]
+    assert _request(used + clustered).mech_tool is None

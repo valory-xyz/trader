@@ -14,7 +14,7 @@ fingerprint:
   behaviours/polymarket_fetch_market.py: bafybeiasetrdmeo4gxogsbd3uojm75uq7guq2iqjnbgva3qqkfpfhmtlim
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeidypa2fhkebcfubiz5rxq4xwnhakdbxqp5ewct4oyzw6j3ybmul4q
-  bets.py: bafybeibmzhllr4n5ajcnxusewxsdtk7cpup45ukys7qwjxzlzbgacbjnum
+  bets.py: bafybeie2infmhrott3qfgcadh7zs67rlmakcmfpjxbesyo55pnoktqymuy
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -53,7 +53,7 @@ fingerprint:
   tests/test_utils.py: bafybeid7vyjm6a5itbms6i3275v2gpi6otb47ivlkok6xpwvzfccohqnkm
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeibeww36whh3jyhwzsesgayagffwgqctmaq3frifdlrrqs3txmjqvm
+- valory/polymarket_client:0.1.0:bafybeialwzwkkw72lw2mwyz257ebk4djmw5oafdlzzb2p2wky74cm22vpa
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy

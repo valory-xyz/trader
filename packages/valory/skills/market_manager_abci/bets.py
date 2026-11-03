@@ -184,7 +184,7 @@ class Bet:
     market_spread: Optional[float] = None
     neg_risk: bool = False
     poly_tags: List[str] = dataclasses.field(default_factory=list)
-    # Polymarket-only event id; the markets of one event are rungs of one question
+    # Polymarket-only
     poly_event_id: Optional[str] = None
     # Polymarket-only best bid and ask of the first outcome at the last fetch
     best_bid: Optional[float] = None

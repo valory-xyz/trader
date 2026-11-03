@@ -206,12 +206,19 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _store_scores(self) -> None:
         """Store the valid scores of the answer on the markets of the latest list."""
-        try:
-            response = self.synchronized_data.mech_responses[0]
-            ranking = list(loads_bounded(response.result)["ranking"])  # type: ignore[arg-type]
-        except (IndexError, KeyError, TypeError, ValueError) as exc:
-            ranking = []
-            self.context.logger.warning(f"[RANKING] no ranking in the answer: {exc!r}")
+        ranking: List[Any] = []
+        responses = self.synchronized_data.mech_responses
+        response = responses[0] if responses else None
+        if response is None or response.result is None:
+            error = response.error if response is not None else "no response"
+            self.context.logger.warning(f"[RANKING] no answer from the mech: {error}")
+        else:
+            try:
+                ranking = list(loads_bounded(response.result)["ranking"])
+            except (KeyError, TypeError, ValueError) as exc:
+                self.context.logger.warning(
+                    f"[RANKING] no ranking in the answer: {exc!r}"
+                )
         scores: Dict[str, Any] = {}
         for entry in ranking:
             # a malformed entry is skipped; the first of repeated ids is kept
