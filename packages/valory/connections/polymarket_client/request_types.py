@@ -40,6 +40,8 @@ class RequestType(Enum):
     SET_APPROVAL = "set_approval"
     CHECK_APPROVAL = "check_approval"
     FETCH_ORDER_BOOK = "fetch_order_book"
+    # Which of the given Gamma market ids Gamma lists as closed.
+    CHECK_CLOSED_MARKETS = "check_closed_markets"
     SELL_POSITION = "sell_position"
     GET_ORDER = "get_order"
     # CLOB v2 DepositWallet operations. These route through the

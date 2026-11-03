@@ -392,6 +392,7 @@ class TestRouteRequest:
             "_set_approval",
             "_check_approval",
             "_fetch_order_book",
+            "_check_closed_markets",
             "_sell_position",
             "_get_order",
             "_deploy_dw",
@@ -552,6 +553,22 @@ class TestEnsureClobClient:
             )
         build.assert_not_called()
         assert error == ""
+
+    def test_closed_check_does_not_need_the_client(self) -> None:
+        """The closed check reads Gamma only, so it runs while the CLOB is down."""
+        conn = _make_connection()
+        conn.client = None
+        conn._request_with_retries = MagicMock(return_value=([], None))
+        with patch.object(_TestableConnection, "_build_clob_client") as build:
+            response, error = conn._route_request(
+                {
+                    "request_type": RequestType.CHECK_CLOSED_MARKETS.value,
+                    "params": {"market_ids": ["1"]},
+                }
+            )
+        build.assert_not_called()
+        assert error == ""
+        assert response == {"closed_ids": [], "unchecked_ids": []}
 
 
 # ---------------------------------------------------------------------------
@@ -4439,6 +4456,125 @@ class TestFetchOrderBook:
 
         assert error is None
         assert result == {"asks": [], "bids": [], "min_order_size": None}
+
+
+def _gamma_rows(*ids: str, closed: bool = True) -> list:
+    """Return Gamma /markets rows for the given ids."""
+    return [{"id": market_id, "closed": closed} for market_id in ids]
+
+
+class TestCheckClosedMarkets:
+    """Tests for _check_closed_markets."""
+
+    def test_reports_the_closed_ids(self) -> None:
+        """Ids Gamma lists as closed are reported; the others are left out."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=(_gamma_rows("2"), None))
+
+        result, error = conn._check_closed_markets(["1", "2", "3"])
+
+        assert error is None
+        assert result == {"closed_ids": ["2"], "unchecked_ids": []}
+        conn._request_with_retries.assert_called_once_with(
+            f"{GAMMA_API_BASE_URL}/markets",
+            params={"id": ["1", "2", "3"], "closed": "true", "limit": 100},
+        )
+
+    def test_numeric_ids_are_reported_as_strings(self) -> None:
+        """Gamma ids are compared and reported as the strings the store keys by."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(
+            return_value=([{"id": 2262651, "closed": True}], None)
+        )
+
+        result, _ = conn._check_closed_markets(["2262651"])
+
+        assert result["closed_ids"] == ["2262651"]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            # Gamma ignoring the closed filter must not drop open markets
+            _gamma_rows("1", closed=False),
+            [{"id": "1"}],
+            # nor may an id that was not asked for
+            _gamma_rows("9"),
+            [{"closed": True}],
+            ["1"],
+        ],
+    )
+    def test_ignores_rows_that_are_not_a_closed_asked_market(self, rows: list) -> None:
+        """Only a row for an asked id that Gamma marks closed counts."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=(rows, None))
+
+        result, error = conn._check_closed_markets(["1"])
+
+        assert error is None
+        assert result == {"closed_ids": [], "unchecked_ids": []}
+
+    def test_asks_100_ids_per_call(self) -> None:
+        """The ids are sent in chunks of up to 100."""
+        conn = _make_connection()
+        ids = [str(i) for i in range(250)]
+        conn._request_with_retries = MagicMock(
+            side_effect=lambda url, params: (_gamma_rows(params["id"][0]), None)
+        )
+
+        result, error = conn._check_closed_markets(ids)
+
+        assert error is None
+        sent = [c.kwargs["params"]["id"] for c in conn._request_with_retries.mock_calls]
+        assert sent == [ids[:100], ids[100:200], ids[200:]]
+        assert result == {"closed_ids": ["0", "100", "200"], "unchecked_ids": []}
+
+    @pytest.mark.parametrize("failure", [(None, "HTTP 500"), ({"error": "x"}, None)])
+    def test_unanswered_chunk_is_unchecked(self, failure: tuple) -> None:
+        """A chunk with no usable answer is reported unchecked; the others still count."""
+        conn = _make_connection()
+        ids = [str(i) for i in range(150)]
+        conn._request_with_retries = MagicMock(
+            side_effect=[failure, (_gamma_rows("120"), None)]
+        )
+
+        result, error = conn._check_closed_markets(ids)
+
+        assert error is None
+        assert result == {"closed_ids": ["120"], "unchecked_ids": ids[:100]}
+
+    def test_no_answer_at_all_is_an_error(self) -> None:
+        """When no chunk is answered the check fails as a whole."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock(return_value=(None, "timeout"))
+
+        result, error = conn._check_closed_markets([str(i) for i in range(150)])
+
+        assert conn._request_with_retries.call_count == 2
+        assert result == {"error": error}
+        assert "150" in error
+
+    def test_no_ids_makes_no_call(self) -> None:
+        """An empty list is answered without calling Gamma."""
+        conn = _make_connection()
+        conn._request_with_retries = MagicMock()
+
+        result, error = conn._check_closed_markets([])
+
+        conn._request_with_retries.assert_not_called()
+        assert error is None
+        assert result == {"closed_ids": [], "unchecked_ids": []}
+
+    def test_ids_are_sent_as_repeated_query_params(self) -> None:
+        """Each id is its own ``id=`` query param, as Gamma reads them."""
+        conn = _make_connection()
+        response = MagicMock()
+        response.json.return_value = []
+        with patch("requests.get", return_value=response) as mock_get:
+            conn._check_closed_markets(["1", "2"])
+        prepared = requests.Request(
+            "GET", mock_get.call_args.args[0], params=mock_get.call_args.kwargs["params"]
+        ).prepare()
+        assert urlsplit(prepared.url).query == "id=1&id=2&closed=true&limit=100"
 
 
 # ---------------------------------------------------------------------------
