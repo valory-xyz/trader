@@ -275,7 +275,10 @@ class Bet:
         return vote ^ 1
 
     def blacklist_forever(self) -> None:
-        """Blacklist a bet forever. Should only be used in cases where it is impossible to bet."""
+        """Blacklist a bet. Should only be used in cases where it is impossible to bet.
+
+        `update_market_info` lifts this for a bet stored with zero liquidity.
+        """
         self.outcomes = None
         self.processed_timestamp = sys.maxsize
         self.queue_status = QueueStatus.EXPIRED
@@ -328,7 +331,7 @@ class Bet:
                     setattr(self, field, list(type_to_cast(val) for val in uncasted))
 
     def _check_usefulness(self) -> None:
-        """If the bet is deemed unhelpful, then blacklist it."""
+        """Blacklist a bet with no liquidity."""
         if self.scaledLiquidityMeasure == 0:
             self.blacklist_forever()
 
@@ -405,13 +408,23 @@ class Bet:
         return True
 
     def update_market_info(self, bet: "Bet") -> None:
-        """Update the bet's market information."""
-        if (
-            self.processed_timestamp == sys.maxsize
-            or bet.processed_timestamp == sys.maxsize
-        ):
-            self.blacklist_forever()  # copy over the changes from new bet object to the local store
+        """Update the bet's market information.
+
+        Revive a zero-liquidity blacklist once a refresh shows liquidity.
+
+        :param bet: the market as the latest refresh sees it.
+        """
+        if bet.processed_timestamp == sys.maxsize:
+            self.blacklist_forever()
             return
+
+        if self.processed_timestamp == sys.maxsize:
+            if self.scaledLiquidityMeasure != 0:
+                self.blacklist_forever()
+                return
+            self.outcomes = bet.outcomes
+            self.processed_timestamp = bet.processed_timestamp
+            self.queue_status = bet.queue_status
 
         self.outcomeTokenAmounts = bet.outcomeTokenAmounts.copy()
         self.outcomeTokenMarginalPrices = bet.outcomeTokenMarginalPrices.copy()
