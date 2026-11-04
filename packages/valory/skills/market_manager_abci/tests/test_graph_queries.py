@@ -101,6 +101,8 @@ class TestNetworkQueries:
         assert "blocks" in result
         assert "timestamp_gte" in result
         assert "timestamp_lte" in result
+        # the network subgraph returns the block hash as `id`
+        assert "number" in result
 
 
 class TestOmenQueries:

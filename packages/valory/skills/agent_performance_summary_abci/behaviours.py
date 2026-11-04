@@ -3074,7 +3074,7 @@ class FetchPerformanceSummaryBehaviour(
             )
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return
@@ -3084,7 +3084,7 @@ class FetchPerformanceSummaryBehaviour(
             self._update_leaderboard()
             payload = FetchPerformanceDataPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return
@@ -3160,7 +3160,7 @@ class UpdateAchievementsBehaviour(
             )
             payload = UpdateAchievementsPayload(
                 sender=self.context.agent_address,
-                vote=False,
+                vote=True,
             )
             yield from self.finish_behaviour(payload)
             return

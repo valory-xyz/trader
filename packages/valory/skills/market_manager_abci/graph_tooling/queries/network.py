@@ -32,7 +32,7 @@ block_number = Template("""
           timestamp_lte:"${timestamp_to}"
         }
       ){
-        id
+        number
       }
     }
     """)

@@ -378,6 +378,27 @@ class TestUpdateBetsInvestments:
         # Expired bet should be skipped, investments should not change
         assert bet.queue_status == QueueStatus.EXPIRED
 
+    def test_logs_one_summary_line(self) -> None:
+        """Test that a refresh logs one summary line and no per-bet warnings."""
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        held = _make_bet(id="held")
+        untraded = _make_bet(id="untraded")
+        behaviour = _make_behaviour(bets=[expired, held, untraded])
+        behaviour.get_active_bets = _return_gen({"held": {"Yes": 100}})  # type: ignore[method-assign]
+
+        gen = behaviour.update_bets_investments()
+        try:
+            next(gen)
+            gen.send(None)
+        except StopIteration:
+            pass
+
+        behaviour.context.logger.warning.assert_not_called()
+        behaviour.context.logger.info.assert_any_call(
+            "Refreshed the investments of 2 bets, 1 of them with recorded investments."
+        )
+
     def test_outcome_mapping(self) -> None:
         """Test that outcomes are correctly mapped using BinaryOutcome.from_string."""
         bet = _make_bet(id="bet1")
@@ -466,6 +487,24 @@ class TestReplaceWithExistingInvestmentsIfEmpty:
         behaviour._replace_with_existing_investments_if_empty(bet, existing)
 
         assert bet.investments == existing
+
+    def test_warns_only_when_keeping_a_recorded_investment(self) -> None:
+        """Test that only a kept non-empty investment record is warned about."""
+        behaviour = _make_behaviour()
+        never_invested = _make_bet(id="never")
+        never_invested.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            never_invested, {"Yes": [], "No": []}
+        )
+        behaviour.context.logger.warning.assert_not_called()
+
+        held = _make_bet(id="held")
+        held.investments = {"Yes": [], "No": []}
+        behaviour._replace_with_existing_investments_if_empty(
+            held, {"Yes": [100], "No": []}
+        )
+        behaviour.context.logger.warning.assert_called_once()
+        assert "held" in behaviour.context.logger.warning.call_args[0][0]
 
     def test_does_not_replace_when_yes_has_values(self) -> None:
         """Test no replacement when yes investments exist."""

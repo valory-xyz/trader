@@ -111,7 +111,7 @@ class RedeemInfoBehaviour(StorageManagerBehaviour, QueryingBehaviour, ABC):
                 break
 
         if self._fetch_status == FetchStatus.SUCCESS:
-            block_number = block.get("id", "")
+            block_number = block.get(BLOCK_NUMBER_KEY, "")
             if block_number.isdigit():
                 self.earliest_block_number = int(block_number)
 
@@ -498,6 +498,13 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         # get the user's positions
         user_positions = yield from self.fetch_user_positions(safe_address)
         if user_positions is None:
+            return False
+
+        if trades and not user_positions:
+            self.context.logger.warning(
+                "The conditional tokens subgraph has no positions for a Safe with "
+                "trades. It may be lagging, so the redeem check will retry."
+            )
             return False
 
         # process the positions
