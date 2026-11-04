@@ -174,6 +174,14 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         if creator_rows is None:
             return self._short_circuit_payload(errored=True)
 
+        if creator_rows and not user_positions:
+            # The subgraph keeps a row per position even at zero balance, so a
+            # Safe with trades and no rows has not been indexed yet.
+            self._store.record_top_level_error(
+                "conditional tokens subgraph has no positions for a Safe with trades"
+            )
+            return self._short_circuit_payload(errored=True)
+
         sellable = get_withdrawable_positions(creator_rows, user_positions)
         if not sellable:
             self.context.logger.info("omen withdrawal: no sellable positions found")
