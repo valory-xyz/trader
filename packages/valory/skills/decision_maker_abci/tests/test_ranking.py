@@ -17,7 +17,7 @@
 #
 # ------------------------------------------------------------------------------
 
-"""Tests for the ranked market list: one test per SPEC-M2.1 row 1 to 9."""
+"""Tests for the ranked market list."""
 
 import json
 import random
@@ -112,7 +112,7 @@ def _bet(i: int, **kwargs: Any) -> Bet:
 
 
 def _todays_pick(bets: List[Bet]) -> str:
-    """Today's pick on `main`: the first non-empty queue, sorted by the priority key."""
+    """Today's pick: the first non-empty queue, the highest priority key."""
     queue = [b for b in bets if b.queue_status == QueueStatus.TO_PROCESS] or bets
     return max(
         queue,
@@ -225,12 +225,14 @@ def _sampled(bets: List[Bet], **kwargs: Any) -> Optional[str]:
     return None if idx is None else bets[idx].id
 
 
-def _receive(bets: List[Bet], result: Optional[str], ranking: bool = True) -> Any:
+def _receive(
+    bets: List[Bet], result: Optional[str], ranking: bool = True, **response: Any
+) -> Any:
     """Run the router round's behaviour over a mech answer and return it."""
     db = _db(
         mech_tool=RANKING_TOOL if ranking else "prediction-online",
         sampled_bet_index=None if ranking else 0,
-        mech_responses=json.dumps([{"nonce": "n", "result": result}]),
+        mech_responses=json.dumps([{"nonce": "n", "result": result, **response}]),
     )
     behaviour = _behaviour(RankingReceiveBehaviour, bets, db=db)
     _act(behaviour)
@@ -243,7 +245,7 @@ def _listed(n: int, ranked_at: int = NOW - 60, **kwargs: Any) -> List[Bet]:
 
 
 def _end_block(round_cls: Type[Any], payload: Any, **data: Any) -> Any:
-    """Run a round over the payload of the single agent and return the event."""
+    """Run a round over the payload of the single agent and return the (state, event) pair."""
     db = _db(
         participants=["agent"],
         all_participants=["agent"],
@@ -258,7 +260,7 @@ def _end_block(round_cls: Type[Any], payload: Any, **data: Any) -> Any:
 
 
 def test_row_1_no_ranking_keeps_todays_picks() -> None:
-    """Row 1: tool not listed, older mech path, benchmarking, no or stale list: today's picks."""
+    """Tool not listed, older mech path, benchmarking, no or stale list: today's picks."""
     bets = [_bet(i) for i in range(15)]
     stale = [
         _bet(i, ranked_at=NOW - RANKING_MAX_AGE, research_score=i / 20)
@@ -290,7 +292,7 @@ def test_row_1_no_ranking_keeps_todays_picks() -> None:
 
 
 def test_row_2_first_period_requests_a_ranking_of_prefiltered_markets() -> None:
-    """Row 2: one request of prefiltered markets, straight to the mech; scores stored, no bet."""
+    """One request of prefiltered markets, straight to the mech; scores stored, no bet."""
     candidates = [_bet(i) for i in range(12)]
     dropped = [
         _bet(20, investments={"Yes": [5], "No": []}),
@@ -336,7 +338,7 @@ def test_row_2_first_period_requests_a_ranking_of_prefiltered_markets() -> None:
 
 
 def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
-    """Row 3: best score first; held, cooling and book-failed markets as today."""
+    """Best score first; held, cooling and book-failed markets as today."""
     bets = _listed(12)
     bets[2].research_score, bets[5].research_score = 0.9, 0.95
     bets[5].investments = {"Yes": [5], "No": []}  # held: not re-bet
@@ -346,7 +348,7 @@ def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
     bets[9].research_score = 0.6
     assert _sampled(bets) == "m9"
 
-    # the book of m9 cannot take a bet: it is stamped and m2 is not tried before its cooldown
+    # the book of m9 cannot take a bet: it is stamped, and the next market is tried
     sampler = _behaviour(SamplingBehaviour, bets)
     sampler._book_can_take_bet = lambda bet: (yield) or bet.id != "m9"
     payload = _act(sampler)
@@ -365,7 +367,7 @@ def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
 
 
 def test_row_4_renewal_rule() -> None:
-    """Row 4: re-rank when 24 h old or used up with 10+ never-ranked; else today's order."""
+    """Re-rank when 24 h old or used up with 10+ never-ranked; else today's order."""
     expired = _listed(12, ranked_at=NOW - RANKING_MAX_AGE)
     assert len(_ranked_ids(_request(expired))) == 12
 
@@ -396,7 +398,7 @@ def test_row_4_renewal_rule() -> None:
     _receive(many, None)
     assert _request(many, now=NOW + 120).mech_tool is None
 
-    # a 24 h renewal keeps today's order, and drops what an old list still had queued
+    # a 24 h renewal keeps today's order and queues again what does not fit in its request
     pool = [_bet(i) for i in range(180)]
     first = _ranked_ids(_request(pool))
     for bet in pool:
@@ -442,7 +444,7 @@ def test_row_4_renewal_rule() -> None:
 def test_row_5_failed_or_malformed_ranking_keeps_valid_scores(
     result: Optional[str], expected: Dict[str, float]
 ) -> None:
-    """Row 5: valid scores kept, the rest unscored, and no second ranking."""
+    """Valid scores kept, the rest unscored, and no second ranking."""
     bets = _listed(12)
     stale = _bet(40, ranked_at=NOW - DAY, research_score=0.2)  # an older list
     _receive(bets + [stale], result)
@@ -455,7 +457,7 @@ def test_row_5_failed_or_malformed_ranking_keeps_valid_scores(
 
 
 def test_row_6_too_few_candidates_or_empty_pool_requests_nothing() -> None:
-    """Row 6: fewer than 10 candidates, or an empty pool: no ranking, as today."""
+    """Fewer than 10 candidates, or an empty pool: no ranking, as today."""
     nine = [_bet(i) for i in range(9)]
     assert _request(nine).mech_tool is None
     assert _sampled(nine) == "m8"
@@ -469,7 +471,7 @@ def test_row_6_too_few_candidates_or_empty_pool_requests_nothing() -> None:
 
 
 def test_row_7_router_and_blacklisting() -> None:
-    """Row 7: a prediction goes to decision-receive; a ranking never; a failed ranking is a no-op blacklisting."""
+    """A prediction goes to decision-receive; a ranking never; a failed ranking is a no-op blacklisting."""
     bets = _listed(12)
     receiver = _receive(bets, '{"p_yes": 0.9, "p_no": 0.1}', ranking=False)
     assert receiver.payloads[-1].bets_hash is None
@@ -521,7 +523,7 @@ def test_row_7_router_and_blacklisting() -> None:
 
 
 def test_row_8_prediction_path_unchanged() -> None:
-    """Row 8: tool selection and decision request untouched; the classifier rejects the ranking tool."""
+    """Tool selection and decision request untouched; the classifier rejects the ranking tool."""
     # the published metadata of the ranking tool, as built from mech-predict-internal
     metadata = {
         "description": (
@@ -566,7 +568,7 @@ def test_row_8_prediction_path_unchanged() -> None:
 
 
 def test_row_9_old_market_file_and_restart() -> None:
-    """Row 9: an old market file loads; a restart mid-ranking does not re-request."""
+    """An old market file loads; a restart mid-ranking does not re-request."""
     old = json.loads(serialize_bets([_bet(1)]) or "")
     del old[0]["ranked_at"], old[0]["research_score"]
     (loaded,) = json.loads(json.dumps(old), cls=BetsDecoder)
@@ -578,6 +580,19 @@ def test_row_9_old_market_file_and_restart() -> None:
     stamped = json.loads(serialize_bets(_listed(12)) or "", cls=BetsDecoder)
     assert _request(stamped, now=NOW + 600).mech_tool is None
     assert _request(stamped, now=NOW - 60 + RANKING_MAX_AGE).mech_tool == RANKING_TOOL
+
+
+def test_answer_without_a_ranking_is_logged() -> None:
+    """A failed request logs the mech's error; an answer with no usable ranking logs the cause."""
+    receiver = _receive(_listed(3), None, error="mech timed out")
+    receiver.context.logger.warning.assert_called_once()
+    message = receiver.context.logger.warning.call_args[0][0]
+    assert "no answer from the mech" in message
+    assert "mech timed out" in message
+
+    receiver = _receive(_listed(3), json.dumps({"scores": []}))
+    receiver.context.logger.warning.assert_called_once()
+    assert "no ranking in the answer" in receiver.context.logger.warning.call_args[0][0]
 
 
 def test_quiet_pool_logs() -> None:
@@ -761,6 +776,17 @@ def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
         bet.outcomeTokenMarginalPrices = [0.5, 0.5]
     assert _request(pool, now=NOW + 120).mech_tool is None
 
+    # when every queued market misses its request, the reset is stored and nothing is sent
+    waiting = [_bet(i) for i in range(RANKING_MAX_MARKETS + 5)]
+    _request(waiting)
+    gone = [bet for bet in waiting if bet.ranked_at == -NOW]
+    for bet in gone:
+        bet.outcomeTokenMarginalPrices = [0.95, 0.05]
+    requester = _behaviour(RankingRequestBehaviour, waiting, now=NOW + 60)
+    assert _act(requester).mech_tool is None
+    requester.store_bets.assert_called_once()
+    assert {bet.ranked_at for bet in gone} == {0}
+
     # a list takes at most three requests; the markets past them follow today's order
     big = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS + 50)]
     sizes = [len(_ranked_ids(_request(big, now=NOW + 60 * k))) for k in range(3)]
@@ -784,3 +810,69 @@ def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
     assert len(_ranked_ids(_request(untried + stamped))) == RANKING_MAX_MARKETS
     assert all(bet.ranked_at == 0 for bet in stamped)
     assert _request(untried + stamped, now=NOW + 60).mech_tool is None
+
+
+def test_one_market_per_event() -> None:
+    """A ranking sends one market per Polymarket event, none from an event with a live position."""
+    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
+    rungs = [_bet(i, poly_event_id="ladder") for i in range(20, 24)]
+    held = _bet(30, poly_event_id="e5", investments={"Yes": [5], "No": []})
+    unknown = [_bet(i) for i in range(40, 42)]  # stored before the event id existed
+    ids = _ranked_ids(_request(bets + rungs + [held] + unknown))
+    assert set(ids) & {"m20", "m21", "m22", "m23"} == {"m23"}  # the most liquid rung
+    assert "m5" not in ids and "m30" not in ids
+    assert {"m40", "m41"} <= set(ids)
+
+    # a position in an expired market of the event does not keep the event out
+    held.queue_status = QueueStatus.EXPIRED
+    assert "m5" in _ranked_ids(_request(bets + [held], now=NOW + DAY))
+
+    # a listed rung whose unranked sibling became more liquid does not renew a fresh list
+    listed = [
+        _bet(100 + i, poly_event_id=f"e{i}", ranked_at=NOW - 60, research_score=0.9)
+        for i in range(12)
+    ]
+    siblings = [
+        _bet(200 + i, poly_event_id=f"e{i}", scaledLiquidityMeasure=500.0)
+        for i in range(12)
+    ]
+    assert _request(listed + siblings).mech_tool is None
+    assert _sampled(listed + siblings) in {b.id for b in listed}
+
+    # a refetch refreshes the stored event id
+    stored, fetched = _bet(1), _bet(1, poly_event_id="e1")
+    stored.update_market_info(fetched)
+    assert stored.poly_event_id == "e1"
+
+
+def test_one_market_per_event_in_the_queue_and_renewals() -> None:
+    """The queue, a used-up renewal and its 10+ gate all count one market per event."""
+    # a queued market whose sibling became more liquid is not sent, and is reset
+    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(RANKING_MAX_MARKETS + 5)]
+    _request(bets)
+    queued = [bet for bet in bets if bet.ranked_at == -NOW]
+    siblings = [
+        _bet(500 + i, poly_event_id=bet.poly_event_id) for i, bet in enumerate(queued)
+    ]
+    assert _request(bets + siblings, now=NOW + 60).mech_tool is None
+    assert {bet.ranked_at for bet in queued} == {0}
+
+    # a used-up list renews with one market per event
+    used = [
+        _bet(
+            100 + i,
+            poly_event_id=f"used{i}",
+            ranked_at=NOW - 60,
+            research_score=0.9,
+            processed_timestamp=NOW - 10,
+        )
+        for i in range(12)
+    ]
+    fresh = [_bet(i, poly_event_id=f"e{i}") for i in range(12)]
+    rungs = [_bet(50 + i, poly_event_id="ladder") for i in range(3)]
+    ids = _ranked_ids(_request(used + fresh + rungs))
+    assert len(set(ids) & {"m50", "m51", "m52"}) == 1
+
+    # the 10+ gate counts events, not markets
+    clustered = [_bet(200 + i, poly_event_id=f"c{i % 3}") for i in range(12)]
+    assert _request(used + clustered).mech_tool is None

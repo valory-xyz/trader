@@ -93,7 +93,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
         )
 
     def _ranking_batch(self) -> Tuple[List[Bet], int]:
-        """Get the markets to rank in today's order and the list's stamp; no markets when no request is due."""
+        """Get the markets to rank and the list's stamp; no markets when no request is due."""
         # unset until the first redeem round reaches consensus
         tools = self.synchronized_data.db.get("available_mech_tools", None)
         if not (
@@ -107,20 +107,27 @@ class RankingRequestBehaviour(SamplingBehaviour):
 
         now = self.synced_timestamp
         available, _ = self._processable_bets(now)
-        # The untried markets Sampling could pick and its book check would
-        # pass, so the list holds every one the pick could send to a mech; a
-        # market with a failed book check follows today's order, as on the list.
-        candidates = self._sort_by_priority_logic(
-            [
-                bet
-                for bet in self._drop_disabled_tags(available)
-                if bet.queue_status == QueueStatus.TO_PROCESS
-                and not bet.invested_amount
-                and not bet.processed_timestamp
-                and self._pick_filter_reason(bet) is None
-                and self._has_room_to_trade(bet)
-            ]
-        )
+        eligible = [
+            bet
+            for bet in self._drop_disabled_tags(available)
+            if bet.queue_status == QueueStatus.TO_PROCESS
+            and not bet.invested_amount
+            and not bet.processed_timestamp
+            and self._pick_filter_reason(bet) is None
+            and self._has_room_to_trade(bet)
+        ]
+        # One market per Polymarket event, none from an event with a live
+        # position: the rungs of one event are one question.
+        events = {
+            bet.poly_event_id
+            for bet in self.bets
+            if bet.has_investments and not bet.queue_status.is_expired()
+        }
+        candidates = []
+        for bet in self._sort_by_priority_logic(eligible):
+            if bet.poly_event_id is None or bet.poly_event_id not in events:
+                events.add(bet.poly_event_id)
+                candidates.append(bet)
         latest = max((bet.ranked_at for bet in self.bets), default=0)
         if now - latest >= RANKING_MAX_AGE:
             return (
@@ -142,7 +149,9 @@ class RankingRequestBehaviour(SamplingBehaviour):
         # A used-up list renews only with never-ranked markets, so markets
         # whose books keep failing cannot bring a ranking every cooldown.
         never_ranked = sum(bet.ranked_at <= 0 for bet in candidates)
-        if self._ranked_list(candidates) or never_ranked < RANKING_MIN_MARKETS:
+        # the list counts as used up on the whole pool, not only on the
+        # markets that represent their event in this batch
+        if self._ranked_list(eligible) or never_ranked < RANKING_MIN_MARKETS:
             return [], 0
         # never-ranked markets go first: past the cap they would stay unranked
         # and an unscored list would bring the same requests every period
@@ -197,11 +206,19 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
 
     def _store_scores(self) -> None:
         """Store the valid scores of the answer on the markets of the latest list."""
-        try:
-            response = self.synchronized_data.mech_responses[0].result
-            ranking = list(loads_bounded(response)["ranking"])  # type: ignore[arg-type]
-        except (IndexError, KeyError, TypeError, ValueError):
-            ranking = []
+        ranking: List[Any] = []
+        responses = self.synchronized_data.mech_responses
+        response = responses[0] if responses else None
+        if response is None or response.result is None:
+            error = response.error if response is not None else "no response"
+            self.context.logger.warning(f"[RANKING] no answer from the mech: {error}")
+        else:
+            try:
+                ranking = list(loads_bounded(response.result)["ranking"])
+            except (KeyError, TypeError, ValueError) as exc:
+                self.context.logger.warning(
+                    f"[RANKING] no ranking in the answer: {exc!r}"
+                )
         scores: Dict[str, Any] = {}
         for entry in ranking:
             # a malformed entry is skipped; the first of repeated ids is kept
