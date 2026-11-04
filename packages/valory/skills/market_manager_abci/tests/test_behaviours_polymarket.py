@@ -25,6 +25,8 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.skills.market_manager_abci.behaviours.base import (
     YIELD_EVERY_N_MARKETS,
 )
@@ -2289,6 +2291,154 @@ class TestUpdateBets:
 
         assert len(behaviour.bets) == 1
         behaviour._blacklist_expired_bets.assert_called_once()  # type: ignore[attr-defined]
+
+    @staticmethod
+    def _run_update(
+        stored: List[Bet], fetched: List[Dict[str, Any]], response: Any
+    ) -> PolymarketFetchMarketBehaviour:
+        """Run _update_bets over ``stored`` with a refresh returning ``fetched``."""
+        behaviour = _make_behaviour()
+        behaviour._current_market = "polymarket"
+        behaviour.bets = stored
+        behaviour._fetch_markets_from_polymarket = _return_gen(fetched)  # type: ignore[method-assign]
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(response)()
+        )
+        behaviour.context.params.opening_margin = 1000
+        type(behaviour).synced_time = PropertyMock(return_value=5000)  # type: ignore[method-assign]
+        _exhaust_gen(behaviour._update_bets())
+        return behaviour
+
+    def test_closed_unfetched_bet_is_blacklisted(self) -> None:
+        """A stored bet the refresh no longer returns leaves the pickable set once closed."""
+        stale = _make_bet(id="stale")
+        fetched = [raw_bet("fresh")]
+        behaviour = self._run_update([stale], fetched, {"closed_ids": ["stale"]})
+
+        behaviour.send_polymarket_connection_request.assert_called_once_with(  # type: ignore[attr-defined]
+            {
+                "request_type": "check_closed_markets",
+                "params": {"market_ids": ["stale"]},
+            }
+        )
+        assert stale.queue_status == QueueStatus.EXPIRED
+        assert [b.id for b in behaviour.bets] == ["stale", "fresh"]
+
+    def test_empty_refresh_sends_no_check(self) -> None:
+        """A refresh that returned no market leaves every stored bet unchecked."""
+        stale = _make_bet(id="stale")
+        behaviour = self._run_update([stale], [], {"closed_ids": ["stale"]})
+
+        behaviour.send_polymarket_connection_request.assert_not_called()  # type: ignore[attr-defined]
+        assert stale.queue_status == QueueStatus.FRESH
+
+
+class TestBlacklistClosedUnfetchedBets:
+    """Tests for _blacklist_closed_unfetched_bets."""
+
+    @staticmethod
+    def _check(
+        stored: List[Bet], fetched_ids: List[str], response: Any
+    ) -> PolymarketFetchMarketBehaviour:
+        """Run the check over ``stored`` after a refresh that returned ``fetched_ids``."""
+        behaviour = _make_behaviour(bets=stored)
+        behaviour.send_polymarket_connection_request = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(response)()
+        )
+        fetched = [{"id": market_id} for market_id in fetched_ids]
+        _exhaust_gen(behaviour._blacklist_closed_unfetched_bets(fetched))
+        return behaviour
+
+    @staticmethod
+    def _sent_ids(behaviour: PolymarketFetchMarketBehaviour) -> List[str]:
+        """Return the market ids sent to the closed check."""
+        payload = behaviour.send_polymarket_connection_request.call_args[0][0]  # type: ignore[attr-defined]
+        assert payload["request_type"] == "check_closed_markets"
+        return payload["params"]["market_ids"]
+
+    def test_only_closed_ids_are_blacklisted(self) -> None:
+        """Closed bets are blacklisted; open and unchecked ones stay as they are."""
+        closed = _make_bet(id="closed")
+        still_open = _make_bet(id="open")
+        unchecked = _make_bet(id="unchecked")
+        behaviour = self._check(
+            [closed, still_open, unchecked],
+            [],
+            {"closed_ids": ["closed"], "unchecked_ids": ["unchecked"]},
+        )
+
+        assert closed.queue_status == QueueStatus.EXPIRED
+        assert closed.processed_timestamp == sys.maxsize
+        for bet in (still_open, unchecked):
+            assert bet.queue_status == QueueStatus.FRESH
+            assert bet.processed_timestamp == 0
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=3 dropped=1 unchecked=1"
+        )
+
+    def test_sends_only_unfetched_live_bets(self) -> None:
+        """Fetched and already blacklisted bets are not sent; invested ones are."""
+        fetched = _make_bet(id="fetched")
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        invested = _make_bet(id="invested", investments={"Yes": [10], "No": []})
+        unfetched = _make_bet(id="unfetched")
+        behaviour = self._check(
+            [fetched, expired, invested, unfetched],
+            ["fetched"],
+            {"closed_ids": [], "unchecked_ids": []},
+        )
+
+        assert self._sent_ids(behaviour) == ["invested", "unfetched"]
+
+    def test_closed_bet_with_a_position_is_blacklisted(self) -> None:
+        """A closed market is dropped from picking even when the agent holds it."""
+        invested = _make_bet(id="invested", investments={"Yes": [10], "No": []})
+        self._check([invested], [], {"closed_ids": ["invested"]})
+
+        assert invested.queue_status == QueueStatus.EXPIRED
+        assert invested.investments == {"Yes": [10], "No": []}
+
+    def test_nothing_to_check_sends_nothing(self) -> None:
+        """No request is made when every stored bet was fetched or is blacklisted."""
+        fetched = _make_bet(id="fetched")
+        expired = _make_bet(id="expired")
+        expired.blacklist_forever()
+        behaviour = self._check([fetched, expired], ["fetched"], None)
+
+        behaviour.send_polymarket_connection_request.assert_not_called()  # type: ignore[attr-defined]
+        behaviour.context.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "response", [None, {"error": "Closed check of 2 markets got no answer"}]
+    )
+    def test_failed_check_blacklists_nothing(self, response: Any) -> None:
+        """With no answer, every sent bet stays pickable until the next refresh."""
+        bets = [_make_bet(id="a"), _make_bet(id="b")]
+        behaviour = self._check(bets, [], response)
+
+        assert [b.queue_status for b in bets] == [QueueStatus.FRESH] * 2
+        behaviour.context.logger.warning.assert_called_once()
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=2 dropped=0 unchecked=2"
+        )
+
+    def test_unknown_or_repeated_closed_ids_are_ignored(self) -> None:
+        """An id that was not sent, or a repeat, blacklists nothing more."""
+        sent = _make_bet(id="sent")
+        fetched = _make_bet(id="fetched")
+        behaviour = self._check(
+            [sent, fetched], ["fetched"], {"closed_ids": ["fetched", "sent", "sent"]}
+        )
+
+        assert sent.queue_status == QueueStatus.EXPIRED
+        assert fetched.queue_status == QueueStatus.FRESH
+        behaviour.context.logger.info.assert_called_once_with(
+            "[POLYSTRAT] filter=closed_unfetched_blacklist "
+            "input=1 dropped=1 unchecked=0"
+        )
 
 
 # ===========================================================================
