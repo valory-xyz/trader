@@ -109,6 +109,8 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
       2. Fetch CT ``user_positions`` (current ERC1155 balance) and omen
          ``fpmmTrades`` (FPMM metadata) — top-level retries.
       3. Filter via :func:`get_withdrawable_positions` (OPEN bucket only).
+         A Safe with trades and no position rows is not indexed yet, so
+         persist ``errored`` and emit ``WITHDRAWAL_DONE`` instead.
       4. Per position: size the sell via marginal-price + calcSellAmount
          halve-retry, drop on revert or sizing exhaustion.
       5. If nothing sellable: persist ``complete`` (or ``errored``), emit
@@ -244,9 +246,9 @@ class OmenWithdrawBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
     def _short_circuit_payload(self, errored: bool) -> OmenWithdrawalPayload:
         """Persist terminal state and build the ``WITHDRAWAL_DONE`` payload.
 
-        :param errored: whether to flag the session as ``errored`` (any
-            top-level fetch failure or per-position error already
-            persisted) or ``complete``.
+        :param errored: whether to flag the session as ``errored`` (a
+            top-level fetch failure, a Safe with trades that is not indexed
+            yet, or a per-position error already persisted) or ``complete``.
         :return: a payload with no tx fields; the round's ``end_block``
             override routes the trailing ``event`` field through.
         """

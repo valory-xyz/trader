@@ -493,7 +493,7 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 **current_subgraph.get_spec(),
             )
             if _is_unknown_user(res_raw):
-                # the subgraph has no entity for a Safe that never held a position
+                # the subgraph has no entity for a Safe until it indexes a position
                 self._call_failed = False
                 current_subgraph.reset_retries()
                 self._fetch_status = FetchStatus.SUCCESS
