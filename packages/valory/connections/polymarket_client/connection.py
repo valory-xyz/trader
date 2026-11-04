@@ -1199,7 +1199,8 @@ class PolymarketClientConnection(BaseSyncConnection):
         """Fetch markets for a tag slug via /events, flattened with per-market tags.
 
         Hits `/events?tag_slug=X` (paginated), flattens each event's child markets,
-        and attaches the event's tag slugs to every market as `_poly_tags`. The
+        and attaches the event's tag slugs to every market as `_poly_tags` and the
+        event id as `_poly_event_id`. The
         events endpoint returns markets with the same field shape as `/markets`
         but additionally carries the tag taxonomy required for filtering.
 
@@ -1242,6 +1243,7 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ]
                 for market in event.get("markets") or []:
                     market["_poly_tags"] = tag_slugs
+                    market["_poly_event_id"] = event.get("id")
                     all_markets.append(market)
                     markets_this_page += 1
 
