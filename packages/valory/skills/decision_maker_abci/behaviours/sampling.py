@@ -530,7 +530,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"{self.venue_tag} filter=score_gate "
             f"input={len(available_bets)} "
             f"dropped={len(available_bets) - len(kept)} "
-            f"kept={len(kept)} held={held}"
+            f"kept={len(kept)} held={held} "
+            f"list_live={str(list_is_live).lower()}"
         )
         if available_bets and not kept:
             self.pool_logger.warning(

@@ -1121,7 +1121,7 @@ def test_held_gated_market_is_picked_as_today() -> None:
     sampler.context.params.use_multi_bets_mode = True
     assert bets[sampler._sample()].id == "m40"
     sampler.context.logger.info.assert_any_call(
-        "[POLYSTRAT] filter=score_gate input=2 dropped=0 kept=2 held=1"
+        "[POLYSTRAT] filter=score_gate input=2 dropped=0 kept=2 held=1 list_live=true"
     )
 
 
@@ -1131,7 +1131,7 @@ def test_gate_matches_the_tag_as_the_disabled_tag_filter_does() -> None:
     sampler = _behaviour(SamplingBehaviour, bets)
     assert bets[sampler._sample()].id == "m1"
     sampler.context.logger.info.assert_any_call(
-        "[POLYSTRAT] filter=score_gate input=2 dropped=1 kept=1 held=0"
+        "[POLYSTRAT] filter=score_gate input=2 dropped=1 kept=1 held=0 list_live=false"
     )
 
 
@@ -1143,7 +1143,7 @@ def test_gated_market_disabled_again_is_never_picked() -> None:
     assert bets[sampler._sample()].id == "m1"
     # the disabled-tag filter runs first, so the gate never sees the market
     sampler.context.logger.info.assert_any_call(
-        "[POLYSTRAT] filter=score_gate input=1 dropped=0 kept=1 held=0"
+        "[POLYSTRAT] filter=score_gate input=1 dropped=0 kept=1 held=0 list_live=true"
     )
 
 
