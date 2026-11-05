@@ -472,18 +472,20 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             self.pool_logger.warning(msg + cooling_note)
         return available_bets, cooling_note
 
+    @staticmethod
+    def _normalized_tags(tags: List[str]) -> FrozenSet[str]:
+        """Get the tags stripped and lower-cased, so casing or padding cannot break a match."""
+        return frozenset(t.strip().lower() for t in tags)
+
     def _drop_disabled_tags(self, available_bets: List[Bet]) -> List[Bet]:
         """Drop the bets that carry a disabled Polymarket tag."""
-        # both sides are normalized, so tag casing or whitespace upstream cannot break the match
-        disabled_tags = {
-            t.strip().lower() for t in self.params.disabled_polymarket_tags
-        }
+        disabled_tags = self._normalized_tags(self.params.disabled_polymarket_tags)
         if disabled_tags:
             before = len(available_bets)
             available_bets = [
                 bet
                 for bet in available_bets
-                if not (disabled_tags & {t.strip().lower() for t in bet.poly_tags})
+                if not disabled_tags & self._normalized_tags(bet.poly_tags)
             ]
             skipped = before - len(available_bets)
             self.pool_logger.info(
@@ -515,8 +517,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         kept: List[Bet] = []
         held = 0
         for bet in available_bets:
-            tags = {t.strip().lower() for t in bet.poly_tags}
-            if not SCORE_GATED_POLYMARKET_TAGS & tags:
+            if not SCORE_GATED_POLYMARKET_TAGS & self._normalized_tags(bet.poly_tags):
                 kept.append(bet)
             elif bet.invested_amount > 0:
                 held += 1
@@ -524,7 +525,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             elif (
                 list_is_live
                 and bet.ranked_at == latest
-                and (bet.research_score or 0.0) >= self.params.ranking_min_score
+                and bet.research_score is not None
+                and bet.research_score >= self.params.ranking_min_score
             ):
                 kept.append(bet)
 
@@ -534,6 +536,11 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"dropped={len(available_bets) - len(kept)} "
             f"kept={len(kept)} held={held}"
         )
+        if available_bets and not kept:
+            self.pool_logger.warning(
+                f"All {len(available_bets)} candidate bets were dropped by the "
+                "score gate!"
+            )
         return kept
 
     def _pick_filter_reason(self, bet: Bet) -> Optional[str]:

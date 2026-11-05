@@ -35,7 +35,7 @@ import pytest
 import yaml
 
 PACKAGES_ROOT = Path(__file__).resolve().parents[4]
-# Sampling picks these only on a ranking score, so the ranking must see them.
+# Mirrors SCORE_GATED_POLYMARKET_TAGS in decision_maker_abci's sampling.
 SCORE_GATED_TAG = "hide-from-new"
 
 

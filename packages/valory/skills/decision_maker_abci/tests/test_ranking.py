@@ -22,10 +22,12 @@
 import json
 import random
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Type
 from unittest.mock import MagicMock
 
 import pytest
+import yaml
 
 from packages.valory.skills.abstract_round_abci.base import AbciAppDB
 from packages.valory.skills.decision_maker_abci.behaviours.blacklisting import (
@@ -1017,7 +1019,13 @@ def _gated(i: int, **kwargs: Any) -> Bet:
 def test_gated_markets_reach_the_ranking_batch() -> None:
     """Hide-from-new markets are ranked; with the tag disabled again they are not."""
     bets = [_gated(i) for i in range(12)]
-    assert sorted(_ranked_ids(_request(bets))) == sorted(b.id for b in bets)
+    requester = _behaviour(RankingRequestBehaviour, bets)
+    skill = Path(__file__).parents[1] / "skill.yaml"
+    params = yaml.safe_load(skill.read_text())["models"]["params"]["args"]
+    requester.context.params.disabled_polymarket_tags = params[
+        "disabled_polymarket_tags"
+    ]
+    assert sorted(_ranked_ids(_act(requester))) == sorted(b.id for b in bets)
 
     rolled_back = _behaviour(RankingRequestBehaviour, [_gated(i) for i in range(12)])
     rolled_back.context.params.disabled_polymarket_tags = GATED
@@ -1074,6 +1082,20 @@ def test_unheld_gated_market_without_a_qualifying_score_is_not_picked(
     assert _sampled([_gated(40)]) is None
 
 
+def test_unscored_gated_market_is_not_picked_with_a_zero_minimum() -> None:
+    """A missed answer is no score, even when any score would qualify."""
+    bets = [_bet(1, ranked_at=LIVE), _gated(40, ranked_at=LIVE)]
+    sampler = _behaviour(SamplingBehaviour, bets)
+    sampler.context.params.ranking_min_score = 0.0
+    assert bets[sampler._sample()].id == "m1"
+
+    alone = _behaviour(SamplingBehaviour, bets[1:])
+    assert alone._sample() is None
+    alone.context.logger.warning.assert_any_call(
+        "All 1 candidate bets were dropped by the score gate!"
+    )
+
+
 def test_gate_holds_when_the_list_is_skipped_for_a_held_market() -> None:
     """A held market skips the list; plain order still never picks a low score."""
     held = _bet(2, ranked_at=LIVE, queue_status=QueueStatus.PROCESSED)
@@ -1117,6 +1139,10 @@ def test_gated_market_disabled_again_is_never_picked() -> None:
     sampler = _behaviour(SamplingBehaviour, bets)
     sampler.context.params.disabled_polymarket_tags = GATED
     assert bets[sampler._sample()].id == "m1"
+    # the disabled-tag filter runs first, so the gate never sees the market
+    sampler.context.logger.info.assert_any_call(
+        "[POLYSTRAT] filter=score_gate input=1 dropped=0 kept=1 held=0"
+    )
 
 
 def test_gate_is_off_in_benchmarking_mode() -> None:
