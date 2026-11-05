@@ -2194,6 +2194,26 @@ class TestRemoveDuplicateMarkets:
 # ---------------------------------------------------------------------------
 
 
+def _gamma_event_market(**overrides: Any) -> dict:
+    """Build a tradeable yes/no market as flattened from a Gamma event.
+
+    :param overrides: fields to replace
+    :return: the market
+    """
+    market = {
+        "id": "m1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "outcomes": '["Yes","No"]',
+        "outcomePrices": '["0.5","0.5"]',
+        "clobTokenIds": '["t1","t2"]',
+        "active": True,
+        "version": "v1",
+        "_poly_tags": ["tech"],
+    }
+    market.update(overrides)
+    return market
+
+
 class TestFetchMarkets:
     """Tests for _fetch_markets."""
 
@@ -2335,17 +2355,9 @@ class TestFetchMarkets:
     def test_fetch_markets_no_empty_tag_warning_when_markets_returned(self) -> None:
         """A tag that returns markets logs no empty_tag warning."""
         conn = _make_connection()
-        market = {
-            "id": "m1",
-            "createdAt": "2026-01-01T00:00:00Z",
-            "outcomes": '["Yes","No"]',
-            "outcomePrices": '["0.5","0.5"]',
-            "clobTokenIds": '["t1","t2"]',
-            "active": True,
-            "version": "v1",
-            "_poly_tags": ["tech"],
-        }
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([market], None))
+        conn._fetch_markets_by_tag_slug = MagicMock(
+            return_value=([_gamma_event_market()], None)
+        )
 
         conn._fetch_markets()
 
@@ -2354,17 +2366,9 @@ class TestFetchMarkets:
     def test_fetch_markets_no_empty_tag_warning_when_filters_drop_all(self) -> None:
         """A tag whose markets are all filtered out downstream is not reported empty."""
         conn = _make_connection()
-        inactive = {
-            "id": "m1",
-            "createdAt": "2026-01-01T00:00:00Z",
-            "outcomes": '["Yes","No"]',
-            "outcomePrices": '["0.5","0.5"]',
-            "clobTokenIds": '["t1","t2"]',
-            "active": False,
-            "version": "v1",
-            "_poly_tags": ["tech"],
-        }
-        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([inactive], None))
+        conn._fetch_markets_by_tag_slug = MagicMock(
+            return_value=([_gamma_event_market(active=False)], None)
+        )
 
         result, _ = conn._fetch_markets()
 
@@ -4864,7 +4868,7 @@ class TestModuleConstants:
         assert len(PARENT_COLLECTION_ID) == 32
 
     def test_polymarket_category_tags_are_the_short_dated_tags(self) -> None:
-        """POLYMARKET_CATEGORY_TAGS matches the agreed fetch list exactly."""
+        """Pins the tag set and its order, which breaks cross-tag dedup ties."""
         assert POLYMARKET_CATEGORY_TAGS == [
             "politics",
             "weather",
