@@ -22,6 +22,7 @@
 import json
 from io import StringIO
 from pathlib import Path
+from typing import Any, Dict, List
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -542,7 +543,10 @@ class TestSetBlockNumber:
             call_count[0] += 1
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "12345"}
+            return {
+                "id": "0x84f77003c15a6bd451e80fe0de2629f5fc1f127890d5789217043900b76fdc62",
+                "number": "12345",
+            }
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -551,8 +555,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 12345
 
-    def test_set_block_number_non_digit_id(self) -> None:
-        """Should not set earliest_block_number when id is not a digit."""
+    def test_set_block_number_non_digit_number(self) -> None:
+        """Should not set earliest_block_number when number is not a digit."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -560,7 +564,7 @@ class TestSetBlockNumber:
             """Mock _fetch_block_number."""
             behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "not_a_number"}
+            return {"number": "not_a_number"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -588,8 +592,8 @@ class TestSetBlockNumber:
 
         assert behaviour.earliest_block_number == 0
 
-    def test_set_block_number_missing_id_key(self) -> None:
-        """Should not update block number when id key is missing."""
+    def test_set_block_number_missing_number_key(self) -> None:
+        """Should not update block number when number key is missing."""
         behaviour = _make_redeem_behaviour()
         trade = _make_trade(creation_timestamp=1000)
 
@@ -621,7 +625,7 @@ class TestSetBlockNumber:
             else:
                 behaviour._fetch_status = FetchStatus.SUCCESS
             yield
-            return {"id": "999"}
+            return {"number": "999"}
 
         behaviour._fetch_block_number = mock_fetch_block_number  # type: ignore[method-assign]
 
@@ -1647,6 +1651,48 @@ class TestCheckAlreadyRedeemedViaSubgraph:
             result = _exhaust_gen(gen)
 
         assert result is False  # type: ignore[no-untyped-def]
+
+    @pytest.mark.parametrize(
+        "trades, expected, warnings",
+        [([{"trade1": "data"}], False, 1), ([], True, 0)],
+    )
+    def test_no_positions(
+        self, trades: List[Dict[str, Any]], expected: bool, warnings: int
+    ) -> None:
+        """No positions fail the check only when the Safe has trades."""
+        behaviour = _make_redeem_behaviour()
+        mock_context = MagicMock()
+
+        def mock_fetch_trades(safe, from_ts, to_ts):  # type: ignore[no-untyped-def]
+            """Mock fetch_trades."""
+            yield
+            return trades
+
+        def mock_fetch_user_positions(safe):  # type: ignore[no-untyped-def]
+            """Mock fetch_user_positions for a user the subgraph does not know."""
+            yield
+            return []
+
+        behaviour.fetch_trades = mock_fetch_trades  # type: ignore[method-assign]
+        behaviour.fetch_user_positions = mock_fetch_user_positions  # type: ignore[method-assign]
+
+        with (
+            patch.object(
+                type(behaviour), "redeeming_progress", new_callable=PropertyMock
+            ) as mock_rp,
+            patch.object(
+                type(behaviour), "synchronized_data", new_callable=PropertyMock
+            ) as mock_sd,
+            patch.object(type(behaviour), "context", new_callable=PropertyMock) as ctx,
+        ):
+            mock_rp.return_value = RedeemingProgress()
+            mock_sd.return_value = MagicMock(safe_contract_address="0xSafe")
+            ctx.return_value = mock_context
+
+            result = _exhaust_gen(behaviour._check_already_redeemed_via_subgraph())
+
+        assert result is expected
+        assert mock_context.logger.warning.call_count == warnings
 
 
 class TestCheckAlreadyRedeemed:

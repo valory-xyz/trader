@@ -751,6 +751,76 @@ class TestBetUpdateMarketInfo:
         existing.update_market_info(incoming)
         assert existing.slug == "will-it-rain"
 
+    def test_market_first_seen_empty_returns_once_it_has_liquidity(self) -> None:
+        """A market blacklisted for no liquidity returns as a fresh bet."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+        assert bet.queue_status == QueueStatus.EXPIRED
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.FRESH
+        assert bet.processed_timestamp == 0
+        assert bet.outcomes == ["Yes", "No"]
+        assert bet.scaledLiquidityMeasure == 5000.0
+
+    def test_market_that_stays_empty_stays_blacklisted(self) -> None:
+        """A refresh that still shows no liquidity leaves the blacklist in place."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.processed_timestamp == sys.maxsize
+        assert bet.outcomes is None
+
+    def test_empty_market_read_from_the_store_returns(self) -> None:
+        """A row an earlier version blacklisted for no liquidity also returns."""
+        row = json.dumps([_make_bet(scaledLiquidityMeasure=0)], cls=BetsEncoder)
+        bet = json.loads(row, cls=BetsDecoder)[0]
+        assert bet.queue_status == QueueStatus.EXPIRED
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.FRESH
+        assert bet.outcomes == ["Yes", "No"]
+
+    def test_live_market_that_drops_to_zero_stays_blacklisted(self) -> None:
+        """A market seen with liquidity stays blacklisted after a drop to zero."""
+        bet = _make_bet(scaledLiquidityMeasure=5.0, investments={"Yes": [7], "No": []})
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=0))
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.scaledLiquidityMeasure == 5.0
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.processed_timestamp == sys.maxsize
+        assert bet.outcomes is None
+        assert bet.scaledLiquidityMeasure == 5.0
+        assert bet.investments == {"Yes": [7], "No": []}
+
+    def test_blacklist_for_another_reason_is_kept(self) -> None:
+        """A market blacklisted while it had liquidity stays blacklisted."""
+        bet = _make_bet(scaledLiquidityMeasure=5.0)
+        bet.blacklist_forever()
+
+        bet.update_market_info(_make_bet(scaledLiquidityMeasure=5000.0))
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.outcomes is None
+        assert bet.scaledLiquidityMeasure == 5.0
+
+    def test_empty_market_stays_blacklisted_once_closed(self) -> None:
+        """A blacklisted refresh, such as a closed market, does not lift the blacklist."""
+        bet = _make_bet(scaledLiquidityMeasure=0)
+        closed = _make_bet(outcomes=None, scaledLiquidityMeasure=5000.0)
+
+        bet.update_market_info(closed)
+
+        assert bet.queue_status == QueueStatus.EXPIRED
+        assert bet.scaledLiquidityMeasure == 0
+
 
 class TestBetSetProcessedSellCheck:
     """Tests for Bet.set_processed_sell_check."""

@@ -3553,3 +3553,158 @@ def test_v2_safe_read_failure_keeps_previous_snapshot(tmp_path: Path) -> None:
         list(behaviour._snapshot_locked_funds())
     behaviour.context.state.update_funds_locked_in_markets.assert_not_called()
     assert "Safe read failed" in str(behaviour.context.logger.warning.call_args)
+
+
+# ---------------------------------------------------------------------------
+# OmenWithdrawBehaviour: a Safe the positions subgraph has not indexed yet
+# ---------------------------------------------------------------------------
+
+
+_UNKNOWN_USER: Dict[str, Any] = {"user": None}
+_NO_ROWS: Dict[str, Any] = {"user": {"userPositions": []}}
+_OMEN_CONDITION = "0x" + "c1" * 32
+_OMEN_CREATOR_ROW = {
+    "id": "0xtrade",
+    "fpmm": {
+        "id": "0x9371158c040dc04AdeC99E03f82CDa9C0D804af7",
+        "condition": {"id": _OMEN_CONDITION},
+        "answerFinalizedTimestamp": None,
+        "isPendingArbitration": False,
+    },
+}
+
+
+def _omen_positions_page(balance: str) -> Dict[str, Any]:
+    """Build a positions page holding one row with the given balance."""
+    position = {"id": "0x7b", "conditionIds": [_OMEN_CONDITION], "indexSets": ["1"]}
+    row = {"id": "0xrow", "balance": balance, "position": position}
+    return {"user": {"userPositions": [row]}}
+
+
+def _omen_sweep(
+    tmp_path: Path, creator_rows: List[Dict[str, Any]], pages: List[Dict[str, Any]]
+) -> Any:
+    """Run one Omen sweep against canned subgraph pages.
+
+    Only the HTTP read and the trades fetch are stubbed, so the real positions
+    fetch, filter and on-disk store all run.
+
+    :param tmp_path: directory holding the chatui store.
+    :param creator_rows: the rows the trades subgraph returns.
+    :param pages: the bodies' ``data`` for each positions request.
+    :return: the payload and the mock recording the feed events.
+    """
+    behaviour = object.__new__(_TestableOmenWithdraw)
+    behaviour.context = MagicMock()  # type: ignore[assignment]
+    behaviour.context.agent_address = "agent_x"
+    behaviour.context.params.store_path = tmp_path
+    behaviour.context.params.withdrawal_max_fak_attempts = 1
+    behaviour.context.params.withdrawal_fak_backoff_s = []
+    behaviour.context.state.positions_sold_recorded = False
+    subgraph = behaviour.context.conditional_tokens_subgraph
+    subgraph.get_spec.return_value = {}
+    subgraph.process_response.side_effect = lambda raw: json.loads(raw.body)["data"][
+        "user"
+    ]["userPositions"]
+    remaining = iter(pages)
+
+    def http_response(**_: Any) -> Generator[None, None, MagicMock]:
+        yield
+        return MagicMock(body=json.dumps({"data": next(remaining)}))
+
+    def trades(_: str) -> Generator[None, None, List[Dict[str, Any]]]:
+        yield
+        return creator_rows
+
+    def size_position(*_: Any, **__: Any) -> Generator[None, None, List[MagicMock]]:
+        yield
+        return [MagicMock()]
+
+    def build_step(_: Any) -> Generator[None, None, None]:
+        yield
+
+    behaviour.get_http_response = http_response  # type: ignore[method-assign,assignment]
+    behaviour.fetch_withdrawal_creator_fpmms = trades  # type: ignore[method-assign,assignment]
+    behaviour._size_and_build_position = size_position  # type: ignore[method-assign,assignment]
+    behaviour.wait_for_condition_with_sleep = build_step  # type: ignore[method-assign,assignment]
+    behaviour._record_feed_event = MagicMock()  # type: ignore[method-assign]
+    synced = MagicMock(safe_contract_address="0xSafe")
+    with (
+        patch.object(_TestableOmenWithdraw, "synchronized_data", synced),
+        patch.object(_TestableOmenWithdraw, "tx_hex", "0xtx"),
+        patch.object(_TestableOmenWithdraw, "multisend_batches", create=True),
+    ):
+        generator = behaviour._build_payload()
+        try:
+            while True:
+                next(generator)
+        except StopIteration as stop:
+            return stop.value, behaviour._record_feed_event
+
+
+class TestOmenWithdrawUnindexedSafe:
+    """A sweep must not report success on positions the subgraph can't see yet."""
+
+    @pytest.mark.parametrize(
+        "pages", [[_UNKNOWN_USER], [_NO_ROWS]], ids=["unknown-user", "no-rows"]
+    )
+    def test_safe_with_trades_and_no_position_rows_errors(
+        self, tmp_path: Path, pages: List[Dict[str, Any]]
+    ) -> None:
+        """Trades without position rows mean the funds' whereabouts are unknown."""
+        _seed_store(tmp_path)
+
+        payload, feed = _omen_sweep(tmp_path, [_OMEN_CREATOR_ROW], pages)
+
+        store = _read_store(tmp_path)
+        assert payload.event == Event.WITHDRAWAL_DONE.value
+        assert store["withdrawal_state"] == "errored"
+        assert len(store["withdrawal_errors"]) == 1
+        assert store["withdrawal_errors"][0]["token_id"] == ""
+        feed.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "creator_rows,pages",
+        [
+            ([], [_UNKNOWN_USER]),
+            ([], [_NO_ROWS]),
+            ([_OMEN_CREATOR_ROW], [_omen_positions_page("0"), _NO_ROWS]),
+        ],
+        ids=["no-trades-unknown-user", "no-trades-no-rows", "fully-exited-safe"],
+    )
+    def test_safe_with_nothing_to_sell_completes(
+        self,
+        tmp_path: Path,
+        creator_rows: List[Dict[str, Any]],
+        pages: List[Dict[str, Any]],
+    ) -> None:
+        """A Safe that never traded, or has sold everything, still completes."""
+        _seed_store(tmp_path)
+
+        payload, feed = _omen_sweep(tmp_path, creator_rows, pages)
+
+        store = _read_store(tmp_path)
+        assert payload.event == Event.WITHDRAWAL_DONE.value
+        assert store["withdrawal_state"] == "complete"
+        assert store["withdrawal_errors"] == []
+        feed.assert_called_once()
+
+    def test_store_from_the_previous_version_recovers_once_indexed(
+        self, tmp_path: Path
+    ) -> None:
+        """A store left ``complete`` by the old sweep errors, then sells when indexed."""
+        _seed_store(tmp_path, withdrawal_state="complete")
+
+        _omen_sweep(tmp_path, [_OMEN_CREATOR_ROW], [_UNKNOWN_USER])
+        assert _read_store(tmp_path)["withdrawal_state"] == "errored"
+
+        payload, _ = _omen_sweep(
+            tmp_path,
+            [_OMEN_CREATOR_ROW],
+            [_omen_positions_page(str(10**18)), _NO_ROWS],
+        )
+
+        store = _read_store(tmp_path)
+        assert payload.event == Event.PREPARE_TX.value
+        assert store["withdrawal_state"] == "selling"
+        assert store["withdrawal_errors"] == []
