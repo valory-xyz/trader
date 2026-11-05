@@ -189,17 +189,18 @@ CHAIN_ID = 137  # Polygon
 MAX_UINT256 = (
     115792089237316195423570985008687907853269984665640564039457584007913129639935
 )
+# Gamma tags Polymarket puts on markets ending within MARKETS_TIME_WINDOW_DAYS.
+# List order breaks ties in the downstream cross-tag de-duplication.
 POLYMARKET_CATEGORY_TAGS = [
-    "business",
     "politics",
-    "science",
-    "technology",
-    "health",
-    # "travel",
-    "entertainment",
     "weather",
     "finance",
-    "international",
+    "business",
+    "science",
+    "tech",
+    "pop-culture",
+    "economy",
+    "world",
 ]
 MARKETS_LIMIT = 300
 EVENTS_LIMIT = 200
@@ -1420,6 +1421,12 @@ class PolymarketClientConnection(BaseSyncConnection):
                         f"  Error fetching markets for '{category}': {error}"
                     )
                     continue
+                if not category_markets:
+                    self.logger.warning(
+                        f"[POLYSTRAT] empty_tag tag={category} "
+                        f"window={end_date_min}/{end_date_max} "
+                        f"- Gamma returned no markets for this tag"
+                    )
 
                 markets_after_cutoff = self._filter_markets_by_created_at(
                     category_markets
