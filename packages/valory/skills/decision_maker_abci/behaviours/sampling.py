@@ -316,10 +316,6 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
-    def _latest_ranked_at(self) -> int:
-        """Get the stamp of the latest ranked list, 0 when none was requested."""
-        return max((bet.ranked_at for bet in self.bets), default=0)
-
     def _ranked_list(self, bets: List[Bet]) -> List[Bet]:
         """Get the given bets that are untried markets of the latest ranked list."""
         latest = self._latest_ranked_at()

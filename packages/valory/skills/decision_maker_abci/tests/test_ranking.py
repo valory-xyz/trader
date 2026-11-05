@@ -1039,8 +1039,10 @@ def test_gated_market_scored_on_the_live_list_can_be_picked() -> None:
     assert _sampled([untagged, on_list]) == "m40"
 
     almost_a_day = NOW - RANKING_MAX_AGE + 1
-    old = [_bet(1, ranked_at=almost_a_day), _gated(40, ranked_at=almost_a_day)]
-    old[1].research_score = 0.9
+    old = [
+        _bet(1, ranked_at=almost_a_day),
+        _gated(40, ranked_at=almost_a_day, research_score=0.9),
+    ]
     # both declined once, so plain order: the gated one less recently
     old[0].processed_timestamp = NOW - COOLDOWN - 1
     old[1].processed_timestamp = NOW - 2 * COOLDOWN

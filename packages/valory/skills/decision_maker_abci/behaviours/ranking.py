@@ -143,7 +143,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
             if bet.poly_event_id is None or bet.poly_event_id not in events:
                 events.add(bet.poly_event_id)
                 candidates.append(bet)
-        latest = max((bet.ranked_at for bet in self.bets), default=0)
+        latest = self._latest_ranked_at()
         if now - latest >= RANKING_MAX_AGE:
             return (
                 (candidates[:LIST_MAX_MARKETS], now)
@@ -241,7 +241,7 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
                 scores.setdefault(entry["id"], entry.get("score"))
 
         self.read_bets()
-        latest = max((bet.ranked_at for bet in self.bets), default=0)
+        latest = self._latest_ranked_at()
         listed = [bet for bet in self.bets if latest and bet.ranked_at == latest]
         stored = 0
         for bet in listed:

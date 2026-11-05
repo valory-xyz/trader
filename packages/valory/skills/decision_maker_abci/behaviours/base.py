@@ -156,6 +156,10 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.buy_amount: int = 0
         self._last_strategy_result: Dict[str, Any] = {}
 
+    def _latest_ranked_at(self) -> int:
+        """Get the stamp of the latest ranked list, 0 when none was requested."""
+        return max((bet.ranked_at for bet in self.bets), default=0)
+
     @property
     def market_maker_contract_address(self) -> str:
         """Get the contract address of the market maker on which the service is going to place the bet."""

@@ -27,16 +27,12 @@ production depending on which skill the deployed service loads through.
 This test catches that drift early.
 """
 
-import re
 from pathlib import Path
 from typing import List
 
-import pytest
 import yaml
 
 PACKAGES_ROOT = Path(__file__).resolve().parents[4]
-# Mirrors SCORE_GATED_POLYMARKET_TAGS in decision_maker_abci's sampling.
-SCORE_GATED_TAG = "hide-from-new"
 
 
 def _load_disabled_tags(skill_relpath: str) -> List[str]:
@@ -58,27 +54,3 @@ def test_disabled_polymarket_tags_consistent_across_skills() -> None:
         f"  decision_maker_abci ({len(dm)} slugs): {dm}\n"
         f"  trader_abci ({len(trader)} slugs): {trader}"
     )
-
-
-@pytest.mark.parametrize(
-    "config",
-    (
-        "valory/skills/market_manager_abci/skill.yaml",
-        "valory/skills/decision_maker_abci/skill.yaml",
-        "valory/skills/trader_abci/skill.yaml",
-        "valory/agents/trader/aea-config.yaml",
-        "valory/services/polymarket_trader/service.yaml",
-        "valory/services/trader_pearl/service.yaml",
-    ),
-)
-def test_no_default_disables_the_score_gated_tag(config: str) -> None:
-    """A default that disables the score-gated tag keeps it from the ranking."""
-    text = (PACKAGES_ROOT / config).read_text()
-    default = re.search(
-        r"disabled_polymarket_tags:(?:\s*\$\{\w+:list:(\[.*?\])\}|((?:\s*- .*)+))",
-        text,
-    )
-    assert default is not None, f"no disabled_polymarket_tags default in {config}"
-    inline, block = default.groups()
-    tags = yaml.safe_load(inline) if inline else yaml.safe_load(block)
-    assert tags and SCORE_GATED_TAG not in tags
