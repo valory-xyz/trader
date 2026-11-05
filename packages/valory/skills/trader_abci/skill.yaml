@@ -186,7 +186,6 @@ models:
       languages:
       - en_US
       disabled_polymarket_tags:
-      - hide-from-new
       - rewards-50-4pt5-20
       - rewards-100-4pt5-100
       - rewards-automation-50-4pt5-50
