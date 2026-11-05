@@ -28,6 +28,7 @@ import yaml
 
 from packages.valory.skills.decision_maker_abci.behaviours.sampling import (
     SCORE_GATED_POLYMARKET_TAGS,
+    SamplingBehaviour,
 )
 
 PACKAGES_ROOT = Path(__file__).resolve().parents[4]
@@ -57,4 +58,5 @@ def _default_disabled_tags(config: str) -> List[str]:
 def test_no_default_disables_a_score_gated_tag(config: str) -> None:
     """A disabled tag is dropped before the ranking, so the gate could never pass it."""
     tags = _default_disabled_tags(config)
-    assert tags and not SCORE_GATED_POLYMARKET_TAGS & {t.strip().lower() for t in tags}
+    normalized = SamplingBehaviour._normalized_tags(tags)
+    assert tags and not SCORE_GATED_POLYMARKET_TAGS & normalized
