@@ -147,7 +147,7 @@ fingerprint:
   tests/test_ranking.py: bafybeihi2wnmnu7eb6ogib6egukqeck6y4tfoavd2bvseievox7cusgney
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
-  tests/test_score_gated_tags.py: bafybeig27qrrq7w56e5cx4conqyohp3bz4jlooev45hgd5cnstvbsxlvlu
+  tests/test_score_gated_tags.py: bafybeielv22mt3epe5isbjml7kknye36tw4cifm6xb776m7pzww5mcl72i
   tests/test_strategy_pointer_consistency.py: bafybeibeotb6wxwkn66tv4vadwgg5jqdx26m24hqrbs5is4ueyh7r6z5u4
   tests/test_withdrawal_rounds.py: bafybeigrfu7epgwdp4eiksse4g4xtezqawo634mozaiea5oshg4mtdfqaa
   tests/utils/__init__.py: bafybeifksn3c47zjmxyxcppflnmy3oezqa6ikjqejgfj6uewclbrca7ety
