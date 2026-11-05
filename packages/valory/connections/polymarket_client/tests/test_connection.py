@@ -2327,9 +2327,10 @@ class TestFetchMarkets:
         assert result == {tag: [] for tag in POLYMARKET_CATEGORY_TAGS}
         warnings = self._empty_tag_warnings(conn)
         assert len(warnings) == len(POLYMARKET_CATEGORY_TAGS)
-        for tag, message in zip(POLYMARKET_CATEGORY_TAGS, warnings):
-            assert f"tag={tag} " in message
-            assert "window=" in message
+        calls = conn._fetch_markets_by_tag_slug.call_args_list
+        for tag, message, call in zip(POLYMARKET_CATEGORY_TAGS, warnings, calls):
+            _, end_date_min, end_date_max = call.args
+            assert f"tag={tag} window={end_date_min}/{end_date_max} " in message
 
     def test_fetch_markets_no_empty_tag_warning_when_markets_returned(self) -> None:
         """A tag that returns markets logs no empty_tag warning."""
@@ -2348,6 +2349,26 @@ class TestFetchMarkets:
 
         conn._fetch_markets()
 
+        assert self._empty_tag_warnings(conn) == []
+
+    def test_fetch_markets_no_empty_tag_warning_when_filters_drop_all(self) -> None:
+        """A tag whose markets are all filtered out downstream is not reported empty."""
+        conn = _make_connection()
+        inactive = {
+            "id": "m1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "outcomes": '["Yes","No"]',
+            "outcomePrices": '["0.5","0.5"]',
+            "clobTokenIds": '["t1","t2"]',
+            "active": False,
+            "version": "v1",
+            "_poly_tags": ["tech"],
+        }
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([inactive], None))
+
+        result, _ = conn._fetch_markets()
+
+        assert result == {tag: [] for tag in POLYMARKET_CATEGORY_TAGS}
         assert self._empty_tag_warnings(conn) == []
 
     def test_fetch_markets_no_empty_tag_warning_on_fetch_error(self) -> None:
@@ -4843,7 +4864,7 @@ class TestModuleConstants:
         assert len(PARENT_COLLECTION_ID) == 32
 
     def test_polymarket_category_tags_are_the_short_dated_tags(self) -> None:
-        """The fetch list holds exactly the tags Polymarket puts on short-dated events."""
+        """POLYMARKET_CATEGORY_TAGS matches the agreed fetch list exactly."""
         assert POLYMARKET_CATEGORY_TAGS == [
             "politics",
             "weather",
