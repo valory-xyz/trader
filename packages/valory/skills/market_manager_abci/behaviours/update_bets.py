@@ -92,6 +92,7 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         balances = yield from self.get_active_bets()
         self.context.logger.debug(f"Balances: {balances=}")
 
+        refreshed = held = 0
         for bet in self.bets:
             if bet.queue_status.is_expired():
                 self.context.logger.debug(f"Bet {bet.id} is expired")
@@ -111,6 +112,13 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
                 )
 
             self._replace_with_existing_investments_if_empty(bet, existing_investments)
+            refreshed += 1
+            held += bet.has_investments
+
+        self.context.logger.info(
+            f"Refreshed the investments of {refreshed} bets, "
+            f"{held} of them with recorded investments."
+        )
 
     def _replace_with_existing_investments_if_empty(
         self, bet: Bet, existing_investments: Dict
@@ -119,9 +127,10 @@ class UpdateBetsBehaviour(BetsManagerBehaviour, QueryingBehaviour):
         # This is to ensure that in case of subgraph or API failure,
         # agent doesn't lose existing investment data and end up placing duplicate bets.
         if len(bet.yes_investments) <= 0 and len(bet.no_investments) <= 0:
-            self.context.logger.warning(
-                f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
-            )
+            if any(a for amounts in existing_investments.values() for a in amounts):
+                self.context.logger.warning(
+                    f"Bet {bet.id} has no new investments, retaining existing investments to prevent data loss"
+                )
             bet.investments = existing_investments
 
     def get_active_bets(self) -> Generator[None, None, Dict[str, Dict[str, int]]]:

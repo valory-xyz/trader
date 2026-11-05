@@ -682,6 +682,55 @@ class TestDeclinedMarketCooldown:
             )
             assert behaviour.processable_bet(bet, now=NOW + COOLDOWN) is True
 
+    def test_market_back_from_no_liquidity(self) -> None:
+        """An empty market turns processable with liquidity, until it nears its close."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        closes_at = NOW + 86400 * 5
+        market: Dict[str, Any] = dict(
+            id="b1",
+            market="polymarket_client",
+            title="Q?",
+            collateralToken="",
+            creator="0x",
+            fee=0,
+            openingTimestamp=closes_at,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[0, 0],
+            outcomeTokenMarginalPrices=[0.5, 0.5],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=0,
+        )
+        bet = Bet(**market)
+        with (
+            patch.object(
+                type(behaviour),
+                "params",
+                new_callable=PropertyMock,
+                return_value=self._params(),
+            ),
+            patch.object(
+                type(behaviour),
+                "kpi_is_met",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+            patch.object(
+                type(behaviour),
+                "review_bets_for_selling",
+                new_callable=PropertyMock,
+                return_value=False,
+            ),
+        ):
+            assert behaviour.processable_bet(bet, now=NOW) is False
+
+            bet.update_market_info(Bet(**{**market, "scaledLiquidityMeasure": 5000.0}))
+            bet.queue_status = bet.queue_status.move_to_process()
+            assert behaviour.processable_bet(bet, now=NOW) is True
+
+            assert behaviour.processable_bet(bet, now=closes_at) is False
+            assert bet.queue_status == QueueStatus.EXPIRED
+
     @pytest.mark.parametrize(
         "queue_status, opening_offset, expected",
         (
@@ -1095,6 +1144,8 @@ class TestSample:
         assert not any(
             "filter=processable_bet.breakdown.fallback" in call for call in log_calls
         )
+        assert not any("[POLYSTRAT]" in call for call in log_calls)
+        assert any("[OMENSTRAT] filter=processable_bet " in call for call in log_calls)
 
     def test_sample_skips_zero_liquidity(self) -> None:
         """Should skip bets with zero liquidity."""
