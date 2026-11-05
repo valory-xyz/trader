@@ -2307,6 +2307,61 @@ class TestFetchMarkets:
         ]
         assert len(warning_calls) == len(POLYMARKET_CATEGORY_TAGS)
 
+    @staticmethod
+    def _empty_tag_warnings(conn: Any) -> list:
+        """Return the empty_tag warning messages the connection logged."""
+        return [
+            c.args[0]
+            for c in conn.logger.warning.call_args_list
+            if "[POLYSTRAT] empty_tag" in c.args[0]
+        ]
+
+    def test_fetch_markets_warns_once_per_empty_tag(self) -> None:
+        """A tag whose fetch succeeds with no markets warns once, naming the tag."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([], None))
+
+        result, error = conn._fetch_markets()
+
+        assert error is None
+        assert result == {tag: [] for tag in POLYMARKET_CATEGORY_TAGS}
+        warnings = self._empty_tag_warnings(conn)
+        assert len(warnings) == len(POLYMARKET_CATEGORY_TAGS)
+        for tag, message in zip(POLYMARKET_CATEGORY_TAGS, warnings):
+            assert f"tag={tag} " in message
+            assert "window=" in message
+
+    def test_fetch_markets_no_empty_tag_warning_when_markets_returned(self) -> None:
+        """A tag that returns markets logs no empty_tag warning."""
+        conn = _make_connection()
+        market = {
+            "id": "m1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "outcomes": '["Yes","No"]',
+            "outcomePrices": '["0.5","0.5"]',
+            "clobTokenIds": '["t1","t2"]',
+            "active": True,
+            "version": "v1",
+            "_poly_tags": ["tech"],
+        }
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([market], None))
+
+        conn._fetch_markets()
+
+        assert self._empty_tag_warnings(conn) == []
+
+    def test_fetch_markets_no_empty_tag_warning_on_fetch_error(self) -> None:
+        """A failed tag fetch keeps the error log and logs no empty_tag warning."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=(None, "api error"))
+
+        result, error = conn._fetch_markets()
+
+        assert error is None
+        assert result == {}
+        assert conn.logger.error.call_count == len(POLYMARKET_CATEGORY_TAGS)
+        assert self._empty_tag_warnings(conn) == []
+
 
 # ---------------------------------------------------------------------------
 # _fetch_markets_by_tag_slug (new /events-based fetcher)
@@ -4786,3 +4841,17 @@ class TestModuleConstants:
         """PARENT_COLLECTION_ID is 32 zero bytes."""
         assert PARENT_COLLECTION_ID == b"\x00" * 32
         assert len(PARENT_COLLECTION_ID) == 32
+
+    def test_polymarket_category_tags_are_the_short_dated_tags(self) -> None:
+        """The fetch list holds exactly the tags Polymarket puts on short-dated events."""
+        assert POLYMARKET_CATEGORY_TAGS == [
+            "politics",
+            "weather",
+            "finance",
+            "business",
+            "science",
+            "tech",
+            "pop-culture",
+            "economy",
+            "world",
+        ]
