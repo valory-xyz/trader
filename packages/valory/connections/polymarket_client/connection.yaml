@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeifksmrpr7ngdr532jekqbzaoshsizosjtflmjhrgdzzceiubopfse
   __init__.py: bafybeifwtpqrrwwqh4g3fcvyka4ziz2lumd56t2jmsyprlr2464meqbdja
-  connection.py: bafybeifjj4p5gglzociww3hzdsky274lnnk4fp3k44szn3ma2n27s4ww4i
+  connection.py: bafybeibaigepkcegtbeutcy3d357du5yb3wwh3jppekyo267bp275mom4q
   relayer_proxy.py: bafybeihtqh44qrgeyx3vriowxpayz43bmeg5z4wcolrknybrhozfhmuqim
   request_types.py: bafybeidqxraynxj25vxeszwzvswrjramidr25q2hkquf5qcenj2r6xitwe
   tests/__init__.py: bafybeidaak6fyuz5yecy5cbpbf3a7zzztkjjbkmqerpamw7lsdihsfvy44
