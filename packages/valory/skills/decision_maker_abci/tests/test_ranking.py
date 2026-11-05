@@ -1071,6 +1071,7 @@ def test_unheld_gated_market_without_a_qualifying_score_is_not_picked(
 
     # ranking off leaves no list, and no score
     assert _sampled([_bet(1), _gated(40)]) == "m1"
+    assert _sampled([_gated(40)]) is None
 
 
 def test_gate_holds_when_the_list_is_skipped_for_a_held_market() -> None:
