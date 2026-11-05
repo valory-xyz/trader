@@ -23,7 +23,7 @@ import random
 from collections import defaultdict
 from datetime import datetime
 from functools import cached_property
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, FrozenSet, Generator, List, Optional, Tuple
 
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
@@ -48,6 +48,9 @@ BOOK_CHECK_CANDIDATES = 3
 # A ranked list steers the picks for this long after it was requested.
 RANKING_MAX_AGE = UNIX_DAY
 RANKING_PICK_EXPONENT = 4
+# Recurring Polymarket markets the agent opens a position on only when the
+# latest ranked list scored them at or above `ranking_min_score`.
+SCORE_GATED_POLYMARKET_TAGS: FrozenSet[str] = frozenset({"hide-from-new"})
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -313,9 +316,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return self.bets.index(sorted_bets[0])
 
+    def _latest_ranked_at(self) -> int:
+        """Get the stamp of the latest ranked list, 0 when none was requested."""
+        return max((bet.ranked_at for bet in self.bets), default=0)
+
     def _ranked_list(self, bets: List[Bet]) -> List[Bet]:
         """Get the given bets that are untried markets of the latest ranked list."""
-        latest = max((bet.ranked_at for bet in self.bets), default=0)
+        latest = self._latest_ranked_at()
         return [
             bet
             for bet in bets
@@ -492,6 +499,43 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 self.pool_logger.warning(msg)
         return available_bets
 
+    def _drop_ungated(self, available_bets: List[Bet], now: int) -> List[Bet]:
+        """Drop the unheld bets with a gated tag and no qualifying score on the latest ranked list.
+
+        :param available_bets: the candidate bets.
+        :param now: the current timestamp.
+        :return: the bets that may be picked.
+        """
+        # benchmarking never picks from the ranked list, so no score gates it
+        if self.benchmarking_mode.enabled:
+            return available_bets
+
+        latest = self._latest_ranked_at()
+        list_is_live = latest > 0 and now - latest < RANKING_MAX_AGE
+        kept: List[Bet] = []
+        held = 0
+        for bet in available_bets:
+            tags = {t.strip().lower() for t in bet.poly_tags}
+            if not SCORE_GATED_POLYMARKET_TAGS & tags:
+                kept.append(bet)
+            elif bet.invested_amount > 0:
+                held += 1
+                kept.append(bet)
+            elif (
+                list_is_live
+                and bet.ranked_at == latest
+                and (bet.research_score or 0.0) >= self.params.ranking_min_score
+            ):
+                kept.append(bet)
+
+        self.pool_logger.info(
+            f"{self.venue_tag} filter=score_gate "
+            f"input={len(available_bets)} "
+            f"dropped={len(available_bets) - len(kept)} "
+            f"kept={len(kept)} held={held}"
+        )
+        return kept
+
     def _pick_filter_reason(self, bet: Bet) -> Optional[str]:
         """Get the per-pick check the bet fails, `None` when it passes them all."""
         liquidity = bet.scaledLiquidityMeasure
@@ -546,6 +590,10 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                 return None
 
         available_bets = self._drop_disabled_tags(available_bets)
+        if not available_bets:
+            return None
+
+        available_bets = self._drop_ungated(available_bets, now)
         if not available_bets:
             return None
 

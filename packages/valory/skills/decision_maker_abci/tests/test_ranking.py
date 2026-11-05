@@ -1003,3 +1003,123 @@ def test_the_flag_applies_on_polymarket_with_ranking_on_only() -> None:
     switched_off.context.params.enable_market_ranking = False
     assert _act(switched_off).mech_tool is None
     switched_off.context.logger.info.assert_not_called()
+
+
+GATED = ["hide-from-new"]
+LIVE = NOW - 60
+
+
+def _gated(i: int, **kwargs: Any) -> Bet:
+    """Build an untried hide-from-new market."""
+    return _bet(i, poly_tags=GATED, **kwargs)
+
+
+def test_gated_markets_reach_the_ranking_batch() -> None:
+    """Hide-from-new markets are ranked; with the tag disabled again they are not."""
+    bets = [_gated(i) for i in range(12)]
+    assert sorted(_ranked_ids(_request(bets))) == sorted(b.id for b in bets)
+
+    rolled_back = _behaviour(RankingRequestBehaviour, [_gated(i) for i in range(12)])
+    rolled_back.context.params.disabled_polymarket_tags = GATED
+    assert _act(rolled_back).mech_tool is None
+
+
+def test_gated_market_scored_on_the_live_list_can_be_picked() -> None:
+    """A score at or above the minimum on the latest list, under a day old."""
+    untagged = _bet(1, ranked_at=LIVE)
+    on_list = _gated(40, ranked_at=LIVE, research_score=0.5)
+    assert _sampled([untagged, on_list]) == "m40"
+
+    almost_a_day = NOW - RANKING_MAX_AGE + 1
+    old = [_bet(1, ranked_at=almost_a_day), _gated(40, ranked_at=almost_a_day)]
+    old[1].research_score = 0.9
+    # both declined once, so plain order: the gated one less recently
+    old[0].processed_timestamp = NOW - COOLDOWN - 1
+    old[1].processed_timestamp = NOW - 2 * COOLDOWN
+    assert _sampled(old) == "m40"
+
+
+@pytest.mark.parametrize(
+    "latest, gated_kwargs",
+    (
+        (0, dict()),
+        (LIVE, dict(ranked_at=LIVE, research_score=0.49)),
+        (LIVE, dict(ranked_at=LIVE)),
+        (LIVE, dict(ranked_at=LIVE - 60, research_score=0.9)),
+        (LIVE, dict(ranked_at=-LIVE, research_score=0.9)),
+        (
+            NOW - RANKING_MAX_AGE,
+            dict(ranked_at=NOW - RANKING_MAX_AGE, research_score=0.9),
+        ),
+    ),
+    ids=(
+        "no-list",
+        "below-the-minimum",
+        "missed-answer",
+        "stale-score-from-an-older-list",
+        "queued-for-a-later-request",
+        "list-a-day-old",
+    ),
+)
+def test_unheld_gated_market_without_a_qualifying_score_is_not_picked(
+    latest: int, gated_kwargs: Dict[str, Any]
+) -> None:
+    """Today's order would pick the more liquid gated market; the gate drops it."""
+    bets = [_bet(1, ranked_at=latest), _gated(40, **gated_kwargs)]
+    assert _todays_pick(bets) == "m40"
+    assert _sampled(bets) == "m1"
+
+    # ranking off leaves no list, and no score
+    assert _sampled([_bet(1), _gated(40)]) == "m1"
+
+
+def test_gate_holds_when_the_list_is_skipped_for_a_held_market() -> None:
+    """A held market skips the list; plain order still never picks a low score."""
+    held = _bet(2, ranked_at=LIVE, queue_status=QueueStatus.PROCESSED)
+    held.investments = {"Yes": [5], "No": []}
+    low = _gated(40, ranked_at=LIVE, research_score=0.2)
+    high = _gated(3, ranked_at=LIVE, research_score=0.9)
+    untagged = _bet(1, ranked_at=LIVE)
+    bets = [held, low, high, untagged]
+    sampler = _behaviour(SamplingBehaviour, bets)
+    sampler.context.params.use_multi_bets_mode = True
+    assert _todays_pick(bets) == "m40"
+    assert bets[sampler._sample()].id == "m3"
+
+
+def test_held_gated_market_is_picked_as_today() -> None:
+    """A held hide-from-new market keeps its pick, whatever its score."""
+    held = _gated(40, ranked_at=LIVE - DAY, research_score=0.1)
+    held.investments = {"Yes": [5], "No": []}
+    bets = [_bet(1, ranked_at=LIVE), held]
+    sampler = _behaviour(SamplingBehaviour, bets)
+    sampler.context.params.use_multi_bets_mode = True
+    assert bets[sampler._sample()].id == "m40"
+    sampler.context.logger.info.assert_any_call(
+        "[POLYSTRAT] filter=score_gate input=2 dropped=0 kept=2 held=1"
+    )
+
+
+def test_gate_matches_the_tag_as_the_disabled_tag_filter_does() -> None:
+    """Casing and padding on the stored tag do not let a market through."""
+    bets = [_bet(1), _bet(40, poly_tags=["  Hide-From-New "])]
+    sampler = _behaviour(SamplingBehaviour, bets)
+    assert bets[sampler._sample()].id == "m1"
+    sampler.context.logger.info.assert_any_call(
+        "[POLYSTRAT] filter=score_gate input=2 dropped=1 kept=1 held=0"
+    )
+
+
+def test_gated_market_disabled_again_is_never_picked() -> None:
+    """Rollback: with the tag back in the disabled list, even a top score is dropped."""
+    bets = [_bet(1, ranked_at=LIVE), _gated(40, ranked_at=LIVE, research_score=0.9)]
+    sampler = _behaviour(SamplingBehaviour, bets)
+    sampler.context.params.disabled_polymarket_tags = GATED
+    assert bets[sampler._sample()].id == "m1"
+
+
+def test_gate_is_off_in_benchmarking_mode() -> None:
+    """Benchmarking never uses the list, so unscored gated markets stay in."""
+    unscored = [_gated(40)]
+    sampler = _behaviour(SamplingBehaviour, unscored, benchmarking=True)
+    assert sampler._drop_ungated(unscored, NOW) == unscored
