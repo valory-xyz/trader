@@ -2348,7 +2348,9 @@ class TestFetchMarkets:
         warnings = self._empty_tag_warnings(conn)
         assert len(warnings) == len(POLYMARKET_CATEGORY_TAGS)
         calls = conn._fetch_markets_by_tag_slug.call_args_list
-        for tag, message, call in zip(POLYMARKET_CATEGORY_TAGS, warnings, calls):
+        for tag, message, call in zip(
+            POLYMARKET_CATEGORY_TAGS, warnings, calls, strict=True
+        ):
             _, end_date_min, end_date_max = call.args
             assert f"tag={tag} window={end_date_min}/{end_date_max} " in message
 
@@ -4868,7 +4870,7 @@ class TestModuleConstants:
         assert len(PARENT_COLLECTION_ID) == 32
 
     def test_polymarket_category_tags_are_the_short_dated_tags(self) -> None:
-        """Pins the tag set and its order, which breaks cross-tag dedup ties."""
+        """Pins the tag set and its order."""
         assert POLYMARKET_CATEGORY_TAGS == [
             "politics",
             "weather",
