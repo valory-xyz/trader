@@ -1979,7 +1979,7 @@ class TestSample:
             queue_status=QueueStatus.TO_PROCESS,
             opening_timestamp=now + 86400 * 5,
             liquidity=100.0,
-            poly_tags=["hide-from-new"],
+            poly_tags=["weather"],
         )
         bet.queue_status.is_expired = MagicMock(return_value=False)
 
