@@ -190,7 +190,8 @@ MAX_UINT256 = (
     115792089237316195423570985008687907853269984665640564039457584007913129639935
 )
 # Gamma tags Polymarket puts on markets ending within MARKETS_TIME_WINDOW_DAYS.
-# List order breaks ties in the downstream cross-tag de-duplication.
+# The downstream cross-tag de-duplication keeps a keyword-valid copy first;
+# list order picks only between valid copies, or when no copy is valid.
 POLYMARKET_CATEGORY_TAGS: List[str] = [
     "politics",
     "weather",
