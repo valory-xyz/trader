@@ -876,3 +876,130 @@ def test_one_market_per_event_in_the_queue_and_renewals() -> None:
     # the 10+ gate counts events, not markets
     clustered = [_bet(200 + i, poly_event_id=f"c{i % 3}") for i in range(12)]
     assert _request(used + clustered).mech_tool is None
+
+
+FLAGGED_LOG = "[RANKING] Polymarket's CLOB unreachable: no ranking request this period."
+
+
+def _flagged(cls: Type[Any], bets: List[Bet], failures: int = 5, **kwargs: Any) -> Any:
+    """Build a behaviour with the given count of failed book fetches in a row; 5 flags the CLOB."""
+    behaviour = _behaviour(cls, bets, **kwargs)
+    behaviour.context.state.orderbook_failures = failures
+    return behaviour
+
+
+def _probing(sampler: Any, reached: bool) -> Any:
+    """Make Sampling's probe reach the CLOB or not, and let any book it reads take a bet."""
+
+    def send(request: Dict[str, Any]) -> Generator[None, None, Any]:
+        yield
+        return {"asks": [], "bids": []} if reached else None
+
+    sampler.send_polymarket_connection_request = send
+    sampler._book_can_take_bet = lambda bet: (yield) or True
+    return sampler
+
+
+def test_no_ranking_request_while_the_clob_is_flagged() -> None:
+    """Flagged: no request whether or not a list is due, no stamp touched, one log line, on to Sampling."""
+    used_up = _listed(12, queue_status=QueueStatus.PROCESSED)
+    due = {
+        "no list": [_bet(i) for i in range(12)],
+        "expired list": _listed(12, ranked_at=NOW - RANKING_MAX_AGE),
+        # an unscored list with 10+ never-ranked markets is due for renewal
+        "used-up list": used_up + [_bet(i) for i in range(30, 40)],
+        "not due": _listed(12),
+    }
+    for bets in due.values():
+        stamps = [bet.ranked_at for bet in bets]
+        requester = _flagged(RankingRequestBehaviour, bets)
+        payload = _act(requester)
+        assert payload.mech_tool is None and payload.mech_requests is None
+        assert [bet.ranked_at for bet in bets] == stamps
+        requester.store_bets.assert_not_called()
+        requester.context.logger.info.assert_called_once_with(FLAGGED_LOG)
+        assert _end_block(RankingRequestRound, payload)[1] == Event.NONE
+
+    # one failure short of the threshold, the request goes out as today
+    below = _flagged(RankingRequestBehaviour, due["no list"], failures=4)
+    assert _act(below).mech_tool == RANKING_TOOL
+    # the threshold is the configured one
+    lower = _flagged(RankingRequestBehaviour, due["no list"], failures=3)
+    lower.context.params.orderbook_unavailable_threshold = 3
+    assert _act(lower).mech_tool is None
+
+
+def test_flagged_for_twelve_periods_sends_no_mech_request() -> None:
+    """A list due and 10+ never-ranked markets, the CLOB unreachable for 12 periods: no ranking, no prediction."""
+    bets = [_bet(i, outcome_token_ids=TOKENS) for i in range(12)]
+    failures, rankings, predictions = 5, 0, 0
+    for period in range(12):
+        now = NOW + 300 * period
+        request = _act(_flagged(RankingRequestBehaviour, bets, failures, now=now))
+        rankings += request.mech_tool is not None
+        sampler = _probing(_flagged(SamplingBehaviour, bets, failures, now=now), False)
+        predictions += _act(sampler).index is not None
+        failures = sampler.context.state.orderbook_failures
+    assert (rankings, predictions) == (0, 0)
+    assert failures == 5 + 12
+    assert all(bet.ranked_at == 0 for bet in bets)
+
+
+def test_recovery_predicts_first_and_ranks_from_the_next_period() -> None:
+    """The period the CLOB answers: no ranking, one prediction from a fresh list or today's order; a due list follows."""
+    fresh = _listed(12, outcome_token_ids=TOKENS)
+    fresh[3].research_score = 0.9
+    stale = _listed(12, ranked_at=NOW - RANKING_MAX_AGE, outcome_token_ids=TOKENS)
+    stale[3].research_score = 0.9
+    for bets, pick in ((fresh, "m3"), (stale, _todays_pick(stale))):
+        assert _act(_flagged(RankingRequestBehaviour, bets)).mech_tool is None
+        sampler = _probing(_flagged(SamplingBehaviour, bets), True)
+        assert bets[_act(sampler).index].id == pick
+        failures = sampler.context.state.orderbook_failures
+        assert failures == 0
+        later = _flagged(RankingRequestBehaviour, bets, failures, now=NOW + 300)
+        assert (_act(later).mech_tool == RANKING_TOOL) is (bets is stale)
+
+
+def test_the_rest_of_a_list_waits_while_flagged() -> None:
+    """Flagged after request 1 of 3: the rest goes out within a day of the list, a fresh list after it."""
+    for recovered, continued in ((NOW + DAY - 600, True), (NOW + DAY, False)):
+        pool = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS)]
+        first = _ranked_ids(_request(pool))
+        queued = {bet.id for bet in pool if bet.ranked_at == -NOW}
+        assert len(queued) == 2 * RANKING_MAX_MARKETS
+        for period in range(1, 4):
+            assert (
+                _act(
+                    _flagged(RankingRequestBehaviour, pool, now=NOW + 300 * period)
+                ).mech_requests
+                is None
+            )
+        assert {bet.id for bet in pool if bet.ranked_at == -NOW} == queued
+
+        ids = _ranked_ids(_request(pool, now=recovered))
+        if continued:
+            ids += _ranked_ids(_request(pool, now=recovered + 60))
+            assert sorted(first + ids) == sorted(bet.id for bet in pool)
+            assert {bet.ranked_at for bet in pool} == {NOW}
+        else:
+            assert ids[0] == first[0]
+            assert {bet.ranked_at for bet in pool} == {recovered, -recovered}
+
+
+def test_the_flag_applies_on_polymarket_with_ranking_on_only() -> None:
+    """Omenstrat, benchmarking and ranking off: as today, whatever the failure count."""
+    bets = [_bet(i) for i in range(12)]
+    omen = _flagged(RankingRequestBehaviour, bets)
+    omen.context.params.is_running_on_polymarket = False
+    assert _act(omen).mech_tool == RANKING_TOOL
+
+    benchmarking = _flagged(
+        RankingRequestBehaviour, bets, benchmarking=True, now=NOW + DAY
+    )
+    assert _act(benchmarking).mech_tool == RANKING_TOOL
+
+    switched_off = _flagged(RankingRequestBehaviour, bets, now=NOW + 2 * DAY)
+    switched_off.context.params.enable_market_ranking = False
+    assert _act(switched_off).mech_tool is None
+    switched_off.context.logger.info.assert_not_called()
