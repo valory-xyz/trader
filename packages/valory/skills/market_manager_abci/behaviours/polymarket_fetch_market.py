@@ -710,6 +710,54 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
 
         return all_bets
 
+    def _blacklist_closed_unfetched_bets(
+        self, fetched: List[Dict[str, Any]]
+    ) -> Generator[None, None, None]:
+        """Blacklist the stored bets the refresh did not return and Gamma reports closed.
+
+        The refresh only returns markets of events ending soon, so a market whose
+        event has ended is never updated again and would stay pickable once closed.
+
+        :param fetched: the raw bets the refresh returned.
+        :yield: None
+        """
+        fetched_ids = {raw_bet["id"] for raw_bet in fetched}
+        unfetched = {
+            bet.id: bet
+            for bet in self.bets
+            if bet.id not in fetched_ids and not bet.queue_status.is_expired()
+        }
+        if not unfetched:
+            return
+
+        response = yield from self.send_polymarket_connection_request(
+            {
+                "request_type": RequestType.CHECK_CLOSED_MARKETS.value,
+                "params": {"market_ids": list(unfetched)},
+            }
+        )
+        if not isinstance(response, dict) or response.get("error"):
+            self.context.logger.warning(
+                f"Closed check of the unfetched markets failed: {response}"
+            )
+            closed_ids: List[str] = []
+            unchecked = len(unfetched)
+        else:
+            closed_ids = response.get("closed_ids") or []
+            unchecked = len(response.get("unchecked_ids") or [])
+
+        total_unfetched = len(unfetched)
+        dropped = 0
+        for market_id in closed_ids:
+            bet = unfetched.pop(market_id, None)
+            if bet is not None:
+                bet.blacklist_forever()
+                dropped += 1
+        self.context.logger.info(
+            f"[POLYSTRAT] filter=closed_unfetched_blacklist "
+            f"input={total_unfetched} dropped={dropped} unchecked={unchecked}"
+        )
+
     def _update_bets(self) -> Generator:
         """Fetch the questions from all the prediction markets and update the local copy of the bets."""
         # Fetch markets from Polymarket
@@ -724,6 +772,8 @@ class PolymarketFetchMarketBehaviour(BetsManagerBehaviour, QueryingBehaviour):
             return
 
         yield from self._process_chunk(bets_market_chunk)
+        if bets_market_chunk:
+            yield from self._blacklist_closed_unfetched_bets(bets_market_chunk)
         self._blacklist_expired_bets()
 
         # truncate the bets, otherwise logs get too big

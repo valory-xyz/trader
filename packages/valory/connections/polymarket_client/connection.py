@@ -204,6 +204,8 @@ POLYMARKET_CATEGORY_TAGS = [
 MARKETS_LIMIT = 300
 EVENTS_LIMIT = 200
 MARKETS_TIME_WINDOW_DAYS = 7
+# Gamma market ids per closed-market check call.
+CLOSED_CHECK_CHUNK_SIZE = 100
 API_REQUEST_TIMEOUT = 10
 MAX_API_RETRIES = 3
 RETRY_DELAY = 1  # base seconds for transient connection errors
@@ -714,6 +716,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             RequestType.SET_APPROVAL: self._set_approval,
             RequestType.CHECK_APPROVAL: self._check_approval,
             RequestType.FETCH_ORDER_BOOK: self._fetch_order_book,
+            RequestType.CHECK_CLOSED_MARKETS: self._check_closed_markets,
             RequestType.SELL_POSITION: self._sell_position,
             RequestType.GET_ORDER: self._get_order,
             RequestType.DEPLOY_DW: self._deploy_dw,
@@ -1468,6 +1471,50 @@ class PolymarketClientConnection(BaseSyncConnection):
             error_msg = f"Unexpected error fetching markets: {str(e)}"
             self.logger.exception(error_msg)
             return None, error_msg
+
+    def _check_closed_markets(self, market_ids: List[str]) -> Tuple[Any, Any]:
+        """Report which of the given Gamma market ids Gamma lists as closed.
+
+        Gamma lists only open markets unless asked with ``closed=true``.
+
+        :param market_ids: the Gamma market ids to check.
+        :return: Tuple of (``closed_ids`` and the ``unchecked_ids`` of calls that
+            got no answer, error_message); an error when no call got an answer.
+        """
+        closed_ids: List[str] = []
+        unchecked_ids: List[str] = []
+        for start in range(0, len(market_ids), CLOSED_CHECK_CHUNK_SIZE):
+            chunk = market_ids[start : start + CLOSED_CHECK_CHUNK_SIZE]
+            rows, error = self._request_with_retries(
+                f"{GAMMA_API_BASE_URL}/markets",
+                params={
+                    "id": chunk,
+                    "closed": "true",
+                    "limit": CLOSED_CHECK_CHUNK_SIZE,
+                },
+            )
+            if error or not isinstance(rows, list):
+                unchecked_ids.extend(chunk)
+                continue
+            asked = set(chunk)
+            closed_ids.extend(
+                str(row["id"])
+                for row in rows
+                if isinstance(row, dict)
+                and row.get("closed") is True
+                and str(row.get("id")) in asked
+            )
+
+        if unchecked_ids and len(unchecked_ids) == len(market_ids):
+            error_msg = f"Closed check of {len(market_ids)} markets got no answer"
+            self.logger.error(error_msg)
+            return {"error": error_msg}, error_msg
+
+        self.logger.info(
+            f"Closed check: {len(closed_ids)} of {len(market_ids)} markets closed, "
+            f"{len(unchecked_ids)} unchecked"
+        )
+        return {"closed_ids": closed_ids, "unchecked_ids": unchecked_ids}, None
 
     def _fetch_market_by_slug(self, slug: str) -> Tuple[Any, Any]:
         """Fetch a specific market from Polymarket by slug.
@@ -2582,6 +2629,9 @@ class PolymarketClientConnection(BaseSyncConnection):
         (v1 wrapped it in an ``OrderBookSummary`` object); each level is a
         ``{"price": "...", "size": "..."}`` dict.
 
+        A 404 means the token has no book (e.g. its market closed), so it is
+        answered as an empty book.
+
         :param token_id: The CLOB token ID for the outcome.
         :return: Tuple of (order_book_dict, error_string).
         """
@@ -2611,10 +2661,13 @@ class PolymarketClientConnection(BaseSyncConnection):
                 ),
             }, None
         except Exception as e:
+            if isinstance(e, PolyApiException) and e.status_code == 404:
+                self.logger.info(f"No order book for token {token_id}: {e}")
+                return {"asks": [], "bids": [], "min_order_size": None}, None
             error_msg = f"Error fetching order book for token {token_id}: {str(e)}"
             self.logger.exception(error_msg)
             # No status means a transport error; a 5xx is an outage and a 403/451 a
-            # network that blocks with a response. A 404 or 429 proves it reachable.
+            # network that blocks with a response. A 429 proves it reachable.
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500
