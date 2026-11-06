@@ -2194,6 +2194,26 @@ class TestRemoveDuplicateMarkets:
 # ---------------------------------------------------------------------------
 
 
+def _gamma_event_market(**overrides: Any) -> dict:
+    """Build a tradeable yes/no market as flattened from a Gamma event.
+
+    :param overrides: fields to replace
+    :return: the market
+    """
+    market = {
+        "id": "m1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "outcomes": '["Yes","No"]',
+        "outcomePrices": '["0.5","0.5"]',
+        "clobTokenIds": '["t1","t2"]',
+        "active": True,
+        "version": "v1",
+        "_poly_tags": ["tech"],
+    }
+    market.update(overrides)
+    return market
+
+
 class TestFetchMarkets:
     """Tests for _fetch_markets."""
 
@@ -2306,6 +2326,66 @@ class TestFetchMarkets:
             c for c in conn.logger.warning.call_args_list if "dropped 100%" in str(c)
         ]
         assert len(warning_calls) == len(POLYMARKET_CATEGORY_TAGS)
+
+    @staticmethod
+    def _empty_tag_warnings(conn: Any) -> list:
+        """Return the empty_tag warning messages the connection logged."""
+        return [
+            c.args[0]
+            for c in conn.logger.warning.call_args_list
+            if "[POLYSTRAT] empty_tag" in c.args[0]
+        ]
+
+    def test_fetch_markets_warns_once_per_empty_tag(self) -> None:
+        """A tag whose fetch succeeds with no markets warns once, naming the tag."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=([], None))
+
+        result, error = conn._fetch_markets()
+
+        assert error is None
+        assert result == {tag: [] for tag in POLYMARKET_CATEGORY_TAGS}
+        warnings = self._empty_tag_warnings(conn)
+        assert len(warnings) == len(POLYMARKET_CATEGORY_TAGS)
+        calls = conn._fetch_markets_by_tag_slug.call_args_list
+        for tag, message, call in zip(POLYMARKET_CATEGORY_TAGS, warnings, calls):
+            _, end_date_min, end_date_max = call.args
+            assert f"tag={tag} window={end_date_min}/{end_date_max} " in message
+
+    def test_fetch_markets_no_empty_tag_warning_when_markets_returned(self) -> None:
+        """A tag that returns markets logs no empty_tag warning."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(
+            return_value=([_gamma_event_market()], None)
+        )
+
+        conn._fetch_markets()
+
+        assert self._empty_tag_warnings(conn) == []
+
+    def test_fetch_markets_no_empty_tag_warning_when_filters_drop_all(self) -> None:
+        """A tag whose markets are all filtered out downstream is not reported empty."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(
+            return_value=([_gamma_event_market(active=False)], None)
+        )
+
+        result, _ = conn._fetch_markets()
+
+        assert result == {tag: [] for tag in POLYMARKET_CATEGORY_TAGS}
+        assert self._empty_tag_warnings(conn) == []
+
+    def test_fetch_markets_no_empty_tag_warning_on_fetch_error(self) -> None:
+        """A failed tag fetch keeps the error log and logs no empty_tag warning."""
+        conn = _make_connection()
+        conn._fetch_markets_by_tag_slug = MagicMock(return_value=(None, "api error"))
+
+        result, error = conn._fetch_markets()
+
+        assert error is None
+        assert result == {}
+        assert conn.logger.error.call_count == len(POLYMARKET_CATEGORY_TAGS)
+        assert self._empty_tag_warnings(conn) == []
 
 
 # ---------------------------------------------------------------------------
@@ -4786,3 +4866,17 @@ class TestModuleConstants:
         """PARENT_COLLECTION_ID is 32 zero bytes."""
         assert PARENT_COLLECTION_ID == b"\x00" * 32
         assert len(PARENT_COLLECTION_ID) == 32
+
+    def test_polymarket_category_tags_are_the_short_dated_tags(self) -> None:
+        """Pins the tag set and its order, which breaks cross-tag dedup ties."""
+        assert POLYMARKET_CATEGORY_TAGS == [
+            "politics",
+            "weather",
+            "finance",
+            "business",
+            "science",
+            "tech",
+            "pop-culture",
+            "economy",
+            "world",
+        ]
