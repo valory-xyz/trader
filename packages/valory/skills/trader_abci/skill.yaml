@@ -22,17 +22,17 @@ fingerprint:
   tests/test_handlers.py: bafybeidxmmgzcsiz3it4snod4f7bwk4mu2lhgd6okkrlftekmrvmqxsgsy
   tests/test_models.py: bafybeicypkna3ikkhfvxpirmzspyqdnml66m6yajo6r64r3eylhx4dmkum
   ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
-  ui-build/omenstrat/assets/index-AywEqBn-.js: bafybeiduecfhcwxl57hnqyyqs4be7ehhvqbfcex6doq3ba3rfvjfeqrqc4
+  ui-build/omenstrat/assets/index-DNMr_pWR.js: bafybeidrkrdrelma2gruya4o2e66hr5vkm3xmr5iumrxahxjg7rc4zljfy
   ui-build/omenstrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/omenstrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/omenstrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/omenstrat/index.html: bafybeieu5uupin3mcqfdm4zmdhp2uo5jephjgk4m26not3d36m3zzu5cxy
+  ui-build/omenstrat/index.html: bafybeibnxxwrgzrbbpg6sfisx4kuxhhzs3greuxmvh4z4rgvteklvggzkm
   ui-build/polystrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
-  ui-build/polystrat/assets/index-BAgJ4-xc.js: bafybeibumiiujxs62cftat5rpwjjmprv2y5aswqurby5p54q6r2opwse5a
+  ui-build/polystrat/assets/index-BytKh7Fb.js: bafybeih55brjsosaixh237u3ywzw7hj6xlknvg42uyqlhsru6wilg4ws7e
   ui-build/polystrat/favicon.ico: bafybeifxjqwpttoghgfbukdabbbex2etjr2x6j274fckatcttdqiduczzm
   ui-build/polystrat/images/background.png: bafybeicjqe6gt3pecbyw2l7cz3pj2xygieupborthfum6s6d2gimeyx5zy
   ui-build/polystrat/images/card.png: bafybeifhqczjhyeyll25z7y7ed6n3ht2ts5e5qeoqxihoqzhqnouiz6qhu
-  ui-build/polystrat/index.html: bafybeicot7shxlctw5qel47xieerqpcnurhgljtwigorsdbdgr6obj3fb4
+  ui-build/polystrat/index.html: bafybeiczvz444wj3w5gprkl2snuhwjd5z6kvvvqelcukp7nbunb3dqrcsq
 fingerprint_ignore_patterns: []
 connections:
 - valory/http_server:0.22.0:bafybeihs6dufyaa5l4uorplzx3wiyna5qlq2x43tmyl3yonkl265vspdle
