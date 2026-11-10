@@ -2,6 +2,7 @@
 branch = True
 source =
     packages/valory
+    scripts/hash_lock
 omit =
     */tests/*
     */__init__.py

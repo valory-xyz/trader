@@ -8,8 +8,29 @@ permissions:
   contents: read
 
 jobs:
+  check-lock:
+    # Hashes are relocked on main after each merge (relock-main.yaml), so a
+    # tag cut before the relock lands would publish stale hashes.
+    name: Check package hashes are locked
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.3' tox-uv
+      - name: Fail if the tagged commit is not lock-consistent
+        run: |
+          tomte tox -e check-hash < /dev/null || {
+            echo "::error title=Package hashes not locked::The tagged commit's package hashes are stale. Wait for the relock_main workflow to push its relock commit, then tag that commit."
+            exit 1
+          }
   publish-packages:
     name: Push Packages
+    needs:
+      - "check-lock"
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6

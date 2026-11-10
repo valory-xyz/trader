@@ -281,6 +281,7 @@ To ship a new strategy:
 1. Drop a new package under `packages/<author>/customs/<name>/` and lock it (`uv run autonomy packages lock`).
 2. Add its IPFS hash → name mapping to `FILE_HASH_TO_STRATEGIES`.
 3. Set `TRADING_STRATEGY=<name>`.
+4. Before you commit, drop the lock's changes to existing hash values, as described in [Package hashes](#package-hashes). The new package's entry and the `FILE_HASH_TO_STRATEGIES` mapping stay.
 
 ---
 
@@ -295,7 +296,7 @@ After modifying any package:
    make fix-abci-app-specs
    ```
 
-3. **Lock package hashes**:
+3. **Lock package hashes** so that local tests and checks see consistent hashes:
 
    ```bash
    uv run autonomy packages lock
@@ -314,8 +315,43 @@ After modifying any package:
    ```
 
 5. **Run the CI lint suite** before pushing: `make ci-linter-checks`.
+6. **Drop the hash changes** before you commit:
+
+   ```bash
+   uv run python scripts/hash_lock/hash_lock.py revert
+   ```
 
 CI enforces 100% coverage on touched modules — see `CLAUDE.md` for the per-module `--cov` pattern.
+
+### Package hashes
+
+Every package change rewrites shared hash lines, such as the agent hash, the service hashes, and the dependency hashes of composing skills. If pull requests carried those lines, any two package PRs would conflict, and each conflicted update from `main` would dismiss the PR's approvals. Instead, PRs leave the hash values that `autonomy packages lock` manages unchanged, and the [`relock_main`](./.github/workflows/relock-main.yaml) workflow relocks them on `main` after each merge.
+
+These hash values are lock-managed:
+
+- The `dev` entries in `packages/packages.json`.
+- The `fingerprint` entries of a component config.
+- The dependency entries (`- author/name:version:hash`) that point at a package of this repository.
+- The `agent:` line of a service config.
+
+A PR can still add entries, such as a new package, dependency, or file, and bump third-party hashes. Hashes inside configuration values, such as `FILE_HASH_TO_STRATEGIES`, aren't lock-managed: the lock doesn't update them, so the PR keeps them current.
+
+The following checks enforce the rule:
+
+- On a PR, CI runs `scripts/hash_lock/hash_lock.py check` and fails when the PR changes a lock-managed hash value. To fix it, run `uv run python scripts/hash_lock/hash_lock.py revert` and commit the result. Add `--base <branch>` when the PR targets a branch other than `main`.
+- CI runs `autonomy packages lock` before the hash checks and the tests, so they test the hashes that the relock commits.
+- The relock workflow doesn't push when the lock changes anything other than lock-managed hash lines.
+- A release fails when the tagged commit isn't lock-consistent. Between a merge and its relock commit, `main`'s hashes are stale, so tag the relock commit.
+
+The relock workflow pushes to `main` with a GitHub App token. An org owner sets it up once:
+
+1. Create a GitHub App that has the **Contents: Read and write** repository permission and no other permission.
+2. Install the App on this repository only.
+3. Add the App to the bypass list of the ruleset that protects `main`.
+4. Create an environment named `relock-main` whose deployment branches are limited to `main`.
+5. In that environment, add the App's client ID as the variable `RELOCK_APP_CLIENT_ID` and its private key as the secret `RELOCK_APP_PRIVATE_KEY`.
+
+Until then, every `relock_main` run that has a relock to push fails, and `main`'s hashes stay stale.
 
 ### Dependency changes
 
