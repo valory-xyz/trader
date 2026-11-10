@@ -1716,10 +1716,7 @@ class TestShouldCallCheckpoint:
         use_v2: bool = True,
         ts_checkpoints: Tuple[int, ...] = (1000,),
     ) -> Any:
-        """Run _should_call_checkpoint and return its result, the reads made and the context.
-
-        ``ts_checkpoints`` holds the successive ``tsCheckpoint`` reads; the last repeats.
-        """
+        """Run _should_call_checkpoint over successive ``tsCheckpoint`` reads."""
         b = object.__new__(CallCheckpointBehaviour)
         b._available_rewards = 0
         reads = {
@@ -1821,7 +1818,7 @@ class TestShouldCallCheckpoint:
     def test_concurrent_checkpoint_is_not_read_as_rebaseline(
         self, use_v2: bool
     ) -> None:
-        """A checkpoint by another party between the reads skips the checkpoint, even though the values disagree."""
+        """A checkpoint by another party between the reads is re-read, not taken for a rebaseline."""
         result, called, mock_ctx = self._run(
             next_ts=1150,
             available_rewards=0,
@@ -1830,8 +1827,14 @@ class TestShouldCallCheckpoint:
             ts_checkpoints=(1000, 1050),
         )
         assert result is False
+        assert called.count("ts_checkpoint") == 2
         assert "available_rewards" not in called
-        mock_ctx.logger.info.assert_called_once_with(
-            "Skipping the checkpoint: the staking contract was checkpointed "
-            "while its state was being read."
-        )
+        mock_ctx.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_ts_checkpoint_read_once_without_rebaseline_signal(
+        self, use_v2: bool
+    ) -> None:
+        """Without a rebaseline signal, tsCheckpoint is not re-read."""
+        _, called, _ = self._run(next_ts=1100, available_rewards=1, use_v2=use_v2)
+        assert called.count("ts_checkpoint") == 1

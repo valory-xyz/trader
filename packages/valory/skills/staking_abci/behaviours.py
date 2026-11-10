@@ -754,18 +754,14 @@ class CallCheckpointBehaviour(
     def _should_call_checkpoint(self) -> Generator[None, None, bool]:
         """Whether the checkpoint is due and would change the contract's state."""
         yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
-        ts_checkpoint_before = self.ts_checkpoint
         yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
         yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-        yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
-        # The reads are separate calls, so another party's checkpoint between them
-        # would make the values disagree and look like a pending rebaseline.
-        if self.ts_checkpoint != ts_checkpoint_before:
-            self.context.logger.info(
-                "Skipping the checkpoint: the staking contract was checkpointed "
-                "while its state was being read."
-            )
-            return False
+        if is_rebaseline_pending(
+            self.next_checkpoint, self.ts_checkpoint, self.liveness_period
+        ):
+            # tsCheckpoint was read before next_checkpoint, so a checkpoint by
+            # another party in between looks like a rebaseline. Re-read it.
+            yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
 
         due = is_checkpoint_due(
             self.next_checkpoint,
