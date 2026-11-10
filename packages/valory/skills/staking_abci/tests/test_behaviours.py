@@ -20,7 +20,7 @@
 """Tests for staking_abci behaviours."""
 
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any, Generator, Tuple
 from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 import pytest
@@ -1714,16 +1714,20 @@ class TestShouldCallCheckpoint:
         available_rewards: int,
         synced_ts: int = 1100,
         use_v2: bool = True,
+        ts_checkpoints: Tuple[int, ...] = (1000,),
     ) -> Any:
-        """Run _should_call_checkpoint and return its result, the reads made and the context."""
+        """Run _should_call_checkpoint and return its result, the reads made and the context.
+
+        ``ts_checkpoints`` holds the successive ``tsCheckpoint`` reads; the last repeats.
+        """
         b = object.__new__(CallCheckpointBehaviour)
         b._available_rewards = 0
         reads = {
             "get_next_checkpoint_ts": next_ts,
-            "ts_checkpoint": 1000,
             "get_liveness_period": 100,
             "available_rewards": available_rewards,
         }
+        ts_reads = list(ts_checkpoints)
         called = []
 
         def fake_contract_interact(
@@ -1731,7 +1735,11 @@ class TestShouldCallCheckpoint:
         ) -> Generator[None, None, bool]:
             """Record the read and set the placeholder."""
             called.append((contract_public_id, contract_callable))
-            setattr(b, placeholder, reads[contract_callable])
+            if contract_callable == "ts_checkpoint":
+                value = ts_reads.pop(0) if len(ts_reads) > 1 else ts_reads[0]
+            else:
+                value = reads[contract_callable]
+            setattr(b, placeholder, value)
             return True
             yield  # pragma: no cover
 
@@ -1808,3 +1816,22 @@ class TestShouldCallCheckpoint:
         assert result is True
         assert "available_rewards" not in called
         mock_ctx.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_concurrent_checkpoint_is_not_read_as_rebaseline(
+        self, use_v2: bool
+    ) -> None:
+        """A checkpoint by another party between the reads skips the checkpoint, even though the values disagree."""
+        result, called, mock_ctx = self._run(
+            next_ts=1150,
+            available_rewards=0,
+            synced_ts=1060,
+            use_v2=use_v2,
+            ts_checkpoints=(1000, 1050),
+        )
+        assert result is False
+        assert "available_rewards" not in called
+        mock_ctx.logger.info.assert_called_once_with(
+            "Skipping the checkpoint: the staking contract was checkpointed "
+            "while its state was being read."
+        )
