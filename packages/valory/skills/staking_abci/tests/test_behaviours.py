@@ -1706,10 +1706,7 @@ class TestShouldCallCheckpoint:
         synced_ts: int = 1100,
         use_v2: bool = True,
     ) -> Any:
-        """Run _should_call_checkpoint with the given on-chain reads.
-
-        :return: the result and the list of contract callables read.
-        """
+        """Run _should_call_checkpoint and return its result, the reads made and the context."""
         b = object.__new__(CallCheckpointBehaviour)
         b._available_rewards = 0
         reads = {
@@ -1722,7 +1719,7 @@ class TestShouldCallCheckpoint:
 
         def fake_interact(
             contract_callable: str, placeholder: str, **_: Any
-        ) -> Generator:
+        ) -> Generator[None, None, bool]:
             """Record the read and set the placeholder."""
             called.append(contract_callable)
             setattr(b, placeholder, reads[contract_callable])
