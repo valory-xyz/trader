@@ -25,6 +25,10 @@ from unittest.mock import MagicMock, PropertyMock, mock_open, patch
 
 import pytest
 
+from packages.valory.contracts.service_staking_token.contract import (
+    ServiceStakingTokenContract,
+)
+from packages.valory.contracts.staking_token.contract import StakingTokenContract
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.skills.abstract_round_abci.behaviour_utils import (
     BaseBehaviour,
@@ -1699,6 +1703,11 @@ class TestAsyncAct:
 class TestShouldCallCheckpoint:
     """Tests for CallCheckpointBehaviour._should_call_checkpoint."""
 
+    SKIP_LOG = (
+        "Skipping the checkpoint: the staking contract has no available "
+        "rewards and no rebaseline is pending."
+    )
+
     def _run(
         self,
         next_ts: int,
@@ -1717,11 +1726,11 @@ class TestShouldCallCheckpoint:
         }
         called = []
 
-        def fake_interact(
-            contract_callable: str, placeholder: str, **_: Any
+        def fake_contract_interact(
+            contract_public_id: Any, contract_callable: str, placeholder: str, **_: Any
         ) -> Generator[None, None, bool]:
             """Record the read and set the placeholder."""
-            called.append(contract_callable)
+            called.append((contract_public_id, contract_callable))
             setattr(b, placeholder, reads[contract_callable])
             return True
             yield  # pragma: no cover
@@ -1749,13 +1758,18 @@ class TestShouldCallCheckpoint:
                 new_callable=PropertyMock,
                 return_value=mock_rs,
             ),
-            patch.object(b, "_staking_contract_interact", fake_interact),
+            patch.object(b, "contract_interact", fake_contract_interact),
             patch.object(b, "wait_for_condition_with_sleep", run_condition),
         ):
             gen = b._should_call_checkpoint()
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
-        return exc_info.value.value, called, mock_ctx
+
+        expected_contract = (
+            StakingTokenContract if use_v2 else ServiceStakingTokenContract
+        ).contract_id
+        assert {contract_id for contract_id, _ in called} == {expected_contract}
+        return exc_info.value.value, [callable_ for _, callable_ in called], mock_ctx
 
     @pytest.mark.parametrize("use_v2", [True, False])
     def test_not_due(self, use_v2: bool) -> None:
@@ -1769,9 +1783,12 @@ class TestShouldCallCheckpoint:
     @pytest.mark.parametrize("use_v2", [True, False])
     def test_reached_with_rewards(self, use_v2: bool) -> None:
         """A reached checkpoint is sent when the reserve has rewards."""
-        result, called, _ = self._run(next_ts=1100, available_rewards=1, use_v2=use_v2)
+        result, called, mock_ctx = self._run(
+            next_ts=1100, available_rewards=1, use_v2=use_v2
+        )
         assert result is True
         assert called[-1] == "available_rewards"
+        mock_ctx.logger.info.assert_not_called()
 
     @pytest.mark.parametrize("use_v2", [True, False])
     def test_reached_with_empty_reserve_is_skipped(self, use_v2: bool) -> None:
@@ -1780,13 +1797,14 @@ class TestShouldCallCheckpoint:
             next_ts=1100, available_rewards=0, use_v2=use_v2
         )
         assert result is False
-        mock_ctx.logger.info.assert_called_once()
+        mock_ctx.logger.info.assert_called_once_with(self.SKIP_LOG)
 
     @pytest.mark.parametrize("use_v2", [True, False])
-    def test_rebaseline_pending_is_sent_with_empty_reserve(self, use_v2: bool) -> None:
-        """A pending rebaseline is sent before the period ends, even on an empty reserve."""
-        result, called, _ = self._run(
-            next_ts=1050, available_rewards=0, synced_ts=1050, use_v2=use_v2
+    def test_rebaseline_pending_is_sent_before_reached(self, use_v2: bool) -> None:
+        """A pending rebaseline is sent before its timestamp is reached, even on an empty reserve."""
+        result, called, mock_ctx = self._run(
+            next_ts=1060, available_rewards=0, synced_ts=1050, use_v2=use_v2
         )
         assert result is True
         assert "available_rewards" not in called
+        mock_ctx.logger.info.assert_not_called()

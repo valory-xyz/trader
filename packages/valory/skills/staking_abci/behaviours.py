@@ -86,10 +86,10 @@ READ_MODE = "r"
 WRITE_MODE = "w"
 
 
-def is_checkpoint_due(
-    next_ts: int, ts_checkpoint: int, liveness_period: int, synced_ts: int
+def is_rebaseline_pending(
+    next_ts: int, ts_checkpoint: int, liveness_period: int
 ) -> bool:
-    """Whether a checkpoint is due.
+    """Whether the staking contract signals a pending rebaseline.
 
     StakingToken v0.4 makes ``getNextRewardCheckpointTimestamp()`` return
     ``block.timestamp`` while a rebaseline is pending, so it then differs from
@@ -98,10 +98,26 @@ def is_checkpoint_due(
     :param next_ts: the staking contract's next reward checkpoint timestamp.
     :param ts_checkpoint: the staking contract's last checkpoint timestamp.
     :param liveness_period: the staking contract's liveness period.
+    :return: whether a rebaseline is pending.
+    """
+    return next_ts != ts_checkpoint + liveness_period
+
+
+def is_checkpoint_due(
+    next_ts: int, ts_checkpoint: int, liveness_period: int, synced_ts: int
+) -> bool:
+    """Whether a checkpoint is due: a rebaseline is pending or the next checkpoint is reached.
+
+    :param next_ts: the staking contract's next reward checkpoint timestamp.
+    :param ts_checkpoint: the staking contract's last checkpoint timestamp.
+    :param liveness_period: the staking contract's liveness period.
     :param synced_ts: the timestamp synchronized across the agents.
     :return: whether a checkpoint is due.
     """
-    return next_ts != ts_checkpoint + liveness_period or next_ts <= synced_ts
+    return (
+        is_rebaseline_pending(next_ts, ts_checkpoint, liveness_period)
+        or next_ts <= synced_ts
+    )
 
 
 def should_send_checkpoint(
@@ -110,7 +126,7 @@ def should_send_checkpoint(
     """Whether to send a due checkpoint, skipping it when it would change nothing.
 
     :param due: whether a checkpoint is due (see ``is_checkpoint_due``).
-    :param rebaseline_signal: whether ``next_ts != ts_checkpoint + liveness_period``.
+    :param rebaseline_signal: whether a rebaseline is pending (see ``is_rebaseline_pending``).
     :param available_rewards: the staking contract's available rewards.
     :return: whether to send the checkpoint transaction.
     """
@@ -749,8 +765,8 @@ class CallCheckpointBehaviour(
         if not due:
             return False
 
-        rebaseline_signal = (
-            self.next_checkpoint != self.ts_checkpoint + self.liveness_period
+        rebaseline_signal = is_rebaseline_pending(
+            self.next_checkpoint, self.ts_checkpoint, self.liveness_period
         )
         if not rebaseline_signal:
             yield from self.wait_for_condition_with_sleep(self._get_available_rewards)
