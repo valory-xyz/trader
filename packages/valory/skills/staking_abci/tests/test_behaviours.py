@@ -35,6 +35,8 @@ from packages.valory.skills.staking_abci.behaviours import (
     CallCheckpointBehaviour,
     NULL_ADDRESS,
     StakingInteractBaseBehaviour,
+    is_checkpoint_due,
+    should_send_checkpoint,
 )
 from packages.valory.skills.staking_abci.models import StakingParams
 from packages.valory.skills.staking_abci.rounds import (
@@ -70,6 +72,70 @@ def _return_gen(value: Any):  # type: ignore
         yield  # pragma: no cover
 
     return gen
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint rules
+# ---------------------------------------------------------------------------
+
+
+class TestIsCheckpointDue:
+    """Tests for is_checkpoint_due."""
+
+    @pytest.mark.parametrize(
+        "next_ts, ts_checkpoint, liveness_period, synced_ts, expected",
+        [
+            # getter equals tsCheckpoint + livenessPeriod: due only once reached
+            (1100, 1000, 100, 1099, False),
+            (1100, 1000, 100, 1100, True),
+            (1100, 1000, 100, 1101, True),
+            # pending rebaseline: getter returns block.timestamp, due immediately
+            (1050, 1000, 100, 1049, True),
+            (1050, 1000, 100, 1050, True),
+            (1200, 1000, 100, 1100, True),
+        ],
+    )
+    def test_is_checkpoint_due(
+        self,
+        next_ts: int,
+        ts_checkpoint: int,
+        liveness_period: int,
+        synced_ts: int,
+        expected: bool,
+    ) -> None:
+        """A checkpoint is due on a rebaseline signal or once the next timestamp is reached."""
+        assert (
+            is_checkpoint_due(next_ts, ts_checkpoint, liveness_period, synced_ts)
+            is expected
+        )
+
+
+class TestShouldSendCheckpoint:
+    """Tests for should_send_checkpoint."""
+
+    @pytest.mark.parametrize(
+        "due, rebaseline_signal, available_rewards, expected",
+        [
+            (False, False, 1, False),
+            (False, True, 1, False),
+            (True, False, 0, False),
+            (True, False, 1, True),
+            (True, True, 0, True),
+            (True, True, 1, True),
+        ],
+    )
+    def test_should_send_checkpoint(
+        self,
+        due: bool,
+        rebaseline_signal: bool,
+        available_rewards: int,
+        expected: bool,
+    ) -> None:
+        """A due checkpoint is skipped only on an empty reserve without a rebaseline."""
+        assert (
+            should_send_checkpoint(due, rebaseline_signal, available_rewards)
+            is expected
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -214,33 +280,11 @@ class TestStakingInteractProperties:
         b.next_checkpoint = 42
         assert b.next_checkpoint == 42
 
-    def test_is_checkpoint_reached_true(self) -> None:
-        """Is_checkpoint_reached is True when next_checkpoint <= synced_timestamp."""
+    def test_available_rewards_getter_setter(self) -> None:
+        """Available_rewards getter/setter round-trip."""
         b = self._make()
-        b._next_checkpoint = 100
-        mock_rs = MagicMock()
-        mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
-        with patch.object(
-            type(b),
-            "round_sequence",
-            new_callable=PropertyMock,
-            return_value=mock_rs,
-        ):
-            assert b.is_checkpoint_reached is True
-
-    def test_is_checkpoint_reached_false(self) -> None:
-        """Is_checkpoint_reached is False when next_checkpoint > synced_timestamp."""
-        b = self._make()
-        b._next_checkpoint = 300
-        mock_rs = MagicMock()
-        mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
-        with patch.object(
-            type(b),
-            "round_sequence",
-            new_callable=PropertyMock,
-            return_value=mock_rs,
-        ):
-            assert b.is_checkpoint_reached is False
+        b.available_rewards = 7
+        assert b.available_rewards == 7
 
     def test_ts_checkpoint_getter_setter(self) -> None:
         """Ts_checkpoint getter/setter round-trip."""
@@ -602,6 +646,19 @@ class TestGetMethods:
             with pytest.raises(StopIteration) as exc_info:
                 next(gen)
             assert exc_info.value.value is True
+
+    def test_get_available_rewards(self) -> None:
+        """_get_available_rewards reads available_rewards from the staking contract."""
+        b = self._make()
+        mock_interact = MagicMock(side_effect=_return_gen(True))
+        with patch.object(b, "_staking_contract_interact", mock_interact):
+            gen = b._get_available_rewards()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+            assert exc_info.value.value is True
+        mock_interact.assert_called_once_with(
+            contract_callable="available_rewards", placeholder="available_rewards"
+        )
 
     def test_get_liveness_ratio_v2(self) -> None:
         """_get_liveness_ratio uses mech_activity_checker when use_v2 is True."""
@@ -1563,16 +1620,19 @@ class TestAsyncAct:
                 next(gen)
         mock_set_done.assert_called_once()
 
-    def test_staked_checkpoint_reached(self) -> None:
-        """Staked service with checkpoint reached prepares safe tx."""
+    @pytest.mark.parametrize(
+        "should_call, expected_tx_hex", [(True, "0xtxhex"), (False, None)]
+    )
+    def test_staked_sends_checkpoint_only_when_it_should(
+        self, should_call: bool, expected_tx_hex: Any
+    ) -> None:
+        """A staked service prepares the checkpoint tx only when it should be called."""
         b = self._make()
         b._service_staking_state = StakingState.STAKED
-        b._next_checkpoint = 100
         mock_ctx = MagicMock()
         mock_ctx.agent_address = "agent_0"
         mock_ctx.params.on_chain_service_id = 1
-        mock_rs = MagicMock()
-        mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
+        mock_prepare = MagicMock(side_effect=_return_gen("0xtxhex"))
 
         with (
             patch.object(
@@ -1584,52 +1644,13 @@ class TestAsyncAct:
                 new_callable=PropertyMock,
                 return_value="test",
             ),
-            patch.object(
-                type(b),
-                "round_sequence",
-                new_callable=PropertyMock,
-                return_value=mock_rs,
-            ),
             patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
-            patch.object(b, "_prepare_safe_tx", _return_gen("0xtxhex")),
-            patch.object(b, "check_new_epoch", _return_gen(True)),
-            patch.object(b, "send_a2a_transaction", _noop_gen),
-            patch.object(b, "wait_until_round_end", _noop_gen),
-            patch.object(b, "set_done", MagicMock()),
-        ):
-            gen = b.async_act()
-            with pytest.raises(StopIteration):
-                next(gen)
-
-    def test_staked_checkpoint_not_reached(self) -> None:
-        """Staked service without checkpoint reached skips safe tx."""
-        b = self._make()
-        b._service_staking_state = StakingState.STAKED
-        b._next_checkpoint = 300
-        mock_ctx = MagicMock()
-        mock_ctx.agent_address = "agent_0"
-        mock_ctx.params.on_chain_service_id = 1
-        mock_rs = MagicMock()
-        mock_rs.last_round_transition_timestamp.timestamp.return_value = 200.0
-
-        with (
-            patch.object(
-                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
-            ),
-            patch.object(
-                type(b),
-                "behaviour_id",
-                new_callable=PropertyMock,
-                return_value="test",
-            ),
-            patch.object(
-                type(b),
-                "round_sequence",
-                new_callable=PropertyMock,
-                return_value=mock_rs,
-            ),
-            patch.object(b, "wait_for_condition_with_sleep", _noop_gen),
+            patch.object(b, "_should_call_checkpoint", _return_gen(should_call)),
+            patch.object(b, "_prepare_safe_tx", mock_prepare),
             patch.object(b, "check_new_epoch", _return_gen(False)),
+            patch(
+                "packages.valory.skills.staking_abci.behaviours.CallCheckpointPayload"
+            ) as mock_payload,
             patch.object(b, "send_a2a_transaction", _noop_gen),
             patch.object(b, "wait_until_round_end", _noop_gen),
             patch.object(b, "set_done", MagicMock()),
@@ -1637,6 +1658,8 @@ class TestAsyncAct:
             gen = b.async_act()
             with pytest.raises(StopIteration):
                 next(gen)
+        assert mock_prepare.called is should_call
+        assert mock_payload.call_args.args[2] == expected_tx_hex
 
     def test_evicted(self) -> None:
         """Evicted service logs critical message."""
@@ -1666,3 +1689,107 @@ class TestAsyncAct:
             with pytest.raises(StopIteration):
                 next(gen)
         mock_ctx.logger.critical.assert_called_once_with("Service has been evicted!")
+
+
+# ---------------------------------------------------------------------------
+# _should_call_checkpoint
+# ---------------------------------------------------------------------------
+
+
+class TestShouldCallCheckpoint:
+    """Tests for CallCheckpointBehaviour._should_call_checkpoint."""
+
+    def _run(
+        self,
+        next_ts: int,
+        available_rewards: int,
+        synced_ts: int = 1100,
+        use_v2: bool = True,
+    ) -> Any:
+        """Run _should_call_checkpoint with the given on-chain reads.
+
+        :return: the result and the list of contract callables read.
+        """
+        b = object.__new__(CallCheckpointBehaviour)
+        b._available_rewards = 0
+        reads = {
+            "get_next_checkpoint_ts": next_ts,
+            "ts_checkpoint": 1000,
+            "get_liveness_period": 100,
+            "available_rewards": available_rewards,
+        }
+        called = []
+
+        def fake_interact(
+            contract_callable: str, placeholder: str, **_: Any
+        ) -> Generator:
+            """Record the read and set the placeholder."""
+            called.append(contract_callable)
+            setattr(b, placeholder, reads[contract_callable])
+            return True
+            yield  # pragma: no cover
+
+        def run_condition(condition_gen: Any, **_: Any) -> Generator:
+            """Run the condition once."""
+            result = yield from condition_gen()
+            assert result is True
+
+        mock_ctx = MagicMock()
+        mock_ctx.params.mech_activity_checker_contract = (
+            "0xNonNull" if use_v2 else NULL_ADDRESS
+        )
+        mock_rs = MagicMock()
+        mock_rs.last_round_transition_timestamp.timestamp.return_value = float(
+            synced_ts
+        )
+        with (
+            patch.object(
+                type(b), "context", new_callable=PropertyMock, return_value=mock_ctx
+            ),
+            patch.object(
+                type(b),
+                "round_sequence",
+                new_callable=PropertyMock,
+                return_value=mock_rs,
+            ),
+            patch.object(b, "_staking_contract_interact", fake_interact),
+            patch.object(b, "wait_for_condition_with_sleep", run_condition),
+        ):
+            gen = b._should_call_checkpoint()
+            with pytest.raises(StopIteration) as exc_info:
+                next(gen)
+        return exc_info.value.value, called, mock_ctx
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_not_due(self, use_v2: bool) -> None:
+        """Before the next checkpoint and without a rebaseline, nothing is sent."""
+        result, called, _ = self._run(
+            next_ts=1100, available_rewards=1, synced_ts=1099, use_v2=use_v2
+        )
+        assert result is False
+        assert "available_rewards" not in called
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_reached_with_rewards(self, use_v2: bool) -> None:
+        """A reached checkpoint is sent when the reserve has rewards."""
+        result, called, _ = self._run(next_ts=1100, available_rewards=1, use_v2=use_v2)
+        assert result is True
+        assert called[-1] == "available_rewards"
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_reached_with_empty_reserve_is_skipped(self, use_v2: bool) -> None:
+        """A reached checkpoint is skipped when the reserve is empty."""
+        result, _, mock_ctx = self._run(
+            next_ts=1100, available_rewards=0, use_v2=use_v2
+        )
+        assert result is False
+        mock_ctx.logger.info.assert_called_once()
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_rebaseline_pending_is_sent_with_empty_reserve(self, use_v2: bool) -> None:
+        """A pending rebaseline is sent before the period ends, even on an empty reserve."""
+        result, called, _ = self._run(
+            next_ts=1050, available_rewards=0, synced_ts=1050, use_v2=use_v2
+        )
+        assert result is True
+        assert "available_rewards" not in called
