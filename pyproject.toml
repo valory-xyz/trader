@@ -10,12 +10,12 @@ requires-python = "<3.15,>=3.10"
 readme = "README.md"
 license = "Apache-2.0"
 dependencies = [
-    "open-autonomy[cli]==0.21.28",
-    "open-aea-ledger-ethereum==2.2.9",
-    "open-aea-ledger-cosmos==2.2.9",
-    "open-aea-test-autonomy==0.21.26",
-    "open-aea-helpers==0.21.26",
-    "open-aea-cli-ipfs==2.2.9",
+    "open-autonomy[cli]==0.21.31rc2",
+    "open-aea-ledger-ethereum==2.2.10",
+    "open-aea-ledger-cosmos==2.2.10",
+    "open-aea-test-autonomy==0.21.31rc2",
+    "open-aea-helpers==0.21.31rc2",
+    "open-aea-cli-ipfs==2.2.10",
     "grpcio==1.78.0",
     "hypothesis==6.21.6",
     "hexbytes==1.3.0",
