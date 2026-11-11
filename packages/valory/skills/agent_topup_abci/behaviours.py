@@ -121,7 +121,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         return last_round_id == self.matching_round.auto_round_id()
 
     def _is_check_due(self) -> bool:
-        """Whether a new check starts: on start, then once an hour after the last one reached a decision."""
+        """Whether a new check starts: on start, then once an hour after the last check closed the gate."""
         last_check = self.context.shared_state.get(LAST_TOPUP_CHECK_KEY)
         return (
             last_check is None
@@ -129,7 +129,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         )
 
     def _close_check(self) -> None:
-        """Close the gate for an hour, once the check has reached a decision."""
+        """Close the gate for an hour, once no further move is due."""
         self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
 
     def _fail_topup(self) -> None:
