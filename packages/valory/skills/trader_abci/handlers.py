@@ -786,7 +786,11 @@ class HttpHandler(BaseHttpHandler):
             if self.params.is_running_on_polymarket:
                 # The adjusted Agent Safe deficit counts its USDC as POL.
                 safe_deficit = get_safe_native_deficit_with_signer_shortfall(
-                    funds_status, chain_name, agent_address, topup
+                    funds_status,
+                    chain_name,
+                    agent_address,
+                    topup,
+                    self.context.logger,
                 )
             for address, account in funds_status[chain_name].accounts.items():
                 if address == agent_address:

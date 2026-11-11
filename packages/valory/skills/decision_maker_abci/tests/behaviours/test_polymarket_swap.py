@@ -699,6 +699,16 @@ class TestPolymarketSwapSignerReserve:
         assert _run_get_tx_hash(behaviour, threshold=100) is None
         assert amounts == []
 
+    def test_report_balances_swap_nothing(self) -> None:
+        """Safe 29.4868 POL, Agent Signer need 27.4868 POL: 2 + 27.4868 POL kept, nothing swapped."""
+        need = 274868 * ETHER // 10000
+        behaviour = _make_behaviour(signer_deficit=need)
+        behaviour._get_balance = lambda addr: _return_gen(2 * ETHER + need)  # type: ignore[method-assign]
+        amounts = self._quoted_amounts(behaviour)
+
+        assert _run_get_tx_hash(behaviour, threshold=2 * ETHER) is None
+        assert amounts == []
+
     def test_unread_signer_deficit_skips_the_swap(self) -> None:
         """Without the Agent Signer need, nothing is swapped that period."""
         behaviour = _make_behaviour(signer_deficit=None)

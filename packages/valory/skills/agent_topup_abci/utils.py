@@ -76,7 +76,11 @@ def get_signer_native_deficit(
 
 
 def get_safe_native_deficit_with_signer_shortfall(
-    funds: FundRequirements, chain_name: str, agent_address: str, topup: AgentTopUp
+    funds: FundRequirements,
+    chain_name: str,
+    agent_address: str,
+    topup: AgentTopUp,
+    logger: Logger,
 ) -> Optional[int]:
     """Return the Agent Signer shortfall the Agent Safe cannot cover, plus the Agent Safe deficit read.
 
@@ -87,14 +91,19 @@ def get_safe_native_deficit_with_signer_shortfall(
     :param chain_name: the chain the top-up decision is for.
     :param agent_address: the Agent Signer address.
     :param topup: the funds-manager top-up decision on that chain.
+    :param logger: the logger.
     :return: the Agent Safe native deficit to report; None keeps the one read.
     """
     if topup.safe_deficit is None:
         return None
     safe_deficit = get_safe_native_deficit(funds, chain_name, agent_address)
     if safe_deficit is None:
-        # The adjusted deficit was cleared: fall back to the rule's.
-        return topup.safe_deficit
+        # The rule cannot count the non-native asset, so its deficit would over-ask.
+        logger.warning(
+            f"Agent Safe deficit on {chain_name} not adjusted: its non-native "
+            "asset was not valued, so the deficit read is kept."
+        )
+        return None
     # The rule decided a move, so it read both.
     need = cast(int, get_signer_native_deficit(funds, chain_name, agent_address))
     safe_native = cast(int, get_safe_native_balance(funds, chain_name, agent_address))

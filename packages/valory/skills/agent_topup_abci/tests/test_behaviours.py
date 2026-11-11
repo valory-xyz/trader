@@ -322,6 +322,32 @@ class TestNoMove:
         assert not harness.contract_calls
 
 
+class TestNoMoveGate:
+    """Whether a check that moves nothing closes the gate."""
+
+    @pytest.mark.parametrize(
+        "chain, signer_balance, safe_balance, closes",
+        [
+            ("polygon", ETHER // 10, 0, False),  # Agent Safe empty, Agent Signer short
+            ("polygon", ETHER, 0, True),  # nothing due
+            ("gnosis", ETHER // 10, 0, True),  # Omenstrat keeps the hourly gate
+        ],
+    )
+    def test_gate(
+        self, chain: str, signer_balance: int, safe_balance: int, closes: bool
+    ) -> None:
+        """An empty Agent Safe keeps the gate open off Gnosis while the Agent Signer is short."""
+        harness = _Harness(
+            chain,
+            funds_status(chain, signer_balance, safe_balance),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+        )
+
+        assert harness.run() is None
+        expected = NOW if closes else NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == expected
+
+
 class TestTransfer:
     """The Agent Safe sends native token to the Agent Signer."""
 

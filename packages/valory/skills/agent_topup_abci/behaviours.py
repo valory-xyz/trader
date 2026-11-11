@@ -51,6 +51,7 @@ from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
     GET_FUNDS_STATUS_METHOD_NAME,
 )
+from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
     skill_input_hex_to_payload,
@@ -165,6 +166,12 @@ class AgentTopUpBehaviour(BaseBehaviour):
                     f"No Agent Signer top-up on {chain}: a native balance was not read."
                 )
                 return None
+            if self._waits_for_safe_funds(funds, chain):
+                # Keep the gate open so a Pearl top-up reaches the Agent Signer next period.
+                self.context.logger.info(
+                    f"No Agent Signer top-up on {chain}: the Agent Safe holds no native token."
+                )
+                return None
             self.context.logger.info(f"No Agent Signer top-up on {chain}.")
             self._close_check()
             return None
@@ -200,6 +207,18 @@ class AgentTopUpBehaviour(BaseBehaviour):
         elif closes_gate:
             self._close_check()
         return tx_hex
+
+    def _waits_for_safe_funds(self, funds: FundRequirements, chain: str) -> bool:
+        """Whether the Agent Signer is short and, off Gnosis, the Agent Safe holds nothing to move."""
+        agent_address = self.context.agent_address
+        need = get_signer_native_deficit(funds, chain, agent_address)
+        safe_native = get_safe_native_balance(funds, chain, agent_address)
+        return (
+            chain != GNOSIS_CHAIN_NAME
+            and safe_native == 0
+            and need is not None
+            and need > 0
+        )
 
     def _prepare_unwrap_tx(self, amount: int) -> Generator[None, None, Optional[str]]:
         """Prepare the Safe tx unwrapping `amount` wxDAI into xDAI."""
