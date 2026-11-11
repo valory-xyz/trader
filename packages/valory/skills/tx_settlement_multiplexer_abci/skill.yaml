@@ -28,9 +28,9 @@ protocols:
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
 - valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
-- valory/decision_maker_abci:0.1.0:bafybeif3ossi56dlp62i3pgpqyqtkc7ixb6fwwb6u2mvaqq7pkfm22o3iq
+- valory/decision_maker_abci:0.1.0:bafybeiaz6vy3oerksnluwywgfklcvsvlgkco6cxjsxkgq6l6snd5qbooji
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeih23nsls7oqpqjx2mqy77dmhvfdxie2zktq3o3ifzmdknjn3kee5u
+- valory/agent_topup_abci:0.1.0:bafybeiglwz74knbtxr2dkoipbbqkdsny3iqgsafkctom7k26pdyymvzam4
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 behaviours:
   main:
