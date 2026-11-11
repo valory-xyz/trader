@@ -164,7 +164,7 @@ connections:
 - valory/polymarket_client:0.1.0:bafybeiatdzg4bt2kaxtkn5m6tkyuwwskue7txj5dacj6s62ybyx6bzycmu
 contracts:
 - valory/gnosis_safe:0.1.0:bafybeiek7zs3r5c4wspwwuvnhunc2ddvccbsuy3xccedbjffju5eywp3ju
-- valory/market_maker:0.1.0:bafybeiejfn5gadg637epqf2cgjxa7ybo7t3fhrlabsbz6tivb65ivoatkq
+- valory/market_maker:0.1.0:bafybeiaogkujiilubosloromkikuhltgiiadjvtzw2b5p5hc3klzi4m4nq
 - valory/erc20:0.1.0:bafybeibpuyikvpmtaraca4lqokf3kf6jlpmafkqm6oixnps3ig23jfbllq
 - valory/multisend:0.1.0:bafybeifqtf24h7lhhbairveqmq2klhvbswajmbpoyqj4xrgye7c22pxubi
 - valory/mech:0.1.0:bafybeih45j4v3ooe6jgrg4u3xnqktb6sklwoaf3w2lgcuohut5rjs32kzu
@@ -172,7 +172,7 @@ contracts:
 - valory/realitio:0.1.0:bafybeibfy6dqkwsz4xersouotswcug27awkvtsmjlo3r7b476qgeujn3eu
 - valory/realitio_proxy:0.1.0:bafybeibutej7uzucill5ohb3xxu245vo32kg5vchpqondwdfomixx2psba
 - valory/agent_registry:0.1.0:bafybeia6gfxdfpr4apeqd6s4777d7yf6qya2slu3ccqmwiapxe72ckvsiq
-- valory/deposit_wallet:0.1.0:bafybeig2blriolhx337ncyhcvlrml7zbbw4tbawkan2g6wscu6gj4kaztu
+- valory/deposit_wallet:0.1.0:bafybeifmw77pznzla6zwq7mfncdzboxmlmm5ffmkvlxlqfg442oypfqjje
 protocols:
 - valory/contract_api:1.0.0:bafybeibld2xb5m7kyluiptkamp4nrt6oeomkohz7a3yppbv2oo7qw2e4la
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
@@ -184,9 +184,9 @@ skills:
 - valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/staking_abci:0.1.0:bafybeieu35rzbtnpe52hfrzmmonlhov7beflfog25h4mhaldiv3b7ndwiy
-- valory/agent_performance_summary_abci:0.1.0:bafybeigkgtmcebugvipwrzarjnqc7z6lwgimaqddigziwa6vk5u6zo6c3e
-- valory/chatui_abci:0.1.0:bafybeid5iropsumbzozfrba4p4chttkelb4hujiobszdbbsiw5hwxfir3a
+- valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
+- valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
+- valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 behaviours:
   main:

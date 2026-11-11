@@ -48,14 +48,14 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
-- valory/decision_maker_abci:0.1.0:bafybeie7c5dvnbwwfj5pigky4rkhyer5jz2gwim5jenbeldo4snyfrdpxu
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiefhn7ipq3o6fc7djvk2rupmf4yo2ckvt7jk3ptdngvieknqf73he
-- valory/staking_abci:0.1.0:bafybeieu35rzbtnpe52hfrzmmonlhov7beflfog25h4mhaldiv3b7ndwiy
+- valory/decision_maker_abci:0.1.0:bafybeidia3i2jp5cyls5hg4y4l4nwr2idb42ql7mcv5mpgiobmqkoz666a
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeidn2n3pk7sluetgt7yq2j6vvxra7px3d5blq46fsshl5c6ummxfzy
+- valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeib6ef2qgi4fpl76oeuquw4nsfeofdsogbovlclirwebaazirusjwa
+- valory/check_stop_trading_abci:0.1.0:bafybeihfp62pajdbkfuch2nf2takcjf22atr3eme6ke552ljqpvj4ed25a
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeid5iropsumbzozfrba4p4chttkelb4hujiobszdbbsiw5hwxfir3a
-- valory/agent_performance_summary_abci:0.1.0:bafybeigkgtmcebugvipwrzarjnqc7z6lwgimaqddigziwa6vk5u6zo6c3e
+- valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
+- valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -699,5 +699,5 @@ dependencies:
   requests:
     version: <2.33.0,>=2.32.5
   open-aea-ledger-ethereum:
-    version: ==2.2.10
+    version: ==2.2.9
 is_abstract: false
