@@ -104,7 +104,7 @@ fingerprint:
   tests/behaviours/test_polymarket_reedem.py: bafybeic2ccctxaq3addop2c7lar7yjdu2pawed6pltfkf6cggd2ifoy3ru
   tests/behaviours/test_polymarket_set_approval.py: bafybeid6sxvdfjrxai5sk7tgshcfdxbqyn6obmjxpogfj4y5jxhnxcolfy
   tests/behaviours/test_polymarket_set_approval_dw.py: bafybeihs4lklkfzqqvtjr52kjfoao36u5fr4ykq4x6ks3cw2re2thual5a
-  tests/behaviours/test_polymarket_swap.py: bafybeigalsnq3tpfzsbvmlixu2pcv3kq7dodkoeaqvzpt4simqjnd7uwe4
+  tests/behaviours/test_polymarket_swap.py: bafybeicbllugqze5qvyocz4hrbd7g466kvhk57zuduipp7vbd2whqn3fiy
   tests/behaviours/test_polymarket_sweep.py: bafybeiht6nqyfc2aistpybbcx4qyx2ffh4b4nlimuvje2blmulfk7lqk5u
   tests/behaviours/test_polymarket_top_up.py: bafybeidm652rdgyn2uikiohh3jsal32rxr6szp26xzckjerupub4bbve6a
   tests/behaviours/test_polymarket_withdraw_dw.py: bafybeifivyxjghg4xa6eewbyfiv7gpky2benhxqgkfihg5xz2zanlspr7q
@@ -187,7 +187,7 @@ skills:
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
 - valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
-- valory/agent_topup_abci:0.1.0:bafybeib2gsejekoutdikjau4q3o7tfi5jvraq43jo24iqpadk7mk7t3p2a
+- valory/agent_topup_abci:0.1.0:bafybeicxtnyrvwbzsx7y2rp6adwslikgzdxtoky2xhzepugh23ki2h4hji
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
