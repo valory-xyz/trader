@@ -782,6 +782,7 @@ class HttpHandler(BaseHttpHandler):
             )
             return
         for chain_name, topup in topups.items():
+            signer_deficit = topup.signer_deficit
             safe_deficit = topup.safe_deficit
             if self.params.is_running_on_polymarket:
                 # The adjusted Agent Safe deficit counts its USDC as POL.
@@ -792,9 +793,12 @@ class HttpHandler(BaseHttpHandler):
                     topup,
                     self.context.logger,
                 )
+                if safe_deficit is None:
+                    # The Agent Safe does not ask for the shortfall, so the Agent Signer must.
+                    signer_deficit = None
             for address, account in funds_status[chain_name].accounts.items():
                 if address == agent_address:
-                    deficit = topup.signer_deficit
+                    deficit = signer_deficit
                 else:
                     deficit = safe_deficit
                 if deficit is None:

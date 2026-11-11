@@ -3200,13 +3200,14 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", SAFE) == 274868 * ETHER // 10000
 
     def test_unvalued_usdc_keeps_the_safe_deficit_read(self) -> None:
-        """When the USDC could not be valued, the rule's USDC-blind Agent Safe deficit is not reported."""
+        """When the USDC could not be valued, the Agent Signer, not the Agent Safe, asks for the shortfall."""
         handler = self._handler("polygon")
         status = self._polystrat_status(adjusted_safe_deficit=None)
 
         handler._apply_agent_topup(status)
 
         assert self._native_deficit(status, "polygon", SAFE) is None
+        assert self._native_deficit(status, "polygon", AGENT) == 274868 * ETHER // 10000
         assert "not valued" in handler.context.logger.warning.call_args[0][0]
 
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
