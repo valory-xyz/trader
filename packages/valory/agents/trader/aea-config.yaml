@@ -70,16 +70,16 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeig6ste776kkxjlsxqudby5hnecjtuo3mtz7gqwlcnhcdqfgqrkgti
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigikjaoo6zskxakfkfu7xfmz742p6sqilbek47mpqip2fqndp27p4
 - valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
-- valory/decision_maker_abci:0.1.0:bafybeifwe25tqfhwgqoxwnfqw3fdktdcdrw4lwl2nrmrj4r3nvmw3vtoly
-- valory/trader_abci:0.1.0:bafybeict2w5xifwhfsx2uy5u6juu7xgf5xvsjtaouuzohw4c3wstamnzl4
+- valory/decision_maker_abci:0.1.0:bafybeibocgduda3rhbmzzb33bfqdozdnyfgeu7yddqlcij2oty2hivtbne
+- valory/trader_abci:0.1.0:bafybeiar6ycgq27ukfteztmgh6i3w2qpovqw4eg2ki3fdt2kcvtk52gl6a
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeibbouq4dwpc2dbed6gtusqrpltzlzejmlxvyevwhxuq6ev75lnyxm
+- valory/check_stop_trading_abci:0.1.0:bafybeifyaeskwhvchyyj4qpdpppczwyz753krtik23rs6delizerifp6tq
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
-- valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
+- valory/chatui_abci:0.1.0:bafybeigjo5xjdaijfoj7dijvh4ukx2xkrecxjcrfk2svzjojkootlwsgi4
+- valory/agent_performance_summary_abci:0.1.0:bafybeifrphh7d7opyamy5r2omi4qsmp62edrir3hkw2hqi6vpzewh5jldy
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 customs:
 - valory/kelly_criterion:0.1.0:bafybeicilvsozfawzdcsmtcwxiutr33dtixeebhawn7nolxmm5vj74z5h4

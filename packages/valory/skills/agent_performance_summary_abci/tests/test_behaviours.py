@@ -40,12 +40,12 @@ from packages.valory.skills.agent_performance_summary_abci.achievements_checker.
 )
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
-    FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LEADERBOARD_REFRESH_INTERVAL,
     LEADERBOARD_REQUEST_TIMEOUT,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
+    MECH_ANALYTICS_LOOKBACK_SECONDS,
     MIN_TRADES_FOR_ROI_DISPLAY,
     MORE_TRADES_NEEDED_TEXT,
     NA,
@@ -65,9 +65,10 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     TX_HISTORY_DEPTH,
     UPDATE_INTERVAL,
     USDC_DECIMALS_DIVISOR,
-    UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
+    FetchPerformanceSummaryBehaviour,
+    UpdateAchievementsBehaviour,
     _parse_iso_timestamp,
     get_within_deadline,
     leaderboard_request_url,
@@ -81,17 +82,17 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
+    LEADERBOARD_WINDOWS,
+    PROFIT_OVER_TIME_SCHEMA_VERSION,
     Achievements,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
-    LEADERBOARD_WINDOWS,
     LeaderboardData,
     LeaderboardWindow,
     LeaderboardWindowRank,
     OffchainDepositState,
-    PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PredictionHistory,
     ProfitDataPoint,
@@ -2011,6 +2012,22 @@ class TestGetTotalMechRequests:
 _REQ_Q1 = {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "10"}
 
 
+def _analytics_fixture_rows(sender: Optional[dict]) -> Optional[List[dict]]:
+    """Serve existing request fixtures through the migrated analytics boundary."""
+    if sender is None:
+        return None
+    return [
+        {
+            "request_id": f"fixture-{index}",
+            "question_title": (row.get("parsedRequest") or {}).get("questionTitle"),
+            "requested_at": datetime.fromtimestamp(
+                int(row.get("blockTimestamp") or 0), tz=timezone.utc
+            ).isoformat(),
+        }
+        for index, row in enumerate(sender.get("requests", []))
+    ]
+
+
 class TestGetOpenMarketRequests:
     """Tests for _get_open_market_requests."""
 
@@ -2038,8 +2055,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
-                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
             patch.object(
                 b,
                 "_fetch_polymarket_open_position_titles",
@@ -2101,6 +2121,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(b, "_fetch_open_markets", side_effect=_return_gen([])),
         ):
             gen = b._get_open_market_requests("0xaddr")
@@ -2127,8 +2152,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
-                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -2152,6 +2180,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(
                 b,
                 "_fetch_polymarket_open_position_titles",
@@ -2179,8 +2212,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
-                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -2207,8 +2243,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
-                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
+            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -6575,6 +6614,7 @@ class TestPolymarketIncrementalTitleExtraction:
         mech_requests = [
             {
                 "parsedRequest": {"questionTitle": "PM Question 1"},
+                "requestId": "polystrat-fixture-1",
                 "blockTimestamp": str(new_ts - 100),
             }
         ]
@@ -8284,6 +8324,11 @@ class TestKpiSeriesAgreement:
         last_residual_rebuild_ts: int = 0,
     ) -> ProfitOverTimeData:
         """Run a backfill over the given stats and fetched requests."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8294,9 +8339,7 @@ class TestKpiSeriesAgreement:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
             ),
-            patch.object(
-                b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)
-            ),
+            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)),
         ):
             return self._run_gen(
                 b._perform_initial_backfill("0xaddr", now, last_residual_rebuild_ts)
@@ -8312,6 +8355,11 @@ class TestKpiSeriesAgreement:
         is_polymarket: bool = False,
     ) -> ProfitOverTimeData:
         """Run one incremental update on top of ``existing``."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8325,11 +8373,13 @@ class TestKpiSeriesAgreement:
             ),
             patch.object(b, "_fetch_all_mech_requests", fetch_mock),
         ):
-            result = self._run_gen(
-                b._perform_incremental_update("0xaddr", now, existing)
-            )
+            result = self._run_gen(b._perform_incremental_update("0xaddr", now, existing))
         assert fetch_mock.call_args.kwargs == {
-            "block_timestamp_gt": existing.last_mech_timestamp
+            "block_timestamp_gt": (
+                max(existing.last_mech_timestamp - MECH_ANALYTICS_LOOKBACK_SECONDS, 0)
+                if is_polymarket
+                else existing.last_mech_timestamp
+            )
         }
         return result
 
@@ -8744,9 +8794,7 @@ class TestKpiSeriesAgreement:
 
         def _past(watermark: int) -> List[dict]:
             """Subgraph-shaped requests strictly past ``watermark``."""
-            return [
-                r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark
-            ]
+            return [r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark]
 
         def _fetch_all(
             *_: Any, block_timestamp_gt: int = 0
@@ -8770,9 +8818,7 @@ class TestKpiSeriesAgreement:
                 {
                     "request_id": f"0x{index}",
                     "question_title": title,
-                    "requested_at": datetime.fromtimestamp(
-                        ts, tz=timezone.utc
-                    ).isoformat(),
+                    "requested_at": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
                 }
                 for index, (title, ts) in enumerate(requests)
                 if ts >= floor and (title is not None) == scored
@@ -8784,8 +8830,8 @@ class TestKpiSeriesAgreement:
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
             )
         ]
-        if branch == "omen-mech-analytics":
-            params.use_mech_analytics = True
+        if branch in ("omen-mech-analytics", "polymarket"):
+            params.use_mech_analytics = not is_polymarket
             params.mech_analytics_url = "https://mech-analytics.test"
             sources += [
                 patch.object(

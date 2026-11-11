@@ -8,7 +8,7 @@ license: Apache-2.0
 fingerprint:
   README.md: bafybeichoh5tnk4qctaazcjcrxvpwc5yasodleqoeapnfapwrrdh3tm5gu
 fingerprint_ignore_patterns: []
-agent: valory/trader:0.1.0:bafybeideuu7r3rhoyybnukzksprmkgwh56y5nnfqbkfvfweewlvunptk64
+agent: valory/trader:0.1.0:bafybeieg6vgnsv75i4jdnsj57zhallrjlq7j34heftmr454eltbrdk6cq4
 number_of_agents: 1
 deployment:
   agent:
@@ -343,6 +343,9 @@ models:
       error_type: ${NETWORK_SUBGRAPH_ERROR_TYPE:str:dict}
       retries: ${POLYMARKET_QUESTIONS_SUBGRAPH_RETRIES:int:5}
       url: ${POLYMARKET_QUESTIONS_SUBGRAPH_URL:str:https://subgraph.autonolas.tech/squid/predict-polymarket/graphql}
+  polygon_staking_subgraph:
+    args:
+      url: ${STAKING_POLYGON_SQUID_URL:str:null}
   gnosis_staking_subgraph:
     args:
       method: ${GNOSIS_STAKING_SUBGRAPH_METHOD:str:POST}

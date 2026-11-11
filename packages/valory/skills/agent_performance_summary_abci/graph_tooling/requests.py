@@ -56,6 +56,7 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_POLYGON_STAKING_SERVICE_QUERY,
     GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
@@ -538,13 +539,15 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if self.params.is_running_on_polymarket:
             subgraph = self.context.polygon_staking_subgraph
             res_context = "polygon_staking_service"
+            query = GET_POLYGON_STAKING_SERVICE_QUERY
         else:
             subgraph = self.context.gnosis_staking_subgraph
             res_context = "gnosis_staking_service"
+            query = GET_STAKING_SERVICE_QUERY
 
         return (
             yield from self._fetch_from_subgraph(
-                query=GET_STAKING_SERVICE_QUERY,
+                query=query,
                 variables={"id": service_id},
                 subgraph=subgraph,
                 res_context=res_context,

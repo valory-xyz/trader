@@ -353,3 +353,15 @@ Their response adapters, request-time bounds, and KPI arithmetic are unchanged.
 Gnosis retains its feature-flag-controlled Graph fallback. Deploy the analytics
 Marketplace migration first and verify its Polygon history before this release.
 The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.
+
+Polystrat staking summaries also migrate to the Polygon staking squid.
+Set `STAKING_POLYGON_SQUID_URL`. The query aliases `serviceById` to `service`,
+preserving `ApiSpecs` extraction and lifetime `olasRewardsEarned` accounting.
+Epoch history and reward/KPI calculations are unchanged. Gnosis staking
+continues using its existing Graph query. Trader has no Base staking reader.
+
+Protocol overlap: [#1119](https://github.com/valory-xyz/trader/pull/1119) changes
+on-chain checkpoint decisions, not these indexer reads. Both PRs touch service
+configuration/package hashes; merge in either order, then regenerate package
+hashes on the combined tree. [#1114](https://github.com/valory-xyz/trader/pull/1114)
+changes the hash-lock workflow and may alter that regeneration procedure.
