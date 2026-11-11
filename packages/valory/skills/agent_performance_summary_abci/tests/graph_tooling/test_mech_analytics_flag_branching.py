@@ -230,7 +230,9 @@ class TestPolymarketFetcherFlagOn:
         }
 
     @pytest.mark.parametrize("use_flag", [False])
-    def test_polygon_uses_analytics_even_with_flag_disabled(self, use_flag: bool) -> None:
+    def test_polygon_uses_analytics_even_with_flag_disabled(
+        self, use_flag: bool
+    ) -> None:
         """Polygon has no Graph fallback after the squid migration."""
         fetcher = PolymarketPredictionsFetcher(
             _make_context(use_flag=use_flag, is_polymarket=True), MagicMock()

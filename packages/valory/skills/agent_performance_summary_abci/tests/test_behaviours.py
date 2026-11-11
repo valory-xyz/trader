@@ -40,6 +40,7 @@ from packages.valory.skills.agent_performance_summary_abci.achievements_checker.
 )
 from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     DEFAULT_MECH_FEE,
+    FetchPerformanceSummaryBehaviour,
     INVALID_ANSWER_HEX,
     LEADERBOARD_REFRESH_INTERVAL,
     LEADERBOARD_REQUEST_TIMEOUT,
@@ -65,10 +66,9 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     TX_HISTORY_DEPTH,
     UPDATE_INTERVAL,
     USDC_DECIMALS_DIVISOR,
+    UpdateAchievementsBehaviour,
     WEI_IN_ETH,
     WXDAI_ADDRESS,
-    FetchPerformanceSummaryBehaviour,
-    UpdateAchievementsBehaviour,
     _parse_iso_timestamp,
     get_within_deadline,
     leaderboard_request_url,
@@ -82,17 +82,17 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.request
     APTQueryingBehaviour,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
-    LEADERBOARD_WINDOWS,
-    PROFIT_OVER_TIME_SCHEMA_VERSION,
     Achievements,
     AgentDetails,
     AgentPerformanceData,
     AgentPerformanceMetrics,
     AgentPerformanceSummary,
+    LEADERBOARD_WINDOWS,
     LeaderboardData,
     LeaderboardWindow,
     LeaderboardWindowRank,
     OffchainDepositState,
+    PROFIT_OVER_TIME_SCHEMA_VERSION,
     PerformanceMetricsData,
     PredictionHistory,
     ProfitDataPoint,
@@ -2059,7 +2059,9 @@ class TestGetOpenMarketRequests:
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
             patch.object(
                 b,
                 "_fetch_polymarket_open_position_titles",
@@ -2156,7 +2158,9 @@ class TestGetOpenMarketRequests:
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -2216,7 +2220,9 @@ class TestGetOpenMarketRequests:
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -2247,7 +2253,9 @@ class TestGetOpenMarketRequests:
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
             ),
-            patch.object(b, "_fetch_open_markets", side_effect=_return_gen(open_markets)),
+            patch.object(
+                b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
+            ),
         ):
             gen = b._get_open_market_requests("0xaddr")
             try:
@@ -8339,7 +8347,9 @@ class TestKpiSeriesAgreement:
             patch.object(
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
             ),
-            patch.object(b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)),
+            patch.object(
+                b, "_fetch_all_mech_requests", side_effect=_return_gen(fetched)
+            ),
         ):
             return self._run_gen(
                 b._perform_initial_backfill("0xaddr", now, last_residual_rebuild_ts)
@@ -8373,7 +8383,9 @@ class TestKpiSeriesAgreement:
             ),
             patch.object(b, "_fetch_all_mech_requests", fetch_mock),
         ):
-            result = self._run_gen(b._perform_incremental_update("0xaddr", now, existing))
+            result = self._run_gen(
+                b._perform_incremental_update("0xaddr", now, existing)
+            )
         assert fetch_mock.call_args.kwargs == {
             "block_timestamp_gt": (
                 max(existing.last_mech_timestamp - MECH_ANALYTICS_LOOKBACK_SECONDS, 0)
@@ -8794,7 +8806,9 @@ class TestKpiSeriesAgreement:
 
         def _past(watermark: int) -> List[dict]:
             """Subgraph-shaped requests strictly past ``watermark``."""
-            return [r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark]
+            return [
+                r for r in subgraph_requests if int(r["blockTimestamp"]) > watermark
+            ]
 
         def _fetch_all(
             *_: Any, block_timestamp_gt: int = 0
@@ -8818,7 +8832,9 @@ class TestKpiSeriesAgreement:
                 {
                     "request_id": f"0x{index}",
                     "question_title": title,
-                    "requested_at": datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(),
+                    "requested_at": datetime.fromtimestamp(
+                        ts, tz=timezone.utc
+                    ).isoformat(),
                 }
                 for index, (title, ts) in enumerate(requests)
                 if ts >= floor and (title is not None) == scored

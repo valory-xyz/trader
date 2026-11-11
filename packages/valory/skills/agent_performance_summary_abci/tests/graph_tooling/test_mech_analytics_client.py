@@ -609,7 +609,8 @@ class TestParseRequesterPayload:
         assert parse_requester_payload(payload) == payload
 
 
-def test_polygon_never_falls_back_to_graph_when_flag_disabled():
+def test_polygon_never_falls_back_to_graph_when_flag_disabled() -> None:
+    """Polygon keeps its analytics reader with the legacy flag disabled."""
     params = SimpleNamespace(
         is_running_on_polymarket=True,
         use_mech_analytics=False,
@@ -618,7 +619,8 @@ def test_polygon_never_falls_back_to_graph_when_flag_disabled():
     assert is_flag_enabled(params) is True
 
 
-def test_polygon_missing_analytics_fails_instead_of_sending_graph_queries():
+def test_polygon_missing_analytics_fails_instead_of_sending_graph_queries() -> None:
+    """Missing Polygon analytics configuration fails before a Graph request."""
     params = SimpleNamespace(
         is_running_on_polymarket=True, use_mech_analytics=False, mech_analytics_url=""
     )

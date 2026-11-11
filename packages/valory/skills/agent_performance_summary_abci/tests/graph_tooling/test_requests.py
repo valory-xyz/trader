@@ -1641,7 +1641,7 @@ class TestFetchAllMechRequests:
         b.context.params.mech_analytics_url = "https://analytics.test"
         calls = []
 
-        def page(**kwargs):
+        def page(**kwargs: Any) -> Generator[None, None, List[Dict[str, Any]]]:
             calls.append(kwargs)
             yield
             return (
@@ -1657,8 +1657,8 @@ class TestFetchAllMechRequests:
                 else []
             )
 
-        b._page_mech_analytics_scored_rows = page
-        result = _exhaust(b._fetch_all_mech_requests("0xagent"))
+        with patch.object(b, "_page_mech_analytics_scored_rows", side_effect=page):
+            result = _exhaust(b._fetch_all_mech_requests("0xagent"))
         assert result[0]["parsedRequest"]["questionTitle"] == "Q?"
         assert result[0]["requestId"] == "r1"
         assert [c["endpoint"] for c in calls] == ["scored-rows", "unscored-rows"]
@@ -2674,19 +2674,20 @@ class TestFetchDailyProfitStatisticsHydration:
         assert _exhaust(b._fetch_daily_profit_statistics("0xagent", 1000)) is None
 
 
-def test_polygon_staking_squid_preserves_response_and_lifetime_reward_counter():
+def test_polygon_staking_squid_preserves_response_and_lifetime_reward_counter() -> None:
+    """The staking squid adapter preserves the lifetime reward response."""
     b = _make_behaviour()
     b.context.params.is_running_on_polymarket = True
     expected = {"id": "25", "olasRewardsEarned": "123000000000000000000"}
     captured = {}
 
-    def fetch(**kwargs):
+    def fetch(**kwargs: Any) -> Generator[None, None, Dict[str, str]]:
         captured.update(kwargs)
         yield
         return expected
 
-    b._fetch_from_subgraph = fetch
-    assert _exhaust(b._fetch_staking_service("25")) == expected
+    with patch.object(b, "_fetch_from_subgraph", side_effect=fetch):
+        assert _exhaust(b._fetch_staking_service("25")) == expected
     assert "service: serviceById" in captured["query"]
     assert "$id: String!" in captured["query"]
     assert captured["variables"] == {"id": "25"}
