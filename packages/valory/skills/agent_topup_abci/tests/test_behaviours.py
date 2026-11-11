@@ -376,6 +376,32 @@ class TestTransfer:
 
         assert _decode(harness.run() or "")["ether_value"] == ETHER // 2
 
+    def test_partial_move_leaves_the_gate_open(self) -> None:
+        """An Agent Safe holding less than required lets the next period move the rest."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, ETHER // 2),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert harness.run() is not None
+        assert (
+            harness.shared_state[LAST_TOPUP_CHECK_KEY]
+            == NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        )
+
+    def test_full_move_closes_the_gate(self) -> None:
+        """A move covering the Agent Signer need closes the gate for an hour."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 19 * ETHER // 10),
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert _decode(harness.run() or "")["ether_value"] == 19 * ETHER // 10
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+
     def test_safe_hash_failure_prepares_nothing(self) -> None:
         """A Safe hash that cannot be read ends the check."""
         harness = _Harness(
@@ -473,6 +499,8 @@ class TestGnosisUnwrap:
 
         assert tx["to_address"] == AGENT
         assert tx["ether_value"] == ETHER + unwrapped
+        # Short of the need by the unwrap gas, yet it must not start a second unwrap.
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
 
     def test_no_xdai_after_an_unwrap_prepares_nothing(self) -> None:
         """A second unwrap is never prepared in the same check."""
