@@ -406,7 +406,11 @@ def test_row_4_renewal_rule() -> None:
 def test_one_request_holds_todays_first_100_and_no_follow_up() -> None:
     """150 candidates: one request of today's first 100; the other 50 are not stamped or sent that day."""
     many = [_bet(i, research_score=0.9 if i < 50 else None) for i in range(150)]
-    first = _ranked_ids(_request(many))
+    requester = _behaviour(RankingRequestBehaviour, many)
+    first = _ranked_ids(_act(requester))
+    requester.context.logger.info.assert_any_call(
+        "[RANKING] requesting a ranking of 100 markets."
+    )
     assert first == [f"m{i}" for i in range(149, 49, -1)]
     assert {bet.ranked_at for bet in many[50:]} == {NOW}
     assert {bet.ranked_at for bet in many[:50]} == {0}
