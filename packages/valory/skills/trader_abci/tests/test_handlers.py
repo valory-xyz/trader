@@ -3171,10 +3171,12 @@ class TestApplyAgentTopUp:
         )
 
     @staticmethod
-    def _polystrat_status(adjusted_safe_deficit: Optional[int]) -> FundRequirements:
-        """Polystrat targets with an Agent Safe holding no POL and an Agent Signer under its reserve."""
+    def _polystrat_status(
+        adjusted_safe_deficit: Optional[int], safe_pol: int = 0
+    ) -> FundRequirements:
+        """Polystrat targets with an Agent Signer under its reserve; the Agent Safe holds no POL by default."""
         signer = native(25132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10)
-        safe = native(0, 40 * ETHER, 10 * ETHER)
+        safe = native(safe_pol, 40 * ETHER, 10 * ETHER)
         safe.deficit = adjusted_safe_deficit
         return FundRequirements(
             {
@@ -3199,15 +3201,25 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", AGENT) == 0
         assert self._native_deficit(status, "polygon", SAFE) == 274868 * ETHER // 10000
 
-    def test_unvalued_usdc_keeps_the_safe_deficit_read(self) -> None:
+    @pytest.mark.parametrize(
+        "safe_pol, signer_deficit",
+        [
+            (0, 274868 * ETHER // 10000),  # empty Agent Safe: the whole need
+            (10 * ETHER, 174868 * ETHER // 10000),  # partial: what the move leaves
+            (40 * ETHER, 0),  # Agent Safe POL covers the move
+        ],
+    )
+    def test_unvalued_usdc_keeps_the_safe_deficit_read(
+        self, safe_pol: int, signer_deficit: int
+    ) -> None:
         """When the USDC could not be valued, the Agent Signer, not the Agent Safe, asks for the shortfall."""
         handler = self._handler("polygon")
-        status = self._polystrat_status(adjusted_safe_deficit=None)
+        status = self._polystrat_status(adjusted_safe_deficit=None, safe_pol=safe_pol)
 
         handler._apply_agent_topup(status)
 
         assert self._native_deficit(status, "polygon", SAFE) is None
-        assert self._native_deficit(status, "polygon", AGENT) == 274868 * ETHER // 10000
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
         assert "not valued" in handler.context.logger.warning.call_args[0][0]
 
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:

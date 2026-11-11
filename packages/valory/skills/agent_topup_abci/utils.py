@@ -75,6 +75,23 @@ def get_signer_native_deficit(
     return None if native is None else native.deficit
 
 
+def get_signer_shortfall(
+    funds: FundRequirements, chain_name: str, agent_address: str
+) -> int:
+    """Return the Agent Signer native deficit the Agent Safe native balance cannot cover.
+
+    Only for a chain where the top-up rule decided a move, which means it read both.
+
+    :param funds: the funds status.
+    :param chain_name: the chain the top-up decision is for.
+    :param agent_address: the Agent Signer address.
+    :return: the shortfall, in wei.
+    """
+    need = cast(int, get_signer_native_deficit(funds, chain_name, agent_address))
+    safe_native = cast(int, get_safe_native_balance(funds, chain_name, agent_address))
+    return max(need - safe_native, 0)
+
+
 def get_safe_native_deficit_with_signer_shortfall(
     funds: FundRequirements,
     chain_name: str,
@@ -104,10 +121,7 @@ def get_safe_native_deficit_with_signer_shortfall(
             "asset was not valued, so the deficit read is kept."
         )
         return None
-    # The rule decided a move, so it read both.
-    need = cast(int, get_signer_native_deficit(funds, chain_name, agent_address))
-    safe_native = cast(int, get_safe_native_balance(funds, chain_name, agent_address))
-    return max(need - safe_native, 0) + safe_deficit
+    return get_signer_shortfall(funds, chain_name, agent_address) + safe_deficit
 
 
 def get_agent_topups(
