@@ -342,3 +342,14 @@ If you add or remove a dependency:
 - Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Security policy: [`SECURITY.md`](./SECURITY.md).
 - [Open Autonomy framework](https://stack.olas.network/open-autonomy/)
+
+### Polygon Marketplace migration
+
+Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
+configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's
+Marketplace squid has no parsed IPFS fields, so the enriched request history,
+tool attribution and prediction responses use the existing analytics readers.
+Their response adapters, request-time bounds, and KPI arithmetic are unchanged.
+Gnosis retains its feature-flag-controlled Graph fallback. Deploy the analytics
+Marketplace migration first and verify its Polygon history before this release.
+The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.

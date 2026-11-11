@@ -607,3 +607,20 @@ class TestParseRequesterPayload:
         """A real 0-count Safe returns 0 payload; MUST NOT be treated as drift."""
         payload = {"windows": {"all": {"n_mech_requests": 0}}}
         assert parse_requester_payload(payload) == payload
+
+
+def test_polygon_never_falls_back_to_graph_when_flag_disabled():
+    params = SimpleNamespace(
+        is_running_on_polymarket=True,
+        use_mech_analytics=False,
+        mech_analytics_url=BASE_URL,
+    )
+    assert is_flag_enabled(params) is True
+
+
+def test_polygon_missing_analytics_fails_instead_of_sending_graph_queries():
+    params = SimpleNamespace(
+        is_running_on_polymarket=True, use_mech_analytics=False, mech_analytics_url=""
+    )
+    with pytest.raises(ValueError, match="Polystrat requires"):
+        is_flag_enabled(params)

@@ -33,8 +33,8 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymar
     GRAPHQL_BATCH_SIZE,
     ISO_TIMESTAMP_FORMAT,
     POLYMARKET_MARKET_BASE_URL,
-    PolymarketPredictionsFetcher,
     USDC_DECIMALS_DIVISOR,
+    PolymarketPredictionsFetcher,
 )
 
 # ---------------------------------------------------------------------------
@@ -3570,3 +3570,19 @@ class TestFetchBetFromSubgraphSellLookup:
 
         result = fetcher._fetch_bet_from_subgraph("s1", "0xsafe")
         assert result is None
+
+
+def test_polygon_tool_lookup_uses_analytics_even_with_flag_disabled():
+    from types import SimpleNamespace
+    fetcher = _make_fetcher()
+    fetcher.context.params = SimpleNamespace(
+        is_running_on_polymarket=True, use_mech_analytics=False,
+        mech_analytics_url="https://analytics.test",
+    )
+    module = "packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper"
+    with patch(module + ".fetch_scored_rows", return_value=[{
+        "question_title": "Q?", "tool": "prediction", "requested_at": "2026-11-01T00:00:00Z"
+    }]) as read, patch(module + ".requests.post") as old_graph:
+        assert fetcher.fetch_mech_tool_for_question("Q?", "0xsafe", 1793491200) == "prediction"
+    assert read.call_args.kwargs["chain_id"] == 137
+    old_graph.assert_not_called()

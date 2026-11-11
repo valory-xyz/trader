@@ -98,7 +98,7 @@ def per_position_lookup_window(bet_timestamp: int) -> "tuple[datetime, datetime]
 
 
 def is_flag_enabled(params: Any) -> bool:
-    """Return True only when the flag is a real ``True`` and a URL is set.
+    """Use analytics on Polygon, or when the Gnosis flag is enabled.
 
     ``is True`` is deliberate — the fetcher-side tests build ``context``
     as a ``MagicMock``, whose auto-attribute access returns another
@@ -109,11 +109,19 @@ def is_flag_enabled(params: Any) -> bool:
 
     :param params: params-like object (or ``None``) exposing
         ``use_mech_analytics`` and ``mech_analytics_url`` attributes.
-    :return: True when the migration flag is truly enabled and a URL
-        is configured; False otherwise.
+    :return: True for Polygon or an enabled migration flag with a URL.
+    :raises ValueError: Polygon has no analytics URL; Graph fallback is unavailable.
     """
     if params is None:
         return False
+    # Polygon Marketplace is served by a squid, which has no parsed IPFS
+    # fields. Its enriched reads must never fall back to Graph queries.
+    if getattr(params, "is_running_on_polymarket", False) is True:
+        if not getattr(params, "mech_analytics_url", ""):
+            raise ValueError(
+                "Polystrat requires mech_analytics_url after the Marketplace squid migration"
+            )
+        return True
     return getattr(params, "use_mech_analytics", False) is True and bool(
         getattr(params, "mech_analytics_url", "")
     )
