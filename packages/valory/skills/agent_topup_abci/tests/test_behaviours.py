@@ -392,7 +392,7 @@ class TestTransfer:
         )
 
     def test_full_move_closes_the_gate(self) -> None:
-        """A move covering the Agent Signer need closes the gate for an hour."""
+        """A move covering the Agent Signer need closes the gate."""
         harness = _Harness(
             "polygon",
             funds_status("polygon", ETHER // 10, 19 * ETHER // 10),
@@ -499,7 +499,20 @@ class TestGnosisUnwrap:
 
         assert tx["to_address"] == AGENT
         assert tx["ether_value"] == ETHER + unwrapped
-        # Short of the need by the unwrap gas, yet it must not start a second unwrap.
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+
+    def test_short_transfer_without_wxdai_closes_the_gate(self) -> None:
+        """Omenstrat keeps the hourly gate after a move short of the Agent Signer need."""
+        harness = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis", ETHER // 10, ETHER // 2, wxdai_balance=0, track_wxdai=True
+            ),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert _decode(harness.run() or "")["ether_value"] == ETHER // 2
         assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
 
     def test_no_xdai_after_an_unwrap_prepares_nothing(self) -> None:

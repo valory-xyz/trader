@@ -20,7 +20,7 @@
 """Helpers shared by the top-up round and the `/funds-status` handler."""
 
 from logging import Logger
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, cast
 
 from packages.valory.skills.funds_manager.models import (
     AgentTopUp,
@@ -29,6 +29,7 @@ from packages.valory.skills.funds_manager.models import (
 )
 
 GNOSIS_CHAIN_NAME = "gnosis"
+POLYGON_CHAIN_NAME = "polygon"
 WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 # False once a top-up fails, True again once a top-up transfer settles.
 # Unset (e.g. at startup) counts as True: a pending top-up the Agent Safe covers raises no alert.
@@ -72,6 +73,32 @@ def get_signer_native_deficit(
     """Return the Agent Signer native deficit read on a chain, if any."""
     native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=True))
     return None if native is None else native.deficit
+
+
+def get_safe_native_deficit_with_signer_shortfall(
+    funds: FundRequirements, chain_name: str, agent_address: str, topup: AgentTopUp
+) -> Optional[int]:
+    """Return the Agent Signer shortfall the Agent Safe cannot cover, plus the Agent Safe deficit read.
+
+    For an Agent Safe whose deficit read counts a non-native asset towards its target,
+    which the funds-manager rule cannot: the shortfall must still be funded in native token.
+
+    :param funds: the funds status, its Agent Safe native deficit already adjusted.
+    :param chain_name: the chain the top-up decision is for.
+    :param agent_address: the Agent Signer address.
+    :param topup: the funds-manager top-up decision on that chain.
+    :return: the Agent Safe native deficit to report; None keeps the one read.
+    """
+    if topup.safe_deficit is None:
+        return None
+    safe_deficit = get_safe_native_deficit(funds, chain_name, agent_address)
+    if safe_deficit is None:
+        # The adjusted deficit was cleared: fall back to the rule's.
+        return topup.safe_deficit
+    # The rule decided a move, so it read both.
+    need = cast(int, get_signer_native_deficit(funds, chain_name, agent_address))
+    safe_native = cast(int, get_safe_native_balance(funds, chain_name, agent_address))
+    return max(need - safe_native, 0) + safe_deficit
 
 
 def get_agent_topups(

@@ -170,7 +170,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))
-        covers_move = True
+        closes_gate = True
         if allow_unwrap and chain == GNOSIS_CHAIN_NAME and safe_native < topup.move:
             unwrap_amount = topup.move - safe_native
             self.context.logger.info(
@@ -190,14 +190,14 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 return None
             self.context.logger.info(f"Moving {amount} wei to the Agent Signer.")
             tx_hex = yield from self._prepare_safe_tx(agent_address, amount, b"")
-            # Keep the gate open after a move short of the need, so the next period moves
-            # the rest; a transfer after an unwrap is short by its gas and must not unwrap again.
+            # Off Gnosis, a move short of the need keeps the gate open so the next
+            # period moves the rest; on Gnosis it would unwrap again after an unwrap.
             need = cast(int, get_signer_native_deficit(funds, chain, agent_address))
-            covers_move = not allow_unwrap or amount >= need
+            closes_gate = chain == GNOSIS_CHAIN_NAME or amount >= need
 
         if tx_hex is None:
             self._fail_topup()
-        elif covers_move:
+        elif closes_gate:
             self._close_check()
         return tx_hex
 

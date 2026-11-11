@@ -3247,6 +3247,16 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
         assert self._native_deficit(status, "polygon", SAFE) == 7
 
+    def test_unread_polygon_signer_keeps_the_deficits_read(self) -> None:
+        """No top-up is decided without the Agent Signer balance, so the Agent Safe deficit stands."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", None, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
     def test_nothing_due_keeps_the_deficits_read(self) -> None:
         """With the Agent Signer above its threshold, the adjusted deficits stand."""
         handler = self._handler("polygon")

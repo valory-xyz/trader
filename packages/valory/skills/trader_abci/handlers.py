@@ -27,7 +27,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import requests
@@ -57,6 +57,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
+    POLYGON_CHAIN_NAME,
     TOPUP_SUCCEEDED_KEY,
 )
 from packages.valory.skills.agent_topup_abci.utils import (
@@ -64,9 +65,7 @@ from packages.valory.skills.agent_topup_abci.utils import (
 )
 from packages.valory.skills.agent_topup_abci.utils import (
     get_agent_topups,
-    get_safe_native_balance,
-    get_safe_native_deficit,
-    get_signer_native_deficit,
+    get_safe_native_deficit_with_signer_shortfall,
 )
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
@@ -90,7 +89,6 @@ from packages.valory.skills.funds_manager.behaviours import (
 )
 from packages.valory.skills.funds_manager.models import (
     AccountRequirements,
-    AgentTopUp,
     FundRequirements,
 )
 from packages.valory.skills.mech_interact_abci.handlers import (
@@ -123,7 +121,6 @@ GNOSIS_NATIVE_TOKEN_ADDRESS = (
 GNOSIS_USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 
 # Polygon Chain Configuration
-POLYGON_CHAIN_NAME = "polygon"
 POLYGON_CHAIN_ID = 137
 POLYGON_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
@@ -787,8 +784,9 @@ class HttpHandler(BaseHttpHandler):
         for chain_name, topup in topups.items():
             safe_deficit = topup.safe_deficit
             if self.params.is_running_on_polymarket:
-                safe_deficit = self._get_polymarket_safe_deficit(
-                    funds_status, chain_name, topup
+                # The adjusted Agent Safe deficit counts its USDC as POL.
+                safe_deficit = get_safe_native_deficit_with_signer_shortfall(
+                    funds_status, chain_name, agent_address, topup
                 )
             for address, account in funds_status[chain_name].accounts.items():
                 if address == agent_address:
@@ -800,35 +798,6 @@ class HttpHandler(BaseHttpHandler):
                 for token in account.tokens.values():
                     if token.is_native:
                         token.deficit = deficit
-
-    def _get_polymarket_safe_deficit(
-        self, funds_status: FundRequirements, chain_name: str, topup: AgentTopUp
-    ) -> Optional[int]:
-        """Return the Agent Signer shortfall in POL plus the adjusted Agent Safe deficit.
-
-        USDC cannot pay gas, so the shortfall is asked in POL; the adjusted deficit
-        counts the Agent Safe USDC towards its own target, which the rule cannot.
-
-        :param funds_status: the adjusted funds status.
-        :param chain_name: the chain the top-up decision is for.
-        :param topup: the funds-manager top-up decision on that chain.
-        :return: the Agent Safe native deficit to report; None keeps the one read.
-        """
-        if topup.safe_deficit is None:
-            return None
-        agent_address = self.context.agent_address
-        adjusted = get_safe_native_deficit(funds_status, chain_name, agent_address)
-        if adjusted is None:
-            # The USDC could not be valued, so fall back to the rule.
-            return topup.safe_deficit
-        # The rule decided a move, so it read both.
-        need = cast(
-            int, get_signer_native_deficit(funds_status, chain_name, agent_address)
-        )
-        safe_native = cast(
-            int, get_safe_native_balance(funds_status, chain_name, agent_address)
-        )
-        return max(need - safe_native, 0) + adjusted
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

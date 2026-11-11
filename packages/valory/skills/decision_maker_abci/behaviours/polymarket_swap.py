@@ -28,7 +28,10 @@ from packages.valory.contracts.gnosis_safe.contract import (
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
-from packages.valory.skills.agent_topup_abci.utils import get_signer_native_deficit
+from packages.valory.skills.agent_topup_abci.utils import (
+    POLYGON_CHAIN_NAME,
+    get_signer_native_deficit,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
@@ -46,7 +49,6 @@ ETHER_VALUE = 0
 
 # Polygon network constants
 POLYGON_CHAIN_ID = 137
-POLYGON_CHAIN_NAME = "polygon"
 POL_ADDRESS = "0x0000000000000000000000000000000000001010"  # Native POL on Polygon
 USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # USDC on Polygon
 LIFI_QUOTE_URL = "https://li.quest/v1/quote"
@@ -119,7 +121,8 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
-                f"[SwapPOLBehaviour] Couldn't read the funds status: {type(exc).__name__}({exc})."
+                f"[SwapPOLBehaviour] Couldn't read the funds status: {type(exc).__name__}({exc}).",
+                exc_info=True,
             )
             return None
         return get_signer_native_deficit(
