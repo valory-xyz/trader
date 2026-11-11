@@ -50,9 +50,6 @@ from packages.valory.skills.mech_interact_abci.utils import loads_bounded
 
 RANKING_MAX_MARKETS = 100
 RANKING_MIN_MARKETS = 10
-# requests one list may take; the markets past them follow today's order
-RANKING_MAX_REQUESTS = 3
-LIST_MAX_MARKETS = RANKING_MAX_REQUESTS * RANKING_MAX_MARKETS
 
 # Takes the pool logs of the ranking round, so only Sampling prints them.
 QUIET_LOGGER = logging.getLogger(f"{__name__}.quiet")
@@ -60,7 +57,7 @@ QUIET_LOGGER.disabled = True
 
 
 class RankingRequestBehaviour(SamplingBehaviour):
-    """A behaviour that requests a ranking of the candidate markets when a list or its queued part is due."""
+    """A behaviour that requests a ranking of the candidate markets when a list is due."""
 
     matching_round = RankingRequestRound  # type: ignore[assignment]
 
@@ -106,7 +103,6 @@ class RankingRequestBehaviour(SamplingBehaviour):
             return [], 0
         # No request, and no stamp touched, until Sampling's probe reaches the
         # CLOB again: a list read off books it cannot fetch is paid for nothing.
-        # Returning before the queue reset keeps the rest of a list waiting.
         if (
             self.params.is_running_on_polymarket
             and not self.benchmarking_mode.enabled
@@ -121,6 +117,10 @@ class RankingRequestBehaviour(SamplingBehaviour):
             return [], 0
 
         now = self.synced_timestamp
+        # One request a day: a used-up list, a lost answer or a restart waits
+        # for the list to expire, since every request takes a prediction's place.
+        if now - self._latest_ranked_at() < RANKING_MAX_AGE:
+            return [], 0
         available, _ = self._processable_bets(now)
         eligible = [
             bet
@@ -143,51 +143,22 @@ class RankingRequestBehaviour(SamplingBehaviour):
             if bet.poly_event_id is None or bet.poly_event_id not in events:
                 events.add(bet.poly_event_id)
                 candidates.append(bet)
-        latest = self._latest_ranked_at()
-        if now - latest >= RANKING_MAX_AGE:
-            return (
-                (candidates[:LIST_MAX_MARKETS], now)
-                if len(candidates) >= RANKING_MIN_MARKETS
-                else ([], 0)
-            )
-        # Markets a renewal could not fit in its request go next, on the same
-        # list. The queue is sent once: a market that misses it (prices or book
-        # changed) counts as never ranked and waits for a renewal.
-        queued = [bet for bet in candidates if latest > 0 and bet.ranked_at == -latest]
-        missed = [bet for bet in self.bets if latest > 0 and bet.ranked_at == -latest]
-        for bet in missed:
-            bet.ranked_at = 0
-        if queued:
-            return queued, latest
-        if missed:
-            self.store_bets()
-        # A used-up list renews only with never-ranked markets, so markets
-        # whose books keep failing cannot bring a ranking every cooldown.
-        never_ranked = sum(bet.ranked_at <= 0 for bet in candidates)
-        # the list counts as used up on the whole pool, not only on the
-        # markets that represent their event in this batch
-        if self._ranked_list(eligible) or never_ranked < RANKING_MIN_MARKETS:
+        if len(candidates) < RANKING_MIN_MARKETS:
             return [], 0
-        # never-ranked markets go first: past the cap they would stay unranked
-        # and an unscored list would bring the same requests every period
-        never_first = sorted(candidates, key=lambda bet: bet.ranked_at > 0)
-        return never_first[:LIST_MAX_MARKETS], now
+        # the markets past the first request follow today's order
+        return candidates[:RANKING_MAX_MARKETS], now
 
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
             agent = self.context.agent_address
-            candidates, stamp = self._ranking_batch()
-            batch = candidates[:RANKING_MAX_MARKETS]
+            batch, stamp = self._ranking_batch()
             payload = RankingRequestPayload(agent, None, None, None, None)
             if batch:
                 # The stamp is stored before the request, so a lost answer
                 # cannot bring another ranking before the list expires.
                 for bet in batch:
                     bet.ranked_at, bet.research_score = stamp, None
-                # the rest is queued for the next request of the same list
-                for bet in candidates[RANKING_MAX_MARKETS:]:
-                    bet.ranked_at, bet.research_score = -stamp, None
                 self.store_bets()
                 markets = [
                     {
@@ -201,8 +172,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
                 metadata = MechMetadata(prompt, RANKING_TOOL, str(uuid4()))
                 self.shared_state.mech_timed_out = False
                 self.context.logger.info(
-                    f"[RANKING] requesting a ranking of {len(batch)} markets "
-                    f"({len(candidates) - len(batch)} queued for the next request)."
+                    f"[RANKING] requesting a ranking of {len(batch)} markets."
                 )
                 payload = RankingRequestPayload(
                     agent,
@@ -254,7 +224,6 @@ class RankingReceiveBehaviour(DecisionMakerBaseBehaviour):
                 bet.research_score = float(score)
                 stored += 1
         self.store_bets()
-        # a list sent in several requests counts the scores of all of them
         unscored = sum(bet.research_score is None for bet in listed)
         self.context.logger.info(
             f"[RANKING] stored={stored} unscored={unscored} "
