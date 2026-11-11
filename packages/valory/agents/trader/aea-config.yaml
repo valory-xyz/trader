@@ -70,12 +70,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihq62rxse3a35cwk6xkchoehqwhodngq7naerdqhmvgc6mjudteoe
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigbizvbkuebjzdazqlouqzsptypcxgruatnd2pgfxwtyynxxkqonu
 - valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
-- valory/decision_maker_abci:0.1.0:bafybeiaz6vy3oerksnluwywgfklcvsvlgkco6cxjsxkgq6l6snd5qbooji
-- valory/trader_abci:0.1.0:bafybeietvqwmu4rm76wthu5sc7yf3s7y7adzdfaz75yjfv2cbwexs6lqje
+- valory/decision_maker_abci:0.1.0:bafybeiborvufc426ayrwksyatplfzycrartaffqa6tfkouqr3qbrau2b5y
+- valory/trader_abci:0.1.0:bafybeigaja3uhkmpyob7vx3uhmfhs2yzzzqeoyotvztguln74nsur6blre
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeiglwz74knbtxr2dkoipbbqkdsny3iqgsafkctom7k26pdyymvzam4
+- valory/agent_topup_abci:0.1.0:bafybeib2gsejekoutdikjau4q3o7tfi5jvraq43jo24iqpadk7mk7t3p2a
 - valory/check_stop_trading_abci:0.1.0:bafybeibbouq4dwpc2dbed6gtusqrpltzlzejmlxvyevwhxuq6ev75lnyxm
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
