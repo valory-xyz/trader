@@ -54,6 +54,7 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     NATIVE,
     SAFE,
     funds_status,
+    native,
     real_topup_rule,
 )
 from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
@@ -3154,8 +3155,10 @@ class TestApplyAgentTopUp:
         """The native deficit reported for an account."""
         return status[chain].accounts[address].tokens[NATIVE].deficit
 
-    def test_short_safe_asks_for_the_signer_shortfall_too(self) -> None:
-        """The rule's combined Agent Safe deficit replaces the adjusted one."""
+    def test_short_safe_asks_for_the_signer_shortfall_on_top_of_the_adjusted_deficit(
+        self,
+    ) -> None:
+        """On Polygon, the Agent Signer shortfall in POL joins the USDC-aware Agent Safe deficit."""
         handler = self._handler("polygon")
         status = funds_status("polygon", ETHER // 10, ETHER // 2)
         status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
@@ -3164,7 +3167,47 @@ class TestApplyAgentTopUp:
 
         assert self._native_deficit(status, "polygon", AGENT) == 0
         assert self._native_deficit(status, "polygon", SAFE) == (
-            19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+            19 * ETHER // 10 - ETHER // 2 + 7
+        )
+
+    @staticmethod
+    def _polystrat_status(adjusted_safe_deficit: Optional[int]) -> FundRequirements:
+        """Polystrat targets with an Agent Safe holding no POL and an Agent Signer under its reserve."""
+        signer = native(25132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10)
+        safe = native(0, 40 * ETHER, 10 * ETHER)
+        safe.deficit = adjusted_safe_deficit
+        return FundRequirements(
+            {
+                "polygon": ChainRequirements(
+                    accounts={
+                        AGENT: AccountRequirements(tokens={NATIVE: signer}),
+                        SAFE: AccountRequirements(tokens={NATIVE: safe}),
+                    }
+                )
+            }
+        )
+
+    def test_usdc_covering_the_safe_target_asks_only_the_signer_shortfall(
+        self,
+    ) -> None:
+        """Agent Safe USDC worth more than its target leaves only the Agent Signer POL to fund."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 274868 * ETHER // 10000
+
+    def test_unvalued_usdc_falls_back_to_the_rule_safe_deficit(self) -> None:
+        """When the USDC could not be valued, the rule's Agent Safe deficit stands."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=None)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", SAFE) == (
+            40 * ETHER + 274868 * ETHER // 10000
         )
 
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:

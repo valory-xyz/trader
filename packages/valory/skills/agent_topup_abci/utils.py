@@ -47,6 +47,14 @@ def get_safe_native_balance(
     return None if native is None else native.balance
 
 
+def get_safe_native_deficit(
+    funds: FundRequirements, chain_name: str, agent_address: str
+) -> Optional[int]:
+    """Return the Agent Safe native deficit read on a chain, if any."""
+    native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=False))
+    return None if native is None else native.deficit
+
+
 def native_balances_read(
     funds: FundRequirements, chain_name: str, agent_address: str
 ) -> bool:
