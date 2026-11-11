@@ -145,7 +145,7 @@ class RankingRequestBehaviour(SamplingBehaviour):
                 candidates.append(bet)
         if len(candidates) < RANKING_MIN_MARKETS:
             return [], 0
-        # the markets past the first request follow today's order
+        # markets past the cap follow today's order
         return candidates[:RANKING_MAX_MARKETS], now
 
     def async_act(self) -> Generator:

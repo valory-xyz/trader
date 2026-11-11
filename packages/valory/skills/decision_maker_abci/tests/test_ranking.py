@@ -396,19 +396,21 @@ def test_row_4_renewal_rule() -> None:
     assert _sampled(used_up + few_fresh, now=due) == _todays_pick(few_fresh)
 
     # every list market fails the price rule: no request, today's order
-    skewed = _listed(12, outcomeTokenMarginalPrices=[0.9, 0.1])
+    skewed = _listed(
+        12, ranked_at=NOW - RANKING_MAX_AGE, outcomeTokenMarginalPrices=[0.9, 0.1]
+    )
     assert _request(skewed + few_fresh).mech_tool is None
     assert _sampled(skewed + few_fresh) == _todays_pick(few_fresh)
 
 
 def test_one_request_holds_todays_first_100_and_no_follow_up() -> None:
     """150 candidates: one request of today's first 100; the other 50 are not stamped or sent that day."""
-    many = [_bet(i) for i in range(150)]
+    many = [_bet(i, research_score=0.9 if i < 50 else None) for i in range(150)]
     first = _ranked_ids(_request(many))
     assert first == [f"m{i}" for i in range(149, 49, -1)]
     assert {bet.ranked_at for bet in many[50:]} == {NOW}
     assert {bet.ranked_at for bet in many[:50]} == {0}
-    assert {bet.research_score for bet in many} == {None}
+    assert {bet.research_score for bet in many[:50]} == {0.9}
     for later in (NOW + 60, NOW + COOLDOWN, NOW + RANKING_MAX_AGE - 1):
         assert _request(many, now=later).mech_tool is None
     assert {bet.ranked_at for bet in many[:50]} == {0}
@@ -882,7 +884,6 @@ def test_no_ranking_request_while_the_clob_is_flagged() -> None:
     due = {
         "no list": [_bet(i) for i in range(12)],
         "expired list": _listed(12, ranked_at=NOW - RANKING_MAX_AGE),
-        # an unscored list with 10+ never-ranked markets
         "used-up list": used_up + [_bet(i) for i in range(30, 40)],
         "not due": _listed(12),
     }
