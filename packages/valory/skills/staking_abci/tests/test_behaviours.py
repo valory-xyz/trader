@@ -1832,6 +1832,36 @@ class TestShouldCallCheckpoint:
         mock_ctx.logger.info.assert_not_called()
 
     @pytest.mark.parametrize("use_v2", [True, False])
+    def test_concurrent_checkpoint_then_reached_with_rewards_is_sent(
+        self, use_v2: bool
+    ) -> None:
+        """After a concurrent checkpoint is re-read, a reached checkpoint with rewards is still sent."""
+        result, called, mock_ctx = self._run(
+            next_ts=1150,
+            available_rewards=1,
+            synced_ts=1150,
+            use_v2=use_v2,
+            ts_checkpoints=(1000, 1050),
+        )
+        assert result is True
+        assert called.count("ts_checkpoint") == 2
+        assert called[-1] == "available_rewards"
+        mock_ctx.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize("use_v2", [True, False])
+    def test_rebaseline_with_rewards_is_sent_without_reading_rewards(
+        self, use_v2: bool
+    ) -> None:
+        """A real rebaseline is sent after one re-read, without reading availableRewards."""
+        result, called, mock_ctx = self._run(
+            next_ts=1060, available_rewards=1, synced_ts=1050, use_v2=use_v2
+        )
+        assert result is True
+        assert called.count("ts_checkpoint") == 2
+        assert "available_rewards" not in called
+        mock_ctx.logger.info.assert_not_called()
+
+    @pytest.mark.parametrize("use_v2", [True, False])
     def test_ts_checkpoint_read_once_without_rebaseline_signal(
         self, use_v2: bool
     ) -> None:
