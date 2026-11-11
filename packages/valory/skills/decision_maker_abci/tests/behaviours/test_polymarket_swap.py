@@ -20,9 +20,17 @@
 """Tests for PolymarketSwapUsdcBehaviour."""
 
 import json
+from typing import Optional
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
 from packages.valory.protocols.contract_api import ContractApiMessage
+from packages.valory.skills.agent_topup_abci.tests.helpers import (
+    AGENT,
+    ETHER,
+    funds_status,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     ETHER_VALUE,
     HTTP_OK,
@@ -33,6 +41,9 @@ from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap impor
     SAFE_TX_GAS,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -50,15 +61,34 @@ def _return_gen(value):  # type: ignore[no-untyped-def]
     return value
 
 
-def _make_behaviour():  # type: ignore[no-untyped-def]
+def _make_behaviour(signer_deficit: Optional[int] = 0):  # type: ignore[no-untyped-def]
     """Return a PolymarketSwapUsdcBehaviour with mocked dependencies."""
     behaviour = object.__new__(PolymarketSwapUsdcBehaviour)  # type: ignore[no-untyped-def]
 
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
+    behaviour._get_signer_native_deficit = lambda: signer_deficit  # type: ignore[method-assign]
 
     return behaviour
+
+
+def _run_get_tx_hash(behaviour, threshold: int):  # type: ignore[no-untyped-def]
+    """Run get_tx_hash with a Safe address and a swap threshold, and return its result."""
+    with patch.object(
+        type(behaviour), "synchronized_data", new_callable=PropertyMock
+    ) as mock_sd:
+        mock_sd.return_value = MagicMock(safe_contract_address="0xsafe")
+        with patch.object(
+            type(behaviour), "params", new_callable=PropertyMock
+        ) as mock_params:
+            mock_params.return_value = MagicMock(pol_threshold_for_swap=threshold)
+            gen = behaviour.get_tx_hash()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration as e:
+                return e.value
 
 
 class TestPolymarketSwapConstants:
@@ -632,3 +662,81 @@ class TestPolymarketSwapUsdcBehaviour:
                 result = e.value
 
         assert result is None
+
+
+class TestPolymarketSwapSignerReserve:
+    """The swap keeps the POL the Agent Signer is owed."""
+
+    @staticmethod
+    def _quoted_amounts(behaviour) -> list:  # type: ignore[no-untyped-def]
+        """Record the amounts the LiFi quote is asked for; the quote itself fails."""
+        amounts: list = []
+
+        def _quote(addr, amount):  # type: ignore[no-untyped-def]
+            amounts.append(amount)
+            return _return_gen(None)
+
+        behaviour._get_lifi_quote = _quote  # type: ignore[method-assign]
+        return amounts
+
+    def test_swaps_only_above_the_threshold_plus_the_signer_deficit(self) -> None:
+        """Safe POL above `pol_threshold_for_swap` + Agent Signer deficit is swapped."""
+        behaviour = _make_behaviour(signer_deficit=300)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
+        amounts = self._quoted_amounts(behaviour)
+
+        _run_get_tx_hash(behaviour, threshold=100)
+
+        assert amounts == [600]
+
+    @pytest.mark.parametrize("balance", [400, 399])
+    def test_no_swap_while_the_safe_holds_only_the_reserve(self, balance: int) -> None:
+        """A Pearl top-up the Agent Signer still needs is not swapped."""
+        behaviour = _make_behaviour(signer_deficit=300)
+        behaviour._get_balance = lambda addr: _return_gen(balance)  # type: ignore[method-assign]
+        amounts = self._quoted_amounts(behaviour)
+
+        assert _run_get_tx_hash(behaviour, threshold=100) is None
+        assert amounts == []
+
+    def test_unread_signer_deficit_skips_the_swap(self) -> None:
+        """Without the Agent Signer need, nothing is swapped that period."""
+        behaviour = _make_behaviour(signer_deficit=None)
+        behaviour._get_balance = lambda addr: _return_gen(1000)  # type: ignore[method-assign]
+        amounts = self._quoted_amounts(behaviour)
+
+        assert _run_get_tx_hash(behaviour, threshold=100) is None
+        assert amounts == []
+
+
+class TestGetSignerNativeDeficit:
+    """The Agent Signer POL deficit comes from funds-manager."""
+
+    @staticmethod
+    def _behaviour(get_funds_status: MagicMock) -> PolymarketSwapUsdcBehaviour:
+        """A behaviour reading the given funds-manager status."""
+        behaviour = object.__new__(PolymarketSwapUsdcBehaviour)
+        context = MagicMock(agent_address=AGENT)
+        context.shared_state = {GET_FUNDS_STATUS_METHOD_NAME: get_funds_status}
+        behaviour.__dict__["_context"] = context
+        return behaviour
+
+    @pytest.mark.parametrize(
+        "signer_balance, deficit",
+        [(ETHER // 10, 19 * ETHER // 10), (ETHER, 0), (None, None)],
+    )
+    def test_reads_the_polygon_signer_deficit(
+        self, signer_balance: Optional[int], deficit: Optional[int]
+    ) -> None:
+        """Short, covered and unread Agent Signer balances."""
+        status = funds_status("polygon", signer_balance, 10 * ETHER)
+        behaviour = self._behaviour(MagicMock(return_value=status))
+
+        assert behaviour._get_signer_native_deficit() == deficit
+
+    def test_failed_status_read_returns_none(self) -> None:
+        """A funds-manager failure reads as an unknown deficit."""
+        behaviour = self._behaviour(MagicMock(side_effect=ValueError("rpc down")))
+
+        assert behaviour._get_signer_native_deficit() is None
+        assert "rpc down" in behaviour.context.logger.warning.call_args[0][0]

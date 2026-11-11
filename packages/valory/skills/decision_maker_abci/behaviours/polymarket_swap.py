@@ -28,11 +28,15 @@ from packages.valory.contracts.gnosis_safe.contract import (
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.agent_topup_abci.utils import get_signer_native_deficit
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
 from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdcRound
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -42,6 +46,7 @@ ETHER_VALUE = 0
 
 # Polygon network constants
 POLYGON_CHAIN_ID = 137
+POLYGON_CHAIN_NAME = "polygon"
 POL_ADDRESS = "0x0000000000000000000000000000000000001010"  # Native POL on Polygon
 USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"  # USDC on Polygon
 LIFI_QUOTE_URL = "https://li.quest/v1/quote"
@@ -108,6 +113,19 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"balance: {balance / 10 ** 18} POL")
         return balance
 
+    def _get_signer_native_deficit(self) -> Optional[int]:
+        """Agent Signer native deficit on Polygon from funds-manager; None if not read."""
+        try:
+            funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"[SwapPOLBehaviour] Couldn't read the funds status: {type(exc).__name__}({exc})."
+            )
+            return None
+        return get_signer_native_deficit(
+            funds, POLYGON_CHAIN_NAME, self.context.agent_address
+        )
+
     def _get_safe_tx_hash(
         self,
         to_address: str,
@@ -160,10 +178,26 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             )
             return None
 
+        signer_deficit = self._get_signer_native_deficit()
+        if signer_deficit is None:
+            # An unread Agent Signer need could swap the POL it is owed.
+            self.context.logger.warning(
+                "[SwapPOLBehaviour] Agent Signer POL deficit not read. Skipping swap."
+            )
+            return None
+
+        # Keep the POL the Agent Signer is owed for the top-up round.
+        reserve = self.params.pol_threshold_for_swap + signer_deficit
+        if balance <= reserve:
+            self.context.logger.info(
+                f"[SwapPOLBehaviour] Balance {balance} below or equal to reserve {reserve} "
+                f"(threshold {self.params.pol_threshold_for_swap} + Agent Signer deficit {signer_deficit})."
+            )
+            return None
+
         self.context.logger.info("[SwapPOLBehaviour] Proceeding with swap")
 
-        # Leave pol threshold in the safe for non-swap purposes
-        balance_to_swap = balance - self.params.pol_threshold_for_swap
+        balance_to_swap = balance - reserve
         self.context.logger.info(
             f"[SwapPOLBehaviour] Amount to swap: {balance_to_swap} wei ({balance_to_swap / 10**18} POL)"
         )
