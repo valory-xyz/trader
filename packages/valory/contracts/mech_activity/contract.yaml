@@ -18,8 +18,8 @@ contract_interface_paths:
   ethereum: build/MechActivity.json
 dependencies:
   open-aea-ledger-ethereum:
-    version: ==2.2.9
+    version: ==2.2.10
   open-aea-test-autonomy:
-    version: ==0.21.26
+    version: ==0.21.31rc2
   web3:
     version: <8,>=7.15.0
