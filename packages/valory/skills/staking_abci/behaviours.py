@@ -756,12 +756,16 @@ class CallCheckpointBehaviour(
         yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
         yield from self.wait_for_condition_with_sleep(self._get_liveness_period)
         yield from self.wait_for_condition_with_sleep(self._get_next_checkpoint)
-        if is_rebaseline_pending(
+        rebaseline_signal = is_rebaseline_pending(
             self.next_checkpoint, self.ts_checkpoint, self.liveness_period
-        ):
+        )
+        if rebaseline_signal:
             # tsCheckpoint was read before next_checkpoint, so a checkpoint by
             # another party in between looks like a rebaseline. Re-read it.
             yield from self.wait_for_condition_with_sleep(self._get_ts_checkpoint)
+            rebaseline_signal = is_rebaseline_pending(
+                self.next_checkpoint, self.ts_checkpoint, self.liveness_period
+            )
 
         due = is_checkpoint_due(
             self.next_checkpoint,
@@ -769,18 +773,15 @@ class CallCheckpointBehaviour(
             self.liveness_period,
             self.synced_timestamp,
         )
-        if not due:
-            return False
-
-        rebaseline_signal = is_rebaseline_pending(
-            self.next_checkpoint, self.ts_checkpoint, self.liveness_period
-        )
-        if not rebaseline_signal:
+        # availableRewards only matters when the checkpoint is due by time
+        # alone, so it is read only then; otherwise 0 does not change the rule.
+        available_rewards = 0
+        if due and not rebaseline_signal:
             yield from self.wait_for_condition_with_sleep(self._get_available_rewards)
-        should_send = should_send_checkpoint(
-            due, rebaseline_signal, self.available_rewards
-        )
-        if not should_send:
+            available_rewards = self.available_rewards
+
+        should_send = should_send_checkpoint(due, rebaseline_signal, available_rewards)
+        if due and not should_send:
             self.context.logger.info(
                 "Skipping the checkpoint: the staking contract has no available "
                 "rewards and no rebaseline is pending."
