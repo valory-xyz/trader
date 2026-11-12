@@ -330,7 +330,7 @@ class TestNoMoveGate:
         [
             ("polygon", ETHER // 10, 0, False),  # Agent Safe empty, Agent Signer short
             ("polygon", ETHER, 0, True),  # nothing due
-            ("gnosis", ETHER // 10, 0, True),  # Omenstrat keeps the hourly gate
+            ("gnosis", ETHER // 10, 0, True),
         ],
     )
     def test_gate(
