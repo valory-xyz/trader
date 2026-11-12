@@ -187,7 +187,7 @@ skills:
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
 - valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
-- valory/agent_topup_abci:0.1.0:bafybeibhe7jjkulmwndslbdanpakb56kkw2mtnp3xy7wedwlhsoxx55apm
+- valory/agent_topup_abci:0.1.0:bafybeienki4tnpqbugx2xdxtldbz5uum4tn3iltjkb6rw7pbp4hkv7czeu
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
