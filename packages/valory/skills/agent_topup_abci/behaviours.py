@@ -40,11 +40,12 @@ from packages.valory.skills.agent_topup_abci.rounds import (
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
     NO_TOPUP,
+    TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
     WXDAI_ADDRESS,
     get_agent_topups,
     get_safe_native_balance,
-    get_signer_native_deficit,
+    get_signer_native_need,
     native_balances_read,
 )
 from packages.valory.skills.funds_manager.behaviours import (
@@ -132,6 +133,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
     def _close_check(self) -> None:
         """Close the gate for an hour."""
         self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
+        self.context.shared_state[TOPUP_REFILLING_KEY] = False
 
     def _fail_topup(self) -> None:
         """Stop `/funds-status` relying on the top-up until a transfer settles again."""
@@ -145,12 +147,17 @@ class AgentTopUpBehaviour(BaseBehaviour):
         agent_address = self.context.agent_address
         try:
             funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+            refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
+            need = get_signer_native_need(funds, chain, agent_address, refilling)
             topup = get_agent_topups(
                 self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
                 funds,
                 agent_address,
                 self.params.agent_balance_threshold,
                 self.context.logger,
+                agent_need_override=(
+                    {chain: need} if refilling and need is not None else None
+                ),
             ).get(chain, NO_TOPUP)
         except Exception as exc:  # pylint: disable=broad-except
             # The round starts every period: a failed read skips the top-up, never the period.
@@ -166,7 +173,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
                     f"No Agent Signer top-up on {chain}: a native balance was not read."
                 )
                 return None
-            if self._waits_for_safe_funds(funds, chain):
+            if self._waits_for_safe_funds(funds, chain, need):
                 # Keep the gate open so a Pearl top-up reaches the Agent Signer next period.
                 self.context.logger.info(
                     f"No Agent Signer top-up on {chain}: the Agent Safe holds no native token."
@@ -199,8 +206,8 @@ class AgentTopUpBehaviour(BaseBehaviour):
             tx_hex = yield from self._prepare_safe_tx(agent_address, amount, b"")
             # Off Gnosis, a move short of the need keeps the gate open so the next
             # period moves the rest; on Gnosis it would unwrap again after an unwrap.
-            need = cast(int, get_signer_native_deficit(funds, chain, agent_address))
-            closes_gate = chain == GNOSIS_CHAIN_NAME or amount >= need
+            closes_gate = chain == GNOSIS_CHAIN_NAME or amount >= cast(int, need)
+            self.context.shared_state[TOPUP_REFILLING_KEY] = not closes_gate
 
         if tx_hex is None:
             self._fail_topup()
@@ -208,11 +215,11 @@ class AgentTopUpBehaviour(BaseBehaviour):
             self._close_check()
         return tx_hex
 
-    def _waits_for_safe_funds(self, funds: FundRequirements, chain: str) -> bool:
+    def _waits_for_safe_funds(
+        self, funds: FundRequirements, chain: str, need: Optional[int]
+    ) -> bool:
         """Whether the Agent Signer is short and, off Gnosis, the Agent Safe holds nothing to move."""
-        agent_address = self.context.agent_address
-        need = get_signer_native_deficit(funds, chain, agent_address)
-        safe_native = get_safe_native_balance(funds, chain, agent_address)
+        safe_native = get_safe_native_balance(funds, chain, self.context.agent_address)
         return (
             chain != GNOSIS_CHAIN_NAME
             and safe_native == 0

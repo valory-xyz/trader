@@ -34,6 +34,9 @@ WXDAI_ADDRESS = "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d"
 # False once a top-up fails, True again once a top-up transfer settles.
 # Unset (e.g. at startup) counts as True: a pending top-up the Agent Safe covers raises no alert.
 TOPUP_SUCCEEDED_KEY = "agent_topup_succeeded"
+# True from a move short of the Agent Signer need until the gate closes: the Agent Signer is
+# refilled to its target, not just above the threshold one partial move can cross.
+TOPUP_REFILLING_KEY = "agent_topup_refilling"
 
 NO_TOPUP = AgentTopUp(move=0, signer_deficit=None, safe_deficit=None)
 
@@ -73,6 +76,25 @@ def get_signer_native_deficit(
     """Return the Agent Signer native deficit read on a chain, if any."""
     native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=True))
     return None if native is None else native.deficit
+
+
+def get_signer_native_need(
+    funds: FundRequirements, chain_name: str, agent_address: str, refilling: bool
+) -> Optional[int]:
+    """Return the Agent Signer native need: up to its target while refilling, else the deficit read.
+
+    :param funds: the funds status.
+    :param chain_name: the chain to read.
+    :param agent_address: the Agent Signer address.
+    :param refilling: whether a refill started by a partial move is still going.
+    :return: the need in wei; None if not read.
+    """
+    native = _get_native(_get_tokens(funds, chain_name, agent_address, is_signer=True))
+    if native is None or native.balance is None:
+        return None if native is None else native.deficit
+    if not refilling:
+        return native.deficit
+    return max(native.topup - native.balance, 0)
 
 
 def _get_signer_shortfall(
@@ -127,6 +149,7 @@ def get_agent_topups(
     agent_address: str,
     min_signer_balance: int,
     logger: Logger,
+    agent_need_override: Optional[Dict[str, int]] = None,
 ) -> Dict[str, AgentTopUp]:
     """Apply the funds-manager top-up rule, counting Agent Safe wxDAI as native on Gnosis.
 
@@ -135,6 +158,7 @@ def get_agent_topups(
     :param agent_address: the Agent Signer address.
     :param min_signer_balance: the Agent Signer balance below which nothing is moved.
     :param logger: the logger.
+    :param agent_need_override: chain -> wei replacing the Agent Signer need.
     :return: the top-up decision per chain.
     """
     wxdai = _get_tokens(funds, GNOSIS_CHAIN_NAME, agent_address, is_signer=False).get(
@@ -144,7 +168,11 @@ def get_agent_topups(
     if wxdai is not None and wxdai.balance is not None:
         safe_native_extra[GNOSIS_CHAIN_NAME] = wxdai.balance
 
-    topups = get_agent_topup(funds, safe_native_extra=safe_native_extra)
+    topups = get_agent_topup(
+        funds,
+        safe_native_extra=safe_native_extra,
+        agent_need_override=agent_need_override,
+    )
     if wxdai is not None and wxdai.balance is None:
         # An unread balance never moves funds.
         topups[GNOSIS_CHAIN_NAME] = NO_TOPUP

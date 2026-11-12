@@ -30,7 +30,8 @@ from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
 from packages.valory.skills.agent_topup_abci.utils import (
     POLYGON_CHAIN_NAME,
-    get_signer_native_deficit,
+    TOPUP_REFILLING_KEY,
+    get_signer_native_need,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
@@ -115,8 +116,8 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"balance: {balance / 10 ** 18} POL")
         return balance
 
-    def _get_signer_native_deficit(self) -> Optional[int]:
-        """Agent Signer native deficit on Polygon from funds-manager; None if not read."""
+    def _get_signer_native_need(self) -> Optional[int]:
+        """Agent Signer native need on Polygon, up to its target while the top-up refills it; None if not read."""
         try:
             funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
         except Exception as exc:  # pylint: disable=broad-except
@@ -125,8 +126,11 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
                 exc_info=True,
             )
             return None
-        return get_signer_native_deficit(
-            funds, POLYGON_CHAIN_NAME, self.context.agent_address
+        return get_signer_native_need(
+            funds,
+            POLYGON_CHAIN_NAME,
+            self.context.agent_address,
+            self.context.shared_state.get(TOPUP_REFILLING_KEY, False),
         )
 
     def _get_safe_tx_hash(
@@ -181,20 +185,20 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             )
             return None
 
-        signer_deficit = self._get_signer_native_deficit()
-        if signer_deficit is None:
+        signer_need = self._get_signer_native_need()
+        if signer_need is None:
             # An unread Agent Signer need could swap the POL it is owed.
             self.context.logger.warning(
-                "[SwapPOLBehaviour] Agent Signer POL deficit not read. Skipping swap."
+                "[SwapPOLBehaviour] Agent Signer POL need not read. Skipping swap."
             )
             return None
 
         # Keep the POL the Agent Signer is owed for the top-up round.
-        reserve = self.params.pol_threshold_for_swap + signer_deficit
+        reserve = self.params.pol_threshold_for_swap + signer_need
         if balance <= reserve:
             self.context.logger.info(
                 f"[SwapPOLBehaviour] Balance {balance} below or equal to reserve {reserve} "
-                f"(threshold {self.params.pol_threshold_for_swap} + Agent Signer deficit {signer_deficit})."
+                f"(threshold {self.params.pol_threshold_for_swap} + Agent Signer need {signer_need})."
             )
             return None
 
