@@ -65,8 +65,7 @@ from packages.valory.skills.agent_topup_abci.utils import (
 )
 from packages.valory.skills.agent_topup_abci.utils import (
     get_agent_topups,
-    get_safe_native_deficit_with_signer_shortfall,
-    get_signer_shortfall,
+    get_native_deficits_with_signer_shortfall,
 )
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
@@ -787,18 +786,16 @@ class HttpHandler(BaseHttpHandler):
             safe_deficit = topup.safe_deficit
             if self.params.is_running_on_polymarket:
                 # The adjusted Agent Safe deficit counts its USDC as POL.
-                safe_deficit = get_safe_native_deficit_with_signer_shortfall(
+                (
+                    signer_deficit,
+                    safe_deficit,
+                ) = get_native_deficits_with_signer_shortfall(
                     funds_status,
                     chain_name,
                     agent_address,
                     topup,
                     self.context.logger,
                 )
-                if safe_deficit is None and topup.safe_deficit is not None:
-                    # The Agent Safe does not ask for the shortfall, so the Agent Signer must.
-                    signer_deficit = get_signer_shortfall(
-                        funds_status, chain_name, agent_address
-                    )
             for address, account in funds_status[chain_name].accounts.items():
                 if address == agent_address:
                     deficit = signer_deficit

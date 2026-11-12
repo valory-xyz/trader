@@ -20,7 +20,7 @@
 """Helpers shared by the top-up round and the `/funds-status` handler."""
 
 from logging import Logger
-from typing import Callable, Dict, Optional, cast
+from typing import Callable, Dict, Optional, Tuple, cast
 
 from packages.valory.skills.funds_manager.models import (
     AgentTopUp,
@@ -75,7 +75,7 @@ def get_signer_native_deficit(
     return None if native is None else native.deficit
 
 
-def get_signer_shortfall(
+def _get_signer_shortfall(
     funds: FundRequirements, chain_name: str, agent_address: str
 ) -> int:
     """Return the Agent Signer native deficit the Agent Safe native balance cannot cover.
@@ -92,32 +92,33 @@ def get_signer_shortfall(
     return max(need - safe_native, 0)
 
 
-def get_safe_native_deficit_with_signer_shortfall(
+def get_native_deficits_with_signer_shortfall(
     funds: FundRequirements,
     chain_name: str,
     agent_address: str,
     topup: AgentTopUp,
     logger: Logger,
-) -> Optional[int]:
-    """Return the Agent Signer shortfall the Agent Safe cannot cover, plus the Agent Safe deficit read.
+) -> Tuple[Optional[int], Optional[int]]:
+    """Return the Agent Signer and Agent Safe native deficits, with the Agent Signer shortfall the Agent Safe cannot cover.
 
     :param funds: the funds status, its Agent Safe native deficit already adjusted.
     :param chain_name: the chain the top-up decision is for.
     :param agent_address: the Agent Signer address.
     :param topup: the funds-manager top-up decision on that chain.
     :param logger: the logger.
-    :return: the Agent Safe native deficit to report; None keeps the one read.
+    :return: the Agent Signer and Agent Safe native deficits to report; None keeps the one read.
     """
     if topup.safe_deficit is None:
-        return None
+        return topup.signer_deficit, None
     safe_deficit = get_safe_native_deficit(funds, chain_name, agent_address)
+    shortfall = _get_signer_shortfall(funds, chain_name, agent_address)
     if safe_deficit is None:
         logger.warning(
             f"Agent Safe deficit on {chain_name} not adjusted: its non-native "
             "asset was not valued, so the deficit read is kept."
         )
-        return None
-    return get_signer_shortfall(funds, chain_name, agent_address) + safe_deficit
+        return shortfall, None
+    return topup.signer_deficit, shortfall + safe_deficit
 
 
 def get_agent_topups(
