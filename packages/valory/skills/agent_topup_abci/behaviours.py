@@ -130,7 +130,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         )
 
     def _close_check(self) -> None:
-        """Close the gate for an hour, once no further move is due."""
+        """Close the gate for an hour."""
         self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
 
     def _fail_topup(self) -> None:
