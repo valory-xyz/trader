@@ -361,5 +361,3 @@ If you add or remove a dependency:
 - Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - Security policy: [`SECURITY.md`](./SECURITY.md).
 - [Open Autonomy framework](https://stack.olas.network/open-autonomy/)
-
-#

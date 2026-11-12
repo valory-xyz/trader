@@ -2378,18 +2378,35 @@ def test_polygon_missing_analytics_is_rejected_at_startup(
         )
 
 
-def test_polygon_missing_staking_url_is_rejected_at_model_load() -> None:
-    """A direct agent run cannot issue squid queries to a missing endpoint."""
-    context = MagicMock()
-    context.params.is_running_on_polymarket = True
-    with pytest.raises(ValueError, match="STAKING_POLYGON_SQUID_URL"):
-        PolygonStakingSubgraph(skill_context=context, url=None)
+@pytest.mark.parametrize(
+    "polygon,url,raises",
+    [(True, "", True), (True, "https://squid.test", False), (False, "", False)],
+)
+def test_staking_url_validated_after_models_are_attached(
+    polygon: bool, url: str, raises: bool
+) -> None:
+    """The startup hook sees sibling models only after model construction."""
+    from types import SimpleNamespace  # pylint: disable=import-outside-toplevel
+
+    state = object.__new__(_TestableSharedState)
+    state.context = SimpleNamespace(  # type: ignore[assignment]
+        params=SimpleNamespace(is_running_on_polymarket=polygon),
+        polygon_staking_subgraph=SimpleNamespace(url=url),
+    )
+    with patch.object(SharedState.__bases__[0], "setup") as setup:
+        if raises:
+            with pytest.raises(ValueError, match="STAKING_POLYGON_SQUID_URL"):
+                state.setup()
+            setup.assert_not_called()
+        else:
+            state.setup()
+            setup.assert_called_once()
 
 
-def test_gnosis_does_not_require_polygon_staking_url() -> None:
-    """The agent-level null override remains optional outside Polystrat."""
-    context = MagicMock()
-    context.params.is_running_on_polymarket = False
+def test_model_construction_does_not_read_unattached_params() -> None:
+    """open-aea attaches sibling models only after their constructors finish."""
+    from types import SimpleNamespace  # pylint: disable=import-outside-toplevel
+
     with patch.object(Subgraph, "__init__", return_value=None) as init:
-        PolygonStakingSubgraph(skill_context=context, url=None)
+        PolygonStakingSubgraph(skill_context=SimpleNamespace(), url=None)
     assert init.call_args.kwargs["url"] == ""

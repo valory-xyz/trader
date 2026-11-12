@@ -620,7 +620,7 @@ def test_polygon_never_falls_back_to_graph_when_flag_disabled() -> None:
 
 
 def test_polygon_selects_analytics_after_startup_validation() -> None:
-    """Missing Polygon analytics configuration fails before a Graph request."""
+    """Polygon selects analytics; missing URLs are validated at startup."""
     params = SimpleNamespace(
         is_running_on_polymarket=True, use_mech_analytics=False, mech_analytics_url=""
     )

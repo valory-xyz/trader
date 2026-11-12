@@ -743,6 +743,15 @@ class SharedState(BaseSharedState):
     # The latest leaderboard refresh, run off the FSM
     _leaderboard_thread: Optional[threading.Thread] = None
 
+    def setup(self) -> None:
+        """Validate Polygon indexer configuration after all models are attached."""
+        if (
+            self.params.is_running_on_polymarket
+            and not self.context.polygon_staking_subgraph.url
+        ):
+            raise ValueError("Polystrat requires STAKING_POLYGON_SQUID_URL")
+        super().setup()
+
     @property
     def params(self) -> AgentPerformanceSummaryParams:
         """Return the params."""
@@ -1121,14 +1130,7 @@ class PolygonStakingSubgraph(Subgraph):
     """Polygon staking squid with startup configuration validation."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Reject an unconfigured Polystrat staking reader when models load."""
-        context = kwargs.get("skill_context")
-        if (
-            context is not None
-            and getattr(context.params, "is_running_on_polymarket", False) is True
-            and not kwargs.get("url")
-        ):
-            raise ValueError("Polystrat requires STAKING_POLYGON_SQUID_URL")
+        """Normalize the optional Polygon URL before sibling models are attached."""
         if kwargs.get("url") is None:
             kwargs["url"] = ""
         super().__init__(*args, **kwargs)
