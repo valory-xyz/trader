@@ -369,50 +369,66 @@ def test_row_3_next_periods_pick_best_score_with_checks_unchanged() -> None:
 
 
 def test_row_4_renewal_rule() -> None:
-    """Re-rank when 24 h old or used up with 10+ never-ranked; else today's order."""
+    """One request per 24 h from the list's stamp, with 10+ candidates; else today's order."""
     expired = _listed(12, ranked_at=NOW - RANKING_MAX_AGE)
     assert len(_ranked_ids(_request(expired))) == 12
+    # every candidate counts toward the 10, ranked before or not
+    mixed = _listed(5, ranked_at=NOW - RANKING_MAX_AGE) + [
+        _bet(i) for i in range(30, 35)
+    ]
+    assert len(_ranked_ids(_request(mixed))) == 10
 
+    # a used-up list with 10+ never-ranked markets waits for its 24 hours
     used_up = _listed(12, queue_status=QueueStatus.PROCESSED)
     fresh = [_bet(i) for i in range(30, 40)]
-    assert sorted(_ranked_ids(_request(used_up + fresh))) == sorted(b.id for b in fresh)
+    due = NOW - 60 + RANKING_MAX_AGE
+    for now in (NOW, NOW + COOLDOWN, due - 1):
+        assert _request(used_up + fresh, now=now).mech_tool is None
+    assert _sampled(used_up + fresh) == _todays_pick(fresh) == "m39"
+    assert sorted(_ranked_ids(_request(used_up + fresh, now=due))) == sorted(
+        b.id for b in fresh
+    )
 
+    # due with fewer than 10 candidates: no request, today's order
+    used_up = _listed(12, queue_status=QueueStatus.PROCESSED)
     few_fresh = fresh[:9]
-    assert _request(used_up + few_fresh).mech_tool is None
-    assert _sampled(used_up + few_fresh) == _todays_pick(few_fresh) == "m38"
+    assert _request(used_up + few_fresh, now=due).mech_tool is None
+    assert _sampled(used_up + few_fresh, now=due) == _todays_pick(few_fresh)
 
     # every list market fails the price rule: no request, today's order
-    skewed = _listed(12, outcomeTokenMarginalPrices=[0.9, 0.1])
+    skewed = _listed(
+        12, ranked_at=NOW - RANKING_MAX_AGE, outcomeTokenMarginalPrices=[0.9, 0.1]
+    )
     assert _request(skewed + few_fresh).mech_tool is None
-    assert _sampled(skewed + few_fresh) == "m38"
+    assert _sampled(skewed + few_fresh) == _todays_pick(few_fresh)
 
-    # one request takes today's first 100 markets; the next period sends the
-    # rest on the same list
-    many = [_bet(i) for i in range(RANKING_MAX_MARKETS + 20)]
-    ids = _ranked_ids(_request(many))
-    assert len(ids) == RANKING_MAX_MARKETS and ids[0] == f"m{len(many) - 1}"
-    assert {bet.ranked_at for bet in many} == {NOW, -NOW}
-    rest = _ranked_ids(_request(many, now=NOW + 60))
-    assert sorted(rest) == sorted(f"m{i}" for i in range(20))
-    assert {bet.ranked_at for bet in many} == {NOW}
 
-    # an unscored answer: nothing is re-sent while no market was never ranked
+def test_one_request_holds_todays_first_100_and_no_follow_up() -> None:
+    """150 candidates: one request of today's first 100; the other 50 are not stamped or sent that day."""
+    many = [_bet(i, research_score=0.9 if i < 50 else None) for i in range(150)]
+    requester = _behaviour(RankingRequestBehaviour, many)
+    first = _ranked_ids(_act(requester))
+    requester.context.logger.info.assert_any_call(
+        "[RANKING] requesting a ranking of 100 markets."
+    )
+    assert first == [f"m{i}" for i in range(149, 49, -1)]
+    assert {bet.ranked_at for bet in many[50:]} == {NOW}
+    assert {bet.ranked_at for bet in many[:50]} == {0}
+    assert {bet.research_score for bet in many[:50]} == {0.9}
+    for later in (NOW + 60, NOW + COOLDOWN, NOW + RANKING_MAX_AGE - 1):
+        assert _request(many, now=later).mech_tool is None
+    assert {bet.ranked_at for bet in many[:50]} == {0}
+
+    # a lost answer brings no request before the list is 24 h old
     _receive(many, None)
     assert _request(many, now=NOW + 120).mech_tool is None
 
-    # a 24 h renewal keeps today's order and queues again what does not fit in its request
-    pool = [_bet(i) for i in range(180)]
-    first = _ranked_ids(_request(pool))
-    for bet in pool:
-        if bet.ranked_at == NOW:
-            bet.research_score = 0.9
-    # never-ranked markets less liquid than today's first 100 stay behind them
-    pool += [_bet(i, scaledLiquidityMeasure=1.0) for i in range(200, 220)]
-    assert _ranked_ids(_request(pool, now=NOW + RANKING_MAX_AGE)) == first
-    assert {bet.ranked_at for bet in pool} == {
-        NOW + RANKING_MAX_AGE,
-        -NOW - RANKING_MAX_AGE,
-    }
+    # the renewal keeps today's order: neither the markets left out nor
+    # never-ranked markets less liquid than the first 100 go first
+    many += [_bet(i, scaledLiquidityMeasure=1.0) for i in range(200, 220)]
+    renewal = NOW + RANKING_MAX_AGE
+    assert _ranked_ids(_request(many, now=renewal)) == first
+    assert {bet.ranked_at for bet in many} == {renewal, 0}
 
 
 @pytest.mark.parametrize(
@@ -737,10 +753,10 @@ def test_weighted_pick_spreads_over_the_list() -> None:
 
 
 def test_the_list_holds_every_market_todays_pick_could_send() -> None:
-    """Every untried market Sampling's checks and book check accept is ranked, the markets of one event included."""
+    """Every untried market Sampling's checks and book check accept is a candidate, the markets of one event included."""
     accepted = [
         _bet(i, title="Will Trump say X?", best_bid=0.45, best_ask=0.5)
-        for i in range(150)
+        for i in range(RANKING_MAX_MARKETS)
     ]
     rejected = [
         _bet(300, outcomeTokenMarginalPrices=[0.85, 0.15]),
@@ -750,68 +766,43 @@ def test_the_list_holds_every_market_todays_pick_could_send() -> None:
         _bet(304, queue_status=QueueStatus.PROCESSED),
     ]
     pool = accepted + rejected
-    sent = _ranked_ids(_request(pool)) + _ranked_ids(_request(pool, now=NOW + 60))
-    assert sorted(sent) == sorted(bet.id for bet in accepted)
+    assert sorted(_ranked_ids(_request(pool))) == sorted(bet.id for bet in accepted)
     assert {bet.ranked_at for bet in accepted} == {NOW}
     assert {bet.ranked_at for bet in rejected} == {0}
 
-    # a market of the second request is picked like one of the first
+    # a listed market is picked on its score
     for bet in accepted:
         bet.research_score = 0.0
     accepted[0].research_score = 0.9
     assert _sampled(pool) == "m0"
 
 
-def test_the_queue_is_sent_once_and_holds_untried_markets_only() -> None:
-    """A queued market that misses its request waits for a renewal; a failed book check keeps a market off the list."""
-    pool = [_bet(i) for i in range(RANKING_MAX_MARKETS + 5)]
-    _request(pool)
-    queued = [bet for bet in pool if bet.ranked_at == -NOW]
-    assert len(queued) == 5
-    # two queued markets are skewed when the queue goes out: three are sent
-    for bet in queued[:2]:
-        bet.outcomeTokenMarginalPrices = [0.95, 0.05]
-    assert len(_ranked_ids(_request(pool, now=NOW + 60))) == 3
-    assert {bet.ranked_at for bet in queued[:2]} == {0}
-    # back in range, they bring no request of their own while the list is in use
-    for bet in queued[:2]:
-        bet.outcomeTokenMarginalPrices = [0.5, 0.5]
-    assert _request(pool, now=NOW + 120).mech_tool is None
-
-    # when every queued market misses its request, the reset is stored and nothing is sent
-    waiting = [_bet(i) for i in range(RANKING_MAX_MARKETS + 5)]
-    _request(waiting)
-    gone = [bet for bet in waiting if bet.ranked_at == -NOW]
-    for bet in gone:
-        bet.outcomeTokenMarginalPrices = [0.95, 0.05]
-    requester = _behaviour(RankingRequestBehaviour, waiting, now=NOW + 60)
-    assert _act(requester).mech_tool is None
-    requester.store_bets.assert_called_once()
-    assert {bet.ranked_at for bet in gone} == {0}
-
-    # a list takes at most three requests; the markets past them follow today's order
-    big = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS + 50)]
-    sizes = [len(_ranked_ids(_request(big, now=NOW + 60 * k))) for k in range(3)]
-    assert sizes == [RANKING_MAX_MARKETS] * 3
-    tail = {bet.id for bet in big if bet.ranked_at == 0}
-    assert len(tail) == 50
-    # scored, the list is in use and the tail brings no request
-    for bet in big:
-        bet.research_score = 0.9 if bet.ranked_at > 0 else None
-    assert _request(big, now=NOW + 180).mech_tool is None
-    # all unscored, the next list sends the tail first and then nothing is left to renew
-    for bet in big:
-        bet.research_score = None
-    assert tail <= set(_ranked_ids(_request(big, now=NOW + 240)))
-    later = [_request(big, now=NOW + 300 + 60 * k).mech_tool for k in range(3)]
-    assert later == [RANKING_TOOL, RANKING_TOOL, None]
-
-    # a market whose book check failed is not a candidate, so it is never queued
+def test_a_market_whose_book_check_failed_stays_off_the_list() -> None:
+    """A market Sampling stamped after a failed book check is not a candidate, so it is never stamped."""
     untried = [_bet(i) for i in range(RANKING_MAX_MARKETS)]
     stamped = [_bet(200 + i, processed_timestamp=NOW - 2 * COOLDOWN) for i in range(3)]
     assert len(_ranked_ids(_request(untried + stamped))) == RANKING_MAX_MARKETS
     assert all(bet.ranked_at == 0 for bet in stamped)
     assert _request(untried + stamped, now=NOW + 60).mech_tool is None
+
+
+def test_markets_queued_by_an_older_release_wait_for_the_next_list() -> None:
+    """A negative stamp is never sent on its own and is ranked like any candidate once the list is due."""
+    listed = _listed(RANKING_MAX_MARKETS)
+    queued = [_bet(200 + i, ranked_at=-(NOW - 60)) for i in range(20)]
+    pool = listed + queued
+    assert _request(pool, now=NOW).mech_tool is None
+    assert {bet.ranked_at for bet in queued} == {-(NOW - 60)}
+
+    due = NOW - 60 + RANKING_MAX_AGE
+    assert _ranked_ids(_request(pool, now=due))[:20] == [
+        f"m{i}" for i in range(219, 199, -1)
+    ]
+    assert {bet.ranked_at for bet in queued} == {due}
+
+    # with the list they belonged to pruned, the store has no live stamp
+    alone = [_bet(200 + i, ranked_at=-(NOW - 60)) for i in range(12)]
+    assert len(_ranked_ids(_request(alone))) == 12
 
 
 def test_one_market_per_event() -> None:
@@ -847,24 +838,13 @@ def test_one_market_per_event() -> None:
     assert stored.poly_event_id == "e1"
 
 
-def test_one_market_per_event_in_the_queue_and_renewals() -> None:
-    """The queue, a used-up renewal and its 10+ gate all count one market per event."""
-    # a queued market whose sibling became more liquid is not sent, and is reset
-    bets = [_bet(i, poly_event_id=f"e{i}") for i in range(RANKING_MAX_MARKETS + 5)]
-    _request(bets)
-    queued = [bet for bet in bets if bet.ranked_at == -NOW]
-    siblings = [
-        _bet(500 + i, poly_event_id=bet.poly_event_id) for i, bet in enumerate(queued)
-    ]
-    assert _request(bets + siblings, now=NOW + 60).mech_tool is None
-    assert {bet.ranked_at for bet in queued} == {0}
-
-    # a used-up list renews with one market per event
+def test_one_market_per_event_in_renewals() -> None:
+    """A 24 h renewal and its 10+ gate count one market per event."""
     used = [
         _bet(
             100 + i,
             poly_event_id=f"used{i}",
-            ranked_at=NOW - 60,
+            ranked_at=NOW - RANKING_MAX_AGE,
             research_score=0.9,
             processed_timestamp=NOW - 10,
         )
@@ -908,7 +888,6 @@ def test_no_ranking_request_while_the_clob_is_flagged() -> None:
     due = {
         "no list": [_bet(i) for i in range(12)],
         "expired list": _listed(12, ranked_at=NOW - RANKING_MAX_AGE),
-        # an unscored list with 10+ never-ranked markets is due for renewal
         "used-up list": used_up + [_bet(i) for i in range(30, 40)],
         "not due": _listed(12),
     }
@@ -963,30 +942,20 @@ def test_recovery_predicts_first_and_ranks_from_the_next_period() -> None:
         assert (_act(later).mech_tool == RANKING_TOOL) is (bets is stale)
 
 
-def test_the_rest_of_a_list_waits_while_flagged() -> None:
-    """Flagged after request 1 of 3: the rest goes out within a day of the list, a fresh list after it."""
-    for recovered, continued in ((NOW + DAY - 600, True), (NOW + DAY, False)):
-        pool = [_bet(i) for i in range(3 * RANKING_MAX_MARKETS)]
-        first = _ranked_ids(_request(pool))
-        queued = {bet.id for bet in pool if bet.ranked_at == -NOW}
-        assert len(queued) == 2 * RANKING_MAX_MARKETS
-        for period in range(1, 4):
-            assert (
-                _act(
-                    _flagged(RankingRequestBehaviour, pool, now=NOW + 300 * period)
-                ).mech_requests
-                is None
-            )
-        assert {bet.id for bet in pool if bet.ranked_at == -NOW} == queued
+def test_a_list_due_while_flagged_is_requested_after_the_recovery() -> None:
+    """Flagged as the list falls due: no request; once the CLOB answers, one request, and no second."""
+    pool = [_bet(i) for i in range(RANKING_MAX_MARKETS + 50)]
+    first = _ranked_ids(_request(pool))
+    due = NOW + RANKING_MAX_AGE
+    for period in range(3):
+        flagged = _flagged(RankingRequestBehaviour, pool, now=due + 300 * period)
+        assert _act(flagged).mech_requests is None
+    assert {bet.ranked_at for bet in pool} == {NOW, 0}
 
-        ids = _ranked_ids(_request(pool, now=recovered))
-        if continued:
-            ids += _ranked_ids(_request(pool, now=recovered + 60))
-            assert sorted(first + ids) == sorted(bet.id for bet in pool)
-            assert {bet.ranked_at for bet in pool} == {NOW}
-        else:
-            assert ids[0] == first[0]
-            assert {bet.ranked_at for bet in pool} == {recovered, -recovered}
+    recovered = due + 900
+    assert _ranked_ids(_request(pool, now=recovered)) == first
+    assert _request(pool, now=recovered + 60).mech_tool is None
+    assert {bet.ranked_at for bet in pool} == {recovered, 0}
 
 
 def test_the_flag_applies_on_polymarket_with_ranking_on_only() -> None:
@@ -1067,7 +1036,7 @@ def test_gated_market_scored_on_the_live_list_can_be_picked() -> None:
         "below-the-minimum",
         "missed-answer",
         "stale-score-from-an-older-list",
-        "queued-for-a-later-request",
+        "queued-by-an-older-release",
         "list-a-day-old",
     ),
 )
