@@ -155,9 +155,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 agent_address,
                 self.params.agent_balance_threshold,
                 self.context.logger,
-                agent_need_override=(
-                    {chain: need} if refilling and need is not None else None
-                ),
+                refilling=refilling,
             ).get(chain, NO_TOPUP)
         except Exception as exc:  # pylint: disable=broad-except
             # The round starts every period: a failed read skips the top-up, never the period.

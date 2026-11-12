@@ -58,6 +58,7 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
     POLYGON_CHAIN_NAME,
+    TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
 )
 from packages.valory.skills.agent_topup_abci.utils import (
@@ -767,6 +768,7 @@ class HttpHandler(BaseHttpHandler):
         if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
             return
         agent_address = self.context.agent_address
+        refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
         try:
             topups = get_agent_topups(
                 self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
@@ -774,6 +776,7 @@ class HttpHandler(BaseHttpHandler):
                 agent_address,
                 self.params.agent_balance_threshold,
                 self.context.logger,
+                refilling=refilling,
             )
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
@@ -794,6 +797,7 @@ class HttpHandler(BaseHttpHandler):
                     chain_name,
                     agent_address,
                     topup,
+                    refilling,
                     self.context.logger,
                 )
             for address, account in funds_status[chain_name].accounts.items():

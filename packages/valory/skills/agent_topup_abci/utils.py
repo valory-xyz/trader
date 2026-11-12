@@ -98,18 +98,21 @@ def get_signer_native_need(
 
 
 def _get_signer_shortfall(
-    funds: FundRequirements, chain_name: str, agent_address: str
+    funds: FundRequirements, chain_name: str, agent_address: str, refilling: bool
 ) -> int:
-    """Return the Agent Signer native deficit the Agent Safe native balance cannot cover.
+    """Return the Agent Signer native need the Agent Safe native balance cannot cover.
 
     Only for a chain where both balances were read.
 
     :param funds: the funds status.
     :param chain_name: the chain the top-up decision is for.
     :param agent_address: the Agent Signer address.
+    :param refilling: whether a refill started by a partial move is still going.
     :return: the shortfall, in wei.
     """
-    need = cast(int, get_signer_native_deficit(funds, chain_name, agent_address))
+    need = cast(
+        int, get_signer_native_need(funds, chain_name, agent_address, refilling)
+    )
     safe_native = cast(int, get_safe_native_balance(funds, chain_name, agent_address))
     return max(need - safe_native, 0)
 
@@ -119,6 +122,7 @@ def get_native_deficits_with_signer_shortfall(
     chain_name: str,
     agent_address: str,
     topup: AgentTopUp,
+    refilling: bool,
     logger: Logger,
 ) -> Tuple[Optional[int], Optional[int]]:
     """Return the Agent Signer and Agent Safe native deficits, with the Agent Signer shortfall the Agent Safe cannot cover.
@@ -127,13 +131,14 @@ def get_native_deficits_with_signer_shortfall(
     :param chain_name: the chain the top-up decision is for.
     :param agent_address: the Agent Signer address.
     :param topup: the funds-manager top-up decision on that chain.
+    :param refilling: whether a refill started by a partial move is still going.
     :param logger: the logger.
     :return: the Agent Signer and Agent Safe native deficits to report; None keeps the one read.
     """
     if topup.safe_deficit is None:
         return topup.signer_deficit, None
     safe_deficit = get_safe_native_deficit(funds, chain_name, agent_address)
-    shortfall = _get_signer_shortfall(funds, chain_name, agent_address)
+    shortfall = _get_signer_shortfall(funds, chain_name, agent_address, refilling)
     if safe_deficit is None:
         logger.warning(
             f"Agent Safe deficit on {chain_name} not adjusted: its non-native "
@@ -149,7 +154,7 @@ def get_agent_topups(
     agent_address: str,
     min_signer_balance: int,
     logger: Logger,
-    agent_need_override: Optional[Dict[str, int]] = None,
+    refilling: bool = False,
 ) -> Dict[str, AgentTopUp]:
     """Apply the funds-manager top-up rule, counting Agent Safe wxDAI as native on Gnosis.
 
@@ -158,7 +163,7 @@ def get_agent_topups(
     :param agent_address: the Agent Signer address.
     :param min_signer_balance: the Agent Signer balance below which nothing is moved.
     :param logger: the logger.
-    :param agent_need_override: chain -> wei replacing the Agent Signer need.
+    :param refilling: whether a refill started by a partial move is still going.
     :return: the top-up decision per chain.
     """
     wxdai = _get_tokens(funds, GNOSIS_CHAIN_NAME, agent_address, is_signer=False).get(
@@ -168,6 +173,14 @@ def get_agent_topups(
     if wxdai is not None and wxdai.balance is not None:
         safe_native_extra[GNOSIS_CHAIN_NAME] = wxdai.balance
 
+    agent_need_override: Optional[Dict[str, int]] = None
+    if refilling:
+        # Up to the Agent Signer target, which funds-manager's deficit stops short of.
+        agent_need_override = {}
+        for chain_name in funds:
+            need = get_signer_native_need(funds, chain_name, agent_address, True)
+            if need is not None:
+                agent_need_override[chain_name] = need
     topups = get_agent_topup(
         funds,
         safe_native_extra=safe_native_extra,
