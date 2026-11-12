@@ -120,7 +120,7 @@ export RPC_URLS='{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}'
 
 # Strategy + sizing knobs — pUSD (6 decimals), so values are scaled accordingly
 export TRADING_STRATEGY=kelly_criterion
-export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}'
+export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.5,"fee_per_trade":10000,"grid_points":500}'
 
 # Polystrat market-filter defaults differ from agent-level aea-config defaults
 export USE_MULTI_BETS_MODE=false
