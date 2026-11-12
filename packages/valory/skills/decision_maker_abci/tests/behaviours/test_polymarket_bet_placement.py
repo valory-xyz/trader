@@ -456,7 +456,7 @@ class TestPolymarketBetPlacementBehaviour:
         assert payloads_sent[0].event == Event.BET_PLACEMENT_FAILED.value
 
     def test_async_act_duplicate_error(self) -> None:
-        """When response has duplicate error, should treat as success."""
+        """A "Duplicated" answer is a placed bet once the lookup says it matched."""
         behaviour = _make_behaviour()
         behaviour.token_balance = 1000
 
@@ -477,17 +477,19 @@ class TestPolymarketBetPlacementBehaviour:
         mock_bet.condition_id = "0xcond123"
 
         response = {
-            "success": False,
-            "orderID": None,  # type: ignore[var-annotated]
-            "transactionsHashes": [],
-            "signed_order_json": None,
-            "error": "Duplicated order",
-            "status": "failed",
+            "error": "order 0xabc123 is invalid. Duplicated.",
+            "posted": True,
         }
+        lookups = []
 
-        behaviour.send_polymarket_connection_request = lambda payload: _return_gen(  # type: ignore[method-assign]
-            response
-        )
+        def _route(payload):  # type: ignore[no-untyped-def]
+            if payload["request_type"] == "get_order":
+                lookups.append(payload["params"]["order_id"])
+                return _return_gen({"status": "ORDER_STATUS_MATCHED"})
+            return _return_gen(response)
+
+        behaviour.send_polymarket_connection_request = _route  # type: ignore[method-assign]
+        behaviour.sleep = lambda seconds: _noop_gen()  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "sampled_bet", new_callable=PropertyMock
@@ -534,6 +536,7 @@ class TestPolymarketBetPlacementBehaviour:
         assert len(payloads_sent) == 1
         assert payloads_sent[0].event == Event.BET_PLACEMENT_DONE.value
         behaviour.update_bet_transaction_information.assert_called_once_with()
+        assert lookups == ["0xabc123"]
 
     def test_async_act_no_orderbook_error(self) -> None:
         """When no orderbook exists, should send impossible payload."""
