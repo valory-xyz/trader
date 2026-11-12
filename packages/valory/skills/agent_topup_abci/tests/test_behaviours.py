@@ -334,6 +334,8 @@ class TestNoMoveGate:
         [
             ("polygon", ETHER // 10, 0, False),  # Agent Safe empty, Agent Signer short
             ("polygon", ETHER, 0, True),  # nothing due
+            # Agent Signer below the settlement threshold, Agent Safe holding POL
+            ("polygon", SIGNER_SETTLEMENT_THRESHOLD - 1, 10 * ETHER, True),
             ("gnosis", ETHER // 10, 0, True),
         ],
     )
