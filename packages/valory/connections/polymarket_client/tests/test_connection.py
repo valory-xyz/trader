@@ -787,7 +787,9 @@ class TestPlaceBet:
     def test_place_bet_below_minimum_on_a_5xx_is_still_not_retryable(self) -> None:
         """The amount is signed in, so a minimum-size refusal can only repeat."""
         response, _ = self._post_and_fail(
-            self._post_error(500, "invalid amount for a marketable BUY order, min size: 1")
+            self._post_error(
+                500, "invalid amount for a marketable BUY order, min size: 1"
+            )
         )
 
         assert response["below_minimum"] is True
