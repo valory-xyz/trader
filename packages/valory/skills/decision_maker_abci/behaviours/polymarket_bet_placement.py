@@ -30,6 +30,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_NOT_FILLED,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    ORDER_STATUS_MATCHED,
     PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
@@ -52,7 +53,6 @@ CLOB_VERSION = "v2"
 DUPLICATE_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
 # The CLOB's answer to a resent order: "order 0x... is invalid. Duplicated."
 DUPLICATED_ORDER_ID_RE = re.compile(r"order\s+(0x[0-9a-fA-F]+)\s+is invalid", re.I)
-ORDER_STATUS_MATCHED = "ORDER_STATUS_MATCHED"
 
 
 class PolymarketBetPlacementBehaviour(

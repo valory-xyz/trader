@@ -33,6 +33,7 @@ from packages.valory.skills.chatui_abci.models import (
     WITHDRAWAL_STATE_SELLING,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    ORDER_STATUS_MATCHED,
     PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import WithdrawalPayload
@@ -65,7 +66,7 @@ DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 
 # production data we cannot distinguish FAK kills from external cancels.
 # Unrecognized values fall through to ``unmatched`` (retryable) defensively.
 TERMINAL_STATUS_MAP = {
-    "ORDER_STATUS_MATCHED": "matched",
+    ORDER_STATUS_MATCHED: "matched",
     "ORDER_STATUS_CANCELED": "canceled",
     "ORDER_STATUS_INVALID": "invalid",
     "ORDER_STATUS_CANCELED_MARKET_RESOLVED": "market_resolved",

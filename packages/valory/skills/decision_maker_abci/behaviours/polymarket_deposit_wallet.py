@@ -41,9 +41,10 @@ DEPOSIT_WALLET_STORE = "deposit_wallet.json"
 # get_order returns ORDER_STATUS_* enum strings (different vocabulary than
 # post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
 # only non-terminal value; everything else means we can stop polling.
+ORDER_STATUS_MATCHED = "ORDER_STATUS_MATCHED"
 GET_ORDER_TERMINAL_STATUSES = frozenset(
     {
-        "ORDER_STATUS_MATCHED",
+        ORDER_STATUS_MATCHED,
         "ORDER_STATUS_CANCELED",
         "ORDER_STATUS_INVALID",
         "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
