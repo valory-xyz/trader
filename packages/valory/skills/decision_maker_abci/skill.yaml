@@ -35,7 +35,7 @@ fingerprint:
   behaviours/post_bet_update.py: bafybeiaxdti7zndoufk6d5laaiygkvckdypjqyasjptlzsru6tljm4vlz4
   behaviours/post_omen_withdraw.py: bafybeiapjfflxwarqhhzp3zbiqw2sb4cdsxxzz4pp3r67exvz3tpkk7r2i
   behaviours/randomness.py: bafybeiaoj3awyyg2onhpsdsn3dyczs23gr4smuzqcbw3e5ocljwxswjkce
-  behaviours/ranking.py: bafybeif3ctn7uqpvkii4qg23qjmj7cxoskufhntjsk3biho2xd7kvd5yju
+  behaviours/ranking.py: bafybeicnzhm2oy74udgze4fngxxbmr3u7w5tsscee426w6nxvzo5flg7sm
   behaviours/redeem_router.py: bafybeibgo4kmgqgbyc6twx6toxammpgvkjhhddg2e3ezogwvvgazib27nu
   behaviours/reedem.py: bafybeigfkl7aw3iqjwqorz7jjutdk4ugzlumizsd6ernwzslqrlliwp6gi
   behaviours/round_behaviour.py: bafybeiaf7tmcpywo7myeskrozkvvg5mtdabip5uz4lvymf3wyrrdpjpjou
@@ -144,7 +144,7 @@ fingerprint:
   tests/test_policy.py: bafybeifyj2laqzsiwbadje5xlaa5okyurgaodhpmjdc2vd3q6qsscvw3by
   tests/test_polymarket_dw_payloads.py: bafybeibiwz3rv2g46nbp4r2uofvhb4mvaus6tpejdbgnre2ry3e24dij2m
   tests/test_polymarket_states.py: bafybeiej5zbm4cmc3vplrdldqdfsd3iacwklhyqzcoxg57lexw5wkasu2u
-  tests/test_ranking.py: bafybeihi2wnmnu7eb6ogib6egukqeck6y4tfoavd2bvseievox7cusgney
+  tests/test_ranking.py: bafybeieuye3ave2t47x5dqktqo3aviptuylt64rufl5tjim2d332knh44i
   tests/test_redeem_info.py: bafybeibbxfbqehoidiqza2e62ch57wvb573zvq2sp6zclcho4nwqor4wra
   tests/test_rounds.py: bafybeih3vltq6l6mvdi5ospwebc6fpppfscdjjkzrjazciq3xr5hofk5kq
   tests/test_score_gated_tags.py: bafybeielv22mt3epe5isbjml7kknye36tw4cifm6xb776m7pzww5mcl72i
@@ -181,7 +181,7 @@ protocols:
 - valory/srr:0.1.0:bafybeibfs6osw7guctdpollf4iwt4vhd6yk7ai34tqk5djuxtgowjwdjb4
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
+- valory/market_manager_abci:0.1.0:bafybeiaqace2mhsprtjz7ygnq2jcn2bazk7y3rkw7m6e6flgajbv4bko7m
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
