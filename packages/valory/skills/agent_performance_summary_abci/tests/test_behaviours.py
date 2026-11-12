@@ -2127,7 +2127,7 @@ class TestGetOpenMarketRequests:
                 b,
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
-            ),
+            ) as analytics_page,
             patch.object(b, "_fetch_open_markets", side_effect=_return_gen([])),
         ):
             gen = b._get_open_market_requests("0xaddr")
@@ -2136,6 +2136,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 assert e.value == 0
         assert b._open_market_request_keys == []
+        analytics_page.assert_not_called()
 
     def test_omen_with_open_markets(self) -> None:
         """Counts requests matching open market titles on Omen."""
@@ -2157,7 +2158,7 @@ class TestGetOpenMarketRequests:
                 b,
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
-            ),
+            ) as analytics_page,
             patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
@@ -2169,6 +2170,7 @@ class TestGetOpenMarketRequests:
                 assert e.value == 1
         # The counted requests themselves are kept for the profit series.
         assert b._open_market_request_keys == [("Q1", 10)]
+        analytics_page.assert_not_called()
 
     def test_polymarket_with_open_positions(self) -> None:
         """Counts requests matching open position titles on Polymarket."""
@@ -2252,7 +2254,7 @@ class TestGetOpenMarketRequests:
                 b,
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
-            ),
+            ) as analytics_page,
             patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
@@ -2263,6 +2265,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 # Only Q1 matches; null/missing entries are skipped
                 assert e.value == 1
+        analytics_page.assert_not_called()
 
     def test_flag_on_scored_rows_fetch_failure_returns_none(self) -> None:
         """Flag-on scored-rows fetch failure returns ``None``, not ``0``.

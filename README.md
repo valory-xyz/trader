@@ -135,6 +135,23 @@ export TOOLS_ACCURACY_HASH=QmaLiU5Pf9MadAA8nhuYRpNXUc1tkq1w8BhAHdGmeEMmA9
 export DEFAULT_ACTIVITY_GOAL=1
 ```
 
+## Polygon Marketplace migration
+
+Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
+configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's
+Marketplace squid has no parsed IPFS fields, so the enriched request history,
+tool attribution and prediction responses use the existing analytics readers.
+Their response adapters, request-time bounds, and KPI arithmetic are unchanged.
+Gnosis retains its feature-flag-controlled Graph fallback. Deploy the analytics
+Marketplace migration first and verify its Polygon history before this release.
+The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.
+
+Polystrat staking summaries also migrate to the Polygon staking squid.
+Set `STAKING_POLYGON_SQUID_URL`. The query aliases `serviceById` to `service`,
+preserving `ApiSpecs` extraction and lifetime `olasRewardsEarned` accounting.
+Epoch history and reward/KPI calculations are unchanged. Gnosis staking
+continues using its existing Graph query. Trader has no Base staking reader.
+
 The full set of Polystrat overrides lives in [`polymarket_trader/service.yaml`](./packages/valory/services/polymarket_trader/service.yaml) — diff it against [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) if you suspect drift.
 
 The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). The agent accepts USDC.e in the Safe and wraps it to pUSD on demand via the Polymarket Collateral Onramp.
@@ -145,6 +162,8 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 |---|---|
 | `GNOSIS_LEDGER_RPC` / `POLYGON_LEDGER_RPC` | RPC endpoint per chain. We use `https://rpc-gate.autonolas.tech/{gnosis,polygon}-rpc/` in production. Also flows into the per-skill `ledger` connection. |
 | `RPC_URLS` | Dict of `{chain: url}` consumed by `funds_manager` for balance / multicall reads. Pearl sets this to e.g. `{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}` (or the gnosis equivalent). Keep in sync with the per-chain `*_LEDGER_RPC`. |
+| `MECH_ANALYTICS_URL` | Required for Polystrat enriched Marketplace reads even when `USE_MECH_ANALYTICS=false`. |
+| `STAKING_POLYGON_SQUID_URL` | Required for Polystrat staking summaries; set before startup. |
 | `IS_RUNNING_ON_POLYMARKET` | Master switch between Polystrat (`true`) and Omenstrat (`false`). The service-level YAMLs default this correctly, but **`aea-config.yaml` defaults to `false`** — so any local-dev run that goes through `aea-helpers run-agent` must set this explicitly to run Polystrat. See the Polystrat section above for the full override set. |
 | `ALL_PARTICIPANTS` | List of agent EOAs participating in the service. Single-agent deployments pass a one-element list. |
 | `SAFE_CONTRACT_ADDRESS` / `SAFE_CONTRACT_ADDRESSES` | The agent's Safe multisig (the dict form is `{"gnosis":"0x..."}` or `{"polygon":"0x..."}`). |
@@ -343,25 +362,4 @@ If you add or remove a dependency:
 - Security policy: [`SECURITY.md`](./SECURITY.md).
 - [Open Autonomy framework](https://stack.olas.network/open-autonomy/)
 
-### Polygon Marketplace migration
-
-Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
-configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's
-Marketplace squid has no parsed IPFS fields, so the enriched request history,
-tool attribution and prediction responses use the existing analytics readers.
-Their response adapters, request-time bounds, and KPI arithmetic are unchanged.
-Gnosis retains its feature-flag-controlled Graph fallback. Deploy the analytics
-Marketplace migration first and verify its Polygon history before this release.
-The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.
-
-Polystrat staking summaries also migrate to the Polygon staking squid.
-Set `STAKING_POLYGON_SQUID_URL`. The query aliases `serviceById` to `service`,
-preserving `ApiSpecs` extraction and lifetime `olasRewardsEarned` accounting.
-Epoch history and reward/KPI calculations are unchanged. Gnosis staking
-continues using its existing Graph query. Trader has no Base staking reader.
-
-Protocol overlap: [#1119](https://github.com/valory-xyz/trader/pull/1119) changes
-on-chain checkpoint decisions, not these indexer reads. Both PRs touch service
-configuration/package hashes; merge in either order, then regenerate package
-hashes on the combined tree. [#1114](https://github.com/valory-xyz/trader/pull/1114)
-changes the hash-lock workflow and may alter that regeneration procedure.
+#

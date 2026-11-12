@@ -846,7 +846,7 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=False,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
-                mech_analytics_url="",
+                mech_analytics_url="https://analytics.test",
                 use_mech_analytics=False,
                 olas_predict_leaderboard_url=None,
             )
@@ -987,7 +987,7 @@ class TestAgentPerformanceSummaryParams:
                 is_achievement_checker_enabled=True,
                 is_running_on_polymarket=True,
                 balance_tracker_address="0x000000000000000000000000000000000000BEEF",
-                mech_analytics_url="",
+                mech_analytics_url="https://analytics.test",
                 use_mech_analytics=False,
                 olas_predict_leaderboard_url=None,
             )
@@ -2356,3 +2356,40 @@ class TestSubgraphSubclasses:
     def test_is_subclass_of_api_specs(self, cls: type) -> None:
         """Each subgraph class is also a subclass of ApiSpecs."""
         assert issubclass(cls, ApiSpecs)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_polygon_missing_analytics_is_rejected_at_startup(
+    tmp_path: Path, enabled: bool
+) -> None:
+    """Required Polygon analytics cannot be bypassed by disabling the Gnosis flag."""
+    kwargs = {
+        **DEFAULT_APS_KWARGS,
+        "is_running_on_polymarket": True,
+        "use_mech_analytics": enabled,
+        "mech_analytics_url": "",
+    }
+    with (
+        patch.object(BaseParams, "__init__", return_value=None),
+        pytest.raises(ValueError, match="MECH_ANALYTICS_URL"),
+    ):
+        AgentPerformanceSummaryParams(
+            skill_context=MagicMock(), store_path=str(tmp_path), **kwargs
+        )
+
+
+def test_polygon_missing_staking_url_is_rejected_at_model_load() -> None:
+    """A direct agent run cannot issue squid queries to a missing endpoint."""
+    context = MagicMock()
+    context.params.is_running_on_polymarket = True
+    with pytest.raises(ValueError, match="STAKING_POLYGON_SQUID_URL"):
+        PolygonStakingSubgraph(skill_context=context, url=None)
+
+
+def test_gnosis_does_not_require_polygon_staking_url() -> None:
+    """The agent-level null override remains optional outside Polystrat."""
+    context = MagicMock()
+    context.params.is_running_on_polymarket = False
+    with patch.object(Subgraph, "__init__", return_value=None) as init:
+        PolygonStakingSubgraph(skill_context=context, url=None)
+    assert init.call_args.kwargs["url"] == ""

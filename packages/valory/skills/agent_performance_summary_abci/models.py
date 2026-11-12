@@ -680,13 +680,7 @@ class AgentPerformanceSummaryParams(BaseParams):
         self.balance_tracker_address: str = self._ensure(
             "balance_tracker_address", kwargs, str
         )
-        # Mech-analytics migration: base URL of the read-only mech-analytics
-        # API and a feature flag gating whether the trader reads request
-        # data from that API instead of the marketplace subgraph. Empty URL
-        # disables the flag-on path defensively (throws in the client rather
-        # than silently returning zero rows and inflating ROI). Both default
-        # to the safe pre-migration behaviour: flag off, subgraph read
-        # unchanged. See docs (consumer migration §7 in mech-analytics repo).
+        # Polygon always requires analytics; Gnosis uses the feature flag.
         # The env-var template grammar has no empty default, so unset arrives as None.
         self.mech_analytics_url: str = (
             self._ensure("mech_analytics_url", kwargs, Optional[str]) or ""
@@ -695,11 +689,6 @@ class AgentPerformanceSummaryParams(BaseParams):
         # Enforce the pairing at startup — fail loudly rather than
         # silently no-op'ing back to the subgraph path when an operator
         # enables the flag but forgets the URL.
-        if self.use_mech_analytics and not self.mech_analytics_url:
-            raise ValueError(
-                "use_mech_analytics is true but mech_analytics_url is empty; "
-                "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
-            )
         # ``None`` (a ``null`` override) disables the leaderboard fetch
         self.olas_predict_leaderboard_url: str = (
             self._ensure("olas_predict_leaderboard_url", kwargs, Optional[str]) or ""
@@ -714,6 +703,15 @@ class AgentPerformanceSummaryParams(BaseParams):
             # Standalone usage or not yet set - pop it from kwargs
             self.is_running_on_polymarket: bool = self._ensure(
                 "is_running_on_polymarket", kwargs, bool
+            )
+        if self.is_running_on_polymarket and not self.mech_analytics_url:
+            raise ValueError(
+                "Polystrat requires MECH_ANALYTICS_URL; Polygon has no Graph fallback"
+            )
+        if self.use_mech_analytics and not self.mech_analytics_url:
+            raise ValueError(
+                "use_mech_analytics is true but mech_analytics_url is empty; "
+                "set MECH_ANALYTICS_URL or turn USE_MECH_ANALYTICS off"
             )
         super().__init__(*args, **kwargs)
 
@@ -1120,7 +1118,20 @@ class GnosisStakingSubgraph(Subgraph):
 
 
 class PolygonStakingSubgraph(Subgraph):
-    """A model that wraps ApiSpecs for the Polygon Staking's subgraph specifications."""
+    """Polygon staking squid with startup configuration validation."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Reject an unconfigured Polystrat staking reader when models load."""
+        context = kwargs.get("skill_context")
+        if (
+            context is not None
+            and getattr(context.params, "is_running_on_polymarket", False) is True
+            and not kwargs.get("url")
+        ):
+            raise ValueError("Polystrat requires STAKING_POLYGON_SQUID_URL")
+        if kwargs.get("url") is None:
+            kwargs["url"] = ""
+        super().__init__(*args, **kwargs)
 
 
 class OpenMarketsSubgraph(Subgraph):
