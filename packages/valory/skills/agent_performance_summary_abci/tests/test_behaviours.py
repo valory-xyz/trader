@@ -2221,7 +2221,7 @@ class TestGetOpenMarketRequests:
                 b,
                 "_page_mech_analytics_scored_rows",
                 side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
-            ),
+            ) as analytics_page,
             patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
@@ -2231,6 +2231,8 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+
+        analytics_page.assert_not_called()
 
     def test_omen_null_question_in_open_markets_skipped(self) -> None:
         """Markets with null or missing question field are skipped, not crash."""

@@ -114,6 +114,8 @@ export CREATOR_PER_SUBGRAPH='{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA59
 export IS_RUNNING_ON_POLYMARKET=true
 export MECH_CHAIN_ID=polygon
 export DEFAULT_CHAIN_ID=polygon
+export MECH_ANALYTICS_URL="<analytics URL supplied by deployment operator>"
+export STAKING_POLYGON_SQUID_URL="<staking squid URL supplied by deployment operator>"
 
 export POLYGON_LEDGER_RPC="https://rpc-gate.autonolas.tech/polygon-rpc/"
 export RPC_URLS='{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}'
@@ -136,6 +138,11 @@ export DEFAULT_ACTIVITY_GOAL=1
 ```
 
 ## Polygon Marketplace migration
+
+Release prerequisite: the Pearl Polystrat template must inject both
+`MECH_ANALYTICS_URL` and `STAKING_POLYGON_SQUID_URL` before shipping this agent.
+Service defaults are null; startup validation intentionally rejects missing values.
+
 
 Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
 configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's

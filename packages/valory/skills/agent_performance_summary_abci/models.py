@@ -686,9 +686,6 @@ class AgentPerformanceSummaryParams(BaseParams):
             self._ensure("mech_analytics_url", kwargs, Optional[str]) or ""
         )
         self.use_mech_analytics: bool = self._ensure("use_mech_analytics", kwargs, bool)
-        # Enforce the pairing at startup — fail loudly rather than
-        # silently no-op'ing back to the subgraph path when an operator
-        # enables the flag but forgets the URL.
         # ``None`` (a ``null`` override) disables the leaderboard fetch
         self.olas_predict_leaderboard_url: str = (
             self._ensure("olas_predict_leaderboard_url", kwargs, Optional[str]) or ""
@@ -708,6 +705,9 @@ class AgentPerformanceSummaryParams(BaseParams):
             raise ValueError(
                 "Polystrat requires MECH_ANALYTICS_URL; Polygon has no Graph fallback"
             )
+        # Enforce the pairing at startup — fail loudly rather than
+        # silently no-op'ing back to the subgraph path when an operator
+        # enables the flag but forgets the URL.
         if self.use_mech_analytics and not self.mech_analytics_url:
             raise ValueError(
                 "use_mech_analytics is true but mech_analytics_url is empty; "
@@ -1127,7 +1127,7 @@ class GnosisStakingSubgraph(Subgraph):
 
 
 class PolygonStakingSubgraph(Subgraph):
-    """Polygon staking squid with startup configuration validation."""
+    """Polygon staking squid; a null URL is normalised to an empty string."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Normalize the optional Polygon URL before sibling models are attached."""
