@@ -743,15 +743,6 @@ class SharedState(BaseSharedState):
     # The latest leaderboard refresh, run off the FSM
     _leaderboard_thread: Optional[threading.Thread] = None
 
-    def setup(self) -> None:
-        """Validate Polygon indexer configuration after all models are attached."""
-        if (
-            self.params.is_running_on_polymarket
-            and not self.context.polygon_staking_subgraph.url
-        ):
-            raise ValueError("Polystrat requires STAKING_POLYGON_SQUID_URL")
-        super().setup()
-
     @property
     def params(self) -> AgentPerformanceSummaryParams:
         """Return the params."""
@@ -1127,13 +1118,7 @@ class GnosisStakingSubgraph(Subgraph):
 
 
 class PolygonStakingSubgraph(Subgraph):
-    """Polygon staking squid; a null URL is normalised to an empty string."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Normalize the optional Polygon URL before sibling models are attached."""
-        if kwargs.get("url") is None:
-            kwargs["url"] = ""
-        super().__init__(*args, **kwargs)
+    """A model that wraps ApiSpecs for the Polygon staking squid."""
 
 
 class OpenMarketsSubgraph(Subgraph):

@@ -70,16 +70,16 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeihkkm7oxrhnwpg74rqfh4kxtt5oxmy35rnripxawqiplo74tpwj3q
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeibcjxvgigoxmd6vbxqowtov6qrdj4p55yutjpnneyr4u7tzts6kye
 - valory/market_manager_abci:0.1.0:bafybeigmizwuczognt3cccot3gndrjaxuez5zwvd4nihnaaf6dycabiybm
-- valory/decision_maker_abci:0.1.0:bafybeifcxyt62bibhogopv76y7owndfbqyz2ulmy6prbmfpjtdaw4krmd4
-- valory/trader_abci:0.1.0:bafybeigne2wwvillmj62p677ykqnk22aq22nppxoxyvz2mfddjsoi2fk3e
+- valory/decision_maker_abci:0.1.0:bafybeigkqojpo4ardwtveqjgwecl5fp7yn2xrpvokwgfs6o7manoi4ivza
+- valory/trader_abci:0.1.0:bafybeifttptqkpio6intzidwgaqldkvsifaxfaqp3qtx5hh2oikc5bgzoq
 - valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeibo7mf3oibm2oubd4w4qighj2v5qr3hsq7qdk2tpzvb6udxjuvzby
+- valory/check_stop_trading_abci:0.1.0:bafybeifw6jpaz3vnozppsvjh2ttujhlk5zmh6tgxc4fhipcw5v3khk6x34
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeiaoa65qtghbwyr4bhroyq7yy6lvsb2zjbdqbjlmdb47xlujodnxse
-- valory/agent_performance_summary_abci:0.1.0:bafybeib7cfv75oq326d5dd4uqpozbwe2tlimspeia6owcq4obfgty4ttq4
+- valory/chatui_abci:0.1.0:bafybeibgryv7jln4kyreghzsodsptd2vgpg4x7f5qqmzblnfs4mca4sbta
+- valory/agent_performance_summary_abci:0.1.0:bafybeicapubrggofqy6khc7l4fw727puxcm4venexppawmjbpa7jiapts4
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 customs:
 - valory/kelly_criterion:0.1.0:bafybeicilvsozfawzdcsmtcwxiutr33dtixeebhawn7nolxmm5vj74z5h4
@@ -453,9 +453,6 @@ models:
       error_type: ${str:dict}
       retries: ${int:5}
       url: ${str:https://api.subgraph.autonolas.tech/api/proxy/marketplace-gnosis}
-  polygon_staking_subgraph:
-    args:
-      url: ${STAKING_POLYGON_SQUID_URL:str:null}
   gnosis_staking_subgraph:
     args:
       method: ${str:POST}

@@ -115,7 +115,6 @@ export IS_RUNNING_ON_POLYMARKET=true
 export MECH_CHAIN_ID=polygon
 export DEFAULT_CHAIN_ID=polygon
 export MECH_ANALYTICS_URL="<analytics URL supplied by deployment operator>"
-export STAKING_POLYGON_SQUID_URL="<staking squid URL supplied by deployment operator>"
 
 export POLYGON_LEDGER_RPC="https://rpc-gate.autonolas.tech/polygon-rpc/"
 export RPC_URLS='{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}'
@@ -139,11 +138,6 @@ export DEFAULT_ACTIVITY_GOAL=1
 
 ## Polygon Marketplace migration
 
-Release prerequisite: the Pearl Polystrat template must inject both
-`MECH_ANALYTICS_URL` and `STAKING_POLYGON_SQUID_URL` before shipping this agent.
-Service defaults are null; startup validation intentionally rejects missing values.
-
-
 Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
 configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's
 Marketplace squid has no parsed IPFS fields, so the enriched request history,
@@ -154,7 +148,9 @@ Marketplace migration first and verify its Polygon history before this release.
 The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.
 
 Polystrat staking summaries also migrate to the Polygon staking squid.
-Set `STAKING_POLYGON_SQUID_URL`. The query aliases `serviceById` to `service`,
+The staking endpoint is configured in both skill manifests as
+`https://subgraph.autonolas.tech/squid/staking-polygon/graphql`.
+The query aliases `serviceById` to `service`,
 preserving `ApiSpecs` extraction and lifetime `olasRewardsEarned` accounting.
 Epoch history and reward/KPI calculations are unchanged. Gnosis staking
 continues using its existing Graph query. Trader has no Base staking reader.
@@ -170,7 +166,6 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 | `GNOSIS_LEDGER_RPC` / `POLYGON_LEDGER_RPC` | RPC endpoint per chain. We use `https://rpc-gate.autonolas.tech/{gnosis,polygon}-rpc/` in production. Also flows into the per-skill `ledger` connection. |
 | `RPC_URLS` | Dict of `{chain: url}` consumed by `funds_manager` for balance / multicall reads. Pearl sets this to e.g. `{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}` (or the gnosis equivalent). Keep in sync with the per-chain `*_LEDGER_RPC`. |
 | `MECH_ANALYTICS_URL` | Required for Polystrat enriched Marketplace reads even when `USE_MECH_ANALYTICS=false`. |
-| `STAKING_POLYGON_SQUID_URL` | Required for Polystrat staking summaries; set before startup. |
 | `IS_RUNNING_ON_POLYMARKET` | Master switch between Polystrat (`true`) and Omenstrat (`false`). The service-level YAMLs default this correctly, but **`aea-config.yaml` defaults to `false`** — so any local-dev run that goes through `aea-helpers run-agent` must set this explicitly to run Polystrat. See the Polystrat section above for the full override set. |
 | `ALL_PARTICIPANTS` | List of agent EOAs participating in the service. Single-agent deployments pass a one-element list. |
 | `SAFE_CONTRACT_ADDRESS` / `SAFE_CONTRACT_ADDRESSES` | The agent's Safe multisig (the dict form is `{"gnosis":"0x..."}` or `{"polygon":"0x..."}`). |
