@@ -266,7 +266,7 @@ class PolymarketBetPlacementBehaviour(
         order_id = found.group(1)
         order: Optional[Dict[str, Any]]
         order, _ = yield from self._poll_order_until_terminal_cooperative(
-            order_id, DUPLICATE_CONFIRM_BACKOFFS_S
+            order_id, DUPLICATE_CONFIRM_BACKOFFS_S, "bet placement: "
         )
         status = order.get("status") if order else None
         if status == ORDER_STATUS_MATCHED:

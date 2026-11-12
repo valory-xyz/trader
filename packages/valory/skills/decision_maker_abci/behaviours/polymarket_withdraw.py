@@ -504,7 +504,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             process normally.
         """
         terminal, poll_error = yield from self._poll_order_until_terminal_cooperative(
-            order_id, DELAYED_ORDER_POLL_BACKOFFS_S
+            order_id, DELAYED_ORDER_POLL_BACKOFFS_S, "withdrawal: "
         )
         if poll_error is not None:
             # Every poll attempt errored — distinct from an in-flight defer. The

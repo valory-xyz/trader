@@ -260,6 +260,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         self,
         order_id: str,
         backoffs_s: Tuple[float, ...],
+        log_prefix: str,
     ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
         """Poll ``get_order`` until the order reaches a terminal status.
 
@@ -277,6 +278,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         :param order_id: CLOB order id to look up.
         :param backoffs_s: seconds to sleep before each lookup.
+        :param log_prefix: prefix naming the caller's flow in log lines.
         :yield: framework yields between cooperative sleeps and dispatch.
         :return: tuple of ``(terminal_payload_or_none, error_string_or_none)``.
         """
@@ -288,7 +290,9 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             if error is not None:
                 error_count += 1
                 last_error = error
-                self.context.logger.warning(f"get_order failed for {order_id}: {error}")
+                self.context.logger.warning(
+                    f"{log_prefix}get_order failed for {order_id}: {error}"
+                )
                 continue
             # The SDK can return ``None`` shortly after ``post_order`` —
             # the data API hasn't indexed the new order yet. Keep polling
@@ -304,6 +308,6 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                 f"all {error_count} poll attempts errored " f"(last: {last_error})"
             )
         self.context.logger.warning(
-            f"order {order_id} not terminal after the poll was exhausted"
+            f"{log_prefix}order {order_id} still delayed after poll exhausted"
         )
         return None, None
