@@ -101,9 +101,6 @@ def get_safe_native_deficit_with_signer_shortfall(
 ) -> Optional[int]:
     """Return the Agent Signer shortfall the Agent Safe cannot cover, plus the Agent Safe deficit read.
 
-    For an Agent Safe whose deficit read counts a non-native asset towards its target,
-    which the funds-manager rule cannot: the shortfall must still be funded in native token.
-
     :param funds: the funds status, its Agent Safe native deficit already adjusted.
     :param chain_name: the chain the top-up decision is for.
     :param agent_address: the Agent Signer address.
@@ -115,7 +112,6 @@ def get_safe_native_deficit_with_signer_shortfall(
         return None
     safe_deficit = get_safe_native_deficit(funds, chain_name, agent_address)
     if safe_deficit is None:
-        # The rule cannot count the non-native asset, so its deficit would over-ask.
         logger.warning(
             f"Agent Safe deficit on {chain_name} not adjusted: its non-native "
             "asset was not valued, so the deficit read is kept."
