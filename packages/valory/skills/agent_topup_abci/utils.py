@@ -80,7 +80,7 @@ def get_signer_shortfall(
 ) -> int:
     """Return the Agent Signer native deficit the Agent Safe native balance cannot cover.
 
-    Only for a chain where the top-up rule decided a move, which means it read both.
+    Only for a chain where both balances were read.
 
     :param funds: the funds status.
     :param chain_name: the chain the top-up decision is for.
