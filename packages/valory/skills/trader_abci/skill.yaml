@@ -12,7 +12,7 @@ fingerprint:
   composition.py: bafybeie7gcusfom44mwydtlfj447qsxw5zfe4hjwf32yrk2tp77nvfbuf4
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeihrnxolrwg7zl62hi2ldevtwyjrze3l7p5jkd73qmkmvjhmu3r3lu
-  handlers.py: bafybeiddoikf4zdv3k2mqdpkrunsc7dck27syq7qxl7fiedu7tbai6vswy
+  handlers.py: bafybeihrunnx3fg47wuqbdryzrgnbxw7xez2zyhbwnrgp7drj225ocwixi
   models.py: bafybeiefga6y4rqanb3n4czpthj5pka62uhhwlthwjazul6mjkejf6xqcu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeibq6z5rwgusrjxbv5jvfnyc2sfjlxd7saydiagq6lgio5tvp4rkwy
@@ -48,10 +48,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeiaqace2mhsprtjz7ygnq2jcn2bazk7y3rkw7m6e6flgajbv4bko7m
-- valory/decision_maker_abci:0.1.0:bafybeifopxctyui2bserjcn5r662tne7gxmzsma3fapafv2esi3pvutq7a
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicux6r6vthb2s4eu6wmoaoozgda7bcmecloks7yyjedg3g25rxo6u
+- valory/decision_maker_abci:0.1.0:bafybeih2su3yamq72s32x6u6za3l7qu7y27gt2mldssz7c26sjpvqfyxxq
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiarb4fczp3suiweeu4g27utnrrgkcsewgbcep5dqnhc6p2l2gnobi
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
-- valory/agent_topup_abci:0.1.0:bafybeibbjhbdut75vc2jnj7owwdsv5elfqem5cwnf4rrhn3zy4bmabgacu
+- valory/agent_topup_abci:0.1.0:bafybeiafpss3hvoavr4whyi7q5t64rfuxfzwawhcduzc3rphdxo4s7oy2a
 - valory/check_stop_trading_abci:0.1.0:bafybeihfp62pajdbkfuch2nf2takcjf22atr3eme6ke552ljqpvj4ed25a
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
