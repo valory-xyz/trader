@@ -31,6 +31,7 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     ETHER,
     funds_status,
 )
+from packages.valory.skills.agent_topup_abci.utils import TOPUP_REFILLING_KEY
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_swap import (
     ETHER_VALUE,
     HTTP_OK,
@@ -68,7 +69,7 @@ def _make_behaviour(signer_deficit: Optional[int] = 0):  # type: ignore[no-untyp
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
-    behaviour._get_signer_native_deficit = lambda: signer_deficit  # type: ignore[method-assign]
+    behaviour._get_signer_native_need = lambda: signer_deficit  # type: ignore[method-assign]
 
     return behaviour
 
@@ -719,15 +720,20 @@ class TestPolymarketSwapSignerReserve:
         assert amounts == []
 
 
-class TestGetSignerNativeDeficit:
-    """The Agent Signer POL deficit comes from funds-manager."""
+class TestGetSignerNativeNeed:
+    """The Agent Signer POL need comes from funds-manager, up to its target while refilling."""
 
     @staticmethod
-    def _behaviour(get_funds_status: MagicMock) -> PolymarketSwapUsdcBehaviour:
+    def _behaviour(
+        get_funds_status: MagicMock, refilling: bool = False
+    ) -> PolymarketSwapUsdcBehaviour:
         """A behaviour reading the given funds-manager status."""
         behaviour = object.__new__(PolymarketSwapUsdcBehaviour)
         context = MagicMock(agent_address=AGENT)
-        context.shared_state = {GET_FUNDS_STATUS_METHOD_NAME: get_funds_status}
+        context.shared_state = {
+            GET_FUNDS_STATUS_METHOD_NAME: get_funds_status,
+            TOPUP_REFILLING_KEY: refilling,
+        }
         behaviour.__dict__["_context"] = context
         return behaviour
 
@@ -742,11 +748,36 @@ class TestGetSignerNativeDeficit:
         status = funds_status("polygon", signer_balance, 10 * ETHER)
         behaviour = self._behaviour(MagicMock(return_value=status))
 
-        assert behaviour._get_signer_native_deficit() == deficit
+        assert behaviour._get_signer_native_need() == deficit
 
     def test_failed_status_read_returns_none(self) -> None:
         """A funds-manager failure reads as an unknown deficit."""
         behaviour = self._behaviour(MagicMock(side_effect=ValueError("rpc down")))
 
-        assert behaviour._get_signer_native_deficit() is None
+        assert behaviour._get_signer_native_need() is None
         assert "rpc down" in behaviour.context.logger.warning.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        "safe_pol, swapped",
+        [
+            (2 * ETHER + 264868 * ETHER // 10000, []),
+            (40 * ETHER, [40 * ETHER - 2 * ETHER - 264868 * ETHER // 10000]),
+        ],
+    )
+    def test_refill_keeps_the_pol_up_to_the_signer_target(
+        self, safe_pol: int, swapped: list
+    ) -> None:
+        """Agent Signer at 3.5132 POL after a 1 POL partial move: 2 + 26.4868 POL is kept."""
+        status = funds_status(
+            "polygon",
+            35132 * ETHER // 10000,
+            0,
+            signer_topup=30 * ETHER,
+            signer_threshold=32 * ETHER // 10,
+        )
+        behaviour = self._behaviour(MagicMock(return_value=status), refilling=True)
+        behaviour._get_balance = lambda addr: _return_gen(safe_pol)  # type: ignore[method-assign,assignment]
+        amounts = TestPolymarketSwapSignerReserve._quoted_amounts(behaviour)
+
+        assert _run_get_tx_hash(behaviour, threshold=2 * ETHER) is None
+        assert amounts == swapped
