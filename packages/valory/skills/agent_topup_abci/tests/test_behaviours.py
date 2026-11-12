@@ -19,7 +19,7 @@
 
 """Tests for the behaviours of the agent top-up skill."""
 
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -37,6 +37,7 @@ from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.agent_topup_abci.tests.helpers import (
     AGENT,
     ETHER,
+    NATIVE,
     SAFE,
     funds_status,
     real_topup_rule,
@@ -45,6 +46,8 @@ from packages.valory.skills.agent_topup_abci.utils import (
     TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
     WXDAI_ADDRESS,
+    get_agent_topups,
+    get_native_deficits_with_signer_shortfall,
 )
 from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
@@ -756,6 +759,24 @@ class TestRefillToTarget:
             signer_threshold=32 * ETHER // 10,
         )
 
+    @staticmethod
+    def _funds_status_deficits(
+        status: FundRequirements, shared_state: Dict[str, Any]
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """The Agent Signer and Agent Safe native deficits `/funds-status` reports on Polymarket."""
+        refilling = shared_state[TOPUP_REFILLING_KEY]
+        topup = get_agent_topups(
+            real_topup_rule("polygon"),
+            status,
+            AGENT,
+            SIGNER_SETTLEMENT_THRESHOLD,
+            MagicMock(),
+            refilling=refilling,
+        )["polygon"]
+        return get_native_deficits_with_signer_shortfall(
+            status, "polygon", AGENT, topup, refilling, MagicMock()
+        )
+
     def test_keeps_refilling_after_crossing_the_threshold(self) -> None:
         """Agent Signer 2.5132 POL, 1 POL moved: the gate stays open until 30 POL is reached."""
         signer = 25132 * ETHER // 10000
@@ -782,14 +803,17 @@ class TestRefillToTarget:
         assert settled.run() is None
 
         # 3.5132 POL is above the 3.2 POL threshold, so funds-manager reads no deficit.
-        empty_safe = _Harness(
-            "polygon",
-            self._polystrat_status(signer + ETHER, 0),
-            shared_state=shared_state,
-        )
+        empty_safe_status = self._polystrat_status(signer + ETHER, 0)
+        empty_safe = _Harness("polygon", empty_safe_status, shared_state=shared_state)
         assert empty_safe.run() is None
         assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
         assert shared_state[TOPUP_REFILLING_KEY] is True
+        # `/funds-status` still asks for the 26.4868 POL, with Agent Safe USDC covering its own target.
+        empty_safe_status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 0
+        assert self._funds_status_deficits(empty_safe_status, shared_state) == (
+            0,
+            30 * ETHER - signer - ETHER,
+        )
 
         funded_safe = _Harness(
             "polygon",

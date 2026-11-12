@@ -57,7 +57,10 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     native,
     real_topup_rule,
 )
-from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
+from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_REFILLING_KEY,
+    TOPUP_SUCCEEDED_KEY,
+)
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -3221,6 +3224,34 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", SAFE) is None
         assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
         assert "not valued" in handler.context.logger.warning.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        "refilling, adjusted_safe_deficit, signer_deficit, safe_deficit",
+        [
+            (True, 0, 0, 264868 * ETHER // 10000),  # the Agent Safe asks for the refill
+            (False, 0, 0, 0),  # threshold rule: nothing asked above 3.2 POL
+            (True, None, 264868 * ETHER // 10000, None),  # USDC not valued
+        ],
+    )
+    def test_refill_asks_for_the_signer_target(
+        self,
+        refilling: bool,
+        adjusted_safe_deficit: Optional[int],
+        signer_deficit: Optional[int],
+        safe_deficit: Optional[int],
+    ) -> None:
+        """Agent Signer at 3.5132 POL after a 1 POL partial move, Agent Safe POL empty: 26.4868 POL is asked."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == safe_deficit
 
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
         """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
