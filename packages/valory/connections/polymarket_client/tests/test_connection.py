@@ -22,7 +22,7 @@
 import dataclasses
 import json
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Dict, Generator, Optional, Tuple
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlsplit
 
@@ -714,25 +714,85 @@ class TestPlaceBet:
         assert error is None
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
-    def test_place_bet_poly_api_exception_with_dict_error(self) -> None:
-        """Check that a PolyApiException with dict error_msg returns error in response.
-
-        The response must also contain 'signed_order_json' so the caller can
-        retry the submission with the same order (even though order creation
-        failed before posting).
-        """
+    def test_place_bet_error_before_the_post_is_not_marked_posted(self) -> None:
+        """An error raised while signing never reached the CLOB as an order."""
         from py_clob_client_v2.exceptions import PolyApiException
 
         conn = _make_connection()
         _arm_preflight(conn)
-        exc = PolyApiException(error_msg={"error": "duplicate order"})
+        exc = PolyApiException(error_msg={"error": "tick size lookup failed"})
+        exc.status_code = 404
         conn.client.create_market_order.side_effect = exc
 
         response, error = conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
-        assert error == "duplicate order"
-        assert "error" in response
-        # signed_order_json must be present so the caller can cache and retry
-        assert "signed_order_json" in response
+
+        assert error == "tick size lookup failed"
+        assert response == {"error": "tick size lookup failed"}
+        conn.client.post_order.assert_not_called()
+
+    @staticmethod
+    def _post_error(status_code: Any, message: str) -> Any:
+        """Build the SDK exception ``post_order`` raises for a CLOB answer."""
+        from py_clob_client_v2.exceptions import PolyApiException
+
+        exc = PolyApiException(error_msg={"error": message})
+        exc.status_code = status_code
+        return exc
+
+    def _post_and_fail(self, exc: Any) -> Tuple[Dict[str, Any], str]:
+        """Run ``_place_bet`` with ``post_order`` raising ``exc``."""
+        conn = _make_connection()
+        _arm_preflight(conn)
+        conn.client.create_market_order.return_value = self._make_signed_order_v2()
+        conn.client.post_order.side_effect = exc
+        return conn._place_bet(token_id="tok123", amount=5.0)  # nosec B106
+
+    def test_place_bet_fok_kill_is_definite_and_not_cached(self) -> None:
+        """A killed FOK order is an answer: flag it, and hand back no order to resend."""
+        response, error = self._post_and_fail(
+            self._post_error(
+                400,
+                "order couldn't be fully filled. FOK orders are fully filled or killed.",
+            )
+        )
+
+        assert "couldn't be fully filled" in error
+        assert response["posted"] is True
+        assert response["fok_killed"] is True
+        assert "retryable" not in response
+        assert "signed_order_json" not in response
+
+    def test_place_bet_other_4xx_is_definite_and_not_cached(self) -> None:
+        """A rejection other than a kill is still a definite answer."""
+        response, _ = self._post_and_fail(
+            self._post_error(400, "order 0xabc is invalid. Duplicated.")
+        )
+
+        assert response["posted"] is True
+        assert "fok_killed" not in response
+        assert "retryable" not in response
+        assert "signed_order_json" not in response
+
+    @pytest.mark.parametrize("status_code", [None, 429, 500, 502, 504])
+    def test_place_bet_unanswered_post_keeps_the_order_for_a_resend(
+        self, status_code: Any
+    ) -> None:
+        """No reply, a 5xx or a 429 may hide a match or a refusal to take the order."""
+        response, _ = self._post_and_fail(self._post_error(status_code, "boom"))
+
+        assert response["posted"] is True
+        assert response["retryable"] is True
+        assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
+
+    def test_place_bet_below_minimum_on_a_5xx_is_still_not_retryable(self) -> None:
+        """The amount is signed in, so a minimum-size refusal can only repeat."""
+        response, _ = self._post_and_fail(
+            self._post_error(500, "invalid amount for a marketable BUY order, min size: 1")
+        )
+
+        assert response["below_minimum"] is True
+        assert "retryable" not in response
+        assert "signed_order_json" not in response
 
     def test_place_bet_poly_api_exception_non_dict_error(self) -> None:
         """Check that a PolyApiException with non-dict error_msg falls to the generic branch."""

@@ -28,7 +28,17 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import cached_property
 from itertools import product
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypedDict,
+    cast,
+)
 
 import requests
 from aea.configurations.base import PublicId
@@ -225,6 +235,36 @@ MIN_MARKETABLE_USD = 1.0
 # All must appear, so an unrelated "invalid amount ..." rejection is not also
 # treated as terminal.
 BELOW_MINIMUM_MARKERS = ("invalid amount", "min size")
+# The CLOB's answer to a FOK order it killed because the book could not fill it.
+FOK_KILLED_MARKER = "couldn't be fully filled"
+HTTP_TOO_MANY_REQUESTS = 429
+HTTP_SERVER_ERROR = 500
+
+
+class PlaceBetError(TypedDict, total=False):
+    """The error response of ``_place_bet``."""
+
+    error: str
+    # True only when the error is the order POST's own answer.
+    posted: bool
+    # Set only when posted: no reply, 5xx or 429, so resending may still land.
+    retryable: bool
+    fok_killed: bool
+    below_minimum: bool
+    # Present only when retryable.
+    signed_order_json: str
+
+
+def _poly_api_error_message(e: PolyApiException, fallback_prefix: str) -> str:
+    """The CLOB's own ``error`` text, or a generic message built from the exception.
+
+    :param e: the SDK exception.
+    :param fallback_prefix: prefix of the generic message.
+    :return: the error message.
+    """
+    if isinstance(e.error_msg, dict) and e.error_msg.get("error"):
+        return str(e.error_msg["error"])
+    return f"{fallback_prefix}: {e}"
 
 
 def _bool_param(value: bool) -> str:
@@ -968,31 +1008,53 @@ class PolymarketClientConnection(BaseSyncConnection):
                     {**_serialize_signed_order_v2(signed), ASSET_FIELD_KEY: asset_field}
                 )
 
-            # Post order
-            resp: Dict = self.client.post_order(signed, OrderType.FOK)
-
-            # Add signed order to response
-            if resp:
-                resp["signed_order_json"] = signed_order_json
-
-            return resp, None
-
         except PolyApiException as e:
-            error_msg = (
-                e.error_msg.get("error")
-                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
-                else f"Error placing bet: {e}"
-            )
+            error_msg = _poly_api_error_message(e, "Error placing bet")
             self.logger.error(error_msg)
-            # The amount is baked into the signature, so re-posting the same
-            # order can only be refused again. Withhold it so the caller cannot
-            # cache it, and flag the cause so the caller can leave the round.
-            lowered = str(error_msg).lower()
-            if all(marker in lowered for marker in BELOW_MINIMUM_MARKERS):
-                return {"error": error_msg, "below_minimum": True}, error_msg
-            # Return error with signed order for retry
-            response = {"error": error_msg, "signed_order_json": signed_order_json}
+            return {"error": error_msg}, error_msg
+
+        try:
+            resp: Dict = self.client.post_order(signed, OrderType.FOK)
+        except PolyApiException as e:
+            # Every path that sets ``signed`` also sets its serialized form.
+            return self._classify_post_error(e, cast(str, signed_order_json))
+
+        if resp:
+            resp["signed_order_json"] = signed_order_json
+        return resp, None
+
+    def _classify_post_error(
+        self, e: PolyApiException, signed_order_json: str
+    ) -> Tuple[PlaceBetError, str]:
+        """Classify the order POST's error answer for the caller.
+
+        Once the CLOB has acknowledged a signed order, resending it only yields
+        "Duplicated", so the signed order is handed back for a resend only when
+        the CLOB may not have taken it, or may have matched it behind the error.
+
+        :param e: the SDK exception raised by ``post_order``.
+        :param signed_order_json: the serialized signed order that was posted.
+        :return: ``(error_response, error_message)``.
+        """
+        error_msg = _poly_api_error_message(e, "Error placing bet")
+        self.logger.error(error_msg)
+        response: PlaceBetError = {"error": error_msg, "posted": True}
+        lowered = error_msg.lower()
+        # The amount is baked into the signature, so this refusal can only repeat.
+        if all(marker in lowered for marker in BELOW_MINIMUM_MARKERS):
+            response["below_minimum"] = True
             return response, error_msg
+        if FOK_KILLED_MARKER in lowered:
+            response["fok_killed"] = True
+        status = e.status_code
+        if (
+            status is None
+            or status >= HTTP_SERVER_ERROR
+            or status == HTTP_TOO_MANY_REQUESTS
+        ):
+            response["retryable"] = True
+            response["signed_order_json"] = signed_order_json
+        return response, error_msg
 
     def _sell_position(
         self,
