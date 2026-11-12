@@ -58,17 +58,6 @@ TOP_LEVEL_ERROR_TOKEN_ID = ""  # nosec B105
 # behaviour signals ``in_flight`` and defers the position to the next sweep
 # cycle rather than racing the in-flight match.
 DELAYED_ORDER_POLL_BACKOFFS_S: Tuple[float, ...] = (2.0, 5.0, 10.0, 15.0, 30.0, 60.0)
-# get_order returns ORDER_STATUS_* enum strings (different vocabulary than
-# post_order's lowercase ``matched``/``delayed``/``unmatched``). LIVE is the
-# only non-terminal value; everything else means we can stop polling.
-GET_ORDER_TERMINAL_STATUSES = frozenset(
-    {
-        "ORDER_STATUS_MATCHED",
-        "ORDER_STATUS_CANCELED",
-        "ORDER_STATUS_INVALID",
-        "ORDER_STATUS_CANCELED_MARKET_RESOLVED",
-    }
-)
 # Terminal status vocabulary observed empirically from get_order responses.
 # Permanent-failure values (``invalid``, ``market_resolved``) short-circuit
 # the per-position retry loop because retrying them is mathematically
@@ -302,77 +291,6 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         response = yield from self.send_polymarket_connection_request(payload)
         return self._extract_response_or_error(response)
 
-    def _request_get_order(
-        self,
-        order_id: str,
-    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Issue a single GET_ORDER lookup against the connection.
-
-        :param order_id: CLOB order id to look up.
-        :yield: framework yields between dispatch and response.
-        :return: ``(order_payload_or_none, error_or_none)``. The payload is
-            the raw ``client.get_order`` response (may be a falsy/None body
-            if the data API hasn't indexed the order yet).
-        """
-        payload = {
-            "request_type": RequestType.GET_ORDER.value,
-            "params": {"order_id": order_id},
-        }
-        response = yield from self.send_polymarket_connection_request(payload)
-        return self._extract_response_or_error(response)
-
-    def _poll_order_until_terminal_cooperative(
-        self,
-        order_id: str,
-    ) -> Generator[None, None, Tuple[Optional[Dict[str, Any]], Optional[str]]]:
-        """Drive the cooperative poll loop for a delayed order.
-
-        Uses ``yield from self.sleep(...)`` between polls so the connection's
-        worker thread is free to serve other consumers during the wait.
-
-        Three return shapes distinguish the outcome:
-
-        - ``(terminal_payload, None)`` — terminal status reached.
-        - ``(None, None)`` — cap exhausted while still LIVE (in_flight defer).
-        - ``(None, error_string)`` — every poll attempt errored, distinct
-          from a LIVE-exhausted in_flight. Lets the caller record the
-          parent position with a "polymarket API unreachable" reason
-          rather than the misleading in-flight defer reason.
-
-        :param order_id: CLOB order id to look up.
-        :yield: framework yields between cooperative sleeps and dispatch.
-        :return: tuple of ``(terminal_payload_or_none, error_string_or_none)``.
-        """
-        error_count = 0
-        last_error: Optional[str] = None
-        for backoff_s in DELAYED_ORDER_POLL_BACKOFFS_S:
-            yield from self.sleep(backoff_s)
-            order, error = yield from self._request_get_order(order_id)
-            if error is not None:
-                error_count += 1
-                last_error = error
-                self.context.logger.warning(
-                    f"withdrawal: get_order failed for {order_id}: {error}"
-                )
-                continue
-            # The SDK can return ``None`` shortly after ``post_order`` —
-            # the data API hasn't indexed the new order yet. Keep polling
-            # rather than crash on ``.get()``.
-            if not order:
-                continue
-            status = order.get("status") or ""
-            if status in GET_ORDER_TERMINAL_STATUSES:
-                return order, None
-        # exhausted
-        if error_count == len(DELAYED_ORDER_POLL_BACKOFFS_S):
-            return None, (
-                f"all {error_count} poll attempts errored " f"(last: {last_error})"
-            )
-        self.context.logger.warning(
-            f"withdrawal: order {order_id} still delayed after poll exhausted"
-        )
-        return None, None
-
     def _fill_from_terminal_get_order(
         self, order: Dict[str, Any], order_id: str
     ) -> Dict[str, Any]:
@@ -429,25 +347,6 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             "fill_price": fill_price,
             "raw": order,
         }
-
-    @staticmethod
-    def _extract_response_or_error(
-        response: Any,
-    ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-        """Coerce a connection-layer response into ``(payload, error)``.
-
-        The connection returns ``{"error": "..."}`` on failure (preserving
-        any extra keys like ``signed_order_json``) and a normal dict on
-        success. ``None`` means dispatch / timeout failure.
-
-        :param response: raw response from the polymarket connection layer.
-        :return: a normalized ``(payload_dict_or_none, error_or_none)`` tuple.
-        """
-        if response is None:
-            return None, "no response from connection"
-        if isinstance(response, dict) and response.get("error"):
-            return response, str(response["error"])
-        return response, None
 
     # ------------------------------------------------------------------ #
     # Position filtering                                                 #
@@ -604,7 +503,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
             process normally.
         """
         terminal, poll_error = yield from self._poll_order_until_terminal_cooperative(
-            order_id
+            order_id, DELAYED_ORDER_POLL_BACKOFFS_S
         )
         if poll_error is not None:
             # Every poll attempt errored — distinct from an in-flight defer. The
