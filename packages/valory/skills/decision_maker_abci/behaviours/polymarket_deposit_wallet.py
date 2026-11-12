@@ -287,9 +287,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             if error is not None:
                 error_count += 1
                 last_error = error
-                self.context.logger.warning(
-                    f"get_order failed for {order_id}: {error}"
-                )
+                self.context.logger.warning(f"get_order failed for {order_id}: {error}")
                 continue
             # The SDK can return ``None`` shortly after ``post_order`` —
             # the data API hasn't indexed the new order yet. Keep polling
