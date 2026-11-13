@@ -272,12 +272,9 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         Three return shapes distinguish the outcome:
 
-        - ``(terminal_payload, None)`` - terminal status reached.
-        - ``(None, None)`` - cap exhausted while still LIVE (in_flight defer).
-        - ``(None, error_string)`` - every poll attempt errored, distinct
-          from a LIVE-exhausted in_flight. Lets the caller record the
-          parent position with a "polymarket API unreachable" reason
-          rather than the misleading in-flight defer reason.
+        - ``(terminal_payload, None)`` - a terminal status was reached.
+        - ``(None, None)`` - the backoffs ran out before a terminal status.
+        - ``(None, error_string)`` - every lookup errored.
 
         :param order_id: CLOB order id to look up.
         :param backoffs_s: seconds to sleep before each lookup.
