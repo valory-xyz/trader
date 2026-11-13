@@ -238,6 +238,10 @@ MIN_MARKETABLE_USD = 1.0
 BELOW_MINIMUM_MARKERS = ("invalid amount", "min size")
 # The CLOB's answer to a FOK order it killed because the book could not fill it.
 FOK_KILLED_MARKER = "couldn't be fully filled"
+# A network that blocks the CLOB answers with these instead of reaching it.
+CLOB_BLOCKING_STATUSES = frozenset(
+    {HTTPStatus.FORBIDDEN, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
+)
 
 
 class PlaceBetError(TypedDict, total=False):
@@ -249,6 +253,8 @@ class PlaceBetError(TypedDict, total=False):
     # Set only when posted and not a definite rejection (see _is_definite_rejection).
     retryable: bool
     fok_killed: bool
+    # The network blocked the POST, so the CLOB never judged the order.
+    clob_unreachable: bool
     below_minimum: bool
     # Present only when retryable.
     signed_order_json: str
@@ -267,6 +273,7 @@ def _is_definite_rejection(status: Optional[int]) -> bool:
         status is not None
         and HTTPStatus.BAD_REQUEST <= status < HTTPStatus.INTERNAL_SERVER_ERROR
         and status != HTTPStatus.TOO_MANY_REQUESTS
+        and status not in CLOB_BLOCKING_STATUSES
     )
 
 
@@ -1058,6 +1065,10 @@ class PolymarketClientConnection(BaseSyncConnection):
         # The amount is baked into the signature, so this refusal can only repeat.
         if all(marker in lowered for marker in BELOW_MINIMUM_MARKERS):
             response["below_minimum"] = True
+            return response, error_msg
+        if e.status_code in CLOB_BLOCKING_STATUSES:
+            # A 4xx all the same, so the signed order is not handed back to resend.
+            response["clob_unreachable"] = True
             return response, error_msg
         if FOK_KILLED_MARKER in lowered:
             response["fok_killed"] = True
@@ -2747,6 +2758,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500
-                or e.status_code in (403, 451)
+                or e.status_code in CLOB_BLOCKING_STATUSES
             )
             return {"error": error_msg, CLOB_UNREACHABLE: unreachable}, error_msg

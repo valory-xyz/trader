@@ -784,6 +784,18 @@ class TestPlaceBet:
         assert response["retryable"] is True
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
+    @pytest.mark.parametrize("status_code", [403, 451])
+    def test_place_bet_blocked_network_is_unreachable_not_a_rejection(
+        self, status_code: int
+    ) -> None:
+        """A blocking network never judged the order: neither rejected nor resent."""
+        response, _ = self._post_and_fail(self._post_error(status_code, "Forbidden"))
+
+        assert response["posted"] is True
+        assert response["clob_unreachable"] is True
+        assert "retryable" not in response
+        assert "signed_order_json" not in response
+
     def test_place_bet_no_reply_as_the_sdk_raises_it_is_retryable(self) -> None:
         """The SDK's transport failure carries a plain string and no status code."""
         from py_clob_client_v2.exceptions import PolyApiException
