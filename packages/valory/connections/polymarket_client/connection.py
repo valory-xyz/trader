@@ -238,10 +238,6 @@ MIN_MARKETABLE_USD = 1.0
 BELOW_MINIMUM_MARKERS = ("invalid amount", "min size")
 # The CLOB's answer to a FOK order it killed because the book could not fill it.
 FOK_KILLED_MARKER = "couldn't be fully filled"
-# A network that blocks the CLOB answers with these instead of reaching it.
-CLOB_BLOCKING_STATUSES = frozenset(
-    {HTTPStatus.FORBIDDEN, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
-)
 
 
 class PlaceBetError(TypedDict, total=False):
@@ -250,22 +246,19 @@ class PlaceBetError(TypedDict, total=False):
     error: str
     # True only when the error is the order POST's own answer.
     posted: bool
-    # Set when posted and not below minimum, a definite rejection or a blocked network.
+    # Set when posted and neither below minimum nor a definite rejection.
     retryable: bool
     fok_killed: bool
-    # The network blocked the POST, so the CLOB never judged the order.
-    clob_unreachable: bool
     below_minimum: bool
     # Present only when retryable.
     signed_order_json: str
 
 
 def _is_definite_rejection(status: Optional[int]) -> bool:
-    """Whether the CLOB's answer to a POST is a 4xx other than 429, 403 or 451.
+    """Whether the CLOB's answer to a POST is a 4xx other than 429.
 
     Anything else (no reply, a 5xx, a 429, an unexpected status) may hide a match
-    or a refusal to take the order, and a 403/451 comes from a network that
-    blocked the POST before it reached the CLOB, so none is a definite answer.
+    or a refusal to take the order, so it is not a definite answer.
 
     :param status: the HTTP status of the answer, ``None`` when there was none.
     :return: whether the order is known not to have been placed.
@@ -274,7 +267,6 @@ def _is_definite_rejection(status: Optional[int]) -> bool:
         status is not None
         and HTTPStatus.BAD_REQUEST <= status < HTTPStatus.INTERNAL_SERVER_ERROR
         and status != HTTPStatus.TOO_MANY_REQUESTS
-        and status not in CLOB_BLOCKING_STATUSES
     )
 
 
@@ -1066,10 +1058,6 @@ class PolymarketClientConnection(BaseSyncConnection):
         # The amount is baked into the signature, so this refusal can only repeat.
         if all(marker in lowered for marker in BELOW_MINIMUM_MARKERS):
             response["below_minimum"] = True
-            return response, error_msg
-        if e.status_code in CLOB_BLOCKING_STATUSES:
-            # A 4xx all the same, so the signed order is not handed back to resend.
-            response[CLOB_UNREACHABLE] = True
             return response, error_msg
         if FOK_KILLED_MARKER in lowered:
             response["fok_killed"] = True
@@ -2759,6 +2747,6 @@ class PolymarketClientConnection(BaseSyncConnection):
             unreachable = isinstance(e, PolyApiException) and (
                 e.status_code is None
                 or e.status_code >= 500
-                or e.status_code in CLOB_BLOCKING_STATUSES
+                or e.status_code in (403, 451)
             )
             return {"error": error_msg, CLOB_UNREACHABLE: unreachable}, error_msg
