@@ -94,9 +94,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          # The PR rule compares the merge commit with its first parent.
+          fetch-depth: 2
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Check that the PR leaves lock-managed hashes unchanged
+        # The relock workflow (relock-main.yaml) rewrites them on main after
+        # the merge, so PRs that touch the same packages do not conflict.
+        if: github.event_name == 'pull_request'
+        run: python scripts/hash_lock/hash_lock.py check --base HEAD^1
       - name: Install dependencies
         run: |
           pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.3' tox-uv
@@ -142,6 +150,11 @@ jobs:
         # would burn minutes on abandoned runs.
         if: ${{ !cancelled() }}
         run: tomte tox -e bandit
+      - name: Lock package hashes
+        # PRs leave lock-managed hashes stale, so the checks below see the
+        # hashes the relock on main will commit. With stdin closed, the lock
+        # fails at once on a package that is missing from packages.json.
+        run: tomte tox -e lock-packages < /dev/null
       - name: Check packages
         run: tomte tox -e check-packages
       - name: Check hash
@@ -218,11 +231,6 @@ jobs:
           tar -xf tendermint.tar.gz
           sudo mv tendermint /usr/local/bin/tendermint
 
-      - if: matrix.os == 'ubuntu-24.04'
-        name: Packages unit tests ubuntu-24.04
-        run: |
-          tomte tox -e py${{ matrix.python-version }}-linux
-
       - if: matrix.os == 'macos-15'
         name: Install dependencies (macos-15)
         run: |
@@ -235,11 +243,6 @@ jobs:
           sudo mv protoc/bin/protoc /usr/local/bin/protoc
           brew tap yoheimuta/protolint
           brew install protolint
-
-      - if: matrix.os == 'macos-15'
-        name: Packages unit tests macos-15
-        run: |
-          tomte tox -e py${{ matrix.python-version }}-darwin
 
       - if: matrix.os == 'windows-2025'
         name: Install dependencies (windows-2025)
@@ -255,6 +258,22 @@ jobs:
           # to check make was installed
           make --version
           pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.3' tox-uv
+
+      - name: Lock package hashes
+        # The tests read packages.json, which PRs leave stale. See the same
+        # step in linter_checks.
+        shell: bash
+        run: tomte tox -e lock-packages < /dev/null
+
+      - if: matrix.os == 'ubuntu-24.04'
+        name: Packages unit tests ubuntu-24.04
+        run: |
+          tomte tox -e py${{ matrix.python-version }}-linux
+
+      - if: matrix.os == 'macos-15'
+        name: Packages unit tests macos-15
+        run: |
+          tomte tox -e py${{ matrix.python-version }}-darwin
 
       - if: matrix.os == 'windows-2025'
         name: Packages unit tests windows-2025
@@ -281,6 +300,9 @@ jobs:
           sudo apt-get autoclean
           pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.3' tox-uv
           pip install --user --upgrade setuptools
+      - name: Lock package hashes
+        # See the same step in linter_checks.
+        run: tomte tox -e lock-packages < /dev/null
       - name: Check coverage
         run: tomte tox -e coverage
       - name: Upload coverage to Codecov
