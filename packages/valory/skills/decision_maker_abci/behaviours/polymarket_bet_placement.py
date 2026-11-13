@@ -263,17 +263,31 @@ class PolymarketBetPlacementBehaviour(
                 "the bet is not recorded."
             )
             return False
-        order_id = found.group(1)
+        return (yield from self._order_matched(found.group(1)))
+
+    def _order_matched(self, order_id: str) -> Generator[None, None, bool]:
+        """Whether the CLOB's record of ``order_id`` says it was matched.
+
+        :param order_id: CLOB order id to confirm.
+        :yield: framework yields between lookups.
+        :return: ``True`` only on ``ORDER_STATUS_MATCHED``.
+        """
         order: Optional[Dict[str, Any]]
-        order, _ = yield from self._poll_order_until_terminal_cooperative(
+        order, poll_error = yield from self._poll_order_until_terminal_cooperative(
             order_id, DUPLICATE_CONFIRM_BACKOFFS_S, "bet placement: "
         )
+        if poll_error is not None:
+            self.context.logger.error(
+                f"Order {order_id} could not be looked up ({poll_error}); it may "
+                "have matched, but the bet is not recorded."
+            )
+            return False
         status = order.get("status") if order else None
         if status == ORDER_STATUS_MATCHED:
-            self.context.logger.info(f"Duplicate order {order_id} was matched.")
+            self.context.logger.info(f"Order {order_id} was matched.")
             return True
         self.context.logger.warning(
-            f"Duplicate order {order_id} not confirmed as matched "
+            f"Order {order_id} not confirmed as matched "
             f"(status={status}); the bet is not recorded."
         )
         return False

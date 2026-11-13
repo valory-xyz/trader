@@ -1454,3 +1454,18 @@ def test_duplicated_without_an_order_id_is_skipped_unrecorded() -> None:
     assert looked_up == []
     behaviour.update_bet_transaction_information.assert_not_called()
     assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+
+def test_duplicated_with_the_lookup_unreachable_logs_a_possible_match() -> None:
+    """An unreachable lookup records nothing and says the order may have matched."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+        order_lookups=[{"error": "connection reset"}]
+        * len(DUPLICATE_CONFIRM_BACKOFFS_S),
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
+    behaviour.update_bet_transaction_information.assert_not_called()
+    errors = [c.args[0] for c in behaviour.context.logger.error.call_args_list]
+    assert any("0xf51b" in e and "may have matched" in e for e in errors)
