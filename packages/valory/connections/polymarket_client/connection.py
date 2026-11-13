@@ -246,7 +246,7 @@ class PlaceBetError(TypedDict, total=False):
     error: str
     # True only when the error is the order POST's own answer.
     posted: bool
-    # Set only when posted: no reply, 5xx or 429, so resending may still land.
+    # Set only when posted and not a definite rejection (see _is_definite_rejection).
     retryable: bool
     fok_killed: bool
     below_minimum: bool

@@ -305,7 +305,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         # exhausted
         if error_count == len(backoffs_s):
             return None, (
-                f"all {error_count} poll attempts errored " f"(last: {last_error})"
+                f"all {error_count} poll attempts errored (last: {last_error})"
             )
         self.context.logger.warning(
             f"{log_prefix}order {order_id} still delayed after poll exhausted"
