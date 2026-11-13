@@ -1132,7 +1132,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             # Async-match path: the matching engine deferred resolution.
             # Return immediately with the ``delayed`` envelope. The
             # behaviour drives the cooperative get_order poll loop (see
-            # ``polymarket_withdraw._poll_order_until_terminal_cooperative``)
+            # ``_poll_order_until_terminal_cooperative`` in the DepositWallet behaviour base)
             # rather than blocking the connection's worker thread on
             # ``time.sleep``. Behaviour-side polling lets other connection
             # consumers continue to be served during the wait.
