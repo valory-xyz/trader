@@ -1403,3 +1403,16 @@ def test_retryable_answer_keeps_the_signed_order_for_a_resend() -> None:
     }
     behaviour.update_bet_transaction_information.assert_not_called()
     behaviour._record_market_skipped.assert_not_called()
+
+
+def test_error_before_the_post_retries_without_skipping() -> None:
+    """An error that never reached the CLOB as an order never blacklists the market."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "tick size lookup failed: order is invalid. Duplicated."}
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_FAILED.value
+    assert json.loads(payload.cached_signed_orders) == {}
+    assert looked_up == []
+    behaviour.update_bet_transaction_information.assert_not_called()
+    behaviour._record_market_skipped.assert_not_called()
