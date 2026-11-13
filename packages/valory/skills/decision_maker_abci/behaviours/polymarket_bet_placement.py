@@ -227,7 +227,15 @@ class PolymarketBetPlacementBehaviour(
                 )
                 event = Event.BET_PLACEMENT_FAILED
             else:
-                self.context.logger.error("Bet placement failed.")
+                kept = (
+                    "; the signed order is kept for a resend"
+                    if signed_order_json
+                    else ""
+                )
+                self.context.logger.error(
+                    f"Bet placement failed (status={status!r}, "
+                    f"error={error_msg or response.get('errorMsg')!r}){kept}."
+                )
                 event = Event.BET_PLACEMENT_FAILED
 
         if event == Event.BET_PLACEMENT_FAILED:
