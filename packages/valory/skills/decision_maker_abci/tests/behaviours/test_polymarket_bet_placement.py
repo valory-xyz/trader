@@ -1422,3 +1422,15 @@ class TestPolymarketBetPlacementBehaviour:
         assert looked_up == ["0xd31a"] * len(ORDER_CONFIRM_BACKOFFS_S)
         behaviour.update_bet_transaction_information.assert_not_called()
         assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+    def test_blocked_network_retries_without_skipping_or_caching(self) -> None:
+        """A 403/451 from a blocking network neither skips the market nor resends."""
+        behaviour, payload, _ = _run_placement(
+            {"error": "Forbidden", "posted": True, "clob_unreachable": True},
+            cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_FAILED.value
+        assert json.loads(payload.cached_signed_orders) == {}
+        behaviour.update_bet_transaction_information.assert_not_called()
+        behaviour._record_market_skipped.assert_not_called()

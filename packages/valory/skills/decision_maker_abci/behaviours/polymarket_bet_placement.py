@@ -23,7 +23,10 @@ import json
 import re
 from typing import Any, Dict, Generator, Optional
 
-from packages.valory.connections.polymarket_client.request_types import RequestType
+from packages.valory.connections.polymarket_client.request_types import (
+    CLOB_UNREACHABLE,
+    RequestType,
+)
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_IMPOSSIBLE,
@@ -188,6 +191,14 @@ class PolymarketBetPlacementBehaviour(
                 else:
                     event = Event.BET_PLACEMENT_IMPOSSIBLE
                     skip_reason = SKIP_ORDER_NOT_FILLED
+            # A blocked network never judged the order, so the market stays open.
+            elif posted and response.get(CLOB_UNREACHABLE):
+                self.context.logger.error(
+                    f"Failed to place bet, the CLOB was not reached: {error_msg}"
+                )
+                event = Event.BET_PLACEMENT_FAILED
+                # Still a 4xx answer to this order, so it is not resent.
+                updated_cache.pop(cache_key, None)
             elif posted and not response.get("retryable"):
                 error_message = f"Failed to place bet: {error_msg}"
                 self.context.logger.error(error_message)
