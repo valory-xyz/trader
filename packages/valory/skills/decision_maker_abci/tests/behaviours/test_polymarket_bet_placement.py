@@ -1296,9 +1296,11 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour._record_market_skipped.assert_not_called()
 
     def test_duplicated_and_never_confirmed_is_skipped_unrecorded(self) -> None:
-        """With no record of the order before the backoffs run out, nothing is recorded."""
+        """An order still live when the backoffs run out is not recorded."""
         behaviour, payload, looked_up = _run_placement(
-            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True}
+            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+            order_lookups=[{"status": "ORDER_STATUS_LIVE"}]
+            * len(ORDER_CONFIRM_BACKOFFS_S),
         )
 
         assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
@@ -1403,5 +1405,20 @@ class TestPolymarketBetPlacementBehaviour:
         )
 
         assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+    def test_delayed_post_still_live_after_the_backoffs_is_not_recorded(
+        self,
+    ) -> None:
+        """A delayed order the lookups never see reach a terminal status is skipped."""
+        behaviour, payload, looked_up = _run_placement(
+            {"success": True, "status": "delayed", "orderID": "0xd31a"},
+            order_lookups=[{"status": "ORDER_STATUS_LIVE"}]
+            * len(ORDER_CONFIRM_BACKOFFS_S),
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert looked_up == ["0xd31a"] * len(ORDER_CONFIRM_BACKOFFS_S)
         behaviour.update_bet_transaction_information.assert_not_called()
         assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
