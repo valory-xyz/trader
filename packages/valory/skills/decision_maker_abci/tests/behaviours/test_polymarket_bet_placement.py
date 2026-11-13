@@ -29,6 +29,7 @@ from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_NOT_FILLED,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
+    DUPLICATE_CONFIRM_BACKOFFS_S,
     PolymarketBetPlacementBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import (
@@ -1370,3 +1371,16 @@ def test_duplicated_and_matched_records_the_trade_once() -> None:
     assert looked_up == ["0xf51b"]
     behaviour.update_bet_transaction_information.assert_called_once_with()
     behaviour._record_market_skipped.assert_not_called()
+
+
+def test_duplicated_and_never_confirmed_is_skipped_unrecorded() -> None:
+    """With no record of the order before the backoffs run out, nothing is recorded."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True}
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
+    assert sum(DUPLICATE_CONFIRM_BACKOFFS_S) <= 60
+    behaviour.update_bet_transaction_information.assert_not_called()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
