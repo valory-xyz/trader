@@ -78,7 +78,9 @@ class TestGetAgentTopUps:
 
         get_agent_topups(rule, funds, AGENT, MIN, MagicMock())
 
-        rule.assert_called_once_with(funds, safe_native_extra={})
+        rule.assert_called_once_with(
+            funds, safe_native_extra={}, agent_need_override=None
+        )
 
     def test_reports_the_combined_safe_request(self) -> None:
         """A short Agent Safe asks for the Agent Signer shortfall plus its own topup."""

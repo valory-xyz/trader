@@ -40,16 +40,19 @@ from packages.valory.skills.agent_topup_abci.rounds import (
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
     NO_TOPUP,
+    TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
     WXDAI_ADDRESS,
     get_agent_topups,
     get_safe_native_balance,
+    get_signer_native_need,
     native_balances_read,
 )
 from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
     GET_FUNDS_STATUS_METHOD_NAME,
 )
+from packages.valory.skills.funds_manager.models import FundRequirements
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
     skill_input_hex_to_payload,
@@ -57,6 +60,8 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 
 LAST_TOPUP_CHECK_KEY = "last_topup_check"
 TOPUP_CHECK_INTERVAL_SECONDS = 60 * 60
+# True while the pending transfer is the one that finishes a refill: the gate closes once it settles.
+REFILL_ENDS_ON_SETTLEMENT_KEY = "agent_topup_refill_ends_on_settlement"
 SAFE_GAS = 0
 
 
@@ -96,6 +101,8 @@ class AgentTopUpBehaviour(BaseBehaviour):
         settled_to = self._get_settled_topup_to()
         if settled_to == self.context.agent_address:
             self.context.shared_state[TOPUP_SUCCEEDED_KEY] = True
+            if self.context.shared_state.get(REFILL_ENDS_ON_SETTLEMENT_KEY, False):
+                self._close_check()
             return None
         if settled_to == WXDAI_ADDRESS:
             # An unwrap is followed by the transfer it funds, never by a second unwrap.
@@ -120,7 +127,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         return last_round_id == self.matching_round.auto_round_id()
 
     def _is_check_due(self) -> bool:
-        """Whether a new check starts: on start, then once an hour after the last one reached a decision."""
+        """Whether a new check starts: on start, then once an hour after the last check closed the gate."""
         last_check = self.context.shared_state.get(LAST_TOPUP_CHECK_KEY)
         return (
             last_check is None
@@ -128,8 +135,10 @@ class AgentTopUpBehaviour(BaseBehaviour):
         )
 
     def _close_check(self) -> None:
-        """Close the gate for an hour, once the check has reached a decision."""
+        """Close the gate for an hour."""
         self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
+        self.context.shared_state[TOPUP_REFILLING_KEY] = False
+        self.context.shared_state[REFILL_ENDS_ON_SETTLEMENT_KEY] = False
 
     def _fail_topup(self) -> None:
         """Stop `/funds-status` relying on the top-up until a transfer settles again."""
@@ -143,12 +152,15 @@ class AgentTopUpBehaviour(BaseBehaviour):
         agent_address = self.context.agent_address
         try:
             funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+            refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
+            need = get_signer_native_need(funds, chain, agent_address, refilling)
             topup = get_agent_topups(
                 self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
                 funds,
                 agent_address,
                 self.params.agent_balance_threshold,
                 self.context.logger,
+                refilling=refilling,
             ).get(chain, NO_TOPUP)
         except Exception as exc:  # pylint: disable=broad-except
             # The round starts every period: a failed read skips the top-up, never the period.
@@ -164,11 +176,18 @@ class AgentTopUpBehaviour(BaseBehaviour):
                     f"No Agent Signer top-up on {chain}: a native balance was not read."
                 )
                 return None
+            if self._waits_for_safe_funds(funds, chain, need):
+                # Keep the gate open so a Pearl top-up reaches the Agent Signer next period.
+                self.context.logger.info(
+                    f"No Agent Signer top-up on {chain}: the Agent Safe holds no native token."
+                )
+                return None
             self.context.logger.info(f"No Agent Signer top-up on {chain}.")
             self._close_check()
             return None
 
         safe_native = cast(int, get_safe_native_balance(funds, chain, agent_address))
+        closes_gate = True
         if allow_unwrap and chain == GNOSIS_CHAIN_NAME and safe_native < topup.move:
             unwrap_amount = topup.move - safe_native
             self.context.logger.info(
@@ -188,12 +207,34 @@ class AgentTopUpBehaviour(BaseBehaviour):
                 return None
             self.context.logger.info(f"Moving {amount} wei to the Agent Signer.")
             tx_hex = yield from self._prepare_safe_tx(agent_address, amount, b"")
+            # Off Gnosis, a move short of the need keeps the gate open so the next
+            # period moves the rest; on Gnosis it would unwrap again after an unwrap.
+            # A move finishing a refill closes it only once it settles, so a failed
+            # transfer is retried with the refill need.
+            covers = amount >= cast(int, need)
+            closes_gate = chain == GNOSIS_CHAIN_NAME or (covers and not refilling)
+            self.context.shared_state[TOPUP_REFILLING_KEY] = not closes_gate
+            self.context.shared_state[REFILL_ENDS_ON_SETTLEMENT_KEY] = (
+                not closes_gate and covers
+            )
 
         if tx_hex is None:
             self._fail_topup()
-        else:
+        elif closes_gate:
             self._close_check()
         return tx_hex
+
+    def _waits_for_safe_funds(
+        self, funds: FundRequirements, chain: str, need: Optional[int]
+    ) -> bool:
+        """Whether the Agent Signer is short and, off Gnosis, the Agent Safe holds nothing to move."""
+        safe_native = get_safe_native_balance(funds, chain, self.context.agent_address)
+        return (
+            chain != GNOSIS_CHAIN_NAME
+            and safe_native == 0
+            and need is not None
+            and need > 0
+        )
 
     def _prepare_unwrap_tx(self, amount: int) -> Generator[None, None, Optional[str]]:
         """Prepare the Safe tx unwrapping `amount` wxDAI into xDAI."""
