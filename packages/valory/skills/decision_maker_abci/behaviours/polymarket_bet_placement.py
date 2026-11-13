@@ -21,7 +21,7 @@
 
 import json
 import re
-from typing import Any, Dict, Generator, Optional
+from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import (
     CLOB_UNREACHABLE,
@@ -219,7 +219,8 @@ class PolymarketBetPlacementBehaviour(
                     event = Event.BET_PLACEMENT_IMPOSSIBLE
                     skip_reason = SKIP_ORDER_NOT_FILLED
             # With no order id to look up, resending the same signed order makes
-            # the CLOB answer "Duplicated" with the id, which D7/D8 then confirm.
+            # the CLOB answer "Duplicated" with the id, which _duplicate_order_matched
+            # then confirms.
             elif response.get("success"):
                 self.context.logger.error(
                     f"Bet placement accepted with status {status!r} but no order id "
@@ -227,14 +228,14 @@ class PolymarketBetPlacementBehaviour(
                 )
                 event = Event.BET_PLACEMENT_FAILED
             else:
-                kept = (
+                resend_note = (
                     "; the signed order is kept for a resend"
                     if signed_order_json
                     else ""
                 )
                 self.context.logger.error(
                     f"Bet placement failed (status={status!r}, "
-                    f"error={error_msg or response.get('errorMsg')!r}){kept}."
+                    f"error={error_msg or response.get('errorMsg')!r}){resend_note}."
                 )
                 event = Event.BET_PLACEMENT_FAILED
 
@@ -310,7 +311,6 @@ class PolymarketBetPlacementBehaviour(
         :yield: framework yields between lookups.
         :return: ``True`` only on ``ORDER_STATUS_MATCHED``.
         """
-        order: Optional[Dict[str, Any]]
         order, poll_error = yield from self._poll_order_until_terminal_cooperative(
             order_id, ORDER_CONFIRM_BACKOFFS_S, "bet placement: "
         )
