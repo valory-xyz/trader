@@ -1427,3 +1427,16 @@ def test_other_posted_rejection_skips_with_the_impossible_reason() -> None:
     assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
     behaviour.update_bet_transaction_information.assert_not_called()
     assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_IMPOSSIBLE
+
+
+def test_duplicated_and_canceled_stops_looking_and_skips() -> None:
+    """A terminal status other than matched ends the lookup without recording."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+        order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    assert looked_up == ["0xf51b"]
+    behaviour.update_bet_transaction_information.assert_not_called()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
