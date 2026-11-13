@@ -46,6 +46,7 @@ from packages.valory.skills.agent_performance_summary_abci.behaviours import (
     LEADERBOARD_REQUEST_TIMEOUT,
     LIFI_QUOTE_URL,
     LIFI_RATE_LIMIT_SECONDS,
+    MECH_ANALYTICS_LOOKBACK_SECONDS,
     MIN_TRADES_FOR_ROI_DISPLAY,
     MORE_TRADES_NEEDED_TEXT,
     NA,
@@ -2011,6 +2012,22 @@ class TestGetTotalMechRequests:
 _REQ_Q1 = {"parsedRequest": {"questionTitle": "Q1"}, "blockTimestamp": "10"}
 
 
+def _analytics_fixture_rows(sender: Optional[dict]) -> Optional[List[dict]]:
+    """Serve existing request fixtures through the migrated analytics boundary."""
+    if sender is None:
+        return None
+    return [
+        {
+            "request_id": f"fixture-{index}",
+            "question_title": (row.get("parsedRequest") or {}).get("questionTitle"),
+            "requested_at": datetime.fromtimestamp(
+                int(row.get("blockTimestamp") or 0), tz=timezone.utc
+            ).isoformat(),
+        }
+        for index, row in enumerate(sender.get("requests", []))
+    ]
+
+
 class TestGetOpenMarketRequests:
     """Tests for _get_open_market_requests."""
 
@@ -2037,6 +2054,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
@@ -2101,6 +2123,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
             patch.object(b, "_fetch_open_markets", side_effect=_return_gen([])),
         ):
             gen = b._get_open_market_requests("0xaddr")
@@ -2109,6 +2136,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 assert e.value == 0
         assert b._open_market_request_keys == []
+        analytics_page.assert_not_called()
 
     def test_omen_with_open_markets(self) -> None:
         """Counts requests matching open market titles on Omen."""
@@ -2127,6 +2155,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2137,6 +2170,7 @@ class TestGetOpenMarketRequests:
                 assert e.value == 1
         # The counted requests themselves are kept for the profit series.
         assert b._open_market_request_keys == [("Q1", 10)]
+        analytics_page.assert_not_called()
 
     def test_polymarket_with_open_positions(self) -> None:
         """Counts requests matching open position titles on Polymarket."""
@@ -2152,6 +2186,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[0],
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
+            patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ),
             patch.object(
                 b,
                 "_fetch_polymarket_open_position_titles",
@@ -2179,6 +2218,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2187,6 +2231,8 @@ class TestGetOpenMarketRequests:
                 next(gen)
             except StopIteration as e:
                 assert e.value == 0
+
+        analytics_page.assert_not_called()
 
     def test_omen_null_question_in_open_markets_skipped(self) -> None:
         """Markets with null or missing question field are skipped, not crash."""
@@ -2207,6 +2253,11 @@ class TestGetOpenMarketRequests:
             _patch_context(b, ctx, synced_data)[1],
             patch.object(b, "_fetch_mech_sender", side_effect=_return_gen(mech_sender)),
             patch.object(
+                b,
+                "_page_mech_analytics_scored_rows",
+                side_effect=_return_gen(_analytics_fixture_rows(mech_sender)),
+            ) as analytics_page,
+            patch.object(
                 b, "_fetch_open_markets", side_effect=_return_gen(open_markets)
             ),
         ):
@@ -2216,6 +2267,7 @@ class TestGetOpenMarketRequests:
             except StopIteration as e:
                 # Only Q1 matches; null/missing entries are skipped
                 assert e.value == 1
+        analytics_page.assert_not_called()
 
     def test_flag_on_scored_rows_fetch_failure_returns_none(self) -> None:
         """Flag-on scored-rows fetch failure returns ``None``, not ``0``.
@@ -6575,6 +6627,7 @@ class TestPolymarketIncrementalTitleExtraction:
         mech_requests = [
             {
                 "parsedRequest": {"questionTitle": "PM Question 1"},
+                "requestId": "polystrat-fixture-1",
                 "blockTimestamp": str(new_ts - 100),
             }
         ]
@@ -8284,6 +8337,11 @@ class TestKpiSeriesAgreement:
         last_residual_rebuild_ts: int = 0,
     ) -> ProfitOverTimeData:
         """Run a backfill over the given stats and fetched requests."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8312,6 +8370,11 @@ class TestKpiSeriesAgreement:
         is_polymarket: bool = False,
     ) -> ProfitOverTimeData:
         """Run one incremental update on top of ``existing``."""
+        if is_polymarket:
+            fetched = [
+                {**row, "requestId": f"{row['blockTimestamp']}-{index}"}
+                for index, row in enumerate(fetched)
+            ]
         b = _make_fetch_behaviour(_open_market_request_keys=open_keys)
         ctx, _, synced_data, _ = _mock_context(
             is_polymarket=is_polymarket, synced_timestamp=now
@@ -8329,7 +8392,11 @@ class TestKpiSeriesAgreement:
                 b._perform_incremental_update("0xaddr", now, existing)
             )
         assert fetch_mock.call_args.kwargs == {
-            "block_timestamp_gt": existing.last_mech_timestamp
+            "block_timestamp_gt": (
+                max(existing.last_mech_timestamp - MECH_ANALYTICS_LOOKBACK_SECONDS, 0)
+                if is_polymarket
+                else existing.last_mech_timestamp
+            )
         }
         return result
 
@@ -8784,8 +8851,8 @@ class TestKpiSeriesAgreement:
                 b, "_fetch_daily_profit_statistics", side_effect=_return_gen(stats)
             )
         ]
-        if branch == "omen-mech-analytics":
-            params.use_mech_analytics = True
+        if branch in ("omen-mech-analytics", "polymarket"):
+            params.use_mech_analytics = not is_polymarket
             params.mech_analytics_url = "https://mech-analytics.test"
             sources += [
                 patch.object(

@@ -65,6 +65,16 @@ query StakingService($id: ID!) {
 }
 """
 
+# Alias preserves ApiSpecs' data:service response and lifetime-reward consumers.
+GET_POLYGON_STAKING_SERVICE_QUERY = """
+query StakingService($id: String!) {
+  service: serviceById(id: $id) {
+    id
+    olasRewardsEarned
+  }
+}
+"""
+
 # ZD#919: finalization/arbitration fields are NOT on the olas_agents
 # predict-omen subgraph; they are enriched from omen_subgraph via
 # GET_OMEN_FINALIZATION_QUERY after this query returns.

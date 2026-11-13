@@ -62,9 +62,9 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.base_pr
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_analytics_client import (
     build_requester_url,
     chain_id_for_platform,
-    is_flag_enabled,
     parse_requester_payload,
     rows_as_subgraph_mech_requests,
+    uses_mech_analytics,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.polymarket_predictions_helper import (
     PolymarketPredictionsFetcher,
@@ -573,7 +573,7 @@ class FetchPerformanceSummaryBehaviour(
         # per-window rollups for this exact Safe on this exact chain
         # (Gnosis Safe proxies CREATE2 to the same address on every
         # chain, so ``chain_id`` scoping is required).
-        if is_flag_enabled(self.params):
+        if uses_mech_analytics(self.params):
             # Async GET via the framework's ``get_http_response`` — the
             # sync ``requests.get`` path would block the FSM round
             # (Tendermint heartbeats + ABCI message pumps stall while
@@ -657,7 +657,7 @@ class FetchPerformanceSummaryBehaviour(
         # content of off-chain requests post-switch). Without this
         # branch, an on-chain ``total`` from mech-analytics minus an
         # ``open`` from the frozen subgraph over-states ``settled``.
-        if is_flag_enabled(self.params):
+        if uses_mech_analytics(self.params):
             since = datetime.fromtimestamp(self.market_open_timestamp, tz=timezone.utc)
             # Async paginate via the framework HTTP protocol (defined
             # on the parent ``APTQueryingBehaviour``) so the FSM round
@@ -1959,7 +1959,7 @@ class FetchPerformanceSummaryBehaviour(
         :param watermark: the watermark after this round
         :return: sorted request ids inside the next window, or ``None``
         """
-        if not is_flag_enabled(self.params):
+        if not uses_mech_analytics(self.params):
             return None
         cutoff = watermark - MECH_ANALYTICS_LOOKBACK_SECONDS
         return sorted(
@@ -2431,7 +2431,7 @@ class FetchPerformanceSummaryBehaviour(
         # Every request past the watermark, traded or not, as the KPI's
         # ``total`` counts them all. mech-analytics can serve a request after
         # the watermark passed it, so that path refetches a window and dedupes.
-        lookback = is_flag_enabled(self.params)
+        lookback = uses_mech_analytics(self.params)
         watermark = existing_data.last_mech_timestamp
         new_mech_requests = yield from self._fetch_all_mech_requests(
             agent_safe_address,

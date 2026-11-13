@@ -47,15 +47,16 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     MAX_PAGES,
     build_scored_rows_url,
     chain_id_for_platform,
-    is_flag_enabled,
     parse_scored_rows_page,
     rows_as_subgraph_mech_requests,
+    uses_mech_analytics,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_MECH_SENDER_QUERY,
     GET_OPEN_MARKETS_QUERY,
     GET_PENDING_BETS_QUERY,
+    GET_POLYGON_STAKING_SERVICE_QUERY,
     GET_POLYMARKET_DAILY_PROFIT_STATISTICS_QUERY,
     GET_POLYMARKET_QUESTIONS_BY_IDS_QUERY,
     GET_POLYMARKET_TRADER_AGENT_BETS_QUERY,
@@ -358,6 +359,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
                     "skip": 0,
                     "first": QUERY_BATCH_SIZE,
                 },
+                # Legacy direct-helper path; production Polygon summaries select analytics earlier.
                 subgraph=self.context.polygon_mech_subgraph,
                 res_context="polygon_mech_sender",
             )
@@ -538,13 +540,15 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         if self.params.is_running_on_polymarket:
             subgraph = self.context.polygon_staking_subgraph
             res_context = "polygon_staking_service"
+            query = GET_POLYGON_STAKING_SERVICE_QUERY
         else:
             subgraph = self.context.gnosis_staking_subgraph
             res_context = "gnosis_staking_service"
+            query = GET_STAKING_SERVICE_QUERY
 
         return (
             yield from self._fetch_from_subgraph(
-                query=GET_STAKING_SERVICE_QUERY,
+                query=query,
                 variables={"id": service_id},
                 subgraph=subgraph,
                 res_context=res_context,
@@ -918,7 +922,7 @@ class APTQueryingBehaviour(BaseBehaviour, ABC):
         # day-bucketing / title-matching in behaviours.py is untouched.
         # chain_id is passed explicitly — a Safe address can exist on
         # multiple chains and an unfiltered call would sum them silently.
-        if is_flag_enabled(self.params):
+        if uses_mech_analytics(self.params):
             # Async pagination via the framework HTTP protocol (see
             # ``_page_mech_analytics_scored_rows`` docstring for why
             # sync ``requests.get`` inside the FSM round is unsafe).

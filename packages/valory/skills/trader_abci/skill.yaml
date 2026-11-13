@@ -48,14 +48,14 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeiaqace2mhsprtjz7ygnq2jcn2bazk7y3rkw7m6e6flgajbv4bko7m
-- valory/decision_maker_abci:0.1.0:bafybeibkbzv7o3o6rrrtsvz66owgx77gx5aslk4gva4a2ko54kltj4hz74
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigyhuwogog4i6j2ne4265zldg6zk5l6nwziwxr2247l7fahytlvby
+- valory/decision_maker_abci:0.1.0:bafybeidevhluu5rwinrcnnwgquxwn3sxvzdo3e63r2yp6uggimsvjxnhhu
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifnkhz4jxngkruoxrklyu4x5ctormvogvbf2fkg4jzsmdy5ncmtu4
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
 - valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
-- valory/check_stop_trading_abci:0.1.0:bafybeihfp62pajdbkfuch2nf2takcjf22atr3eme6ke552ljqpvj4ed25a
+- valory/check_stop_trading_abci:0.1.0:bafybeigh22ajpbocyynisawg7s4cwtohdxmvj6uz22zhegubm4ez7dneom
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
-- valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
+- valory/chatui_abci:0.1.0:bafybeibgryv7jln4kyreghzsodsptd2vgpg4x7f5qqmzblnfs4mca4sbta
+- valory/agent_performance_summary_abci:0.1.0:bafybeicapubrggofqy6khc7l4fw727puxcm4venexppawmjbpa7jiapts4
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -587,7 +587,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://staking-polygon.subgraph.autonolas.tech
+      url: https://subgraph.autonolas.tech/squid/staking-polygon/graphql
     class_name: PolygonStakingSubgraph
   mech_tools:
     args:
