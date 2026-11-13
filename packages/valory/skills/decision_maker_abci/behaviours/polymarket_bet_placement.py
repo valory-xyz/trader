@@ -48,8 +48,8 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 # (v1, signed against the retired CTF exchange) naturally orphan after cutover
 # rather than being replayed and rejected by the server.
 CLOB_VERSION = "v2"
-# Seconds to wait before each lookup confirming a "Duplicated" order; ~57 s in all,
-# well inside the round timeout.
+# Seconds to wait before each lookup confirming an order; their sum must stay well
+# inside the round timeout.
 DUPLICATE_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
 # The CLOB's answer to a resent order: "order 0x... is invalid. Duplicated."
 DUPLICATED_ORDER_ID_RE = re.compile(r"order\s+(0x[0-9a-fA-F]+)\s+is invalid", re.I)
