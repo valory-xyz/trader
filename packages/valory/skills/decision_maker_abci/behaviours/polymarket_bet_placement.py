@@ -311,7 +311,13 @@ class PolymarketBetPlacementBehaviour(
                 "have matched, but the bet is not recorded."
             )
             return False
-        status = order.get("status") if order else None
+        if order is None:
+            self.context.logger.error(
+                f"Order {order_id} still unresolved after confirmation; it may "
+                "still match, but the bet is not recorded."
+            )
+            return False
+        status = order.get("status")
         if status == ORDER_STATUS_MATCHED:
             self.context.logger.info(f"Order {order_id} was matched.")
             return True

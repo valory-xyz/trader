@@ -1308,6 +1308,8 @@ class TestPolymarketBetPlacementBehaviour:
         assert sum(ORDER_CONFIRM_BACKOFFS_S) <= 60
         behaviour.update_bet_transaction_information.assert_not_called()
         assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+        errors = [c.args[0] for c in behaviour.context.logger.error.call_args_list]
+        assert any("0xf51b" in e and "may still match" in e for e in errors)
 
     def test_retryable_answer_keeps_the_signed_order_for_a_resend(self) -> None:
         """No reply, a 5xx or a 429 retries the round with the same signed order."""
