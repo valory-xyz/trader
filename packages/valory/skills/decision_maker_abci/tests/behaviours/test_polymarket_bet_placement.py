@@ -1469,3 +1469,27 @@ def test_duplicated_with_the_lookup_unreachable_logs_a_possible_match() -> None:
     behaviour.update_bet_transaction_information.assert_not_called()
     errors = [c.args[0] for c in behaviour.context.logger.error.call_args_list]
     assert any("0xf51b" in e and "may have matched" in e for e in errors)
+
+
+def test_delayed_post_is_recorded_only_once_confirmed_matched() -> None:
+    """A delayed answer is a placed bet only after the lookup says it matched."""
+    behaviour, payload, looked_up = _run_placement(
+        {"success": True, "status": "delayed", "orderID": "0xd31a"},
+        order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_DONE.value
+    assert looked_up == ["0xd31a"]
+    behaviour.update_bet_transaction_information.assert_called_once_with()
+
+
+def test_delayed_post_the_clob_then_kills_is_not_recorded() -> None:
+    """A delayed FOK the CLOB kills afterwards is skipped, not counted as held."""
+    behaviour, payload, _ = _run_placement(
+        {"success": True, "status": "delayed", "orderID": "0xd31a"},
+        order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    behaviour.update_bet_transaction_information.assert_not_called()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
