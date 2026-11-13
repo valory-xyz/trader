@@ -21,6 +21,7 @@
 """Request types for Polymarket connection."""
 
 from enum import Enum
+from typing import Final
 
 
 class RequestType(Enum):
@@ -56,4 +57,4 @@ class RequestType(Enum):
 
 
 # Marks an error response for which the CLOB was down, blocked or not reached.
-CLOB_UNREACHABLE = "clob_unreachable"
+CLOB_UNREACHABLE: Final = "clob_unreachable"

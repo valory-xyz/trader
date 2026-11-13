@@ -250,7 +250,7 @@ class PlaceBetError(TypedDict, total=False):
     error: str
     # True only when the error is the order POST's own answer.
     posted: bool
-    # Set only when posted and not a definite rejection (see _is_definite_rejection).
+    # Set when posted and neither a definite rejection nor a blocked network.
     retryable: bool
     fok_killed: bool
     # The network blocked the POST, so the CLOB never judged the order.
@@ -261,10 +261,11 @@ class PlaceBetError(TypedDict, total=False):
 
 
 def _is_definite_rejection(status: Optional[int]) -> bool:
-    """Whether the CLOB's answer to a POST is a 4xx other than 429.
+    """Whether the CLOB's answer to a POST is a 4xx other than 429, 403 or 451.
 
     Anything else (no reply, a 5xx, a 429, an unexpected status) may hide a match
-    or a refusal to take the order, so it is not a definite answer.
+    or a refusal to take the order, and a 403/451 comes from a network that
+    blocked the POST before it reached the CLOB, so none is a definite answer.
 
     :param status: the HTTP status of the answer, ``None`` when there was none.
     :return: whether the order is known not to have been placed.
@@ -1068,7 +1069,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             return response, error_msg
         if e.status_code in CLOB_BLOCKING_STATUSES:
             # A 4xx all the same, so the signed order is not handed back to resend.
-            response["clob_unreachable"] = True
+            response[CLOB_UNREACHABLE] = True
             return response, error_msg
         if FOK_KILLED_MARKER in lowered:
             response["fok_killed"] = True

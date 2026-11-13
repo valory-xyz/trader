@@ -777,7 +777,7 @@ class TestPlaceBet:
     def test_place_bet_unanswered_post_keeps_the_order_for_a_resend(
         self, status_code: Any
     ) -> None:
-        """Anything but a 4xx other than 429 may hide a match or a refusal to take it."""
+        """No reply, a 5xx, a 429 or an odd status may hide a match or a refusal."""
         response, _ = self._post_and_fail(self._post_error(status_code, "boom"))
 
         assert response["posted"] is True
