@@ -124,7 +124,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         """
         try:
             token_map = self.sampled_bet.outcome_token_ids or {}
-        except Exception:  # noqa: BLE001 — best-effort token id retrieval
+        except Exception:  # noqa: BLE001 - best-effort token id retrieval
             self.context.logger.warning("Failed to retrieve outcome token IDs.")
             return []
         ids = []
@@ -198,7 +198,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
         """Resolve the DepositWallet address for the agent EOA.
 
         Reads the persisted ``deposit_wallet.json`` (owner-checked) written by
-        the setup round — the single, durable source of truth for the DW. The
+        the setup round - the single, durable source of truth for the DW. The
         address is NOT threaded through synchronized data: Polystrat is a
         single-agent (sovereign) deployment, so the local store is authoritative
         and avoids passing the funder through every round's payload. Provisioning
@@ -269,9 +269,9 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
 
         Three return shapes distinguish the outcome:
 
-        - ``(terminal_payload, None)`` — terminal status reached.
-        - ``(None, None)`` — cap exhausted while still LIVE (in_flight defer).
-        - ``(None, error_string)`` — every poll attempt errored, distinct
+        - ``(terminal_payload, None)`` - terminal status reached.
+        - ``(None, None)`` - cap exhausted while still LIVE (in_flight defer).
+        - ``(None, error_string)`` - every poll attempt errored, distinct
           from a LIVE-exhausted in_flight. Lets the caller record the
           parent position with a "polymarket API unreachable" reason
           rather than the misleading in-flight defer reason.
@@ -294,7 +294,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                     f"{log_prefix}get_order failed for {order_id}: {error}"
                 )
                 continue
-            # The SDK can return ``None`` shortly after ``post_order`` —
+            # The SDK can return ``None`` shortly after ``post_order`` -
             # the data API hasn't indexed the new order yet. Keep polling
             # rather than crash on ``.get()``.
             if not order:
