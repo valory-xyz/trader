@@ -218,13 +218,14 @@ class PolymarketBetPlacementBehaviour(
                 else:
                     event = Event.BET_PLACEMENT_IMPOSSIBLE
                     skip_reason = SKIP_ORDER_NOT_FILLED
+            # With no order id to look up, resending the same signed order makes
+            # the CLOB answer "Duplicated" with the id, which D7/D8 then confirm.
             elif response.get("success"):
                 self.context.logger.error(
                     f"Bet placement accepted with status {status!r} but no order id "
-                    "to confirm it; the bet is not recorded."
+                    "to confirm it; the signed order is kept for a resend."
                 )
-                event = Event.BET_PLACEMENT_IMPOSSIBLE
-                skip_reason = SKIP_ORDER_NOT_FILLED
+                event = Event.BET_PLACEMENT_FAILED
             else:
                 self.context.logger.error("Bet placement failed.")
                 event = Event.BET_PLACEMENT_FAILED

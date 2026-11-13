@@ -1439,16 +1439,23 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour.update_bet_transaction_information.assert_not_called()
         behaviour._record_market_skipped.assert_not_called()
 
-    def test_delayed_post_without_an_order_id_is_not_recorded(self) -> None:
-        """An accepted answer with no order id to confirm is skipped, not recorded."""
+    def test_delayed_post_without_an_order_id_is_resent_not_recorded(self) -> None:
+        """With no order id to confirm, the same signed order is kept for a resend."""
         behaviour, payload, looked_up = _run_placement(
-            {"success": True, "status": "delayed"}
+            {
+                "success": True,
+                "status": "delayed",
+                "signed_order_json": '{"clob_version": "v2"}',
+            }
         )
 
-        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert payload.event == Event.BET_PLACEMENT_FAILED.value
         assert looked_up == []
+        assert json.loads(payload.cached_signed_orders) == {
+            "v2_1_bet1_tok": '{"clob_version": "v2"}'
+        }
         behaviour.update_bet_transaction_information.assert_not_called()
-        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+        behaviour._record_market_skipped.assert_not_called()
 
     def test_post_with_settlement_hashes_is_recorded_without_a_lookup(self) -> None:
         """Settlement hashes prove the match, whatever the status says."""
