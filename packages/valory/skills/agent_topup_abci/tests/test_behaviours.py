@@ -823,8 +823,31 @@ class TestRefillToTarget:
             shared_state=shared_state,
             responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
         )
+        remaining = 30 * ETHER - signer - ETHER
         tx = _decode(funded_safe.run() or "")
-        assert tx["ether_value"] == 30 * ETHER - signer - ETHER
+        assert tx["ether_value"] == remaining
+        # The final transfer closes the refill only once it settles.
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+        assert shared_state[TOPUP_REFILLING_KEY] is True
+
+        # The final transfer failed: the next period moves the remaining POL again.
+        retry = _Harness(
+            "polygon",
+            self._polystrat_status(signer + ETHER, 40 * ETHER),
+            shared_state=shared_state,
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+        assert _decode(retry.run() or "")["ether_value"] == remaining
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+        assert shared_state[TOPUP_REFILLING_KEY] is True
+
+        settled_final = _Harness(
+            "polygon",
+            self._polystrat_status(30 * ETHER, 40 * ETHER - remaining),
+            shared_state=shared_state,
+            tx_submitter=SUBMITTER,
+        )
+        assert settled_final.run() is None
         assert shared_state[LAST_TOPUP_CHECK_KEY] == NOW
         assert shared_state[TOPUP_REFILLING_KEY] is False
 

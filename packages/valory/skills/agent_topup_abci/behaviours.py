@@ -60,6 +60,8 @@ from packages.valory.skills.transaction_settlement_abci.payload_tools import (
 
 LAST_TOPUP_CHECK_KEY = "last_topup_check"
 TOPUP_CHECK_INTERVAL_SECONDS = 60 * 60
+# True while the pending transfer is the one that finishes a refill: the gate closes once it settles.
+REFILL_ENDS_ON_SETTLEMENT_KEY = "agent_topup_refill_ends_on_settlement"
 SAFE_GAS = 0
 
 
@@ -99,6 +101,8 @@ class AgentTopUpBehaviour(BaseBehaviour):
         settled_to = self._get_settled_topup_to()
         if settled_to == self.context.agent_address:
             self.context.shared_state[TOPUP_SUCCEEDED_KEY] = True
+            if self.context.shared_state.get(REFILL_ENDS_ON_SETTLEMENT_KEY, False):
+                self._close_check()
             return None
         if settled_to == WXDAI_ADDRESS:
             # An unwrap is followed by the transfer it funds, never by a second unwrap.
@@ -134,6 +138,7 @@ class AgentTopUpBehaviour(BaseBehaviour):
         """Close the gate for an hour."""
         self.context.shared_state[LAST_TOPUP_CHECK_KEY] = int(time.time())
         self.context.shared_state[TOPUP_REFILLING_KEY] = False
+        self.context.shared_state[REFILL_ENDS_ON_SETTLEMENT_KEY] = False
 
     def _fail_topup(self) -> None:
         """Stop `/funds-status` relying on the top-up until a transfer settles again."""
@@ -204,8 +209,14 @@ class AgentTopUpBehaviour(BaseBehaviour):
             tx_hex = yield from self._prepare_safe_tx(agent_address, amount, b"")
             # Off Gnosis, a move short of the need keeps the gate open so the next
             # period moves the rest; on Gnosis it would unwrap again after an unwrap.
-            closes_gate = chain == GNOSIS_CHAIN_NAME or amount >= cast(int, need)
+            # A move finishing a refill closes it only once it settles, so a failed
+            # transfer is retried with the refill need.
+            covers = amount >= cast(int, need)
+            closes_gate = chain == GNOSIS_CHAIN_NAME or (covers and not refilling)
             self.context.shared_state[TOPUP_REFILLING_KEY] = not closes_gate
+            self.context.shared_state[REFILL_ENDS_ON_SETTLEMENT_KEY] = (
+                not closes_gate and covers
+            )
 
         if tx_hex is None:
             self._fail_topup()
