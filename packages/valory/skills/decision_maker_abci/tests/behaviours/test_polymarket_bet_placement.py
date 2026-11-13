@@ -1291,11 +1291,12 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour._store_utilized_tools.assert_called_once()
 
 
-def _run_placement(response, order_lookups=()):  # type: ignore[no-untyped-def]
+def _run_placement(response, order_lookups=(), cached_orders=None):  # type: ignore[no-untyped-def]
     """Run one placement against ``response``; lookups answer ``GET_ORDER`` in turn.
 
     :param response: what the connection answers to ``PLACE_BET``.
     :param order_lookups: the ``GET_ORDER`` answers, in order; ``None`` after.
+    :param cached_orders: the signed orders cached by earlier attempts.
     :return: the behaviour, the payload it sent and the order ids looked up.
     """
     behaviour = _make_behaviour()
@@ -1335,7 +1336,9 @@ def _run_placement(response, order_lookups=()):  # type: ignore[no-untyped-def]
             "synchronized_data",
             new_callable=PropertyMock,
             return_value=MagicMock(
-                period_count=1, cached_signed_orders={}, mech_tool_key=None
+                period_count=1,
+                cached_signed_orders=dict(cached_orders or {}),
+                mech_tool_key=None,
             ),
         ),
         patch.object(cls, "get_active_sampled_bet", return_value=bet),
@@ -1367,9 +1370,11 @@ def test_duplicated_and_matched_records_the_trade_once() -> None:
     behaviour, payload, looked_up = _run_placement(
         {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
         order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
+        cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
     )
 
     assert payload.event == Event.BET_PLACEMENT_DONE.value
+    assert json.loads(payload.cached_signed_orders) == {}
     assert looked_up == ["0xf51b"]
     behaviour.update_bet_transaction_information.assert_called_once_with()
     behaviour._record_market_skipped.assert_not_called()
