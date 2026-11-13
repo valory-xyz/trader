@@ -26,6 +26,7 @@ import pytest
 
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_IMPOSSIBLE,
+    SKIP_ORDER_NOT_FILLED,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_bet_placement import (
     PolymarketBetPlacementBehaviour,
@@ -1287,3 +1288,72 @@ class TestPolymarketBetPlacementBehaviour:
             pass
 
         behaviour._store_utilized_tools.assert_called_once()
+
+
+def _run_placement(response, order_lookups=()):  # type: ignore[no-untyped-def]
+    """Run one placement against ``response``; lookups answer ``GET_ORDER`` in turn.
+
+    :return: the behaviour, the payload it sent and the order ids looked up.
+    """
+    behaviour = _make_behaviour()
+    behaviour.token_balance = 1000
+    behaviour.wait_for_condition_with_sleep = lambda condition: _noop_gen()  # type: ignore[method-assign]
+    behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour.sleep = lambda seconds: _noop_gen()  # type: ignore[method-assign]
+    behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+    behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
+    behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
+    behaviour.usdc_to_native = lambda x: x  # type: ignore[method-assign]
+    answers = list(order_lookups)
+    looked_up = []
+
+    def _route(payload):  # type: ignore[no-untyped-def]
+        if payload["request_type"] == "get_order":
+            looked_up.append(payload["params"]["order_id"])
+            return _return_gen(answers.pop(0) if answers else None)
+        return _return_gen(response)
+
+    behaviour.send_polymarket_connection_request = _route  # type: ignore[method-assign]
+    sent = []
+    behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+        sent.append(payload) or (yield)  # type: ignore[func-returns-value]
+    )
+    bet = MagicMock(id="bet1", condition_id=None, outcome_token_ids={"Yes": "tok"})
+    bet.get_outcome.return_value = "Yes"
+    cls = type(behaviour)
+    with (
+        patch.object(cls, "sampled_bet", new_callable=PropertyMock, return_value=bet),
+        patch.object(cls, "outcome_index", new_callable=PropertyMock, return_value=0),
+        patch.object(
+            cls, "investment_amount", new_callable=PropertyMock, return_value=100
+        ),
+        patch.object(
+            cls,
+            "synchronized_data",
+            new_callable=PropertyMock,
+            return_value=MagicMock(
+                period_count=1, cached_signed_orders={}, mech_tool_key=None
+            ),
+        ),
+        patch.object(cls, "get_active_sampled_bet", return_value=bet),
+    ):
+        for _ in behaviour.async_act():
+            pass
+    return behaviour, sent[0], looked_up
+
+
+def test_posted_fok_kill_skips_the_market_without_recording() -> None:
+    """A FOK order the CLOB killed is skipped with the not-filled reason, not cached."""
+    behaviour, payload, _ = _run_placement(
+        {
+            "error": "order couldn't be fully filled. FOK orders are fully filled or killed.",
+            "posted": True,
+            "fok_killed": True,
+        }
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    assert json.loads(payload.cached_signed_orders) == {}
+    behaviour.update_bet_transaction_information.assert_not_called()
+    behaviour._record_market_skipped.assert_called_once()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
