@@ -1440,3 +1440,15 @@ def test_duplicated_and_canceled_stops_looking_and_skips() -> None:
     assert looked_up == ["0xf51b"]
     behaviour.update_bet_transaction_information.assert_not_called()
     assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+
+def test_duplicated_without_an_order_id_is_skipped_unrecorded() -> None:
+    """Without an order id to look up, the duplicate cannot be confirmed."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "order is invalid. Duplicated.", "posted": True}
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    assert looked_up == []
+    behaviour.update_bet_transaction_information.assert_not_called()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
