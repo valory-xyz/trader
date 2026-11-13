@@ -784,6 +784,20 @@ class TestPlaceBet:
         assert response["retryable"] is True
         assert json.loads(response["signed_order_json"])["clob_version"] == "v2"
 
+    def test_place_bet_no_reply_as_the_sdk_raises_it_is_retryable(self) -> None:
+        """The SDK's transport failure carries a plain string and no status code."""
+        from py_clob_client_v2.exceptions import PolyApiException
+
+        response, error = self._post_and_fail(
+            PolyApiException(error_msg="Request exception!")
+        )
+
+        assert error.startswith("Error placing bet:")
+        assert "Request exception!" in error
+        assert response["posted"] is True
+        assert response["retryable"] is True
+        assert "signed_order_json" in response
+
     def test_place_bet_below_minimum_on_a_5xx_is_still_not_retryable(self) -> None:
         """The amount is signed in, so a minimum-size refusal can only repeat."""
         response, _ = self._post_and_fail(
