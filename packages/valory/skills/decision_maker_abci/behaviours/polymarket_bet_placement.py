@@ -196,9 +196,9 @@ class PolymarketBetPlacementBehaviour(
                 self.context.logger.error(
                     f"Failed to place bet, the CLOB was not reached: {error_msg}"
                 )
+                # An earlier attempt's cached order is kept: it may have matched,
+                # and only its resend can be tied to it through "Duplicated".
                 event = Event.BET_PLACEMENT_FAILED
-                # Still a 4xx answer to this order, so it is not resent.
-                updated_cache.pop(cache_key, None)
             elif posted and not response.get("retryable"):
                 error_message = f"Failed to place bet: {error_msg}"
                 self.context.logger.error(error_message)
