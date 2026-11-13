@@ -1357,3 +1357,16 @@ def test_posted_fok_kill_skips_the_market_without_recording() -> None:
     behaviour.update_bet_transaction_information.assert_not_called()
     behaviour._record_market_skipped.assert_called_once()
     assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+
+def test_duplicated_and_matched_records_the_trade_once() -> None:
+    """A "Duplicated" order the lookup reports matched is placed and recorded once."""
+    behaviour, payload, looked_up = _run_placement(
+        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+        order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_DONE.value
+    assert looked_up == ["0xf51b"]
+    behaviour.update_bet_transaction_information.assert_called_once_with()
+    behaviour._record_market_skipped.assert_not_called()
