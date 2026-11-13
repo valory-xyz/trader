@@ -250,7 +250,7 @@ class PlaceBetError(TypedDict, total=False):
     error: str
     # True only when the error is the order POST's own answer.
     posted: bool
-    # Set when posted and neither a definite rejection nor a blocked network.
+    # Set when posted and not below minimum, a definite rejection or a blocked network.
     retryable: bool
     fok_killed: bool
     # The network blocked the POST, so the CLOB never judged the order.
