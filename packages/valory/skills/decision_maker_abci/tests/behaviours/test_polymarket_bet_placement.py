@@ -1475,3 +1475,13 @@ class TestPolymarketBetPlacementBehaviour:
         assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
         assert looked_up == ["0xa11e"]
         behaviour.update_bet_transaction_information.assert_not_called()
+
+    def test_matched_post_without_hashes_is_recorded_without_a_lookup(self) -> None:
+        """A "matched" answer is placed even before its settlement hashes resolve."""
+        behaviour, payload, looked_up = _run_placement(
+            {"success": True, "status": "matched", "orderID": "0xm1"}
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_DONE.value
+        assert looked_up == []
+        behaviour.update_bet_transaction_information.assert_called_once_with()
