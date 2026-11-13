@@ -1416,3 +1416,14 @@ def test_error_before_the_post_retries_without_skipping() -> None:
     assert looked_up == []
     behaviour.update_bet_transaction_information.assert_not_called()
     behaviour._record_market_skipped.assert_not_called()
+
+
+def test_other_posted_rejection_skips_with_the_impossible_reason() -> None:
+    """A 4xx answer that is not a kill keeps the existing can't-be-placed reason."""
+    behaviour, payload, _ = _run_placement(
+        {"error": "not enough balance / allowance", "posted": True}
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+    behaviour.update_bet_transaction_information.assert_not_called()
+    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_IMPOSSIBLE
