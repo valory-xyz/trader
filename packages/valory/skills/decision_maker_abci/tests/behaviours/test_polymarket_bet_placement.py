@@ -1425,19 +1425,17 @@ class TestPolymarketBetPlacementBehaviour:
         behaviour.update_bet_transaction_information.assert_not_called()
         assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
 
-    def test_blocked_network_retries_and_keeps_the_earlier_cached_order(self) -> None:
-        """A 403/451 never reached the CLOB: no skip, and an earlier cached order stays."""
+    def test_posted_403_is_a_definite_rejection_and_drops_the_cache(self) -> None:
+        """A 403/451 answer follows D11: the market is skipped, the cache dropped."""
         behaviour, payload, _ = _run_placement(
-            {"error": "Forbidden", "posted": True, "clob_unreachable": True},
+            {"error": "Forbidden", "posted": True},
             cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
         )
 
-        assert payload.event == Event.BET_PLACEMENT_FAILED.value
-        assert json.loads(payload.cached_signed_orders) == {
-            "v2_1_bet1_tok": '{"clob_version": "v2"}'
-        }
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert json.loads(payload.cached_signed_orders) == {}
         behaviour.update_bet_transaction_information.assert_not_called()
-        behaviour._record_market_skipped.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_IMPOSSIBLE
 
     def test_delayed_post_without_an_order_id_is_resent_not_recorded(self) -> None:
         """With no order id to confirm, the same signed order is kept for a resend."""
