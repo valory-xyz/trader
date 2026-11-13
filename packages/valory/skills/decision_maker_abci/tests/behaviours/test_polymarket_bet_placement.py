@@ -69,6 +69,63 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     return behaviour
 
 
+def _run_placement(response, order_lookups=(), cached_orders=None):  # type: ignore[no-untyped-def]
+    """Run one placement against ``response``; lookups answer ``GET_ORDER`` in turn.
+
+    :param response: what the connection answers to ``PLACE_BET``.
+    :param order_lookups: the ``GET_ORDER`` answers, in order; ``None`` after.
+    :param cached_orders: the signed orders cached by earlier attempts.
+    :return: the behaviour, the payload it sent and the order ids looked up.
+    """
+    behaviour = _make_behaviour()
+    behaviour.token_balance = 1000
+    behaviour.wait_for_condition_with_sleep = lambda condition: _noop_gen()  # type: ignore[method-assign]
+    behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
+    behaviour.sleep = lambda seconds: _noop_gen()  # type: ignore[method-assign]
+    behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
+    behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
+    behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
+    behaviour.usdc_to_native = lambda x: x  # type: ignore[method-assign]
+    answers = list(order_lookups)
+    looked_up = []
+
+    def _route(payload):  # type: ignore[no-untyped-def]
+        if payload["request_type"] == "get_order":
+            looked_up.append(payload["params"]["order_id"])
+            return _return_gen(answers.pop(0) if answers else None)
+        return _return_gen(response)
+
+    behaviour.send_polymarket_connection_request = _route  # type: ignore[method-assign]
+    sent = []
+    behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
+        sent.append(payload) or (yield)  # type: ignore[func-returns-value]
+    )
+    bet = MagicMock(id="bet1", condition_id=None, outcome_token_ids={"Yes": "tok"})
+    bet.get_outcome.return_value = "Yes"
+    cls = type(behaviour)
+    with (
+        patch.object(cls, "sampled_bet", new_callable=PropertyMock, return_value=bet),
+        patch.object(cls, "outcome_index", new_callable=PropertyMock, return_value=0),
+        patch.object(
+            cls, "investment_amount", new_callable=PropertyMock, return_value=100
+        ),
+        patch.object(
+            cls,
+            "synchronized_data",
+            new_callable=PropertyMock,
+            return_value=MagicMock(
+                period_count=1,
+                cached_signed_orders=dict(cached_orders or {}),
+                mech_tool_key=None,
+            ),
+        ),
+        patch.object(cls, "get_active_sampled_bet", return_value=bet),
+    ):
+        for _ in behaviour.async_act():
+            pass
+    return behaviour, sent[0], looked_up
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -1290,211 +1347,143 @@ class TestPolymarketBetPlacementBehaviour:
 
         behaviour._store_utilized_tools.assert_called_once()
 
+    def test_posted_fok_kill_skips_the_market_without_recording(self) -> None:
+        """A FOK order the CLOB killed is skipped with the not-filled reason, not cached."""
+        behaviour, payload, _ = _run_placement(
+            {
+                "error": "order couldn't be fully filled. FOK orders are fully filled or killed.",
+                "posted": True,
+                "fok_killed": True,
+            }
+        )
 
-def _run_placement(response, order_lookups=(), cached_orders=None):  # type: ignore[no-untyped-def]
-    """Run one placement against ``response``; lookups answer ``GET_ORDER`` in turn.
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert json.loads(payload.cached_signed_orders) == {}
+        behaviour.update_bet_transaction_information.assert_not_called()
+        behaviour._record_market_skipped.assert_called_once()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
 
-    :param response: what the connection answers to ``PLACE_BET``.
-    :param order_lookups: the ``GET_ORDER`` answers, in order; ``None`` after.
-    :param cached_orders: the signed orders cached by earlier attempts.
-    :return: the behaviour, the payload it sent and the order ids looked up.
-    """
-    behaviour = _make_behaviour()
-    behaviour.token_balance = 1000
-    behaviour.wait_for_condition_with_sleep = lambda condition: _noop_gen()  # type: ignore[method-assign]
-    behaviour.check_balance = lambda: _return_gen(True)  # type: ignore[method-assign]
-    behaviour.sleep = lambda seconds: _noop_gen()  # type: ignore[method-assign]
-    behaviour._store_utilized_tools = MagicMock()  # type: ignore[method-assign]
-    behaviour._record_market_skipped = MagicMock()  # type: ignore[method-assign]
-    behaviour.update_bet_transaction_information = MagicMock()  # type: ignore[method-assign]
-    behaviour.usdc_to_native = lambda x: x  # type: ignore[method-assign]
-    answers = list(order_lookups)
-    looked_up = []
+    def test_duplicated_and_matched_records_the_trade_once(self) -> None:
+        """A "Duplicated" order the lookup reports matched is placed and recorded once."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+            order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
+            cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
+        )
 
-    def _route(payload):  # type: ignore[no-untyped-def]
-        if payload["request_type"] == "get_order":
-            looked_up.append(payload["params"]["order_id"])
-            return _return_gen(answers.pop(0) if answers else None)
-        return _return_gen(response)
+        assert payload.event == Event.BET_PLACEMENT_DONE.value
+        assert json.loads(payload.cached_signed_orders) == {}
+        assert looked_up == ["0xf51b"]
+        behaviour.update_bet_transaction_information.assert_called_once_with()
+        behaviour._record_market_skipped.assert_not_called()
 
-    behaviour.send_polymarket_connection_request = _route  # type: ignore[method-assign]
-    sent = []
-    behaviour.finish_behaviour = lambda payload: (  # type: ignore[method-assign]
-        sent.append(payload) or (yield)  # type: ignore[func-returns-value]
-    )
-    bet = MagicMock(id="bet1", condition_id=None, outcome_token_ids={"Yes": "tok"})
-    bet.get_outcome.return_value = "Yes"
-    cls = type(behaviour)
-    with (
-        patch.object(cls, "sampled_bet", new_callable=PropertyMock, return_value=bet),
-        patch.object(cls, "outcome_index", new_callable=PropertyMock, return_value=0),
-        patch.object(
-            cls, "investment_amount", new_callable=PropertyMock, return_value=100
-        ),
-        patch.object(
-            cls,
-            "synchronized_data",
-            new_callable=PropertyMock,
-            return_value=MagicMock(
-                period_count=1,
-                cached_signed_orders=dict(cached_orders or {}),
-                mech_tool_key=None,
-            ),
-        ),
-        patch.object(cls, "get_active_sampled_bet", return_value=bet),
-    ):
-        for _ in behaviour.async_act():
-            pass
-    return behaviour, sent[0], looked_up
+    def test_duplicated_and_never_confirmed_is_skipped_unrecorded(self) -> None:
+        """With no record of the order before the backoffs run out, nothing is recorded."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True}
+        )
 
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
+        assert sum(DUPLICATE_CONFIRM_BACKOFFS_S) <= 60
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
 
-def test_posted_fok_kill_skips_the_market_without_recording() -> None:
-    """A FOK order the CLOB killed is skipped with the not-filled reason, not cached."""
-    behaviour, payload, _ = _run_placement(
-        {
-            "error": "order couldn't be fully filled. FOK orders are fully filled or killed.",
-            "posted": True,
-            "fok_killed": True,
+    def test_retryable_answer_keeps_the_signed_order_for_a_resend(self) -> None:
+        """No reply, a 5xx or a 429 retries the round with the same signed order."""
+        behaviour, payload, _ = _run_placement(
+            {
+                "error": "Request exception!",
+                "posted": True,
+                "retryable": True,
+                "signed_order_json": '{"clob_version": "v2"}',
+            }
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_FAILED.value
+        assert json.loads(payload.cached_signed_orders) == {
+            "v2_1_bet1_tok": '{"clob_version": "v2"}'
         }
-    )
+        behaviour.update_bet_transaction_information.assert_not_called()
+        behaviour._record_market_skipped.assert_not_called()
 
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    assert json.loads(payload.cached_signed_orders) == {}
-    behaviour.update_bet_transaction_information.assert_not_called()
-    behaviour._record_market_skipped.assert_called_once()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+    def test_error_before_the_post_retries_without_skipping(self) -> None:
+        """An error that never reached the CLOB as an order never blacklists the market."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "tick size lookup failed: order is invalid. Duplicated."}
+        )
 
+        assert payload.event == Event.BET_PLACEMENT_FAILED.value
+        assert json.loads(payload.cached_signed_orders) == {}
+        assert looked_up == []
+        behaviour.update_bet_transaction_information.assert_not_called()
+        behaviour._record_market_skipped.assert_not_called()
 
-def test_duplicated_and_matched_records_the_trade_once() -> None:
-    """A "Duplicated" order the lookup reports matched is placed and recorded once."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
-        order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
-        cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
-    )
+    def test_other_posted_rejection_skips_with_the_impossible_reason(self) -> None:
+        """A 4xx answer that is not a kill keeps the existing can't-be-placed reason."""
+        behaviour, payload, _ = _run_placement(
+            {"error": "not enough balance / allowance", "posted": True}
+        )
 
-    assert payload.event == Event.BET_PLACEMENT_DONE.value
-    assert json.loads(payload.cached_signed_orders) == {}
-    assert looked_up == ["0xf51b"]
-    behaviour.update_bet_transaction_information.assert_called_once_with()
-    behaviour._record_market_skipped.assert_not_called()
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_IMPOSSIBLE
 
+    def test_duplicated_and_canceled_stops_looking_and_skips(self) -> None:
+        """A terminal status other than matched ends the lookup without recording."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+            order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
+        )
 
-def test_duplicated_and_never_confirmed_is_skipped_unrecorded() -> None:
-    """With no record of the order before the backoffs run out, nothing is recorded."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True}
-    )
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert looked_up == ["0xf51b"]
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
 
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
-    assert sum(DUPLICATE_CONFIRM_BACKOFFS_S) <= 60
-    behaviour.update_bet_transaction_information.assert_not_called()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+    def test_duplicated_without_an_order_id_is_skipped_unrecorded(self) -> None:
+        """Without an order id to look up, the duplicate cannot be confirmed."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "order is invalid. Duplicated.", "posted": True}
+        )
 
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert looked_up == []
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
 
-def test_retryable_answer_keeps_the_signed_order_for_a_resend() -> None:
-    """No reply, a 5xx or a 429 retries the round with the same signed order."""
-    behaviour, payload, _ = _run_placement(
-        {
-            "error": "Request exception!",
-            "posted": True,
-            "retryable": True,
-            "signed_order_json": '{"clob_version": "v2"}',
-        }
-    )
+    def test_duplicated_with_the_lookup_unreachable_logs_a_possible_match(self) -> None:
+        """An unreachable lookup records nothing and says the order may have matched."""
+        behaviour, payload, looked_up = _run_placement(
+            {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
+            order_lookups=[{"error": "connection reset"}]
+            * len(DUPLICATE_CONFIRM_BACKOFFS_S),
+        )
 
-    assert payload.event == Event.BET_PLACEMENT_FAILED.value
-    assert json.loads(payload.cached_signed_orders) == {
-        "v2_1_bet1_tok": '{"clob_version": "v2"}'
-    }
-    behaviour.update_bet_transaction_information.assert_not_called()
-    behaviour._record_market_skipped.assert_not_called()
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
+        behaviour.update_bet_transaction_information.assert_not_called()
+        errors = [c.args[0] for c in behaviour.context.logger.error.call_args_list]
+        assert any("0xf51b" in e and "may have matched" in e for e in errors)
 
+    def test_delayed_post_is_recorded_only_once_confirmed_matched(self) -> None:
+        """A delayed answer is a placed bet only after the lookup says it matched."""
+        behaviour, payload, looked_up = _run_placement(
+            {"success": True, "status": "delayed", "orderID": "0xd31a"},
+            order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
+        )
 
-def test_error_before_the_post_retries_without_skipping() -> None:
-    """An error that never reached the CLOB as an order never blacklists the market."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "tick size lookup failed: order is invalid. Duplicated."}
-    )
+        assert payload.event == Event.BET_PLACEMENT_DONE.value
+        assert looked_up == ["0xd31a"]
+        behaviour.update_bet_transaction_information.assert_called_once_with()
 
-    assert payload.event == Event.BET_PLACEMENT_FAILED.value
-    assert json.loads(payload.cached_signed_orders) == {}
-    assert looked_up == []
-    behaviour.update_bet_transaction_information.assert_not_called()
-    behaviour._record_market_skipped.assert_not_called()
+    def test_delayed_post_the_clob_then_kills_is_not_recorded(self) -> None:
+        """A delayed FOK the CLOB kills afterwards is skipped, not counted as held."""
+        behaviour, payload, _ = _run_placement(
+            {"success": True, "status": "delayed", "orderID": "0xd31a"},
+            order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
+        )
 
-
-def test_other_posted_rejection_skips_with_the_impossible_reason() -> None:
-    """A 4xx answer that is not a kill keeps the existing can't-be-placed reason."""
-    behaviour, payload, _ = _run_placement(
-        {"error": "not enough balance / allowance", "posted": True}
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    behaviour.update_bet_transaction_information.assert_not_called()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_IMPOSSIBLE
-
-
-def test_duplicated_and_canceled_stops_looking_and_skips() -> None:
-    """A terminal status other than matched ends the lookup without recording."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
-        order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    assert looked_up == ["0xf51b"]
-    behaviour.update_bet_transaction_information.assert_not_called()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
-
-
-def test_duplicated_without_an_order_id_is_skipped_unrecorded() -> None:
-    """Without an order id to look up, the duplicate cannot be confirmed."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "order is invalid. Duplicated.", "posted": True}
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    assert looked_up == []
-    behaviour.update_bet_transaction_information.assert_not_called()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
-
-
-def test_duplicated_with_the_lookup_unreachable_logs_a_possible_match() -> None:
-    """An unreachable lookup records nothing and says the order may have matched."""
-    behaviour, payload, looked_up = _run_placement(
-        {"error": "order 0xf51b is invalid. Duplicated.", "posted": True},
-        order_lookups=[{"error": "connection reset"}]
-        * len(DUPLICATE_CONFIRM_BACKOFFS_S),
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    assert len(looked_up) == len(DUPLICATE_CONFIRM_BACKOFFS_S)
-    behaviour.update_bet_transaction_information.assert_not_called()
-    errors = [c.args[0] for c in behaviour.context.logger.error.call_args_list]
-    assert any("0xf51b" in e and "may have matched" in e for e in errors)
-
-
-def test_delayed_post_is_recorded_only_once_confirmed_matched() -> None:
-    """A delayed answer is a placed bet only after the lookup says it matched."""
-    behaviour, payload, looked_up = _run_placement(
-        {"success": True, "status": "delayed", "orderID": "0xd31a"},
-        order_lookups=[{"status": "ORDER_STATUS_MATCHED"}],
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_DONE.value
-    assert looked_up == ["0xd31a"]
-    behaviour.update_bet_transaction_information.assert_called_once_with()
-
-
-def test_delayed_post_the_clob_then_kills_is_not_recorded() -> None:
-    """A delayed FOK the CLOB kills afterwards is skipped, not counted as held."""
-    behaviour, payload, _ = _run_placement(
-        {"success": True, "status": "delayed", "orderID": "0xd31a"},
-        order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
-    )
-
-    assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
-    behaviour.update_bet_transaction_information.assert_not_called()
-    assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
