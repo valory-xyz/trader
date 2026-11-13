@@ -11,16 +11,16 @@
         "connection/valory/polymarket_client/0.1.0": "bafybeiajfdzdrf7ki4msh5kt2czbsxla3lbsler3ae3lvvp6br6yxttkeu",
         "skill/valory/market_manager_abci/0.1.0": "bafybeihllal2enzsusuqqfkpsfp6prwsva2fvuiqyhkb2735x4rbmmb5ie",
         "skill/valory/decision_maker_abci/0.1.0": "bafybeifhp6fjbmzfnnyw7symsyaummouz2xzr4jffauvowy56vkd4psdii",
-        "skill/valory/trader_abci/0.1.0": "bafybeieib5nlh5olzpkiyf2cad53pvqseknwswqntktxyiyhxulyz2o4jy",
+        "skill/valory/trader_abci/0.1.0": "bafybeigarafnpywafpmyi7hqju6wakiaeblhbz47s22lv4xz5yitb45bgy",
         "skill/valory/tx_settlement_multiplexer_abci/0.1.0": "bafybeialchz5nhrd56c34auxz2esuexx6ufgprbww5cxehoi44bh3rd64e",
         "skill/valory/staking_abci/0.1.0": "bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a",
         "skill/valory/agent_topup_abci/0.1.0": "bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4",
         "skill/valory/agent_performance_summary_abci/0.1.0": "bafybeihgjf2hvm6s5rdoh2o4kvqnj7z2tgb7qdqszfzz5xbl3kyp5z3uu4",
         "skill/valory/check_stop_trading_abci/0.1.0": "bafybeihwkjwfqwzzr2dphpjijmuhxwgbdu4n7egyr7hdjkydxihywtg2n4",
         "skill/valory/chatui_abci/0.1.0": "bafybeidprumts5faoghwkbexnlfbbk2gkxlrjq53t6jlwzn7ndqxvnp32a",
-        "agent/valory/trader/0.1.0": "bafybeih777cxvenyxpiuakwki6zskqveimyjmgpeoxrfwdfpzecna3qwbe",
-        "service/valory/trader_pearl/0.1.0": "bafybeieazrlgeojkv3v3j7ax2gngc2k7lksokl6gga4fmgmunkkil2ogym",
-        "service/valory/polymarket_trader/0.1.0": "bafybeie3acftgjjlhkdh4h6yfrryanhjz7fao34m5bmcadjtzpkhs5gx7y"
+        "agent/valory/trader/0.1.0": "bafybeihrptxpwykmz3nnx5mm2kg5sfilt6iib52wycxzlbxm5zjn55vtgy",
+        "service/valory/trader_pearl/0.1.0": "bafybeidpcbmdpezpapelmla6t3yxzd2tkbfgagc47rjipr2ksq3lqw4wf4",
+        "service/valory/polymarket_trader/0.1.0": "bafybeiahph4phctl2vvcwmlfoxjhsxt6o6v5l42jobuikuox2k62tphxxa"
     },
     "third_party": {
         "protocol/valory/acn_data_share/0.1.0": "bafybeieqisfr6lhaaesq37lk7vyaxza2h6nucshksgyo2djqfyf2saqo4i",
