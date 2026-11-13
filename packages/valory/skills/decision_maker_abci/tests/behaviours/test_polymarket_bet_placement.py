@@ -1294,6 +1294,8 @@ class TestPolymarketBetPlacementBehaviour:
 def _run_placement(response, order_lookups=()):  # type: ignore[no-untyped-def]
     """Run one placement against ``response``; lookups answer ``GET_ORDER`` in turn.
 
+    :param response: what the connection answers to ``PLACE_BET``.
+    :param order_lookups: the ``GET_ORDER`` answers, in order; ``None`` after.
     :return: the behaviour, the payload it sent and the order ids looked up.
     """
     behaviour = _make_behaviour()
