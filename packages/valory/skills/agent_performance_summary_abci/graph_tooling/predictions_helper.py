@@ -37,8 +37,8 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     chain_id_for_platform,
     fetch_scored_rows,
     find_latest_row_for_title,
-    is_flag_enabled,
     per_position_lookup_window,
+    uses_mech_analytics,
 )
 from packages.valory.skills.agent_performance_summary_abci.graph_tooling.queries import (
     GET_MECH_RESPONSE_QUERY,
@@ -679,8 +679,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # field from mech-analytics' scored rows so per-position tool
         # attribution keeps working.
         params = getattr(self.context, "params", None)
-        if is_flag_enabled(params):
-            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+        if uses_mech_analytics(params):
+            assert params is not None  # narrowed by uses_mech_analytics  # nosec B101
             since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
@@ -773,8 +773,8 @@ class PredictionsFetcher(BasePredictionsFetcher):
         # ``.get(field, 0)`` so a NULL column lands as a graceful 0 rather
         # than a KeyError, matching the old JSON-parse-tolerant behaviour.
         params = getattr(self.context, "params", None)
-        if is_flag_enabled(params):
-            assert params is not None  # narrowed by is_flag_enabled  # nosec B101
+        if uses_mech_analytics(params):
+            assert params is not None  # narrowed by uses_mech_analytics  # nosec B101
             since, until = per_position_lookup_window(ts)
             rows = fetch_scored_rows(
                 base_url=params.mech_analytics_url,
