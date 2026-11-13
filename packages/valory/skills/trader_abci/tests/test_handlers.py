@@ -54,9 +54,13 @@ from packages.valory.skills.agent_topup_abci.tests.helpers import (
     NATIVE,
     SAFE,
     funds_status,
+    native,
     real_topup_rule,
 )
-from packages.valory.skills.agent_topup_abci.utils import TOPUP_SUCCEEDED_KEY
+from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_REFILLING_KEY,
+    TOPUP_SUCCEEDED_KEY,
+)
 from packages.valory.skills.chatui_abci.handlers import HttpContentType
 from packages.valory.skills.chatui_abci.models import TradingStrategyUI
 from packages.valory.skills.decision_maker_abci.handlers import (
@@ -3154,8 +3158,10 @@ class TestApplyAgentTopUp:
         """The native deficit reported for an account."""
         return status[chain].accounts[address].tokens[NATIVE].deficit
 
-    def test_short_safe_asks_for_the_signer_shortfall_too(self) -> None:
-        """The rule's combined Agent Safe deficit replaces the adjusted one."""
+    def test_short_safe_asks_for_the_signer_shortfall_on_top_of_the_adjusted_deficit(
+        self,
+    ) -> None:
+        """On Polygon, the Agent Signer shortfall in POL joins the USDC-aware Agent Safe deficit."""
         handler = self._handler("polygon")
         status = funds_status("polygon", ETHER // 10, ETHER // 2)
         status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
@@ -3164,8 +3170,111 @@ class TestApplyAgentTopUp:
 
         assert self._native_deficit(status, "polygon", AGENT) == 0
         assert self._native_deficit(status, "polygon", SAFE) == (
-            19 * ETHER // 10 - ETHER // 2 + 10 * ETHER
+            19 * ETHER // 10 - ETHER // 2 + 7
         )
+
+    @staticmethod
+    def _polystrat_status(
+        adjusted_safe_deficit: Optional[int], safe_pol: int = 0
+    ) -> FundRequirements:
+        """Polystrat targets with an Agent Signer under its reserve; the Agent Safe holds no POL by default."""
+        signer = native(25132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10)
+        safe = native(safe_pol, 40 * ETHER, 10 * ETHER)
+        safe.deficit = adjusted_safe_deficit
+        return FundRequirements(
+            {
+                "polygon": ChainRequirements(
+                    accounts={
+                        AGENT: AccountRequirements(tokens={NATIVE: signer}),
+                        SAFE: AccountRequirements(tokens={NATIVE: safe}),
+                    }
+                )
+            }
+        )
+
+    def test_usdc_covering_the_safe_target_asks_only_the_signer_shortfall(
+        self,
+    ) -> None:
+        """Agent Safe USDC worth more than its target leaves only the Agent Signer POL to fund."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == 0
+        assert self._native_deficit(status, "polygon", SAFE) == 274868 * ETHER // 10000
+
+    @pytest.mark.parametrize(
+        "safe_pol, signer_deficit",
+        [
+            (0, 274868 * ETHER // 10000),  # empty Agent Safe: the whole need
+            (10 * ETHER, 174868 * ETHER // 10000),  # partial: what the move leaves
+            (40 * ETHER, 0),  # Agent Safe POL covers the move
+        ],
+    )
+    def test_unvalued_usdc_keeps_the_safe_deficit_read(
+        self, safe_pol: int, signer_deficit: int
+    ) -> None:
+        """When the USDC could not be valued, the Agent Signer, not the Agent Safe, asks for the shortfall."""
+        handler = self._handler("polygon")
+        status = self._polystrat_status(adjusted_safe_deficit=None, safe_pol=safe_pol)
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", SAFE) is None
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert "not valued" in handler.context.logger.warning.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        "refilling, adjusted_safe_deficit, signer_deficit, safe_deficit",
+        [
+            (True, 0, 0, 264868 * ETHER // 10000),  # the Agent Safe asks for the refill
+            (False, 0, 0, 0),  # threshold rule: nothing asked above 3.2 POL
+            (True, None, 264868 * ETHER // 10000, None),  # USDC not valued
+        ],
+    )
+    def test_refill_asks_for_the_signer_target(
+        self,
+        refilling: bool,
+        adjusted_safe_deficit: Optional[int],
+        signer_deficit: Optional[int],
+        safe_deficit: Optional[int],
+    ) -> None:
+        """Agent Signer at 3.5132 POL after a 1 POL partial move, Agent Safe POL empty: 26.4868 POL is asked."""
+        handler = self._handler("polygon")
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == safe_deficit
+
+    @pytest.mark.parametrize(
+        "refilling, signer_deficit",
+        [
+            (True, 264868 * ETHER // 10000),  # the refill need, on the Agent Signer
+            (False, 0),  # threshold rule: the deficit read
+        ],
+    )
+    def test_failed_topup_still_asks_for_the_refill(
+        self, refilling: bool, signer_deficit: int
+    ) -> None:
+        """After a failed top-up, a refill still asks for the Agent Signer target, crediting no transfer."""
+        handler = self._handler("polygon", topup_succeeded=False)
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == 0
 
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
         """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
@@ -3202,6 +3311,16 @@ class TestApplyAgentTopUp:
         handler._apply_agent_topup(status)
 
         assert self._native_deficit(status, "polygon", AGENT) == 19 * ETHER // 10
+        assert self._native_deficit(status, "polygon", SAFE) == 7
+
+    def test_unread_polygon_signer_keeps_the_deficits_read(self) -> None:
+        """No top-up is decided without the Agent Signer balance, so the Agent Safe deficit stands."""
+        handler = self._handler("polygon")
+        status = funds_status("polygon", None, ETHER // 2)
+        status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 7
+
+        handler._apply_agent_topup(status)
+
         assert self._native_deficit(status, "polygon", SAFE) == 7
 
     def test_nothing_due_keeps_the_deficits_read(self) -> None:

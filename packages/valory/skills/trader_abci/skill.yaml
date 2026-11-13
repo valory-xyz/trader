@@ -12,14 +12,14 @@ fingerprint:
   composition.py: bafybeie7gcusfom44mwydtlfj447qsxw5zfe4hjwf32yrk2tp77nvfbuf4
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
   fsm_specification.yaml: bafybeihrnxolrwg7zl62hi2ldevtwyjrze3l7p5jkd73qmkmvjhmu3r3lu
-  handlers.py: bafybeihoqsujr3xmzeyxxaamemhprl3rsw5dznjt2ucaqzvczwlr5pgqfu
+  handlers.py: bafybeihiyy5zjstbijglfmirm4en5vbinaprlwd5cx255yhvv5gv4uhera
   models.py: bafybeiefga6y4rqanb3n4czpthj5pka62uhhwlthwjazul6mjkejf6xqcu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
   tests/test_agent_config_resolution.py: bafybeihkbcim4tctpdblos75ijyua6kibk67oxzydlups2aubpzyp4pjhi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
   tests/test_composition.py: bafybeibumcsmma5jhqe7hq72sb6mbe4hewnw6dyjt6u6y6rphaave4txbe
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeidxmmgzcsiz3it4snod4f7bwk4mu2lhgd6okkrlftekmrvmqxsgsy
+  tests/test_handlers.py: bafybeiaefv3pma4k2pijbencnortuo5jl2qodeff7o2bjb3t26y7rahovq
   tests/test_models.py: bafybeicypkna3ikkhfvxpirmzspyqdnml66m6yajo6r64r3eylhx4dmkum
   ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/omenstrat/assets/index-DNMr_pWR.js: bafybeidrkrdrelma2gruya4o2e66hr5vkm3xmr5iumrxahxjg7rc4zljfy
@@ -48,14 +48,14 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/market_manager_abci:0.1.0:bafybeihllal2enzsusuqqfkpsfp6prwsva2fvuiqyhkb2735x4rbmmb5ie
-- valory/decision_maker_abci:0.1.0:bafybeifhp6fjbmzfnnyw7symsyaummouz2xzr4jffauvowy56vkd4psdii
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeialchz5nhrd56c34auxz2esuexx6ufgprbww5cxehoi44bh3rd64e
+- valory/decision_maker_abci:0.1.0:bafybeie3ahhtt5f6eempje3i2u36rmoupp52laalgmc2xa6gxuf4tqan74
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifdixi2kftrygaovqypj5irorydx6x3sfpqnbq7vmxngzkxtkkhja
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
-- valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeihwkjwfqwzzr2dphpjijmuhxwgbdu4n7egyr7hdjkydxihywtg2n4
+- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
+- valory/check_stop_trading_abci:0.1.0:bafybeic6jssevqa3246nqb6wdekk7a2ezfs7c3h272nibinyz3zlgbh6k4
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeidprumts5faoghwkbexnlfbbk2gkxlrjq53t6jlwzn7ndqxvnp32a
-- valory/agent_performance_summary_abci:0.1.0:bafybeihgjf2hvm6s5rdoh2o4kvqnj7z2tgb7qdqszfzz5xbl3kyp5z3uu4
+- valory/chatui_abci:0.1.0:bafybeibq7egseiam6z3cwhuxtb6vzwtt7f5nkhsg37jyzauokfxc6m2tc4
+- valory/agent_performance_summary_abci:0.1.0:bafybeig567ui5tgnzojaeps5ljqw3f45tzdchnkjbyuwp3rvdmzzguhyne
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -587,7 +587,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://staking-polygon.subgraph.autonolas.tech
+      url: https://subgraph.autonolas.tech/squid/staking-polygon/graphql
     class_name: PolygonStakingSubgraph
   mech_tools:
     args:

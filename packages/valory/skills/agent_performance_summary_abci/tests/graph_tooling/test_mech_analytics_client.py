@@ -43,10 +43,10 @@ from packages.valory.skills.agent_performance_summary_abci.graph_tooling.mech_an
     chain_id_for_platform,
     fetch_scored_rows,
     find_latest_row_for_title,
-    is_flag_enabled,
     parse_requester_payload,
     parse_scored_rows_page,
     rows_as_subgraph_mech_requests,
+    uses_mech_analytics,
 )
 
 BASE_URL = "https://mech-analytics.test"
@@ -86,21 +86,21 @@ class TestIsFlagEnabled:
     def test_returns_true_when_both_set(self) -> None:
         """Returns true when both set."""
         params = SimpleNamespace(use_mech_analytics=True, mech_analytics_url=BASE_URL)
-        assert is_flag_enabled(params) is True
+        assert uses_mech_analytics(params) is True
 
     def test_returns_false_when_flag_false(self) -> None:
         """Returns false when flag false."""
         params = SimpleNamespace(use_mech_analytics=False, mech_analytics_url=BASE_URL)
-        assert is_flag_enabled(params) is False
+        assert uses_mech_analytics(params) is False
 
     def test_returns_false_when_url_empty(self) -> None:
         """Returns false when url empty."""
         params = SimpleNamespace(use_mech_analytics=True, mech_analytics_url="")
-        assert is_flag_enabled(params) is False
+        assert uses_mech_analytics(params) is False
 
     def test_returns_false_when_params_is_none(self) -> None:
         """Returns false when params is none."""
-        assert is_flag_enabled(None) is False
+        assert uses_mech_analytics(None) is False
 
     def test_returns_false_for_magicmock_params(self) -> None:
         """Returns false for magicmock params."""
@@ -109,14 +109,14 @@ class TestIsFlagEnabled:
         # MagicMock's truthy auto-attributes. Without the ``is True``
         # discipline every legacy test would silently flip to the new path.
         params = MagicMock()
-        assert is_flag_enabled(params) is False
+        assert uses_mech_analytics(params) is False
 
     def test_returns_false_when_flag_is_a_truthy_non_bool(self) -> None:
         """Returns false when flag is a truthy non bool."""
         # A stringly-configured "true" (yaml-loader mistake) must NOT enable
         # the flag — the config schema requires a real bool.
         params = SimpleNamespace(use_mech_analytics="true", mech_analytics_url=BASE_URL)
-        assert is_flag_enabled(params) is False
+        assert uses_mech_analytics(params) is False
 
 
 class TestFetchScoredRows:
@@ -607,3 +607,21 @@ class TestParseRequesterPayload:
         """A real 0-count Safe returns 0 payload; MUST NOT be treated as drift."""
         payload = {"windows": {"all": {"n_mech_requests": 0}}}
         assert parse_requester_payload(payload) == payload
+
+
+def test_polygon_never_falls_back_to_graph_when_flag_disabled() -> None:
+    """Polygon keeps its analytics reader with the legacy flag disabled."""
+    params = SimpleNamespace(
+        is_running_on_polymarket=True,
+        use_mech_analytics=False,
+        mech_analytics_url=BASE_URL,
+    )
+    assert uses_mech_analytics(params) is True
+
+
+def test_polygon_selects_analytics_after_startup_validation() -> None:
+    """Polygon selects analytics; missing URLs are validated at startup."""
+    params = SimpleNamespace(
+        is_running_on_polymarket=True, use_mech_analytics=False, mech_analytics_url=""
+    )
+    assert uses_mech_analytics(params) is True

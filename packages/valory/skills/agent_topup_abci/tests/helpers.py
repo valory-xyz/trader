@@ -58,8 +58,10 @@ def funds_status(
     safe_balance: Optional[int],
     wxdai_balance: Optional[int] = None,
     track_wxdai: bool = False,
+    signer_topup: int = 2 * ETHER,
+    signer_threshold: int = 21 * ETHER // 100,
 ) -> FundRequirements:
-    """A one-chain status: Agent Signer topup 2 / threshold 0.21, Agent Safe topup 10 / threshold 1."""
+    """A one-chain status: Agent Signer topup 2 / threshold 0.21 by default, Agent Safe topup 10 / threshold 1."""
     safe_tokens: Dict[str, TokenRequirement] = {
         NATIVE: native(safe_balance, 10 * ETHER, ETHER)
     }
@@ -67,7 +69,7 @@ def funds_status(
         safe_tokens[WXDAI_ADDRESS] = TokenRequirement(
             topup=0, threshold=0, is_native=False, balance=wxdai_balance, deficit=0
         )
-    signer = native(signer_balance, 2 * ETHER, 21 * ETHER // 100)
+    signer = native(signer_balance, signer_topup, signer_threshold)
     return FundRequirements(
         {
             chain: ChainRequirements(

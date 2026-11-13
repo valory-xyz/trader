@@ -27,10 +27,10 @@ protocols:
 - valory/ledger_api:1.0.0:bafybeiecq56phjfws36rgrefw6niyo4ezesloodsfis647mpm5ygqo4ysi
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeihgjf2hvm6s5rdoh2o4kvqnj7z2tgb7qdqszfzz5xbl3kyp5z3uu4
-- valory/decision_maker_abci:0.1.0:bafybeifhp6fjbmzfnnyw7symsyaummouz2xzr4jffauvowy56vkd4psdii
+- valory/agent_performance_summary_abci:0.1.0:bafybeig567ui5tgnzojaeps5ljqw3f45tzdchnkjbyuwp3rvdmzzguhyne
+- valory/decision_maker_abci:0.1.0:bafybeie3ahhtt5f6eempje3i2u36rmoupp52laalgmc2xa6gxuf4tqan74
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
-- valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
+- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 behaviours:
   main:

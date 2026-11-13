@@ -57,6 +57,8 @@ from packages.valory.skills.agent_performance_summary_abci.handlers import (
 )
 from packages.valory.skills.agent_topup_abci.utils import (
     GNOSIS_CHAIN_NAME,
+    POLYGON_CHAIN_NAME,
+    TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
 )
 from packages.valory.skills.agent_topup_abci.utils import (
@@ -64,8 +66,8 @@ from packages.valory.skills.agent_topup_abci.utils import (
 )
 from packages.valory.skills.agent_topup_abci.utils import (
     get_agent_topups,
-    get_safe_native_balance,
-    get_signer_native_deficit,
+    get_native_deficits_with_signer_shortfall,
+    get_signer_native_need,
 )
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
@@ -121,7 +123,6 @@ GNOSIS_NATIVE_TOKEN_ADDRESS = (
 GNOSIS_USDC_E_ADDRESS = "0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"
 
 # Polygon Chain Configuration
-POLYGON_CHAIN_NAME = "polygon"
 POLYGON_CHAIN_ID = 137
 POLYGON_NATIVE_TOKEN_ADDRESS = (
     "0x0000000000000000000000000000000000000000"  # nosec: B105
@@ -765,9 +766,12 @@ class HttpHandler(BaseHttpHandler):
 
         :param funds_status: the adjusted funds status; updated in place.
         """
-        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
-            return
         agent_address = self.context.agent_address
+        refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
+            if refilling:
+                self._report_signer_refill_need(funds_status, agent_address)
+            return
         try:
             topups = get_agent_topups(
                 self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
@@ -775,6 +779,7 @@ class HttpHandler(BaseHttpHandler):
                 agent_address,
                 self.params.agent_balance_threshold,
                 self.context.logger,
+                refilling=refilling,
             )
         except Exception as exc:  # pylint: disable=broad-except
             self.context.logger.warning(
@@ -783,30 +788,49 @@ class HttpHandler(BaseHttpHandler):
             )
             return
         for chain_name, topup in topups.items():
-            # The adjusted Agent Safe deficit counts its USDC as POL, which the rule cannot.
-            keep_safe_deficit = (
-                self.params.is_running_on_polymarket
-                and self._safe_native_covers_the_move(funds_status, chain_name)
-            )
+            signer_deficit = topup.signer_deficit
+            safe_deficit = topup.safe_deficit
+            if self.params.is_running_on_polymarket:
+                # The adjusted Agent Safe deficit counts its USDC as POL.
+                (
+                    signer_deficit,
+                    safe_deficit,
+                ) = get_native_deficits_with_signer_shortfall(
+                    funds_status,
+                    chain_name,
+                    agent_address,
+                    topup,
+                    refilling,
+                    self.context.logger,
+                )
             for address, account in funds_status[chain_name].accounts.items():
                 if address == agent_address:
-                    deficit = topup.signer_deficit
+                    deficit = signer_deficit
                 else:
-                    deficit = None if keep_safe_deficit else topup.safe_deficit
+                    deficit = safe_deficit
                 if deficit is None:
                     continue
                 for token in account.tokens.values():
                     if token.is_native:
                         token.deficit = deficit
 
-    def _safe_native_covers_the_move(
-        self, funds_status: FundRequirements, chain_name: str
-    ) -> bool:
-        """Whether the Agent Safe native balance alone covers the Agent Signer need."""
-        agent_address = self.context.agent_address
-        need = get_signer_native_deficit(funds_status, chain_name, agent_address)
-        safe_native = get_safe_native_balance(funds_status, chain_name, agent_address)
-        return need is not None and safe_native is not None and safe_native >= need
+    @staticmethod
+    def _report_signer_refill_need(
+        funds_status: FundRequirements, agent_address: str
+    ) -> None:
+        """Report the Agent Signer need up to its target on the Agent Signer, crediting no transfer.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        :param agent_address: the Agent Signer address.
+        """
+        for chain_name in funds_status:
+            need = get_signer_native_need(funds_status, chain_name, agent_address, True)
+            account = funds_status[chain_name].accounts.get(agent_address)
+            if need is None or account is None:
+                continue
+            for token in account.tokens.values():
+                if token.is_native:
+                    token.deficit = need
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

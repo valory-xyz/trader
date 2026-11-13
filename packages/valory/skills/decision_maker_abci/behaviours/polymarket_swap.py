@@ -28,11 +28,19 @@ from packages.valory.contracts.gnosis_safe.contract import (
 )
 from packages.valory.protocols.contract_api import ContractApiMessage
 from packages.valory.protocols.ledger_api import LedgerApiMessage
+from packages.valory.skills.agent_topup_abci.utils import (
+    POLYGON_CHAIN_NAME,
+    TOPUP_REFILLING_KEY,
+    get_signer_native_need,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     DecisionMakerBaseBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.payloads import PolymarketSwapPayload
 from packages.valory.skills.decision_maker_abci.rounds import PolymarketSwapUsdcRound
+from packages.valory.skills.funds_manager.behaviours import (
+    GET_FUNDS_STATUS_METHOD_NAME,
+)
 from packages.valory.skills.transaction_settlement_abci.payload_tools import (
     hash_payload_to_hex,
 )
@@ -108,6 +116,23 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
         self.context.logger.info(f"balance: {balance / 10 ** 18} POL")
         return balance
 
+    def _get_signer_native_need(self) -> Optional[int]:
+        """Agent Signer native need on Polygon, up to its target while the top-up refills it; None if not read."""
+        try:
+            funds = self.context.shared_state[GET_FUNDS_STATUS_METHOD_NAME]()
+        except Exception as exc:  # pylint: disable=broad-except
+            self.context.logger.warning(
+                f"[SwapPOLBehaviour] Couldn't read the funds status: {type(exc).__name__}({exc}).",
+                exc_info=True,
+            )
+            return None
+        return get_signer_native_need(
+            funds,
+            POLYGON_CHAIN_NAME,
+            self.context.agent_address,
+            self.context.shared_state.get(TOPUP_REFILLING_KEY, False),
+        )
+
     def _get_safe_tx_hash(
         self,
         to_address: str,
@@ -160,10 +185,26 @@ class PolymarketSwapUsdcBehaviour(DecisionMakerBaseBehaviour):
             )
             return None
 
+        signer_need = self._get_signer_native_need()
+        if signer_need is None:
+            # An unread Agent Signer need could swap the POL it is owed.
+            self.context.logger.warning(
+                "[SwapPOLBehaviour] Agent Signer POL need not read. Skipping swap."
+            )
+            return None
+
+        # Keep the POL the Agent Signer is owed for the top-up round.
+        reserve = self.params.pol_threshold_for_swap + signer_need
+        if balance <= reserve:
+            self.context.logger.info(
+                f"[SwapPOLBehaviour] Balance {balance} below or equal to reserve {reserve} "
+                f"(threshold {self.params.pol_threshold_for_swap} + Agent Signer need {signer_need})."
+            )
+            return None
+
         self.context.logger.info("[SwapPOLBehaviour] Proceeding with swap")
 
-        # Leave pol threshold in the safe for non-swap purposes
-        balance_to_swap = balance - self.params.pol_threshold_for_swap
+        balance_to_swap = balance - reserve
         self.context.logger.info(
             f"[SwapPOLBehaviour] Amount to swap: {balance_to_swap} wei ({balance_to_swap / 10**18} POL)"
         )

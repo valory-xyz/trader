@@ -26,7 +26,7 @@ fingerprint:
   behaviours/polymarket_post_set_approval.py: bafybeiglxfjk3n66mzz2u2szsgjfotgt7vn2rhrkgktbp7s5nfgpqcfnnq
   behaviours/polymarket_reedem.py: bafybeif35f2ccjkqe2gavzu4l5xh5ybgx6vltp4jlnula3xze733vujlly
   behaviours/polymarket_set_approval.py: bafybeicczlugecln65fhhkspk7d7tq4dyxnkefpb3pys3ladytns74v6ye
-  behaviours/polymarket_swap.py: bafybeiack4epupksyvpm5hj6hot2cwtbvme2dqmogxdgzjn6v5mseg2m24
+  behaviours/polymarket_swap.py: bafybeidpqanrirj7dlkha7bbabezg4pxo2p6dxpkwix4j4i7ulwfdhyet4
   behaviours/polymarket_sweep.py: bafybeigvjyr6wbyujkext6hzwfi74wqajhy4vd6vb4zczvmrn6jlpbl7oi
   behaviours/polymarket_top_up.py: bafybeickqwafgljxzrgf5nj7dxrbwupwz5vmhoapfvp2mmupj3qioawkfq
   behaviours/polymarket_withdraw.py: bafybeiaxfendxsugyyah6cmyvf6fy67cz5ojba6st3wca3k3eozg5oarym
@@ -104,7 +104,7 @@ fingerprint:
   tests/behaviours/test_polymarket_reedem.py: bafybeic2ccctxaq3addop2c7lar7yjdu2pawed6pltfkf6cggd2ifoy3ru
   tests/behaviours/test_polymarket_set_approval.py: bafybeid6sxvdfjrxai5sk7tgshcfdxbqyn6obmjxpogfj4y5jxhnxcolfy
   tests/behaviours/test_polymarket_set_approval_dw.py: bafybeihs4lklkfzqqvtjr52kjfoao36u5fr4ykq4x6ks3cw2re2thual5a
-  tests/behaviours/test_polymarket_swap.py: bafybeiabp4plzgd2bt7gs7zqfe3hgcisxrbcwmb7jc3zw4kjowiyc3n6ye
+  tests/behaviours/test_polymarket_swap.py: bafybeievcm767mxtgrd6tygehfqhvslomcuxgpivampiwhnubpa2jw4hca
   tests/behaviours/test_polymarket_sweep.py: bafybeiht6nqyfc2aistpybbcx4qyx2ffh4b4nlimuvje2blmulfk7lqk5u
   tests/behaviours/test_polymarket_top_up.py: bafybeidm652rdgyn2uikiohh3jsal32rxr6szp26xzckjerupub4bbve6a
   tests/behaviours/test_polymarket_withdraw_dw.py: bafybeifivyxjghg4xa6eewbyfiv7gpky2benhxqgkfihg5xz2zanlspr7q
@@ -185,9 +185,10 @@ skills:
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
-- valory/agent_performance_summary_abci:0.1.0:bafybeihgjf2hvm6s5rdoh2o4kvqnj7z2tgb7qdqszfzz5xbl3kyp5z3uu4
-- valory/chatui_abci:0.1.0:bafybeidprumts5faoghwkbexnlfbbk2gkxlrjq53t6jlwzn7ndqxvnp32a
-- valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
+- valory/agent_performance_summary_abci:0.1.0:bafybeig567ui5tgnzojaeps5ljqw3f45tzdchnkjbyuwp3rvdmzzguhyne
+- valory/chatui_abci:0.1.0:bafybeibq7egseiam6z3cwhuxtb6vzwtt7f5nkhsg37jyzauokfxc6m2tc4
+- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
+- valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
     args: {}
