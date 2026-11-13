@@ -20,14 +20,17 @@
 """This module contains the behaviour for sampling a bet."""
 
 import json
+import re
 from typing import Any, Generator
 
 from packages.valory.connections.polymarket_client.request_types import RequestType
 from packages.valory.skills.abstract_round_abci.base import BaseTxPayload
 from packages.valory.skills.decision_maker_abci.behaviours.base import (
     SKIP_ORDER_IMPOSSIBLE,
+    SKIP_ORDER_NOT_FILLED,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    ORDER_STATUS_MATCHED,
     PolymarketDepositWalletBehaviour,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
@@ -45,6 +48,13 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 # (v1, signed against the retired CTF exchange) naturally orphan after cutover
 # rather than being replayed and rejected by the server.
 CLOB_VERSION = "v2"
+# Seconds to wait before each lookup confirming an order; their sum must stay well
+# inside the round timeout.
+ORDER_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
+# ``post_order``'s status for an order matched on the spot.
+POST_STATUS_MATCHED = "matched"
+# The CLOB's answer to a resent order: "order 0x... is invalid. Duplicated."
+DUPLICATED_ORDER_ID_RE = re.compile(r"order\s+(0x[0-9a-fA-F]+)\s+is invalid", re.I)
 
 
 class PolymarketBetPlacementBehaviour(
@@ -132,9 +142,9 @@ class PolymarketBetPlacementBehaviour(
             polymarket_bet_payload
         )
 
-        success = False
         error_message = None
-        event = None
+        event: Event
+        skip_reason = SKIP_ORDER_IMPOSSIBLE
         updated_cache = dict(cached_orders)
         signed_order_json = None
 
@@ -143,73 +153,89 @@ class PolymarketBetPlacementBehaviour(
             self.context.logger.error(error_message)
             event = Event.BET_PLACEMENT_FAILED
         else:
-            # Extract signed order and error from response
             signed_order_json = response.get("signed_order_json")
             error_msg = response.get("error")
             status = response.get("status")
             order_id = response.get("orderID")
             tx_hashes = response.get("transactionsHashes", [])
-
-            # Check for duplicate error in behaviour
-            is_duplicate_error = False
-            if error_msg:
-                is_duplicate_error = "duplicated" in str(error_msg).lower()
+            # Only the order POST's own answer says anything about the order;
+            # an error before it leaves the market open for a retry.
+            posted = bool(response.get("posted"))
+            is_duplicate_error = posted and "duplicated" in str(error_msg).lower()
 
             self.context.logger.info(
                 f"Bet placement: Status={status}, OrderID={order_id}, TX={tx_hashes}, IsDuplicate={is_duplicate_error}"
             )
 
-            # Handle an order the CLOB will not take at this size. The amount is
-            # baked into the signature, so retrying cannot change it — and
-            # BET_PLACEMENT_FAILED loops straight back into this round, which is
-            # how one under-minimum order stalls the agent indefinitely. Leave
-            # via BET_PLACEMENT_IMPOSSIBLE instead and drop any cached order, so
-            # the market is blacklisted and sampling moves on.
+            # The amount is baked into the signature, so retrying cannot change
+            # it; BET_PLACEMENT_FAILED would loop straight back into this round.
             response_str = str(response)
             if response.get("below_minimum"):
                 error_message = f"Failed to place bet: {error_msg}"
                 self.context.logger.error(error_message)
                 event = Event.BET_PLACEMENT_IMPOSSIBLE
-                updated_cache.pop(cache_key, None)
-            # Handle no orderbook error
             elif "No orderbook exists for the requested token id" in response_str:
                 error_message = "Failed to place bet: No orderbook exists for the requested token id"
                 self.context.logger.error(error_message)
                 event = Event.BET_PLACEMENT_IMPOSSIBLE
-                updated_cache.pop(cache_key, None)
-            # Handle duplicate error - treat as success
+            # The CLOB answers "Duplicated" to any order id it has seen, matched
+            # or not, so only the earlier attempt's own record says it was placed.
             elif is_duplicate_error:
-                self.context.logger.warning(
-                    f"Duplicate order for {cache_key}. Treating as success."
-                )
-                self.update_bet_transaction_information()
-                event = Event.BET_PLACEMENT_DONE
-                updated_cache.pop(cache_key, None)
-            # Normal success/failure handling
-            else:
-                success = bool(response.get("success") or tx_hashes)
-
-                if success:
+                matched = yield from self._duplicate_order_matched(str(error_msg))
+                if matched:
                     self.update_bet_transaction_information()
-                    self.context.logger.info("Bet placement successful.")
                     event = Event.BET_PLACEMENT_DONE
-                    updated_cache.pop(cache_key, None)
                 else:
-                    self.context.logger.error("Bet placement failed.")
-                    event = Event.BET_PLACEMENT_FAILED
-                    if signed_order_json:
-                        updated_cache[cache_key] = signed_order_json
+                    event = Event.BET_PLACEMENT_IMPOSSIBLE
+                    skip_reason = SKIP_ORDER_NOT_FILLED
+            elif posted and not response.get("retryable"):
+                error_message = f"Failed to place bet: {error_msg}"
+                self.context.logger.error(error_message)
+                event = Event.BET_PLACEMENT_IMPOSSIBLE
+                if response.get("fok_killed"):
+                    skip_reason = SKIP_ORDER_NOT_FILLED
+            elif status == POST_STATUS_MATCHED or tx_hashes:
+                self.update_bet_transaction_information()
+                self.context.logger.info("Bet placement successful.")
+                event = Event.BET_PLACEMENT_DONE
+            # Any other accepted answer (e.g. delayed) may still be killed, so it
+            # counts only once the CLOB's record of the order says matched.
+            elif response.get("success") and order_id:
+                if (yield from self._order_matched(order_id)):
+                    self.update_bet_transaction_information()
+                    event = Event.BET_PLACEMENT_DONE
+                else:
+                    event = Event.BET_PLACEMENT_IMPOSSIBLE
+                    skip_reason = SKIP_ORDER_NOT_FILLED
+            # With no order id to look up, resending the same signed order makes
+            # the CLOB answer "Duplicated" with the id, which _duplicate_order_matched
+            # then confirms.
+            elif response.get("success"):
+                self.context.logger.error(
+                    f"Bet placement accepted with status {status!r} but no order id "
+                    "to confirm it; the signed order is kept for a resend."
+                )
+                event = Event.BET_PLACEMENT_FAILED
+            else:
+                resend_note = (
+                    "; the signed order is kept for a resend"
+                    if signed_order_json
+                    else ""
+                )
+                self.context.logger.error(
+                    f"Bet placement failed (status={status!r}, "
+                    f"error={error_msg or response.get('errorMsg')!r}){resend_note}."
+                )
+                event = Event.BET_PLACEMENT_FAILED
 
-        if event == Event.BET_PLACEMENT_IMPOSSIBLE:
-            self._record_market_skipped(
-                self.get_active_sampled_bet(), SKIP_ORDER_IMPOSSIBLE
-            )
-
-        # Fallback
-        if event is None:  # pragma: no cover
-            event = Event.BET_PLACEMENT_FAILED
+        if event == Event.BET_PLACEMENT_FAILED:
             if signed_order_json:
                 updated_cache[cache_key] = signed_order_json
+        else:
+            updated_cache.pop(cache_key, None)
+
+        if event == Event.BET_PLACEMENT_IMPOSSIBLE:
+            self._record_market_skipped(self.get_active_sampled_bet(), skip_reason)
 
         # On success, record conditionId → (identity, tool) key so the redeem behaviour
         # can later update the e-greedy policy's accuracy store for this position.
@@ -250,6 +276,54 @@ class PolymarketBetPlacementBehaviour(
         )
 
         yield from self.finish_behaviour(payload)
+
+    def _duplicate_order_matched(self, error_msg: str) -> Generator[None, None, bool]:
+        """Whether the earlier attempt behind a "Duplicated" answer was matched.
+
+        :param error_msg: the CLOB's "Duplicated" error text, carrying the order id.
+        :yield: framework yields between lookups.
+        :return: ``True`` only when the CLOB's record of the order says matched.
+        """
+        found = DUPLICATED_ORDER_ID_RE.search(error_msg)
+        if found is None:
+            self.context.logger.error(
+                f"No order id in the duplicate answer {error_msg!r}; "
+                "the bet is not recorded."
+            )
+            return False
+        return (yield from self._order_matched(found.group(1)))
+
+    def _order_matched(self, order_id: str) -> Generator[None, None, bool]:
+        """Whether the CLOB's record of ``order_id`` says it was matched.
+
+        :param order_id: CLOB order id to confirm.
+        :yield: framework yields between lookups.
+        :return: ``True`` only on ``ORDER_STATUS_MATCHED``.
+        """
+        order, poll_error = yield from self._poll_order_until_terminal_cooperative(
+            order_id, ORDER_CONFIRM_BACKOFFS_S, "bet placement: "
+        )
+        if poll_error is not None:
+            self.context.logger.error(
+                f"Order {order_id} could not be looked up ({poll_error}); it may "
+                "have matched, but the bet is not recorded."
+            )
+            return False
+        if order is None:
+            self.context.logger.error(
+                f"Order {order_id} still unresolved after confirmation; it may "
+                "still match, but the bet is not recorded."
+            )
+            return False
+        status = order.get("status")
+        if status == ORDER_STATUS_MATCHED:
+            self.context.logger.info(f"Order {order_id} was matched.")
+            return True
+        self.context.logger.warning(
+            f"Order {order_id} not confirmed as matched "
+            f"(status={status}); the bet is not recorded."
+        )
+        return False
 
     def finish_behaviour(self, payload: BaseTxPayload) -> Generator:
         """Finish the behaviour."""

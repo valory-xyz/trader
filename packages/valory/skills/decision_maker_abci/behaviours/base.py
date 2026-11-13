@@ -118,6 +118,10 @@ SKIP_NO_TRADE = "The trading strategy found no trade worth placing"
 SKIP_SPREAD = "The market's price spread is outside the allowed range"
 SKIP_REBET_NOT_ALLOWED = "The conditions to trade this market again are not met"
 SKIP_ORDER_IMPOSSIBLE = "The order can't be placed on this market"
+SKIP_ORDER_NOT_FILLED = (
+    "The market couldn't fill the whole order at the current price, "
+    "so no trade was placed"
+)
 SKIP_ORDERBOOK_UNAVAILABLE = (
     "Couldn't read the market's order book, so no trade was considered"
 )
