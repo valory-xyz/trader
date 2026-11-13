@@ -1384,3 +1384,22 @@ def test_duplicated_and_never_confirmed_is_skipped_unrecorded() -> None:
     assert sum(DUPLICATE_CONFIRM_BACKOFFS_S) <= 60
     behaviour.update_bet_transaction_information.assert_not_called()
     assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+
+def test_retryable_answer_keeps_the_signed_order_for_a_resend() -> None:
+    """No reply, a 5xx or a 429 retries the round with the same signed order."""
+    behaviour, payload, _ = _run_placement(
+        {
+            "error": "Request exception!",
+            "posted": True,
+            "retryable": True,
+            "signed_order_json": '{"clob_version": "v2"}',
+        }
+    )
+
+    assert payload.event == Event.BET_PLACEMENT_FAILED.value
+    assert json.loads(payload.cached_signed_orders) == {
+        "v2_1_bet1_tok": '{"clob_version": "v2"}'
+    }
+    behaviour.update_bet_transaction_information.assert_not_called()
+    behaviour._record_market_skipped.assert_not_called()
