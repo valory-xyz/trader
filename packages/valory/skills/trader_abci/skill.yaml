@@ -47,15 +47,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeidgx3zideqb5b3xckhhuim6v5gcyhe7odaxahcu73hq7eaklv2ube
-- valory/decision_maker_abci:0.1.0:bafybeiezgwlx3ef7ydkz6j4rvnd2fsieepxvf7wezew2n7p7j7f2grnf4a
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeifxreeebitk2w2zygkwawgvda6fpzrgtarafa245jsb74bhlhumry
+- valory/market_manager_abci:0.1.0:bafybeihllal2enzsusuqqfkpsfp6prwsva2fvuiqyhkb2735x4rbmmb5ie
+- valory/decision_maker_abci:0.1.0:bafybeifhp6fjbmzfnnyw7symsyaummouz2xzr4jffauvowy56vkd4psdii
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeialchz5nhrd56c34auxz2esuexx6ufgprbww5cxehoi44bh3rd64e
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeidl4v4xqezax2lwcysgnxfngyrjmfkiglfj6lr25oevyxw7vcluke
+- valory/check_stop_trading_abci:0.1.0:bafybeihwkjwfqwzzr2dphpjijmuhxwgbdu4n7egyr7hdjkydxihywtg2n4
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeihe3jgucakd5s7ysc5jmbqdpnu5avg4m6dfkpwftgv4jh6lotznve
-- valory/agent_performance_summary_abci:0.1.0:bafybeict3lavbdpplv7rakh2kkluzrrrqx7c4uoguih6gh5xoup23lc6ju
+- valory/chatui_abci:0.1.0:bafybeidprumts5faoghwkbexnlfbbk2gkxlrjq53t6jlwzn7ndqxvnp32a
+- valory/agent_performance_summary_abci:0.1.0:bafybeihgjf2hvm6s5rdoh2o4kvqnj7z2tgb7qdqszfzz5xbl3kyp5z3uu4
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:

@@ -1052,7 +1052,7 @@ class PolymarketClientConnection(BaseSyncConnection):
         :return: ``(error_response, error_message)``.
         """
         error_msg = _poly_api_error_message(e, "Error placing bet")
-        self.logger.error(error_msg)
+        self.logger.error(f"Order POST answered status {e.status_code}: {error_msg}")
         response: PlaceBetError = {"error": error_msg, "posted": True}
         lowered = error_msg.lower()
         # The amount is baked into the signature, so this refusal can only repeat.
