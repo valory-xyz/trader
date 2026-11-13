@@ -50,7 +50,7 @@ from packages.valory.skills.decision_maker_abci.states.polymarket_bet_placement 
 CLOB_VERSION = "v2"
 # Seconds to wait before each lookup confirming an order; their sum must stay well
 # inside the round timeout.
-DUPLICATE_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
+ORDER_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
 # The CLOB deferred matching the order; ``post_order`` returns before it resolves.
 POST_STATUS_DELAYED = "delayed"
 # The CLOB's answer to a resent order: "order 0x... is invalid. Duplicated."
@@ -284,7 +284,7 @@ class PolymarketBetPlacementBehaviour(
         """
         order: Optional[Dict[str, Any]]
         order, poll_error = yield from self._poll_order_until_terminal_cooperative(
-            order_id, DUPLICATE_CONFIRM_BACKOFFS_S, "bet placement: "
+            order_id, ORDER_CONFIRM_BACKOFFS_S, "bet placement: "
         )
         if poll_error is not None:
             self.context.logger.error(
