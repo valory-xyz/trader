@@ -53,7 +53,7 @@ fingerprint:
   tests/test_utils.py: bafybeid7vyjm6a5itbms6i3275v2gpi6otb47ivlkok6xpwvzfccohqnkm
 fingerprint_ignore_patterns: []
 connections:
-- valory/polymarket_client:0.1.0:bafybeid6wultuy2ps3czgujoek2woyberar2yyjqmipla5bjgj7sfu4ih4
+- valory/polymarket_client:0.1.0:bafybeifllsxxhfxex7tqmxordv23cntojywmk4ykw5ejpj7d67h3pla3s4
 contracts: []
 protocols:
 - valory/http:1.0.0:bafybeidxkp3vga7t6x2pbt2tpkgyaxa5bgpdgryao54py7w3yxyzr7neoy

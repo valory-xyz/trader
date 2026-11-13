@@ -1211,11 +1211,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             order = self.client.get_order(order_id)
             return order, None
         except PolyApiException as e:
-            error_msg = (
-                e.error_msg.get("error")
-                if isinstance(e.error_msg, dict) and e.error_msg.get("error")
-                else f"Error fetching order {order_id}: {e}"
-            )
+            error_msg = _poly_api_error_message(e, f"Error fetching order {order_id}")
             self.logger.error(error_msg)
             return {"error": error_msg}, error_msg
 
