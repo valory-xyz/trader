@@ -54,8 +54,8 @@ CLOB_VERSION = "v2"
 # Seconds to wait before each lookup confirming an order; their sum must stay well
 # inside the round timeout.
 ORDER_CONFIRM_BACKOFFS_S = (2.0, 5.0, 10.0, 15.0, 25.0)
-# The CLOB deferred matching the order; ``post_order`` returns before it resolves.
-POST_STATUS_DELAYED = "delayed"
+# ``post_order``'s status for an order matched on the spot.
+POST_STATUS_MATCHED = "matched"
 # The CLOB's answer to a resent order: "order 0x... is invalid. Duplicated."
 DUPLICATED_ORDER_ID_RE = re.compile(r"order\s+(0x[0-9a-fA-F]+)\s+is invalid", re.I)
 
@@ -205,18 +205,26 @@ class PolymarketBetPlacementBehaviour(
                 event = Event.BET_PLACEMENT_IMPOSSIBLE
                 if response.get("fok_killed"):
                     skip_reason = SKIP_ORDER_NOT_FILLED
-            # A delayed match may still be killed, so it counts only once confirmed.
-            elif status == POST_STATUS_DELAYED and order_id and not tx_hashes:
+            elif status == POST_STATUS_MATCHED or tx_hashes:
+                self.update_bet_transaction_information()
+                self.context.logger.info("Bet placement successful.")
+                event = Event.BET_PLACEMENT_DONE
+            # Any other accepted answer (e.g. delayed) may still be killed, so it
+            # counts only once the CLOB's record of the order says matched.
+            elif response.get("success") and order_id:
                 if (yield from self._order_matched(order_id)):
                     self.update_bet_transaction_information()
                     event = Event.BET_PLACEMENT_DONE
                 else:
                     event = Event.BET_PLACEMENT_IMPOSSIBLE
                     skip_reason = SKIP_ORDER_NOT_FILLED
-            elif response.get("success") or tx_hashes:
-                self.update_bet_transaction_information()
-                self.context.logger.info("Bet placement successful.")
-                event = Event.BET_PLACEMENT_DONE
+            elif response.get("success"):
+                self.context.logger.error(
+                    f"Bet placement accepted with status {status!r} but no order id "
+                    "to confirm it; the bet is not recorded."
+                )
+                event = Event.BET_PLACEMENT_IMPOSSIBLE
+                skip_reason = SKIP_ORDER_NOT_FILLED
             else:
                 self.context.logger.error("Bet placement failed.")
                 event = Event.BET_PLACEMENT_FAILED

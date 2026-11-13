@@ -1436,3 +1436,40 @@ class TestPolymarketBetPlacementBehaviour:
         }
         behaviour.update_bet_transaction_information.assert_not_called()
         behaviour._record_market_skipped.assert_not_called()
+
+    def test_delayed_post_without_an_order_id_is_not_recorded(self) -> None:
+        """An accepted answer with no order id to confirm is skipped, not recorded."""
+        behaviour, payload, looked_up = _run_placement(
+            {"success": True, "status": "delayed"}
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert looked_up == []
+        behaviour.update_bet_transaction_information.assert_not_called()
+        assert behaviour._record_market_skipped.call_args[0][1] == SKIP_ORDER_NOT_FILLED
+
+    def test_post_with_settlement_hashes_is_recorded_without_a_lookup(self) -> None:
+        """Settlement hashes prove the match, whatever the status says."""
+        behaviour, payload, looked_up = _run_placement(
+            {
+                "success": True,
+                "status": "delayed",
+                "orderID": "0xd31a",
+                "transactionsHashes": ["0xtx"],
+            }
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_DONE.value
+        assert looked_up == []
+        behaviour.update_bet_transaction_information.assert_called_once_with()
+
+    def test_unmatched_success_is_confirmed_before_recording(self) -> None:
+        """An accepted but unmatched answer goes through the order lookup."""
+        behaviour, payload, looked_up = _run_placement(
+            {"success": True, "status": "unmatched", "orderID": "0xa11e"},
+            order_lookups=[{"status": "ORDER_STATUS_CANCELED"}],
+        )
+
+        assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
+        assert looked_up == ["0xa11e"]
+        behaviour.update_bet_transaction_information.assert_not_called()

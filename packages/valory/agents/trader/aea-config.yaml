@@ -70,10 +70,10 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicvnnji4obgybxkfsvjtox4f4riqmae6xkzj3j5occx75j6dj5f7m
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeicqbv6pr3yr7h2wpw3nfa6i6jq4nv5e2hnp4sldmueyozcvtqnljm
 - valory/market_manager_abci:0.1.0:bafybeicy7thc3e7z5yjxsruoyyjtilgcg7lffxo5v5wukpouquorwglnp4
-- valory/decision_maker_abci:0.1.0:bafybeifnfp4ifditdgkanpixhitfgsggn2gpnysghypsxn5dsmex4pyoze
-- valory/trader_abci:0.1.0:bafybeihueglov7nvyroiifzcnz574bl6jma2drpdu4jacvgwj7jjmitsfu
+- valory/decision_maker_abci:0.1.0:bafybeigsoophts6e2ygpzya75gq76awsyyehrpaaueuygj4qden63u3kku
+- valory/trader_abci:0.1.0:bafybeicvotkxh2zqajfqgoaq6zxve3vt55y7jple7yp3dog6bxmmgavbgu
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
 - valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
 - valory/check_stop_trading_abci:0.1.0:bafybeihyw3gh5hrv4envtlxzijbvhao6qr4rithk2aibwj57zrkwhaxryq
