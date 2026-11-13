@@ -67,6 +67,7 @@ from packages.valory.skills.agent_topup_abci.utils import (
 from packages.valory.skills.agent_topup_abci.utils import (
     get_agent_topups,
     get_native_deficits_with_signer_shortfall,
+    get_signer_native_need,
 )
 from packages.valory.skills.chatui_abci.handlers import (
     HTTP_CONTENT_TYPE_MAP,
@@ -765,10 +766,12 @@ class HttpHandler(BaseHttpHandler):
 
         :param funds_status: the adjusted funds status; updated in place.
         """
-        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
-            return
         agent_address = self.context.agent_address
         refilling = self.context.shared_state.get(TOPUP_REFILLING_KEY, False)
+        if not self.context.shared_state.get(TOPUP_SUCCEEDED_KEY, True):
+            if refilling:
+                self._report_signer_refill_need(funds_status, agent_address)
+            return
         try:
             topups = get_agent_topups(
                 self.context.shared_state[GET_AGENT_TOPUP_METHOD_NAME],
@@ -810,6 +813,24 @@ class HttpHandler(BaseHttpHandler):
                 for token in account.tokens.values():
                     if token.is_native:
                         token.deficit = deficit
+
+    @staticmethod
+    def _report_signer_refill_need(
+        funds_status: FundRequirements, agent_address: str
+    ) -> None:
+        """Report the Agent Signer need up to its target on the Agent Signer, crediting no transfer.
+
+        :param funds_status: the adjusted funds status; updated in place.
+        :param agent_address: the Agent Signer address.
+        """
+        for chain_name in funds_status:
+            need = get_signer_native_need(funds_status, chain_name, agent_address, True)
+            account = funds_status[chain_name].accounts.get(agent_address)
+            if need is None or account is None:
+                continue
+            for token in account.tokens.values():
+                if token.is_native:
+                    token.deficit = need
 
     def _get_eoa_account(self) -> Optional[Account]:
         """Get the EOA account, handling both plaintext and encrypted private keys."""

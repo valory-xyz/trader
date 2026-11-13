@@ -3253,6 +3253,29 @@ class TestApplyAgentTopUp:
         assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
         assert self._native_deficit(status, "polygon", SAFE) == safe_deficit
 
+    @pytest.mark.parametrize(
+        "refilling, signer_deficit",
+        [
+            (True, 264868 * ETHER // 10000),  # the refill need, on the Agent Signer
+            (False, 0),  # threshold rule: the deficit read
+        ],
+    )
+    def test_failed_topup_still_asks_for_the_refill(
+        self, refilling: bool, signer_deficit: int
+    ) -> None:
+        """After a failed top-up, a refill still asks for the Agent Signer target, crediting no transfer."""
+        handler = self._handler("polygon", topup_succeeded=False)
+        handler.context.shared_state[TOPUP_REFILLING_KEY] = refilling
+        status = self._polystrat_status(adjusted_safe_deficit=0)
+        status["polygon"].accounts[AGENT].tokens[NATIVE] = native(
+            35132 * ETHER // 10000, 30 * ETHER, 32 * ETHER // 10
+        )
+
+        handler._apply_agent_topup(status)
+
+        assert self._native_deficit(status, "polygon", AGENT) == signer_deficit
+        assert self._native_deficit(status, "polygon", SAFE) == 0
+
     def test_gnosis_counts_wxdai_and_leaves_it_untouched(self) -> None:
         """On Gnosis, Agent Safe wxDAI counts as native; only the native deficit changes."""
         handler = self._handler("gnosis")
