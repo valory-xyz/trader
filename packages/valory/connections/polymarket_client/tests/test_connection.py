@@ -773,11 +773,11 @@ class TestPlaceBet:
         assert "retryable" not in response
         assert "signed_order_json" not in response
 
-    @pytest.mark.parametrize("status_code", [None, 429, 500, 502, 504])
+    @pytest.mark.parametrize("status_code", [None, 302, 429, 500, 502, 504])
     def test_place_bet_unanswered_post_keeps_the_order_for_a_resend(
         self, status_code: Any
     ) -> None:
-        """No reply, a 5xx or a 429 may hide a match or a refusal to take the order."""
+        """Anything but a 4xx other than 429 may hide a match or a refusal to take it."""
         response, _ = self._post_and_fail(self._post_error(status_code, "boom"))
 
         assert response["posted"] is True

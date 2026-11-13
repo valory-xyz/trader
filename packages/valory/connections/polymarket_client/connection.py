@@ -27,6 +27,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import cached_property
+from http import HTTPStatus
 from itertools import product
 from typing import (
     Any,
@@ -237,8 +238,6 @@ MIN_MARKETABLE_USD = 1.0
 BELOW_MINIMUM_MARKERS = ("invalid amount", "min size")
 # The CLOB's answer to a FOK order it killed because the book could not fill it.
 FOK_KILLED_MARKER = "couldn't be fully filled"
-HTTP_TOO_MANY_REQUESTS = 429
-HTTP_SERVER_ERROR = 500
 
 
 class PlaceBetError(TypedDict, total=False):
@@ -253,6 +252,22 @@ class PlaceBetError(TypedDict, total=False):
     below_minimum: bool
     # Present only when retryable.
     signed_order_json: str
+
+
+def _is_definite_rejection(status: Optional[int]) -> bool:
+    """Whether the CLOB's answer to a POST is a 4xx other than 429.
+
+    Anything else (no reply, a 5xx, a 429, an unexpected status) may hide a match
+    or a refusal to take the order, so it is not a definite answer.
+
+    :param status: the HTTP status of the answer, ``None`` when there was none.
+    :return: whether the order is known not to have been placed.
+    """
+    return (
+        status is not None
+        and HTTPStatus.BAD_REQUEST <= status < HTTPStatus.INTERNAL_SERVER_ERROR
+        and status != HTTPStatus.TOO_MANY_REQUESTS
+    )
 
 
 def _poly_api_error_message(e: PolyApiException, fallback_prefix: str) -> str:
@@ -1046,12 +1061,7 @@ class PolymarketClientConnection(BaseSyncConnection):
             return response, error_msg
         if FOK_KILLED_MARKER in lowered:
             response["fok_killed"] = True
-        status = e.status_code
-        if (
-            status is None
-            or status >= HTTP_SERVER_ERROR
-            or status == HTTP_TOO_MANY_REQUESTS
-        ):
+        if not _is_definite_rejection(e.status_code):
             response["retryable"] = True
             response["signed_order_json"] = signed_order_json
         return response, error_msg
