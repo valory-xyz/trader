@@ -70,12 +70,12 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia3lpn7hpjjeqcfyea3get6c3vrfwboswsxh5rxqnq36f5uikdeqa
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeigyhuwogog4i6j2ne4265zldg6zk5l6nwziwxr2247l7fahytlvby
 - valory/market_manager_abci:0.1.0:bafybeiaqace2mhsprtjz7ygnq2jcn2bazk7y3rkw7m6e6flgajbv4bko7m
-- valory/decision_maker_abci:0.1.0:bafybeicxvwpjpkncflsnafdxph7l7zu5ev57j7xrcab3j4edrolw7wwv2e
-- valory/trader_abci:0.1.0:bafybeicsz3kg3zc4a3forzjbz7hhzcdxwhkbigkbr75nz2mblebwv7ux5m
+- valory/decision_maker_abci:0.1.0:bafybeibkbzv7o3o6rrrtsvz66owgx77gx5aslk4gva4a2ko54kltj4hz74
+- valory/trader_abci:0.1.0:bafybeicpusysge2m4mcwkdorddst4dkxbfo2yebocipo5db7n76t7h2urq
 - valory/staking_abci:0.1.0:bafybeihfcqyxuzscmlurdk7tq3jgk3mkqswuwvldnmycjjk243uemy6p6a
-- valory/agent_topup_abci:0.1.0:bafybeigy5hvdq4dvpbfgufmfoa3vb3irnh7lzd6lnrlwjhnxbniryagyee
+- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
 - valory/check_stop_trading_abci:0.1.0:bafybeihfp62pajdbkfuch2nf2takcjf22atr3eme6ke552ljqpvj4ed25a
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
