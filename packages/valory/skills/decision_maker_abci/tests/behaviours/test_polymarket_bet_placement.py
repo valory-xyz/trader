@@ -1354,7 +1354,8 @@ class TestPolymarketBetPlacementBehaviour:
                 "error": "order couldn't be fully filled. FOK orders are fully filled or killed.",
                 "posted": True,
                 "fok_killed": True,
-            }
+            },
+            cached_orders={"v2_1_bet1_tok": '{"clob_version": "v2"}'},
         )
 
         assert payload.event == Event.BET_PLACEMENT_IMPOSSIBLE.value
