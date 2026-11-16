@@ -277,6 +277,24 @@ class TestRedeemRoundEndBlock:
             result = round_instance.end_block()
         assert result is None
 
+    @pytest.mark.parametrize("earlier", [True, False])
+    def test_end_block_clears_an_earlier_nothing_to_redeem_until_it_ends(
+        self, earlier: bool
+    ) -> None:
+        """A second run in the period that times out does not keep the first run's result."""
+        round_instance = RedeemRound(
+            synchronized_data=SynchronizedData(
+                db=AbciAppDB(setup_data={"found_nothing_to_redeem": [earlier]})
+            ),
+            context=MagicMock(),
+        )
+        round_instance.block_confirmations = 1
+        with patch.object(TxPreparationRound, "end_block", return_value=None):
+            result = round_instance.end_block()
+
+        assert result is None
+        assert round_instance.synchronized_data.found_nothing_to_redeem is False
+
     def test_end_block_with_majority_updates_mech_tools(self) -> None:
         """Test end_block updates mech_tools when there is a majority event (not NO_MAJORITY)."""
         mock_synced_data = MagicMock(spec=SynchronizedData)

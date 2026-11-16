@@ -159,7 +159,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         self.sell_amount: int = 0
         self.buy_amount: int = 0
         self._last_strategy_result: Dict[str, Any] = {}
-        self.strategy_could_not_size: bool = False
 
     def _latest_ranked_at(self) -> int:
         """Get the stamp of the latest ranked list, 0 when none was requested."""
@@ -833,7 +832,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
             results = self.execute_strategy(**kwargs)
             self._last_strategy_result = results
-            self.strategy_could_not_size = self._could_not_size(kwargs, results)
             for level in SUPPORTED_STRATEGY_LOG_LEVELS:
                 logger = getattr(self.context.logger, level, None)
                 if logger is not None:
@@ -863,23 +861,6 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
             )
 
         return bet_amount
-
-    @staticmethod
-    def _could_not_size(kwargs: Dict[str, Any], results: Dict[str, Any]) -> bool:
-        """Whether the strategy failed, or no bankroll could fund its minimum bet and fee.
-
-        Either way a zero bet says nothing about the market itself.
-
-        :param kwargs: the arguments the strategy was run with.
-        :param results: what the strategy returned.
-        :return: whether the strategy could not size any bet.
-        """
-        if "vote" not in results or results.get("error"):
-            return True
-        spendable = kwargs.get("bankroll", 0) - kwargs.get("floor_balance", 0)
-        # the smallest bet also pays the trade fee
-        smallest_cost = kwargs.get("min_bet", 0) + kwargs.get("fee_per_trade", 0)
-        return spendable < smallest_cost
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage

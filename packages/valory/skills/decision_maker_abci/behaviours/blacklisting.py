@@ -62,23 +62,17 @@ class BlacklistingBehaviour(  # type: ignore
         self.shared_state.orderbook_fetch_failed = False
         if self._is_decline():
             sampled_bet.decline_in_epoch(self.synchronized_data.epoch_start)
-        self.shared_state.strategy_could_not_size = False
 
     def _is_decline(self) -> bool:
         """Whether this period's mech answer was read and led to no trade.
 
-        A mech error leaves no decision timestamp, a failed placement of a
-        profitable bet carries a vote, and a strategy that could not size any
-        bet judged nothing, so none of them counts as a decline.
+        A mech error leaves no decision timestamp, and a failed placement of a
+        profitable bet carries a vote, so neither counts as a decline.
 
         :return: whether the sampled market was declined.
         """
         synced_data = self.synchronized_data
-        if (
-            self.benchmarking_mode.enabled
-            or not synced_data.decision_receive_timestamp
-            or self.shared_state.strategy_could_not_size
-        ):
+        if self.benchmarking_mode.enabled or not synced_data.decision_receive_timestamp:
             return False
         return synced_data.vote is None or not synced_data.is_profitable
 

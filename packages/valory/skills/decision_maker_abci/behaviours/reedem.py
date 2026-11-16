@@ -370,12 +370,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
                 break
 
             trades_market_chunk = yield from self._fetch_redeem_info()
-            # read before the block lookups below overwrite the fetch state:
-            # a failed page leaves the trades partial, whatever comes after
-            if self._call_failed or self._fetch_status == FetchStatus.FAIL:
-                self.redeeming_progress.trades_fetch_failed = True
+            # read before the block lookups below overwrite the fetch state
+            page_incomplete = self._call_failed
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
+            # a failed page that is retried is refetched in full; it leaves the
+            # trades partial only once the loop gives up or moves past it
+            if page_incomplete and self._fetch_status != FetchStatus.IN_PROGRESS:
+                self.redeeming_progress.trades_fetch_failed = True
 
         # truncate the trades, otherwise logs get too big
         trades_str = str(self.trades)[:MAX_LOG_SIZE]
@@ -970,6 +972,15 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         incomplete = (
             self.redeeming_progress.trades_fetch_failed or self._preparation_failed
         )
+        if incomplete:
+            reason = (
+                "the trades fetch ended incomplete"
+                if self.redeeming_progress.trades_fetch_failed
+                else "a claimable position failed to prepare"
+            )
+            self.context.logger.warning(
+                f"No winnings found, but {reason}: not reporting nothing to redeem."
+            )
         return RedeemPayload(
             self.context.agent_address,
             mech_tools=serialized_tools,

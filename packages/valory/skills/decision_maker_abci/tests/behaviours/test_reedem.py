@@ -1279,6 +1279,43 @@ class TestGetRedeemInfo:
 
         assert progress.trades_fetch_failed is expected
 
+    def test_get_redeem_info_forgets_a_page_that_succeeds_on_retry(self) -> None:
+        """A failed page that the loop refetches in full leaves the fetch complete."""
+        behaviour = _make_redeem_behaviour()
+        behaviour._prepare_fetching = MagicMock(  # type: ignore[method-assign]
+            side_effect=[True, True, False]
+        )
+        progress = RedeemingProgress()
+        results = iter(
+            [
+                (True, FetchStatus.IN_PROGRESS, None),  # failed, retried
+                (False, FetchStatus.SUCCESS, [{"id": "trade"}]),  # refetched in full
+            ]
+        )
+
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
+            """Fail once, then succeed."""
+            failed, status, chunk = next(results)
+            behaviour._call_failed = failed
+            behaviour._fetch_status = status
+            yield
+            return chunk
+
+        def mock_update_redeem_info(chunk):  # type: ignore[no-untyped-def]
+            """No block lookup changes the state here."""
+            yield
+
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
+        behaviour.update_redeem_info = mock_update_redeem_info  # type: ignore[method-assign]
+
+        with patch.object(
+            type(behaviour), "redeeming_progress", new_callable=PropertyMock
+        ) as mock_rp:
+            mock_rp.return_value = progress
+            _exhaust_gen(behaviour._get_redeem_info())
+
+        assert progress.trades_fetch_failed is False
+
     def test_get_redeem_info_with_chunk(self) -> None:
         """Should process fetched chunks."""
         behaviour = _make_redeem_behaviour()
@@ -3439,6 +3476,7 @@ class TestNormalAct:
         assert isinstance(result, RedeemPayload)
         assert result.nothing_to_redeem is None
         assert result.tx_hash is None
+        behaviour.context.logger.warning.assert_called_once()
 
     def test_normal_act_resume_from_progress(self) -> None:
         """Should load progress when check_started is True."""

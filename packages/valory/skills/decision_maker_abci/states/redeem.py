@@ -90,6 +90,12 @@ class RedeemRound(TxPreparationRound):
             self.block_confirmations = 1
 
         if res is None:
+            # a run that times out must not keep an earlier run's result in
+            # this period, e.g. a redeem after a failed bet tx
+            if self.synchronized_data.found_nothing_to_redeem:
+                self.synchronized_data.db.update(
+                    **{get_name(SynchronizedData.found_nothing_to_redeem): False}
+                )
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
