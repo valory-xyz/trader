@@ -313,6 +313,8 @@ class ActivityGoal:
     period_start: int
     updated_at: int
     last_met_at: Optional[int] = None
+    # Omen only: the last period of this epoch found nothing to try or redeem
+    no_markets_left: bool = False
 
     def __post_init__(self) -> None:
         """Refuse a block that is ill-typed or contradicts its own counts."""
@@ -624,6 +626,7 @@ def _is_valid_activity_goal_block(goal: ActivityGoal) -> bool:
         and isinstance(goal.is_met, bool)
         and all(is_plain_int(value) and value >= 0 for value in counters)
         and (goal.last_met_at is None or is_plain_int(goal.last_met_at))
+        and isinstance(goal.no_markets_left, bool)
         and goal.is_met == (goal.progress >= goal.target)
     )
 

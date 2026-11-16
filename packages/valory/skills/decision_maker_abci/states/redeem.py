@@ -38,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 
 IGNORED = "ignored"
 MECH_TOOLS_FIELD = "mech_tools"
+NOTHING_TO_REDEEM_FIELD = "nothing_to_redeem"
 
 
 class RedeemRound(TxPreparationRound):
@@ -58,7 +59,7 @@ class RedeemRound(TxPreparationRound):
     def most_voted_payload_values(
         self,
     ) -> Tuple[Any, ...]:
-        """Get the most voted payload values in such a way to create a custom none event that ignores the mech tools."""
+        """Get the most voted payload values, with a custom none event that ignores the mech tools and the nothing-to-redeem flag."""
         most_voted_payload_values = super().most_voted_payload_values
         # sender does not matter for the init as the `data` property used below to obtain the dictionary ignores it
         most_voted_payload = RedeemPayload(IGNORED, *most_voted_payload_values)
@@ -66,6 +67,8 @@ class RedeemRound(TxPreparationRound):
         mech_tools = most_voted_payload_dict.pop(MECH_TOOLS_FIELD, None)
         if mech_tools is None:
             raise ValueError(f"`{MECH_TOOLS_FIELD}` must not be `None`")
+        # a status flag, not tx data: a payload carrying only it still means no tx
+        most_voted_payload_dict.pop(NOTHING_TO_REDEEM_FIELD, None)
         if all(val is None for val in most_voted_payload_dict.values()):
             return (None,) * len(self.selection_key)
         return most_voted_payload_values
@@ -87,6 +90,12 @@ class RedeemRound(TxPreparationRound):
             self.block_confirmations = 1
 
         if res is None:
+            # a run that times out must not keep an earlier run's result in
+            # this period, e.g. a redeem after a failed bet tx
+            if cast(SynchronizedData, self.synchronized_data).found_nothing_to_redeem:
+                self.synchronized_data.db.update(
+                    **{get_name(SynchronizedData.found_nothing_to_redeem): False}
+                )
             return None
 
         synced_data, event = cast(Tuple[SynchronizedData, Enum], res)
@@ -99,7 +108,13 @@ class RedeemRound(TxPreparationRound):
             mech_tools_update = most_voted_payload.mech_tools
             updated_data = synced_data.update(
                 self.synchronized_data_class,
-                **{self.mech_tools_name: mech_tools_update},
+                **{
+                    self.mech_tools_name: mech_tools_update,
+                    get_name(SynchronizedData.found_nothing_to_redeem): (
+                        event == Event.NO_REDEEMING
+                        and bool(most_voted_payload.nothing_to_redeem)
+                    ),
+                },
             )
             return updated_data, event
 

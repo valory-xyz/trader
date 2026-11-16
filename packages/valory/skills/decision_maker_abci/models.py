@@ -172,6 +172,8 @@ class RedeemingProgress:
     answered: list = field(default_factory=list)
     claiming_condition_ids: List[str] = field(default_factory=list)
     claimed_condition_ids: List[str] = field(default_factory=list)
+    # the trades fetch gave up, so the check may have missed positions
+    trades_fetch_failed: bool = False
 
     @property
     def check_finished(self) -> bool:

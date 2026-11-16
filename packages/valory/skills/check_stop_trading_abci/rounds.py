@@ -103,6 +103,12 @@ class SynchronizedData(BaseSynchronizedData):
         return int(activity_completed)
 
     @property
+    def epoch_start(self) -> Optional[int]:
+        """Get the current staking epoch's checkpoint, ``None`` when unstaked."""
+        epoch_start = self.db.get("epoch_start", None)
+        return None if epoch_start is None else int(epoch_start)
+
+    @property
     def review_bets_for_selling(self) -> bool:
         """Get the status of the review bets for selling."""
         db_value = self.db.get("review_bets_for_selling", None)
@@ -210,6 +216,7 @@ class CheckStopTradingRound(VotingRound):
             is_activity_target_met=is_activity_target_met,
             activity_target=int(payload.activity_target or 0),
             activity_completed=int(payload.activity_completed or 0),
+            epoch_start=payload.epoch_start,
         )
 
         # Operator-armed withdrawal trumps both SKIP_TRADING and REVIEW_BETS.

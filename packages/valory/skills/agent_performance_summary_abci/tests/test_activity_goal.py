@@ -35,11 +35,13 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
     read_trades,
     record_trade,
     retarget_activity_goal,
+    set_no_markets_left,
     update_activity_goal,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     ActivityGoal,
+    read_activity_goal,
 )
 
 PERIOD_START = 1_791_331_200
@@ -247,6 +249,118 @@ class TestBuildActivityGoal:
         assert goal.last_met_at == new_period + 5
 
 
+class TestNoMarketsLeft:
+    """The idle signal lives for one epoch and survives every rebuild within it."""
+
+    def test_defaults_to_false_and_reads_older_blocks(self, tmp_path: Path) -> None:
+        """A block written by an older build, without the field, reads as not idle."""
+        assert (
+            build_activity_goal(8, 3, PERIOD_START, PERIOD_START, None).no_markets_left
+            is False
+        )
+        legacy = {
+            k: v
+            for k, v in _goal(last_met_at=PERIOD_START + 1).__dict__.items()
+            if k != "no_markets_left"
+        }
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"activity_goal": legacy})
+        )
+        # read, not rejected: a rebuild from no block would drop `last_met_at`
+        assert read_activity_goal(tmp_path) is not None
+        update_activity_goal(
+            tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
+        )
+        block = _read_summary(tmp_path)["activity_goal"]
+        assert block["no_markets_left"] is False
+        assert block["last_met_at"] == PERIOD_START + 1
+
+    @pytest.mark.parametrize(
+        "period_start, expected",
+        [(PERIOD_START, True), (PERIOD_START + 86_400, False)],
+        ids=["same-epoch", "new-epoch"],
+    )
+    def test_build_keeps_it_within_the_epoch_only(
+        self, period_start: int, expected: bool
+    ) -> None:
+        """The stop check's rebuild keeps the signal, a new epoch clears it."""
+        previous = _goal(no_markets_left=True)
+        goal = build_activity_goal(8, 3, period_start, period_start + 5, previous)
+        assert goal.no_markets_left is expected
+
+    def test_retarget_keeps_it(self, tmp_path: Path) -> None:
+        """Raising the goal while idle does not resume trading in that epoch."""
+        update_activity_goal(
+            tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
+        )
+        set_no_markets_left(tmp_path, PERIOD_START, True, MagicMock())
+
+        goal = retarget_activity_goal(tmp_path, 12, PERIOD_START + 20)
+
+        assert goal is not None and goal.no_markets_left is True
+        assert _read_summary(tmp_path)["activity_goal"]["no_markets_left"] is True
+
+    def test_set_writes_only_the_flag(self, tmp_path: Path) -> None:
+        """Setting the flag keeps the counts and the sibling keys."""
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"agent_behavior": "x", "activity_goal": _goal().__dict__})
+        )
+
+        set_no_markets_left(tmp_path, PERIOD_START, True, MagicMock())
+
+        data = _read_summary(tmp_path)
+        assert data["agent_behavior"] == "x"
+        assert data["activity_goal"] == {**_goal().__dict__, "no_markets_left": True}
+
+    @pytest.mark.parametrize(
+        "content, period_start, value, warned",
+        [
+            (json.dumps({}), PERIOD_START, True, True),
+            (b"{not json", PERIOD_START, True, True),
+            (
+                json.dumps({"activity_goal": {**_goal().__dict__, "target": "8"}}),
+                PERIOD_START,
+                True,
+                True,
+            ),
+            (
+                json.dumps({"activity_goal": _goal().__dict__}),
+                PERIOD_START + 86_400,
+                True,
+                True,
+            ),
+            (
+                json.dumps({"activity_goal": _goal(no_markets_left=True).__dict__}),
+                PERIOD_START,
+                True,
+                False,
+            ),
+        ],
+        ids=["no-block", "unreadable", "invalid-block", "other-epoch", "unchanged"],
+    )
+    def test_set_leaves_the_file_untouched(
+        self,
+        tmp_path: Path,
+        content: Any,
+        period_start: int,
+        value: bool,
+        warned: bool,
+    ) -> None:
+        """No readable block for the epoch writes nothing and says so; no change writes nothing."""
+        summary = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        if isinstance(content, bytes):
+            summary.write_bytes(content)
+        else:
+            summary.write_text(content)
+        before = summary.read_bytes()
+        logger = MagicMock()
+
+        set_no_markets_left(tmp_path, period_start, value, logger)
+
+        assert summary.read_bytes() == before
+        assert logger.warning.called is warned
+
+
 class TestUpdateActivityGoal:
     """Tests for the merge-writers."""
 
@@ -275,6 +389,7 @@ class TestUpdateActivityGoal:
             "period_start": PERIOD_START,
             "updated_at": PERIOD_START + 5,
             "last_met_at": None,
+            "no_markets_left": False,
         }
 
     @pytest.mark.parametrize(

@@ -152,6 +152,7 @@ from packages.valory.skills.staking_abci.rounds import (
     CallCheckpointRound,
     CheckpointCallPreparedRound,
     FinishedStakingRound,
+    ServiceEvictedRound,
     StakingAbciApp,
 )
 from packages.valory.skills.termination_abci.rounds import (
@@ -305,6 +306,8 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
+    # An evicted service keeps redeeming instead of exiting; see the stop vote.
+    ServiceEvictedRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,
     FinishedResetAndPauseRound: AgentTopUpRound,

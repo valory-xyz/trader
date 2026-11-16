@@ -1941,6 +1941,7 @@ ACTIVITY_GOAL_BLOCK: Dict[str, Any] = {
     "period_start": 1_791_331_200,
     "last_met_at": None,
     "updated_at": 1_791_363_317,
+    "no_markets_left": False,
 }
 
 
@@ -2152,8 +2153,13 @@ class TestActivityGoalPersistence:
 
     @pytest.mark.parametrize(
         "overrides",
-        [{"is_met": True}, {"progress": -1}, {"target": True}],
-        ids=["met_below_target", "negative_progress", "bool_target"],
+        [
+            {"is_met": True},
+            {"progress": -1},
+            {"target": True},
+            {"no_markets_left": 1},
+        ],
+        ids=["met_below_target", "negative_progress", "bool_target", "int_no_markets"],
     )
     def test_activity_goal_refuses_invalid_construction(
         self, overrides: Dict[str, Any]

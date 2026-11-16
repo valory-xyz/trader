@@ -200,6 +200,9 @@ class Bet:
     # by an older release, counts as not ranked), and its score there (0 to 1)
     ranked_at: int = 0
     research_score: Optional[float] = None
+    # The staking epoch (its checkpoint timestamp) in which the agent declined
+    # the market or sold its whole position; 0 if never.
+    declined_epoch_start: int = 0
 
     def __post_init__(self) -> None:
         """Post initialization to adjust the values."""
@@ -268,6 +271,26 @@ class Bet:
         :return: True if any non-zero amount is recorded against the bet.
         """
         return any(a for amounts in self.investments.values() for a in amounts)
+
+    def decline_in_epoch(self, epoch_start: Optional[int]) -> None:
+        """Hold the market back for the rest of the given staking epoch.
+
+        :param epoch_start: the epoch's checkpoint timestamp, ``None`` when unstaked.
+        """
+        if epoch_start:
+            self.declined_epoch_start = epoch_start
+
+    def is_declined_in_epoch(self, epoch_start: Optional[int]) -> bool:
+        """Whether the market was declined in the given epoch and still has no position.
+
+        :param epoch_start: the epoch's checkpoint timestamp, ``None`` when unstaked.
+        :return: whether the market is held back for that epoch.
+        """
+        return (
+            bool(epoch_start)
+            and self.declined_epoch_start == epoch_start
+            and self.invested_amount == 0
+        )
 
     @staticmethod
     def opposite_vote(vote: int) -> int:

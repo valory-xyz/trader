@@ -428,6 +428,14 @@ class TestSynchronizedDataProperties:
         data = SynchronizedData(db=AbciAppDB(setup_data={"activity_completed": [None]}))
         assert data.activity_completed == 0
 
+    def test_epoch_start_default_and_value(self) -> None:
+        """epoch_start is None when unset or unstaked, else the stored checkpoint."""
+        assert SynchronizedData(db=AbciAppDB(setup_data={})).epoch_start is None
+        unstaked = SynchronizedData(db=AbciAppDB(setup_data={"epoch_start": [None]}))
+        assert unstaked.epoch_start is None
+        data = SynchronizedData(db=AbciAppDB(setup_data={"epoch_start": [1_000]}))
+        assert data.epoch_start == 1_000
+
     def test_review_bets_for_selling_default(self) -> None:
         """review_bets_for_selling defaults to False when not set."""
         data = SynchronizedData(db=AbciAppDB(setup_data={}))
@@ -850,6 +858,7 @@ class TestEndBlockPersistsActivityFields:
             is_activity_target_met=True,
             activity_target=8,
             activity_completed=9,
+            epoch_start=1_000,
         )
         round_ = self._make_round(payload)
         self._run(round_, Event.SKIP_TRADING)
@@ -859,6 +868,7 @@ class TestEndBlockPersistsActivityFields:
         assert synced.is_activity_target_met is True
         assert synced.activity_target == 8
         assert synced.activity_completed == 9
+        assert synced.epoch_start == 1_000
 
     def test_no_consensus_event_does_not_persist_fields(self) -> None:
         """On NONE/NO_MAJORITY the fields are NOT written (no partial data)."""
@@ -879,6 +889,7 @@ class TestEndBlockPersistsActivityFields:
         assert synced.is_activity_target_met is False
         assert synced.activity_target == 0
         assert synced.activity_completed == 0
+        assert synced.epoch_start is None
 
 
 class TestReadWithdrawalFlag:

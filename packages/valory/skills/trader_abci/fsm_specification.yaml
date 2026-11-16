@@ -82,7 +82,6 @@ default_start_state: RegistrationStartupRound
 final_states:
 - FailedMultiplexerRound
 - ImpossibleRound
-- ServiceEvictedRound
 label: TraderAbciApp
 start_states:
 - RegistrationRound
@@ -143,7 +142,6 @@ states:
 - SelectKeeperTransactionSubmissionBAfterTimeoutRound
 - SelectKeeperTransactionSubmissionBRound
 - SellOutcomeTokensRound
-- ServiceEvictedRound
 - SynchronizeLateMessagesRound
 - ToolSelectionRound
 - UpdateAchievementsRound
@@ -173,7 +171,7 @@ transition_func:
     (CallCheckpointRound, NEXT_CHECKPOINT_NOT_REACHED_YET): ResetAndPauseRound
     (CallCheckpointRound, NO_MAJORITY): CallCheckpointRound
     (CallCheckpointRound, ROUND_TIMEOUT): CallCheckpointRound
-    (CallCheckpointRound, SERVICE_EVICTED): ServiceEvictedRound
+    (CallCheckpointRound, SERVICE_EVICTED): ResetAndPauseRound
     (CallCheckpointRound, SERVICE_NOT_STAKED): ResetAndPauseRound
     (ChatuiLoadRound, DONE): MechVersionDetectionRound
     (ChatuiLoadRound, FAIL): ChatuiLoadRound

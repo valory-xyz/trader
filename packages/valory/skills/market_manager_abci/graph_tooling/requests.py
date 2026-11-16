@@ -276,6 +276,8 @@ class QueryingBehaviour(BaseBehaviour, ABC):
                 self.context.logger.error(
                     f"Malformed trade data, missing pagination key: {e}"
                 )
+                # the trades returned are partial, as after a failed page
+                self._call_failed = True
                 all_trades.extend(trades_chunk)
                 return all_trades
             all_trades.extend(trades_chunk)

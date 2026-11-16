@@ -38,6 +38,7 @@ def test_check_stop_trading_payload() -> None:
         "is_activity_target_met": None,
         "activity_target": None,
         "activity_completed": None,
+        "epoch_start": None,
     }
     assert CheckStopTradingPayload.from_json(payload.json) == payload
 
@@ -52,6 +53,7 @@ def test_check_stop_trading_payload_with_activity_fields() -> None:
         is_activity_target_met=False,
         activity_target=8,
         activity_completed=5,
+        epoch_start=1_000,
     )
 
     assert payload.vote is False
@@ -59,4 +61,5 @@ def test_check_stop_trading_payload_with_activity_fields() -> None:
     assert payload.is_activity_target_met is False
     assert payload.activity_target == 8
     assert payload.activity_completed == 5
+    assert payload.epoch_start == 1_000
     assert CheckStopTradingPayload.from_json(payload.json) == payload
