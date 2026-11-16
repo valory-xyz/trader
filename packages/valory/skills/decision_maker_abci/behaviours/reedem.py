@@ -947,7 +947,10 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
     def _normal_act(self) -> Generator[None, None, Optional[RedeemPayload]]:
         """The act of the agent while running in normal mode."""
-        if not self.redeeming_progress.check_started:
+        # progress kept from an earlier run holds the trades of an earlier fetch,
+        # which can miss a market won since; it is reset only by a redeem tx
+        loaded_progress = self.redeeming_progress.check_started
+        if not loaded_progress:
             yield from self._get_redeem_info()
             self._store_progress()
         else:
@@ -970,14 +973,17 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             return self._build_payload(redeem_tx_hex)
         # a missed trade or a position that failed to prepare may still pay out
         incomplete = (
-            self.redeeming_progress.trades_fetch_failed or self._preparation_failed
+            loaded_progress
+            or self.redeeming_progress.trades_fetch_failed
+            or self._preparation_failed
         )
         if incomplete:
-            reason = (
-                "the trades fetch ended incomplete"
-                if self.redeeming_progress.trades_fetch_failed
-                else "a claimable position failed to prepare"
-            )
+            if loaded_progress:
+                reason = "the trades come from an earlier run's fetch"
+            elif self.redeeming_progress.trades_fetch_failed:
+                reason = "the trades fetch ended incomplete"
+            else:
+                reason = "a claimable position failed to prepare"
             self.context.logger.warning(
                 f"No winnings found, but {reason}: not reporting nothing to redeem."
             )
