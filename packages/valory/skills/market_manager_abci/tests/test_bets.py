@@ -383,6 +383,69 @@ class TestBetNegRisk:
         assert decoded.neg_risk is True
 
 
+class TestBetDeclinedInEpoch:
+    """Tests for holding a declined market back for the rest of a staking epoch."""
+
+    EPOCH = 1_700_000_000
+
+    @pytest.mark.parametrize("epoch_start", [None, 0])
+    def test_decline_without_epoch_is_not_recorded(self, epoch_start: Any) -> None:
+        """An unstaked service has no epoch to hold the market for."""
+        bet = _make_bet()
+        bet.decline_in_epoch(epoch_start)
+        assert bet.declined_epoch_start == 0
+
+    def test_decline_records_the_epoch(self) -> None:
+        """A decline holds the market for the epoch it happened in."""
+        bet = _make_bet()
+        bet.decline_in_epoch(self.EPOCH)
+        assert bet.is_declined_in_epoch(self.EPOCH) is True
+
+    @pytest.mark.parametrize(
+        "declined_epoch_start, epoch_start, invested, expected",
+        [
+            (EPOCH, EPOCH, 0, True),
+            (EPOCH, EPOCH + 86_400, 0, False),
+            (EPOCH, None, 0, False),
+            (0, 0, 0, False),
+            (0, None, 0, False),
+            (EPOCH, EPOCH, 10, False),
+        ],
+        ids=[
+            "same-epoch",
+            "next-epoch",
+            "unstaked",
+            "zero-never-matches",
+            "never-declined",
+            "holds-a-position",
+        ],
+    )
+    def test_is_declined_in_epoch(
+        self,
+        declined_epoch_start: int,
+        epoch_start: Any,
+        invested: int,
+        expected: bool,
+    ) -> None:
+        """Only an unheld market declined in this very epoch is held back."""
+        bet = _make_bet(
+            declined_epoch_start=declined_epoch_start,
+            investments={"Yes": [invested] if invested else [], "No": []},
+        )
+        assert bet.is_declined_in_epoch(epoch_start) is expected
+
+    def test_round_trips_and_defaults_for_older_files(self) -> None:
+        """The epoch survives multi_bets.json and an older file reads as never declined."""
+        original = _make_bet(declined_epoch_start=self.EPOCH)
+        decoded = json.loads(json.dumps(original, cls=BetsEncoder), cls=BetsDecoder)
+        assert decoded.declined_epoch_start == self.EPOCH
+
+        legacy = json.loads(json.dumps(original, cls=BetsEncoder))
+        del legacy["declined_epoch_start"]
+        decoded = json.loads(json.dumps(legacy), cls=BetsDecoder)
+        assert decoded.declined_epoch_start == 0
+
+
 class TestBetLt:
     """Tests for Bet.__lt__."""
 

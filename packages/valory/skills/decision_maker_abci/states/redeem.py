@@ -99,7 +99,12 @@ class RedeemRound(TxPreparationRound):
             mech_tools_update = most_voted_payload.mech_tools
             updated_data = synced_data.update(
                 self.synchronized_data_class,
-                **{self.mech_tools_name: mech_tools_update},
+                **{
+                    self.mech_tools_name: mech_tools_update,
+                    get_name(SynchronizedData.found_nothing_to_redeem): (
+                        event == Event.NO_REDEEMING
+                    ),
+                },
             )
             return updated_data, event
 

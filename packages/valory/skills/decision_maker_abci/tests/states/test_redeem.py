@@ -311,6 +311,43 @@ class TestRedeemRoundEndBlock:
         assert event == Event.DONE
         mock_synced_data.update.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "event, expected",
+        [(Event.NO_REDEEMING, True), (Event.DONE, False)],
+        ids=["nothing-to-redeem", "redeemed"],
+    )
+    def test_end_block_records_whether_nothing_was_redeemed(
+        self, event: Event, expected: bool
+    ) -> None:
+        """The sampler reads whether this period's redeem found nothing to redeem."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        payload_values = (
+            "submitter",
+            "0xhash",
+            False,
+            '["tool1"]',
+            None,
+            None,
+            None,
+            None,
+        )
+        with (
+            patch.object(
+                TxPreparationRound, "end_block", return_value=(mock_synced_data, event)
+            ),
+            patch.object(
+                RedeemRound,
+                "payload_values_count",
+                new_callable=PropertyMock,
+                return_value=Counter({payload_values: 1}),
+            ),
+        ):
+            round_instance.end_block()
+
+        updates = mock_synced_data.update.call_args.kwargs
+        assert updates["found_nothing_to_redeem"] is expected
+
     def test_end_block_no_majority_returns_original(self) -> None:
         """Test end_block returns original result on NO_MAJORITY event."""
         mock_synced_data = MagicMock(spec=SynchronizedData)

@@ -670,6 +670,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         updated = sampled_bet.update_investments(0)
         if not updated:
             self.context.logger.error("Could not update the investments!")
+        elif sampled_bet.invested_amount == 0:
+            sampled_bet.decline_in_epoch(self.synchronized_data.epoch_start)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service

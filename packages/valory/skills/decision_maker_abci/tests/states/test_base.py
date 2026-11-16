@@ -550,6 +550,31 @@ def test_previous_checkpoint_none(
     assert sync_data.previous_checkpoint is None
 
 
+@pytest.mark.parametrize(
+    "stored, expected", [(1_700_000_000, 1_700_000_000), (None, None)]
+)
+def test_epoch_start(
+    sync_data: SynchronizedData,
+    mocked_db: MagicMock,
+    stored: Optional[int],
+    expected: Optional[int],
+) -> None:
+    """epoch_start is the checkpoint the stop check read, None when unstaked."""
+    mocked_db.get.return_value = stored
+    assert sync_data.epoch_start == expected
+    mocked_db.get.assert_called_with("epoch_start", None)
+
+
+@pytest.mark.parametrize("stored, expected", [(True, True), (False, False)])
+def test_found_nothing_to_redeem(
+    sync_data: SynchronizedData, mocked_db: MagicMock, stored: bool, expected: bool
+) -> None:
+    """found_nothing_to_redeem reflects this period's redeem round, False by default."""
+    mocked_db.get.return_value = stored
+    assert sync_data.found_nothing_to_redeem is expected
+    mocked_db.get.assert_called_with("found_nothing_to_redeem", False)
+
+
 def test_activity_target(sync_data: SynchronizedData, mocked_db: MagicMock) -> None:
     """Test the activity_target property."""
     mocked_db.get.return_value = 8

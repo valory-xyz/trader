@@ -1487,6 +1487,40 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
 
         mock_bet.update_investments.assert_called_once_with(0)
 
+    @pytest.mark.parametrize(
+        "remaining, held_for_epoch", [(0, True), (5, False)], ids=["full", "partial"]
+    )
+    def test_full_sell_holds_market_for_the_epoch(
+        self, remaining: int, held_for_epoch: bool
+    ) -> None:
+        """Selling the whole position holds the market back like a decline."""
+        behaviour = self.behaviour
+        epoch_start = 1_699_990_000
+        mock_bet = MagicMock()
+        mock_bet.update_investments.return_value = True
+        mock_bet.invested_amount = remaining
+
+        behaviour.synchronized_data.db.get = (  # type: ignore[method-assign]
+            lambda key, default=None: epoch_start if key == "epoch_start" else default
+        )
+        mock_timestamp = MagicMock()
+        mock_timestamp.timestamp.return_value = 1700000000.0
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
+
+        with mock.patch.object(
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
+        ):
+            with mock.patch.object(behaviour, "store_bets"):
+                behaviour.update_sell_transaction_information()
+
+        if held_for_epoch:
+            mock_bet.decline_in_epoch.assert_called_once_with(epoch_start)
+        else:
+            mock_bet.decline_in_epoch.assert_not_called()
+
     # type: ignore[method-assign]
     def test_update_sell_transaction_information_fails(self) -> None:
         """Test `update_sell_transaction_information` when update fails."""

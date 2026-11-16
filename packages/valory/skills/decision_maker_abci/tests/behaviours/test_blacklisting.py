@@ -227,6 +227,92 @@ class TestBlacklistBlacklist:
         assert sampled_ids == ["m0", "m1", "m2", "m3", "m4", "m0", "m1", "m2"]
 
 
+class TestBlacklistDeclineInEpoch:
+    """A no-trade decision holds the market for the epoch; a mech error does not."""
+
+    EPOCH = 1_699_990_000
+
+    @staticmethod
+    def _bet() -> Bet:
+        """Return a real, unheld bet."""
+        return Bet(
+            id="bet",
+            market="omen_subgraph",
+            title="Will it rain?",
+            collateralToken="0xtoken",
+            creator="0xcreator",
+            fee=0,
+            openingTimestamp=SYNCED_TS + 86_400,
+            outcomeSlotCount=2,
+            outcomeTokenAmounts=[10, 20],
+            outcomeTokenMarginalPrices=[0.4, 0.6],
+            outcomes=["Yes", "No"],
+            scaledLiquidityMeasure=5.0,
+            queue_status=QueueStatus.TO_PROCESS,
+        )
+
+    @pytest.mark.parametrize(
+        "decision_ts, vote, is_profitable, epoch_start, benchmarking, expected",
+        [
+            (SYNCED_TS, None, False, EPOCH, False, EPOCH),
+            (SYNCED_TS, 1, False, EPOCH, False, EPOCH),
+            (SYNCED_TS, None, True, EPOCH, False, EPOCH),
+            (0, None, None, EPOCH, False, 0),
+            (SYNCED_TS, 1, True, EPOCH, False, 0),
+            (SYNCED_TS, None, False, None, False, 0),
+            (SYNCED_TS, None, False, EPOCH, True, 0),
+        ],
+        ids=[
+            "tie-or-low-edge",
+            "unprofitable",
+            "no-vote",
+            "mech-error",
+            "failed-placement",
+            "unstaked",
+            "benchmarking",
+        ],
+    )
+    def test_blacklist_marks_declines_only(  # pylint: disable=too-many-arguments
+        self,
+        decision_ts: int,
+        vote: object,
+        is_profitable: object,
+        epoch_start: object,
+        benchmarking: bool,
+        expected: int,
+    ) -> None:
+        """Only a read mech answer that led to no trade records the epoch."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = benchmarking
+        bet = self._bet()
+        behaviour.bets = [bet]
+        synced_data = MagicMock(
+            sampled_bet_index=0,
+            decision_receive_timestamp=decision_ts,
+            vote=vote,
+            is_profitable=is_profitable,
+            epoch_start=epoch_start,
+        )
+
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=synced_data,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            behaviour._blacklist()
+
+        assert bet.declined_epoch_start == expected
+
+
 class TestBlacklistingAsyncAct:
     """Tests for the async_act generator."""
 
