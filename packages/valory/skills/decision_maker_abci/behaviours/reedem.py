@@ -363,18 +363,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self,
     ) -> Generator:
         """Fetch the trades from all the prediction markets and store them as redeeming information."""
+        self.redeeming_progress.trades_fetch_failed = False
         while True:
             can_proceed = self._prepare_fetching()
             if not can_proceed:
                 break
 
             trades_market_chunk = yield from self._fetch_redeem_info()
+            # read before the block lookups below overwrite the fetch state:
+            # a failed page leaves the trades partial, whatever comes after
+            if self._call_failed or self._fetch_status == FetchStatus.FAIL:
+                self.redeeming_progress.trades_fetch_failed = True
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
 
-        self.redeeming_progress.trades_fetch_failed = (
-            self._fetch_status == FetchStatus.FAIL
-        )
         # truncate the trades, otherwise logs get too big
         trades_str = str(self.trades)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Fetched redeeming information: {trades_str}")

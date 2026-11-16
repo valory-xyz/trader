@@ -116,6 +116,7 @@ def _make_redeem_behaviour() -> RedeemBehaviour:
     behaviour._current_redeem_info = None
     behaviour._preparation_failed = False
     behaviour._fetch_status = FetchStatus.NONE
+    behaviour._call_failed = False
     behaviour._expected_winnings = 0
     behaviour._history_hash = ZERO_BYTES
     behaviour._claim_winnings_simulation_ok = False
@@ -1232,18 +1233,43 @@ class TestGetRedeemInfo:
         assert len(behaviour.trades) == 0
 
     @pytest.mark.parametrize(
-        "status, expected",
-        [(FetchStatus.FAIL, True), (FetchStatus.SUCCESS, False)],
-        ids=["gave-up", "fetched"],
+        "page_failed, gave_up, expected",
+        [
+            (True, False, True),
+            (True, True, True),
+            (False, False, False),
+        ],
+        ids=["partial-page", "gave-up", "fetched"],
     )
     def test_get_redeem_info_records_a_failed_fetch(
-        self, status: FetchStatus, expected: bool
+        self, page_failed: bool, gave_up: bool, expected: bool
     ) -> None:
-        """A trades fetch that gave up is recorded, so the check is not taken as complete."""
+        """A failed trades page is recorded, even when a later block lookup succeeds."""
         behaviour = _make_redeem_behaviour()
-        behaviour._fetch_status = status
-        behaviour._prepare_fetching = MagicMock(return_value=False)  # type: ignore[method-assign]
+        behaviour._prepare_fetching = MagicMock(  # type: ignore[method-assign]
+            side_effect=[True, False]
+        )
         progress = RedeemingProgress()
+        # left over from an earlier check
+        progress.trades_fetch_failed = not expected
+
+        def mock_fetch_redeem_info():  # type: ignore[no-untyped-def]
+            """Return one page, failing as asked."""
+            behaviour._call_failed = page_failed
+            behaviour._fetch_status = (
+                FetchStatus.FAIL if gave_up else FetchStatus.IN_PROGRESS
+            )
+            yield
+            return [{"id": "trade"}]
+
+        def mock_update_redeem_info(chunk):  # type: ignore[no-untyped-def]
+            """Stand in for the block lookup, which succeeds and resets the state."""
+            behaviour._call_failed = False
+            behaviour._fetch_status = FetchStatus.SUCCESS
+            yield
+
+        behaviour._fetch_redeem_info = mock_fetch_redeem_info  # type: ignore[method-assign]
+        behaviour.update_redeem_info = mock_update_redeem_info  # type: ignore[method-assign]
 
         with patch.object(
             type(behaviour), "redeeming_progress", new_callable=PropertyMock

@@ -508,7 +508,6 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
-            # Not a verdict on the market, so it is not held for the epoch.
             self.shared_state.strategy_could_not_size = self.strategy_could_not_size
             # Only an outage leaves the market out of the cooldown.
             if clob_reached and not any(clob_reached):

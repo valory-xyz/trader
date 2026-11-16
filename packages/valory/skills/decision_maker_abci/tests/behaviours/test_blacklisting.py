@@ -252,21 +252,11 @@ class TestBlacklistDeclineInEpoch:
             queue_status=QueueStatus.TO_PROCESS,
         )
 
-    def test_a_strategy_that_could_not_size_is_no_decline(self) -> None:
-        """A zero bet from a failed strategy or a short bankroll judged nothing."""
-        behaviour = _make_behaviour()
-        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
-        behaviour.__dict__["_context"].state.strategy_could_not_size = True
-        bet = self._bet()
-        behaviour.bets = [bet]
-        synced_data = MagicMock(
-            sampled_bet_index=0,
-            decision_receive_timestamp=SYNCED_TS,
-            vote=None,
-            is_profitable=False,
-            epoch_start=self.EPOCH,
-        )
-
+    @staticmethod
+    def _run_blacklist(
+        behaviour: BlacklistingBehaviour, synced_data: MagicMock
+    ) -> None:
+        """Run `_blacklist` with the given synced data at the synced time."""
         with (
             patch.object(
                 type(behaviour),
@@ -282,6 +272,23 @@ class TestBlacklistDeclineInEpoch:
             ),
         ):
             behaviour._blacklist()
+
+    def test_a_strategy_that_could_not_size_is_no_decline(self) -> None:
+        """A zero bet from a failed strategy or a short bankroll judged nothing."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        behaviour.__dict__["_context"].state.strategy_could_not_size = True
+        bet = self._bet()
+        behaviour.bets = [bet]
+        synced_data = MagicMock(
+            sampled_bet_index=0,
+            decision_receive_timestamp=SYNCED_TS,
+            vote=None,
+            is_profitable=False,
+            epoch_start=self.EPOCH,
+        )
+
+        self._run_blacklist(behaviour, synced_data)
 
         assert bet.declined_epoch_start == 0
         # consumed, so the next decision starts clean
@@ -330,21 +337,7 @@ class TestBlacklistDeclineInEpoch:
             epoch_start=epoch_start,
         )
 
-        with (
-            patch.object(
-                type(behaviour),
-                "synchronized_data",
-                new_callable=PropertyMock,
-                return_value=synced_data,
-            ),
-            patch.object(
-                type(behaviour),
-                "synced_timestamp",
-                new_callable=PropertyMock,
-                return_value=SYNCED_TS,
-            ),
-        ):
-            behaviour._blacklist()
+        self._run_blacklist(behaviour, synced_data)
 
         assert bet.declined_epoch_start == expected
 

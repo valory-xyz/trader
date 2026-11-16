@@ -866,7 +866,7 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
 
     @staticmethod
     def _could_not_size(kwargs: Dict[str, Any], results: Dict[str, Any]) -> bool:
-        """Whether the strategy failed, or no bankroll could fund its minimum bet.
+        """Whether the strategy failed, or no bankroll could fund its minimum bet and fee.
 
         Either way a zero bet says nothing about the market itself.
 
@@ -877,7 +877,9 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         if "vote" not in results or results.get("error"):
             return True
         spendable = kwargs.get("bankroll", 0) - kwargs.get("floor_balance", 0)
-        return spendable < kwargs.get("min_bet", 0)
+        # the smallest bet also pays the trade fee
+        smallest_cost = kwargs.get("min_bet", 0) + kwargs.get("fee_per_trade", 0)
+        return spendable < smallest_cost
 
     def default_error(
         self, contract_id: str, contract_callable: str, response_msg: ContractApiMessage

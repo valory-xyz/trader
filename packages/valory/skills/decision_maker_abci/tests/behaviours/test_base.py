@@ -1488,16 +1488,18 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         mock_bet.update_investments.assert_called_once_with(0)
 
     @pytest.mark.parametrize(
-        "remaining, held_for_epoch", [(0, True), (5, False)], ids=["full", "partial"]
+        "updated, remaining, held_for_epoch",
+        [(True, 0, True), (True, 5, False), (False, 0, False)],
+        ids=["full", "partial", "update-failed"],
     )
     def test_full_sell_holds_market_for_the_epoch(
-        self, remaining: int, held_for_epoch: bool
+        self, updated: bool, remaining: int, held_for_epoch: bool
     ) -> None:
-        """Selling the whole position holds the market back like a decline."""
+        """Selling the whole position holds the market back like a decline; a failed sell holds nothing."""
         behaviour = self.behaviour
         epoch_start = 1_699_990_000
         mock_bet = MagicMock()
-        mock_bet.update_investments.return_value = True
+        mock_bet.update_investments.return_value = updated
         mock_bet.invested_amount = remaining
 
         behaviour.synchronized_data.db.get = (  # type: ignore[method-assign]
@@ -1521,31 +1523,6 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         else:
             mock_bet.decline_in_epoch.assert_not_called()
 
-    def test_failed_sell_does_not_hold_the_market(self) -> None:
-        """A sell whose investments could not be updated holds nothing, even at zero."""
-        behaviour = self.behaviour
-        mock_bet = MagicMock()
-        mock_bet.update_investments.return_value = False
-        mock_bet.invested_amount = 0
-
-        behaviour.synchronized_data.db.get = (  # type: ignore[method-assign]
-            lambda key, default=None: 1_699_990_000 if key == "epoch_start" else default
-        )
-        mock_timestamp = MagicMock()
-        mock_timestamp.timestamp.return_value = 1700000000.0
-        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
-
-        with mock.patch.object(
-            type(behaviour),
-            "sampled_bet",
-            new_callable=PropertyMock,
-            return_value=mock_bet,
-        ):
-            with mock.patch.object(behaviour, "store_bets"):
-                behaviour.update_sell_transaction_information()
-
-        mock_bet.decline_in_epoch.assert_not_called()
-
     @pytest.mark.parametrize(
         "results, kwargs, expected",
         [
@@ -1565,8 +1542,25 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
                 {"bankroll": 10, "floor_balance": 2, "min_bet": 1},
                 False,
             ),
+            (
+                {"bet_amount": 0, "vote": None, "error": []},
+                {"bankroll": 5, "floor_balance": 2, "min_bet": 2, "fee_per_trade": 1},
+                False,
+            ),
+            (
+                {"bet_amount": 0, "vote": None, "error": []},
+                {"bankroll": 4, "floor_balance": 2, "min_bet": 2, "fee_per_trade": 1},
+                True,
+            ),
         ],
-        ids=["strategy-failed", "strategy-error", "bankroll-short", "no-edge"],
+        ids=[
+            "strategy-failed",
+            "strategy-error",
+            "bankroll-short",
+            "no-edge",
+            "covers-min-bet-and-fee",
+            "one-below-min-bet-and-fee",
+        ],
     )
     def test_could_not_size(
         self, results: Dict[str, Any], kwargs: Dict[str, Any], expected: bool
@@ -2950,6 +2944,65 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         except StopIteration as e:
             assert e.value == 100
         assert call_count == 2
+
+    @pytest.mark.parametrize(
+        "token_balance, results, expected",
+        [
+            (int(2e16), [{BET_AMOUNT_FIELD: 0, "vote": None, "error": []}], False),
+            (
+                int(2e16) - 1,
+                [{BET_AMOUNT_FIELD: 0, "vote": None, "error": []}],
+                True,
+            ),
+            (int(1e18), [{BET_AMOUNT_FIELD: 0}], True),
+            (
+                int(1e18),
+                [
+                    {BET_AMOUNT_FIELD: 0},
+                    {BET_AMOUNT_FIELD: 0, "vote": None, "error": []},
+                ],
+                False,
+            ),
+        ],
+        ids=[
+            "no-edge",
+            "short-of-min-bet-and-fee",
+            "strategy-failed",
+            "last-fallback-ran",
+        ],
+    )
+    def test_get_bet_amount_records_whether_the_strategy_could_size(
+        self, token_balance: int, results: List[Dict[str, Any]], expected: bool
+    ) -> None:
+        """The flag reflects the last strategy tried and the bankroll it was given."""
+        behaviour = self.behaviour
+        behaviour.download_strategies = lambda: (yield)  # type: ignore[assignment, method-assign]
+        behaviour.wait_for_condition_with_sleep = lambda _: (yield)  # type: ignore[assignment, method-assign, misc]
+        behaviour.params.strategies_kwargs = deepcopy(STRATEGIES_KWARGS)
+        behaviour.params.use_fallback_strategy = True
+        behaviour.params.is_running_on_polymarket = False
+        behaviour.shared_state.chatui_config.trading_strategy = "first_strategy"
+        behaviour.shared_state.chatui_config.max_bet_size = None
+        behaviour.shared_state.chatui_config.fixed_bet_size = None
+        behaviour.token_balance = token_balance
+        behaviour.wallet_balance = 0
+        behaviour.strategy_could_not_size = not expected
+        returned = iter(results)
+        behaviour.execute_strategy = lambda *_, **__: next(returned)  # type: ignore[method-assign]
+        # the first strategy, then one fallback per further result
+        behaviour.shared_state.strategies_executables = {
+            "first_strategy": ("code", "method"),
+            **{f"fallback_{i}": ("code", "method") for i in range(1, len(results))},
+        }
+
+        gen = behaviour.get_bet_amount(0.5, 0.5, [100, 100], 10, WXDAI)
+        try:
+            while True:
+                next(gen)
+        except StopIteration:
+            pass
+
+        assert behaviour.strategy_could_not_size is expected
 
     def test_get_bet_amount_with_logging(self) -> None:
         """Test `get_bet_amount` processes strategy log levels."""
