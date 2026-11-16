@@ -306,8 +306,7 @@ abci_app_transition_mapping: AbciAppTransitionMapping = {
     FinishedSetApprovalTxRound: PolymarketPostSetApprovalRound,
     FinishedWithoutDecisionRound: CallCheckpointRound,
     FinishedStakingRound: ResetAndPauseRound,
-    # An evicted service keeps running and redeeming instead of exiting; the
-    # stop-trading vote keeps it from sampling, asking the mech or betting.
+    # An evicted service keeps redeeming instead of exiting; see the stop vote.
     ServiceEvictedRound: ResetAndPauseRound,
     CheckpointCallPreparedRound: PreTxSettlementRound,
     FinishedStakingTxRound: ResetAndPauseRound,

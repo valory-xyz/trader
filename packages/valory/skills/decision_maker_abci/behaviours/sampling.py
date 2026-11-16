@@ -199,8 +199,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
         ``out_of_open``, ``wrong_queue``, ``declined_in_epoch``, ``cooling``,
-        ``processable`` - the
-        first one that trips, in that precedence order. Pure read; does NOT call
+        ``processable`` - the first one that trips, in that precedence order.
+        Pure read; does NOT call
         ``blacklist_forever`` and does NOT mutate the bet — the real filter
         ``processable_bet`` still runs and is the source of truth.
 
@@ -407,7 +407,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # re-betting the markets it already holds; it waits out the hold.
         markets_cooling = strict_breakdown["cooling"] > 0
         markets_held = markets_cooling or strict_breakdown["declined_in_epoch"] > 0
-        cooling_note = (
+        held_note = (
             f" {strict_breakdown['cooling']} markets are cooling down for "
             f"{self.params.declined_market_cooldown}s after a decision "
             "that left no position."
@@ -415,7 +415,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             else ""
         )
         if strict_breakdown["declined_in_epoch"]:
-            cooling_note += (
+            held_note += (
                 f" {strict_breakdown['declined_in_epoch']} markets declined in "
                 "this staking epoch are held back until the next one."
             )
@@ -490,8 +490,8 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
-            self.pool_logger.warning(msg + cooling_note)
-        return available_bets, cooling_note
+            self.pool_logger.warning(msg + held_note)
+        return available_bets, held_note
 
     @staticmethod
     def _normalized_tags(tags: List[str]) -> FrozenSet[str]:
@@ -609,7 +609,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
-        available_bets, cooling_note = self._processable_bets(now)
+        available_bets, held_note = self._processable_bets(now)
         if not available_bets:
             return None
 
@@ -690,7 +690,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"dropped={in_loop_neg_risk} kept=0"
         )
         msg = "No valid bets found after liquidity validation!"
-        self.context.logger.warning(msg + cooling_note)
+        self.context.logger.warning(msg + held_note)
         return None
 
     @classmethod

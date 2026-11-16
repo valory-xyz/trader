@@ -29,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciAppDB,
     CollectSameUntilThresholdRound,
 )
+from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -361,3 +362,11 @@ class TestRedeemRoundEndBlock:
         assert result is not None
         _, event = result
         assert event == Event.NO_MAJORITY
+
+
+def test_found_nothing_to_redeem_is_reset_every_period() -> None:
+    """A redeem timeout leaves no stale marker: the key never outlives its period."""
+    assert (
+        "found_nothing_to_redeem"
+        not in DecisionMakerAbciApp.cross_period_persisted_keys
+    )

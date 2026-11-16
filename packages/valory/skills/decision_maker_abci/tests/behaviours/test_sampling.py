@@ -864,7 +864,7 @@ class TestDeclinedInEpoch:
         benchmarking: bool = False,
         store_path: Optional[Path] = None,
     ) -> SamplingBehaviour:
-        """Return a sampler over ``bets`` with wide ranges and a 1 h cooldown."""
+        """Return a sampler over ``bets`` with wide ranges and the test cooldown."""
         sampler = _make_behaviour()
         sampler.__dict__["_context"].benchmarking_mode.enabled = benchmarking
         params = sampler.context.params
@@ -929,7 +929,7 @@ class TestDeclinedInEpoch:
             assert sampler.processable_bet(bet, now=next_epoch) is True
 
     def test_mech_error_is_retried_after_the_cooldown(self) -> None:
-        """A market left without an answer comes back after 1 hour in the same epoch."""
+        """A market left without an answer comes back after the cooldown in the same epoch."""
         bet = _omen_market("m0")
         sampler = self._sampler([bet])
         bet.processed_timestamp = NOW
@@ -947,7 +947,7 @@ class TestDeclinedInEpoch:
     def test_only_the_cooldown_applies_elsewhere(
         self, on_polymarket: bool, benchmarking: bool, epoch_start: Optional[int]
     ) -> None:
-        """Polystrat, benchmarking and an unstaked service keep the 1-hour cooldown only."""
+        """Polystrat, benchmarking and an unstaked service keep the cooldown only."""
         bet = _omen_market("m0", declined_epoch_start=EPOCH, processed_timestamp=NOW)
         sampler = self._sampler([bet], on_polymarket, benchmarking)
 
@@ -998,6 +998,18 @@ class TestDeclinedInEpoch:
         assert available == []
         assert "held back until the next one" in note
 
+    def test_declined_this_epoch_outranks_cooling(self) -> None:
+        """A market declined a minute ago is held for the epoch, not a pending retry."""
+        bet = _omen_market("m0")
+        sampler = self._sampler([bet])
+        self._decline(bet, NOW - 60, EPOCH)
+
+        with self._patched(sampler, NOW, EPOCH):
+            assert (
+                sampler._classify_processable_bet(bet, NOW, False)
+                == "declined_in_epoch"
+            )
+
     @pytest.mark.parametrize(
         "idx, nothing_redeemed, retry_pending, expected",
         [
@@ -1019,7 +1031,8 @@ class TestDeclinedInEpoch:
         """Idle needs no pick, nothing redeemed and no market waiting on a retry."""
         _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
         declined = _omen_market("declined")
-        self._decline(declined, NOW - COOLDOWN, EPOCH)
+        # declined within the cooldown: held for the epoch, not a pending retry
+        self._decline(declined, NOW - 60, EPOCH)
         bets = [declined]
         if retry_pending:
             bets.append(_omen_market("errored", processed_timestamp=NOW - 60))
@@ -1027,6 +1040,61 @@ class TestDeclinedInEpoch:
 
         with self._patched(sampler, NOW, EPOCH, nothing_redeemed):
             sampler._publish_no_markets_left(idx)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert block["activity_goal"].get("no_markets_left", False) is expected
+
+    def test_stays_false_while_periods_redeem(self, tmp_path: Path) -> None:
+        """With positions to redeem one per period, idle waits for a period that redeems nothing."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler([], store_path=tmp_path)
+
+        published = []
+        for nothing_redeemed in (False, False, False, True):
+            with self._patched(sampler, NOW, EPOCH, nothing_redeemed):
+                sampler._publish_no_markets_left(None)
+            block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+            published.append(block["activity_goal"].get("no_markets_left", False))
+
+        assert published == [False, False, False, True]
+
+    @pytest.mark.parametrize(
+        "open_markets, expected", [(1, False), (0, True)], ids=["picks", "idle"]
+    )
+    def test_async_act_publishes_its_pick(
+        self, tmp_path: Path, open_markets: int, expected: bool
+    ) -> None:
+        """The flag comes from the period's own sampling result."""
+        _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
+        sampler = self._sampler(
+            [_omen_market(f"m{i}") for i in range(open_markets)], store_path=tmp_path
+        )
+        params = sampler.context.params
+        params.disabled_polymarket_tags = []
+        params.is_outcome_side_threshold_filter_enabled = False
+        sampler.context.state.liquidity_cache = {}
+        sampler.store_bets = MagicMock()  # type: ignore[method-assign]
+        sampler.hash_stored_bets = MagicMock(return_value="hash")  # type: ignore[method-assign]
+        sampler.finish_behaviour = MagicMock(  # type: ignore[method-assign]
+            side_effect=lambda payload: _return_gen(None)
+        )
+
+        with (
+            self._patched(sampler, NOW, EPOCH),
+            patch.object(
+                type(sampler),
+                "shared_state",
+                new_callable=PropertyMock,
+                return_value=sampler.context.state,
+            ),
+            patch.object(sampler, "_latest_ranked_at", return_value=0),
+        ):
+            gen = sampler.async_act()
+            try:
+                while True:
+                    next(gen)
+            except StopIteration:
+                pass
 
         block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
         assert block["activity_goal"].get("no_markets_left", False) is expected
