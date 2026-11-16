@@ -281,7 +281,7 @@ class Bet:
             self.declined_epoch_start = epoch_start
 
     def is_declined_in_epoch(self, epoch_start: Optional[int]) -> bool:
-        """Whether the market was declined, and is still unheld, in the given epoch.
+        """Whether the market was declined in the given epoch and still has no position.
 
         :param epoch_start: the epoch's checkpoint timestamp, ``None`` when unstaked.
         :return: whether the market is held back for that epoch.

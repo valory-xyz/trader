@@ -1521,6 +1521,59 @@ class TestDecisionMakerBaseBehaviour(FSMBehaviourBaseCase):
         else:
             mock_bet.decline_in_epoch.assert_not_called()
 
+    def test_failed_sell_does_not_hold_the_market(self) -> None:
+        """A sell whose investments could not be updated holds nothing, even at zero."""
+        behaviour = self.behaviour
+        mock_bet = MagicMock()
+        mock_bet.update_investments.return_value = False
+        mock_bet.invested_amount = 0
+
+        behaviour.synchronized_data.db.get = (  # type: ignore[method-assign]
+            lambda key, default=None: 1_699_990_000 if key == "epoch_start" else default
+        )
+        mock_timestamp = MagicMock()
+        mock_timestamp.timestamp.return_value = 1700000000.0
+        behaviour.round_sequence.last_round_transition_timestamp = mock_timestamp  # type: ignore[misc]
+
+        with mock.patch.object(
+            type(behaviour),
+            "sampled_bet",
+            new_callable=PropertyMock,
+            return_value=mock_bet,
+        ):
+            with mock.patch.object(behaviour, "store_bets"):
+                behaviour.update_sell_transaction_information()
+
+        mock_bet.decline_in_epoch.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "results, kwargs, expected",
+        [
+            ({"bet_amount": 0}, {"bankroll": 10, "min_bet": 1}, True),
+            (
+                {"bet_amount": 0, "vote": None, "error": ["Missing fields"]},
+                {"bankroll": 10, "min_bet": 1},
+                True,
+            ),
+            (
+                {"bet_amount": 0, "vote": 1, "error": []},
+                {"bankroll": 5, "floor_balance": 5, "min_bet": 1},
+                True,
+            ),
+            (
+                {"bet_amount": 0, "vote": None, "error": []},
+                {"bankroll": 10, "floor_balance": 2, "min_bet": 1},
+                False,
+            ),
+        ],
+        ids=["strategy-failed", "strategy-error", "bankroll-short", "no-edge"],
+    )
+    def test_could_not_size(
+        self, results: Dict[str, Any], kwargs: Dict[str, Any], expected: bool
+    ) -> None:
+        """Only a strategy that ran with enough bankroll judged the market."""
+        assert self.behaviour._could_not_size(kwargs, results) is expected
+
     # type: ignore[method-assign]
     def test_update_sell_transaction_information_fails(self) -> None:
         """Test `update_sell_transaction_information` when update fails."""

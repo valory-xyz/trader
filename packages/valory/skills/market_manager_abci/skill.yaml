@@ -14,7 +14,7 @@ fingerprint:
   behaviours/polymarket_fetch_market.py: bafybeigyqatsbsegbu5ty4f33ezljsfk4uewesqdj3sq45d7s7e4azcuqy
   behaviours/round_behaviour.py: bafybeidghxxavn66grhratnfv3thkkunebdaixsxuhrrxsexg35477qxre
   behaviours/update_bets.py: bafybeibmmyzru7ctx5yhss3tt2ecfgkybo57tahjnl5553fd7du2agyo6q
-  bets.py: bafybeid66lk7aeshtl43mnvrkc3fwi7h5ayen6pgy656cmggqv5n3elwpe
+  bets.py: bafybeidnlagyycg4ba3rdtvwi3xuorvqbuvlb7dh477ke6yjpdsq2yhwda
   dialogues.py: bafybeibjyeuiqonquqx4hnovbkippxk3rng4q42t5n4rb77b642h6wa72y
   fsm_specification.yaml: bafybeiheo7ujeu2phe5665agijxc56m5qcqmdeoadtwzwrs4vgv6askhf4
   graph_tooling/__init__.py: bafybeigzo7nhbzafyq3fuhrlewksjvmzttiuk4vonrggtjtph4rw4ncpk4
@@ -41,7 +41,7 @@ fingerprint:
   tests/test_behaviours_base.py: bafybeihdlocxgjoxlj6hn2vcaigkujj5ijuhf2mswmlugz5bu2hkk46n4m
   tests/test_behaviours_polymarket.py: bafybeiba5wcqbhtxhh6g5dh3arjyl7x5jjcy2impddrdwnmkecikyj4ire
   tests/test_behaviours_update_bets.py: bafybeibqpoi7iznskodb2agdanzw4cmyik6lvy3g3rvqmzxcuekg7usucm
-  tests/test_bets.py: bafybeibpepkmf5udczwvcf6ovhnrcpsbvfitcyrezvy3xbiss2zm6nr3me
+  tests/test_bets.py: bafybeiac7umrnbrsu2wx33mlz667dbjs2fp2gbsbznpfe377aqfmfr45s4
   tests/test_dialogues.py: bafybeiet646su5nsjmvruahuwg6un4uvwzyj2lnn2jvkye6cxooz22f3ja
   tests/test_disabled_tags_invariant.py: bafybeihw2elbgoitd6cpnwzs5odj6l5otdatdsjknjnpdjj3jsivp54fba
   tests/test_graph_queries.py: bafybeiezqmi4dskfpiyqpjujqeavmlpcb7idzitp6g6k3zlwezpjz3iaty

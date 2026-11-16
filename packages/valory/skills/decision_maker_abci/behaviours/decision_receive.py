@@ -445,6 +445,7 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
         min_order_shares = 0.0
         clob_reached: List[bool] = []
         self.shared_state.orderbook_fetch_failed = False
+        self.shared_state.strategy_could_not_size = False
 
         prices = bet.outcomeTokenMarginalPrices
         price_yes = prices[0] if prices else 0.0
@@ -507,6 +508,8 @@ class DecisionReceiveBehaviour(StorageManagerBehaviour):
             self.context.logger.info(
                 "Strategy returned no bet (bet_amount <= 0 or no vote)."
             )
+            # Not a verdict on the market, so it is not held for the epoch.
+            self.shared_state.strategy_could_not_size = self.strategy_could_not_size
             # Only an outage leaves the market out of the cooldown.
             if clob_reached and not any(clob_reached):
                 self.shared_state.orderbook_fetch_failed = True

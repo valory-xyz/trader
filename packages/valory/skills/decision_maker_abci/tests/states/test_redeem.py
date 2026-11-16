@@ -318,8 +318,14 @@ class TestRedeemRoundEndBlock:
             (Event.NO_REDEEMING, True, True),
             (Event.NO_REDEEMING, None, False),
             (Event.DONE, None, False),
+            (Event.DONE, True, False),
         ],
-        ids=["checked-nothing-to-redeem", "check-failed", "redeemed"],
+        ids=[
+            "checked-nothing-to-redeem",
+            "check-failed",
+            "redeemed",
+            "redeemed-with-flag",
+        ],
     )
     def test_end_block_records_whether_nothing_was_redeemed(
         self, event: Event, nothing_to_redeem: Optional[bool], expected: bool

@@ -427,7 +427,7 @@ class TestBetDeclinedInEpoch:
         invested: int,
         expected: bool,
     ) -> None:
-        """Only an unheld market declined in this very epoch is held back."""
+        """Only a market declined in this very epoch, with no position, is held back."""
         bet = _make_bet(
             declined_epoch_start=declined_epoch_start,
             investments={"Yes": [invested] if invested else [], "No": []},

@@ -72,7 +72,9 @@ class PoolRejection(str, Enum):
 
 def format_pool_breakdown(breakdown: Dict[PoolRejection, int]) -> str:
     """Format a pool breakdown as ``reason=count`` pairs, every reason in order."""
-    return " ".join(f"{reason.value}={breakdown[reason]}" for reason in PoolRejection)
+    return " ".join(
+        f"{reason.value}={breakdown.get(reason, 0)}" for reason in PoolRejection
+    )
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -221,7 +223,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         mutate the bet - the real filter ``processable_bet`` still runs and
         is the source of truth.
 
-        Caveat: after the expiry check ``processable_bet`` does NOT
+        Caveat: after the expiry and sell-review checks ``processable_bet`` does NOT
         short-circuit - it computes each remaining condition independently
         and ANDs them. It also has a ``blacklist_forever()`` side-effect on
         ``not within_safe_range`` regardless of the other conditions. So when
@@ -391,7 +393,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.bets.index(sorted_bets[0])
 
     def _processable_bets(self, now: int) -> Tuple[List[Bet], str]:
-        """Get the processable bets, with the fallback when allowed, and a note on the cooling ones."""
+        """Get the processable bets, with the fallback when allowed, and a note on the held-back ones."""
         # Strict-mode breakdown (observability only — pure read pass).
         # Captured BEFORE the side-effecting processable_bet call so
         # out_of_safe bets are still classified as out_of_safe rather than
@@ -421,20 +423,19 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         fallback_activated = False
         # Markets held back after a decline must not push the agent into
         # re-betting the markets it already holds; it waits out the hold.
-        markets_cooling = strict_breakdown[PoolRejection.COOLING] > 0
-        markets_held = (
-            markets_cooling or strict_breakdown[PoolRejection.DECLINED_IN_EPOCH] > 0
-        )
-        held_note = (
-            f" {strict_breakdown[PoolRejection.COOLING]} markets are cooling down for "
-            f"{self.params.declined_market_cooldown}s after a decision "
-            "that left no position."
-            if markets_cooling
-            else ""
-        )
-        if strict_breakdown[PoolRejection.DECLINED_IN_EPOCH]:
+        n_cooling = strict_breakdown[PoolRejection.COOLING]
+        n_declined_in_epoch = strict_breakdown[PoolRejection.DECLINED_IN_EPOCH]
+        markets_held = n_cooling > 0 or n_declined_in_epoch > 0
+        held_note = ""
+        if n_cooling:
             held_note += (
-                f" {strict_breakdown[PoolRejection.DECLINED_IN_EPOCH]} markets declined in "
+                f" {n_cooling} markets are cooling down for "
+                f"{self.params.declined_market_cooldown}s after a decision "
+                "that left no position."
+            )
+        if n_declined_in_epoch:
+            held_note += (
+                f" {n_declined_in_epoch} markets declined in "
                 "this staking epoch are held back until the next one."
             )
         if (
@@ -815,7 +816,12 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         self.context.logger.info(f"{self.venue_tag} {no_markets_left=}")
         try:
-            set_no_markets_left(self.params.store_path, epoch_start, no_markets_left)
+            set_no_markets_left(
+                self.params.store_path,
+                epoch_start,
+                no_markets_left,
+                self.context.logger,
+            )
         except OSError as e:
             self.context.logger.error(f"Failed to publish no_markets_left: {e}")
 

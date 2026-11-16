@@ -172,6 +172,8 @@ class RedeemingProgress:
     answered: list = field(default_factory=list)
     claiming_condition_ids: List[str] = field(default_factory=list)
     claimed_condition_ids: List[str] = field(default_factory=list)
+    # the trades fetch gave up, so the check may have missed positions
+    trades_fetch_failed: bool = False
 
     @property
     def check_finished(self) -> bool:
@@ -282,6 +284,9 @@ class SharedState(ChatUISharedState, MechInteractSharedState):
         self.orderbook_failing_since: Optional[int] = None
         # set when a decision could not reach the CLOB; cleared by BlacklistingBehaviour
         self.orderbook_fetch_failed: bool = False
+        # set when the strategy could not size any bet (it failed, or the
+        # bankroll is below the minimum bet); cleared by BlacklistingBehaviour
+        self.strategy_could_not_size: bool = False
         # final_tx_hash of the most recent tx whose post-bet bookkeeping
         # was already applied by `PostBetUpdateBehaviour`. Guards against
         # double-mutation when `PostBetUpdateRound` self-loops on

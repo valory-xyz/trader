@@ -306,9 +306,9 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         # staked, the activity goal. See StopTradingResult.
         stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
 
-        # An evicted service only redeems until it is staked again.
+        # An evicted service only redeems while it is evicted.
         if self.service_staking_state == StakingState.EVICTED:
-            self.context.logger.info("Service is evicted: skipping trading.")
+            self.context.logger.warning("Service is evicted: skipping trading.")
             stop = True
 
         epoch_start = None

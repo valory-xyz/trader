@@ -65,6 +65,7 @@ def _make_behaviour() -> DecisionReceiveBehaviour:
     behaviour._rows_exceeded = False
     behaviour.sell_amount = 0
     behaviour._last_strategy_result = {}
+    behaviour.strategy_could_not_size = False
 
     context = MagicMock()
     context.agent_address = "test_agent"
@@ -1037,6 +1038,22 @@ class TestIsProfitable:
 
         record_skip.assert_called_once_with(bet, SKIP_NO_TRADE)
         assert behaviour.context.state.orderbook_fetch_failed is False
+
+    @pytest.mark.parametrize("could_not_size", [True, False])
+    def test_no_bet_carries_whether_the_strategy_could_size(
+        self, could_not_size: bool
+    ) -> None:
+        """A strategy that could not size any bet is passed on, so the market is not held for the epoch."""
+        behaviour, pred, _ = self._setup_behaviour(
+            strategy_bet_amount=0, strategy_vote=None
+        )
+        behaviour.strategy_could_not_size = could_not_size
+        behaviour.context.state.strategy_could_not_size = not could_not_size
+        patch.object(behaviour, "_record_market_skipped").start()
+        self._run_is_profitable(behaviour, pred)
+        patch.stopall()
+
+        assert behaviour.context.state.strategy_could_not_size is could_not_size
 
     def test_clob_fetches_both_orderbooks(self) -> None:
         """CLOB market type triggers _fetch_orderbook for both tokens."""

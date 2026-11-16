@@ -293,7 +293,7 @@ class TestNoMarketsLeft:
         update_activity_goal(
             tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
         )
-        set_no_markets_left(tmp_path, PERIOD_START, True)
+        set_no_markets_left(tmp_path, PERIOD_START, True, MagicMock())
 
         goal = retarget_activity_goal(tmp_path, 12, PERIOD_START + 20)
 
@@ -306,36 +306,59 @@ class TestNoMarketsLeft:
             json.dumps({"agent_behavior": "x", "activity_goal": _goal().__dict__})
         )
 
-        set_no_markets_left(tmp_path, PERIOD_START, True)
+        set_no_markets_left(tmp_path, PERIOD_START, True, MagicMock())
 
         data = _read_summary(tmp_path)
         assert data["agent_behavior"] == "x"
         assert data["activity_goal"] == {**_goal().__dict__, "no_markets_left": True}
 
     @pytest.mark.parametrize(
-        "block, period_start, value",
+        "content, period_start, value, warned",
         [
-            (None, PERIOD_START, True),
-            (_goal(), PERIOD_START + 86_400, True),
-            (_goal(no_markets_left=True), PERIOD_START, True),
+            (json.dumps({}), PERIOD_START, True, True),
+            (b"{not json", PERIOD_START, True, True),
+            (
+                json.dumps({"activity_goal": {**_goal().__dict__, "target": "8"}}),
+                PERIOD_START,
+                True,
+                True,
+            ),
+            (
+                json.dumps({"activity_goal": _goal().__dict__}),
+                PERIOD_START + 86_400,
+                True,
+                True,
+            ),
+            (
+                json.dumps({"activity_goal": _goal(no_markets_left=True).__dict__}),
+                PERIOD_START,
+                True,
+                False,
+            ),
         ],
-        ids=["no-block", "other-epoch", "unchanged"],
+        ids=["no-block", "unreadable", "invalid-block", "other-epoch", "unchanged"],
     )
     def test_set_leaves_the_file_untouched(
         self,
         tmp_path: Path,
-        block: Optional[ActivityGoal],
+        content: Any,
         period_start: int,
         value: bool,
+        warned: bool,
     ) -> None:
-        """No block for the epoch, or no change, writes nothing."""
+        """No readable block for the epoch writes nothing and says so; no change writes nothing."""
         summary = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
-        content = json.dumps({} if block is None else {"activity_goal": block.__dict__})
-        summary.write_text(content)
+        if isinstance(content, bytes):
+            summary.write_bytes(content)
+        else:
+            summary.write_text(content)
+        before = summary.read_bytes()
+        logger = MagicMock()
 
-        set_no_markets_left(tmp_path, period_start, value)
+        set_no_markets_left(tmp_path, period_start, value, logger)
 
-        assert summary.read_text() == content
+        assert summary.read_bytes() == before
+        assert logger.warning.called is warned
 
 
 class TestUpdateActivityGoal:

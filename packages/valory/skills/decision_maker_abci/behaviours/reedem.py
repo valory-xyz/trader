@@ -198,6 +198,8 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         self._payouts: Dict[str, int] = {}
         self._built_data: Optional[HexBytes] = None
         self._current_redeem_info: Optional[Trade] = None
+        # a claimable position failed to prepare in the last `_prepare_safe_tx`
+        self._preparation_failed: bool = False
         self._expected_winnings: int = 0
         self._history_hash: bytes = ZERO_BYTES
         self._claim_winnings_simulation_ok: bool = False
@@ -370,6 +372,9 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             if trades_market_chunk is not None:
                 yield from self.update_redeem_info(trades_market_chunk)
 
+        self.redeeming_progress.trades_fetch_failed = (
+            self._fetch_status == FetchStatus.FAIL
+        )
         # truncate the trades, otherwise logs get too big
         trades_str = str(self.trades)[:MAX_LOG_SIZE]
         self.context.logger.info(f"Fetched redeeming information: {trades_str}")
@@ -804,6 +809,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
 
         success = yield from self._prepare_single_redeem()
         if not success:
+            self._preparation_failed = True
             return False
 
         self._expected_winnings += self.current_claimable_amount
@@ -838,6 +844,7 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             )
 
         winnings_found = 0
+        self._preparation_failed = False
 
         for redeem_candidate in self.trades:
             is_claimable = yield from self._process_candidate(redeem_candidate)
@@ -957,10 +964,14 @@ class RedeemBehaviour(RedeemInfoBehaviour):
         redeem_tx_hex = yield from self._prepare_safe_tx()
         if redeem_tx_hex is not None:
             return self._build_payload(redeem_tx_hex)
+        # a missed trade or a position that failed to prepare may still pay out
+        incomplete = (
+            self.redeeming_progress.trades_fetch_failed or self._preparation_failed
+        )
         return RedeemPayload(
             self.context.agent_address,
             mech_tools=serialized_tools,
-            nothing_to_redeem=True,
+            nothing_to_redeem=None if incomplete else True,
         )
 
     def async_act(self) -> Generator:

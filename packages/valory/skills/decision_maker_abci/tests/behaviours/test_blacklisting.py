@@ -65,6 +65,7 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     context.benchmark_tool.measure.return_value.__enter__ = MagicMock()
     context.benchmark_tool.measure.return_value.__exit__ = MagicMock()
     context.state.orderbook_fetch_failed = False
+    context.state.strategy_could_not_size = False
     behaviour.__dict__["_context"] = context
 
     # shared_state
@@ -250,6 +251,41 @@ class TestBlacklistDeclineInEpoch:
             scaledLiquidityMeasure=5.0,
             queue_status=QueueStatus.TO_PROCESS,
         )
+
+    def test_a_strategy_that_could_not_size_is_no_decline(self) -> None:
+        """A zero bet from a failed strategy or a short bankroll judged nothing."""
+        behaviour = _make_behaviour()
+        behaviour.__dict__["_context"].benchmarking_mode.enabled = False
+        behaviour.__dict__["_context"].state.strategy_could_not_size = True
+        bet = self._bet()
+        behaviour.bets = [bet]
+        synced_data = MagicMock(
+            sampled_bet_index=0,
+            decision_receive_timestamp=SYNCED_TS,
+            vote=None,
+            is_profitable=False,
+            epoch_start=self.EPOCH,
+        )
+
+        with (
+            patch.object(
+                type(behaviour),
+                "synchronized_data",
+                new_callable=PropertyMock,
+                return_value=synced_data,
+            ),
+            patch.object(
+                type(behaviour),
+                "synced_timestamp",
+                new_callable=PropertyMock,
+                return_value=SYNCED_TS,
+            ),
+        ):
+            behaviour._blacklist()
+
+        assert bet.declined_epoch_start == 0
+        # consumed, so the next decision starts clean
+        assert behaviour.__dict__["_context"].state.strategy_could_not_size is False
 
     @pytest.mark.parametrize(
         "decision_ts, vote, is_profitable, epoch_start, benchmarking, expected",

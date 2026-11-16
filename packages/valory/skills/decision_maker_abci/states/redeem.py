@@ -59,7 +59,7 @@ class RedeemRound(TxPreparationRound):
     def most_voted_payload_values(
         self,
     ) -> Tuple[Any, ...]:
-        """Get the most voted payload values in such a way to create a custom none event that ignores the mech tools."""
+        """Get the most voted payload values, with a custom none event that ignores the mech tools and the nothing-to-redeem flag."""
         most_voted_payload_values = super().most_voted_payload_values
         # sender does not matter for the init as the `data` property used below to obtain the dictionary ignores it
         most_voted_payload = RedeemPayload(IGNORED, *most_voted_payload_values)
@@ -67,7 +67,7 @@ class RedeemRound(TxPreparationRound):
         mech_tools = most_voted_payload_dict.pop(MECH_TOOLS_FIELD, None)
         if mech_tools is None:
             raise ValueError(f"`{MECH_TOOLS_FIELD}` must not be `None`")
-        # reports why there is no tx, so it does not make one
+        # a status flag, not tx data: a payload carrying only it still means no tx
         most_voted_payload_dict.pop(NOTHING_TO_REDEEM_FIELD, None)
         if all(val is None for val in most_voted_payload_dict.values()):
             return (None,) * len(self.selection_key)
