@@ -35,6 +35,7 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
     read_trades,
     record_trade,
     retarget_activity_goal,
+    set_no_markets_left,
     update_activity_goal,
 )
 from packages.valory.skills.agent_performance_summary_abci.models import (
@@ -247,6 +248,87 @@ class TestBuildActivityGoal:
         assert goal.last_met_at == new_period + 5
 
 
+class TestNoMarketsLeft:
+    """The idle signal lives for one epoch and survives every rebuild within it."""
+
+    def test_defaults_to_false_and_reads_older_blocks(self, tmp_path: Path) -> None:
+        """A block written by an older build, without the field, reads as not idle."""
+        assert (
+            build_activity_goal(8, 3, PERIOD_START, PERIOD_START, None).no_markets_left
+            is False
+        )
+        legacy = {k: v for k, v in _goal().__dict__.items() if k != "no_markets_left"}
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"activity_goal": legacy})
+        )
+        update_activity_goal(
+            tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
+        )
+        assert _read_summary(tmp_path)["activity_goal"]["no_markets_left"] is False
+
+    @pytest.mark.parametrize(
+        "period_start, expected",
+        [(PERIOD_START, True), (PERIOD_START + 86_400, False)],
+        ids=["same-epoch", "new-epoch"],
+    )
+    def test_build_keeps_it_within_the_epoch_only(
+        self, period_start: int, expected: bool
+    ) -> None:
+        """The stop check's rebuild keeps the signal, a new epoch clears it."""
+        previous = _goal(no_markets_left=True)
+        goal = build_activity_goal(8, 3, period_start, period_start + 5, previous)
+        assert goal.no_markets_left is expected
+
+    def test_retarget_keeps_it(self, tmp_path: Path) -> None:
+        """Raising the goal while idle does not resume trading in that epoch."""
+        update_activity_goal(
+            tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
+        )
+        set_no_markets_left(tmp_path, PERIOD_START, True)
+
+        goal = retarget_activity_goal(tmp_path, 12, PERIOD_START + 20)
+
+        assert goal is not None and goal.no_markets_left is True
+        assert _read_summary(tmp_path)["activity_goal"]["no_markets_left"] is True
+
+    def test_set_writes_only_the_flag(self, tmp_path: Path) -> None:
+        """Setting the flag keeps the counts and the sibling keys."""
+        (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
+            json.dumps({"agent_behavior": "x", "activity_goal": _goal().__dict__})
+        )
+
+        set_no_markets_left(tmp_path, PERIOD_START, True)
+
+        data = _read_summary(tmp_path)
+        assert data["agent_behavior"] == "x"
+        assert data["activity_goal"] == {**_goal().__dict__, "no_markets_left": True}
+
+    @pytest.mark.parametrize(
+        "block, period_start, value",
+        [
+            (None, PERIOD_START, True),
+            (_goal(), PERIOD_START + 86_400, True),
+            (_goal(no_markets_left=True), PERIOD_START, True),
+        ],
+        ids=["no-block", "other-epoch", "unchanged"],
+    )
+    def test_set_leaves_the_file_untouched(
+        self,
+        tmp_path: Path,
+        block: Optional[ActivityGoal],
+        period_start: int,
+        value: bool,
+    ) -> None:
+        """No block for the epoch, or no change, writes nothing."""
+        summary = tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE
+        content = json.dumps({} if block is None else {"activity_goal": block.__dict__})
+        summary.write_text(content)
+
+        set_no_markets_left(tmp_path, period_start, value)
+
+        assert summary.read_text() == content
+
+
 class TestUpdateActivityGoal:
     """Tests for the merge-writers."""
 
@@ -275,6 +357,7 @@ class TestUpdateActivityGoal:
             "period_start": PERIOD_START,
             "updated_at": PERIOD_START + 5,
             "last_met_at": None,
+            "no_markets_left": False,
         }
 
     @pytest.mark.parametrize(
