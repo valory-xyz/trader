@@ -20,7 +20,7 @@
 """Test for Redeem round"""
 
 from collections import Counter
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -293,7 +293,8 @@ class TestRedeemRoundEndBlock:
             result = round_instance.end_block()
 
         assert result is None
-        assert round_instance.synchronized_data.found_nothing_to_redeem is False
+        synced = cast(SynchronizedData, round_instance.synchronized_data)
+        assert synced.found_nothing_to_redeem is False
 
     def test_end_block_with_majority_updates_mech_tools(self) -> None:
         """Test end_block updates mech_tools when there is a majority event (not NO_MAJORITY)."""

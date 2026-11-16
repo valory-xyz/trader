@@ -78,7 +78,7 @@ fingerprint:
   states/post_omen_withdraw.py: bafybeifezxbppk7civdjcbkjl5bwh5t6rmtecmrod36lds7rds5pe4nwjm
   states/randomness.py: bafybeiceoo4nx3t4dofpwczw3v5mclramwmzpwjs6hv7l56arodrjx4l5u
   states/ranking.py: bafybeiga5hnebpne7cx7nsgxjwvfhmhe35thqy6cwwpcvo6vbim6tf2vjq
-  states/redeem.py: bafybeidshx4jvo5viukjyjy64xwmv4kgni5vwfubjhoounkuzom36hb4zi
+  states/redeem.py: bafybeig47tzdobsxkpuufxa4j754luvu562b742px2ymmqbgxtkgmz6mqa
   states/redeem_router.py: bafybeigglpoqgcmroa36g3z5geptytunz44ahhdojrq5lxbjkuilyniile
   states/sampling.py: bafybeiex74dgizzqhtmm5sgcczucawrhpgvvwjgkua4ervuqqov5lc3dtu
   states/sell_outcome_tokens.py: bafybeianxfxufjlf2xbi2qcvomiisl2o42t53mox2qw2fequtkknayd3li
@@ -132,7 +132,7 @@ fingerprint:
   tests/states/test_polymarket_sweep.py: bafybeibyz5h2z7ozknacvdvaw7ursio3ncdshmup4pzvctggl6nte5quze
   tests/states/test_polymarket_top_up.py: bafybeievrpc2dueq4xzxtg4teesfcjhbulym5vtstn7dsizpejgtutqblm
   tests/states/test_randomness.py: bafybeib3eqjv6mhlprzda7d4viddn5alrfqteq6juyg3ccejseoywcsbey
-  tests/states/test_redeem.py: bafybeieqr7ia4nyspeqieqermps5sgceeukabpegazp6pliqyl44os23cu
+  tests/states/test_redeem.py: bafybeicwuzytp5zyfy6o3zqhbdlcaj4fmtzhrc2px4m4oorwlv64ikywxq
   tests/states/test_redeem_router.py: bafybeiefvkjpt6nmvafkaberdmfimd7o5wdvgab45lnz7afgjtarjnjoie
   tests/states/test_sampling.py: bafybeicobonnpmlikl6nnzziqm2s6qspzuxgz223wiyyldh63eld3h6hbm
   tests/states/test_sell_tokens.py: bafybeicgtuqe5vpdw3yyujeumglpmmjinfc3lh2phzdfqu7ifvyku3vwpy
