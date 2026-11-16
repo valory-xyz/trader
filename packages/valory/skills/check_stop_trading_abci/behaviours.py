@@ -68,6 +68,7 @@ class StopTradingResult(NamedTuple):
     ``staking_kpi_met``     — on-chain (livenessRatio-derived) KPI; healthcheck only.
     ``activity_target_met`` — regime-aware "epoch work done"; the rotation signal.
     ``target`` / ``completed`` — per-epoch progress (target source differs by regime).
+    ``epoch_start``         - the staking epoch's checkpoint, ``None`` when unstaked.
     """
 
     stop: bool
@@ -75,6 +76,7 @@ class StopTradingResult(NamedTuple):
     activity_target_met: bool
     target: int
     completed: int
+    epoch_start: Optional[int] = None
 
 
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
@@ -302,10 +304,17 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
         # staked, the activity goal. See StopTradingResult.
         stop = self.params.stop_trading_if_staking_kpi_met and activity_target_met
 
+        # An evicted service only redeems until it is staked again.
+        if self.service_staking_state == StakingState.EVICTED:
+            self.context.logger.info("Service is evicted: skipping trading.")
+            stop = True
+
+        epoch_start = None
         # Unstaked services have no epoch to count trades against.
         if self.service_staking_state != StakingState.STAKED:
             self._prune_unstaked_trades()
         else:
+            epoch_start = self.ts_checkpoint
             stored_goal = self._read_stored_activity_goal()
             goal = self._evaluate_activity_goal(stored_goal)
             stop = stop and goal is not None and goal.is_met
@@ -319,7 +328,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
                 )
 
         return StopTradingResult(
-            stop, staking_kpi_met, activity_target_met, target, completed
+            stop, staking_kpi_met, activity_target_met, target, completed, epoch_start
         )
 
     def async_act(self) -> Generator:
@@ -335,6 +344,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
                 is_activity_target_met=result.activity_target_met,
                 activity_target=result.target,
                 activity_completed=result.completed,
+                epoch_start=result.epoch_start,
             )
 
         with self.context.benchmark_tool.measure(self.behaviour_id).consensus():

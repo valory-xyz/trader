@@ -262,6 +262,7 @@ class TestActivityGoalGate:
         disable_trading: bool = False,
         period_start: int = PERIOD_START,
         now: int = NOW,
+        staking_state: Optional[StakingState] = None,
     ) -> StopTradingResult:
         """Drive ``_compute_stop_trading`` over a real store directory.
 
@@ -279,6 +280,7 @@ class TestActivityGoalGate:
         :param disable_trading: the ``disable_trading`` param.
         :param period_start: the staking contract's ``tsCheckpoint``.
         :param now: the synced timestamp.
+        :param staking_state: the staking state, overriding ``staked``.
         :return: the evaluation result.
         """
         for i in range(trades):
@@ -292,9 +294,9 @@ class TestActivityGoalGate:
 
         behaviour = object.__new__(CheckStopTradingBehaviour)
         behaviour._staking_kpi_request_count = 0
-        behaviour.service_staking_state = (
-            StakingState.STAKED if staked else StakingState.UNSTAKED
-        )
+        if staking_state is None:
+            staking_state = StakingState.STAKED if staked else StakingState.UNSTAKED
+        behaviour.service_staking_state = staking_state
         behaviour.staking_kpi_request_count = completed
         behaviour.service_info = [None, None, [None, 0]]  # type: ignore[assignment]
         behaviour.ts_checkpoint = period_start
@@ -375,6 +377,35 @@ class TestActivityGoalGate:
         assert result.stop is False
         assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
 
+    def test_evicted_stops_and_has_no_epoch(self, tmp_path: Path) -> None:
+        """An evicted service votes to skip trading whatever its goal, with no epoch."""
+        result = self._run(
+            tmp_path, completed=0, staking_state=StakingState.EVICTED, default_goal=8
+        )
+
+        assert result.stop is True
+        assert result.epoch_start is None
+        assert not (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).exists()
+
+    @pytest.mark.parametrize(
+        "staking_state, expected",
+        [
+            (StakingState.STAKED, PERIOD_START),
+            (StakingState.UNSTAKED, None),
+            (StakingState.EVICTED, None),
+        ],
+    )
+    def test_epoch_start_is_the_checkpoint_only_when_staked(
+        self,
+        tmp_path: Path,
+        staking_state: StakingState,
+        expected: Optional[int],
+    ) -> None:
+        """The epoch start is the contract's ``tsCheckpoint`` while staked."""
+        result = self._run(tmp_path, completed=0, staking_state=staking_state)
+
+        assert result.epoch_start == expected
+
     def test_unstaked_drops_the_ledger(self, tmp_path: Path) -> None:
         """Trades placed while unstaked do not pile up in the ledger."""
         self._run(tmp_path, completed=100, staked=False, trades=NOW - PERIOD_START)
@@ -412,6 +443,7 @@ class TestActivityGoalGate:
             "period_start": PERIOD_START,
             "updated_at": NOW,
             "last_met_at": None,
+            "no_markets_left": False,
         }
 
     def test_stored_goal_overrides_default(self, tmp_path: Path) -> None:
@@ -812,6 +844,7 @@ class TestAsyncAct:
                         activity_target_met=False,
                         target=8,
                         completed=9,
+                        epoch_start=PERIOD_START,
                     )
                 ),
             ),
@@ -835,3 +868,4 @@ class TestAsyncAct:
         assert payload.is_activity_target_met is False
         assert payload.activity_target == 8
         assert payload.activity_completed == 9
+        assert payload.epoch_start == PERIOD_START
