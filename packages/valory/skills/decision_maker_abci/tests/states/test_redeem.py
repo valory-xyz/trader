@@ -29,7 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciAppDB,
     CollectSameUntilThresholdRound,
 )
-from packages.valory.skills.decision_maker_abci.rounds import DecisionMakerAbciApp
+from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -313,14 +313,18 @@ class TestRedeemRoundEndBlock:
         mock_synced_data.update.assert_called_once()
 
     @pytest.mark.parametrize(
-        "event, expected",
-        [(Event.NO_REDEEMING, True), (Event.DONE, False)],
-        ids=["nothing-to-redeem", "redeemed"],
+        "event, nothing_to_redeem, expected",
+        [
+            (Event.NO_REDEEMING, True, True),
+            (Event.NO_REDEEMING, None, False),
+            (Event.DONE, None, False),
+        ],
+        ids=["checked-nothing-to-redeem", "check-failed", "redeemed"],
     )
     def test_end_block_records_whether_nothing_was_redeemed(
-        self, event: Event, expected: bool
+        self, event: Event, nothing_to_redeem: Optional[bool], expected: bool
     ) -> None:
-        """The sampler reads whether this period's redeem found nothing to redeem."""
+        """Only a redeem check that finished with nothing to redeem counts as nothing redeemed."""
         mock_synced_data = MagicMock(spec=SynchronizedData)
         round_instance = self._make_round()
         payload_values = (
@@ -332,6 +336,7 @@ class TestRedeemRoundEndBlock:
             None,
             None,
             None,
+            nothing_to_redeem,
         )
         with (
             patch.object(
@@ -349,6 +354,21 @@ class TestRedeemRoundEndBlock:
         updates = mock_synced_data.update.call_args.kwargs
         assert updates["found_nothing_to_redeem"] is expected
 
+    def test_nothing_to_redeem_alone_is_still_no_redeeming(self) -> None:
+        """The field explains why there is no tx, so it does not stop the none-event."""
+        round_instance = self._make_round()
+        round_instance.synchronized_data.consensus_threshold = 1  # type: ignore[misc]
+        payload = RedeemPayload("agent", mech_tools='["tool1"]', nothing_to_redeem=True)
+        with patch.object(
+            RedeemRound,
+            "payload_values_count",
+            new_callable=PropertyMock,
+            return_value=Counter({payload.values: 1}),
+        ):
+            values = round_instance.most_voted_payload_values
+
+        assert all(value is None for value in values)
+
     def test_end_block_no_majority_returns_original(self) -> None:
         """Test end_block returns original result on NO_MAJORITY event."""
         mock_synced_data = MagicMock(spec=SynchronizedData)
@@ -362,11 +382,3 @@ class TestRedeemRoundEndBlock:
         assert result is not None
         _, event = result
         assert event == Event.NO_MAJORITY
-
-
-def test_found_nothing_to_redeem_is_reset_every_period() -> None:
-    """A redeem timeout leaves no stale marker: the key never outlives its period."""
-    assert (
-        "found_nothing_to_redeem"
-        not in DecisionMakerAbciApp.cross_period_persisted_keys
-    )

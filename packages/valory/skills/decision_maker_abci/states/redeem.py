@@ -38,6 +38,7 @@ from packages.valory.skills.decision_maker_abci.states.base import (
 
 IGNORED = "ignored"
 MECH_TOOLS_FIELD = "mech_tools"
+NOTHING_TO_REDEEM_FIELD = "nothing_to_redeem"
 
 
 class RedeemRound(TxPreparationRound):
@@ -66,6 +67,8 @@ class RedeemRound(TxPreparationRound):
         mech_tools = most_voted_payload_dict.pop(MECH_TOOLS_FIELD, None)
         if mech_tools is None:
             raise ValueError(f"`{MECH_TOOLS_FIELD}` must not be `None`")
+        # reports why there is no tx, so it does not make one
+        most_voted_payload_dict.pop(NOTHING_TO_REDEEM_FIELD, None)
         if all(val is None for val in most_voted_payload_dict.values()):
             return (None,) * len(self.selection_key)
         return most_voted_payload_values
@@ -103,6 +106,7 @@ class RedeemRound(TxPreparationRound):
                     self.mech_tools_name: mech_tools_update,
                     get_name(SynchronizedData.found_nothing_to_redeem): (
                         event == Event.NO_REDEEMING
+                        and bool(most_voted_payload.nothing_to_redeem)
                     ),
                 },
             )

@@ -3343,6 +3343,8 @@ class TestNormalAct:
             result = _exhaust_gen(gen)
 
         assert isinstance(result, RedeemPayload)
+        # the check finished and found no winnings
+        assert result.nothing_to_redeem is True
 
     def test_normal_act_resume_from_progress(self) -> None:
         """Should load progress when check_started is True."""
@@ -3431,6 +3433,7 @@ class TestNormalAct:
 
         assert isinstance(result, RedeemPayload)
         assert result.tx_hash == "0xresult_tx"
+        assert result.nothing_to_redeem is None
 
     def test_normal_act_not_cleaned(self) -> None:
         """Should return basic payload when not cleaned."""
@@ -3468,6 +3471,9 @@ class TestNormalAct:
             result = _exhaust_gen(gen)
 
         assert isinstance(result, RedeemPayload)
+        # a failed check says nothing about what is left to redeem
+        assert result.nothing_to_redeem is None
+        assert result.tx_hash is None
 
     def test_normal_act_check_not_finished(self) -> None:
         """Should run _clean_redeem_info when check is not finished."""

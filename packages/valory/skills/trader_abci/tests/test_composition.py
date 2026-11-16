@@ -263,3 +263,8 @@ def test_ranking_request_and_answer_mapping() -> None:
 def test_evicted_service_pauses_instead_of_exiting() -> None:
     """An eviction ends the period like a finished staking round, so redeeming goes on."""
     assert abci_app_transition_mapping[ServiceEvictedRound] is ResetAndPauseRound
+
+
+def test_found_nothing_to_redeem_is_reset_every_period() -> None:
+    """A redeem timeout leaves no stale marker: the key never outlives its period."""
+    assert "found_nothing_to_redeem" not in TraderAbciApp.cross_period_persisted_keys

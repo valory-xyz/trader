@@ -948,13 +948,20 @@ class RedeemBehaviour(RedeemInfoBehaviour):
             self.redeeming_progress.cleaned = yield from self._clean_redeem_info()
 
         serialized_tools = json.dumps(list(self.mech_tools))
-        payload = RedeemPayload(self.context.agent_address, mech_tools=serialized_tools)
-        if self.redeeming_progress.cleaned:
-            redeem_tx_hex = yield from self._prepare_safe_tx()
-            if redeem_tx_hex is not None:
-                payload = self._build_payload(redeem_tx_hex)
+        if not self.redeeming_progress.cleaned:
+            # the check failed, which says nothing about what is left to redeem
+            return RedeemPayload(
+                self.context.agent_address, mech_tools=serialized_tools
+            )
 
-        return payload
+        redeem_tx_hex = yield from self._prepare_safe_tx()
+        if redeem_tx_hex is not None:
+            return self._build_payload(redeem_tx_hex)
+        return RedeemPayload(
+            self.context.agent_address,
+            mech_tools=serialized_tools,
+            nothing_to_redeem=True,
+        )
 
     def async_act(self) -> Generator:
         """Do the action."""

@@ -8,7 +8,7 @@ aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
   README.md: bafybeif2pq7fg5upl6vmfgfzpiwsh4nbk4zaeyz6upyucqi5tasrxgq4ee
   __init__.py: bafybeicssvt4i6baftftxesv3k5ylc33mpinpyexsmvvgm7d2yyl425n5y
-  behaviours.py: bafybeif5kwjmh6pwyisdmqnjeq4z27nnctqkf4i4a6edpbrtju23cpjzta
+  behaviours.py: bafybeicbuu6przuhpclcxbyfyyfgqfwiqli6vdxeo577ho5rcd3a3yyhyq
   dialogues.py: bafybeidoayetmxsxmgdncfsmx4wx66nfmkgayxmbd4tenvu2wu2mj7egny
   fsm_specification.yaml: bafybeia36i2fptxs2db5fesccflue4wmpxztbfp2ec5bot5r776cgwrlpe
   handlers.py: bafybeihazdnlbsh4nt7z4ddffmoewa6hyzcmgdyu3jpjiauihqf4p6iz44
@@ -30,8 +30,8 @@ contracts:
 protocols: []
 skills:
 - valory/abstract_round_abci:0.1.0:bafybeifkxnvvgsldkb4rgejsoon2mvrmrnl7asy2nhenwss7hpwg3myflu
-- valory/agent_performance_summary_abci:0.1.0:bafybeidsp6nl55ygrz3odxw65wsxzlerumrbqsrznwyqbah64shjbc3ytm
-- valory/chatui_abci:0.1.0:bafybeigfpd3t5eltc3xs54njoozt73pssl33aemevam6nm4mvztvigpqcm
+- valory/agent_performance_summary_abci:0.1.0:bafybeif3ekyafzht6635n5ahvyzk7jrm2ly46d5677uvgdtjz2oop7lopa
+- valory/chatui_abci:0.1.0:bafybeifv7of67kg7rar7gmzotw4piy32zmq3lue777aukpeht5myinhez4
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
 - valory/staking_abci:0.1.0:bafybeiemaa62whlcbqia34dla3amnm5vwvnlycdo3lxozumtjs6bgi7vs4
 behaviours:

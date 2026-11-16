@@ -41,6 +41,7 @@ from packages.valory.skills.agent_performance_summary_abci.activity_goal import 
 from packages.valory.skills.agent_performance_summary_abci.models import (
     AGENT_PERFORMANCE_SUMMARY_FILE,
     ActivityGoal,
+    read_activity_goal,
 )
 
 PERIOD_START = 1_791_331_200
@@ -257,14 +258,22 @@ class TestNoMarketsLeft:
             build_activity_goal(8, 3, PERIOD_START, PERIOD_START, None).no_markets_left
             is False
         )
-        legacy = {k: v for k, v in _goal().__dict__.items() if k != "no_markets_left"}
+        legacy = {
+            k: v
+            for k, v in _goal(last_met_at=PERIOD_START + 1).__dict__.items()
+            if k != "no_markets_left"
+        }
         (tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).write_text(
             json.dumps({"activity_goal": legacy})
         )
+        # read, not rejected: a rebuild from no block would drop `last_met_at`
+        assert read_activity_goal(tmp_path) is not None
         update_activity_goal(
             tmp_path, 8, 3, PERIOD_START, PERIOD_START + 5, MagicMock()
         )
-        assert _read_summary(tmp_path)["activity_goal"]["no_markets_left"] is False
+        block = _read_summary(tmp_path)["activity_goal"]
+        assert block["no_markets_left"] is False
+        assert block["last_met_at"] == PERIOD_START + 1
 
     @pytest.mark.parametrize(
         "period_start, expected",

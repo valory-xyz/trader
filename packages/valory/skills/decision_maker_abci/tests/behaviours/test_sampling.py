@@ -1113,34 +1113,49 @@ class TestDeclinedInEpoch:
         assert block["activity_goal"]["no_markets_left"] is False
 
     @pytest.mark.parametrize(
-        "on_polymarket, epoch_start, review",
-        [(True, EPOCH, False), (False, None, False), (False, EPOCH, True)],
-        ids=["polystrat", "unstaked", "sell-review"],
+        "on_polymarket, benchmarking, epoch_start",
+        [(True, False, EPOCH), (False, True, EPOCH), (False, False, None)],
+        ids=["polystrat", "benchmarking", "unstaked"],
     )
     def test_no_signal_outside_staked_omen_trading(
         self,
         tmp_path: Path,
         on_polymarket: bool,
+        benchmarking: bool,
         epoch_start: Optional[int],
-        review: bool,
     ) -> None:
-        """Polystrat, an unstaked service and a sell review never report idle."""
+        """Polystrat, benchmarking and an unstaked service never write the signal."""
         _write_goal_block(tmp_path, _goal_block(EPOCH, progress=2))
-        sampler = self._sampler([], on_polymarket, store_path=tmp_path)
+        sampler = self._sampler(
+            [], on_polymarket, benchmarking=benchmarking, store_path=tmp_path
+        )
+
+        with self._patched(sampler, NOW, epoch_start):
+            sampler._publish_no_markets_left(None)
+
+        block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
+        assert "no_markets_left" not in block["activity_goal"]
+
+    def test_sell_review_clears_no_markets_left(self, tmp_path: Path) -> None:
+        """A sell review samples only held markets, so it reports the agent as not idle."""
+        _write_goal_block(
+            tmp_path, {**_goal_block(EPOCH, progress=2), "no_markets_left": True}
+        )
+        sampler = self._sampler([], store_path=tmp_path)
 
         with (
-            self._patched(sampler, NOW, epoch_start),
+            self._patched(sampler, NOW, EPOCH),
             patch.object(
                 type(sampler),
                 "review_bets_for_selling",
                 new_callable=PropertyMock,
-                return_value=review,
+                return_value=True,
             ),
         ):
             sampler._publish_no_markets_left(None)
 
         block = json.loads((tmp_path / AGENT_PERFORMANCE_SUMMARY_FILE).read_text())
-        assert "no_markets_left" not in block["activity_goal"]
+        assert block["activity_goal"]["no_markets_left"] is False
 
     def test_failed_publish_is_logged(self, tmp_path: Path) -> None:
         """A store that cannot be written does not stop the period."""

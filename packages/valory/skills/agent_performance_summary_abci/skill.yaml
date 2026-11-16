@@ -39,7 +39,7 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeihigcnqai6ig24k7vq4wjag3nyftjhrlantcuqsalv7r3a4vg7kme
   tests/graph_tooling/test_queries.py: bafybeiegoy6ypyehq5alc3xlfy4moqhuu5iyk2iqadglrdlt24zbzt3rty
   tests/graph_tooling/test_requests.py: bafybeiecmcpht2ogyduj7i4wvxpm6rx4omviiq64wuf7quho7cj6qtt3qi
-  tests/test_activity_goal.py: bafybeibwcr236c6ufsgqb7k27zpqzixxcce66emkr4nlrsghu3zv76737i
+  tests/test_activity_goal.py: bafybeierc54aobzszoiwuc54flnwudhbtnroccvlqfkrdjani6jbleofnq
   tests/test_behaviours.py: bafybeigythax3qlbzijkx74ui2jlyeu3ok7frcumoexcqhhjbgw22j4wlq
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_feed.py: bafybeiaumkgwfwfoadhkmukagzqe4vsadr6usq76xbomkhybefizj2rje4

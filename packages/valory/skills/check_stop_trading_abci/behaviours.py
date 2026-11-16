@@ -68,7 +68,8 @@ class StopTradingResult(NamedTuple):
     ``staking_kpi_met``     — on-chain (livenessRatio-derived) KPI; healthcheck only.
     ``activity_target_met`` — regime-aware "epoch work done"; the rotation signal.
     ``target`` / ``completed`` — per-epoch progress (target source differs by regime).
-    ``epoch_start``         - the staking epoch's checkpoint, ``None`` when unstaked.
+    ``epoch_start``         - the staking epoch's checkpoint, ``None`` when unstaked
+                              or not read this cycle (trading disabled).
     """
 
     stop: bool
@@ -76,7 +77,7 @@ class StopTradingResult(NamedTuple):
     activity_target_met: bool
     target: int
     completed: int
-    epoch_start: Optional[int] = None
+    epoch_start: Optional[int]
 
 
 class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
@@ -291,6 +292,7 @@ class CheckStopTradingBehaviour(StakingInteractBaseBehaviour):
                 activity_target_met=False,
                 target=0,
                 completed=0,
+                epoch_start=None,
             )
 
         (
