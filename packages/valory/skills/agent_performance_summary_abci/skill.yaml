@@ -10,7 +10,7 @@ fingerprint:
   achievements_checker/__init__.py: bafybeih7da3glbp2ljghlw4ign2dxotwwkzrrnj4m5yq27zb6osyfutva4
   achievements_checker/base.py: bafybeiegrcxb3d3ivpzm4lsud7kcypphl54yukjuecqlffrkzwdjawrth4
   achievements_checker/bet_payout_checker.py: bafybeigsp2x2j3zkt7mpazotc4mg3ll7ijtr7bmgxcz6wn7rlzqdnmasrm
-  activity_goal.py: bafybeicojs7j4jsacetzro3qvwd7af6gvgtvfxtpno54tvxlw3zf64k36y
+  activity_goal.py: bafybeiguhxo6g47kfspbrmlw2umopgkvl6peikdrlyua4aehaz7wnu7uty
   behaviours.py: bafybeidgfw4jprsjn4xqbwsn4xeoxe2ziaipfaebr3maumtrpjns4tr2nu
   dialogues.py: bafybeignoeakzaf7nmdnsjhnjoga3ks6z424qcwmzkol3kikawhnxf6zju
   feed.py: bafybeicljeuw5uevp3sow2fzfrowm5sq4ur6hviiwu6bofqpw4zn73d6mu
@@ -23,7 +23,7 @@ fingerprint:
   graph_tooling/queries.py: bafybeid5567jcqokixgktdgpk56bvjosabe72jqqlmv4ypfpercfohi3dq
   graph_tooling/requests.py: bafybeig37qcpgt5opldsunxwvpjcpgcelpgllsm4pt752w6ymjpvs7ol4i
   handlers.py: bafybeibykcqq5sodpacipkdigldjzp7gxtalk5nl4hjunvats7swdplgli
-  models.py: bafybeiapzdrkjrx3ayyffxnm2dz6h5fchzbifvke65kqqhq6w7odbjf6km
+  models.py: bafybeideexa2wixgho7pk2gqmgsxctqyiplk4aopsfupessk3ua2it5qju
   payloads.py: bafybeigp52f7hcfpzmoinznqt5run3ha4vpsaaoccgvmo5skmze7flupnm
   rounds.py: bafybeien3ggbtbjigfkuzv3yadnusifrg7htnk6ialmwkd3o464oughh6i
   tests/__init__.py: bafybeibrmret5n6j7oz42ahs3hhfgmr46diwtffrccjzs7z4bcj6bcbtqy
@@ -39,12 +39,12 @@ fingerprint:
   tests/graph_tooling/test_predictions_helper.py: bafybeihigcnqai6ig24k7vq4wjag3nyftjhrlantcuqsalv7r3a4vg7kme
   tests/graph_tooling/test_queries.py: bafybeiegoy6ypyehq5alc3xlfy4moqhuu5iyk2iqadglrdlt24zbzt3rty
   tests/graph_tooling/test_requests.py: bafybeiecmcpht2ogyduj7i4wvxpm6rx4omviiq64wuf7quho7cj6qtt3qi
-  tests/test_activity_goal.py: bafybeiglwzttcextzha4feipih6galw3h7mowql5ev4vbhsd7dr35vwwbi
+  tests/test_activity_goal.py: bafybeibwcr236c6ufsgqb7k27zpqzixxcce66emkr4nlrsghu3zv76737i
   tests/test_behaviours.py: bafybeigythax3qlbzijkx74ui2jlyeu3ok7frcumoexcqhhjbgw22j4wlq
   tests/test_dialogues.py: bafybeigezi53b2jukm5ju6z6zvecfjkjtzxcge3ehnzxryuhpambzknc3y
   tests/test_feed.py: bafybeiaumkgwfwfoadhkmukagzqe4vsadr6usq76xbomkhybefizj2rje4
   tests/test_handlers.py: bafybeibftkrexgzidwp5imcmkpogweilsxtkoau3324ucmkk6vgnv2c5li
-  tests/test_models.py: bafybeig2q473uxboc4kmaymbwh6op4ilswdgoqmy5z52pwvmojok2wlgdu
+  tests/test_models.py: bafybeiema3demeypwfxrwqy5kfmkz5gcqzrvvw7434dh7pnl2eiasgfeq4
   tests/test_payloads.py: bafybeiet4tbmqjf7h23huifwpephtjtx4jwrcapt2kibmkl2oyeclgiggy
   tests/test_rounds.py: bafybeicrddacjku5s6h5wn3b6up552qchk7avkfputkqeuj7zcwwcb7jou
   tests/test_save_performance_summary.py: bafybeiecy6km36y2fh5oxlkimhjue7ryhlkbfx5i53xks7ta5wzah2vdiu
