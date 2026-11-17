@@ -340,3 +340,40 @@ def test_service_min_oracle_prob_default(service: str) -> None:
         "params"
     ]["args"]
     assert args["strategies_kwargs"]["min_oracle_prob"] == 0.5
+
+
+NATIVE_TOKEN = "0x0000000000000000000000000000000000000000"
+
+
+@pytest.mark.parametrize(
+    "service, chain, expected",
+    [
+        # Polygon: covers a ~1.06M-gas redeem up to 1,509 gwei (OPE-2044).
+        ("polymarket_trader", "polygon", 1_600_000_000_000_000_000),
+        ("trader_pearl", "gnosis", 10_000_000_000_000_000),
+    ],
+)
+def test_service_agent_balance_threshold_default(
+    service: str, chain: str, expected: int
+) -> None:
+    """Each service's Agent Signer floor stays below its Agent Signer top-up threshold.
+
+    Under the floor no Agent Safe top-up is built and every transaction waits;
+    between the floor and the threshold the Agent Safe tops the Agent Signer up.
+
+    :param service: the service package name.
+    :param chain: the service's chain key in ``fund_requirements``.
+    :param expected: the default floor, in wei.
+    """
+    path = SERVICES_DIR / service / "service.yaml"
+    docs = apply_env_variables(
+        list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:], {}
+    )
+    floor = _override(docs, "trader_abci")["models"]["params"]["args"][
+        "agent_balance_threshold"
+    ]
+    fund_requirements = _override(docs, "funds_manager")["models"]["params"]["args"][
+        "fund_requirements"
+    ]
+    assert floor == expected
+    assert floor < fund_requirements[chain]["agent"][NATIVE_TOKEN]["threshold"]
