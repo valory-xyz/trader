@@ -73,7 +73,7 @@ skills:
 - valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia6uqvp5guw6omb667zb7okg6stzhfqqat2ttxaqbtmvfrslu3tey
 - valory/market_manager_abci:0.1.0:bafybeicivoevub2mkae53biijs7w5fdwxxtgnhsepn33rydmtpsqgq3idu
 - valory/decision_maker_abci:0.1.0:bafybeicsog5p5z3svabxuy24y6bs4kwc35txoa4qwctnlrwvjhydxo5k7a
-- valory/trader_abci:0.1.0:bafybeieiyzxope2blkjktj4v653urtn3tn25c3hj7fngmmtxjb5n42osmi
+- valory/trader_abci:0.1.0:bafybeids3hpmsmuor7rgfztzoe2agtzyer7rponhgiepo23whxo44bj73u
 - valory/staking_abci:0.1.0:bafybeiemaa62whlcbqia34dla3amnm5vwvnlycdo3lxozumtjs6bgi7vs4
 - valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
 - valory/check_stop_trading_abci:0.1.0:bafybeifad5wqjl5krcrlochzeneqx4nbotslj7qddwhje2andi2cyq5ncm
