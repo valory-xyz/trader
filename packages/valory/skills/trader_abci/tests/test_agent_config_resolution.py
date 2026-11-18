@@ -48,7 +48,7 @@ from aea.helpers.env_vars import (
 )
 from aea.helpers.yaml_utils import yaml_load_all
 
-from packages.valory.skills.funds_manager.models import Params
+from packages.valory.skills.funds_manager.models import NATIVE_ADDRESSES, Params
 
 # packages/valory/skills/trader_abci/tests/ -> packages/valory/
 _VALORY_DIR = Path(__file__).resolve().parents[3]
@@ -103,6 +103,18 @@ def _override(docs: List[Dict[str, Any]], component: str) -> Dict[str, Any]:
         if component in str(doc.get("public_id", "")):
             return doc
     raise AssertionError(f"override for {component!r} not found in aea-config.yaml")
+
+
+def _resolve_service(service: str, env: Dict[str, str]) -> List[Dict[str, Any]]:
+    """Resolve a service's component overrides against ``env``.
+
+    :param service: the service package name.
+    :param env: the environment variables to apply during resolution.
+    :return: the service's override documents with env vars substituted.
+    """
+    path = SERVICES_DIR / service / "service.yaml"
+    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
+    return apply_env_variables(overrides, env)
 
 
 @pytest.mark.parametrize(
@@ -318,13 +330,11 @@ def test_service_http_server_timeout(service: str) -> None:
 
     :param service: the service package name.
     """
-    path = SERVICES_DIR / service / "service.yaml"
-    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
     for env, expected in (
         ({}, HTTP_SERVER_TIMEOUT),
         ({"HTTP_SERVER_TIMEOUT": "90.5"}, 90.5),
     ):
-        doc = _override(apply_env_variables(overrides, env), "http_server")
+        doc = _override(_resolve_service(service, env), "http_server")
         assert doc["config"]["timeout"] == expected
 
 
@@ -334,9 +344,38 @@ def test_service_min_oracle_prob_default(service: str) -> None:
 
     :param service: the service package name.
     """
-    path = SERVICES_DIR / service / "service.yaml"
-    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
-    args = _override(apply_env_variables(overrides, {}), "trader_abci")["models"][
-        "params"
-    ]["args"]
+    args = _override(_resolve_service(service, {}), "trader_abci")["models"]["params"][
+        "args"
+    ]
     assert args["strategies_kwargs"]["min_oracle_prob"] == 0.5
+
+
+@pytest.mark.parametrize(
+    "service, chain, expected",
+    [
+        # Polygon: covers a ~1.06M-gas redeem up to 1,509 gwei.
+        ("polymarket_trader", "polygon", 1_600_000_000_000_000_000),
+        ("trader_pearl", "gnosis", 10_000_000_000_000_000),
+    ],
+)
+def test_service_agent_balance_threshold_default(
+    service: str, chain: str, expected: int
+) -> None:
+    """Each service's Agent Signer floor stays below its Agent Signer top-up threshold.
+
+    Under the floor no Agent Safe top-up is built and every transaction waits;
+    between the floor and the threshold the Agent Safe tops the Agent Signer up.
+
+    :param service: the service package name.
+    :param chain: the service's chain key in ``fund_requirements``.
+    :param expected: the default floor, in wei.
+    """
+    docs = _resolve_service(service, {})
+    floor = _override(docs, "trader_abci")["models"]["params"]["args"][
+        "agent_balance_threshold"
+    ]
+    fund_requirements = _override(docs, "funds_manager")["models"]["params"]["args"][
+        "fund_requirements"
+    ]
+    assert floor == expected
+    assert floor < fund_requirements[chain]["agent"][NATIVE_ADDRESSES[0]]["threshold"]
