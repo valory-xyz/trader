@@ -232,11 +232,9 @@ class PolymarketRedeemBehaviour(
         positions: List[Dict[str, Any]] = []
         # Only the redeemable read includes archived markets, so read both.
         for redeemable in (True, False):
-            response = yield from self.send_polymarket_connection_request(
-                {
-                    "request_type": RequestType.FETCH_ALL_POSITIONS.value,
-                    "params": {"redeemable": redeemable, "address": dw_address},
-                }
+            response = yield from self._send_polymarket_request(
+                RequestType.FETCH_ALL_POSITIONS,
+                {"redeemable": redeemable, "address": dw_address},
             )
             if not isinstance(response, list):
                 self.context.logger.warning(
@@ -248,23 +246,24 @@ class PolymarketRedeemBehaviour(
 
         token_ids = list(dict.fromkeys(self._asset_token_ids(positions)))
         if not token_ids:
+            if positions:
+                self.context.logger.warning(
+                    f"None of the {len(positions)} DepositWallet positions has "
+                    f"a token id; skipping its sweep."
+                )
             return
 
-        response = yield from self.send_polymarket_connection_request(
-            {
-                "request_type": RequestType.SWEEP_DW.value,
-                "params": {"dw_address": dw_address, "token_ids": token_ids},
-            }
+        response = yield from self._send_polymarket_request(
+            RequestType.SWEEP_DW, {"dw_address": dw_address, "token_ids": token_ids}
         )
-        if not isinstance(response, dict) or response.get("error"):
+        if response is None:
             self.context.logger.warning(
-                f"DepositWallet positions sweep failed; retrying next cycle: "
-                f"{response}"
+                "DepositWallet positions sweep failed; retrying next cycle."
             )
             return
         self.context.logger.info(
-            f"DepositWallet positions sweep of {len(token_ids)} token ids: "
-            f"{response}"
+            f"DepositWallet positions sweep of {len(token_ids)} token ids "
+            f"submitted: {response}"
         )
 
     def _redeem_position(

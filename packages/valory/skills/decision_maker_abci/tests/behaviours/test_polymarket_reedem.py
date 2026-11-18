@@ -333,12 +333,12 @@ def _sweep_dw(*responses):  # type: ignore[no-untyped-def]
     requests = []
     replies = iter(responses)
 
-    def send(payload):  # type: ignore[no-untyped-def]
-        requests.append(payload)
+    def send(request_type, params):  # type: ignore[no-untyped-def]
+        requests.append({"request_type": request_type.value, "params": params})
         yield
         return next(replies)
 
-    behaviour.send_polymarket_connection_request = send  # type: ignore[method-assign]
+    behaviour._send_polymarket_request = send  # type: ignore[method-assign]
     _run(behaviour._sweep_deposit_wallet_positions())
     return behaviour, requests
 
@@ -380,11 +380,18 @@ class TestSweepDepositWalletPositions:
     def test_unknown_dw_is_skipped(self) -> None:
         """With no DepositWallet recorded, nothing is read or swept."""
         behaviour = _make_behaviour()
-        behaviour.send_polymarket_connection_request = MagicMock()  # type: ignore[method-assign]
+        behaviour._send_polymarket_request = MagicMock()  # type: ignore[method-assign]
 
         _run(behaviour._sweep_deposit_wallet_positions())
 
-        behaviour.send_polymarket_connection_request.assert_not_called()
+        behaviour._send_polymarket_request.assert_not_called()
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_positions_without_token_ids_warn(self) -> None:
+        """Positions with no parseable token id are reported, not swept."""
+        behaviour, requests = _sweep_dw([{"asset": None}], [{}])
+
+        assert requests == [_dw_read(True), _dw_read(False)]
         behaviour.context.logger.warning.assert_called_once()
 
     @pytest.mark.parametrize("failure", [{"error": "503"}, None])
@@ -398,10 +405,9 @@ class TestSweepDepositWalletPositions:
         assert requests == [_dw_read(True), _dw_read(False)][: failed_read + 1]
         behaviour.context.logger.warning.assert_called_once()
 
-    @pytest.mark.parametrize("failure", [{"error": "relayer down"}, None])
-    def test_failed_sweep_warns(self, failure) -> None:  # type: ignore[no-untyped-def]
+    def test_failed_sweep_warns(self) -> None:
         """A failed sweep is logged, not raised."""
-        behaviour, requests = _sweep_dw([{"asset": "11"}], [], failure)
+        behaviour, requests = _sweep_dw([{"asset": "11"}], [], None)
 
         assert requests[-1]["request_type"] == "sweep_dw"
         behaviour.context.logger.warning.assert_called_once()
