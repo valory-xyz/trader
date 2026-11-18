@@ -368,7 +368,8 @@ class TestSweepDepositWalletPositions:
                 "params": {"dw_address": DW_ADDRESS, "token_ids": [11, 22]},
             },
         ]
-        behaviour.context.logger.warning.assert_not_called()
+        # One warning per position with no parseable token id.
+        assert behaviour.context.logger.warning.call_count == 2
 
     def test_empty_dw_is_not_swept(self) -> None:
         """A DepositWallet holding no positions gets no sweep."""
@@ -392,7 +393,7 @@ class TestSweepDepositWalletPositions:
         behaviour, requests = _sweep_dw([{"asset": None}], [{}])
 
         assert requests == [_dw_read(True), _dw_read(False)]
-        behaviour.context.logger.warning.assert_called_once()
+        assert behaviour.context.logger.warning.call_count == 2
 
     @pytest.mark.parametrize("failure", [{"error": "503"}, None])
     @pytest.mark.parametrize("failed_read", [0, 1])
@@ -1910,9 +1911,18 @@ def test_dw_positions_swept_then_claimed_from_safe(builder) -> None:  # type: ig
     """A DepositWallet's resolved and open shares go to the Safe, which claims the resolved one next period."""
     rows = (pm.V1_WIN, pm.V2_OPEN)
     balances = pm._ledger(pm.V2_DW, *rows)
-    with pm._v2_world({pm.V2_DW: list(rows)}, balances) as conn:
-        payload, claims = _redeem_period(conn, builder, dw=pm.V2_DW)
+    policy = _make_policy()
+    tools = {row["condition_id"]: "tool1" for row in rows}
+    with (
+        pm._v2_world({pm.V2_DW: list(rows)}, balances) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        payload, claims = _redeem_period(conn, builder, tools, policy, dw=pm.V2_DW)
+        # Sweeping records no payout and updates no tool: the Safe redeem does both.
         assert (payload.event, claims) == ("no_redeeming", [])
+        assert json.loads(payload.utilized_tools) == tools
+        assert policy.accuracy_store == _make_policy().accuracy_store
+        feed.assert_not_called()
         dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
         for call in calls:
             pm._apply_transfer(balances, dw, call["target"], call["data"])

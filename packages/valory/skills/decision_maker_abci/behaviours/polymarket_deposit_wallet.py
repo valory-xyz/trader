@@ -139,8 +139,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                 continue
         return ids
 
-    @staticmethod
-    def _asset_token_ids(positions: List[Dict[str, Any]]) -> List[int]:
+    def _asset_token_ids(self, positions: List[Dict[str, Any]]) -> List[int]:
         """Integer token ids of the positions a sweep should reclaim.
 
         :param positions: position records keyed by v1 names.
@@ -151,7 +150,10 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
             try:
                 token_ids.append(int(p["asset"]))
             except (KeyError, TypeError, ValueError):
-                continue
+                self.context.logger.warning(
+                    f"Invalid token ID {p.get('asset')!r} of condition "
+                    f"{p.get('conditionId')!r} skipped."
+                )
         return token_ids
 
     def _read_deposit_wallet_file(self) -> Optional[dict]:

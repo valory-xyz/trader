@@ -246,11 +246,6 @@ class PolymarketRedeemBehaviour(
 
         token_ids = list(dict.fromkeys(self._asset_token_ids(positions)))
         if not token_ids:
-            if positions:
-                self.context.logger.warning(
-                    f"None of the {len(positions)} DepositWallet positions has "
-                    f"a token id; skipping its sweep."
-                )
             return
 
         response = yield from self._send_polymarket_request(

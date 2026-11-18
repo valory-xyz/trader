@@ -200,6 +200,7 @@ class TestSweepDwToSafe:
             {"asset": "43"},
         ]
         assert b._asset_token_ids(sellable) == [42, 43]
+        assert b.context.logger.warning.call_count == 3
 
     def test_none_response_warns(self) -> None:
         """A missing sweep response logs a warning (non-fatal)."""
