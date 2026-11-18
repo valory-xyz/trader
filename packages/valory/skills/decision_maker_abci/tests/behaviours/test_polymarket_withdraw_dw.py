@@ -189,7 +189,7 @@ class TestSweepDwToSafe:
         assert called == []
         b.context.logger.warning.assert_called()
 
-    def test_sellable_token_ids_parses_and_skips(self) -> None:
+    def test_asset_token_ids_parses_and_skips(self) -> None:
         """Parseable asset ids are kept as ints; unparseable ones are skipped."""
         b = _make_behaviour()
         sellable = [
@@ -199,7 +199,7 @@ class TestSweepDwToSafe:
             {},
             {"asset": "43"},
         ]
-        assert b._sellable_token_ids(sellable) == [42, 43]
+        assert b._asset_token_ids(sellable) == [42, 43]
 
     def test_none_response_warns(self) -> None:
         """A missing sweep response logs a warning (non-fatal)."""

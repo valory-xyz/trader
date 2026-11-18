@@ -22,7 +22,7 @@
 import json
 import os
 from abc import ABC
-from typing import Any, Dict, Generator, Optional, Tuple, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
@@ -138,6 +138,21 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                 self.context.logger.warning(f"Invalid token ID '{tid}' skipped.")
                 continue
         return ids
+
+    @staticmethod
+    def _asset_token_ids(positions: List[Dict[str, Any]]) -> List[int]:
+        """Integer token ids of the positions a sweep should reclaim.
+
+        :param positions: position records keyed by v1 names.
+        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
+        """
+        token_ids: List[int] = []
+        for p in positions:
+            try:
+                token_ids.append(int(p["asset"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return token_ids
 
     def _read_deposit_wallet_file(self) -> Optional[dict]:
         """Read the persisted DepositWallet state, if any.

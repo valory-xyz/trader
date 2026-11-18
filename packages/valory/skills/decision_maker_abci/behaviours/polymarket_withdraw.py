@@ -140,7 +140,7 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         # position that did NOT fully sell (dust / in-flight / permanent-failure
         # positions) is also returned to the Safe rather than stranded in the
         # transient DW — there may be no subsequent buy to reclaim it.
-        token_ids = self._sellable_token_ids(sellable)
+        token_ids = self._asset_token_ids(sellable)
         yield from self._sweep_dw_to_safe(token_ids)
 
         store = self._read_store()
@@ -149,21 +149,6 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         else:
             self._set_state(WITHDRAWAL_STATE_COMPLETE)
         yield from self._finish()
-
-    @staticmethod
-    def _sellable_token_ids(sellable: List[Dict[str, Any]]) -> List[int]:
-        """Integer token ids of the positions the sweep should reclaim.
-
-        :param sellable: the filtered sellable position records.
-        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
-        """
-        token_ids: List[int] = []
-        for p in sellable:
-            try:
-                token_ids.append(int(p["asset"]))
-            except (KeyError, TypeError, ValueError):
-                continue
-        return token_ids
 
     def _sweep_dw_to_safe(
         self, token_ids: Optional[List[int]] = None
