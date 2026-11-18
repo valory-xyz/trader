@@ -40,6 +40,9 @@ from packages.valory.skills.agent_performance_summary_abci.feed import (
     market_url,
 )
 from packages.valory.skills.decision_maker_abci.behaviours.base import MultisendBatch
+from packages.valory.skills.decision_maker_abci.behaviours.polymarket_deposit_wallet import (
+    PolymarketDepositWalletBehaviour,
+)
 from packages.valory.skills.decision_maker_abci.behaviours.storage_manager import (
     StorageManagerBehaviour,
 )
@@ -56,7 +59,9 @@ BLOCK_NUMBER_KEY = "number"
 DEFAULT_TO_BLOCK = "latest"
 
 
-class PolymarketRedeemBehaviour(StorageManagerBehaviour):
+class PolymarketRedeemBehaviour(
+    StorageManagerBehaviour, PolymarketDepositWalletBehaviour
+):
     """Redeem the winnings."""
 
     matching_round = PolymarketRedeemRound
@@ -208,6 +213,60 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
 
         return redeemable_positions
 
+    def _sweep_deposit_wallet_positions(self) -> Generator[None, None, None]:
+        """Sweep every position the DepositWallet holds to the Safe.
+
+        The redeem only reads the Safe, so shares left in the DepositWallet
+        are claimed once a later cycle sees them there. Best-effort: a failure
+        is logged and the Safe redeem goes on.
+
+        :yield: framework yields between dispatch and the connection response.
+        """
+        dw_address = self._resolve_deposit_wallet()
+        if not dw_address:
+            self.context.logger.warning(
+                "DepositWallet address unknown; skipping its positions sweep."
+            )
+            return
+
+        positions: List[Dict[str, Any]] = []
+        # Only the redeemable read includes archived markets, so read both.
+        for redeemable in (True, False):
+            response = yield from self.send_polymarket_connection_request(
+                {
+                    "request_type": RequestType.FETCH_ALL_POSITIONS.value,
+                    "params": {"redeemable": redeemable, "address": dw_address},
+                }
+            )
+            if not isinstance(response, list):
+                self.context.logger.warning(
+                    f"DepositWallet positions read failed; skipping its sweep: "
+                    f"{response}"
+                )
+                return
+            positions += response
+
+        token_ids = list(dict.fromkeys(self._asset_token_ids(positions)))
+        if not token_ids:
+            return
+
+        response = yield from self.send_polymarket_connection_request(
+            {
+                "request_type": RequestType.SWEEP_DW.value,
+                "params": {"dw_address": dw_address, "token_ids": token_ids},
+            }
+        )
+        if not isinstance(response, dict) or response.get("error"):
+            self.context.logger.warning(
+                f"DepositWallet positions sweep failed; retrying next cycle: "
+                f"{response}"
+            )
+            return
+        self.context.logger.info(
+            f"DepositWallet positions sweep of {len(token_ids)} token ids: "
+            f"{response}"
+        )
+
     def _redeem_position(
         self,
         condition_id: str,
@@ -283,6 +342,8 @@ class PolymarketRedeemBehaviour(StorageManagerBehaviour):
             is_policy_set = self.synchronized_data.is_policy_set
 
             current_mech_tools = json.dumps(list(self.mech_tools))
+
+            yield from self._sweep_deposit_wallet_positions()
 
             # Fetch redeemable positions once for both flows
             fetched_positions = yield from self._fetch_redeemable_positions()
