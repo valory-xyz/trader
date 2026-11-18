@@ -22,9 +22,13 @@
 import random
 from collections import defaultdict
 from datetime import datetime
+from enum import Enum
 from functools import cached_property
 from typing import Any, Dict, FrozenSet, Generator, List, Optional, Tuple
 
+from packages.valory.skills.agent_performance_summary_abci.activity_goal import (
+    set_no_markets_left,
+)
 from packages.valory.skills.agent_performance_summary_abci.models import (
     read_activity_goal,
 )
@@ -51,6 +55,26 @@ RANKING_PICK_EXPONENT = 4
 # Recurring Polymarket markets the agent opens a position on only when the
 # latest ranked list scored them at or above `ranking_min_score`.
 SCORE_GATED_POLYMARKET_TAGS: FrozenSet[str] = frozenset({"hide-from-new"})
+
+
+class PoolRejection(str, Enum):
+    """Why a bet is left out of the pool, in the classifier's precedence order."""
+
+    EXPIRED = "expired"
+    WRONG_MODE = "wrong_mode"
+    OUT_OF_SAFE = "out_of_safe"
+    OUT_OF_OPEN = "out_of_open"
+    WRONG_QUEUE = "wrong_queue"
+    DECLINED_IN_EPOCH = "declined_in_epoch"
+    COOLING = "cooling"
+    PROCESSABLE = "processable"
+
+
+def format_pool_breakdown(breakdown: Dict[PoolRejection, int]) -> str:
+    """Format a pool breakdown as ``reason=count`` pairs, every reason in order."""
+    return " ".join(
+        f"{reason.value}={breakdown.get(reason, 0)}" for reason in PoolRejection
+    )
 
 
 class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
@@ -154,8 +178,19 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             bet_mode_allowable
             and within_ranges
             and bet_queue_processable
+            and not self._declined_in_epoch(bet)
             and not self._declined_recently(bet, now)
         )
+
+    def _declined_in_epoch(self, bet: Bet) -> bool:
+        """Whether an Omen market was declined in the current staking epoch.
+
+        :param bet: the bet to check.
+        :return: whether the bet is held back until the next epoch.
+        """
+        if self.params.is_running_on_polymarket or self.benchmarking_mode.enabled:
+            return False
+        return bet.is_declined_in_epoch(self.synchronized_data.epoch_start)
 
     def _declined_recently(self, bet: Bet, now: int) -> bool:
         """Whether a market left without a position was processed less than the cooldown ago.
@@ -180,24 +215,22 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
     def _classify_processable_bet(
         self, bet: Bet, now: int, multi_bets_active: bool
-    ) -> str:
+    ) -> PoolRejection:
         """Classify the dominant rejection reason in the mirror's own precedence.
 
-        Returns one of ``expired``, ``wrong_mode``, ``out_of_safe``,
-        ``out_of_open``, ``wrong_queue``, ``cooling``, ``processable`` — the
-        first one that trips, in that precedence order. Pure read; does NOT call
-        ``blacklist_forever`` and does NOT mutate the bet — the real filter
-        ``processable_bet`` still runs and is the source of truth.
+        Returns the first ``PoolRejection`` that trips, in its declaration
+        order. Pure read; does NOT call ``blacklist_forever`` and does NOT
+        mutate the bet - the real filter ``processable_bet`` still runs and
+        is the source of truth.
 
-        Caveat: ``processable_bet`` does NOT short-circuit on the last five
-        conditions — it computes ``bet_mode_allowable / within_opening_range
-        / within_safe_range / bet_queue_processable / not cooling``
-        independently and ANDs them. It also has a ``blacklist_forever()`` side-effect on
-        ``not within_safe_range`` regardless of the other conditions. So
-        when a bet trips both ``wrong_mode`` and ``out_of_safe``, this
-        classifier reports ``wrong_mode`` (precedence) while the actual
-        side-effect blacklists the bet — and the bet will surface as
-        ``expired`` in the next cycle's breakdown.
+        Caveat: after the expiry and sell-review checks ``processable_bet`` does NOT
+        short-circuit - it computes each remaining condition independently
+        and ANDs them. It also has a ``blacklist_forever()`` side-effect on
+        ``not within_safe_range`` regardless of the other conditions. So when
+        a bet trips both ``wrong_mode`` and ``out_of_safe``, this classifier
+        reports ``wrong_mode`` (precedence) while the actual side-effect
+        blacklists the bet - and the bet will surface as ``expired`` in the
+        next cycle's breakdown.
 
         :param bet: the bet to classify.
         :param now: current timestamp.
@@ -205,14 +238,14 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         :return: the dominant rejection reason, or ``processable``.
         """
         if bet.queue_status.is_expired():
-            return "expired"
+            return PoolRejection.EXPIRED
         selling_specific = self.kpi_is_met and self.review_bets_for_selling
         bets_placed = bool(bet.n_bets)
         if not bets_placed and selling_specific:
-            return "wrong_mode"
+            return PoolRejection.WRONG_MODE
         bet_mode_allowable = multi_bets_active or not bets_placed or selling_specific
         if not bet_mode_allowable:
-            return "wrong_mode"
+            return PoolRejection.WRONG_MODE
         within_safe_range = (
             now
             < bet.openingTimestamp
@@ -220,22 +253,24 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             - self.params.safe_voting_range
         )
         if not within_safe_range:
-            return "out_of_safe"
+            return PoolRejection.OUT_OF_SAFE
         within_opening_range = bet.openingTimestamp <= (
             now + self.params.sample_bets_closing_days * UNIX_DAY
         )
         if not within_opening_range:
-            return "out_of_open"
+            return PoolRejection.OUT_OF_OPEN
         processable_statuses = {
             QueueStatus.TO_PROCESS,
             QueueStatus.PROCESSED,
             QueueStatus.REPROCESSED,
         }
         if bet.queue_status not in processable_statuses:
-            return "wrong_queue"
+            return PoolRejection.WRONG_QUEUE
+        if self._declined_in_epoch(bet):
+            return PoolRejection.DECLINED_IN_EPOCH
         if self._declined_recently(bet, now):
-            return "cooling"
-        return "processable"
+            return PoolRejection.COOLING
+        return PoolRejection.PROCESSABLE
 
     @staticmethod
     def _sort_by_priority_logic(bets: List[Bet]) -> List[Bet]:
@@ -358,13 +393,13 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         return self.bets.index(sorted_bets[0])
 
     def _processable_bets(self, now: int) -> Tuple[List[Bet], str]:
-        """Get the processable bets, with the fallback when allowed, and a note on the cooling ones."""
+        """Get the processable bets, with the fallback when allowed, and a note on the held-back ones."""
         # Strict-mode breakdown (observability only — pure read pass).
         # Captured BEFORE the side-effecting processable_bet call so
         # out_of_safe bets are still classified as out_of_safe rather than
         # the `expired` they'll appear as after blacklist_forever fires.
         # No bet/list mutation — populates a fresh local dict.
-        strict_breakdown: Dict[str, int] = defaultdict(int)
+        strict_breakdown: Dict[PoolRejection, int] = defaultdict(int)
         for bet in self.bets:
             strict_breakdown[
                 self._classify_processable_bet(
@@ -386,20 +421,27 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         # If no bets available and fallback is enabled, try again with fallback
         fallback_activated = False
-        # Markets cooling down after a decline must not push the agent into
-        # re-betting the markets it already holds; it waits out the cooldown.
-        markets_cooling = strict_breakdown["cooling"] > 0
-        cooling_note = (
-            f" {strict_breakdown['cooling']} markets are cooling down for "
-            f"{self.params.declined_market_cooldown}s after a decision "
-            "that left no position."
-            if markets_cooling
-            else ""
-        )
+        # Markets held back after a decline must not push the agent into
+        # re-betting the markets it already holds; it waits out the hold.
+        n_cooling = strict_breakdown[PoolRejection.COOLING]
+        n_declined_in_epoch = strict_breakdown[PoolRejection.DECLINED_IN_EPOCH]
+        markets_held = n_cooling > 0 or n_declined_in_epoch > 0
+        held_note = ""
+        if n_cooling:
+            held_note += (
+                f" {n_cooling} markets are cooling down for "
+                f"{self.params.declined_market_cooldown}s after a decision "
+                "that left no position."
+            )
+        if n_declined_in_epoch:
+            held_note += (
+                f" {n_declined_in_epoch} markets declined in "
+                "this staking epoch are held back until the next one."
+            )
         if (
             len(available_bets) <= 0
             and self._multi_bets_fallback_allowed()
-            and not markets_cooling
+            and not markets_held
         ):
             self.pool_logger.info(
                 "No bets available in single-bet mode, checking with multi-bet fallback enabled..."
@@ -426,7 +468,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         # Bets that strict's blacklist_forever side-effect just killed will
         # appear here as `expired` rather than `out_of_safe` — that's the
         # post-filter state, by design.
-        fallback_breakdown: Optional[Dict[str, int]] = None
+        fallback_breakdown: Optional[Dict[PoolRejection, int]] = None
         if fallback_activated:
             fallback_breakdown = defaultdict(int)
             for bet in self.bets:
@@ -443,30 +485,18 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         )
         self.pool_logger.info(
             f"{self.venue_tag} filter=processable_bet.breakdown.strict "
-            f"expired={strict_breakdown['expired']} "
-            f"wrong_mode={strict_breakdown['wrong_mode']} "
-            f"out_of_safe={strict_breakdown['out_of_safe']} "
-            f"out_of_open={strict_breakdown['out_of_open']} "
-            f"wrong_queue={strict_breakdown['wrong_queue']} "
-            f"cooling={strict_breakdown['cooling']} "
-            f"processable={strict_breakdown['processable']}"
+            f"{format_pool_breakdown(strict_breakdown)}"
         )
         if fallback_breakdown is not None:
             self.pool_logger.info(
                 f"{self.venue_tag} filter=processable_bet.breakdown.fallback "
-                f"expired={fallback_breakdown['expired']} "
-                f"wrong_mode={fallback_breakdown['wrong_mode']} "
-                f"out_of_safe={fallback_breakdown['out_of_safe']} "
-                f"out_of_open={fallback_breakdown['out_of_open']} "
-                f"wrong_queue={fallback_breakdown['wrong_queue']} "
-                f"cooling={fallback_breakdown['cooling']} "
-                f"processable={fallback_breakdown['processable']}"
+                f"{format_pool_breakdown(fallback_breakdown)}"
             )
 
         if len(available_bets) == 0:
             msg = "There were no unprocessed bets available to sample from!"
-            self.pool_logger.warning(msg + cooling_note)
-        return available_bets, cooling_note
+            self.pool_logger.warning(msg + held_note)
+        return available_bets, held_note
 
     @staticmethod
     def _normalized_tags(tags: List[str]) -> FrozenSet[str]:
@@ -584,7 +614,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
         else:
             now = self.synced_timestamp
 
-        available_bets, cooling_note = self._processable_bets(now)
+        available_bets, held_note = self._processable_bets(now)
         if not available_bets:
             return None
 
@@ -665,7 +695,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
             f"dropped={in_loop_neg_risk} kept=0"
         )
         msg = "No valid bets found after liquidity validation!"
-        self.context.logger.warning(msg + cooling_note)
+        self.context.logger.warning(msg + held_note)
         return None
 
     @classmethod
@@ -757,6 +787,44 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
 
         return benchmarking_finished, day_increased
 
+    def _publish_no_markets_left(self, idx: Optional[int]) -> None:
+        """Tell Pearl whether a staked Omen agent has nothing left to try or redeem.
+
+        :param idx: the index of the sampled bet, ``None`` when none was picked.
+        """
+        epoch_start = self.synchronized_data.epoch_start
+        if (
+            self.params.is_running_on_polymarket
+            or self.benchmarking_mode.enabled
+            or not epoch_start
+        ):
+            return
+        now = self.synced_timestamp
+        multi_bets_active = self.params.use_multi_bets_mode
+        retry_pending = any(
+            self._classify_processable_bet(bet, now, multi_bets_active)
+            == PoolRejection.COOLING
+            for bet in self.bets
+        )
+        # A sell review samples only held markets, so its empty pick says
+        # nothing about untried ones and the agent is reported as not idle.
+        no_markets_left = (
+            not self.review_bets_for_selling
+            and idx is None
+            and self.synchronized_data.found_nothing_to_redeem
+            and not retry_pending
+        )
+        self.context.logger.info(f"{self.venue_tag} {no_markets_left=}")
+        try:
+            set_no_markets_left(
+                self.params.store_path,
+                epoch_start,
+                no_markets_left,
+                self.context.logger,
+            )
+        except OSError as e:
+            self.context.logger.error(f"Failed to publish no_markets_left: {e}")
+
     def async_act(self) -> Generator:
         """Do the action."""
         with self.context.benchmark_tool.measure(self.behaviour_id).local():
@@ -804,6 +872,7 @@ class SamplingBehaviour(DecisionMakerBaseBehaviour, QueryingBehaviour):
                     bet.queue_status = bet.queue_status.move_to_fresh()
                     bet.queue_status = bet.queue_status.move_to_process()
 
+            self._publish_no_markets_left(idx)
             self.store_bets()
 
             if idx is None:

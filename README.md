@@ -114,13 +114,14 @@ export CREATOR_PER_SUBGRAPH='{"omen_subgraph":["0xFfc8029154ECD55ABED15BD428bA59
 export IS_RUNNING_ON_POLYMARKET=true
 export MECH_CHAIN_ID=polygon
 export DEFAULT_CHAIN_ID=polygon
+export MECH_ANALYTICS_URL="<analytics URL supplied by deployment operator>"
 
 export POLYGON_LEDGER_RPC="https://rpc-gate.autonolas.tech/polygon-rpc/"
 export RPC_URLS='{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}'
 
 # Strategy + sizing knobs — pUSD (6 decimals), so values are scaled accordingly
 export TRADING_STRATEGY=kelly_criterion
-export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.1,"fee_per_trade":10000,"grid_points":500}'
+export STRATEGIES_KWARGS='{"floor_balance":0,"default_max_bet_size":2500000,"absolute_min_bet_size":1000000,"absolute_max_bet_size":2500000,"n_bets":1,"min_edge":0.01,"min_oracle_prob":0.5,"fee_per_trade":10000,"grid_points":500}'
 
 # Polystrat market-filter defaults differ from agent-level aea-config defaults
 export USE_MULTI_BETS_MODE=false
@@ -135,6 +136,25 @@ export TOOLS_ACCURACY_HASH=QmaLiU5Pf9MadAA8nhuYRpNXUc1tkq1w8BhAHdGmeEMmA9
 export DEFAULT_ACTIVITY_GOAL=1
 ```
 
+## Polygon Marketplace migration
+
+Polystrat performance summaries now require the existing `MECH_ANALYTICS_URL`
+configuration, including when `USE_MECH_ANALYTICS` is false. Polygon's
+Marketplace squid has no parsed IPFS fields, so the enriched request history,
+tool attribution and prediction responses use the existing analytics readers.
+Their response adapters, request-time bounds, and KPI arithmetic are unchanged.
+Gnosis retains its feature-flag-controlled Graph fallback. Deploy the analytics
+Marketplace migration first and verify its Polygon history before this release.
+The legacy `POLYGON_MECH_SUBGRAPH_URL` is no longer a runtime fallback for PSA.
+
+Polystrat staking summaries also migrate to the Polygon staking squid.
+The staking endpoint is configured in both skill manifests as
+`https://subgraph.autonolas.tech/squid/staking-polygon/graphql`.
+The query aliases `serviceById` to `service`,
+preserving `ApiSpecs` extraction and lifetime `olasRewardsEarned` accounting.
+Epoch history and reward/KPI calculations are unchanged. Gnosis staking
+continues using its existing Graph query. Trader has no Base staking reader.
+
 The full set of Polystrat overrides lives in [`polymarket_trader/service.yaml`](./packages/valory/services/polymarket_trader/service.yaml) — diff it against [`aea-config.yaml`](./packages/valory/agents/trader/aea-config.yaml) if you suspect drift.
 
 The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). The agent accepts USDC.e in the Safe and wraps it to pUSD on demand via the Polymarket Collateral Onramp.
@@ -145,6 +165,7 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 |---|---|
 | `GNOSIS_LEDGER_RPC` / `POLYGON_LEDGER_RPC` | RPC endpoint per chain. We use `https://rpc-gate.autonolas.tech/{gnosis,polygon}-rpc/` in production. Also flows into the per-skill `ledger` connection. |
 | `RPC_URLS` | Dict of `{chain: url}` consumed by `funds_manager` for balance / multicall reads. Pearl sets this to e.g. `{"polygon":"https://rpc-gate.autonolas.tech/polygon-rpc/"}` (or the gnosis equivalent). Keep in sync with the per-chain `*_LEDGER_RPC`. |
+| `MECH_ANALYTICS_URL` | Required for Polystrat enriched Marketplace reads even when `USE_MECH_ANALYTICS=false`. |
 | `IS_RUNNING_ON_POLYMARKET` | Master switch between Polystrat (`true`) and Omenstrat (`false`). The service-level YAMLs default this correctly, but **`aea-config.yaml` defaults to `false`** — so any local-dev run that goes through `aea-helpers run-agent` must set this explicitly to run Polystrat. See the Polystrat section above for the full override set. |
 | `ALL_PARTICIPANTS` | List of agent EOAs participating in the service. Single-agent deployments pass a one-element list. |
 | `SAFE_CONTRACT_ADDRESS` / `SAFE_CONTRACT_ADDRESSES` | The agent's Safe multisig (the dict form is `{"gnosis":"0x..."}` or `{"polygon":"0x..."}`). |
@@ -153,7 +174,7 @@ The v2 collateral is **pUSD** (`0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB`). Th
 | `FILE_HASH_TO_STRATEGIES` | Maps the IPFS hash of a `customs/` package to the strategy names it provides. Defaulted; only override if you ship a new strategy. |
 | `CREATOR_PER_SUBGRAPH` | Dict mapping market-spec subgraph name to creator addresses to track (Omen-only by default). |
 | `DEFAULT_ACTIVITY_GOAL` | Trades the agent places per staking epoch before standing by, unless the user sets their own goal in the chat. Standby also needs the staking target met. `8` for Omenstrat, `1` for Polystrat; `aea-config.yaml` defaults to `8`. |
-| `DECLINED_MARKET_COOLDOWN` | Seconds a market stays unsampleable after a decision that left no position (a decline or a full sell), so a small pool waits instead of paying the mech again. Default `3600`; `0` turns it off. |
+| `DECLINED_MARKET_COOLDOWN` | Seconds a market stays unsampleable after a decision that left no position (a decline, a mech error or a full sell), so a small pool waits instead of paying the mech again. Default `3600`; `0` turns it off. A staked Omenstrat agent also holds a market it declined or fully sold until the next staking epoch. |
 | `ORDERBOOK_UNAVAILABLE_THRESHOLD` | Polymarket only. Consecutive order-book fetches the CLOB did not serve (no answer, a 5xx, or a 403/451 block), after which the agent stops requesting the mech and reports `polymarket_unreachable` in `/healthcheck`'s `agent_health.issues`, until a fetch reaches the CLOB again. A 404 or 429 counts as reached. Default `5`. |
 | `PROMPT_TEMPLATE` | Single-line prompt for the prediction Mech, with `@{question}`, `@{yes}`, `@{no}` placeholders. |
 
@@ -366,7 +387,8 @@ If you add or remove a dependency:
 ## Notes on profitability
 
 - If the agent does not have enough funds to place a bet, you'll see `Event.INSUFICIENT_FUNDS` in the logs.
-- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600), except one whose decision could not reach the CLOB for any of its order books.
+- If a bet is deemed unprofitable (the strategy's expected edge is below `STRATEGIES_KWARGS.min_edge` after fees), you'll see `Event.UNPROFITABLE`. Any decision that leaves no position (unprofitable, tie, mech error, or a full sell) makes that market unsampleable for `DECLINED_MARKET_COOLDOWN` seconds (default 3600), except one whose decision could not reach the CLOB for any of its order books. A staked Omenstrat agent holds a market it declined (unprofitable or tie) or fully sold until the next staking epoch. A market left without a mech answer keeps the cooldown only, so it is asked again once the cooldown ends. Each period that runs sampling, a staked Omenstrat agent records `no_markets_left` in the `activity_goal` block of `agent_performance.json`: `true` when the period is not a sell review, its redeem check finished with nothing to redeem, sampling picked no market and no market is cooling down, else `false`. A period that skips sampling (a stop vote, a withdrawal or an eviction) leaves the epoch's last recorded value in place, and a new epoch clears it. Polystrat and an unstaked agent never set it.
+- An evicted service keeps running: each period it redeems, skips trading and pauses, while it is evicted.
 - For Omen, fees are queryable via the [Omen subgraph on The Graph](https://thegraph.com/explorer); they have historically sat around 0.02 xDAI but should be re-checked.
 - For Polymarket CLOB v2, fee math is delegated to the protocol — see `client.get_clob_market_info(condition_id)["fd"]`.
 

@@ -20,7 +20,7 @@
 """Per-epoch activity goal: the trades ledger and the block Pearl reads."""
 
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from logging import Logger
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -132,6 +132,8 @@ def build_activity_goal(
 ) -> ActivityGoal:
     """Build the block, stamping ``last_met_at`` when the goal becomes met in an epoch.
 
+    ``no_markets_left`` is kept within the same epoch and cleared on a new one.
+
     :param target: the effective goal.
     :param progress: trades placed in the current epoch.
     :param period_start: the start of the current staking epoch.
@@ -140,11 +142,12 @@ def build_activity_goal(
     :return: the new block.
     """
     is_met = progress >= target
-    was_met = (
-        previous is not None
-        and previous.is_met
-        and previous.period_start == period_start
+    same_epoch = (
+        previous
+        if previous is not None and previous.period_start == period_start
+        else None
     )
+    was_met = same_epoch is not None and same_epoch.is_met
     last_met_at = previous.last_met_at if previous is not None else None
     if is_met and not was_met:
         last_met_at = now
@@ -156,6 +159,7 @@ def build_activity_goal(
         period_start=period_start,
         updated_at=now,
         last_met_at=last_met_at,
+        no_markets_left=same_epoch is not None and same_epoch.no_markets_left,
     )
 
 
@@ -210,3 +214,29 @@ def retarget_activity_goal(
     )
     write_performance_summary_key(store_path, ACTIVITY_GOAL_KEY, asdict(goal))
     return goal
+
+
+def set_no_markets_left(
+    store_path: Path, period_start: int, value: bool, logger: Logger
+) -> None:
+    """Record whether the agent has nothing left to try in the block's epoch.
+
+    Left untouched when the value is unchanged. With no readable block for
+    ``period_start`` nothing is written, and that is logged.
+
+    :param store_path: directory containing the performance summary.
+    :param period_start: the start of the current staking epoch.
+    :param value: whether no market is left to try.
+    :param logger: where to warn that the flag could not be recorded.
+    """
+    previous = read_activity_goal(store_path)
+    if previous is None or previous.period_start != period_start:
+        logger.warning(
+            "No readable activity_goal block for the epoch starting at "
+            f"{period_start}: no_markets_left={value} not recorded."
+        )
+        return
+    if previous.no_markets_left == value:
+        return
+    goal = replace(previous, no_markets_left=value)
+    write_performance_summary_key(store_path, ACTIVITY_GOAL_KEY, asdict(goal))

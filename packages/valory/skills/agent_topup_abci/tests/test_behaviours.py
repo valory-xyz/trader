@@ -19,7 +19,7 @@
 
 """Tests for the behaviours of the agent top-up skill."""
 
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -37,13 +37,17 @@ from packages.valory.skills.agent_topup_abci.rounds import AgentTopUpRound
 from packages.valory.skills.agent_topup_abci.tests.helpers import (
     AGENT,
     ETHER,
+    NATIVE,
     SAFE,
     funds_status,
     real_topup_rule,
 )
 from packages.valory.skills.agent_topup_abci.utils import (
+    TOPUP_REFILLING_KEY,
     TOPUP_SUCCEEDED_KEY,
     WXDAI_ADDRESS,
+    get_agent_topups,
+    get_native_deficits_with_signer_shortfall,
 )
 from packages.valory.skills.funds_manager.behaviours import (
     GET_AGENT_TOPUP_METHOD_NAME,
@@ -322,6 +326,34 @@ class TestNoMove:
         assert not harness.contract_calls
 
 
+class TestNoMoveGate:
+    """Whether a check that moves nothing closes the gate."""
+
+    @pytest.mark.parametrize(
+        "chain, signer_balance, safe_balance, closes",
+        [
+            ("polygon", ETHER // 10, 0, False),  # Agent Safe empty, Agent Signer short
+            ("polygon", ETHER, 0, True),  # nothing due
+            # Agent Signer below the settlement threshold, Agent Safe holding POL
+            ("polygon", SIGNER_SETTLEMENT_THRESHOLD - 1, 10 * ETHER, True),
+            ("gnosis", ETHER // 10, 0, True),
+        ],
+    )
+    def test_gate(
+        self, chain: str, signer_balance: int, safe_balance: int, closes: bool
+    ) -> None:
+        """An empty Agent Safe keeps the gate open off Gnosis while the Agent Signer is short."""
+        harness = _Harness(
+            chain,
+            funds_status(chain, signer_balance, safe_balance),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+        )
+
+        assert harness.run() is None
+        expected = NOW if closes else NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == expected
+
+
 class TestTransfer:
     """The Agent Safe sends native token to the Agent Signer."""
 
@@ -375,6 +407,32 @@ class TestTransfer:
         )
 
         assert _decode(harness.run() or "")["ether_value"] == ETHER // 2
+
+    def test_partial_move_leaves_the_gate_open(self) -> None:
+        """An Agent Safe holding less than required lets the next period move the rest."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, ETHER // 2),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert harness.run() is not None
+        assert (
+            harness.shared_state[LAST_TOPUP_CHECK_KEY]
+            == NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        )
+
+    def test_full_move_closes_the_gate(self) -> None:
+        """A move covering the Agent Signer need closes the gate."""
+        harness = _Harness(
+            "polygon",
+            funds_status("polygon", ETHER // 10, 19 * ETHER // 10),
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert _decode(harness.run() or "")["ether_value"] == 19 * ETHER // 10
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
 
     def test_safe_hash_failure_prepares_nothing(self) -> None:
         """A Safe hash that cannot be read ends the check."""
@@ -473,6 +531,21 @@ class TestGnosisUnwrap:
 
         assert tx["to_address"] == AGENT
         assert tx["ether_value"] == ETHER + unwrapped
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+
+    def test_short_transfer_without_wxdai_closes_the_gate(self) -> None:
+        """Omenstrat keeps the hourly gate after a move short of the Agent Signer need."""
+        harness = _Harness(
+            "gnosis",
+            funds_status(
+                "gnosis", ETHER // 10, ETHER // 2, wxdai_balance=0, track_wxdai=True
+            ),
+            shared_state={LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS},
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+
+        assert _decode(harness.run() or "")["ether_value"] == ETHER // 2
+        assert harness.shared_state[LAST_TOPUP_CHECK_KEY] == NOW
 
     def test_no_xdai_after_an_unwrap_prepares_nothing(self) -> None:
         """A second unwrap is never prepared in the same check."""
@@ -672,3 +745,124 @@ class TestTopUpSucceeded:
 
         assert harness.run() is None
         assert harness.shared_state[TOPUP_SUCCEEDED_KEY] is True
+
+
+class TestRefillToTarget:
+    """After a partial move, the Agent Signer is refilled to its target, not just above its threshold."""
+
+    @staticmethod
+    def _polystrat_status(signer_balance: int, safe_balance: int) -> FundRequirements:
+        """The shipped Polystrat Agent Signer requirement: topup 30 POL, threshold 3.2 POL."""
+        return funds_status(
+            "polygon",
+            signer_balance,
+            safe_balance,
+            signer_topup=30 * ETHER,
+            signer_threshold=32 * ETHER // 10,
+        )
+
+    @staticmethod
+    def _funds_status_deficits(
+        status: FundRequirements, shared_state: Dict[str, Any]
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """The Agent Signer and Agent Safe native deficits `/funds-status` reports on Polymarket."""
+        refilling = shared_state[TOPUP_REFILLING_KEY]
+        topup = get_agent_topups(
+            real_topup_rule("polygon"),
+            status,
+            AGENT,
+            SIGNER_SETTLEMENT_THRESHOLD,
+            MagicMock(),
+            refilling=refilling,
+        )["polygon"]
+        return get_native_deficits_with_signer_shortfall(
+            status, "polygon", AGENT, topup, refilling, MagicMock()
+        )
+
+    def test_keeps_refilling_after_crossing_the_threshold(self) -> None:
+        """Agent Signer 2.5132 POL, 1 POL moved: the gate stays open until 30 POL is reached."""
+        signer = 25132 * ETHER // 10000
+        shared_state: Dict[str, Any] = {
+            LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS
+        }
+        stale = NOW - TOPUP_CHECK_INTERVAL_SECONDS
+
+        partial = _Harness(
+            "polygon",
+            self._polystrat_status(signer, ETHER),
+            shared_state=shared_state,
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+        assert _decode(partial.run() or "")["ether_value"] == ETHER
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+
+        settled = _Harness(
+            "polygon",
+            self._polystrat_status(signer + ETHER, 0),
+            shared_state=shared_state,
+            tx_submitter=SUBMITTER,
+        )
+        assert settled.run() is None
+
+        # 3.5132 POL is above the 3.2 POL threshold, so funds-manager reads no deficit.
+        empty_safe_status = self._polystrat_status(signer + ETHER, 0)
+        empty_safe = _Harness("polygon", empty_safe_status, shared_state=shared_state)
+        assert empty_safe.run() is None
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+        assert shared_state[TOPUP_REFILLING_KEY] is True
+        # `/funds-status` still asks for the 26.4868 POL, with Agent Safe USDC covering its own target.
+        empty_safe_status["polygon"].accounts[SAFE].tokens[NATIVE].deficit = 0
+        assert self._funds_status_deficits(empty_safe_status, shared_state) == (
+            0,
+            30 * ETHER - signer - ETHER,
+        )
+
+        funded_safe = _Harness(
+            "polygon",
+            self._polystrat_status(signer + ETHER, 40 * ETHER),
+            shared_state=shared_state,
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+        remaining = 30 * ETHER - signer - ETHER
+        tx = _decode(funded_safe.run() or "")
+        assert tx["ether_value"] == remaining
+        # The final transfer closes the refill only once it settles.
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+        assert shared_state[TOPUP_REFILLING_KEY] is True
+
+        # The final transfer failed: the next period moves the remaining POL again.
+        retry = _Harness(
+            "polygon",
+            self._polystrat_status(signer + ETHER, 40 * ETHER),
+            shared_state=shared_state,
+            responses=[_response(STATE, {"tx_hash": SAFE_TX_HASH})],
+        )
+        assert _decode(retry.run() or "")["ether_value"] == remaining
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == stale
+        assert shared_state[TOPUP_REFILLING_KEY] is True
+
+        settled_final = _Harness(
+            "polygon",
+            self._polystrat_status(30 * ETHER, 40 * ETHER - remaining),
+            shared_state=shared_state,
+            tx_submitter=SUBMITTER,
+        )
+        assert settled_final.run() is None
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+        assert shared_state[TOPUP_REFILLING_KEY] is False
+
+    def test_reaching_the_target_closes_the_gate(self) -> None:
+        """A refill that reached the target ends without a move and closes the gate."""
+        shared_state: Dict[str, Any] = {
+            LAST_TOPUP_CHECK_KEY: NOW - TOPUP_CHECK_INTERVAL_SECONDS,
+            TOPUP_REFILLING_KEY: True,
+        }
+        harness = _Harness(
+            "polygon",
+            self._polystrat_status(30 * ETHER, 10 * ETHER),
+            shared_state=shared_state,
+        )
+
+        assert harness.run() is None
+        assert shared_state[LAST_TOPUP_CHECK_KEY] == NOW
+        assert shared_state[TOPUP_REFILLING_KEY] is False

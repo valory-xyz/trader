@@ -1174,6 +1174,8 @@ class TestFetchRedeemInfoMalformedPagination:
 
         assert result == batch
         b.context.logger.error.assert_called()
+        # partial, so the redeem check is not taken as complete
+        assert b._call_failed is True
 
 
 class TestFetchTradesMalformedPagination:

@@ -9,17 +9,17 @@ fingerprint:
   README.md: bafybeiab4xgadptz4mhvno4p6xvkh7p4peg7iuhotabydriu74dmj6ljga
   __init__.py: bafybeidp3c6ychle2a6gvrzznmgvkgtzkcxras42gmq3kfey4xwmxa3rom
   behaviours.py: bafybeigdyc5tl3cggwi2kjuygwawkp5fc2akqhp3gczumycavi44ej6r6i
-  composition.py: bafybeie7gcusfom44mwydtlfj447qsxw5zfe4hjwf32yrk2tp77nvfbuf4
+  composition.py: bafybeif55w3gwxbfavc2qaym3leggsldu4sxdex7qk6v34u2mz6v2kkx74
   dialogues.py: bafybeifoywfxhnowfy2ofkltizyhuiuv3tgqakwjzm7vj4y4gb2ozhjpey
-  fsm_specification.yaml: bafybeihrnxolrwg7zl62hi2ldevtwyjrze3l7p5jkd73qmkmvjhmu3r3lu
-  handlers.py: bafybeihoqsujr3xmzeyxxaamemhprl3rsw5dznjt2ucaqzvczwlr5pgqfu
+  fsm_specification.yaml: bafybeibgxhekduqvbe77xtmpq2aurjpmmanzthhjz7t25y4tpbfa4lpw24
+  handlers.py: bafybeihiyy5zjstbijglfmirm4en5vbinaprlwd5cx255yhvv5gv4uhera
   models.py: bafybeiefga6y4rqanb3n4czpthj5pka62uhhwlthwjazul6mjkejf6xqcu
   tests/__init__.py: bafybeiadatapyjh3e7ucg2ehz77oms3ihrbutwb2cs2tkjehy54utwvuyi
-  tests/test_agent_config_resolution.py: bafybeibq6z5rwgusrjxbv5jvfnyc2sfjlxd7saydiagq6lgio5tvp4rkwy
+  tests/test_agent_config_resolution.py: bafybeihkbcim4tctpdblos75ijyua6kibk67oxzydlups2aubpzyp4pjhi
   tests/test_behaviours.py: bafybeicovtjruufnh2yd5lhfvc6pgcletuyj2s3jaz5sz55wsdo2w22xle
-  tests/test_composition.py: bafybeibumcsmma5jhqe7hq72sb6mbe4hewnw6dyjt6u6y6rphaave4txbe
+  tests/test_composition.py: bafybeideosqnfkaxdgvxzewm42u4wk3g54xhs4cuamb6tj2tg3x3u5sdh4
   tests/test_dialogues.py: bafybeibatogwoj6ieapcbiwonij6vskhogc65vfv53tyauqzeyiwmnd2im
-  tests/test_handlers.py: bafybeidxmmgzcsiz3it4snod4f7bwk4mu2lhgd6okkrlftekmrvmqxsgsy
+  tests/test_handlers.py: bafybeiaefv3pma4k2pijbencnortuo5jl2qodeff7o2bjb3t26y7rahovq
   tests/test_models.py: bafybeicypkna3ikkhfvxpirmzspyqdnml66m6yajo6r64r3eylhx4dmkum
   ui-build/omenstrat/README.md: bafybeiccodprvjsh5ejknb7iixrmfvz7igogs57mbkwmeiyq34m2xw22py
   ui-build/omenstrat/assets/index-DNMr_pWR.js: bafybeidrkrdrelma2gruya4o2e66hr5vkm3xmr5iumrxahxjg7rc4zljfy
@@ -47,15 +47,15 @@ skills:
 - valory/reset_pause_abci:0.1.0:bafybeifrnmlscfiki7wojs6zasppefupd2wkjyq6orhdllfppjud7isrxi
 - valory/transaction_settlement_abci:0.1.0:bafybeihizaapype5sz7vlosms3nfo6jzfj4ujycuf5uthviq2otvmw6f6m
 - valory/termination_abci:0.1.0:bafybeih6sa2ttcvvjk7rcfn7ure2ws23kcfufssb4qmluzcfvednkfpvoi
-- valory/market_manager_abci:0.1.0:bafybeiaqace2mhsprtjz7ygnq2jcn2bazk7y3rkw7m6e6flgajbv4bko7m
-- valory/decision_maker_abci:0.1.0:bafybeidncka227kfuh3kqb6aftq3ke4g4nvb3tycyzotudgxtxgyxagfca
-- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeiels6cwydwvppxvp7kdy3dlcy5jfwhekql4poxo6sirvuq4nzarha
-- valory/staking_abci:0.1.0:bafybeiahipshu7osnipfriqhh6bhnm4pvrfzqg2bim4wgxugbu5czzqxda
-- valory/agent_topup_abci:0.1.0:bafybeiebwiaxvnw7nztam3bxthqq5npc7bg4su4u7bq5bizad3snuq5sw4
-- valory/check_stop_trading_abci:0.1.0:bafybeibbouq4dwpc2dbed6gtusqrpltzlzejmlxvyevwhxuq6ev75lnyxm
+- valory/market_manager_abci:0.1.0:bafybeicivoevub2mkae53biijs7w5fdwxxtgnhsepn33rydmtpsqgq3idu
+- valory/decision_maker_abci:0.1.0:bafybeicsog5p5z3svabxuy24y6bs4kwc35txoa4qwctnlrwvjhydxo5k7a
+- valory/tx_settlement_multiplexer_abci:0.1.0:bafybeia6uqvp5guw6omb667zb7okg6stzhfqqat2ttxaqbtmvfrslu3tey
+- valory/staking_abci:0.1.0:bafybeiemaa62whlcbqia34dla3amnm5vwvnlycdo3lxozumtjs6bgi7vs4
+- valory/agent_topup_abci:0.1.0:bafybeie2tortxwg27mxb35yhoufndmcdukvcqst35pvgecuqwcll72qfga
+- valory/check_stop_trading_abci:0.1.0:bafybeifad5wqjl5krcrlochzeneqx4nbotslj7qddwhje2andi2cyq5ncm
 - valory/mech_interact_abci:0.1.0:bafybeihweyxgmvs6vjbttol6sjbq5fqs4qyilikv5r2252t4woj6o7jdcy
-- valory/chatui_abci:0.1.0:bafybeigg6msuuutshk437e2ashzm7iu3hnbn57bbrexyqygevpegw4s3wm
-- valory/agent_performance_summary_abci:0.1.0:bafybeic2vfddoyzfitoet2oflygt7b3fnkzhm7llt6hfcc4tea6vs566by
+- valory/chatui_abci:0.1.0:bafybeiegj7zukyaakxsjbkdppg5mki6j5qczy4klclbyvlc5ckgrbldoy4
+- valory/agent_performance_summary_abci:0.1.0:bafybeihucjgkvpy3u7mwbwl7nos6ky6kcpau5zzmprdruyttl4vdzaxjpe
 - valory/funds_manager:0.1.0:bafybeiakhryfscssc474efrnpqevn7icn22f72jok65gkwxsercik4pthu
 behaviours:
   main:
@@ -587,7 +587,7 @@ models:
       error_index: 0
       error_type: dict
       retries: 5
-      url: https://staking-polygon.subgraph.autonolas.tech
+      url: https://subgraph.autonolas.tech/squid/staking-polygon/graphql
     class_name: PolygonStakingSubgraph
   mech_tools:
     args:

@@ -118,6 +118,10 @@ SKIP_NO_TRADE = "The trading strategy found no trade worth placing"
 SKIP_SPREAD = "The market's price spread is outside the allowed range"
 SKIP_REBET_NOT_ALLOWED = "The conditions to trade this market again are not met"
 SKIP_ORDER_IMPOSSIBLE = "The order can't be placed on this market"
+SKIP_ORDER_NOT_FILLED = (
+    "The market couldn't fill the whole order at the current price, "
+    "so no trade was placed"
+)
 SKIP_ORDERBOOK_UNAVAILABLE = (
     "Couldn't read the market's order book, so no trade was considered"
 )
@@ -666,6 +670,8 @@ class DecisionMakerBaseBehaviour(BetsManagerBehaviour, ABC):
         updated = sampled_bet.update_investments(0)
         if not updated:
             self.context.logger.error("Could not update the investments!")
+        elif sampled_bet.invested_amount == 0:
+            sampled_bet.decline_in_epoch(self.synchronized_data.epoch_start)
 
         # the bets are stored here, but we do not update the hash in the synced db in the redeeming round
         # this will need to change if this sovereign agent is ever converted to a multi-agent service

@@ -63,8 +63,14 @@ from packages.valory.skills.mech_interact_abci.states.final_states import (
 from packages.valory.skills.mech_interact_abci.states.request import MechRequestRound
 from packages.valory.skills.mech_interact_abci.states.response import MechResponseRound
 from packages.valory.skills.registration_abci.rounds import FinishedRegistrationRound
-from packages.valory.skills.reset_pause_abci.rounds import FinishedResetAndPauseRound
-from packages.valory.skills.staking_abci.rounds import CallCheckpointRound
+from packages.valory.skills.reset_pause_abci.rounds import (
+    FinishedResetAndPauseRound,
+    ResetAndPauseRound,
+)
+from packages.valory.skills.staking_abci.rounds import (
+    CallCheckpointRound,
+    ServiceEvictedRound,
+)
 from packages.valory.skills.termination_abci.rounds import (
     BackgroundRound,
     Event,
@@ -85,7 +91,7 @@ from packages.valory.skills.tx_settlement_multiplexer_abci.rounds import (
     PreTxSettlementRound,
 )
 
-EXPECTED_TRANSITION_MAPPING_LENGTH = 66
+EXPECTED_TRANSITION_MAPPING_LENGTH = 67
 
 # Agent Signer top-up at period start: each settled tx re-enters the round,
 # and the check ends, finished or failed, at `FetchPerformanceDataRound`.
@@ -252,3 +258,13 @@ def test_ranking_request_and_answer_mapping() -> None:
     """A ranking request goes straight to the mech, and every answer to the router."""
     assert abci_app_transition_mapping[FinishedRankingRequestRound] is MechRequestRound
     assert abci_app_transition_mapping[FinishedMechResponseRound] is RankingReceiveRound
+
+
+def test_evicted_service_pauses_instead_of_exiting() -> None:
+    """An eviction ends the period like a finished staking round, so redeeming goes on."""
+    assert abci_app_transition_mapping[ServiceEvictedRound] is ResetAndPauseRound
+
+
+def test_found_nothing_to_redeem_is_reset_every_period() -> None:
+    """A redeem timeout leaves no stale marker: the key never outlives its period."""
+    assert "found_nothing_to_redeem" not in TraderAbciApp.cross_period_persisted_keys

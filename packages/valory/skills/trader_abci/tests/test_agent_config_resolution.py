@@ -326,3 +326,17 @@ def test_service_http_server_timeout(service: str) -> None:
     ):
         doc = _override(apply_env_variables(overrides, env), "http_server")
         assert doc["config"]["timeout"] == expected
+
+
+@pytest.mark.parametrize("service", ["trader_pearl", "polymarket_trader"])
+def test_service_min_oracle_prob_default(service: str) -> None:
+    """Each Pearl service rejects a side its own forecast rates below 0.5.
+
+    :param service: the service package name.
+    """
+    path = SERVICES_DIR / service / "service.yaml"
+    overrides = list(yaml_load_all(io.StringIO(path.read_text(encoding="utf-8"))))[1:]
+    args = _override(apply_env_variables(overrides, {}), "trader_abci")["models"][
+        "params"
+    ]["args"]
+    assert args["strategies_kwargs"]["min_oracle_prob"] == 0.5

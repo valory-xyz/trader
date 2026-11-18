@@ -20,7 +20,7 @@
 """Test for Redeem round"""
 
 from collections import Counter
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -29,6 +29,7 @@ from packages.valory.skills.abstract_round_abci.base import (
     AbciAppDB,
     CollectSameUntilThresholdRound,
 )
+from packages.valory.skills.decision_maker_abci.payloads import RedeemPayload
 from packages.valory.skills.decision_maker_abci.states.base import (
     Event,
     SynchronizedData,
@@ -276,6 +277,25 @@ class TestRedeemRoundEndBlock:
             result = round_instance.end_block()
         assert result is None
 
+    @pytest.mark.parametrize("earlier", [True, False])
+    def test_end_block_clears_an_earlier_nothing_to_redeem_until_it_ends(
+        self, earlier: bool
+    ) -> None:
+        """A second run in the period that times out does not keep the first run's result."""
+        round_instance = RedeemRound(
+            synchronized_data=SynchronizedData(
+                db=AbciAppDB(setup_data={"found_nothing_to_redeem": [earlier]})
+            ),
+            context=MagicMock(),
+        )
+        round_instance.block_confirmations = 1
+        with patch.object(TxPreparationRound, "end_block", return_value=None):
+            result = round_instance.end_block()
+
+        assert result is None
+        synced = cast(SynchronizedData, round_instance.synchronized_data)
+        assert synced.found_nothing_to_redeem is False
+
     def test_end_block_with_majority_updates_mech_tools(self) -> None:
         """Test end_block updates mech_tools when there is a majority event (not NO_MAJORITY)."""
         mock_synced_data = MagicMock(spec=SynchronizedData)
@@ -310,6 +330,69 @@ class TestRedeemRoundEndBlock:
         synced, event = result
         assert event == Event.DONE
         mock_synced_data.update.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "event, nothing_to_redeem, expected",
+        [
+            (Event.NO_REDEEMING, True, True),
+            (Event.NO_REDEEMING, None, False),
+            (Event.DONE, None, False),
+            (Event.DONE, True, False),
+        ],
+        ids=[
+            "checked-nothing-to-redeem",
+            "check-failed",
+            "redeemed",
+            "redeemed-with-flag",
+        ],
+    )
+    def test_end_block_records_whether_nothing_was_redeemed(
+        self, event: Event, nothing_to_redeem: Optional[bool], expected: bool
+    ) -> None:
+        """Only a redeem check that finished with nothing to redeem counts as nothing redeemed."""
+        mock_synced_data = MagicMock(spec=SynchronizedData)
+        round_instance = self._make_round()
+        payload_values = (
+            "submitter",
+            "0xhash",
+            False,
+            '["tool1"]',
+            None,
+            None,
+            None,
+            None,
+            nothing_to_redeem,
+        )
+        with (
+            patch.object(
+                TxPreparationRound, "end_block", return_value=(mock_synced_data, event)
+            ),
+            patch.object(
+                RedeemRound,
+                "payload_values_count",
+                new_callable=PropertyMock,
+                return_value=Counter({payload_values: 1}),
+            ),
+        ):
+            round_instance.end_block()
+
+        updates = mock_synced_data.update.call_args.kwargs
+        assert updates["found_nothing_to_redeem"] is expected
+
+    def test_nothing_to_redeem_alone_is_still_no_redeeming(self) -> None:
+        """The field explains why there is no tx, so it does not stop the none-event."""
+        round_instance = self._make_round()
+        round_instance.synchronized_data.consensus_threshold = 1  # type: ignore[misc]
+        payload = RedeemPayload("agent", mech_tools='["tool1"]', nothing_to_redeem=True)
+        with patch.object(
+            RedeemRound,
+            "payload_values_count",
+            new_callable=PropertyMock,
+            return_value=Counter({payload.values: 1}),
+        ):
+            values = round_instance.most_voted_payload_values
+
+        assert all(value is None for value in values)
 
     def test_end_block_no_majority_returns_original(self) -> None:
         """Test end_block returns original result on NO_MAJORITY event."""

@@ -76,6 +76,8 @@ class RedeemPayload(MultisigTxPayload):
     utilized_tools: Optional[str] = None
     redeemed_condition_ids: Optional[str] = None
     payout_so_far: Optional[int] = None
+    # True only when the redeem check finished and found no winnings to claim
+    nothing_to_redeem: Optional[bool] = None
 
 
 @dataclass(frozen=True)

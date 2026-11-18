@@ -373,6 +373,17 @@ class SynchronizedData(
         return bool(self.db.get("is_activity_target_met", False))
 
     @property
+    def epoch_start(self) -> Optional[int]:
+        """Get the staking epoch's checkpoint read this period, ``None`` when unstaked."""
+        epoch_start = self.db.get("epoch_start", None)
+        return None if epoch_start is None else int(epoch_start)
+
+    @property
+    def found_nothing_to_redeem(self) -> bool:
+        """Get whether this period's redeem round found no position to redeem."""
+        return bool(self.db.get("found_nothing_to_redeem", False))
+
+    @property
     def previous_checkpoint(self) -> Optional[int]:
         """Get the staking checkpoint timestamp last read by the staking round."""
         previous_checkpoint = self.db.get("previous_checkpoint", None)

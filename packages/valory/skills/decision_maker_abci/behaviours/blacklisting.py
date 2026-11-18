@@ -60,6 +60,21 @@ class BlacklistingBehaviour(  # type: ignore
         ):
             sampled_bet.processed_timestamp = self.synced_timestamp
         self.shared_state.orderbook_fetch_failed = False
+        if self._is_decline():
+            sampled_bet.decline_in_epoch(self.synchronized_data.epoch_start)
+
+    def _is_decline(self) -> bool:
+        """Whether this period's mech answer was read and led to no trade.
+
+        A mech error leaves no decision timestamp, and a failed placement of a
+        profitable bet carries a vote, so neither counts as a decline.
+
+        :return: whether the sampled market was declined.
+        """
+        synced_data = self.synchronized_data
+        if self.benchmarking_mode.enabled or not synced_data.decision_receive_timestamp:
+            return False
+        return synced_data.vote is None or not synced_data.is_profitable
 
     def async_act(self) -> Generator:
         """Do the action."""
