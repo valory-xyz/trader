@@ -9,9 +9,6 @@ description: This skill is responsible for the decision making and placing the b
 license: Apache-2.0
 aea_version: '>=2.0.0, <3.0.0'
 fingerprint:
-  .ruff_cache/.gitignore: bafybeiawd77vrsqztwqqtlxo5uawg2lpearzcm3yza75dn2ax5a26ikkgm
-  .ruff_cache/0.15.15/11889298358977067962: bafybeieqy6bpv4dbsxlot76qobvwcyncuh2qr3rgcfgcosweo6gqnaa7n4
-  .ruff_cache/CACHEDIR.TAG: bafybeibehqu5np7pjsbwm7ix3pnta26nipvkvasegaw6bidwxad45cxvci
   README.md: bafybeia367zzdwndvlhw27rvnwodytjo3ms7gbc3q7mhrrjqjgfasnk47i
   __init__.py: bafybeih4hqutxbtqml3dqbs3qivms5atletbpsqsiigzgzmoashwx6c3g4
   behaviours/__init__.py: bafybeih6ddz2ocvm6x6ytvlbcz6oi4snb5ee5xh5h65nq4w2qf7fd7zfky
