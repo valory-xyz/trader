@@ -214,11 +214,7 @@ class PolymarketRedeemBehaviour(
         return redeemable_positions
 
     def _sweep_deposit_wallet_positions(self) -> Generator[None, None, None]:
-        """Sweep every position the DepositWallet holds to the Safe.
-
-        The redeem only reads the Safe, so shares left in the DepositWallet
-        are claimed once a later cycle sees them there. Best-effort: a failure
-        is logged and the Safe redeem goes on.
+        """Sweep the DepositWallet's positions to the Safe, best-effort.
 
         :yield: framework yields between dispatch and the connection response.
         """
@@ -230,7 +226,7 @@ class PolymarketRedeemBehaviour(
             return
 
         positions: List[Dict[str, Any]] = []
-        # Only the redeemable read includes archived markets, so read both.
+        # Archived markets are only in the redeemable read.
         for redeemable in (True, False):
             response = yield from self._send_polymarket_request(
                 RequestType.FETCH_ALL_POSITIONS,
@@ -254,6 +250,12 @@ class PolymarketRedeemBehaviour(
         if response is None:
             self.context.logger.warning(
                 "DepositWallet positions sweep failed; retrying next cycle."
+            )
+            return
+        if not response.get("swept"):
+            self.context.logger.info(
+                "DepositWallet holds none of its listed positions on-chain; "
+                "nothing swept."
             )
             return
         self.context.logger.info(

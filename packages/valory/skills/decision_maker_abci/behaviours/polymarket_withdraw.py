@@ -136,10 +136,8 @@ class PolymarketWithdrawBehaviour(PolymarketDepositWalletBehaviour):
         # CLOB v2: realized pUSD from the sells lands in the DepositWallet.
         # Sweep it back to the Safe before the cycle wraps up (idempotent —
         # a failed/empty sweep is non-fatal; the next top-up reclaims any
-        # residual via its opportunistic sweep). Pass the sold token ids so any
-        # position that did NOT fully sell (dust / in-flight / permanent-failure
-        # positions) is also returned to the Safe rather than stranded in the
-        # transient DW — there may be no subsequent buy to reclaim it.
+        # residual via its opportunistic sweep). Include unsold positions too:
+        # there may be no later buy to reclaim them from the DW.
         token_ids = self._asset_token_ids(sellable)
         yield from self._sweep_dw_to_safe(token_ids)
 

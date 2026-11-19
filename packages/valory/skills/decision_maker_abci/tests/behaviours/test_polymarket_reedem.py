@@ -388,12 +388,12 @@ class TestSweepDepositWalletPositions:
         behaviour._send_polymarket_request.assert_not_called()
         behaviour.context.logger.warning.assert_called_once()
 
-    def test_positions_without_token_ids_warn(self) -> None:
-        """Positions with no parseable token id are reported, not swept."""
-        behaviour, requests = _sweep_dw([{"asset": None}], [{}])
+    def test_nothing_on_chain_is_not_reported_as_submitted(self) -> None:
+        """A sweep that finds no on-chain balance is not logged as submitted."""
+        behaviour, _ = _sweep_dw([{"asset": "11"}], [], {"swept": False})
 
-        assert requests == [_dw_read(True), _dw_read(False)]
-        assert behaviour.context.logger.warning.call_count == 2
+        behaviour.context.logger.warning.assert_not_called()
+        assert "nothing swept" in behaviour.context.logger.info.call_args.args[0]
 
     @pytest.mark.parametrize("failure", [{"error": "503"}, None])
     @pytest.mark.parametrize("failed_read", [0, 1])

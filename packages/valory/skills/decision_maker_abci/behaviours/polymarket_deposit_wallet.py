@@ -59,7 +59,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
     """Shared DepositWallet state + relayer-proxy helpers for the CLOB v2 flows.
 
     The DepositWallet is provisioned (deploy + trading approvals) once by
-    ``PolymarketSetApprovalBehaviour``; the top-up / withdrawal flows only
+    ``PolymarketSetApprovalBehaviour``; the top-up, withdrawal and redeem flows only
     resolve the recorded DW and relay calls through the proxy. The SRR request
     wrapper and the ``deposit_wallet.json`` read/write/invalidate/resolve
     helpers are shared here to avoid duplication across those behaviours.
