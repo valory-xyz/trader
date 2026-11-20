@@ -142,16 +142,10 @@ jobs:
         # override is only additive if a future tomte bump adds one
         # on that section directly.
         #
-        # (c) ``filelock``: ``safety==3.7.0`` requires ``filelock<4.0``
-        # and resolves 3.32.7, which SFTY-20261017-72390, -54654 and
-        # -57659 flag (affected up to 4.2.0). Every release past 4.2.0
-        # needs Python >=3.11, so the venv of this one step is built on
-        # 3.11 (``base_python``) and ``filelock`` is upgraded with pip
-        # and setuptools. pip warns that this breaks the ``<4.0`` pin of
-        # ``safety``; the scan runs with 4.2.11.
-        # TODO: drop ``base_python``, the ``filelock`` upgrade and the
-        # 3.11 entry in ``setup-python`` above once ``safety`` (through
-        # tomte's ``safety`` extra) allows a ``filelock`` past 4.2.0.
+        # (c) ``safety`` pins ``filelock<4.0``, which is vulnerable;
+        # patched releases need Python 3.11.
+        # TODO: drop ``base_python``, the ``filelock`` upgrade and 3.11
+        # in ``setup-python`` once ``safety`` allows ``filelock>=4.2.1``.
         run: |
           tomte tox -e safety \
             -x 'testenv:safety.passenv+=NLTK_DISABLE_IMPORT_SECURITY' \
