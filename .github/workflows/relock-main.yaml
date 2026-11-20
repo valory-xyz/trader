@@ -1,0 +1,133 @@
+name: relock_main
+
+# Relocks the package hashes on main after each merge.
+#
+# Pull requests leave lock-managed hash values unchanged (CI fails them
+# otherwise, see scripts/hash_lock/hash_lock.py), so two package PRs no longer
+# conflict on the shared hash lines. main's hashes are stale from a merge until
+# this workflow pushes its `chore: relock package hashes` commit.
+#
+# One-time setup by an org owner, described in the README:
+# - a GitHub App with Contents read and write and no other permission,
+#   installed on this repository only, and on the bypass list of the ruleset
+#   that protects main;
+# - an environment named `relock-main` that only main can deploy to, holding
+#   the variable RELOCK_APP_CLIENT_ID and the secret RELOCK_APP_PRIVATE_KEY.
+# Until then, every run that has a relock to push fails at the "Check that the
+# relock App is configured" step.
+
+on:
+  push:
+    branches:
+      - main
+
+# One run at a time, never cancelled mid-push. A burst of merges leaves at most
+# one queued run, which relocks the newest main.
+concurrency:
+  group: relock-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lock:
+    name: Lock package hashes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install 'tomte[tox,cli] @ git+https://github.com/valory-xyz/tomte.git@v0.7.3' tox-uv
+      - name: Lock package hashes
+        # With stdin closed, the lock fails at once on a package that is
+        # missing from packages.json, instead of waiting for an answer.
+        run: tomte tox -e lock-packages < /dev/null
+      - name: Save the relock as a patch
+        id: diff
+        run: |
+          git diff --binary > "$RUNNER_TEMP/relock.patch"
+          if [ -s "$RUNNER_TEMP/relock.patch" ]; then
+            git diff --stat
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "The package hashes on main are already locked."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: relock-patch
+          path: ${{ runner.temp }}/relock.patch
+          retention-days: 1
+
+  push:
+    name: Push the relock commit
+    needs: lock
+    if: needs.lock.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Only this job can read the App key. It runs no installed or downloaded
+    # code: only git, the guard script as it is on main, and the token action.
+    environment: relock-main
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Keep the guard as it is on main
+        # The patch comes from a job that ran third-party code, so the guard
+        # must not be one the patch could have rewritten.
+        run: |
+          mkdir "$RUNNER_TEMP/guard"
+          cp scripts/hash_lock/hash_lock.py "$RUNNER_TEMP/guard/"
+      - uses: actions/download-artifact@v8
+        with:
+          name: relock-patch
+          path: ${{ runner.temp }}/patch
+      - name: Apply the relock
+        run: git apply --index "$RUNNER_TEMP/patch/relock.patch"
+      - name: Check that only lock-written hash lines changed
+        run: python3 -I "$RUNNER_TEMP/guard/hash_lock.py" guard --base HEAD
+      - name: Check that the relock App is configured
+        env:
+          CLIENT_ID: ${{ vars.RELOCK_APP_CLIENT_ID }}
+          HAS_PRIVATE_KEY: ${{ secrets.RELOCK_APP_PRIVATE_KEY != '' }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ "$HAS_PRIVATE_KEY" != "true" ]; then
+            echo "::error title=Relock App not configured::The relock-main environment needs the variable RELOCK_APP_CLIENT_ID and the secret RELOCK_APP_PRIVATE_KEY. Until an org owner sets them up (see the README), main's package hashes stay stale."
+            exit 1
+          fi
+      - name: Mint a token for the relock App
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELOCK_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELOCK_APP_PRIVATE_KEY }}
+          permission-contents: write
+      - name: Commit and push the relock
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          bot="${APP_SLUG}[bot]"
+          bot_id="$(gh api "/users/${bot}" --jq .id)"
+          git -c user.name="$bot" -c user.email="${bot_id}+${bot}@users.noreply.github.com" \
+            commit -q -m "chore: relock package hashes"
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git push "$remote" HEAD:refs/heads/main; then
+            exit 0
+          fi
+          head="$(git ls-remote "$remote" refs/heads/main | cut -f1)"
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "::notice title=main moved on::main is now at ${head}. The run for that push relocks it."
+            exit 0
+          fi
+          echo "::error title=Relock push rejected::main has not moved, so the ruleset that protects main rejected the push. Check that the relock App is on its bypass list."
+          exit 1

@@ -96,9 +96,10 @@ upstream_pins = [
     "valory-xyz/omen-protocol@v0.1.3",
 ]
 gitleaks_extra_paths = ["ui-build/.*"]
-# The agent runner's own entry point and its prestart-check command.
-pytest_targets_extra = ["pyinstaller"]
-service_specific_packages_extra = ["pyinstaller"]
+# The agent runner's own entry point and its prestart-check command, and the
+# lock-managed hash check that CI and the relock workflow run.
+pytest_targets_extra = ["pyinstaller", "scripts/hash_lock"]
+service_specific_packages_extra = ["pyinstaller", "scripts/hash_lock"]
 tomte_dep_pin = " @ git+https://github.com/valory-xyz/tomte.git@v0.7.3"
 
 [tool.uv.build-backend]

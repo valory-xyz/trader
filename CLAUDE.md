@@ -66,6 +66,7 @@ uv run tomte tox -p -e black-check -e isort-check -e flake8 -e mypy -e pylint
 ### Code Generation & Hashes
 ```bash
 make generators          # Update hashes, copyright headers, ABCI docstrings
+uv run python scripts/hash_lock/hash_lock.py revert  # Drop hash changes before committing
 make sync-packages       # Sync package versions across the repo
 # Update FSM specs for a specific skill
 autonomy analyse fsm-specs --update --app-class <AppClass> --package packages/valory/skills/<skill_name>
@@ -152,7 +153,7 @@ Interfaces to on-chain contracts (FPMM market maker, conditional tokens, Realiti
 - **Type hints** required (mypy strict optional)
 - **Apache 2.0** copyright headers on all files (auto-checked)
 - **Encoding declaration**: `# -*- coding: utf-8 -*-` at top of files
-- All packages have content-addressed hashes checked in CI — run `make generators` after modifying package contents
+- All packages have content-addressed hashes. PRs leave lock-managed hash values unchanged: CI fails a PR that changes them, and the `relock_main` workflow relocks them on `main` after each merge. See "Package hashes" in `README.md`
 
 ## Testing
 
@@ -212,9 +213,10 @@ not in this file.
 After modifying any package:
 
 1. **Update FSM specs**: `make fix-abci-app-specs`
-2. **Regenerate hashes**: `autonomy packages lock`
+2. **Regenerate hashes** to run tests and checks locally: `autonomy packages lock`
 3. **Update copyrights**: included in `make generators`
 4. **Check ABCI docstrings**: `tox -e check-abci-docstrings`
+5. **Drop the hash changes** before committing: `uv run python scripts/hash_lock/hash_lock.py revert`
 
 After adding/removing dependencies:
 
