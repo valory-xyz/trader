@@ -29,6 +29,9 @@ from eth_abi import encode as abi_encode
 from eth_utils import to_checksum_address  # type: ignore[import-not-found]
 from hexbytes import HexBytes
 
+from packages.valory.connections.polymarket_client.relayer_proxy import (
+    RelayerProxyError,
+)
 from packages.valory.connections.polymarket_client.tests import test_connection as pm
 from packages.valory.skills.agent_performance_summary_abci.feed import EventType
 from packages.valory.skills.decision_maker_abci.behaviours.polymarket_reedem import (
@@ -89,6 +92,8 @@ def _make_behaviour():  # type: ignore[no-untyped-def]
     context = MagicMock()
     context.agent_address = "test_agent"
     behaviour.__dict__["_context"] = context
+    # No DepositWallet unless a test gives one.
+    behaviour._resolve_deposit_wallet = lambda: None  # type: ignore[method-assign]
 
     return behaviour
 
@@ -313,6 +318,100 @@ class TestFetchRedeemablePositions:
 
         assert result is None
         behaviour.context.logger.error.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Tests for sweep_deposit_wallet_positions
+
+DW_ADDRESS = "0xDepositWallet"
+
+
+def _sweep_dw(*responses):  # type: ignore[no-untyped-def]
+    """Run the DepositWallet sweep against ``responses``; return the behaviour and its requests."""
+    behaviour = _make_behaviour()
+    behaviour._resolve_deposit_wallet = lambda: DW_ADDRESS  # type: ignore[method-assign]
+    requests = []
+    replies = iter(responses)
+
+    def send(request_type, params):  # type: ignore[no-untyped-def]
+        requests.append({"request_type": request_type.value, "params": params})
+        yield
+        return next(replies)
+
+    behaviour._send_polymarket_request = send  # type: ignore[method-assign]
+    _run(behaviour._sweep_deposit_wallet_positions())
+    return behaviour, requests
+
+
+def _dw_read(redeemable):  # type: ignore[no-untyped-def]
+    """Return the DepositWallet positions read the sweep sends."""
+    return {
+        "request_type": "fetch_all_positions",
+        "params": {"redeemable": redeemable, "address": DW_ADDRESS},
+    }
+
+
+class TestSweepDepositWalletPositions:
+    """Tests for _sweep_deposit_wallet_positions."""
+
+    def test_sweeps_every_position_the_dw_holds(self) -> None:
+        """The resolved and open positions' token ids are swept once each."""
+        resolved = [{"asset": "11"}, {"asset": "not-an-id"}]
+        open_ = [{"asset": "22"}, {"asset": "11"}, {}]
+        behaviour, requests = _sweep_dw(resolved, open_, {"swept": True})
+
+        assert requests == [
+            _dw_read(True),
+            _dw_read(False),
+            {
+                "request_type": "sweep_dw",
+                "params": {"dw_address": DW_ADDRESS, "token_ids": [11, 22]},
+            },
+        ]
+        # One warning per position with no parseable token id.
+        assert behaviour.context.logger.warning.call_count == 2
+
+    def test_empty_dw_is_not_swept(self) -> None:
+        """A DepositWallet holding no positions gets no sweep."""
+        behaviour, requests = _sweep_dw([], [])
+
+        assert requests == [_dw_read(True), _dw_read(False)]
+        behaviour.context.logger.warning.assert_not_called()
+
+    def test_unknown_dw_is_skipped(self) -> None:
+        """With no DepositWallet recorded, nothing is read or swept."""
+        behaviour = _make_behaviour()
+        behaviour._send_polymarket_request = MagicMock()  # type: ignore[method-assign]
+
+        _run(behaviour._sweep_deposit_wallet_positions())
+
+        behaviour._send_polymarket_request.assert_not_called()
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_nothing_on_chain_is_not_reported_as_submitted(self) -> None:
+        """A sweep that finds no on-chain balance is not logged as submitted."""
+        behaviour, _ = _sweep_dw([{"asset": "11"}], [], {"swept": False})
+
+        behaviour.context.logger.warning.assert_not_called()
+        assert "nothing swept" in behaviour.context.logger.info.call_args.args[0]
+
+    @pytest.mark.parametrize("failure", [{"error": "503"}, None])
+    @pytest.mark.parametrize("failed_read", [0, 1])
+    def test_failed_read_skips_the_sweep(self, failure, failed_read) -> None:  # type: ignore[no-untyped-def]
+        """A failed resolved or open read sweeps nothing."""
+        replies = [[{"asset": "11"}], [{"asset": "22"}]]
+        replies[failed_read] = failure
+        behaviour, requests = _sweep_dw(*replies)
+
+        assert requests == [_dw_read(True), _dw_read(False)][: failed_read + 1]
+        behaviour.context.logger.warning.assert_called_once()
+
+    def test_failed_sweep_warns(self) -> None:
+        """A failed sweep is logged, not raised."""
+        behaviour, requests = _sweep_dw([{"asset": "11"}], [], None)
+
+        assert requests[-1]["request_type"] == "sweep_dw"
+        behaviour.context.logger.warning.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -1692,9 +1791,10 @@ class TestAsyncAct:
         assert payloads_sent[0].event == "prepare_tx"
 
 
-def _redeem_period(conn, builder, utilized_tools=None, policy=None, state=None):  # type: ignore[no-untyped-def]
+def _redeem_period(conn, builder, utilized_tools=None, policy=None, state=None, dw=None):  # type: ignore[no-untyped-def]
     """Run one redeem period against ``conn``; return its payload and the Safe's claims."""
     behaviour = _make_behaviour()
+    behaviour._resolve_deposit_wallet = lambda: dw  # type: ignore[method-assign]
     if state is not None:  # shared state kept across periods
         behaviour.context.state = state
     behaviour._policy = policy or _make_policy()
@@ -1804,3 +1904,49 @@ def test_v2_position_claim_payout_recorded_once_landed() -> None:
     assert feed.call_count == 1 and feed.call_args.args[0] == EventType.PAYOUT_COLLECTED
     assert feed.call_args.args[1][0]["value"] == pm.V2_WIN["title"]
     assert state.polymarket_builder_redeems_pending == {}
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_dw_positions_swept_then_claimed_from_safe(builder) -> None:  # type: ignore[no-untyped-def]
+    """A DepositWallet's resolved and open shares go to the Safe, which claims the resolved one next period."""
+    rows = (pm.V1_WIN, pm.V2_OPEN)
+    balances = pm._ledger(pm.V2_DW, *rows)
+    policy = _make_policy()
+    tools = {row["condition_id"]: "tool1" for row in rows}
+    with (
+        pm._v2_world({pm.V2_DW: list(rows)}, balances) as conn,
+        patch.object(PolymarketRedeemBehaviour, "_record_feed_event") as feed,
+    ):
+        payload, claims = _redeem_period(conn, builder, tools, policy, dw=pm.V2_DW)
+        # Sweeping records no payout and updates no tool: the Safe redeem does both.
+        assert (payload.event, claims) == ("no_redeeming", [])
+        assert json.loads(payload.utilized_tools) == tools
+        assert policy.accuracy_store == _make_policy().accuracy_store
+        feed.assert_not_called()
+        dw, _, calls = conn.relayer_proxy.exec_wallet_batch.call_args.args
+        for call in calls:
+            pm._apply_transfer(balances, dw, call["target"], call["data"])
+        assert pm._held(balances) == pm._ledger(pm.V2_SAFE, *rows)
+        # The Data API now lists the swept shares under the Safe.
+        conn.pages[pm.V2_SAFE] = conn.pages.pop(pm.V2_DW)
+        conn.relayer_proxy.exec_wallet_batch.reset_mock()
+
+        payload, claims = _redeem_period(conn, builder, dw=pm.V2_DW)
+
+    assert payload.event == ("done" if builder else "prepare_tx")
+    assert claims == [_v1_claim(pm.V1_WIN)]
+    conn.relayer_proxy.exec_wallet_batch.assert_not_called()
+
+
+@pytest.mark.parametrize("builder", [False, True])
+def test_failed_dw_sweep_leaves_the_safe_redeem_unchanged(builder) -> None:  # type: ignore[no-untyped-def]
+    """The Safe claims its positions whether or not the DepositWallet sweep went through."""
+    pages = {pm.V2_SAFE: [pm.V1_WIN], pm.V2_DW: [pm.V2_OPEN]}
+    balances = {**pm._ledger(pm.V2_SAFE, pm.V1_WIN), **pm._ledger(pm.V2_DW, pm.V2_OPEN)}
+    with pm._v2_world(pages, balances) as conn:
+        conn.relayer_proxy.exec_wallet_batch.side_effect = RelayerProxyError("down")
+        payload, claims = _redeem_period(conn, builder, dw=pm.V2_DW)
+
+    conn.relayer_proxy.exec_wallet_batch.assert_called_once()
+    assert payload.event == ("done" if builder else "prepare_tx")
+    assert claims == [_v1_claim(pm.V1_WIN)]

@@ -22,7 +22,7 @@
 import json
 import os
 from abc import ABC
-from typing import Any, Dict, Generator, Optional, Tuple, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, cast
 
 from packages.valory.connections.polymarket_client.connection import (
     PUBLIC_ID as POLYMARKET_CLIENT_CONNECTION_PUBLIC_ID,
@@ -59,7 +59,7 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
     """Shared DepositWallet state + relayer-proxy helpers for the CLOB v2 flows.
 
     The DepositWallet is provisioned (deploy + trading approvals) once by
-    ``PolymarketSetApprovalBehaviour``; the top-up / withdrawal flows only
+    ``PolymarketSetApprovalBehaviour``; the top-up, withdrawal and redeem flows only
     resolve the recorded DW and relay calls through the proxy. The SRR request
     wrapper and the ``deposit_wallet.json`` read/write/invalidate/resolve
     helpers are shared here to avoid duplication across those behaviours.
@@ -138,6 +138,23 @@ class PolymarketDepositWalletBehaviour(DecisionMakerBaseBehaviour, ABC):
                 self.context.logger.warning(f"Invalid token ID '{tid}' skipped.")
                 continue
         return ids
+
+    def _asset_token_ids(self, positions: List[Dict[str, Any]]) -> List[int]:
+        """Integer token ids of the positions a sweep should reclaim.
+
+        :param positions: position records keyed by v1 names.
+        :return: the parseable integer ``asset`` ids; unparseable ones skipped.
+        """
+        token_ids: List[int] = []
+        for p in positions:
+            try:
+                token_ids.append(int(p["asset"]))
+            except (KeyError, TypeError, ValueError):
+                self.context.logger.warning(
+                    f"Invalid token ID {p.get('asset')!r} of condition "
+                    f"{p.get('conditionId')!r} skipped."
+                )
+        return token_ids
 
     def _read_deposit_wallet_file(self) -> Optional[dict]:
         """Read the persisted DepositWallet state, if any.
